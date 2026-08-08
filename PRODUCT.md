@@ -53,7 +53,7 @@ The server appends messages in pairs (user + assistant) after the agent loop com
 
 The app has three zones, left to right:
 
-1. **Sidebar** (left): Session history list. Collapsible on desktop (3.75rem collapsed rail to 17rem expanded). Drawer with backdrop scrim on mobile (<1024px). Contains: new conversation button, session list grouped by recency, user menu in header.
+1. **Sidebar** (left): Session history list. Collapsible on desktop (3.75rem collapsed rail to 17rem expanded). Drawer with backdrop scrim on mobile (<1024px). Contains: new conversation button, session list grouped by recency.
 
 2. **Chat panel** (center): Always visible, full-height. Contains: message history (scrollable), chat input composer (bottom-pinned). The primary and permanent surface. When no visual pane is open, chat stretches to fill the remaining width.
 
@@ -146,10 +146,10 @@ Nothing exists without a reason. No decorative elements, no illustrations, no ba
 
 ### Precision and Consistency
 
-- Spacing aligns to an 8px grid
+- Spacing aligns to an 8px grid (with a 6px sub-grid for tight icon-to-label gaps)
 - Radius is consistent within element categories (all buttons share one radius, all panels share one radius)
 - Two shadow tiers: utility elevation (Tailwind-mapped) and composed neumorphic (.neu-\* classes), never mixed on the same element
-- In-app transitions use one easing curve (`cubic-bezier(0.16, 1, 0.3, 1)`)
+- In-app transitions use `cubic-bezier(0.16, 1, 0.3, 1)` for transforms and layout; opacity/filter transitions use ease-out in menus
 - Text sizes form a strict hierarchy with no sizes between steps
 - Colors come from a defined palette; opacity modifiers create tinted variants
 
@@ -222,6 +222,6 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 - Chat is keyboard-navigable: Tab through messages, Enter to send, Escape to dismiss overlays
 - Reduced-motion preference respected: all animations collapse to 0.01ms duration, reveals show at once, spinning elements freeze
 - Screen reader support: messages are announced via sr-only live region, tool execution states communicated, icon buttons have aria-labels
-- Focus indicators are visible on keyboard navigation (`ring-primary/40 ring-2`), not hidden behind mouse-only styles
-- Touch targets are minimum 44x44px on mobile (achieved via `size-11` or `min-h-[44px] min-w-[44px]`)
+- Focus indicators are visible on keyboard navigation (`ring-primary/40 ring-2` with ring-offset), not hidden behind mouse-only styles
+- Interactive elements target 44x44px on mobile via `min-h-[44px]` on pills; some icon buttons remain at 36-40px where density is prioritized over the WCAG minimum
 - Safe-area insets respected for bottom-pinned elements on iOS (`env(safe-area-inset-bottom)`)
