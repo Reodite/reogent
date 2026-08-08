@@ -1,10 +1,17 @@
 import { signToken } from "@/src/server/auth";
+import { rateLimitResponse } from "@/src/server/rate-limit";
 import { createUser, getUserByUsername } from "@/src/server/sessions/store";
 import bcrypt from "bcryptjs";
 import { json, requireJson, serverError } from "../../http";
 
+const REGISTER_LIMIT = { windowMs: 60_000, maxRequests: 5 };
+
 export async function POST(request: Request): Promise<Response> {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const limited = rateLimitResponse(`register:${ip}`, REGISTER_LIMIT);
+    if (limited) return limited;
+
     const ctError = requireJson(request);
     if (ctError) return ctError;
 
