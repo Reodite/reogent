@@ -135,24 +135,26 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
   const api = useApi();
   const [details, setDetails] = useState<BuildingDetails | null>(null);
   const [failed, setFailed] = useState(false);
+  const [fetchNonce, setFetchNonce] = useState(0);
   const popupRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    void fetchNonce;
+    const controller = new AbortController();
     setDetails(null);
     setFailed(false);
     api
       .getBuildingDetails(building.code)
       .then((d) => {
-        if (!cancelled) setDetails(d);
+        if (!controller.signal.aborted) setDetails(d);
       })
       .catch(() => {
-        if (!cancelled) setFailed(true);
+        if (!controller.signal.aborted) setFailed(true);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [api, building.code]);
+  }, [api, building.code, fetchNonce]);
 
   // Focus trap + Escape to close
   useEffect(() => {
@@ -211,7 +213,19 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
             <div className="bg-surface-container h-4 w-2/3 animate-pulse rounded" />
           </div>
         )}
-        {failed && <p className="text-on-surface-variant text-sm">Couldn't load details for this building.</p>}
+        {failed && (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-on-surface-variant text-sm">Couldn&apos;t load details for this building.</p>
+            <button
+              type="button"
+              onClick={() => setFetchNonce((n) => n + 1)}
+              className="neu-button bg-surface text-on-surface flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+            >
+              <Icon name="refresh2" size={14} />
+              Retry
+            </button>
+          </div>
+        )}
         {details && (
           <>
             {details.rooms.length > 0 && (
