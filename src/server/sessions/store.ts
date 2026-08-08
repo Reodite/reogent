@@ -42,11 +42,12 @@ export async function appendExchange(
 ): Promise<void> {
   const pool = getPool();
 
-  // Upsert session (creates on first message, updates timestamp on subsequent)
+  // Upsert session. ON CONFLICT verifies user_id matches to prevent cross-user writes.
   await pool.query(
     `INSERT INTO sessions (id, user_id, title, updated_at)
      VALUES ($1, $2, $3, now())
-     ON CONFLICT (id) DO UPDATE SET updated_at = now()`,
+     ON CONFLICT (id) DO UPDATE SET updated_at = now()
+     WHERE sessions.user_id = $2`,
     [sessionId, userId, userMessage.slice(0, 80)],
   );
 
