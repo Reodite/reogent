@@ -22,9 +22,11 @@ function isPolygonal(f: Feature): f is BuildingFeature {
 
 /** The exterior ring with the largest vertex count (largest ring of a MultiPolygon). */
 function exteriorRing(geometry: Polygon | MultiPolygon): Position[] {
+  if (!Array.isArray(geometry.coordinates) || geometry.coordinates.length === 0) return [];
   if (geometry.type === "Polygon") return geometry.coordinates[0] ?? [];
   let best: Position[] = [];
   for (const polygon of geometry.coordinates) {
+    if (!Array.isArray(polygon)) continue;
     const ring = polygon[0] ?? [];
     if (ring.length > best.length) best = ring;
   }
