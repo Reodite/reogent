@@ -106,9 +106,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingRetry = useRef<{ conversation: ChatMessage[] } | null>(null);
 
-  // The panel is remounted per session; a response landing after unmount must
-  // not touch shared shell state (map highlight, session list) for the session
-  // the user switched to.
+  // Cleanup: abort in-flight requests and cancel pending frames on unmount.
   const alive = useRef(true);
   const deltaFlushRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -116,6 +114,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
     alive.current = true;
     return () => {
       alive.current = false;
+      abortRef.current?.abort();
       if (deltaFlushRef.current) cancelAnimationFrame(deltaFlushRef.current);
     };
   }, []);
@@ -135,6 +134,8 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     void historyNonce;
     setHighlight(null);
+    pendingRetry.current = null;
+    setSendError(null);
     let cancelled = false;
     setHistoryState("loading");
     api
