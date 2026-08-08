@@ -1,4 +1,11 @@
-import { formatCad, formatMeters, formatMinutes, SESSION_GROUP_ORDER, sessionGroup, summarizeToolInput } from "@/src/lib/format";
+import {
+  formatCad,
+  formatMeters,
+  formatMinutes,
+  SESSION_GROUP_ORDER,
+  sessionGroup,
+  summarizeToolInput,
+} from "@/src/lib/format";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -42,20 +49,45 @@ describe("formatters", () => {
     expect(formatCad(1494.65)).toBe("$1,494.65");
   });
 
+  it("returns placeholder for non-finite CAD values", () => {
+    expect(formatCad(NaN)).toBe("—");
+    expect(formatCad(Infinity)).toBe("—");
+    expect(formatCad(-Infinity)).toBe("—");
+  });
+
   it("formats meters, switching to km at 1000", () => {
     expect(formatMeters(460)).toBe("460 m");
     expect(formatMeters(1250)).toBe("1.3 km");
+  });
+
+  it("returns placeholder for non-finite meter values", () => {
+    expect(formatMeters(NaN)).toBe("—");
+    expect(formatMeters(Infinity)).toBe("—");
+    expect(formatMeters(-Infinity)).toBe("—");
   });
 
   it("never reports less than one minute", () => {
     expect(formatMinutes(0.2)).toBe("1 min");
     expect(formatMinutes(6)).toBe("6 min");
   });
+
+  it("returns placeholder for non-finite minute values", () => {
+    expect(formatMinutes(NaN)).toBe("—");
+    expect(formatMinutes(Infinity)).toBe("—");
+    expect(formatMinutes(-Infinity)).toBe("—");
+  });
 });
 
 describe("summarizeToolInput", () => {
   it("renders key=value pairs and skips empties", () => {
     expect(summarizeToolInput({ query: "algorithms", limit: 3, term: undefined })).toBe('query="algorithms", limit=3');
+  });
+
+  it("handles circular references without throwing", () => {
+    const circular: Record<string, unknown> = { name: "test" };
+    circular.self = circular;
+    expect(() => summarizeToolInput(circular)).not.toThrow();
+    expect(summarizeToolInput(circular)).toContain("[complex]");
   });
 
   it("never exceeds the length budget (property)", () => {
