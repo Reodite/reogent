@@ -41,6 +41,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
       return;
     }
     if (auth.status === "signedOut") {
+      // Ignore transient signedOut if user was recently signedIn (token refresh race)
+      if (wasSignedIn.current) {
+        const timer = setTimeout(() => {
+          if (auth.status === "signedOut") router.replace("/login");
+        }, 500);
+        return () => clearTimeout(timer);
+      }
       router.replace("/login");
     }
   }, [auth, router]);
