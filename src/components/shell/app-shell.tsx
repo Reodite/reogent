@@ -79,11 +79,16 @@ function SidebarDrawer() {
   useEffect(() => {
     if (!sidebarOpen) return;
     closeRef.current?.focus();
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setSidebarOpen(false);
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [sidebarOpen, setSidebarOpen]);
 
   return (
