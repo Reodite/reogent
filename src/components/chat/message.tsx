@@ -7,7 +7,7 @@ import { ToolCallsView } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import type { ToolCall } from "@/src/lib/api-types";
 import type { InterstitialBlock } from "@/src/shared/types";
-import { lazy, memo, Suspense, useState } from "react";
+import { Component, lazy, memo, Suspense, useState, type ReactNode } from "react";
 
 export type { InterstitialBlock };
 
@@ -66,12 +66,27 @@ const markdownComponents = {
   ),
 };
 
+// Catches failures in lazy markdown loading (network error, CSP block) and
+// falls back to raw text instead of crashing the message list.
+class MarkdownBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
+
 function AssistantMarkdown({ content }: { content: string }) {
+  const raw = <p className="break-words whitespace-pre-wrap">{content}</p>;
   return (
     <div className="assistant-markdown">
-      <Suspense fallback={<p className="whitespace-pre-wrap">{content}</p>}>
-        <LazyMarkdown content={content} />
-      </Suspense>
+      <MarkdownBoundary fallback={raw}>
+        <Suspense fallback={raw}>
+          <LazyMarkdown content={content} />
+        </Suspense>
+      </MarkdownBoundary>
     </div>
   );
 }
