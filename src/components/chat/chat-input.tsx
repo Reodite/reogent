@@ -68,6 +68,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           rows={1}
           value={value}
           disabled={disabled}
+          maxLength={10000}
           onChange={(event) => {
             setValue(event.target.value);
             autosize();
