@@ -116,7 +116,6 @@ export function ProductMock({ inView, chatZ, mapZ }: ProductMockProps) {
           className="object-cover"
           sizes="(min-width: 640px) 50vw, 0px"
           draggable={false}
-          priority
         />
 
         {/* Collapse button */}
