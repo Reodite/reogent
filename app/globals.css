@@ -746,6 +746,11 @@ html.vt-active *::after {
   max-width: 100%;
   overflow-x: auto;
   padding: 0.3rem 0.2rem 0.55rem;
+  /* Scroll shadow: fade edges indicate scrollable content */
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left / 2rem 100% no-repeat,
+    linear-gradient(to left, var(--surface) 30%, transparent) right / 2rem 100% no-repeat;
+  background-attachment: local;
 }
 
 .assistant-markdown table {
