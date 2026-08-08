@@ -79,6 +79,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     }
     const response = await fetch(`${baseUrl}${path}`, {
       ...init,
+      signal: init?.signal ?? AbortSignal.timeout(30_000),
       headers: {
         Authorization: `Bearer ${token}`,
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
