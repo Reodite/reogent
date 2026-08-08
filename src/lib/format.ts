@@ -10,7 +10,7 @@ function startOfDay(d: Date): number {
   return copy.getTime();
 }
 
-/** Bucket an ISO timestamp relative to `now` for the sidebar's section headers. */
+/** Bucket an ISO timestamp relative to `now`. Future dates land in "Today". */
 export function sessionGroup(updatedAt: string, now: Date = new Date()): SessionGroup {
   const updated = new Date(updatedAt);
   if (Number.isNaN(updated.getTime())) return "Older";
@@ -63,7 +63,8 @@ export function summarizeToolInput(input: Record<string, unknown>, maxLength = 4
   }
   const joined = parts.join(", ");
   if (joined.length <= maxLength) return joined;
-  // Truncate to the last complete character before the limit
-  const sliced = joined.slice(0, maxLength - 1);
-  return `${sliced}…`;
+  // Codepoint-safe truncation: iterate by codepoint to avoid splitting surrogate pairs
+  const chars = Array.from(joined);
+  const truncated = chars.slice(0, maxLength - 1).join("");
+  return `${truncated}…`;
 }
