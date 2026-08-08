@@ -15,7 +15,9 @@ export interface BuildingFeatureProperties {
 export type BuildingFeature = Feature<Polygon | MultiPolygon, BuildingFeatureProperties>;
 
 function isPolygonal(f: Feature): f is BuildingFeature {
-  return f.geometry?.type === "Polygon" || f.geometry?.type === "MultiPolygon";
+  if (f.geometry?.type !== "Polygon" && f.geometry?.type !== "MultiPolygon") return false;
+  const coords = (f.geometry as Polygon | MultiPolygon).coordinates;
+  return Array.isArray(coords) && coords.length > 0;
 }
 
 /** The exterior ring with the largest vertex count (largest ring of a MultiPolygon). */
@@ -38,6 +40,8 @@ function exteriorRing(geometry: Polygon | MultiPolygon): Position[] {
 export function featureCentroid(feature: BuildingFeature): LngLat | null {
   const ring = exteriorRing(feature.geometry);
   if (ring.length < 3) return null;
+  // Bail if any coordinate is non-finite
+  if (!ring.every((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]))) return null;
   const [ox, oy] = ring[0];
   let area = 0;
   let cx = 0;
@@ -71,6 +75,7 @@ export function featureCentroid(feature: BuildingFeature): LngLat | null {
 export function findBuilding(collection: FeatureCollection, query: string): BuildingFeature | null {
   const q = query.trim().toUpperCase();
   if (!q) return null;
+  if (!Array.isArray(collection?.features)) return null;
   const features = collection.features.filter(isPolygonal);
   const byCode = features.find((f) => (f.properties?.BLDG_CODE ?? "").toUpperCase() === q);
   if (byCode) return byCode;
