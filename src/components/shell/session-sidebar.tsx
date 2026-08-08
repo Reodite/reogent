@@ -8,7 +8,7 @@ import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { motion, useReducedMotion } from "motion/react";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 function groupSessions(sessions: SessionSummary[]): Array<[SessionGroup, SessionSummary[]]> {
   const buckets = new Map<SessionGroup, SessionSummary[]>();
@@ -33,6 +33,14 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
   const reduce = useReducedMotion();
   const hasAnimated = useRef(false);
   const grouped = useMemo(() => groupSessions(sessions), [sessions]);
+
+  // Mark animated after first render with sessions (avoids render-time side effect)
+  useEffect(() => {
+    if (!sessionsLoading && !sessionsError && sessions.length > 0) {
+      hasAnimated.current = true;
+    }
+  }, [sessionsLoading, sessionsError, sessions]);
+
   function openSession(id: string) {
     setSidebarOpen(false);
     router.push(`/chat/${id}`);
@@ -141,7 +149,7 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
                           }`}
                         >
                           <Icon name="chat1" size={16} className="shrink-0" />
-                          <span className="truncate text-sm">{session.title}</span>
+                          <span className="truncate text-sm">{session.title?.trim() || "Untitled"}</span>
                         </button>
                       </motion.li>
                     );
@@ -150,13 +158,6 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
               </div>
             );
           })}
-        {!sessionsLoading &&
-          !sessionsError &&
-          sessions.length > 0 &&
-          (() => {
-            hasAnimated.current = true;
-            return null;
-          })()}
       </nav>
     </div>
   );
