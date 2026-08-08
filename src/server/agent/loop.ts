@@ -11,6 +11,7 @@ import type {
 import { executeTool, isToolError } from "./executor";
 
 export const ITERATION_LIMIT = 8;
+const HARD_LIMIT = 10;
 
 const NUDGE =
   "You have used many tool calls. Please provide your final answer now based on the information you have gathered so far. Do not call more tools unless absolutely necessary.";
@@ -64,6 +65,15 @@ export async function runAgentLoop(messages: ChatMessage[], deps: AgentDeps): Pr
   let lastText = "";
 
   for (let i = 0; ; i++) {
+    // Hard cap: terminate unconditionally to prevent runaway loops
+    if (i >= HARD_LIMIT) {
+      return {
+        message: lastText || "I ran out of processing steps. Here is what I found so far.",
+        tool_calls: toolCalls,
+        warning: "Response may be incomplete — processing limit reached.",
+      };
+    }
+
     // After hitting the soft limit, nudge the model to wrap up but keep tools available
     if (i === ITERATION_LIMIT) {
       convo.push({ role: "user", content: [{ text: NUDGE }] });
