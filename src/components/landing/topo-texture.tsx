@@ -1,7 +1,9 @@
 // Topographic contour texture for the landing hero and closing CTA — felt more
 // than seen (3–4% opacity), evoking "this is about a place" without being literal.
 
-export function TopoTexture({ className }: { className?: string }) {
+import { memo } from "react";
+
+export const TopoTexture = memo(function TopoTexture({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -31,4 +33,4 @@ export function TopoTexture({ className }: { className?: string }) {
       <path d="M 600 120 C 780 170 930 310 960 470" />
     </svg>
   );
-}
+});
