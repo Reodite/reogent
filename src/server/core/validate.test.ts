@@ -48,4 +48,48 @@ describe("chat request validation", () => {
     expect(validateChatRequest({ messages: [{ role: "user", content: 5 }] }).ok).toBe(false);
     expect(validateChatRequest({ messages: [{ role: "user", content: "hi" }], session_id: 7 }).ok).toBe(false);
   });
+
+  it("rejects when message count exceeds 100", () => {
+    const messages = Array.from({ length: 101 }, (_, i) => ({
+      role: i % 2 === 0 ? "user" : "assistant",
+      content: "x",
+    }));
+    const result = validateChatRequest({ messages });
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("100");
+  });
+
+  it("accepts exactly 100 messages", () => {
+    const messages = Array.from({ length: 100 }, (_, i) => ({
+      role: i % 2 === 0 ? "user" : "assistant",
+      content: "x",
+    }));
+    expect(validateChatRequest({ messages }).ok).toBe(true);
+  });
+
+  it("rejects message content exceeding 32000 characters", () => {
+    const longContent = "x".repeat(32_001);
+    const result = validateChatRequest({ messages: [{ role: "user", content: longContent }] });
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("32000");
+  });
+
+  it("accepts message content at exactly 32000 characters", () => {
+    const content = "x".repeat(32_000);
+    expect(validateChatRequest({ messages: [{ role: "user", content }] }).ok).toBe(true);
+  });
+
+  it("rejects session_id that is not a valid UUID", () => {
+    expect(validateChatRequest({ messages: [{ role: "user", content: "hi" }], session_id: "not-a-uuid" }).ok).toBe(
+      false,
+    );
+    expect(validateChatRequest({ messages: [{ role: "user", content: "hi" }], session_id: "a".repeat(65) }).ok).toBe(
+      false,
+    );
+  });
+
+  it("accepts a valid UUID session_id", () => {
+    const uuid = "550e8400-e29b-41d4-a716-446655440000";
+    expect(validateChatRequest({ messages: [{ role: "user", content: "hi" }], session_id: uuid }).ok).toBe(true);
+  });
 });
