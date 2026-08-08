@@ -103,7 +103,7 @@ function RouteInfoCard() {
   );
 }
 
-function MapFallback() {
+function MapFallback({ onRetry }: { onRetry?: () => void }) {
   const { highlight } = useChatShell();
   return (
     <div
@@ -112,6 +112,16 @@ function MapFallback() {
     >
       <Icon name="wifiOff" size={32} className="text-muted" />
       <p className="text-body-sm text-on-surface-variant">Map couldn&apos;t load. Route details are shown below.</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="neu-button bg-surface text-on-surface mt-2 flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+        >
+          <Icon name="refresh2" size={14} />
+          Retry
+        </button>
+      )}
       {highlight?.kind === "route" && (
         <p className="text-on-surface max-w-60 text-sm">
           {formatMeters(highlight.meters)}, about {formatMinutes(highlight.minutes)} walking from {highlight.from} to{" "}
@@ -137,15 +147,29 @@ function MapSurface({ onCollapse }: { onCollapse: () => void }) {
   const { highlight, focusNonce } = useChatShell();
   const [showRoutes, setShowRoutes] = useState(false);
   const [status, setStatus] = useState<MapStatus>("loading");
+  const [mapKey, setMapKey] = useState(0);
   const controls = useRef<MapControls | null>(null);
+
+  // Timeout: if map stays loading for 15s, treat as error
+  useEffect(() => {
+    if (status !== "loading") return;
+    const timer = setTimeout(() => setStatus("error"), 15_000);
+    return () => clearTimeout(timer);
+  }, [status]);
+
+  function retryMap() {
+    setStatus("loading");
+    setMapKey((k) => k + 1);
+  }
 
   return (
     <div className="relative h-full w-full" aria-busy={status === "loading"}>
       {status === "error" ? (
-        <MapFallback />
+        <MapFallback onRetry={retryMap} />
       ) : (
         <>
           <CampusMap
+            key={mapKey}
             highlight={highlight}
             focusNonce={focusNonce}
             showRoutes={showRoutes}
@@ -233,7 +257,7 @@ export function MapPanel() {
           onClick={() => setMapOpen(true)}
           tabIndex={mapOpen ? -1 : 0}
           aria-label="Expand campus map"
-          aria-expanded={!mapOpen}
+          aria-expanded={mapOpen}
           title="Expand campus map"
           className="neu-panel text-primary hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors duration-150"
         >
