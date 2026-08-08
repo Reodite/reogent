@@ -218,6 +218,8 @@ Color tokens accept Tailwind opacity modifiers for layered effects:
 
 **The Opacity Layering Rule.** Use fractional opacity modifiers (`/15`, `/40`, `/60`) to create tinted surfaces that remain translucent to the layer beneath. Solid token colors for text and borders; opacity modifiers for background tints and state indicators.
 
+**CSS-Only Tokens.** Several frontmatter tokens exist in `:root` and `[data-theme="dark"]` but are consumed only in CSS (never as Tailwind utilities in JSX): `surface-container-lowest` (`.assistant-markdown pre` background), `surface-tint` (same value as primary; reserved), `outline-variant` (available but unused). They remain in the system for completeness.
+
 ## Typography
 
 **Display Font:** Aspekta Variable (with ui-sans-serif, system-ui fallback)
@@ -227,20 +229,24 @@ Color tokens accept Tailwind opacity modifiers for layered effects:
 
 ### In-App Hierarchy
 
-- **Title** (500, 1.25rem/text-xl, 1.3, -0.02em): Page titles, panel headers, greeting text. One per visible viewport.
-- **Heading** (500, 1rem/text-base, 1.4, -0.01em): Card titles, session names, route info primary values. The workhorse.
-- **Body** (400, 0.875rem/text-sm, 1.5): Chat messages, descriptions, button labels. Base size. 14px for information density.
+- **Title** (500, 1.25rem/text-xl, -0.02em): Page titles, panel headers, greeting text. One per visible viewport. Line-height varies by context: Tailwind default for text-xl or `leading-tight` (1.25) in compact headings.
+- **Brand Title** (500, text-base sm:text-xl, -0.025em): The "Reogent" text in the header. Uses tighter tracking than standard Title.
+- **Heading** (500, 1rem/text-base, -0.01em): Card titles, session names, route info primary values. Uses `leading-tight` (1.25) or `leading-snug` (1.375) in space-constrained contexts.
+- **Body** (400, 0.875rem/text-sm, 1.5): Chat messages, descriptions, button labels. Base size. 14px for information density. Uses `leading-relaxed` (1.625) in chat bubbles and descriptions for extra breathing room.
 - **Body Small** (400, 0.8125rem/text-body-sm, 1.5): Secondary info, timestamps, tool badge content, sidebar session previews.
 - **Caption** (450-500, 0.75rem/text-xs, 1.4): Labels, metadata, navigation group headers, category names.
+- **Avatar Monogram** (500, text-[0.6875rem]): 11px text for single-character avatar initials. Below caption scale; used exclusively in size-7 avatar containers.
 - **Mono** (400, 0.8125rem/text-body-sm, 1.5): Course codes (`CPSC 110`), times (`14:30`), building codes (`ICCS`), inline code, tool parameters, dollar amounts. Structured identifiers render in mono.
+- **Uppercase Label** (500, text-xs, tracking-[0.05em] or tracking-[0.06em]): Session group headers and collapsed-rail vertical labels. Positive tracking opens up small caps.
 
 ### Landing Page Scale
 
 The landing page uses a larger, more expressive type scale:
 
-- **Hero** (500, text-4xl → sm:text-5xl → lg:text-6xl, 1.05, -0.035em): Main headline. Allowed to be dramatic.
+- **Hero** (500, text-4xl → sm:text-5xl → lg:text-6xl, 1.05, -0.035em): Main headline.
+- **Hero Subtitle** (400, text-base → sm:text-lg, relaxed): Directly below the headline. One step larger than Section Body.
 - **Section Heading** (500, text-2xl → sm:text-3xl, -0.02em): Feature section titles.
-- **Section Body** (400, text-sm → sm:text-base, relaxed): Feature descriptions and subtitles.
+- **Section Body** (400, text-sm → sm:text-base, relaxed): Feature descriptions. Some instances stay fixed at text-sm or text-base depending on context.
 
 ### Named Rules
 
@@ -262,7 +268,7 @@ Flexbox with animated width/opacity transitions:
 
 **Mobile (<640px):** Single column. Chat full-width. Sidebar is a slide-over drawer with `bg-scrim` backdrop at z-40/z-50. Map becomes an 80vh bottom sheet (`fixed inset-x-0 bottom-0`) with touch drag-to-dismiss (20% of height threshold). Safe-area inset padding via `env(safe-area-inset-bottom)`.
 
-**Spacing rhythm:** 8px grid. Common values: `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px), `gap-6` (24px for message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) map panel, `px-4 py-3` (16/12px) header sections. Header height: 56px (h-14). Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
+**Spacing rhythm:** 8px grid with 6px sub-grid for tight icon gaps. Common values: `gap-1.5` (6px icon-to-label), `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px inter-panel), `gap-6` (24px message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) workspace gaps around all panels, `px-4 py-3` (16/12px) header sections, `p-4 sm:p-6` (16/24px) chat message well. Header height: 56px (h-14). Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
 
 **Canvas treatment:** `app-shell-canvas` sets flat `var(--background)` color. No gradients in the production app shell.
 
@@ -280,7 +286,7 @@ Quick-assignment shadows via Tailwind `shadow-*` utilities. Very light, barely v
 | `--elevation-md`    | `3px 3px 7px rgba(174,174,174,0.05), -2px -2px 5px rgba(255,255,255,0.3)`              | Tooltips, hovered controls |
 | `--elevation-lg`    | `4px 4px 10px rgba(174,174,174,0.06), -3px -3px 8px rgba(255,255,255,0.35)`            | Modals, dropdowns          |
 | `--elevation-inset` | `inset 1px 1px 3px rgba(174,174,174,0.05), inset -1px -1px 3px rgba(255,255,255,0.22)` | Recessed inputs, wells     |
-| `--elevation-glow`  | `0 2px 8px rgba(74,78,122,0.1)`                                                        | Primary action button glow |
+| `--elevation-glow`  | `0 2px 8px rgba(74,78,122,0.1)`                                                        | Standalone glow utility    |
 
 ### Tier 2: Composed Neumorphic (CSS classes)
 
@@ -301,7 +307,13 @@ Single unified shadow recipe applied through `.neu-*` classes. All composed surf
 | `--neu-surface-shadow` | `3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight)`             | All `.neu-panel` and `.neu-raised` surfaces   |
 | `--neu-inset-shadow`   | `inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight)` | `.neu-inset` surfaces, composer, sidebar body |
 
-There is no separate panel vs. raised shadow — both apply `--neu-surface-shadow`. The top-edge highlight (`--neu-edge`) from the previous system has been removed. Surfaces emerge from the unified shadow alone.
+**Sanctioned custom recipe:**
+
+| Recipe               | Value                                                           | Use                                                                                                                                                                |
+| -------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.chat-message-well` | `inset 0 10px 24px -22px var(--neu-shadow-deep)` (top + bottom) | Chat scroll well — deep directional inset that reads as a recessed channel. Background: `color-mix(in srgb, var(--surface-container-low) 72%, var(--background))`. |
+
+The `.neu-primary-button` rest shadow (`0 3px 8px rgba(74,78,122,0.1), -2px -2px 6px var(--neu-highlight)`) is its own inline recipe rather than referencing `--elevation-glow`. The two values differ by 1px Y-offset; they serve the same visual intent but the button recipe is authoritative.
 
 ### Glass Material
 
@@ -331,7 +343,8 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 - **Action buttons, icon buttons, collapse/expand controls**: `rounded-xl` (12px)
 - **Inner controls** (session items, details blocks, tool cards, nav items, thinking blocks): `rounded-lg` (8px)
 - **Small elements** (inline code, small badges, icon containers in tool results): `rounded-md` (6px)
-- **Pills** (chat input outer, action chips, avatars, dots, credit badges): `rounded-full` (9999px)
+- **Pills** (action chips, suggestion pills, avatars, dots, credit badges): `rounded-full` (9999px)
+- **Panel-level inputs** (chat composer): `rounded-2xl` (16px) — matches its parent panel radius rather than pill category
 - **Landing outer frame**: `rounded-[1.75rem]` (28px) — exclusively for the product mock container
 - **Chat bubbles**, asymmetric corners signal direction:
   - User (right-aligned): `16px 16px 5px 16px`, flat bottom-right means "from me"
@@ -352,10 +365,13 @@ State changes through shadow transformation + micro-translate.
 
 - **Primary** (`.neu-primary-button`): `bg-primary text-on-primary rounded-xl h-9 px-4 text-sm font-medium`. Shadow: colored glow underneath (primary at 10%) + highlight behind. Hover: brightness(1.03), translateY(-1px), slightly expanded glow. Active: inset shadow (dark + light), translateY(1px), scale(0.985).
 - **Primary Large**: Same as primary but `h-12 px-8 text-base`. Used on landing CTAs and auth submit.
+- **Primary Prominent**: `h-10 px-4` — slightly taller than standard for emphasis in error recovery states. Same shadow recipe.
 - **Secondary** (`.neu-button`): `bg-surface text-on-surface rounded-xl h-9 px-4 border-subtle text-sm font-medium`. Shadow: surface shadow. Hover: expanded shadow, translateY(-1px). Active: inset shadow, translateY(1px), scale(0.98).
-- **Ghost**: `bg-transparent text-on-surface-variant rounded-xl`. No shadow at rest (the one exception to whisper dimension). Hover: subtle surface background appears.
-- **Icon Button**: `size-9 sm:size-9` (mobile: `size-11` for 44px touch targets). Uses `neu-button` or `neu-panel` shadow. Contains centered icon.
-- **Sizes**: Standard 36px (h-9), Compact 32px (h-8), Large 48px (h-12, landing/auth only), Icon 36px desktop / 44px mobile.
+- **Secondary Compact**: `h-9 px-3` — reduced horizontal padding for tight layouts (retry buttons, inline actions).
+- **Ghost**: `bg-transparent text-on-surface-variant rounded-xl`. No shadow at rest (the one exception to whisper dimension). Hover: subtle surface background appears. Landing sign-in link uses `text-on-surface-variant hover:text-on-surface` for a softer secondary feel.
+- **Icon Button**: `size-9` (36px) standard. Uses `neu-button` or `neu-panel` shadow. Contains centered icon.
+- **Compact Pill** (inline tool cards): `border border-primary text-primary rounded-full px-3 py-1.5 text-xs font-medium min-h-[44px]`. Smaller padding than suggestion pills; used inside tool result cards where space is tight. Focus: `ring-primary/40 ring-2 ring-offset-2`. Active: `scale-95`.
+- **Sizes**: Standard 36px (h-9), Prominent 40px (h-10), Compact 32px (h-8), Large 48px (h-12, landing/auth only), Icon 36px.
 - **Transitions**: `color`, `background-color`, `box-shadow`, `transform` at 150ms ease-out.
 - **Disabled**: `disabled:pointer-events-none disabled:opacity-45` (send) or `disabled:opacity-60` (forms). Cursor: `disabled:cursor-not-allowed` on form submits.
 
@@ -368,9 +384,9 @@ State changes through shadow transformation + micro-translate.
 
 ### Inputs / Fields
 
-- **Chat composer** (`.neu-inset .chat-composer`): `bg-surface-container-low rounded-2xl p-1.5`. Recessed at rest via `--neu-inset-shadow`. Focus-within: inset shadow + 2px outline ring glow (primary at 28% opacity, -2px offset). Internal: textarea (transparent bg, `px-3 py-2 text-sm`, no outline) + send button (`.neu-primary-button`, circular, right-aligned).
-- **Auth input** (`.neu-inset`): `bg-surface-container-low text-on-surface h-11 rounded-lg px-3 text-sm`. Focus: `ring-primary/40 ring-2`. Error: `ring-error/30 ring-2`.
-- **Thinking state**: Animated conic-gradient border mask (2px pseudo-element with mask-composite) at 2.4s linear infinite. Send button replaced by the thinking orb.
+- **Chat composer** (`.neu-inset .chat-composer`): `bg-surface-container-low rounded-2xl p-1.5`. Recessed at rest via `--neu-inset-shadow`. Focus-within: inset shadow + 2px outline ring glow (primary at 28% opacity, -2px offset). Internal: textarea (transparent bg, `px-3 py-2 text-sm`, no outline) + send button (`.neu-primary-button rounded-xl size-11 sm:size-9`, right-aligned).
+- **Auth input** (`.neu-inset`): `bg-surface-container-low text-on-surface h-11 rounded-lg px-3 text-sm`. Focus: `ring-primary/40 ring-2 ring-offset-1`. Error: `ring-error/30 ring-2`.
+- **Thinking state**: Animated conic-gradient border mask (2px pseudo-element with mask-composite) at 2.4s linear infinite. Send button replaced by a stop button (`.neu-button bg-surface text-on-surface-variant rounded-xl`) during generation, allowing the user to abort.
 
 ### Navigation
 
@@ -386,7 +402,8 @@ State changes through shadow transformation + micro-translate.
 - **Assistant avatar**: `bg-primary-container text-on-primary-container size-7 rounded-lg text-[0.6875rem] font-medium`. Placed beside the label row, not inside the bubble.
 - **Tool call blocks**: `bg-surface-container-low rounded-lg`. Summary: `px-3 py-2 text-xs font-medium` with icon, text, and chevron/spinner. Collapsible `<details>` element. Result content: `text-muted max-h-40 overflow-auto text-xs` in pre tag.
 - **Tool badges** (inline, post-message): `rounded-lg px-2 py-1 font-mono text-xs`. Success: `bg-secondary-container/15 text-on-surface-variant`. Error: `bg-error-container/40 text-on-surface-variant`.
-- **Quick-action pills**: `border border-primary text-primary rounded-full text-xs px-4 py-3 min-h-[44px] font-medium`. Hover: `bg-accent-subtle`. Focus: `ring-primary/40 ring-2 ring-offset-2`.
+- **Suggestion pills** (empty state): `border border-primary text-primary rounded-full text-xs px-4 py-3 min-h-[44px] font-medium`. Hover: `bg-accent-subtle`. Focus: `ring-primary/40 ring-2 ring-offset-2`. Staggered entrance via `animationDelay`.
+- **Inline action pills** ("Show on map"): `border border-primary text-primary rounded-full px-3 py-1.5 text-xs font-medium min-h-[44px]`. Compact padding for use within tool result cards. Focus: `ring-primary/40 ring-2 ring-offset-2`. Active: `scale-95`.
 - **Warning cards**: `bg-tertiary-container text-on-tertiary-container rounded-xl px-3 py-2 text-body-sm`. Icon + text in flex row.
 - **Message entrance**: `animate-message-in`, 200ms ease-out, opacity 0 to 1 + translateY(6px to 0).
 
@@ -439,32 +456,32 @@ Aside dialog: `.neu-panel absolute top-3 bottom-6 left-3 w-80 max-w-[calc(100%-1
 
 ### User Menu
 
-Trigger: `neu-button size-9 rounded-xl` with avatar initial (`bg-primary-container text-on-primary-container size-6 rounded-lg`).
+Trigger: `neu-button bg-surface text-primary size-9 rounded-xl` with avatar initial (`bg-primary-container text-on-primary-container size-6 rounded-lg`). The trigger carries `text-primary` so the avatar container inherits the brand accent.
 
-Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + opacity + blur(2px) to blur(0). Exit: reverse. Sign-out: `hover:bg-error/10 hover:text-error` destructive pattern.
+Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + opacity + blur(2px) to blur(0) + translateY(-6px to 0). Exit: reverse. Easing: opacity/filter at 180ms ease-out, transform at 240ms `--neu-ease`. Sign-out: `hover:bg-error/10 hover:text-error` destructive pattern.
 
 ## Motion
 
 ### In-App Motion
 
-- **Easing**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for all layout transitions (sidebar collapse, map collapse, menu entrance).
-- **Duration**: 150ms for micro-interactions (button hover, color transitions). 200ms for entrances (message-in, details-open). 250-350ms for layout shifts (sidebar width, map width, opacity crossfades).
+- **Easing**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for layout transitions (sidebar collapse, map collapse). Profile menu splits: opacity/filter at ease-out, transform at `--neu-ease`.
+- **Duration**: 150ms for micro-interactions (button hover, color transitions). 200ms for entrances (message-in, details-open). 250-350ms for layout shifts (sidebar width, map width, opacity crossfades). 300ms for mobile bottom sheet slide.
 - **Button states**: translateY(-1px) on hover, translateY(1px) + scale(0.98) on press. 150ms ease-out.
-- **Menu entrance**: scale(0.97) + opacity(0) + blur(2px) → scale(1) + opacity(1) + blur(0). 180-240ms with `--neu-ease`.
+- **Menu entrance**: scale(0.97) + opacity(0) + blur(2px) + translateY(-6px) → scale(1) + opacity(1) + blur(0) + translateY(0). Opacity/filter: 180ms ease-out. Transform: 240ms `--neu-ease`.
 - **Message entrance**: `animate-message-in` — opacity 0→1, translateY(6px→0), 200ms ease-out.
 - **Details expand**: opacity 0→1, translateY(-4px→0), 200ms `--neu-ease`.
-- **Sidebar content crossfade**: opacity transitions with 80ms delay on reveal, 0ms on hide. 150-200ms.
-- **Staggered lists**: Session items enter with `opacity: 0, y: 6` → visible, stagger delay `i * 0.03` capped at 0.3s total.
+- **Sidebar content crossfade**: opacity transitions with 80ms delay on reveal, 0ms on hide. 150-200ms. Map tab layer uses 120ms reveal delay (slightly longer to let content clear first).
+- **Staggered lists**: Session items enter with `opacity: 0, y: 6` → visible, stagger delay `i * 0.03` capped at 0.3s total. Tool badges stagger at `i * 0.05` with y: 4.
 
 ### Landing Page Motion
 
 The landing page uses an expressive motion vocabulary distinct from the app:
 
-- **Spring physics**: `type: "spring"` with `stiffness: 80-120, damping: 18-20` for hero elements and CTAs.
+- **Spring physics**: `type: "spring"` with `stiffness: 80-120, damping: 18-20` for hero elements and hero CTAs. Final CTA section uses timed easing (`[0.16, 1, 0.3, 1]` at 500ms) instead of spring for a calmer re-entrance.
 - **Blur reveals**: `filter: "blur(12px)"` → `"blur(0px)"` on hero text entrance.
-- **Scroll-driven parallax**: `useScroll` + `useTransform` for z-depth separation on product mock (chat panel vs map panel shift at different rates).
+- **Scroll-driven parallax**: `useScroll` + `useTransform` for z-depth separation on product mock (chat panel vs map panel shift at different rates). Final CTA section has a subtle vertical parallax (40px → -15px).
 - **Scroll reveals**: `.reveal[data-inview]` triggers `rise-in` (420ms `--neu-ease`, translateY 24px→0).
-- **Product mock perspective**: `perspective: 1200px` + `rotateX(2deg)` with motion z-values.
+- **Product mock perspective**: `perspective: 1200px` with motion z-values on child panels. No rotateX tilt — the depth comes from z-separation alone.
 - **Topo drift**: Background texture animates at 30s ease-in-out infinite, translating and rotating subtly.
 - **Conditional header**: `neu-panel` class applied on scroll, adding shadow dynamically.
 - **Header gradient overlay**: `oklch`-based multi-stop gradient from solid `--background` to transparent over 48px (h-48), masking the fixed header's scroll bleed. Uses `color-mix(in oklch, ...)` for smooth perceptual transitions.
@@ -477,7 +494,7 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 ## Accessibility Patterns
 
 - **Touch targets**: 44x44px minimum on mobile. Achieved via `size-11` on buttons or `min-h-[44px] min-w-[44px]` on visually smaller controls.
-- **Focus indicators**: `focus-visible:ring-primary/40 ring-2 ring-offset-1` (or `ring-offset-2` on pills). Never hidden behind mouse-only styles.
+- **Focus indicators**: `focus-visible:ring-primary/40 ring-2 ring-offset-1` on inputs, `ring-offset-2` on pills. `.neu-button`/`.neu-primary-button` use a 2px outline at 40% primary opacity with 2px offset (CSS-defined). Never hidden behind mouse-only styles.
 - **Safe-area insets**: `pb-[max(0.75rem,env(safe-area-inset-bottom))]` on chat input wrapper, `pb-[env(safe-area-inset-bottom)]` on bottom sheet.
 - **Screen reader**: `sr-only` for status announcements, `aria-label` on icon-only buttons, `role="img"` on labeled icons.
 - **Keyboard**: Tab through messages, Enter to send, Escape to dismiss overlays. `role="radiogroup"` on theme toggle.
@@ -501,11 +518,11 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 
 - **Don't** mix Tier 1 (`shadow-*` Tailwind utilities) and Tier 2 (`.neu-*` classes) on the same element. One shadow system per element.
 - **Don't** add `border` to `.neu-panel` or `.neu-raised` elements. Exception: `.neu-button` uses designed 1px border-subtle. `.glass-neu` uses 1px border-subtle as part of its glass definition.
-- **Don't** use pure black in shadows. Warm gray in light mode. `rgba(0,0,0,x)` in dark mode only.
+- **Don't** use pure black in new shadows in light mode. Warm gray (`rgba(91-174,...)`) for composed recipes. Exception: `.glass-neu` drop shadow and `.neu-primary-button:active` inset use `rgba(0,0,0,...)` at very low opacity (6-10%) where the visual difference from warm gray is imperceptible.
 - **Don't** apply `backdrop-filter` outside `.glass-neu`. Glass is for overlay surfaces (dropdowns, mobile drawers), never decorative.
-- **Don't** animate shadow values directly (expensive repaints). Animate `transform` and switch shadow classes via state change.
+- **Don't** animate shadow values directly in new code (expensive repaints). The chat composer focus-within transition and the landing header's conditional shadow are existing exceptions where the transition is on a single element with no alternative.
 - **Don't** apply neumorphic depth to text content. Depth frames containers. Content stays flat inside.
 - **Don't** use font-weight 700 or above. Maximum is 600 (markdown strong, table headers, list markers).
 - **Don't** use primary indigo for background fills, decorative accents, or large surfaces. It means "interactive" or "active state."
-- **Don't** use spring physics or blur reveals in the app shell. Those belong to the landing page only. In-app motion uses `--neu-ease` exclusively.
-- **Don't** create new shadow recipes. Use `--neu-surface-shadow` or `--neu-inset-shadow` from Tier 2, or the five elevation utilities from Tier 1.
+- **Don't** use spring physics or blur reveals in the app shell. Those belong to the landing page only. In-app motion uses `--neu-ease` (or ease-out for opacity/filter in menus).
+- **Don't** create new shadow recipes without documenting them. Use `--neu-surface-shadow` or `--neu-inset-shadow` from Tier 2, the five elevation utilities from Tier 1, or the sanctioned `.chat-message-well` recipe.
