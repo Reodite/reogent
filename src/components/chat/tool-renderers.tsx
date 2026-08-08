@@ -118,7 +118,8 @@ function SearchCoursesRenderer({ call }: ToolCallRendererProps) {
   return (
     <div className="mt-2 flex flex-col gap-2">
       {shown.map((course) => (
-        <CourseCard key={course.code} course={course} />
+        // biome-ignore lint/suspicious/noArrayIndexKey: course codes may duplicate in cross-listed results
+        <CourseCard key={`${course.code}-${course.title}`} course={course} />
       ))}
       {courses.length > shown.length && (
         <p className="text-muted text-xs">+ {courses.length - shown.length} more matches</p>
@@ -145,7 +146,7 @@ function isTuitionResult(value: unknown): value is TuitionResult {
 function TuitionRenderer({ call }: ToolCallRendererProps) {
   if (!isTuitionResult(call.result)) return null;
   const t = call.result;
-  const label = t.per_credit_cad != null ? "per credit" : (t.unit ?? "flat");
+  const label = t.per_credit_cad != null ? "per credit" : t.unit || "flat";
   const amount = t.per_credit_cad ?? t.amount_cad ?? 0;
   return (
     <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
@@ -157,7 +158,7 @@ function TuitionRenderer({ call }: ToolCallRendererProps) {
           {formatCad(amount)} <span className="text-body-sm text-on-surface-variant font-normal">{label}</span>
         </span>
         <span className="text-muted block truncate text-xs">
-          {t.program} · {t.student_type} · {t.cohort_year} cohort
+          {t.program || "—"} · {t.student_type || "—"} · {t.cohort_year || "—"} cohort
         </span>
       </span>
     </div>
