@@ -282,11 +282,17 @@ export function MapBottomSheet() {
   useEffect(() => {
     if (!mobileMapOpen) return;
     closeRef.current?.focus();
+    // Prevent background scrolling while sheet is open
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setMobileMapOpen(false);
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [mobileMapOpen, setMobileMapOpen]);
 
   if (!isMobile) return null;
