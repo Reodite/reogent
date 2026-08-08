@@ -23,14 +23,35 @@ describe("extractWalkingHighlight", () => {
   };
 
   it("extracts the highlight from a healthy call", () => {
-    expect(extractWalkingHighlight(healthy)).toEqual({ kind: "route", from: "IKB", to: "ICCS", meters: 790, minutes: 10 });
+    expect(extractWalkingHighlight(healthy)).toEqual({
+      kind: "route",
+      from: "IKB",
+      to: "ICCS",
+      meters: 790,
+      minutes: 10,
+    });
   });
 
   it("returns null for other tools, error results, and malformed payloads", () => {
     expect(extractWalkingHighlight({ ...healthy, name: "search_courses" })).toBeNull();
-    expect(extractWalkingHighlight({ ...healthy, result: { status: "error", message: "no such building" } })).toBeNull();
-    expect(extractWalkingHighlight({ ...healthy, result: { from: "IKB", to: "ICCS", meters: "790", minutes: 10 } })).toBeNull();
+    expect(
+      extractWalkingHighlight({ ...healthy, result: { status: "error", message: "no such building" } }),
+    ).toBeNull();
+    expect(
+      extractWalkingHighlight({ ...healthy, result: { from: "IKB", to: "ICCS", meters: "790", minutes: 10 } }),
+    ).toBeNull();
     expect(extractWalkingHighlight({ ...healthy, result: undefined })).toBeNull();
+  });
+
+  it("returns null for NaN, Infinity, or negative meters/minutes", () => {
+    expect(extractWalkingHighlight({ ...healthy, result: { from: "A", to: "B", meters: NaN, minutes: 5 } })).toBeNull();
+    expect(
+      extractWalkingHighlight({ ...healthy, result: { from: "A", to: "B", meters: 100, minutes: Infinity } }),
+    ).toBeNull();
+    expect(extractWalkingHighlight({ ...healthy, result: { from: "A", to: "B", meters: -1, minutes: 5 } })).toBeNull();
+    expect(
+      extractWalkingHighlight({ ...healthy, result: { from: "A", to: "B", meters: 100, minutes: -2 } }),
+    ).toBeNull();
   });
 
   it("prefers the backend's resolved codes — the input may be a colloquial alias", () => {
@@ -39,7 +60,13 @@ describe("extractWalkingHighlight", () => {
       input: { from_building: "IKB", to_building: "ICCS" }, // IKB is not a real BLDG_CODE
       result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11 },
     };
-    expect(extractWalkingHighlight(call)).toEqual({ kind: "route", from: "IBLC", to: "ICCS", meters: 830, minutes: 11 });
+    expect(extractWalkingHighlight(call)).toEqual({
+      kind: "route",
+      from: "IBLC",
+      to: "ICCS",
+      meters: 830,
+      minutes: 11,
+    });
   });
 
   it("falls back to result codes when the input is malformed", () => {
@@ -102,6 +129,12 @@ describe("extractBuildingHighlight", () => {
   it("falls back to the code when the name is missing", () => {
     const highlight = extractBuildingHighlight({ ...healthy, result: { code: "LSC", lat: 49.26, lon: -123.24 } });
     expect(highlight?.buildings[0]?.name).toBe("LSC");
+  });
+
+  it("rejects coordinates outside valid WGS84 range", () => {
+    expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: 91, lon: -123 } })).toBeNull();
+    expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: 49, lon: 181 } })).toBeNull();
+    expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: NaN, lon: -123 } })).toBeNull();
   });
 });
 
