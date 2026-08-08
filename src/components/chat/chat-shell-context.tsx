@@ -54,27 +54,44 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const loadSeq = useRef(0);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
-  const refreshSessions = useCallback(() => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
+
+  const doRefresh = useCallback(() => {
     const seq = ++loadSeq.current;
     setSessionsError(null);
     api
       .listSessions()
       .then((list) => {
-        if (loadSeq.current !== seq) return;
+        if (loadSeq.current !== seq || !mountedRef.current) return;
         setSessions(list);
         setSessionsLoading(false);
       })
       .catch((error: unknown) => {
-        if (loadSeq.current !== seq) return;
+        if (loadSeq.current !== seq || !mountedRef.current) return;
         setSessionsLoading(false);
         setSessionsError(error instanceof Error ? error.message : "Couldn't load sessions");
       });
   }, [api]);
 
+  const refreshSessions = useCallback(() => {
+    // Debounce: at most one refresh per 2s to avoid spamming during rapid exchanges
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(doRefresh, 2000);
+  }, [doRefresh]);
+
+  // Initial load is immediate, not debounced
   useEffect(() => {
-    if (auth.status === "signedIn") refreshSessions();
-  }, [auth.status, refreshSessions]);
+    if (auth.status === "signedIn") doRefresh();
+  }, [auth.status, doRefresh]);
 
   const setHighlight = useCallback((next: MapHighlight | null) => {
     setHighlightState(next);
