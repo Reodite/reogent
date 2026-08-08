@@ -25,7 +25,7 @@ function applyWithRipple(e: React.MouseEvent, apply: () => void) {
   // Suppress per-element transitions so only the clip-path ripple animates
   root.classList.add("vt-active");
   const transition = doc.startViewTransition(apply);
-  transition.finished.then(() => root.classList.remove("vt-active"));
+  transition.finished.catch(() => {}).finally(() => root.classList.remove("vt-active"));
 }
 
 /**
