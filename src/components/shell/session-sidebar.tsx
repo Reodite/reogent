@@ -85,7 +85,6 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
       <nav
         aria-label="Chat sessions"
         aria-busy={sessionsLoading}
-        aria-live="polite"
         className="bg-surface-container-low/60 min-h-0 flex-1 overflow-y-auto rounded-xl p-2"
       >
         {sessionsLoading && (
@@ -120,10 +119,13 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
           !sessionsError &&
           grouped.map(([group, items]) => {
             const shouldStagger = !hasAnimated.current && !reduce;
+            const groupId = `session-group-${group.replace(/\s+/g, "-").toLowerCase()}`;
             return (
               <div key={group} className="pt-2 first:pt-0">
-                <h3 className="text-muted px-2 pb-1.5 text-xs font-medium tracking-[0.05em] uppercase">{group}</h3>
-                <ul className="flex flex-col gap-1">
+                <h3 id={groupId} className="text-muted px-2 pb-1.5 text-xs font-medium tracking-[0.05em] uppercase">
+                  {group}
+                </h3>
+                <ul aria-labelledby={groupId} className="flex flex-col gap-1">
                   {items.map((session, i) => {
                     const active = session.session_id === activeId;
                     return (
@@ -159,6 +161,9 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
             );
           })}
       </nav>
+      <output className="sr-only" aria-live="polite">
+        {!sessionsLoading && sessions.length > 0 ? `${sessions.length} conversations` : ""}
+      </output>
     </div>
   );
 }
