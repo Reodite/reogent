@@ -355,6 +355,8 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   const send = useCallback(
     (text: string) => {
       if (sending) return;
+      // Synchronous guard: prevents double-fire in the same tick before React batches setSending
+      if (abortRef.current) return;
       const userMessage: DisplayMessage = { id: nextId(), role: "user", content: text };
       const conversation = toConversation([...messagesRef.current, userMessage]);
       setMessages((current) => [...current, userMessage]);
