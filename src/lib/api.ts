@@ -133,11 +133,24 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     const decoder = new TextDecoder();
     let buffer = "";
     let result: ChatResponse | null = null;
+    const STALL_TIMEOUT_MS = 60_000;
+    const MAX_LINE_BYTES = 1_048_576; // 1 MB
 
     for (;;) {
-      const { done, value } = await reader.read();
+      // Abort if no data arrives within 60s
+      const readPromise = reader.read();
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new ApiError(504, "Stream stalled — no data received for 60s")), STALL_TIMEOUT_MS),
+      );
+      const { done, value } = await Promise.race([readPromise, timeout]);
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
+
+      // Guard against unbounded single-line buffering
+      if (buffer.length > MAX_LINE_BYTES) {
+        reader.cancel();
+        throw new ApiError(500, "Stream line exceeded 1 MB limit");
+      }
 
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
