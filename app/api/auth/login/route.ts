@@ -1,11 +1,21 @@
 import { signToken } from "@/src/server/auth";
 import { getUserByUsername } from "@/src/server/sessions/store";
 import bcrypt from "bcryptjs";
-import { json, serverError } from "../../http";
+import { json, requireJson, serverError } from "../../http";
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const { username, password } = await request.json();
+    const ctError = requireJson(request);
+    if (ctError) return ctError;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400);
+    }
+
+    const { username, password } = body as Record<string, unknown>;
     if (!username || !password) return json({ error: "Username and password required" }, 400);
 
     const user = await getUserByUsername(username);
