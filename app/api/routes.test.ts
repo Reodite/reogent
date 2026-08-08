@@ -39,7 +39,11 @@ const { GET: geoGet } = await import("./geo/[name]/route");
 const req = (init: RequestInit & { auth?: boolean } = {}) =>
   new Request("http://localhost/api/x", {
     ...init,
-    headers: { ...(init.auth === false ? {} : { authorization: "Bearer token" }), ...init.headers },
+    headers: {
+      ...(init.auth === false ? {} : { authorization: "Bearer token" }),
+      ...(init.body ? { "content-type": "application/json" } : {}),
+      ...init.headers,
+    },
   });
 
 beforeEach(() => {
@@ -92,7 +96,10 @@ describe("POST /api/chat", () => {
     const res = await chatPost(
       req({
         method: "POST",
-        body: JSON.stringify({ session_id: "s1", messages: [{ role: "user", content: "hi" }] }),
+        body: JSON.stringify({
+          session_id: "550e8400-e29b-41d4-a716-446655440000",
+          messages: [{ role: "user", content: "hi" }],
+        }),
       }),
     );
     expect(res.status).toBe(200);
