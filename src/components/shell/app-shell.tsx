@@ -132,6 +132,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <RequireAuth>
       <div className="app-shell-canvas flex h-svh flex-col overflow-hidden">
+        <a
+          href="#main-content"
+          className="bg-primary text-on-primary fixed top-2 left-2 z-[100] rounded-xl px-4 py-2 text-sm font-medium opacity-0 focus:opacity-100"
+        >
+          Skip to main content
+        </a>
         <motion.header
           initial={reduce ? false : { opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -216,7 +222,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </aside>
             <div className="chat-map-area flex min-h-0 min-w-0 flex-1 gap-3">
-              <div className="flex min-h-0 min-w-0 flex-1">{children}</div>
+              <div id="main-content" className="flex min-h-0 min-w-0 flex-1">
+                {children}
+              </div>
               <div className="map-aside hidden min-h-0 min-w-0 overflow-hidden sm:flex">
                 <MapPanel />
               </div>
