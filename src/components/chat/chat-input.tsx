@@ -98,7 +98,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           </button>
         )}
       </form>
-      <p className="text-muted mt-2 text-center text-xs">AI can make mistakes. Verify important information.</p>
+      <div className="mt-2 flex items-center justify-between px-1">
+        <p className="text-muted text-center text-xs">AI can make mistakes. Verify important information.</p>
+        {value.length > 9000 && (
+          <span className="text-muted text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
+        )}
+      </div>
     </div>
   );
 });
