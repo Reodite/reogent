@@ -21,24 +21,28 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [pending, setPending] = useState(false);
 
   const redirect = searchParams.get("redirect") || "/chat";
+  // Validate redirect: allow only relative paths to prevent open redirect
+  const safeRedirect = redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/chat";
   const oppositeHref =
     mode === "login"
-      ? `/signup?redirect=${encodeURIComponent(redirect)}`
-      : `/login?redirect=${encodeURIComponent(redirect)}`;
+      ? `/signup?redirect=${encodeURIComponent(safeRedirect)}`
+      : `/login?redirect=${encodeURIComponent(safeRedirect)}`;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (pending) return; // guard against double-submit
+    if (pending) return;
     setError("");
     setPending(true);
 
-    const result = mode === "login" ? await auth.signIn(username, password) : await auth.register(username, password);
+    const trimmedUsername = username.trim();
+    const result =
+      mode === "login" ? await auth.signIn(trimmedUsername, password) : await auth.register(trimmedUsername, password);
 
     setPending(false);
     if (result.error) {
       setError(result.error);
     } else {
-      router.push(redirect);
+      router.push(safeRedirect);
     }
   }
 
@@ -52,6 +56,9 @@ export function AuthForm({ mode }: AuthFormProps) {
           id="auth-username"
           type="text"
           autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={64}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           required
@@ -68,6 +75,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           id="auth-password"
           type="password"
           autoComplete={mode === "login" ? "current-password" : "new-password"}
+          maxLength={128}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
