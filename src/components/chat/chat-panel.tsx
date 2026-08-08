@@ -92,6 +92,14 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   const [slowResponse, setSlowResponse] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const announceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Announce then clear after 1s so repeated identical messages re-trigger
+  const announce = useCallback((msg: string) => {
+    if (announceTimer.current) clearTimeout(announceTimer.current);
+    setAnnouncement(msg);
+    announceTimer.current = setTimeout(() => setAnnouncement(""), 1000);
+  }, []);
 
   // Stable greeting — pick once per mount, don't flicker on re-render.
   const greeting = useMemo(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)], []);
@@ -311,7 +319,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           // One merged highlight per response (route > places > all buildings);
           // null clears a stale highlight when the answer has no map content.
           setHighlight(mergeMapHighlights(response.tool_calls));
-          setAnnouncement("New response from assistant");
+          announce("New response from assistant");
           refreshSessions();
         })
         .catch((error: unknown) => {
@@ -340,7 +348,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
               ? error.message
               : "Couldn't get a response. Please try again.";
           setSendError(message);
-          setAnnouncement(`Error: ${message}`);
+          announce(`Error: ${message}`);
         })
         .finally(() => {
           if (alive.current) {
@@ -349,7 +357,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           }
         });
     },
-    [api, sessionId, setHighlight, refreshSessions],
+    [api, sessionId, setHighlight, refreshSessions, announce],
   );
 
   const send = useCallback(
@@ -360,10 +368,10 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
       const userMessage: DisplayMessage = { id: nextId(), role: "user", content: text };
       const conversation = toConversation([...messagesRef.current, userMessage]);
       setMessages((current) => [...current, userMessage]);
-      setAnnouncement("Message sent");
+      announce("Message sent");
       runExchange(conversation);
     },
-    [sending, runExchange],
+    [sending, runExchange, announce],
   );
 
   const retry = useCallback(() => {
@@ -473,7 +481,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
         </AnimatePresence>
 
         {historyState === "ready" && messages.length > 0 && (
-          <div role="log" aria-label="Conversation" aria-live="polite" className="flex flex-col gap-6">
+          <div role="log" aria-label="Conversation" className="flex flex-col gap-6">
             {messages.map((message, idx) =>
               message.role === "user" ? (
                 <UserMessage key={message.id} message={message} />
@@ -541,7 +549,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
         {announcement}
       </output>
 
-      <ComposerBoundary>
+      <ComposerBoundary key={sessionId}>
         <ChatInput
           ref={inputRef}
           disabled={sending || historyState !== "ready"}
