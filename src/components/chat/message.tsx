@@ -175,8 +175,21 @@ function humanizeToolCall(name: string, input?: Record<string, unknown>): string
 
 function ToolCallBlock({ name, input, result }: { name: string; input?: Record<string, unknown>; result?: unknown }) {
   const [open, setOpen] = useState(false);
+  const [showFull, setShowFull] = useState(false);
   const isLoading = result === undefined;
   const label = humanizeToolCall(name, input);
+
+  const MAX_JSON_DISPLAY = 10_000;
+  let jsonStr = "";
+  let truncated = false;
+  if (open && result !== undefined) {
+    jsonStr = JSON.stringify(result, null, 2);
+    if (jsonStr.length > MAX_JSON_DISPLAY && !showFull) {
+      truncated = true;
+      jsonStr = jsonStr.slice(0, MAX_JSON_DISPLAY);
+    }
+  }
+
   return (
     <details
       open={open}
@@ -187,7 +200,11 @@ function ToolCallBlock({ name, input, result }: { name: string; input?: Record<s
         <Icon name="search" size={14} className="text-primary shrink-0" />
         <span className="truncate">{label}</span>
         {isLoading && (
-          <span className="border-primary ml-auto size-3 shrink-0 animate-spin rounded-full border-2 border-t-transparent" />
+          <span
+            role="status"
+            aria-label="Loading"
+            className="border-primary ml-auto size-3 shrink-0 animate-spin rounded-full border-2 border-t-transparent"
+          />
         )}
         {!isLoading && (
           <Icon name="down" size={12} className="ml-auto shrink-0 transition-transform group-open:rotate-180" />
@@ -195,7 +212,12 @@ function ToolCallBlock({ name, input, result }: { name: string; input?: Record<s
       </summary>
       {open && result !== undefined && (
         <div className="border-border-subtle border-t px-3 py-2">
-          <pre className="text-muted max-h-40 overflow-auto text-xs">{JSON.stringify(result, null, 2)}</pre>
+          <pre className="text-muted max-h-40 overflow-auto text-xs">{jsonStr}</pre>
+          {truncated && (
+            <button type="button" onClick={() => setShowFull(true)} className="text-primary mt-1 text-xs font-medium">
+              Show full result
+            </button>
+          )}
         </div>
       )}
     </details>
