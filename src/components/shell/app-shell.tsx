@@ -55,14 +55,23 @@ function RequireAuth({ children }: { children: ReactNode }) {
   if (auth.status === "signedIn") return <>{children}</>;
 
   if (auth.status === "signedOut" && !auth.configured) {
+    const isDev = process.env.NODE_ENV !== "production";
     return (
       <div className="app-shell-canvas flex min-h-svh items-center justify-center px-6">
         <div className="neu-panel bg-surface max-w-md rounded-2xl p-6">
-          <h1 className="text-on-surface text-base font-medium">Sign-in isn&apos;t configured</h1>
+          <h1 className="text-on-surface text-base font-medium">
+            {isDev ? "Sign-in isn't configured" : "Service temporarily unavailable"}
+          </h1>
           <p className="text-on-surface-variant mt-2 text-sm leading-relaxed">
-            Set <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_AUTHORITY</code> and{" "}
-            <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_CLIENT_ID</code> to use the deployed stack, or
-            run with <code className="text-body-sm font-mono">NEXT_PUBLIC_API_MOCK=1</code> for the offline demo.
+            {isDev ? (
+              <>
+                Set <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_AUTHORITY</code> and{" "}
+                <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_CLIENT_ID</code> to use the deployed stack,
+                or run with <code className="text-body-sm font-mono">NEXT_PUBLIC_API_MOCK=1</code> for the offline demo.
+              </>
+            ) : (
+              "The sign-in service is not available right now. Please try again later."
+            )}
           </p>
         </div>
       </div>
