@@ -16,7 +16,18 @@ import {
 import { formatCad, formatMeters, formatMinutes, summarizeToolInput } from "@/src/lib/format";
 import { extractBuildingHighlight, extractPlacesHighlight, extractWalkingHighlight } from "@/src/lib/walking";
 import { motion, useReducedMotion } from "motion/react";
-import { useMemo } from "react";
+import { Component, useMemo, type ReactNode } from "react";
+
+// Isolates renderer crashes so one bad tool result doesn't unmount the whole section.
+class RendererBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 export interface ToolCallRendererProps {
   call: ToolCall;
@@ -66,9 +77,10 @@ function isCourseDoc(value: unknown): value is CourseDoc {
 }
 
 function sectionLine(course: CourseDoc): string | null {
+  if (!Array.isArray(course.sections)) return null;
   const s = course.sections[0];
   if (!s) return null;
-  const days = s.days.map((d) => d.toUpperCase()).join("·");
+  const days = Array.isArray(s.days) ? s.days.map((d) => d.toUpperCase()).join("·") : "";
   const time = s.start_time && s.end_time ? `${s.start_time}–${s.end_time}` : null;
   return [s.term, days, time].filter(Boolean).join("  ");
 }
@@ -193,7 +205,7 @@ function FindBuildingRenderer({ call }: ToolCallRendererProps) {
   const { setHighlight, showOnMap } = useChatShell();
   const highlight = useMemo(() => extractBuildingHighlight(call), [call]);
 
-  if (!highlight) return null;
+  if (!highlight || highlight.buildings.length === 0) return null;
   const building = highlight.buildings[0];
   return (
     <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
@@ -225,7 +237,7 @@ function FindPlacesRenderer({ call }: ToolCallRendererProps) {
   const { setHighlight, showOnMap } = useChatShell();
   const highlight = useMemo(() => extractPlacesHighlight(call), [call]);
 
-  if (!highlight) return null;
+  if (!highlight || highlight.places.length === 0) return null;
   const preview = highlight.places
     .slice(0, 3)
     .map((p) => p.name)
@@ -303,7 +315,11 @@ export function ToolCallsView({ calls, isLatest }: { calls: ToolCall[]; isLatest
         if (isToolError(call.result)) return null;
         const Renderer = renderers[call.name];
         if (!Renderer) return null;
-        return <Renderer key={`render-${keys[i]}`} call={call} isLatest={isLatest} />;
+        return (
+          <RendererBoundary key={`render-${keys[i]}`}>
+            <Renderer call={call} isLatest={isLatest} />
+          </RendererBoundary>
+        );
       })}
     </div>
   );
