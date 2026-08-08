@@ -8,7 +8,7 @@ import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { motion, useReducedMotion } from "motion/react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 function groupSessions(sessions: SessionSummary[]): Array<[SessionGroup, SessionSummary[]]> {
   const buckets = new Map<SessionGroup, SessionSummary[]>();
@@ -32,7 +32,8 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
   const activeId = params.session_id;
   const reduce = useReducedMotion();
   const hasAnimated = useRef(false);
-  const grouped = useMemo(() => groupSessions(sessions), [sessions]);
+  const [renderLimit, setRenderLimit] = useState(100);
+  const grouped = useMemo(() => groupSessions(sessions.slice(0, renderLimit)), [sessions, renderLimit]);
 
   // Mark animated after first render with sessions (avoids render-time side effect)
   useEffect(() => {
@@ -160,6 +161,15 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
               </div>
             );
           })}
+        {!sessionsLoading && !sessionsError && sessions.length > renderLimit && (
+          <button
+            type="button"
+            onClick={() => setRenderLimit((n) => n + 100)}
+            className="text-primary hover:bg-accent-subtle mt-2 w-full rounded-lg px-2 py-2 text-center text-xs font-medium"
+          >
+            Show more ({sessions.length - renderLimit} remaining)
+          </button>
+        )}
       </nav>
       <output className="sr-only" aria-live="polite">
         {!sessionsLoading && sessions.length > 0 ? `${sessions.length} conversations` : ""}
