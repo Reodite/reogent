@@ -4,7 +4,7 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -15,6 +15,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefersReducedMotion = useReducedMotion();
+  const usernameRef = useRef<HTMLInputElement>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -41,6 +42,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     setPending(false);
     if (result.error) {
       setError(result.error);
+      usernameRef.current?.focus();
     } else {
       router.push(safeRedirect);
     }
@@ -53,6 +55,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           Username
         </label>
         <input
+          ref={usernameRef}
           id="auth-username"
           type="text"
           autoComplete="username"
