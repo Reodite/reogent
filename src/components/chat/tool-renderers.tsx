@@ -179,7 +179,7 @@ function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
           setHighlight(highlight);
           showOnMap();
         }}
-        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 active:scale-95"
+        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
       >
         Show on map
       </button>
@@ -211,7 +211,7 @@ function FindBuildingRenderer({ call }: ToolCallRendererProps) {
           setHighlight(highlight);
           showOnMap();
         }}
-        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 active:scale-95"
+        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
       >
         Show on map
       </button>
@@ -252,7 +252,7 @@ function FindPlacesRenderer({ call }: ToolCallRendererProps) {
           setHighlight(highlight);
           showOnMap();
         }}
-        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 active:scale-95"
+        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
       >
         Show on map
       </button>

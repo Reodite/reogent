@@ -505,7 +505,7 @@ html.vt-active *::after {
 
 .neu-button:focus-visible,
 .neu-primary-button:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--primary) 50%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--primary) 40%, transparent);
   outline-offset: 2px;
 }
 

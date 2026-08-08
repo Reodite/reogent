@@ -57,7 +57,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           required
           aria-invalid={!!error}
           aria-describedby={error ? "auth-error" : undefined}
-          className={`neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 ${error ? "ring-error/30 ring-2" : ""}`}
+          className={`neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 ${error ? "ring-error/30 ring-2" : ""}`}
         />
       </div>
       <div className="flex flex-col gap-2">
@@ -74,7 +74,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           minLength={6}
           aria-invalid={!!error}
           aria-describedby={error ? "auth-error" : undefined}
-          className={`neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 ${error ? "ring-error/30 ring-2" : ""}`}
+          className={`neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 ${error ? "ring-error/30 ring-2" : ""}`}
         />
       </div>
       <AnimatePresence>
