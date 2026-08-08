@@ -3,11 +3,13 @@ import { requireUser } from "@/src/server/auth";
 import type { InterstitialBlock } from "@/src/server/core/types";
 import { validateChatRequest } from "@/src/server/core/validate";
 import { modules } from "@/src/server/modules";
+import { rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
 import { appendExchange } from "@/src/server/sessions/store";
 import { json, requireJson, serverError } from "../http";
 
 const MAX_BODY_BYTES = 256 * 1024; // 256 KB
+const CHAT_LIMIT = { windowMs: 60_000, maxRequests: 20 };
 
 export async function POST(request: Request): Promise<Response> {
   try {
@@ -22,6 +24,9 @@ export async function POST(request: Request): Promise<Response> {
 
     const user = await requireUser(request);
     if (user instanceof Response) return user;
+
+    const limited = rateLimitResponse(`chat:${user.sub}`, CHAT_LIMIT);
+    if (limited) return limited;
 
     let body: unknown;
     try {
