@@ -72,11 +72,11 @@ typography:
     fontWeight: 400
     lineHeight: 1.5
 rounded:
-  sm: "6px"
-  md: "8px"
-  lg: "12px"
-  xl: "16px"
-  2xl: "28px"
+  sm: "4px"
+  md: "6px"
+  lg: "8px"
+  xl: "12px"
+  2xl: "16px"
   full: "9999px"
 spacing:
   xs: "4px"
@@ -124,7 +124,7 @@ components:
     backgroundColor: "transparent"
     textColor: "{colors.primary}"
     rounded: "{rounded.full}"
-    padding: "10px 16px"
+    padding: "12px 16px"
     minHeight: "44px"
   nav-item:
     backgroundColor: "transparent"
@@ -328,9 +328,9 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 **Form language:** Rounded, consistent per element size. Radius increases with element size.
 
 - **Major panels** (header, chat panel, map panel, sidebar, bottom sheets): `rounded-2xl` (16px)
-- **Action buttons, icon buttons, collapse/expand controls**: `rounded-xl` (16px)
-- **Inner controls** (session items, details blocks, tool cards, nav items, thinking blocks): `rounded-lg` (12px)
-- **Small elements** (inline code, small badges, icon containers in tool results): `rounded-md` (8px)
+- **Action buttons, icon buttons, collapse/expand controls**: `rounded-xl` (12px)
+- **Inner controls** (session items, details blocks, tool cards, nav items, thinking blocks): `rounded-lg` (8px)
+- **Small elements** (inline code, small badges, icon containers in tool results): `rounded-md` (6px)
 - **Pills** (chat input outer, action chips, avatars, dots, credit badges): `rounded-full` (9999px)
 - **Landing outer frame**: `rounded-[1.75rem]` (28px) — exclusively for the product mock container
 - **Chat bubbles**, asymmetric corners signal direction:
@@ -376,7 +376,7 @@ State changes through shadow transformation + micro-translate.
 
 - **Session sidebar items**: `h-9 px-3 py-2 rounded-lg text-sm`. Active: `bg-accent-subtle text-primary border-l-2 border-primary`. Inactive: `text-on-surface-variant`. Hover: `bg-surface-container-high text-on-surface`. Transition: all 150ms. Focus: `ring-primary/40 ring-2 ring-offset-1`.
 - **Session group headers**: `text-muted uppercase text-xs tracking-[0.05em] font-medium px-2 pb-1.5`. Categories: Today, Yesterday, This Week, This Month, Older.
-- **Header** (`.neu-panel`): `rounded-2xl h-14 mx-2 sm:mx-3 mt-3`. Solid panel, not glass. Contains: menu trigger (mobile), app title with logo icon, theme toggle + user menu.
+- **Header** (`.neu-panel`): `rounded-2xl h-14 mx-2 sm:mx-3 mt-3`. Solid panel, not glass. Contains: menu trigger (mobile), app title with logo icon (`bg-surface-container-low text-primary size-8 rounded-lg`), theme toggle + user menu. Title text: `text-base sm:text-xl font-medium tracking-[-0.025em]`.
 - **Collapsed rail** (`.neu-panel`): `w-[3.75rem] rounded-2xl py-3`. Vertical label with `[writing-mode:vertical-rl] text-xs font-medium tracking-[0.06em]`. Expand button: `neu-panel size-9 rounded-xl`.
 
 ### Chat Messages
@@ -389,6 +389,19 @@ State changes through shadow transformation + micro-translate.
 - **Quick-action pills**: `border border-primary text-primary rounded-full text-xs px-4 py-3 min-h-[44px] font-medium`. Hover: `bg-accent-subtle`. Focus: `ring-primary/40 ring-2 ring-offset-2`.
 - **Warning cards**: `bg-tertiary-container text-on-tertiary-container rounded-xl px-3 py-2 text-body-sm`. Icon + text in flex row.
 - **Message entrance**: `animate-message-in`, 200ms ease-out, opacity 0 to 1 + translateY(6px to 0).
+
+### Assistant Markdown (`.assistant-markdown`)
+
+Prose within assistant bubbles at `0.875rem`, `line-height: 1.65` (slightly more open than body for readability in long replies). Element spacing: `0.8rem` between siblings.
+
+- **Headings** (h1-h3): weight 550, tracking -0.02em, `margin-top: 1.2rem; margin-bottom: 0.35rem`. h1 at 1.25rem, h2 at 1rem, h3 at 0.875rem/weight 500.
+- **Links**: `text-primary font-medium underline` with `text-decoration-color` at 45% primary opacity, transitioning to full on hover. External links open in new tab.
+- **Blockquotes**: `bg-surface-container-low border-left: 1px solid var(--primary) rounded-[0_0.75rem_0.75rem_0]` with inset shadow. Neumorphic recessed treatment.
+- **Inline code**: `bg-surface-container border border-border rounded-[0.35rem] font-mono text-[0.875em] px-[0.35rem]`.
+- **Code blocks** (`pre`): `bg-surface-container-lowest border border-border-subtle rounded-[0.75rem]` with inset shadow. Code at `0.75rem/1.6` in mono.
+- **Tables**: `border-collapse: separate`. Headers: `bg-surface-container-low text-xs font-600`. Cells: `text-on-surface-variant text-body-sm`.
+- **Lists**: `padding-left: 1.35rem`. Markers: `color: var(--primary) font-weight: 600`. Nested lists get `0.3rem` top margin.
+- **Task lists**: no bullet, flex layout with `gap-0.5rem`, checkboxes accent-colored primary.
 
 ### Map Controls
 
@@ -454,6 +467,8 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 - **Product mock perspective**: `perspective: 1200px` + `rotateX(2deg)` with motion z-values.
 - **Topo drift**: Background texture animates at 30s ease-in-out infinite, translating and rotating subtly.
 - **Conditional header**: `neu-panel` class applied on scroll, adding shadow dynamically.
+- **Header gradient overlay**: `oklch`-based multi-stop gradient from solid `--background` to transparent over 48px (h-48), masking the fixed header's scroll bleed. Uses `color-mix(in oklch, ...)` for smooth perceptual transitions.
+- **Footer**: `mt-32 text-muted text-sm text-center`. Single line of attribution. No decoration.
 
 ### Reduced Motion
 
