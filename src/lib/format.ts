@@ -25,6 +25,7 @@ export function sessionGroup(updatedAt: string, now: Date = new Date()): Session
 }
 
 export function formatCad(amount: number): string {
+  if (!Number.isFinite(amount)) return "—";
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
@@ -33,6 +34,7 @@ export function formatCad(amount: number): string {
 }
 
 export function formatMeters(meters: number): string {
+  if (!Number.isFinite(meters)) return "—";
   if (meters >= 1000) {
     const km = meters / 1000;
     return `${km.toFixed(km >= 10 ? 0 : 1)} km`;
@@ -41,17 +43,27 @@ export function formatMeters(meters: number): string {
 }
 
 export function formatMinutes(minutes: number): string {
+  if (!Number.isFinite(minutes)) return "—";
   const rounded = Math.max(1, Math.round(minutes));
   return `${rounded} min`;
 }
 
-/** Compact one-line summary of a tool call's input for the badge, e.g. `query="algorithms", limit=3`. */
+/** Compact one-line summary of a tool call's input for the badge. */
 export function summarizeToolInput(input: Record<string, unknown>, maxLength = 48): string {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(input)) {
     if (value === undefined || value === null || value === "") continue;
-    parts.push(typeof value === "string" ? `${key}="${value}"` : `${key}=${JSON.stringify(value)}`);
+    let str: string;
+    try {
+      str = typeof value === "string" ? `${key}="${value}"` : `${key}=${JSON.stringify(value)}`;
+    } catch {
+      str = `${key}=[complex]`;
+    }
+    parts.push(str);
   }
   const joined = parts.join(", ");
-  return joined.length > maxLength ? `${joined.slice(0, maxLength - 1)}…` : joined;
+  if (joined.length <= maxLength) return joined;
+  // Truncate to the last complete character before the limit
+  const sliced = joined.slice(0, maxLength - 1);
+  return `${sliced}…`;
 }
