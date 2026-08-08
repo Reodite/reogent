@@ -116,7 +116,7 @@ function ThinkingBlock({ content }: { content: string }) {
       </summary>
       {open && content && (
         <div className="border-border-subtle border-t px-3 py-2">
-          <p className="text-muted text-xs leading-relaxed whitespace-pre-wrap">{content}</p>
+          <p className="text-muted max-h-40 overflow-auto text-xs leading-relaxed whitespace-pre-wrap">{content}</p>
         </div>
       )}
     </details>
