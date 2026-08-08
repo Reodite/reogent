@@ -219,6 +219,12 @@ body {
   color: var(--on-primary-container);
 }
 
+/* Prevent long unbroken strings from overflowing containers globally */
+body {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -885,5 +891,40 @@ html.vt-active *::after {
 
   .chat-composer[data-thinking="true"]::before {
     --thinking-angle: 112deg;
+  }
+}
+
+/* Print: strip chrome, force readable output */
+@media print {
+  .sessions-aside,
+  .map-aside,
+  .map-panel-root,
+  .chat-composer,
+  header,
+  nav,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  .neu-panel,
+  .neu-raised,
+  .neu-inset,
+  .neu-button,
+  .neu-primary-button {
+    box-shadow: none !important;
+    background: white !important;
+    border: 1px solid #ddd !important;
+  }
+
+  body {
+    color: black !important;
+    background: white !important;
+  }
+
+  .chat-message-well {
+    box-shadow: none !important;
+    background: white !important;
+    overflow: visible !important;
+    height: auto !important;
   }
 }
