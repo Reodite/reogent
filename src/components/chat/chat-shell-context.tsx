@@ -3,7 +3,6 @@
 // Shared state for the /chat shell: the walking-route highlight the map renders,
 // panel open/collapsed state, and the session list (sidebar refreshes after each
 // completed exchange).
-
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import type { SessionSummary } from "@/src/lib/api-types";
@@ -85,8 +84,7 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   const showOnMap = useCallback(() => {
     setFocusNonce((n) => n + 1);
     setMapOpen(true);
-    // The bottom sheet is only reachable on mobile; opening it is harmless elsewhere.
-    if (window.matchMedia("(max-width: 639px)").matches) setMobileMapOpen(true);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) setMobileMapOpen(true);
   }, []);
 
   const value = useMemo<ChatShellState>(
