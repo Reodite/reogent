@@ -1,7 +1,5 @@
 "use client";
 
-// Header avatar + animated dropdown: signed-in email, contained theme preference,
-// and sign out. The menu stays mounted so closing can fade cleanly.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { useEffect, useRef, useState } from "react";
@@ -9,8 +7,10 @@ import { useEffect, useRef, useState } from "react";
 export function UserMenu() {
   const auth = useAppAuth();
   const [open, setOpen] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const signOutRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -22,6 +22,11 @@ export function UserMenu() {
         setOpen(false);
         triggerRef.current?.focus();
       }
+      // Arrow key navigation within the menu
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        signOutRef.current?.focus();
+      }
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -31,7 +36,18 @@ export function UserMenu() {
     };
   }, [open]);
 
-  const initial = (auth.user?.username ?? "?").trim().charAt(0).toUpperCase();
+  const username = auth.user?.username || "User";
+  const initial = username.trim().charAt(0).toUpperCase() || "U";
+
+  async function handleSignOut() {
+    try {
+      setSignOutError(false);
+      auth.signOut();
+      setOpen(false);
+    } catch {
+      setSignOutError(true);
+    }
+  }
 
   return (
     <div ref={rootRef} className="relative">
@@ -49,11 +65,11 @@ export function UserMenu() {
         </span>
       </button>
 
-      {/* Scrim overlay — click to close */}
+      {/* Scrim overlay */}
       <button
         type="button"
         tabIndex={-1}
-        aria-label="Close menu"
+        aria-hidden="true"
         onClick={() => setOpen(false)}
         className={`fixed inset-0 z-40 transition-opacity duration-200 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
       />
@@ -71,21 +87,24 @@ export function UserMenu() {
       >
         <div className="px-3 py-2">
           <p className="text-muted text-xs font-medium">Signed in as</p>
-          <p className="text-body-sm text-on-surface mt-0.5 truncate" title={auth.user?.username}>
-            {auth.user?.username ?? "Signed in"}
+          <p className="text-body-sm text-on-surface mt-0.5 truncate" title={auth.user?.username ?? undefined}>
+            {username}
           </p>
         </div>
 
         <div className="bg-border-subtle my-1 h-px" />
 
         <button
+          ref={signOutRef}
           type="button"
-          onClick={() => auth.signOut()}
+          role="menuitem"
+          onClick={handleSignOut}
           className="text-on-surface hover:bg-error/10 hover:text-error flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
         >
           <Icon name="exit" size={16} className="text-on-surface-variant" />
           Sign out
         </button>
+        {signOutError && <p className="text-error mt-1 px-3 text-xs">Sign out failed. Try again.</p>}
       </div>
     </div>
   );
