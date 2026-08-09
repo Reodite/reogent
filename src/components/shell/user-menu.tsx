@@ -2,6 +2,7 @@
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
+import { ThemeToggle } from "@/src/components/theme-toggle";
 import { useEffect, useRef, useState } from "react";
 
 export function UserMenu() {
@@ -93,6 +94,13 @@ export function UserMenu() {
         </div>
 
         <div className="bg-border-subtle my-1 h-px" />
+
+        <div className="flex items-center justify-between px-3 py-2 sm:hidden">
+          <span className="text-on-surface-variant text-xs font-medium">Theme</span>
+          <ThemeToggle />
+        </div>
+
+        <div className="bg-border-subtle my-1 h-px sm:hidden" />
 
         <button
           ref={signOutRef}
