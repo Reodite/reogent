@@ -18,7 +18,7 @@ import {
 import { formatCad, formatMeters, formatMinutes, summarizeToolInput } from "@/src/lib/format";
 import { extractBuildingHighlight, extractPlacesHighlight, extractWalkingHighlight } from "@/src/lib/walking";
 import { motion, useReducedMotion } from "motion/react";
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 
 export interface ToolCallRendererProps {
   call: ToolCall;
@@ -277,7 +277,7 @@ export function ToolCallsView({ calls, isLatest }: { calls: ToolCall[]; isLatest
             key={keys[i]}
             initial={reduced ? false : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 500, damping: 30, delay: i * 0.05 }}
+            transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 30, delay: i * 0.05 }}
           >
             <ToolBadge call={call} />
           </motion.span>
