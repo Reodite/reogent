@@ -66,6 +66,8 @@ function tooltipPosition(picked: PickedBuilding, container: HTMLDivElement | nul
 
 const UBC_CENTER: LngLat = [-123.246, 49.2626];
 const INITIAL_VIEW = { center: UBC_CENTER, zoom: 14.4, pitch: 40, bearing: -8 };
+// Elastic boundary: how far the camera can drift from campus center before snapping back
+const MAX_PAN_RADIUS_DEG = 0.015; // ~1.5km from center
 
 const STYLE_URLS: Record<ResolvedTheme, string> = {
   light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -281,6 +283,148 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         });
         // Bottom-left keeps the required attribution clear of the zoom stack.
         map.addControl(new maplibre.AttributionControl({ compact: true }), "bottom-left");
+
+        // Elastic circular boundary: custom drag with rubber-band physics.
+        // MapLibre's dragPan is disabled to avoid setCenter fights.
+        // All animation uses jumpTo + rAF to avoid MapLibre's internal ease system.
+        map.dragPan.disable();
+
+        const canvasEl = map.getCanvasContainer();
+        let dragging = false;
+        let lastPt = { x: 0, y: 0 };
+        let vel = { x: 0, y: 0 };
+        let lastT = 0;
+        let animating = false;
+
+        function clampCenter(lng: number, lat: number): [number, number] {
+          return [lng, lat];
+        }
+
+        function snapBack() {
+          const c = map.getCenter();
+          const dx = c.lng - UBC_CENTER[0];
+          const dy = c.lat - UBC_CENTER[1];
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= MAX_PAN_RADIUS_DEG) {
+            animating = false;
+            return;
+          }
+          animating = true;
+          const targetScale = MAX_PAN_RADIUS_DEG / dist;
+          const targetLng = UBC_CENTER[0] + dx * targetScale;
+          const targetLat = UBC_CENTER[1] + dy * targetScale;
+          const startLng = c.lng,
+            startLat = c.lat;
+          const startTime = performance.now();
+          const duration = 250;
+          (function animate() {
+            if (dragging) {
+              animating = false;
+              return;
+            }
+            const t = Math.min((performance.now() - startTime) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
+            const lng = startLng + (targetLng - startLng) * ease;
+            const lat = startLat + (targetLat - startLat) * ease;
+            map.jumpTo({ center: [lng, lat] });
+            if (t < 1) requestAnimationFrame(animate);
+            else animating = false;
+          })();
+        }
+
+        canvasEl.addEventListener("pointerdown", (e) => {
+          if (e.button !== 0) return;
+          dragging = true;
+          animating = false;
+          lastPt = { x: e.clientX, y: e.clientY };
+          lastT = performance.now();
+          vel = { x: 0, y: 0 };
+          canvasEl.setPointerCapture(e.pointerId);
+        });
+
+        canvasEl.addEventListener("pointermove", (e) => {
+          if (!dragging) return;
+          const now = performance.now();
+          const dt = now - lastT;
+          let dx = e.clientX - lastPt.x;
+          let dy = e.clientY - lastPt.y;
+          if (dt > 0) vel = { x: dx / dt, y: dy / dt };
+          lastPt = { x: e.clientX, y: e.clientY };
+          lastT = now;
+
+          // Dampen pixel movement only past the boundary (free inside)
+          const c = map.getCenter();
+          const cdx = c.lng - UBC_CENTER[0];
+          const cdy = c.lat - UBC_CENTER[1];
+          const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+          if (cdist > MAX_PAN_RADIUS_DEG) {
+            const overshoot = (cdist - MAX_PAN_RADIUS_DEG) / MAX_PAN_RADIUS_DEG;
+            const dampen = 1 / (1 + overshoot * 4);
+            dx *= dampen;
+            dy *= dampen;
+          }
+
+          const cur = map.project(c);
+          const target = map.unproject([cur.x - dx, cur.y - dy]);
+          const clamped = clampCenter(target.lng, target.lat);
+          map.jumpTo({ center: clamped });
+        });
+
+        function endDrag(e: PointerEvent) {
+          if (!dragging) return;
+          dragging = false;
+          canvasEl.releasePointerCapture(e.pointerId);
+
+          // If past boundary, always snap back immediately (skip inertia)
+          const c = map.getCenter();
+          const cdx = c.lng - UBC_CENTER[0];
+          const cdy = c.lat - UBC_CENTER[1];
+          const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+          if (cdist > MAX_PAN_RADIUS_DEG) {
+            snapBack();
+            return;
+          }
+
+          // Inside boundary: apply inertia coast
+          const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+          if (speed > 0.05) {
+            animating = true;
+            let vx = vel.x,
+              vy = vel.y;
+            const decay = 0.93;
+            (function coast() {
+              if (dragging) {
+                animating = false;
+                return;
+              }
+              vx *= decay;
+              vy *= decay;
+              if (Math.abs(vx) < 0.002 && Math.abs(vy) < 0.002) {
+                snapBack();
+                return;
+              }
+              const cur = map.project(map.getCenter());
+              const target = map.unproject([cur.x - vx * 16, cur.y - vy * 16]);
+              // Stop coasting if it would go past boundary
+              const tdx = target.lng - UBC_CENTER[0];
+              const tdy = target.lat - UBC_CENTER[1];
+              if (Math.sqrt(tdx * tdx + tdy * tdy) > MAX_PAN_RADIUS_DEG) {
+                snapBack();
+                return;
+              }
+              map.jumpTo({ center: [target.lng, target.lat] });
+              requestAnimationFrame(coast);
+            })();
+          }
+        }
+
+        canvasEl.addEventListener("pointerup", endDrag);
+        canvasEl.addEventListener("pointercancel", endDrag);
+
+        // Constrain zoom/keyboard-induced pan
+        map.on("moveend", () => {
+          if (!dragging && !animating) snapBack();
+        });
 
         const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
         map.addControl(overlay);
