@@ -69,7 +69,7 @@ function tooltipPosition(picked: PickedBuilding, container: HTMLDivElement | nul
 const UBC_CENTER: LngLat = [-123.246, 49.2626];
 const INITIAL_VIEW = { center: UBC_CENTER, zoom: 14.4, pitch: 40, bearing: -8 };
 
-const PAN_BUFFER_DEG = 0.014; // ~1.5km buffer from hull edge
+const PAN_BUFFER_DEG = 0.0045; // ~0.5km buffer from hull edge
 
 /** Signed distance from point to hull. Negative = inside, positive = outside. */
 function distToHull(lng: number, lat: number): number {
