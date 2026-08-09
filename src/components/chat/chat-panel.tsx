@@ -298,19 +298,20 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
     wasSendingRef.current = sending;
   }, [sending]);
 
-  // Scroll to bottom when messages change (new message, streaming content, sending state).
-  // Use instant scroll during streaming (smooth can't keep up with rapid updates).
+  // Scroll to bottom when messages change (new message, streaming content, interstitials, sending state).
   const messageCount = messages.length;
   const lastMessageContent = messages.length > 0 ? messages[messages.length - 1].content : "";
+  const lastInterstitialCount = messages.length > 0 ? (messages[messages.length - 1].interstitial?.length ?? 0) : 0;
   useEffect(() => {
     void messageCount;
     void sending;
     void lastMessageContent;
+    void lastInterstitialCount;
     const node = scrollRef.current;
     if (!node || !isNearBottom.current) return;
     const behavior = sending || prefersReducedMotion ? "instant" : "smooth";
     node.scrollTo({ top: node.scrollHeight, behavior });
-  }, [messageCount, sending, lastMessageContent, prefersReducedMotion]);
+  }, [messageCount, sending, lastMessageContent, lastInterstitialCount, prefersReducedMotion]);
 
   // Focus the input when the conversation is ready and after each response.
   useEffect(() => {
