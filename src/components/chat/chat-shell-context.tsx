@@ -95,7 +95,13 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
 
   const setHighlight = useCallback((next: MapHighlight | null) => {
     setHighlightState(next);
-    if (next) setFocusNonce((n) => n + 1);
+    if (next) {
+      setFocusNonce((n) => n + 1);
+      // Auto-open mobile bottom sheet when a map highlight arrives
+      if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) {
+        setMobileMapOpen(true);
+      }
+    }
   }, []);
 
   const showOnMap = useCallback(() => {
