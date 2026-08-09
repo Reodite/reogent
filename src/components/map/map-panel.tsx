@@ -1,14 +1,39 @@
 "use client";
 
-// Map chrome: the neumorphic desktop/tablet card (collapsible to a rail, per the
-// design sketches) and the mobile bottom sheet. Floating glass overlays carry
-// the route info and map controls; a text fallback covers map failures.
+// Desktop/tablet collapsible map card, mobile bottom sheet, floating controls,
+// and text fallback for map load failures.
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { CampusMap, type MapControls, type MapStatus } from "@/src/components/map/campus-map";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
+import type { MapHighlight } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+
+/** Primary label for a map highlight (title line). */
+function highlightTitle(h: MapHighlight): string {
+  if (h.kind === "route") return formatMinutes(h.minutes);
+  if (h.kind === "buildings") {
+    return h.buildings.length === 1 ? h.buildings[0].name : `${h.buildings.length} buildings`;
+  }
+  return `${h.places.length} place${h.places.length === 1 ? "" : "s"}${h.near ? ` near ${h.near}` : ""}`;
+}
+
+/** Secondary label for a map highlight (detail line). */
+function highlightSubtitle(h: MapHighlight): string {
+  if (h.kind === "route") return `${formatMeters(h.meters)} · ${h.from} → ${h.to}`;
+  if (h.kind === "buildings") return h.buildings.map((b) => b.code).join(" · ");
+  return h.near ? `near ${h.near}` : (h.places[0]?.name ?? "");
+}
+
+/** Text-only fallback description when the map fails to load. */
+function highlightFallback(h: MapHighlight): string {
+  if (h.kind === "route") {
+    return `${formatMeters(h.meters)}, about ${formatMinutes(h.minutes)} walking from ${h.from} to ${h.to}.`;
+  }
+  if (h.kind === "buildings") return h.buildings.map((b) => `${b.name} (${b.code})`).join(", ");
+  return h.places.map((p) => p.name).join(", ") + (h.near ? ` — near ${h.near}` : "");
+}
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
@@ -54,7 +79,6 @@ function GlassButton({
 function RouteInfoCard() {
   const { highlight } = useChatShell();
   const reduce = useReducedMotion();
-  // Stable key that changes when highlight data changes
   const key = highlight
     ? highlight.kind === "route"
       ? `${highlight.from}-${highlight.to}`
@@ -79,23 +103,9 @@ function RouteInfoCard() {
           </span>
           <span className="min-w-0">
             <span className="text-on-surface block truncate text-base leading-tight font-medium">
-              {highlight.kind === "route"
-                ? formatMinutes(highlight.minutes)
-                : highlight.kind === "buildings"
-                  ? highlight.buildings.length === 1
-                    ? highlight.buildings[0].name
-                    : `${highlight.buildings.length} buildings`
-                  : `${highlight.places.length} place${highlight.places.length === 1 ? "" : "s"}`}
+              {highlightTitle(highlight)}
             </span>
-            <span className="text-on-surface-variant block truncate text-xs">
-              {highlight.kind === "route"
-                ? `${formatMeters(highlight.meters)} · ${highlight.from} → ${highlight.to}`
-                : highlight.kind === "buildings"
-                  ? highlight.buildings.map((b) => b.code).join(" · ")
-                  : highlight.near
-                    ? `near ${highlight.near}`
-                    : highlight.places[0]?.name}
-            </span>
+            <span className="text-on-surface-variant block truncate text-xs">{highlightSubtitle(highlight)}</span>
           </span>
         </motion.div>
       )}
@@ -122,23 +132,7 @@ function MapFallback({ onRetry }: { onRetry?: () => void }) {
           Retry
         </button>
       )}
-      {highlight?.kind === "route" && (
-        <p className="text-on-surface max-w-60 text-sm">
-          {formatMeters(highlight.meters)}, about {formatMinutes(highlight.minutes)} walking from {highlight.from} to{" "}
-          {highlight.to}.
-        </p>
-      )}
-      {highlight?.kind === "buildings" && (
-        <p className="text-on-surface max-w-60 text-sm">
-          {highlight.buildings.map((b) => `${b.name} (${b.code})`).join(", ")}
-        </p>
-      )}
-      {highlight?.kind === "places" && (
-        <p className="text-on-surface max-w-60 text-sm">
-          {highlight.places.map((p) => p.name).join(", ")}
-          {highlight.near ? ` — near ${highlight.near}` : ""}
-        </p>
-      )}
+      {highlight && <p className="text-on-surface max-w-60 text-sm">{highlightFallback(highlight)}</p>}
     </div>
   );
 }
@@ -380,11 +374,7 @@ export function MapBottomSheet() {
                 {highlight
                   ? highlight.kind === "route"
                     ? `${highlight.from} → ${highlight.to}`
-                    : highlight.kind === "buildings"
-                      ? highlight.buildings.length === 1
-                        ? highlight.buildings[0].name
-                        : `${highlight.buildings.length} buildings`
-                      : `${highlight.places.length} place${highlight.places.length === 1 ? "" : "s"}${highlight.near ? ` near ${highlight.near}` : ""}`
+                    : highlightTitle(highlight)
                   : "Campus map"}
               </span>
               {highlight?.kind === "route" && (
