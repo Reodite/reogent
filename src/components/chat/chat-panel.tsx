@@ -157,6 +157,8 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   const api = useApi();
   const router = useRouter();
   const [sessionId, setSessionId] = useState<string>(() => initialSessionId ?? "");
+  // Tracks whether the session ID was minted locally (skip history fetch)
+  const mintedLocally = useRef(!initialSessionId);
   const prefersReducedMotion = useReducedMotion();
   const { setHighlight, sessions, refreshSessions, addOptimisticSession } = useChatShell();
 
@@ -244,6 +246,11 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     // New chat (no session ID yet) — start empty, skip fetch
     if (!sessionId) {
       setMessages([]);
+      setHistoryState("ready");
+      return;
+    }
+    // Session was minted locally during send — messages are already in state
+    if (mintedLocally.current) {
       setHistoryState("ready");
       return;
     }
