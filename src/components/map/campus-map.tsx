@@ -45,20 +45,22 @@ interface PickedBuilding {
 }
 
 const TOOLTIP_OFFSET = 12;
-const TOOLTIP_WIDTH = 240; // max-w-60 = 15rem = 240px
-const TOOLTIP_HEIGHT_EST = 56; // approximate height for two lines
 
 /** Position the building tooltip, flipping anchor when it would overflow the container. */
 function tooltipPosition(picked: PickedBuilding, container: HTMLDivElement | null): React.CSSProperties {
   const w = container?.clientWidth ?? 800;
   const h = container?.clientHeight ?? 600;
 
-  const fitsRight = picked.x + TOOLTIP_OFFSET + TOOLTIP_WIDTH < w;
-  const fitsBelow = picked.y + TOOLTIP_OFFSET + TOOLTIP_HEIGHT_EST < h;
+  const fitsRight = picked.x + TOOLTIP_OFFSET + 240 < w;
+  const fitsBelow = picked.y + TOOLTIP_OFFSET + 56 < h;
 
   return {
-    left: fitsRight ? picked.x + TOOLTIP_OFFSET : picked.x - TOOLTIP_OFFSET - TOOLTIP_WIDTH,
-    top: fitsBelow ? picked.y + TOOLTIP_OFFSET : picked.y - TOOLTIP_OFFSET - TOOLTIP_HEIGHT_EST,
+    // Fits right: tooltip starts offset to the right of cursor
+    // Doesn't fit: tooltip ends offset to the left of cursor (right edge near cursor)
+    left: fitsRight ? picked.x + TOOLTIP_OFFSET : undefined,
+    right: fitsRight ? undefined : w - picked.x + TOOLTIP_OFFSET,
+    top: fitsBelow ? picked.y + TOOLTIP_OFFSET : undefined,
+    bottom: fitsBelow ? undefined : h - picked.y + TOOLTIP_OFFSET,
   };
 }
 
