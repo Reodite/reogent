@@ -356,7 +356,7 @@ export function MapBottomSheet() {
         role="dialog"
         aria-modal="true"
         aria-label="Campus map"
-        className={`neu-panel bg-surface fixed inset-x-0 bottom-0 z-50 flex h-[80vh] flex-col overflow-hidden rounded-t-2xl pb-[env(safe-area-inset-bottom)] transition-transform duration-300 [transition-timing-function:var(--neu-ease)] ${
+        className={`neu-panel bg-surface fixed inset-x-0 bottom-0 z-50 flex h-[80dvh] flex-col overflow-hidden rounded-t-2xl pb-[env(safe-area-inset-bottom)] transition-transform duration-300 [transition-timing-function:var(--neu-ease)] ${
           mobileMapOpen ? "translate-y-0" : "translate-y-full"
         }`}
       >
