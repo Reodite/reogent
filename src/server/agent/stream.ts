@@ -91,30 +91,43 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
     convo.push({ role: "assistant", content: assistantContent });
 
     if (stopReason !== "tool_use") {
-      // Generate follow-up suggestions based on the conversation
+      // Generate context-aware follow-up suggestions
       let follow_ups: string[] | undefined;
       try {
+        const FOLLOW_UP_SYSTEM = `You suggest follow-up questions for a UBC campus assistant. The assistant can ONLY:
+- Search courses (by subject, credits, prerequisites, term)
+- Look up tuition and cost estimates
+- Calculate walking distances between buildings
+- Find buildings on campus
+- Find places (food, services) near buildings
+- Search study spaces and free rooms
+- Look up grade distributions
+- Search events, parking, admission requirements, key dates
+
+Rules:
+- Suggest 2-3 questions the user would naturally ask next
+- Only suggest things the assistant can actually answer (from the list above)
+- Never repeat what was already asked in this conversation
+- Never suggest biking, transit, driving, or anything not walking-based for routes
+- If the assistant said it couldn't help with something, don't suggest variations of that
+- If the conversation hit a dead end, suggest a completely different topic
+- Return ONLY a JSON array of strings, nothing else`;
+
+        const summary = convo
+          .slice(-6)
+          .map(
+            (m) =>
+              `${m.role}: ${m.content
+                .map((b) => b.text)
+                .filter(Boolean)
+                .join("")
+                .slice(0, 200)}`,
+          )
+          .join("\n");
+
         const followUpResult = await converse({
-          system:
-            'Based on this conversation, suggest 2-3 short follow-up questions the user might ask next. Return ONLY a JSON array of strings, nothing else. Example: ["question 1", "question 2"]',
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  text: convo
-                    .map((m) =>
-                      m.content
-                        .map((b) => b.text)
-                        .filter(Boolean)
-                        .join(""),
-                    )
-                    .join("\n")
-                    .slice(-1000),
-                },
-              ],
-            },
-          ],
+          system: FOLLOW_UP_SYSTEM,
+          messages: [{ role: "user", content: [{ text: summary }] }],
           toolSpecs: [],
         });
         const raw = (followUpResult.message.content ?? [])
@@ -122,9 +135,12 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
           .filter(Boolean)
           .join("")
           .trim();
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          follow_ups = parsed.filter((s): s is string => typeof s === "string" && s.length > 0).slice(0, 3);
+        const jsonMatch = raw.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed)) {
+            follow_ups = parsed.filter((s): s is string => typeof s === "string" && s.length > 0).slice(0, 3);
+          }
         }
       } catch {
         // Follow-up generation is best-effort
