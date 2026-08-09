@@ -44,7 +44,16 @@ function SignupContent() {
             <Icon name="school" size={27} />
           </span>
           <h1 className="text-on-surface mb-2 text-2xl font-medium tracking-[-0.02em]">Create an account</h1>
-          <p className="text-muted mb-6 text-sm">Sign up to start using Reogent</p>
+          <p className="text-muted mb-6 text-sm">Sign up to start using Reogent — it&apos;s free</p>
+          <p className="text-on-surface-variant mb-6 flex items-center justify-center gap-3 text-xs">
+            <span>Courses</span>
+            <span className="text-border">·</span>
+            <span>Walking routes</span>
+            <span className="text-border">·</span>
+            <span>Tuition</span>
+            <span className="text-border">·</span>
+            <span>Grades</span>
+          </p>
           <AuthForm mode="signup" />
         </div>
       </motion.div>
