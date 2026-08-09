@@ -96,11 +96,13 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
 function SidebarDrawer() {
   const { sidebarOpen, setSidebarOpen } = useChatShell();
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!sidebarOpen) return;
-    closeRef.current?.focus();
+    // Focus first focusable in the dialog
+    const btn = dialogRef.current?.querySelector<HTMLElement>("button");
+    btn?.focus();
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
@@ -123,6 +125,7 @@ function SidebarDrawer() {
         className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-250 ${sidebarOpen ? "opacity-100" : "opacity-0"}`}
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Chat sessions"
@@ -130,17 +133,8 @@ function SidebarDrawer() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="relative h-full">
-          <SessionSidebar />
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close sessions"
-            className="neu-button bg-surface text-on-surface-variant hover:text-primary absolute top-3 right-3 flex size-11 items-center justify-center rounded-xl sm:size-8"
-          >
-            <Icon name="close" size={18} />
-          </button>
+        <div className="h-full">
+          <SessionSidebar onClose={() => setSidebarOpen(false)} />
         </div>
       </div>
     </div>

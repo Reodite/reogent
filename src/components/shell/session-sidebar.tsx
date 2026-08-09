@@ -181,9 +181,10 @@ function SessionItem({
 
 interface SessionSidebarProps {
   onCollapse?: () => void;
+  onClose?: () => void;
 }
 
-export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
+export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}) {
   const router = useRouter();
   const params = useParams<{ session_id?: string }>();
   const {
@@ -236,6 +237,16 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
         <span className="text-on-surface min-w-0 flex-1 text-base leading-tight font-medium tracking-[-0.02em]">
           Sessions
         </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close sessions"
+            className="text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
+          >
+            <Icon name="close" size={18} />
+          </button>
+        )}
       </div>
 
       <div className="pb-3">
