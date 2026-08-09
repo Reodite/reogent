@@ -108,12 +108,20 @@ export function ProductMock({ inView, chatZ, mapZ }: ProductMockProps) {
         animate={inView ? { opacity: 1 } : { opacity: 0 }}
         transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
       >
-        {/* Map preview screenshot */}
+        {/* Map preview — theme-aware */}
         <Image
-          src="/map-preview.png"
+          src="/map-light.png"
           alt=""
           fill
-          className="object-cover"
+          className="object-cover dark:hidden"
+          sizes="(min-width: 640px) 50vw, 0px"
+          draggable={false}
+        />
+        <Image
+          src="/map-dark.png"
+          alt=""
+          fill
+          className="hidden object-cover dark:block"
           sizes="(min-width: 640px) 50vw, 0px"
           draggable={false}
         />
