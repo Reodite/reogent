@@ -32,6 +32,10 @@ interface ChatShellState {
   refreshSessions: () => void;
   /** Optimistically prepend a new session to the list before server confirms. */
   addOptimisticSession: (sessionId: string, title: string) => void;
+  /** Optimistically rename a session locally without server refetch. */
+  renameSessionLocally: (sessionId: string, title: string) => void;
+  /** Optimistically remove a session locally without server refetch. */
+  removeSessionLocally: (sessionId: string) => void;
 }
 
 const ChatShellContext = createContext<ChatShellState | null>(null);
@@ -108,10 +112,17 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
 
   const addOptimisticSession = useCallback((sessionId: string, title: string) => {
     setSessions((prev) => {
-      // Don't duplicate if already present
       if (prev.some((s) => s.session_id === sessionId)) return prev;
       return [{ session_id: sessionId, title, updatedAt: new Date().toISOString() }, ...prev];
     });
+  }, []);
+
+  const renameSessionLocally = useCallback((sessionId: string, title: string) => {
+    setSessions((prev) => prev.map((s) => (s.session_id === sessionId ? { ...s, title } : s)));
+  }, []);
+
+  const removeSessionLocally = useCallback((sessionId: string) => {
+    setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
   }, []);
 
   const showOnMap = useCallback(() => {
@@ -137,6 +148,8 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       sessionsError,
       refreshSessions,
       addOptimisticSession,
+      renameSessionLocally,
+      removeSessionLocally,
     }),
     [
       highlight,
@@ -151,6 +164,8 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       sessionsError,
       refreshSessions,
       addOptimisticSession,
+      renameSessionLocally,
+      removeSessionLocally,
     ],
   );
 

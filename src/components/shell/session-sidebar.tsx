@@ -24,12 +24,14 @@ function SessionItem({
   session,
   active,
   onOpen,
-  onRefresh,
+  onRename,
+  onDelete,
 }: {
   session: SessionSummary;
   active: boolean;
   onOpen: () => void;
-  onRefresh: () => void;
+  onRename: (title: string) => void;
+  onDelete: () => void;
 }) {
   const api = useApi();
   const [editing, setEditing] = useState(false);
@@ -47,11 +49,11 @@ function SessionItem({
     const trimmed = editValue.trim();
     setEditing(false);
     if (!trimmed || trimmed === session.title) return;
+    onRename(trimmed);
     try {
       await api.renameSession(session.session_id, trimmed);
-      onRefresh();
     } catch {
-      /* best effort */
+      /* best effort — local state already updated */
     }
   }
 
@@ -60,11 +62,11 @@ function SessionItem({
       setConfirming(true);
       return;
     }
+    onDelete();
     try {
       await api.deleteSession(session.session_id);
-      onRefresh();
     } catch {
-      /* best effort */
+      /* best effort — local state already updated */
     }
     setConfirming(false);
   }
@@ -147,7 +149,15 @@ interface SessionSidebarProps {
 export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
   const router = useRouter();
   const params = useParams<{ session_id?: string }>();
-  const { sessions, sessionsLoading, sessionsError, refreshSessions, setSidebarOpen } = useChatShell();
+  const {
+    sessions,
+    sessionsLoading,
+    sessionsError,
+    refreshSessions,
+    setSidebarOpen,
+    renameSessionLocally,
+    removeSessionLocally,
+  } = useChatShell();
   const activeId = params.session_id;
   const reduce = useReducedMotion();
   const hasAnimated = useRef(false);
@@ -263,7 +273,8 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
                           session={session}
                           active={active}
                           onOpen={() => openSession(session.session_id)}
-                          onRefresh={refreshSessions}
+                          onRename={(title) => renameSessionLocally(session.session_id, title)}
+                          onDelete={() => removeSessionLocally(session.session_id)}
                         />
                       </motion.li>
                     );
