@@ -6,6 +6,8 @@
 // the generic badge, so a new backend module needs only one renderer here.
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
+import { ErrorBoundary } from "@/src/components/ui/error-boundary";
+import { MapPill, ToolResultCard } from "@/src/components/ui/tool-result-card";
 import {
   isToolError,
   type CourseDoc,
@@ -16,18 +18,7 @@ import {
 import { formatCad, formatMeters, formatMinutes, summarizeToolInput } from "@/src/lib/format";
 import { extractBuildingHighlight, extractPlacesHighlight, extractWalkingHighlight } from "@/src/lib/walking";
 import { motion, useReducedMotion } from "motion/react";
-import { Component, useMemo, type ReactNode } from "react";
-
-// Isolates renderer crashes so one bad tool result doesn't unmount the whole section.
-class RendererBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
-}
+import { useMemo, type ReactNode } from "react";
 
 export interface ToolCallRendererProps {
   call: ToolCall;
@@ -149,19 +140,14 @@ function TuitionRenderer({ call }: ToolCallRendererProps) {
   const label = t.per_credit_cad != null ? "per credit" : t.unit || "flat";
   const amount = t.per_credit_cad ?? t.amount_cad ?? 0;
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
-      <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon name="currencyDollar" size={18} />
+    <ToolResultCard icon="currencyDollar">
+      <span className="text-on-surface block text-base font-medium">
+        {formatCad(amount)} <span className="text-body-sm text-on-surface-variant font-normal">{label}</span>
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-on-surface block text-base font-medium">
-          {formatCad(amount)} <span className="text-body-sm text-on-surface-variant font-normal">{label}</span>
-        </span>
-        <span className="text-muted block truncate text-xs">
-          {t.program || "—"} · {t.student_type || "—"} · {t.cohort_year || "—"} cohort
-        </span>
+      <span className="text-muted block truncate text-xs">
+        {t.program || "—"} · {t.student_type || "—"} · {t.cohort_year || "—"} cohort
       </span>
-    </div>
+    </ToolResultCard>
   );
 }
 
@@ -175,28 +161,23 @@ function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
 
   if (!highlight) return null;
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
-      <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon name="walk" size={18} />
+    <ToolResultCard
+      icon="walk"
+      action={
+        <MapPill
+          label={`Show route from ${highlight.from} to ${highlight.to} on map`}
+          onClick={() => {
+            setHighlight(highlight);
+            showOnMap();
+          }}
+        />
+      }
+    >
+      <span className="text-on-surface block text-base font-medium">{formatMinutes(highlight.minutes)}</span>
+      <span className="text-on-surface-variant block truncate text-xs">
+        {formatMeters(highlight.meters)} · {highlight.from} → {highlight.to}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-on-surface block text-base font-medium">{formatMinutes(highlight.minutes)}</span>
-        <span className="text-on-surface-variant block truncate text-xs">
-          {formatMeters(highlight.meters)} · {highlight.from} → {highlight.to}
-        </span>
-      </span>
-      <button
-        type="button"
-        aria-label={`Show route from ${highlight.from} to ${highlight.to} on map`}
-        onClick={() => {
-          setHighlight(highlight);
-          showOnMap();
-        }}
-        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
-      >
-        Show on map
-      </button>
-    </div>
+    </ToolResultCard>
   );
 }
 
@@ -209,26 +190,21 @@ function FindBuildingRenderer({ call }: ToolCallRendererProps) {
   if (!highlight || highlight.buildings.length === 0) return null;
   const building = highlight.buildings[0];
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
-      <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon name="map" size={18} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-on-surface block truncate text-base font-medium">{building.name}</span>
-        <span className="text-muted block truncate font-mono text-xs">{building.code}</span>
-      </span>
-      <button
-        type="button"
-        aria-label={`Show ${building.name} on map`}
-        onClick={() => {
-          setHighlight(highlight);
-          showOnMap();
-        }}
-        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
-      >
-        Show on map
-      </button>
-    </div>
+    <ToolResultCard
+      icon="map"
+      action={
+        <MapPill
+          label={`Show ${building.name} on map`}
+          onClick={() => {
+            setHighlight(highlight);
+            showOnMap();
+          }}
+        />
+      }
+    >
+      <span className="text-on-surface block truncate text-base font-medium">{building.name}</span>
+      <span className="text-muted block truncate font-mono text-xs">{building.code}</span>
+    </ToolResultCard>
   );
 }
 
@@ -244,32 +220,27 @@ function FindPlacesRenderer({ call }: ToolCallRendererProps) {
     .map((p) => p.name)
     .join(", ");
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
-      <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon name="location" size={18} />
+    <ToolResultCard
+      icon="location"
+      action={
+        <MapPill
+          label={`Show ${highlight.places.length} place${highlight.places.length === 1 ? "" : "s"} on map`}
+          onClick={() => {
+            setHighlight(highlight);
+            showOnMap();
+          }}
+        />
+      }
+    >
+      <span className="text-on-surface block text-base font-medium">
+        {highlight.places.length} place{highlight.places.length === 1 ? "" : "s"}
+        {highlight.near ? ` near ${highlight.near}` : ""}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-on-surface block text-base font-medium">
-          {highlight.places.length} place{highlight.places.length === 1 ? "" : "s"}
-          {highlight.near ? ` near ${highlight.near}` : ""}
-        </span>
-        <span className="text-muted block truncate text-xs">
-          {preview}
-          {highlight.places.length > 3 ? "…" : ""}
-        </span>
+      <span className="text-muted block truncate text-xs">
+        {preview}
+        {highlight.places.length > 3 ? "…" : ""}
       </span>
-      <button
-        type="button"
-        aria-label={`Show ${highlight.places.length} place${highlight.places.length === 1 ? "" : "s"} on map`}
-        onClick={() => {
-          setHighlight(highlight);
-          showOnMap();
-        }}
-        className="border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-[color,background-color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
-      >
-        Show on map
-      </button>
-    </div>
+    </ToolResultCard>
   );
 }
 
@@ -317,9 +288,9 @@ export function ToolCallsView({ calls, isLatest }: { calls: ToolCall[]; isLatest
         const Renderer = renderers[call.name];
         if (!Renderer) return null;
         return (
-          <RendererBoundary key={`render-${keys[i]}`}>
+          <ErrorBoundary key={`render-${keys[i]}`}>
             <Renderer call={call} isLatest={isLatest} />
-          </RendererBoundary>
+          </ErrorBoundary>
         );
       })}
     </div>

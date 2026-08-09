@@ -14,12 +14,13 @@ import {
 } from "@/src/components/chat/message";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { ApiError, type ChatMessage } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
 import { mergeMapHighlights } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type HistoryState = "loading" | "ready" | "failed";
 
@@ -108,26 +109,12 @@ function nextId(): string {
 
 // Minimal error boundary: if the composer crashes, show a recovery prompt
 // instead of killing the entire chat panel.
-class ComposerBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    if (this.state.failed) {
-      return (
-        <div className="shrink-0 px-3 pt-2 pb-3 text-center sm:px-4">
-          <p className="text-muted text-xs">
-            Something went wrong.{" "}
-            <button type="button" onClick={() => this.setState({ failed: false })} className="text-primary underline">
-              Tap to restore
-            </button>
-          </p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+function ComposerFallback() {
+  return (
+    <div className="shrink-0 px-3 pt-2 pb-3 text-center sm:px-4">
+      <p className="text-muted text-xs">Something went wrong. Reload to restore.</p>
+    </div>
+  );
 }
 
 // Renders LLM-generated follow-up suggestions after a response.
@@ -678,7 +665,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
         {announcement}
       </output>
 
-      <ComposerBoundary key={sessionId}>
+      <ErrorBoundary key={sessionId} fallback={<ComposerFallback />}>
         <ChatInput
           ref={inputRef}
           disabled={sending || historyState !== "ready"}
@@ -688,7 +675,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           onSend={send}
           onStop={sending ? stopGenerating : undefined}
         />
-      </ComposerBoundary>
+      </ErrorBoundary>
     </section>
   );
 }
