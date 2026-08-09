@@ -34,44 +34,45 @@ function SessionItem({
   onDelete: () => void;
 }) {
   const api = useApi();
-  const [editing, setEditing] = useState(false);
+  type Mode = "idle" | "editing" | "confirming-delete";
+  const [mode, setMode] = useState<Mode>("idle");
   const [editValue, setEditValue] = useState("");
-  const [confirming, setConfirming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function startRename() {
     setEditValue(session.title?.trim() || "");
-    setEditing(true);
+    setMode("editing");
     setTimeout(() => inputRef.current?.select(), 0);
+  }
+
+  function cancelAction() {
+    setMode("idle");
   }
 
   async function commitRename() {
     const trimmed = editValue.trim();
-    setEditing(false);
+    setMode("idle");
     if (!trimmed || trimmed === session.title) return;
     onRename(trimmed);
     try {
       await api.renameSession(session.session_id, trimmed);
     } catch {
-      /* best effort — local state already updated */
+      /* best effort */
     }
   }
 
-  async function handleDelete() {
-    if (!confirming) {
-      setConfirming(true);
-      return;
-    }
+  async function confirmDelete() {
     onDelete();
+    setMode("idle");
     try {
       await api.deleteSession(session.session_id);
     } catch {
-      /* best effort — local state already updated */
+      /* best effort */
     }
-    setConfirming(false);
   }
 
-  if (editing) {
+  // Editing: inline text input with checkmark/x
+  if (mode === "editing") {
     return (
       <div className="flex h-9 items-center gap-1 px-1">
         <input
@@ -81,12 +82,52 @@ function SessionItem({
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") commitRename();
-            if (e.key === "Escape") setEditing(false);
+            if (e.key === "Escape") cancelAction();
           }}
-          onBlur={commitRename}
           maxLength={80}
           className="bg-surface-container-low text-on-surface h-7 min-w-0 flex-1 rounded-md px-2 text-sm outline-none"
         />
+        <button
+          type="button"
+          onClick={commitRename}
+          aria-label="Confirm rename"
+          className="text-secondary hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+        >
+          <Icon name="checkCircle" size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={cancelAction}
+          aria-label="Cancel"
+          className="text-on-surface-variant hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+        >
+          <Icon name="close" size={12} />
+        </button>
+      </div>
+    );
+  }
+
+  // Confirming delete: shows "Confirm deletion" with checkmark/x
+  if (mode === "confirming-delete") {
+    return (
+      <div className="flex h-9 items-center gap-1 px-1">
+        <span className="text-error min-w-0 flex-1 truncate px-2 text-sm">Confirm deletion</span>
+        <button
+          type="button"
+          onClick={confirmDelete}
+          aria-label="Confirm delete"
+          className="text-error hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+        >
+          <Icon name="checkCircle" size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={cancelAction}
+          aria-label="Cancel"
+          className="text-on-surface-variant hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+        >
+          <Icon name="close" size={12} />
+        </button>
       </div>
     );
   }
@@ -127,13 +168,9 @@ function SessionItem({
         </button>
         <button
           type="button"
-          onClick={handleDelete}
-          aria-label={confirming ? "Confirm delete" : "Delete"}
-          className={`flex size-6 items-center justify-center rounded-md ${
-            confirming
-              ? "text-error bg-error-container/40"
-              : "text-on-surface-variant hover:text-error hover:bg-error-container/40"
-          }`}
+          onClick={() => setMode("confirming-delete")}
+          aria-label="Delete"
+          className="text-on-surface-variant hover:text-error hover:bg-error-container/40 flex size-6 items-center justify-center rounded-md"
         >
           <Icon name="close" size={12} />
         </button>
