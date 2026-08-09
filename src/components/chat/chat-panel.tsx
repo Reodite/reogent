@@ -127,6 +127,47 @@ class ComposerBoundary extends Component<{ children: ReactNode }, { failed: bool
   }
 }
 
+// Contextual follow-up suggestions based on what tools the last response used.
+const FOLLOW_UPS: Record<string, string[]> = {
+  walking_distance: ["What about the reverse direction?", "Find places to eat nearby"],
+  search_courses: ["What are the prerequisites?", "Show the grade distribution"],
+  get_course: ["Is this offered next term?", "What's the grade distribution?"],
+  get_tuition: ["Compare with domestic tuition", "What's the full degree cost?"],
+  find_building: ["How do I get there from the Nest?", "What food is nearby?"],
+  find_places: ["How far is it from here?", "Are there study spaces nearby?"],
+  get_grades: ["What other sections are available?", "Who teaches this?"],
+  _default: ["What else can you help with?", "Show me something on the map"],
+};
+
+function FollowUpChips({
+  onSend,
+  lastToolCalls,
+}: {
+  onSend: (text: string) => void;
+  lastToolCalls?: { name: string }[];
+}) {
+  const chips = useMemo(() => {
+    const toolName = lastToolCalls?.[lastToolCalls.length - 1]?.name;
+    const pool = (toolName && FOLLOW_UPS[toolName]) || FOLLOW_UPS._default;
+    return pool.slice(0, 2);
+  }, [lastToolCalls]);
+
+  return (
+    <div className="flex flex-wrap gap-2 pt-2">
+      {chips.map((chip) => (
+        <button
+          key={chip}
+          type="button"
+          onClick={() => onSend(chip)}
+          className="border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150"
+        >
+          {chip}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function toConversation(messages: DisplayMessage[]): ChatMessage[] {
   return messages.map(({ role, content }) => ({ role, content }));
 }
@@ -585,6 +626,9 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
                   </motion.div>
                 )}
             </AnimatePresence>
+            {!sending && !sendError && messages.length > 0 && messages[messages.length - 1].role === "assistant" && (
+              <FollowUpChips onSend={send} lastToolCalls={messages[messages.length - 1].toolCalls} />
+            )}
             {sendError && (
               <div
                 role="alert"
