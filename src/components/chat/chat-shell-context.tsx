@@ -30,6 +30,8 @@ interface ChatShellState {
   sessionsLoading: boolean;
   sessionsError: string | null;
   refreshSessions: () => void;
+  /** Optimistically prepend a new session to the list before server confirms. */
+  addOptimisticSession: (sessionId: string, title: string) => void;
 }
 
 const ChatShellContext = createContext<ChatShellState | null>(null);
@@ -104,6 +106,14 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const addOptimisticSession = useCallback((sessionId: string, title: string) => {
+    setSessions((prev) => {
+      // Don't duplicate if already present
+      if (prev.some((s) => s.session_id === sessionId)) return prev;
+      return [{ session_id: sessionId, title, updatedAt: new Date().toISOString() }, ...prev];
+    });
+  }, []);
+
   const showOnMap = useCallback(() => {
     setFocusNonce((n) => n + 1);
     setMapOpen(true);
@@ -126,6 +136,7 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       sessionsLoading,
       sessionsError,
       refreshSessions,
+      addOptimisticSession,
     }),
     [
       highlight,
@@ -139,6 +150,7 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       sessionsLoading,
       sessionsError,
       refreshSessions,
+      addOptimisticSession,
     ],
   );
 

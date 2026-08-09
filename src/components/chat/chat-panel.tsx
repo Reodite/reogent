@@ -178,7 +178,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   const api = useApi();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
-  const { setHighlight, sessions, refreshSessions } = useChatShell();
+  const { setHighlight, sessions, refreshSessions, addOptimisticSession } = useChatShell();
 
   const [historyState, setHistoryState] = useState<HistoryState>("loading");
   const [historyNonce, setHistoryNonce] = useState(0);
@@ -485,10 +485,14 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
       const userMessage: DisplayMessage = { id: nextId(), role: "user", content: text };
       const conversation = toConversation([...messagesRef.current, userMessage]);
       setMessages((current) => [...current, userMessage]);
+      // Optimistically show in sidebar immediately with "New chat" placeholder
+      if (messagesRef.current.length === 0) {
+        addOptimisticSession(sessionId, text.slice(0, 80) || "New chat");
+      }
       announce("Message sent");
       runExchange(conversation);
     },
-    [sending, runExchange, announce],
+    [sending, runExchange, announce, addOptimisticSession, sessionId],
   );
 
   const retry = useCallback(() => {
