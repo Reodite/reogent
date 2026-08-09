@@ -57,7 +57,12 @@ const SUGGESTION_BUCKETS = {
   ],
 };
 
-const GREETINGS = ["Ask me anything about UBC.", "Your campus, decoded.", "What do you need to know about UBC?"];
+const GREETINGS = [
+  "What can I help you find today?",
+  "Ready when you are.",
+  "Let's figure it out together.",
+  "Your campus, decoded.",
+];
 
 let messageSeq = 0;
 function nextId(): string {
@@ -495,6 +500,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
                   </button>
                 ))}
               </nav>
+              <p className="text-muted mt-4 text-xs">Tip: Ask about walking routes to see them drawn on the map.</p>
             </motion.div>
           )}
         </AnimatePresence>
