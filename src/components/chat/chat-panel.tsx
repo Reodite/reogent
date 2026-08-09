@@ -599,7 +599,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
         </AnimatePresence>
 
         {historyState === "ready" && messages.length > 0 && (
-          <div role="log" aria-label="Conversation" className="flex flex-col gap-6">
+          <div role="log" aria-label="Conversation" className="flex min-w-0 flex-col gap-6">
             {messages.map((message, idx) =>
               message.role === "user" ? (
                 <UserMessage key={message.id} message={message} />
