@@ -68,7 +68,7 @@ const MAP_COLORS: Record<
 > = {
   light: {
     // Buildings
-    fill: [232, 232, 237, 255],
+    fill: [190, 190, 197, 255],
     line: [195, 196, 202, 255],
     // Highlighted: primary muted indigo #4a4e7a
     fillHighlight: [74, 78, 122, 220],
@@ -84,7 +84,7 @@ const MAP_COLORS: Record<
   },
   dark: {
     // Buildings
-    fill: [8, 8, 11, 255],
+    fill: [9, 9, 11, 255],
     line: [64, 65, 72, 255],
     // Highlighted: dark-mode primary #b0b4d8
     fillHighlight: [176, 180, 216, 220],
