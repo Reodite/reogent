@@ -317,6 +317,11 @@ export function MapBottomSheet() {
     if (state.delta > sheet.offsetHeight * 0.2) setMobileMapOpen(false);
   }
 
+  function onPointerCancel() {
+    drag.current = null;
+    if (sheetRef.current) sheetRef.current.style.transform = "";
+  }
+
   return (
     <div inert={!mobileMapOpen} className={mobileMapOpen ? "" : "pointer-events-none"}>
       <button
@@ -342,6 +347,7 @@ export function MapBottomSheet() {
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
         >
           <span className="bg-outline/40 h-1.5 w-10 rounded-full" aria-hidden="true" />
           <div className="flex w-full items-center justify-between">
