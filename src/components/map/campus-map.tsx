@@ -285,6 +285,12 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           }
         });
 
+        // WebGL context loss: report error so the parent can offer retry
+        const canvas = map.getCanvas();
+        canvas.addEventListener("webglcontextlost", () => {
+          if (!disposed) setStatus("error");
+        });
+
         // Shader extension: bottom-to-top gradient on building sides
         class GradientExtension extends core.LayerExtension {
           getShaders() {
@@ -330,6 +336,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
 
     return () => {
       disposed = true;
+      if (controls.current) controls.current = null;
       const handles = handlesRef.current;
       handlesRef.current = null;
       if (handles) {
@@ -623,20 +630,22 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         : null,
     ].filter(Boolean);
 
-    handles.overlay.setProps({ layers });
+    try {
+      handles.overlay.setProps({ layers });
+    } catch (e) {
+      console.warn("deck.gl layer error:", e);
+      setStatus("error");
+    }
   }, [buildings, walkingRoutes, showRoutes, highlight, theme, status, routePath, drawProgress, selected]);
 
-  // ---- Theme: swap basemap style (appliedStyleRef is seeded at init, so a
-  // toggle that lands while the first style is still loading applies at ready) ----
+  // ---- Theme: swap basemap style ----
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles || status !== "ready") return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (appliedStyleRef.current !== theme) {
       appliedStyleRef.current = theme;
       const el = containerRef.current;
-      // When a view-transition is active (circular ripple), the browser handles
-      // the visual crossfade via ::view-transition-old/new(campus-map). Skip
-      // the manual opacity fade to avoid a double-animation.
       const vtActive = document.documentElement.classList.contains("vt-active");
       const fade = !vtActive && !prefersReducedMotion() && el;
       if (fade) {
@@ -652,9 +661,12 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           }
         });
       };
-      if (fade) setTimeout(apply, 200);
+      if (fade) timer = setTimeout(apply, 200);
       else apply();
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [theme, status]);
 
   // ---- Camera: focus the highlight (re-runs on "Show on map" bumps) ----
@@ -686,6 +698,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
       const anchor = highlight.near && buildings ? findBuilding(buildings, highlight.near) : null;
       const anchorCenter = anchor ? featureCentroid(anchor) : null;
       const points = [...highlight.places.map((p): LngLat => [p.lon, p.lat]), ...(anchorCenter ? [anchorCenter] : [])];
+      if (points.length === 0) return;
       const lons = points.map((p) => p[0]);
       const lats = points.map((p) => p[1]);
       handles.map.fitBounds(
