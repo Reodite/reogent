@@ -153,7 +153,7 @@ function TuitionRenderer({ call }: ToolCallRendererProps) {
       <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
         <Icon name="currencyDollar" size={18} />
       </span>
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1">
         <span className="text-on-surface block text-base font-medium">
           {formatCad(amount)} <span className="text-body-sm text-on-surface-variant font-normal">{label}</span>
         </span>

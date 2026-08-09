@@ -140,7 +140,7 @@ function FollowUpChips({ onSend, followUps }: { onSend: (text: string) => void; 
           key={chip}
           type="button"
           onClick={() => onSend(chip)}
-          className="border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] rounded-2xl border px-4 py-2.5 text-left text-xs font-medium transition-colors duration-150"
+          className="border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] max-w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-medium break-words transition-colors duration-150"
         >
           {chip}
         </button>
