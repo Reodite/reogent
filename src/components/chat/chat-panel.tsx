@@ -57,13 +57,7 @@ const SUGGESTION_BUCKETS = {
   ],
 };
 
-const GREETINGS = [
-  "What can I help you find today?",
-  "Ready when you are.",
-  "Ask me anything about UBC.",
-  "Let's figure it out together.",
-  "Your campus, decoded.",
-];
+const GREETINGS = ["Ask me anything about UBC.", "Your campus, decoded.", "What do you need to know about UBC?"];
 
 let messageSeq = 0;
 function nextId(): string {
