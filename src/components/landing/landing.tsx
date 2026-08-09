@@ -152,12 +152,16 @@ function LandingContent() {
       <main id="main">
         {/* Hero */}
         <section className="relative flex min-h-[100dvh] flex-col items-center justify-center px-4 sm:px-6">
-          {/* Topo texture with drift + fade-in */}
+          {/* Topo texture with drift + fade-in + gradient mask */}
           <motion.div
             initial={skipAnim ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1.2, delay: 0.8, ease: "easeOut" }}
             className="pointer-events-none absolute inset-0"
+            style={{
+              maskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%)",
+              WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%)",
+            }}
           >
             <TopoTexture className="text-on-surface animate-topo-drift h-full w-full opacity-[0.03]" />
           </motion.div>
