@@ -143,7 +143,7 @@ function MapFallback({ onRetry }: { onRetry?: () => void }) {
   );
 }
 
-function MapSurface({ onCollapse }: { onCollapse: () => void }) {
+function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => void; hideOverlayControls?: boolean }) {
   const { highlight, focusNonce } = useChatShell();
   const [showRoutes, setShowRoutes] = useState(false);
   const [status, setStatus] = useState<MapStatus>("loading");
@@ -180,14 +180,16 @@ function MapSurface({ onCollapse }: { onCollapse: () => void }) {
             <div className="bg-surface-container-low absolute inset-0 animate-pulse" aria-hidden="true" />
           )}
 
-          {/* Route info — floating top-left */}
-          <div className="absolute top-3 left-3 z-10 max-w-[75%]">
-            <RouteInfoCard />
-          </div>
+          {/* Route info — floating top-left (hidden in mobile sheet where header shows it) */}
+          {!hideOverlayControls && (
+            <div className="absolute top-3 left-3 z-10 max-w-[75%]">
+              <RouteInfoCard />
+            </div>
+          )}
 
           {/* Layer + view controls — floating top-right */}
           <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
-            <GlassButton label="Collapse map" icon="right" onClick={onCollapse} />
+            {!hideOverlayControls && <GlassButton label="Collapse map" icon="right" onClick={onCollapse} />}
             <GlassButton
               label={showRoutes ? "Hide walking paths" : "Show walking paths"}
               icon="layer"
@@ -397,7 +399,7 @@ export function MapBottomSheet() {
           </div>
         </div>
         <div className="min-h-0 flex-1">
-          {mobileMapOpen && <MapSurface onCollapse={() => setMobileMapOpen(false)} />}
+          {mobileMapOpen && <MapSurface onCollapse={() => setMobileMapOpen(false)} hideOverlayControls />}
         </div>
       </div>
     </div>
