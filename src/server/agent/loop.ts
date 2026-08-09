@@ -20,6 +20,8 @@ export const SYSTEM_PROMPT = `You are the UBC Vancouver campus assistant. Answer
 
 Always use the provided tools to look up facts instead of answering from memory. If a tool returns an error or no results, say what you could not find rather than guessing.
 
+Call multiple tools in parallel when the question requires several lookups. For example, if the user asks about two courses, call get_course for both simultaneously rather than one at a time. This makes responses faster.
+
 When you need to use tools, call them directly without any preceding text explanation. Do not output text like "Let me search for that" before a tool call — just call the tool. Only output text as your final answer after all tool calls are complete.
 
 When you answer, cite your sources. If a tool result includes a URL (a url, source_url, or payment_link field), cite it as a markdown link, e.g. [UBC Academic Calendar](https://vancouver.calendar.ubc.ca/...). Otherwise cite the tool the data came from (for example, "according to walking_distance").
@@ -92,10 +94,13 @@ export async function runAgentLoop(messages: ChatMessage[], deps: AgentDeps): Pr
     }
 
     const results: ContentBlock[] = [];
-    for (const block of res.message.content ?? []) {
-      if (!block.toolUse) continue;
-      const { toolUseId, name, input } = block.toolUse;
-      const result = await executeTool(deps.modules, name, input, deps.search);
+    const toolBlocks = (res.message.content ?? []).filter((b) => b.toolUse);
+    const execResults = await Promise.all(
+      toolBlocks.map((block) => executeTool(deps.modules, block.toolUse!.name, block.toolUse!.input, deps.search)),
+    );
+    for (let i = 0; i < toolBlocks.length; i++) {
+      const { toolUseId, name, input } = toolBlocks[i].toolUse!;
+      const result = execResults[i];
       toolCalls.push({ name, input, result });
       results.push({
         toolResult: {

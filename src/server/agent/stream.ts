@@ -149,11 +149,17 @@ Rules:
       return;
     }
 
-    // Execute tools
-    const results: ContentBlock[] = [];
-    for (const { toolUseId, name, input } of toolUses) {
+    // Execute tools in parallel for faster responses
+    for (const { name, input } of toolUses) {
       yield { type: "tool_start", name, input };
-      const result = await executeTool(deps.modules, name, input, deps.search);
+    }
+    const execResults = await Promise.all(
+      toolUses.map(({ name, input }) => executeTool(deps.modules, name, input, deps.search)),
+    );
+    const results: ContentBlock[] = [];
+    for (let i = 0; i < toolUses.length; i++) {
+      const { toolUseId, name, input } = toolUses[i];
+      const result = execResults[i];
       toolCalls.push({ name, input, result });
       yield { type: "tool_end", name, result };
       results.push({
