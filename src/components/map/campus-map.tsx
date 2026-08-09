@@ -270,6 +270,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<MapHandles | null>(null);
   const appliedStyleRef = useRef<ResolvedTheme | null>(null);
+  const didPanRef = useRef(false);
   const [status, setStatus] = useState<MapStatus>("loading");
   const [buildings, setBuildings] = useState<FeatureCollection | null>(null);
   const [walkingRoutes, setWalkingRoutes] = useState<FeatureCollection | null>(null);
@@ -377,6 +378,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         canvasEl.addEventListener("pointerdown", (e) => {
           if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
           dragging = true;
+          didPanRef.current = false;
           animating = false;
           lastPt = { x: e.clientX, y: e.clientY };
           lastT = performance.now();
@@ -386,6 +388,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
 
         canvasEl.addEventListener("pointermove", (e) => {
           if (!dragging) return;
+          didPanRef.current = true;
           const now = performance.now();
           const dt = now - lastT;
           let dx = e.clientX - lastPt.x;
@@ -702,6 +705,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         },
         // Click/tap opens the details popup (rooms, study rooms, services).
         onClick: (info) => {
+          if (didPanRef.current) return; // suppress click after drag
           const properties = (info.object as BuildingFeature | undefined)?.properties;
           if (!properties?.BLDG_CODE) {
             setSelected(null);
