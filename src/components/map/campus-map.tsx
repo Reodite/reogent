@@ -93,8 +93,8 @@ const MAP_COLORS: Record<
     // Highlighted: primary muted indigo #4a4e7a
     fillHighlight: [74, 78, 122, 220],
     lineHighlight: [26, 29, 58, 255],
-    // Route: secondary #2d6b47
-    route: [45, 107, 71, 235],
+    // Route: primary #4a4e7a
+    route: [74, 78, 122, 235],
     routeCasing: [250, 250, 250, 190],
     // Labels: on-surface-variant for legibility without heaviness
     label: [62, 67, 72, 255],
@@ -109,8 +109,8 @@ const MAP_COLORS: Record<
     // Highlighted: dark-mode primary #b0b4d8
     fillHighlight: [176, 180, 216, 220],
     lineHighlight: [208, 210, 235, 255],
-    // Route: dark-mode secondary #98d4a9
-    route: [152, 212, 169, 220],
+    // Route: dark-mode primary #b0b4d8
+    route: [176, 180, 216, 220],
     routeCasing: [18, 18, 20, 190],
     // Labels: on-surface-variant (dark) for clarity
     label: [194, 199, 204, 255],
