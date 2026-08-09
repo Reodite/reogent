@@ -5,7 +5,7 @@
 import { Icon } from "@/src/components/icons";
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 
-const PLACEHOLDER = "Ask me anything...";
+const PLACEHOLDER = "Ask about courses, routes, tuition...";
 
 export interface ChatInputHandle {
   focus: () => void;
