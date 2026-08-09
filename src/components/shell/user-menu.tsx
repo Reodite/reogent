@@ -59,7 +59,7 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        className="neu-button bg-surface text-primary flex size-9 items-center justify-center rounded-xl text-sm font-medium"
+        className="neu-button bg-surface text-primary flex size-11 items-center justify-center rounded-xl text-sm font-medium sm:size-9"
       >
         <span className="bg-primary-container text-on-primary-container flex size-6 items-center justify-center rounded-lg">
           {initial}
