@@ -43,8 +43,8 @@ function LoginContent() {
           <span className="neu-raised bg-surface text-primary mb-8 flex size-14 items-center justify-center rounded-2xl">
             <Icon name="school" size={27} />
           </span>
-          <h1 className="text-on-surface mb-2 text-2xl font-medium tracking-[-0.02em]">Welcome back</h1>
-          <p className="text-muted mb-6 text-sm">Sign in to continue to Reogent</p>
+          <h1 className="text-on-surface mb-2 text-center text-2xl font-medium tracking-[-0.02em]">Welcome back</h1>
+          <p className="text-muted mb-6 text-center text-sm">Sign in to continue to Reogent</p>
           <AuthForm mode="login" />
         </div>
       </motion.div>

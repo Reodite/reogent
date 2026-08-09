@@ -15,7 +15,7 @@ export default function ChatError({ error, reset }: { error: Error & { digest?: 
   if (error.digest) console.error("[ChatErrorBoundary]", error.digest, error.message);
 
   return (
-    <div className="bg-background flex min-h-svh items-center justify-center px-4">
+    <div className="flex h-full items-center justify-center px-4">
       <div
         role="alert"
         className="neu-panel bg-surface flex w-full max-w-sm flex-col items-center rounded-2xl p-8 text-center"
