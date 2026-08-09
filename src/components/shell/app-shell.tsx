@@ -15,21 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-function Splash({ label }: { label: string }) {
-  return (
-    <div className="app-shell-canvas flex min-h-svh items-center justify-center">
-      <div className="neu-panel bg-surface flex flex-col items-center gap-3 rounded-2xl px-10 py-8">
-        <span className="bg-primary-container text-on-primary-container shadow-inset flex size-11 items-center justify-center rounded-xl">
-          <Icon name="school" size={22} />
-        </span>
-        <span className="text-primary animate-pulse text-xl font-medium tracking-[-0.02em]">Reogent</span>
-        <span className="text-body-sm text-muted">{label}</span>
-      </div>
-    </div>
-  );
-}
-
-/** Gate: initializing → splash; signed out → redirect to landing/login. */
+/** Gate: initializing → null (brief); signed out → redirect to login. */
 function RequireAuth({ children }: { children: ReactNode }) {
   const auth = useAppAuth();
   const router = useRouter();
@@ -78,7 +64,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
 
-  return <Splash label={auth.status === "signedOut" ? "Redirecting to sign-in…" : "Loading…"} />;
+  return null;
 }
 
 function SidebarDrawer() {
@@ -201,21 +187,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <SidebarDrawer />
 
-        <div
-          data-sessions-state={sessionsCollapsed ? "collapsed" : "expanded"}
-          inert={sidebarOpen || mobileMapOpen || undefined}
-          className="shell-body min-h-0 flex-1"
-        >
-          <main
-            data-map-state={mapOpen ? "open" : "collapsed"}
-            className="chat-workspace min-h-0 min-w-0 flex-1 gap-3 p-3"
-          >
-            <aside
+        <div inert={sidebarOpen || mobileMapOpen || undefined} className="shell-body min-h-0 flex-1">
+          <main className="chat-workspace min-h-0 min-w-0 flex-1 gap-3 p-3">
+            <motion.aside
               aria-label="Chat sessions"
-              data-sessions-state={sessionsCollapsed ? "collapsed" : "expanded"}
+              animate={{ width: sessionsCollapsed ? "3.75rem" : "17rem" }}
+              transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
               className="sessions-aside relative hidden min-h-0 min-w-0 overflow-hidden lg:block"
             >
-              <div className="sessions-panel-layer h-full w-[17rem]">
+              <div
+                className={`sessions-panel-layer h-full w-[17rem] transition-opacity duration-200 ${sessionsCollapsed ? "pointer-events-none opacity-0" : "opacity-100 delay-75"}`}
+              >
                 <SessionSidebar onCollapse={collapseSessions} />
               </div>
               <div
@@ -238,14 +220,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                   Sessions
                 </span>
               </div>
-            </aside>
+            </motion.aside>
             <div className="chat-map-area flex min-h-0 min-w-0 flex-1 gap-3">
               <div id="main-content" className="flex min-h-0 min-w-0 flex-1">
                 {children}
               </div>
-              <div className="map-aside hidden min-h-0 min-w-0 overflow-hidden sm:flex">
+              <motion.div
+                animate={{ width: mapOpen ? "50%" : "3.75rem" }}
+                transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+                className="map-aside hidden min-h-0 min-w-0 overflow-hidden sm:flex"
+              >
                 <MapPanel />
-              </div>
+              </motion.div>
             </div>
           </main>
         </div>

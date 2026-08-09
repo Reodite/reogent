@@ -542,49 +542,6 @@ html.vt-active *::after {
   display: flex;
 }
 
-.sessions-panel-layer {
-  opacity: 1;
-  transition: opacity 200ms ease-out 80ms;
-}
-
-.sessions-aside[data-sessions-state="collapsed"] .sessions-panel-layer {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 150ms ease-in 0ms;
-}
-
-.sessions-aside {
-  width: 17rem;
-  transition: width 350ms var(--neu-ease);
-}
-
-.sessions-aside[data-sessions-state="collapsed"] {
-  width: 3.75rem;
-}
-
-.map-surface-layer {
-  opacity: 1;
-  transition: opacity 200ms ease-out 80ms;
-}
-
-.map-tab-layer {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 200ms ease-out;
-}
-
-.chat-workspace[data-map-state="collapsed"] .map-surface-layer {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 150ms ease-in 0ms;
-}
-
-.chat-workspace[data-map-state="collapsed"] .map-tab-layer {
-  opacity: 1;
-  pointer-events: auto;
-  transition-delay: 120ms;
-}
-
 .profile-menu-surface {
   transition:
     opacity 180ms ease-out,
@@ -594,16 +551,7 @@ html.vt-active *::after {
 }
 
 @media (min-width: 640px) {
-  .map-aside {
-    width: 50%;
-    transition: width 350ms var(--neu-ease);
-  }
-
-  .chat-workspace[data-map-state="collapsed"] .map-aside {
-    width: 3.75rem;
-  }
-
-  /* Prevent deck.gl canvas resize during width transition */
+  /* Prevent deck.gl canvas resize during spring width animation */
   .map-panel-root > .map-surface-layer canvas {
     min-width: 40vw;
   }

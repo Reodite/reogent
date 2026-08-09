@@ -277,7 +277,7 @@ export function ToolCallsView({ calls, isLatest }: { calls: ToolCall[]; isLatest
             key={keys[i]}
             initial={reduced ? false : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.15, delay: i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ type: "spring", stiffness: 500, damping: 30, delay: i * 0.05 }}
           >
             <ToolBadge call={call} />
           </motion.span>

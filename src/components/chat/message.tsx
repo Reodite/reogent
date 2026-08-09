@@ -8,6 +8,7 @@ import { Icon } from "@/src/components/icons";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import type { ToolCall } from "@/src/lib/api-types";
 import type { InterstitialBlock } from "@/src/shared/types";
+import { motion, useReducedMotion } from "motion/react";
 import { lazy, memo, Suspense, useState } from "react";
 
 export type { InterstitialBlock };
@@ -82,13 +83,21 @@ function AssistantMarkdown({ content }: { content: string }) {
   );
 }
 
+const messageSpring = { type: "spring" as const, stiffness: 400, damping: 25 };
+
 export const UserMessage = memo(function UserMessage({ message }: { message: DisplayMessage }) {
+  const reduce = useReducedMotion();
   return (
-    <div className="animate-message-in flex justify-end">
+    <motion.div
+      className="flex justify-end"
+      initial={reduce ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduce ? { duration: 0 } : messageSpring}
+    >
       <div className="bg-accent-subtle text-on-surface max-w-[85%] min-w-0 rounded-[16px_16px_5px_16px] px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap">
         {message.content}
       </div>
-    </div>
+    </motion.div>
   );
 });
 
@@ -224,10 +233,15 @@ export const AssistantMessage = memo(function AssistantMessage({
   isLatest: boolean;
   showAvatar?: boolean;
 }) {
+  const reduce = useReducedMotion();
   const tools = message.toolCalls ?? [];
   const interstitial = message.interstitial ?? [];
   return (
-    <div className="animate-message-in">
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduce ? { duration: 0 } : messageSpring}
+    >
       {showAvatar && (
         <div className="mb-2 flex items-center gap-2">
           <span className="bg-primary-container text-on-primary-container flex size-7 items-center justify-center rounded-lg text-[0.6875rem] font-medium">
@@ -265,7 +279,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         )}
         {!interstitial.length && <ToolCallsView calls={tools} isLatest={isLatest} />}
       </div>
-    </div>
+    </motion.div>
   );
 });
 

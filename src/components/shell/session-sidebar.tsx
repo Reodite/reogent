@@ -311,7 +311,7 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
                         animate={{ opacity: 1, y: 0 }}
                         transition={
                           shouldStagger
-                            ? { duration: 0.2, delay: Math.min(i * 0.03, 0.3), ease: [0.16, 1, 0.3, 1] }
+                            ? { type: "spring", stiffness: 500, damping: 30, delay: Math.min(i * 0.03, 0.3) }
                             : { duration: 0 }
                         }
                       >

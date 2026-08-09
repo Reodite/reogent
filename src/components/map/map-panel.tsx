@@ -237,7 +237,7 @@ export function MapPanel() {
         inert={!mapOpen}
         aria-hidden={!mapOpen}
         aria-label="Campus map"
-        className="map-surface-layer neu-panel absolute inset-0 flex min-w-0 overflow-hidden rounded-2xl"
+        className={`map-surface-layer neu-panel absolute inset-0 flex min-w-0 overflow-hidden rounded-2xl transition-opacity duration-200 ${mapOpen ? "opacity-100 delay-75" : "pointer-events-none opacity-0"}`}
       >
         <MapSurface onCollapse={() => setMapOpen(false)} />
       </section>
@@ -246,7 +246,7 @@ export function MapPanel() {
         inert={mapOpen}
         aria-hidden={mapOpen}
         aria-label="Collapsed campus map"
-        className="map-tab-layer neu-panel text-on-surface-variant absolute inset-y-0 right-0 flex w-[3.75rem] cursor-default flex-col items-center rounded-2xl py-3"
+        className={`map-tab-layer neu-panel text-on-surface-variant absolute inset-y-0 right-0 flex w-[3.75rem] cursor-default flex-col items-center rounded-2xl py-3 transition-opacity duration-200 ${mapOpen ? "pointer-events-none opacity-0" : "opacity-100 delay-100"}`}
       >
         <button
           type="button"
