@@ -11,6 +11,8 @@
 //
 // maplibre + deck are imported dynamically inside the init effect so the ~1 MB
 // of map code stays out of the initial bundle (and out of SSR).
+// Precomputed convex hull of campus buildings + buffer distance in degrees (~1.5km)
+import campusHull from "@/data/campus-hull.json";
 import type { MapHighlight } from "@/src/components/chat/chat-shell-context";
 import { BuildingPopup, type SelectedBuilding } from "@/src/components/map/building-popup";
 import { useApi, useTheme, type ResolvedTheme } from "@/src/components/providers";
@@ -66,8 +68,42 @@ function tooltipPosition(picked: PickedBuilding, container: HTMLDivElement | nul
 
 const UBC_CENTER: LngLat = [-123.246, 49.2626];
 const INITIAL_VIEW = { center: UBC_CENTER, zoom: 14.4, pitch: 40, bearing: -8 };
-// Elastic boundary: how far the camera can drift from campus center before snapping back
-const MAX_PAN_RADIUS_DEG = 0.015; // ~1.5km from center
+
+const PAN_BUFFER_DEG = 0.014; // ~1.5km buffer from hull edge
+
+/** Signed distance from point to hull. Negative = inside, positive = outside. */
+function distToHull(lng: number, lat: number): number {
+  const hull = campusHull as [number, number][];
+  // Point-in-polygon (ray casting)
+  let inside = false;
+  for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) {
+    const [xi, yi] = hull[i],
+      [xj, yj] = hull[j];
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  // Distance to nearest edge segment
+  let minDist = Infinity;
+  for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) {
+    const [ax, ay] = hull[j],
+      [bx, by] = hull[i];
+    const dx = bx - ax,
+      dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((lng - ax) * dx + (lat - ay) * dy) / len2)) : 0;
+    const px = ax + t * dx,
+      py = ay + t * dy;
+    const d = Math.sqrt((lng - px) ** 2 + (lat - py) ** 2);
+    if (d < minDist) minDist = d;
+  }
+  return inside ? -minDist : minDist;
+}
+
+/** How far past the allowed boundary (hull + buffer). 0 = inside, positive = overshoot. */
+function overshootFromBoundary(lng: number, lat: number): number {
+  return Math.max(0, distToHull(lng, lat) - PAN_BUFFER_DEG);
+}
 
 const STYLE_URLS: Record<ResolvedTheme, string> = {
   light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -296,23 +332,29 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         let lastT = 0;
         let animating = false;
 
-        function clampCenter(lng: number, lat: number): [number, number] {
-          return [lng, lat];
-        }
-
         function snapBack() {
           const c = map.getCenter();
-          const dx = c.lng - UBC_CENTER[0];
-          const dy = c.lat - UBC_CENTER[1];
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist <= MAX_PAN_RADIUS_DEG) {
+          const overshoot = overshootFromBoundary(c.lng, c.lat);
+          if (overshoot <= 0) {
             animating = false;
             return;
           }
+          // Find nearest point on the boundary (hull + buffer) by moving toward hull center
+          const d = distToHull(c.lng, c.lat);
+          const targetDist = d - overshoot; // move inward by overshoot amount
+          const scale = targetDist > 0 ? targetDist / d : 0;
+          // Direction: from center of hull toward current position, stop at boundary
+          const hullCenterLng = (campusHull as [number, number][]).reduce((s, p) => s + p[0], 0) / campusHull.length;
+          const hullCenterLat = (campusHull as [number, number][]).reduce((s, p) => s + p[1], 0) / campusHull.length;
+          const dx = c.lng - hullCenterLng;
+          const dy = c.lat - hullCenterLat;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          // Target: pull back toward hull center by overshoot amount
+          const pullRatio = Math.max(0, 1 - overshoot / dist);
+          const targetLng = hullCenterLng + dx * pullRatio;
+          const targetLat = hullCenterLat + dy * pullRatio;
+
           animating = true;
-          const targetScale = MAX_PAN_RADIUS_DEG / dist;
-          const targetLng = UBC_CENTER[0] + dx * targetScale;
-          const targetLat = UBC_CENTER[1] + dy * targetScale;
           const startLng = c.lng,
             startLat = c.lat;
           const startTime = performance.now();
@@ -323,7 +365,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
               return;
             }
             const t = Math.min((performance.now() - startTime) / duration, 1);
-            const ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
+            const ease = 1 - Math.pow(1 - t, 3);
             const lng = startLng + (targetLng - startLng) * ease;
             const lat = startLat + (targetLat - startLat) * ease;
             map.jumpTo({ center: [lng, lat] });
@@ -352,22 +394,18 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           lastPt = { x: e.clientX, y: e.clientY };
           lastT = now;
 
-          // Dampen pixel movement only past the boundary (free inside)
+          // Dampen pixel movement when past the hull boundary
           const c = map.getCenter();
-          const cdx = c.lng - UBC_CENTER[0];
-          const cdy = c.lat - UBC_CENTER[1];
-          const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
-          if (cdist > MAX_PAN_RADIUS_DEG) {
-            const overshoot = (cdist - MAX_PAN_RADIUS_DEG) / MAX_PAN_RADIUS_DEG;
-            const dampen = 1 / (1 + overshoot * 4);
+          const overshoot = overshootFromBoundary(c.lng, c.lat);
+          if (overshoot > 0) {
+            const dampen = 1 / (1 + (overshoot / PAN_BUFFER_DEG) * 4);
             dx *= dampen;
             dy *= dampen;
           }
 
           const cur = map.project(c);
           const target = map.unproject([cur.x - dx, cur.y - dy]);
-          const clamped = clampCenter(target.lng, target.lat);
-          map.jumpTo({ center: clamped });
+          map.jumpTo({ center: [target.lng, target.lat] });
         });
 
         function endDrag(e: PointerEvent) {
@@ -375,12 +413,8 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           dragging = false;
           canvasEl.releasePointerCapture(e.pointerId);
 
-          // If past boundary, always snap back immediately (skip inertia)
           const c = map.getCenter();
-          const cdx = c.lng - UBC_CENTER[0];
-          const cdy = c.lat - UBC_CENTER[1];
-          const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
-          if (cdist > MAX_PAN_RADIUS_DEG) {
+          if (overshootFromBoundary(c.lng, c.lat) > 0) {
             snapBack();
             return;
           }
@@ -405,10 +439,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
               }
               const cur = map.project(map.getCenter());
               const target = map.unproject([cur.x - vx * 16, cur.y - vy * 16]);
-              // Stop coasting if it would go past boundary
-              const tdx = target.lng - UBC_CENTER[0];
-              const tdy = target.lat - UBC_CENTER[1];
-              if (Math.sqrt(tdx * tdx + tdy * tdy) > MAX_PAN_RADIUS_DEG) {
+              if (overshootFromBoundary(target.lng, target.lat) > 0) {
                 snapBack();
                 return;
               }
