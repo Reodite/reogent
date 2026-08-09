@@ -24,7 +24,8 @@ const SPLASH_TIPS = [
 ];
 
 function Splash({ label }: { label: string }) {
-  const tip = SPLASH_TIPS[Math.floor(Math.random() * SPLASH_TIPS.length)];
+  // Tip is random per mount; suppress hydration warning on this element only
+  const [tip] = useState(() => SPLASH_TIPS[Math.floor(Math.random() * SPLASH_TIPS.length)]);
   return (
     <div className="app-shell-canvas flex min-h-svh items-center justify-center">
       <div className="neu-panel bg-surface flex flex-col items-center gap-3 rounded-2xl px-10 py-8">
@@ -33,7 +34,9 @@ function Splash({ label }: { label: string }) {
         </span>
         <span className="text-primary animate-pulse text-xl font-medium tracking-[-0.02em]">Reogent</span>
         <span className="text-body-sm text-muted">{label}</span>
-        <span className="text-muted mt-1 max-w-48 text-center text-xs">{tip}</span>
+        <span className="text-muted mt-1 max-w-48 text-center text-xs" suppressHydrationWarning>
+          {tip}
+        </span>
       </div>
     </div>
   );
