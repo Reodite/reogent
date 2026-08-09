@@ -29,7 +29,10 @@ const SUGGESTION_BUCKETS = {
     "How long is the walk from IKB to ICCS?",
     "How do I get from the Nest to Buchanan?",
     "How far is the bus loop from the engineering buildings?",
-    "What's the walk from the Student Union Building to Koerner Library?",
+    "Walk from the Student Union Building to Koerner Library",
+    "How do I get from Totem Park to the chemistry building?",
+    "Walk time from Allard Hall to the Law building?",
+    "Distance from Place Vanier to the bookstore?",
   ],
   courses: [
     "Find 3-credit CPSC courses with no prerequisites",
@@ -39,12 +42,17 @@ const SUGGESTION_BUCKETS = {
     "What are the easiest 3-credit electives?",
     "What COMM courses can I take without prerequisites?",
     "Find 200-level ENGL courses offered in Term 2",
+    "What PSYC courses are offered in the summer?",
+    "Show me HIST courses with no prereqs",
+    "What 400-level CPSC courses are offered next term?",
   ],
   money: [
     "What's tuition per credit for international Science students?",
     "How much does a full-time Arts degree cost per year?",
     "What are the student fees for 2025W?",
-    "What's the estimated living cost for a year at UBC?",
+    "Estimated living cost for a year at UBC?",
+    "Domestic vs international tuition for Engineering?",
+    "How much is a full course load in Science?",
   ],
   other: [
     "Where can I study right now?",
@@ -54,14 +62,39 @@ const SUGGESTION_BUCKETS = {
     "What are the admission requirements for Computer Science?",
     "When is the last day to drop a course without a W?",
     "Find coffee shops near the Nest",
+    "What's the average GPA for MATH 100?",
+    "Are there any free rooms in Buchanan right now?",
+    "When does registration open for 2026W Term 1?",
+    "Find food options near the engineering buildings",
+    "What study rooms are available in IKB?",
   ],
 };
 
 const GREETINGS = [
-  "What can I help you find today?",
-  "Ready when you are.",
-  "Let's figure it out together.",
+  "What do you need to find?",
+  "Go ahead, I'm listening.",
   "Your campus, decoded.",
+  "Course planning? Wayfinding? Shoot.",
+  "What are you trying to figure out?",
+  "Pick a question or type your own.",
+  "I've got the whole course catalog in here.",
+  "Where on campus do you need to be?",
+  "Tuition math, route math, or both?",
+];
+
+const TIPS = [
+  "Walking route questions draw the path on the map.",
+  "Grade distributions go back several years.",
+  "Events, parking, study spaces — all searchable.",
+  "Answers come from indexed UBC data, not guesses.",
+  "Tuition estimates break down by program and residency.",
+  "Building searches show the location on the map.",
+  "Room schedules update with real availability.",
+  "Admission requirements vary by program — ask about yours.",
+  "Food and services near any building are one question away.",
+  "Prerequisites chain together — I'll trace them.",
+  "Key academic dates: add/drop deadlines, reading breaks, exams.",
+  "Cost estimates cover tuition, fees, and living expenses.",
 ];
 
 let messageSeq = 0;
@@ -122,6 +155,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
 
   // Stable greeting — pick once per mount, don't flicker on re-render.
   const greeting = useMemo(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)], []);
+  const tip = useMemo(() => TIPS[Math.floor(Math.random() * TIPS.length)], []);
 
   // Pick one suggestion per category, route first to guarantee map aha moment
   const randomSuggestions = useMemo(() => {
@@ -500,7 +534,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
                   </button>
                 ))}
               </nav>
-              <p className="text-muted mt-4 text-xs">Tip: Ask about walking routes to see them drawn on the map.</p>
+              <p className="text-muted mt-4 text-xs">{tip}</p>
             </motion.div>
           )}
         </AnimatePresence>
