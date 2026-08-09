@@ -139,10 +139,10 @@ function SessionItem({
         onClick={onOpen}
         aria-current={active ? "page" : undefined}
         title={session.title}
-        className={`focus-visible:ring-primary/40 flex h-9 w-full items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
+        className={`focus-visible:ring-primary/40 flex h-9 w-full items-center gap-2 overflow-hidden rounded-lg border-l-2 px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
           active
-            ? "bg-accent-subtle text-primary border-primary border-l-2"
-            : "text-on-surface-variant group-hover:bg-surface-container-high group-hover:text-on-surface"
+            ? "bg-accent-subtle text-primary border-primary"
+            : "text-on-surface-variant group-hover:bg-surface-container-high group-hover:text-on-surface border-transparent"
         }`}
       >
         <Icon name="chat1" size={16} className="shrink-0" />
