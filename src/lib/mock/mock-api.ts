@@ -243,7 +243,10 @@ function respondToChat(text: string): ChatResponse {
 
   // "Where is X" (exactly one building mentioned) → find_building: the map
   // highlights the footprint and flies to it.
-  if (/\b(where is|where's|find|locate|show me)\b/.test(lower) && !/\b(courses?|class|tuition|credits?)\b/.test(lower)) {
+  if (
+    /\b(where is|where's|find|locate|show me)\b/.test(lower) &&
+    !/\b(courses?|class|tuition|credits?)\b/.test(lower)
+  ) {
     const mentions = detectBuildingMentions(text);
     if (mentions.length === 1) {
       const code = mentions[0];
@@ -444,6 +447,18 @@ export function createMockApi({ getToken, latencyMs = 1400, seed = true }: MockA
       return [...stored.messages];
     },
 
+    async deleteSession(id) {
+      await requireToken();
+      sessions.delete(id);
+    },
+
+    async renameSession(id, title) {
+      await requireToken();
+      const stored = sessions.get(id);
+      if (!stored) throw new ApiError(404, "Session not found");
+      stored.title = title;
+    },
+
     async getProfile() {
       await requireToken();
       return { preferences: {} };
@@ -473,19 +488,73 @@ export function createMockApi({ getToken, latencyMs = 1400, seed = true }: MockA
         code: bldg,
         name,
         rooms: [
-          { name: `${bldg} 101`, capacity: 120, floor: 1, layout: "Rows", furniture: "Fixed Tablets", photo: null, link: null },
-          { name: `${bldg} 202`, capacity: 40, floor: 2, layout: "Moveable Tables", furniture: "Moveable Chairs", photo: null, link: null },
-          { name: `${bldg} 305`, capacity: 8, floor: 3, layout: "Study Room", furniture: "Table & Chairs", photo: null, link: null },
+          {
+            name: `${bldg} 101`,
+            capacity: 120,
+            floor: 1,
+            layout: "Rows",
+            furniture: "Fixed Tablets",
+            photo: null,
+            link: null,
+          },
+          {
+            name: `${bldg} 202`,
+            capacity: 40,
+            floor: 2,
+            layout: "Moveable Tables",
+            furniture: "Moveable Chairs",
+            photo: null,
+            link: null,
+          },
+          {
+            name: `${bldg} 305`,
+            capacity: 8,
+            floor: 3,
+            layout: "Study Room",
+            furniture: "Table & Chairs",
+            photo: null,
+            link: null,
+          },
         ],
         pois: [
-          { name: "Campus Coffee", service_type: "cafe", url: "https://food.ubc.ca/", photo: null, hours: "M-F: 8 am - 4 pm", contact: null },
-          { name: `${name} Services Desk`, service_type: "campus_services", url: null, photo: null, hours: "M-F: 9 am - 5 pm", contact: "Phone: (604) 822-0000" },
+          {
+            name: "Campus Coffee",
+            service_type: "cafe",
+            url: "https://food.ubc.ca/",
+            photo: null,
+            hours: "M-F: 8 am - 4 pm",
+            contact: null,
+          },
+          {
+            name: `${name} Services Desk`,
+            service_type: "campus_services",
+            url: null,
+            photo: null,
+            hours: "M-F: 9 am - 5 pm",
+            contact: "Phone: (604) 822-0000",
+          },
         ],
         availability: {
           as_of: new Date().toISOString(),
           rooms: [
-            { title: `${bldg} Study Room A`, capacity: 6, url: "https://libcal.library.ubc.ca/", thumbnail: null, freeNow: true, freeUntil: "17:00", nextFree: null },
-            { title: `${bldg} Study Room B`, capacity: 10, url: "https://libcal.library.ubc.ca/", thumbnail: null, freeNow: false, freeUntil: null, nextFree: "15:30" },
+            {
+              title: `${bldg} Study Room A`,
+              capacity: 6,
+              url: "https://libcal.library.ubc.ca/",
+              thumbnail: null,
+              freeNow: true,
+              freeUntil: "17:00",
+              nextFree: null,
+            },
+            {
+              title: `${bldg} Study Room B`,
+              capacity: 10,
+              url: "https://libcal.library.ubc.ca/",
+              thumbnail: null,
+              freeNow: false,
+              freeUntil: null,
+              nextFree: "15:30",
+            },
           ],
         },
       };

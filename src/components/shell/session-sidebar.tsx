@@ -1,9 +1,8 @@
 "use client";
 
-// Session sidebar: list from GET /api/sessions grouped by recency,
-// "New Conversation" mints a client-side UUID, selecting a session loads it.
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
+import { useApi } from "@/src/components/providers";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { motion, useReducedMotion } from "motion/react";
@@ -19,6 +18,117 @@ function groupSessions(sessions: SessionSummary[]): Array<[SessionGroup, Session
     else buckets.set(group, [session]);
   }
   return SESSION_GROUP_ORDER.filter((g) => buckets.has(g)).map((g) => [g, buckets.get(g) ?? []]);
+}
+
+function SessionItem({
+  session,
+  active,
+  onOpen,
+  onRefresh,
+}: {
+  session: SessionSummary;
+  active: boolean;
+  onOpen: () => void;
+  onRefresh: () => void;
+}) {
+  const api = useApi();
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function startRename() {
+    setEditValue(session.title?.trim() || "");
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }
+
+  async function commitRename() {
+    const trimmed = editValue.trim();
+    setEditing(false);
+    if (!trimmed || trimmed === session.title) return;
+    try {
+      await api.renameSession(session.session_id, trimmed);
+      onRefresh();
+    } catch {
+      /* best effort */
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    try {
+      await api.deleteSession(session.session_id);
+      onRefresh();
+    } catch {
+      /* best effort */
+    }
+    setConfirming(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="flex h-9 items-center gap-1 px-1">
+        <input
+          ref={inputRef}
+          type="text"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitRename();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={commitRename}
+          maxLength={80}
+          className="bg-surface-container-low text-on-surface h-7 min-w-0 flex-1 rounded-md px-2 text-sm outline-none"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="group relative flex items-center">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-current={active ? "page" : undefined}
+        title={session.title}
+        className={`focus-visible:ring-primary/40 flex h-9 w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
+          active
+            ? "bg-accent-subtle text-primary border-primary border-l-2"
+            : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+        }`}
+      >
+        <Icon name="chat1" size={16} className="shrink-0" />
+        <span className="truncate text-sm">{session.title?.trim() || "Untitled"}</span>
+      </button>
+      <div className="absolute right-1 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={startRename}
+          aria-label="Rename"
+          className="text-on-surface-variant hover:text-primary hover:bg-surface-container-high flex size-6 items-center justify-center rounded-md"
+        >
+          <Icon name="pencil" size={12} />
+        </button>
+        <button
+          type="button"
+          onClick={handleDelete}
+          aria-label={confirming ? "Confirm delete" : "Delete"}
+          className={`flex size-6 items-center justify-center rounded-md ${
+            confirming
+              ? "text-error bg-error-container/40"
+              : "text-on-surface-variant hover:text-error hover:bg-error-container/40"
+          }`}
+        >
+          <Icon name="close" size={12} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 interface SessionSidebarProps {
@@ -140,20 +250,12 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
                             : { duration: 0 }
                         }
                       >
-                        <button
-                          type="button"
-                          onClick={() => openSession(session.session_id)}
-                          aria-current={active ? "page" : undefined}
-                          title={session.title}
-                          className={`focus-visible:ring-primary/40 flex h-9 w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
-                            active
-                              ? "bg-accent-subtle text-primary border-primary border-l-2"
-                              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                          }`}
-                        >
-                          <Icon name="chat1" size={16} className="shrink-0" />
-                          <span className="truncate text-sm">{session.title?.trim() || "Untitled"}</span>
-                        </button>
+                        <SessionItem
+                          session={session}
+                          active={active}
+                          onOpen={() => openSession(session.session_id)}
+                          onRefresh={refreshSessions}
+                        />
                       </motion.li>
                     );
                   })}

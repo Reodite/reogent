@@ -73,6 +73,25 @@ export async function updateSessionTitle(sessionId: string, title: string): Prom
   await getPool().query(`UPDATE sessions SET title = $2 WHERE id = $1`, [sessionId, title]);
 }
 
+/** Renames a session. Returns false if session doesn't belong to user. */
+export async function renameSession(userId: string, sessionId: string, title: string): Promise<boolean> {
+  const { rowCount } = await getPool().query(`UPDATE sessions SET title = $2 WHERE id = $1 AND user_id = $3`, [
+    sessionId,
+    title,
+    userId,
+  ]);
+  return (rowCount ?? 0) > 0;
+}
+
+/** Deletes a session and its messages. Returns false if session doesn't belong to user. */
+export async function deleteSession(userId: string, sessionId: string): Promise<boolean> {
+  const pool = getPool();
+  const { rowCount } = await pool.query(`DELETE FROM sessions WHERE id = $1 AND user_id = $2`, [sessionId, userId]);
+  if ((rowCount ?? 0) === 0) return false;
+  await pool.query(`DELETE FROM messages WHERE session_id = $1`, [sessionId]);
+  return true;
+}
+
 export async function getProfile(userId: string): Promise<Profile> {
   const { rows } = await getPool().query(`SELECT preferences, email, updated_at FROM profiles WHERE user_id = $1`, [
     userId,

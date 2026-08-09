@@ -59,6 +59,8 @@ const BODIES = {
     '<path fill="currentColor" d="M8.464 11.21a1 1 0 0 0-1.414 1.414l.707-.707zm2.122 3.535l-.707.707a1 1 0 0 0 1.414 0zm6.364-4.95a1 1 0 0 0-1.415-1.414l.707.707zM21 12h-1a8 8 0 0 1-8 8v2c5.523 0 10-4.477 10-10zm-9 9v-1a8 8 0 0 1-8-8H2c0 5.523 4.477 10 10 10zm-9-9h1a8 8 0 0 1 8-8V2C6.477 2 2 6.477 2 12zm9-9v1a8 8 0 0 1 8 8h2c0-5.523-4.477-10-10-10zm-4.243 8.917l-.707.707l2.829 2.828l.707-.707l.707-.707l-2.829-2.828zm2.829 2.828l.707.707l5.657-5.657l-.707-.707l-.708-.707l-5.656 5.657z"/>',
   computer:
     '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Zm5 15h8m-4-4v4"/>',
+  pencil:
+    '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20h4L18.5 9.5a2.121 2.121 0 0 0-3-3L5 17v3m9.5-13.5l3 3"/>',
 } as const;
 
 export type IconName = keyof typeof BODIES;

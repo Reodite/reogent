@@ -35,6 +35,10 @@ export interface ChatApi {
   listSessions(): Promise<SessionSummary[]>;
   /** GET /api/sessions/{id} — messages in chronological order; 404 if not the caller's. */
   getSession(id: string): Promise<ChatMessage[]>;
+  /** DELETE /api/sessions/{id} — delete a session and its messages. */
+  deleteSession(id: string): Promise<void>;
+  /** PATCH /api/sessions/{id} — rename a session. */
+  renameSession(id: string, title: string): Promise<void>;
   /** GET /api/profile */
   getProfile(): Promise<Profile>;
   /** PUT /api/profile */
@@ -191,6 +195,9 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     chat: chatStream,
     listSessions: () => request<SessionSummary[]>("/sessions"),
     getSession: (id) => request<ChatMessage[]>(`/sessions/${encodeURIComponent(id)}`),
+    deleteSession: (id) => request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    renameSession: (id, title) =>
+      request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) }),
     getProfile: () => request<Profile>("/profile"),
     putProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
     getGeo: (name) => request<FeatureCollection>(`/geo/${name}`),
