@@ -1,6 +1,6 @@
 import { featureCentroid, featuresBounds, findBuilding, haversineMeters, type BuildingFeature } from "@/src/lib/geo";
-import type { FeatureCollection } from "geojson";
 import fc from "fast-check";
+import type { FeatureCollection } from "geojson";
 import { describe, expect, it } from "vitest";
 
 function square(cx: number, cy: number, half: number, properties: Record<string, unknown> = {}): BuildingFeature {
@@ -41,10 +41,10 @@ describe("featureCentroid", () => {
   it("stays inside the bounding box for any simple polygon (property)", () => {
     fc.assert(
       fc.property(
-        fc.array(
-          fc.tuple(fc.double({ min: -1, max: 1, noNaN: true }), fc.double({ min: -1, max: 1, noNaN: true })),
-          { minLength: 3, maxLength: 12 },
-        ),
+        fc.array(fc.tuple(fc.double({ min: -1, max: 1, noNaN: true }), fc.double({ min: -1, max: 1, noNaN: true })), {
+          minLength: 3,
+          maxLength: 12,
+        }),
         (points) => {
           // GeoJSON rings must be simple; sorting by angle around the vertex
           // mean yields a star-shaped (non-self-intersecting) ring.
@@ -97,6 +97,64 @@ describe("findBuilding", () => {
   it("returns null for unknown or blank queries", () => {
     expect(findBuilding(collection, "HOGWARTS")).toBeNull();
     expect(findBuilding(collection, "  ")).toBeNull();
+  });
+
+  it("returns null for malformed collections", () => {
+    expect(findBuilding({ type: "FeatureCollection", features: [] }, "ICCS")).toBeNull();
+    expect(findBuilding(null as unknown as FeatureCollection, "ICCS")).toBeNull();
+    expect(findBuilding({ type: "FeatureCollection" } as unknown as FeatureCollection, "ICCS")).toBeNull();
+  });
+
+  it("skips features with missing geometry.coordinates", () => {
+    const broken: FeatureCollection = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: { BLDG_CODE: "X" },
+          geometry: { type: "Polygon" },
+        } as unknown as BuildingFeature,
+      ],
+    };
+    expect(findBuilding(broken, "X")).toBeNull();
+  });
+});
+
+describe("featureCentroid edge cases", () => {
+  it("returns null for features with NaN coordinates", () => {
+    const feature: BuildingFeature = {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [NaN, NaN],
+            [NaN, NaN],
+            [NaN, NaN],
+            [NaN, NaN],
+          ],
+        ],
+      },
+    };
+    expect(featureCentroid(feature)).toBeNull();
+  });
+
+  it("returns null for rings with fewer than 3 points", () => {
+    const feature: BuildingFeature = {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [0, 0],
+            [1, 1],
+          ],
+        ],
+      },
+    };
+    expect(featureCentroid(feature)).toBeNull();
   });
 });
 
