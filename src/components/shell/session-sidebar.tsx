@@ -112,7 +112,7 @@ export function SessionSidebar({ onCollapse }: SessionSidebarProps = {}) {
 
         {!sessionsLoading && !sessionsError && sessions.length === 0 && (
           <p className="text-body-sm text-muted px-2 py-3">
-            No conversations yet. Start one and it will be saved here.
+            Your conversations will appear here. Each one keeps its map state too.
           </p>
         )}
 
