@@ -99,7 +99,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           </button>
         )}
       </form>
-      <div className="mt-2 flex items-center justify-between px-1">
+      <div className="mt-2 flex items-center justify-center px-1">
         {showDisclaimer ? (
           <p className="text-muted text-center text-xs">AI can make mistakes. Verify important information.</p>
         ) : (
