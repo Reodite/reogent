@@ -168,6 +168,35 @@ function FollowUpChips({
   );
 }
 
+const CAPABILITIES = [
+  { icon: "location" as const, label: "Routes", example: "How do I get from the Nest to Buchanan?" },
+  { icon: "book2" as const, label: "Courses", example: "Find 3-credit CPSC courses with no prereqs" },
+  { icon: "currencyDollar" as const, label: "Tuition", example: "Tuition per credit for international Science?" },
+  { icon: "map" as const, label: "Buildings", example: "Where is the Aquatic Centre?" },
+  { icon: "search" as const, label: "Grades", example: "Grade distribution for CHEM 121?" },
+  { icon: "calendar" as const, label: "Dates", example: "When is the last day to drop without a W?" },
+  { icon: "chat1" as const, label: "Spaces", example: "Are there free rooms in IKB right now?" },
+  { icon: "route" as const, label: "More", example: "Events, parking, admissions, food..." },
+];
+
+function CapabilitiesCard({ onSend }: { onSend: (text: string) => void }) {
+  return (
+    <div className="mt-4 grid max-w-md grid-cols-2 gap-2 sm:grid-cols-4">
+      {CAPABILITIES.map((cap) => (
+        <button
+          key={cap.label}
+          type="button"
+          onClick={() => (cap.example.endsWith("...") ? undefined : onSend(cap.example))}
+          className="bg-surface-container-low hover:bg-surface-container-high flex flex-col items-center gap-1.5 rounded-xl px-3 py-3 text-center transition-colors duration-150"
+        >
+          <Icon name={cap.icon} size={18} className="text-primary" />
+          <span className="text-on-surface-variant text-xs font-medium">{cap.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function toConversation(messages: DisplayMessage[]): ChatMessage[] {
   return messages.map(({ role, content }) => ({ role, content }));
 }
@@ -573,10 +602,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
                 <Icon name="school" size={30} />
               </span>
               <h2 className="text-on-surface mt-6 text-xl font-medium tracking-[-0.025em]">{greeting}</h2>
-              <p className="text-on-surface-variant mt-2 max-w-80 text-sm leading-relaxed">
-                Courses, prerequisites, tuition, walking routes, study spaces, grades — I look it up in real UBC data so
-                you don't have to.
-              </p>
+              <CapabilitiesCard onSend={send} />
               <nav aria-label="Suggested questions" className="mt-6 flex max-w-xl flex-wrap justify-center gap-3">
                 {randomSuggestions.map((suggestion, i) => (
                   <button
