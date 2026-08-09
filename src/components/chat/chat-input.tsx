@@ -14,12 +14,13 @@ export interface ChatInputHandle {
 interface ChatInputProps {
   disabled: boolean;
   thinking: boolean;
+  showDisclaimer: boolean;
   onSend: (text: string) => void;
   onStop?: () => void;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { disabled, thinking, onSend, onStop },
+  { disabled, thinking, showDisclaimer, onSend, onStop },
   ref,
 ) {
   const [value, setValue] = useState("");
@@ -99,7 +100,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         )}
       </form>
       <div className="mt-2 flex items-center justify-between px-1">
-        <p className="text-muted text-center text-xs">AI can make mistakes. Verify important information.</p>
+        {showDisclaimer ? (
+          <p className="text-muted text-center text-xs">AI can make mistakes. Verify important information.</p>
+        ) : (
+          <span />
+        )}
         {value.length > 9000 && (
           <span className="text-muted text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
         )}

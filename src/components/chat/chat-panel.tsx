@@ -629,6 +629,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           ref={inputRef}
           disabled={sending || historyState !== "ready"}
           thinking={sending}
+          showDisclaimer={messages.length > 0}
           onSend={send}
           onStop={sending ? stopGenerating : undefined}
         />
