@@ -212,13 +212,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </motion.header>
 
+        <SidebarDrawer />
+
         <div
           data-sessions-state={sessionsCollapsed ? "collapsed" : "expanded"}
           inert={sidebarOpen || mobileMapOpen || undefined}
           className="shell-body min-h-0 flex-1"
         >
-          <SidebarDrawer />
-
           <main
             data-map-state={mapOpen ? "open" : "collapsed"}
             className="chat-workspace min-h-0 min-w-0 flex-1 gap-3 p-3"
