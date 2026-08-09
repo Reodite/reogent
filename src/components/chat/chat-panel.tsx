@@ -475,7 +475,8 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
       if (!activeSessionId) {
         activeSessionId = uuid();
         setSessionId(activeSessionId);
-        router.replace(`/chat/${activeSessionId}`, { scroll: false });
+        // Update URL without triggering a navigation/remount
+        window.history.replaceState(null, "", `/chat/${activeSessionId}`);
       }
       const userMessage: DisplayMessage = { id: nextId(), role: "user", content: text };
       const conversation = toConversation([...messagesRef.current, userMessage]);
@@ -486,7 +487,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
       announce("Message sent");
       runExchange(conversation, activeSessionId);
     },
-    [sending, runExchange, announce, addOptimisticSession, sessionId, router],
+    [sending, runExchange, announce, addOptimisticSession, sessionId],
   );
 
   const retry = useCallback(() => {
