@@ -96,21 +96,30 @@ function SessionItem({
         onClick={onOpen}
         aria-current={active ? "page" : undefined}
         title={session.title}
-        className={`focus-visible:ring-primary/40 flex h-9 w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
+        className={`focus-visible:ring-primary/40 flex h-9 w-full items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
           active
             ? "bg-accent-subtle text-primary border-primary border-l-2"
-            : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+            : "text-on-surface-variant group-hover:bg-surface-container-high group-hover:text-on-surface"
         }`}
       >
         <Icon name="chat1" size={16} className="shrink-0" />
         <span className="truncate text-sm">{session.title?.trim() || "Untitled"}</span>
       </button>
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 w-20 rounded-r-lg opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+        style={{
+          background: active
+            ? "linear-gradient(to right, transparent, var(--accent-subtle) 40%)"
+            : "linear-gradient(to right, transparent, var(--surface-container-high) 40%)",
+        }}
+        aria-hidden="true"
+      />
       <div className="absolute right-1 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
         <button
           type="button"
           onClick={startRename}
           aria-label="Rename"
-          className="text-on-surface-variant hover:text-primary hover:bg-surface-container-high flex size-6 items-center justify-center rounded-md"
+          className="text-on-surface-variant hover:text-primary flex size-6 items-center justify-center rounded-md"
         >
           <Icon name="pencil" size={12} />
         </button>
