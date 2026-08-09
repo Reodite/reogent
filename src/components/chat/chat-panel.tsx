@@ -115,9 +115,9 @@ class ComposerBoundary extends Component<{ children: ReactNode }, { failed: bool
       return (
         <div className="shrink-0 px-3 pt-2 pb-3 text-center sm:px-4">
           <p className="text-muted text-xs">
-            Input crashed.{" "}
+            Something went wrong.{" "}
             <button type="button" onClick={() => this.setState({ failed: false })} className="text-primary underline">
-              Reload composer
+              Tap to restore
             </button>
           </p>
         </div>
