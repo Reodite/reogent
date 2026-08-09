@@ -193,7 +193,7 @@ function LandingContent() {
                 facts you can trust.
               </motion.p>
               <motion.div
-                className="mt-8 flex items-center justify-center gap-3 sm:mt-10"
+                className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:mt-10"
                 initial={skipAnim ? false : { opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.32 }}
@@ -323,7 +323,7 @@ function LandingContent() {
             Courses, buildings, deadlines. One conversation away.
           </motion.p>
           <motion.div
-            className="mt-8 flex items-center justify-center gap-3"
+            className="mt-8 flex flex-wrap items-center justify-center gap-3"
             initial={skipAnim ? false : featureItemVariant.hidden}
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
