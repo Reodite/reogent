@@ -110,7 +110,7 @@ export function ProductMock({ inView, chatZ, mapZ }: ProductMockProps) {
       >
         {/* Map preview — theme-aware */}
         <Image
-          src="/map-light.png"
+          src="/map-light.webp"
           alt=""
           fill
           className="object-cover dark:hidden"
@@ -118,7 +118,7 @@ export function ProductMock({ inView, chatZ, mapZ }: ProductMockProps) {
           draggable={false}
         />
         <Image
-          src="/map-dark.png"
+          src="/map-dark.webp"
           alt=""
           fill
           className="hidden object-cover dark:block"
