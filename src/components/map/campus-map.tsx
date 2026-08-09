@@ -753,7 +753,8 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   }, [buildings, highlight, focusNonce, status, routePath]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-2xl">
+    // biome-ignore lint/a11y/noStaticElementInteractions: mouseleave clears tooltip
+    <div className="relative h-full w-full overflow-hidden rounded-2xl" onMouseLeave={() => setPicked(null)}>
       <div
         ref={containerRef}
         className="h-full w-full"
