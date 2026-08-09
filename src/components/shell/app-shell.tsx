@@ -19,21 +19,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 function RequireAuth({ children }: { children: ReactNode }) {
   const auth = useAppAuth();
   const router = useRouter();
-  const wasSignedIn = useRef(false);
 
   useEffect(() => {
-    if (auth.status === "signedIn") {
-      wasSignedIn.current = true;
-      return;
-    }
+    if (auth.status === "signedIn") return;
     if (auth.status === "signedOut") {
-      // Ignore transient signedOut if user was recently signedIn (token refresh race)
-      if (wasSignedIn.current) {
-        const timer = setTimeout(() => {
-          if (auth.status === "signedOut") router.replace("/login");
-        }, 500);
-        return () => clearTimeout(timer);
-      }
       router.replace("/login");
     }
   }, [auth, router]);
