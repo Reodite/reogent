@@ -58,7 +58,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       <form
         data-thinking={thinking}
         aria-busy={thinking}
-        className="chat-composer neu-inset bg-surface-container-low relative flex items-center rounded-2xl p-1.5 transition-[box-shadow] duration-150"
+        className="chat-composer neu-inset bg-surface-container-low relative flex items-end rounded-2xl p-1.5 transition-[box-shadow] duration-150"
         onSubmit={(event) => {
           event.preventDefault();
           submit();
@@ -77,7 +77,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           onKeyDown={onKeyDown}
           placeholder={PLACEHOLDER}
           aria-label="Message the assistant"
-          className="text-on-surface placeholder:text-muted relative z-10 block max-h-24 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none disabled:opacity-60"
+          className="text-on-surface placeholder:text-muted relative z-10 block max-h-24 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-3 py-3 text-sm outline-none disabled:opacity-60"
         />
         {onStop ? (
           <button
@@ -99,16 +99,16 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           </button>
         )}
       </form>
-      <div className="mt-2 flex items-center justify-center px-1">
-        {showDisclaimer ? (
-          <p className="text-muted text-center text-xs">AI can make mistakes. Verify important information.</p>
-        ) : (
-          <span />
-        )}
-        {value.length > 9000 && (
-          <span className="text-muted text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
-        )}
-      </div>
+      {(showDisclaimer || value.length > 9000) && (
+        <div className="mt-2 flex items-center justify-between px-1">
+          {showDisclaimer && (
+            <p className="text-muted flex-1 text-center text-xs">AI can make mistakes. Verify important information.</p>
+          )}
+          {value.length > 9000 && (
+            <span className="text-muted ml-auto text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
+          )}
+        </div>
+      )}
     </div>
   );
 });
