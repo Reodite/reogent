@@ -40,8 +40,13 @@ export default function NewChatPage() {
   }
 
   return (
-    <div className="flex h-full items-center justify-center" role="status" aria-label="Starting new conversation">
+    <div
+      className="flex h-full flex-col items-center justify-center gap-3"
+      role="status"
+      aria-label="Starting new conversation"
+    >
       <div className="bg-surface-container h-6 w-6 animate-pulse rounded-full" />
+      <p className="text-muted text-xs">Starting your conversation…</p>
     </div>
   );
 }
