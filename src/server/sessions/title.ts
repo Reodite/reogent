@@ -5,29 +5,34 @@ const TITLE_PROMPT = `Generate a short title (max 60 chars) for this conversatio
 
 /** Fire-and-forget: generates a title from the first exchange and updates the DB. */
 export function generateSessionTitle(sessionId: string, userMessage: string, assistantMessage: string): void {
-  // Run in background — don't await, don't block the response
   void (async () => {
     try {
       const result = await converse({
         system: TITLE_PROMPT,
         messages: [
-          { role: "user", content: [{ text: userMessage }] },
-          { role: "assistant", content: [{ text: assistantMessage.slice(0, 500) }] },
-          { role: "user", content: [{ text: "Generate a title for this conversation." }] },
+          {
+            role: "user",
+            content: [
+              {
+                text: `User asked: ${userMessage}\n\nAssistant replied: ${assistantMessage.slice(0, 300)}\n\nGenerate a short title for this conversation.`,
+              },
+            ],
+          },
         ],
         toolSpecs: [],
       });
-      const title = (result.message.content ?? [])
+      const raw = (result.message.content ?? [])
         .map((b) => b.text)
         .filter(Boolean)
         .join("")
         .trim()
+        .replace(/^["']|["']$/g, "") // strip wrapping quotes
         .slice(0, 60);
-      if (title) {
-        await updateSessionTitle(sessionId, title);
+      if (raw) {
+        await updateSessionTitle(sessionId, raw);
       }
-    } catch {
-      // Title generation is best-effort; silently ignore failures
+    } catch (e) {
+      console.error("[title-gen] Failed to generate session title:", e);
     }
   })();
 }
