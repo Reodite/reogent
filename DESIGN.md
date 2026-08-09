@@ -260,9 +260,9 @@ The landing page uses a larger, more expressive type scale:
 
 ## Layout
 
-Flexbox with animated width/opacity transitions:
+Flexbox with spring-driven width animations:
 
-**Desktop (>=1024px):** `shell-body` is flex row. Sidebar (`sessions-aside`) transitions width between 3.75rem (collapsed) and 17rem (expanded) at 350ms `--neu-ease`. Chat workspace (`chat-workspace`) is a flex row containing chat panel (flex-1) and map aside (50% when open, 3.75rem collapsed rail when closed). Map width transitions at 350ms.
+**Desktop (>=1024px):** `shell-body` is flex row. Sidebar (`sessions-aside`) animates width between 3.75rem (collapsed) and 17rem (expanded) via spring physics (stiffness: 300, damping: 30). Chat workspace (`chat-workspace`) is a flex row containing chat panel (flex-1) and map aside (50% when open, 3.75rem collapsed rail when closed). Map width animates with the same spring config. Content layers crossfade with 200ms CSS opacity transitions (75ms delay on reveal, immediate on hide).
 
 **Tablet (640-1024px):** Sidebar is a drawer (slide-over with backdrop scrim), not a persistent column. Chat + map share the workspace as flex row. Map collapse supported.
 
@@ -405,7 +405,7 @@ State changes through shadow transformation + micro-translate.
 - **Suggestion pills** (empty state): `border border-primary text-primary rounded-full text-xs px-4 py-3 min-h-[44px] font-medium`. Hover: `bg-accent-subtle`. Focus: `ring-primary/40 ring-2 ring-offset-2`. Staggered entrance via `animationDelay`.
 - **Inline action pills** ("Show on map"): `border border-primary text-primary rounded-full px-3 py-1.5 text-xs font-medium min-h-[44px]`. Compact padding for use within tool result cards. Focus: `ring-primary/40 ring-2 ring-offset-2`. Active: `scale-95`.
 - **Warning cards**: `bg-tertiary-container text-on-tertiary-container rounded-xl px-3 py-2 text-body-sm`. Icon + text in flex row.
-- **Message entrance**: `animate-message-in`, 200ms ease-out, opacity 0 to 1 + translateY(6px to 0).
+- **Message entrance**: Spring physics (stiffness: 400, damping: 25) — opacity 0→1, translateY(6px→0). Reduced-motion: instant (`duration: 0`).
 
 ### Assistant Markdown (`.assistant-markdown`)
 
@@ -464,14 +464,16 @@ Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + op
 
 ### In-App Motion
 
-- **Easing**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for layout transitions (sidebar collapse, map collapse). Profile menu splits: opacity/filter at ease-out, transform at `--neu-ease`.
-- **Duration**: 150ms for micro-interactions (button hover, color transitions). 200ms for entrances (message-in, details-open). 250-350ms for layout shifts (sidebar width, map width, opacity crossfades). 300ms for mobile bottom sheet slide.
+- **Spring physics**: Layout state changes (sidebar collapse/expand, map panel collapse/expand) use `type: "spring"` with `stiffness: 300, damping: 30` via the `motion` library. Slightly underdamped for a natural settle.
+- **Message entrance**: Spring (stiffness: 400, damping: 25) — opacity 0→1, translateY(6px→0). Quicker than panels, gentle overshoot.
+- **Tool badge stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.05`. Snappy, minimal overshoot.
+- **Session list stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.03` capped at 0.3s total.
+- **Suggestion pills / error banners**: CSS `animate-message-in` (200ms ease-out, opacity + translateY) with `animationDelay` for stagger. CSS rather than spring because staggered delay is cleaner for static lists.
 - **Button states**: translateY(-1px) on hover, translateY(1px) + scale(0.98) on press. 150ms ease-out.
 - **Menu entrance**: scale(0.97) + opacity(0) + blur(2px) + translateY(-6px) → scale(1) + opacity(1) + blur(0) + translateY(0). Opacity/filter: 180ms ease-out. Transform: 240ms `--neu-ease`.
-- **Message entrance**: `animate-message-in` — opacity 0→1, translateY(6px→0), 200ms ease-out.
 - **Details expand**: opacity 0→1, translateY(-4px→0), 200ms `--neu-ease`.
-- **Sidebar content crossfade**: opacity transitions with 80ms delay on reveal, 0ms on hide. 150-200ms. Map tab layer uses 120ms reveal delay (slightly longer to let content clear first).
-- **Staggered lists**: Session items enter with `opacity: 0, y: 6` → visible, stagger delay `i * 0.03` capped at 0.3s total. Tool badges stagger at `i * 0.05` with y: 4.
+- **Sidebar/map content crossfade**: CSS opacity transitions (200ms) with 75ms delay on reveal, immediate on hide. Coordinates with the spring settle.
+- **Easing fallback**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions (mobile drawer, bottom sheet, profile menu, button micro-interactions). Duration: 150ms for micro-interactions, 250-300ms for mobile panel slides.
 
 ### Landing Page Motion
 
@@ -489,7 +491,7 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 
 ### Reduced Motion
 
-`prefers-reduced-motion: reduce` collapses all animations to 0.01ms with single iteration. Scroll reveals show immediately (opacity: 1). Thinking orb freezes. View-transition ripple disabled via `animation: none`.
+`prefers-reduced-motion: reduce` collapses all CSS animations to 0.01ms with single iteration. Spring animations pass `{ duration: 0 }` explicitly when `useReducedMotion()` returns true, resolving to their end state instantly. Scroll reveals show immediately (opacity: 1). Thinking orb freezes. View-transition ripple disabled via `animation: none`.
 
 ## Accessibility Patterns
 
@@ -505,7 +507,7 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 
 - **Do** apply `.neu-panel` / `.neu-raised` / `.neu-inset` for composed surfaces. They carry the unified shadow recipe.
 - **Do** use `--muted` (`#5a6066`) for all subdued text (placeholders, timestamps, metadata). Never `--outline` or `--outline-variant` for text.
-- **Do** use `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for all panel/layout animations. Duration: 150-350ms depending on travel distance.
+- **Do** use spring physics (via `motion`) for panel/layout state changes (sidebar, map). Config: stiffness 300, damping 30. Use `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions (mobile drawer, bottom sheet, menus). Duration: 150-300ms depending on travel distance.
 - **Do** respect `prefers-reduced-motion`. All animations collapse to 0.01ms, reveals show at once, the thinking orb freezes.
 - **Do** use `[data-theme="dark"]` for theme switching. Never `prefers-color-scheme` media query. The user controls the theme, not the OS.
 - **Do** maintain whisper-level dimension on all surfaces at rest. Depth is the resting state, not a hover effect.
@@ -524,5 +526,5 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 - **Don't** apply neumorphic depth to text content. Depth frames containers. Content stays flat inside.
 - **Don't** use font-weight 700 or above. Maximum is 600 (markdown strong, table headers, list markers).
 - **Don't** use primary indigo for background fills, decorative accents, or large surfaces. It means "interactive" or "active state."
-- **Don't** use spring physics or blur reveals in the app shell. Those belong to the landing page only. In-app motion uses `--neu-ease` (or ease-out for opacity/filter in menus).
+- **Don't** use blur reveals in the app shell. Those belong to the landing page only. In-app springs are for layout state changes; CSS `--neu-ease` handles micro-interactions and gesture-driven slides.
 - **Don't** create new shadow recipes without documenting them. Use `--neu-surface-shadow` or `--neu-inset-shadow` from Tier 2, the five elevation utilities from Tier 1, or the sanctioned `.chat-message-well` recipe.
