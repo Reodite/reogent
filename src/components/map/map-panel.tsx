@@ -265,7 +265,7 @@ export function MapPanel() {
         >
           <Icon name="fullscreen" size={17} />
         </button>
-        <span className="mt-4 text-xs font-medium tracking-[0.06em] select-none [writing-mode:vertical-rl]">
+        <span className="my-auto text-xs font-medium tracking-[0.06em] select-none [writing-mode:vertical-rl]">
           Campus map
         </span>
       </aside>
