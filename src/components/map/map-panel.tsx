@@ -180,6 +180,15 @@ function MapSurface({ onCollapse }: { onCollapse: () => void }) {
             <div className="bg-surface-container-low absolute inset-0 animate-pulse" aria-hidden="true" />
           )}
 
+          {/* Empty-state hint before any highlight */}
+          {status === "ready" && !highlight && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 flex justify-center">
+              <p className="bg-surface/80 text-muted rounded-full px-4 py-2 text-xs backdrop-blur-sm">
+                Ask about a building or route to see it here
+              </p>
+            </div>
+          )}
+
           {/* Route info — floating top-left */}
           <div className="absolute top-3 left-3 z-10 max-w-[75%]">
             <RouteInfoCard />
