@@ -622,7 +622,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
                     animate={{ opacity: 1, y: 0, transition: { duration: 0.15 } }}
                     exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
                   >
-                    <TypingIndicator slow={slowResponse} />
+                    <TypingIndicator slow={slowResponse} isFirstMessage={messages.length <= 1} />
                   </motion.div>
                 )}
             </AnimatePresence>

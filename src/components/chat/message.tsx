@@ -279,6 +279,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 });
 
 const THINKING_LABELS = ["Thinking", "Looking that up", "Searching", "On it", "Checking"];
+const FIRST_MESSAGE_LABELS = ["Planning my approach", "Figuring out what to look up", "Getting started"];
 const SLOW_LABELS = [
   "Still digging — almost there",
   "Cross-referencing sources",
@@ -286,10 +287,10 @@ const SLOW_LABELS = [
   "Hang tight, this one takes a moment",
 ];
 
-export function TypingIndicator({ slow }: { slow: boolean }) {
-  const label = slow
-    ? SLOW_LABELS[Math.floor(Date.now() / 4000) % SLOW_LABELS.length]
-    : THINKING_LABELS[Math.floor(Date.now() / 3000) % THINKING_LABELS.length];
+export function TypingIndicator({ slow, isFirstMessage }: { slow: boolean; isFirstMessage?: boolean }) {
+  const pool = slow ? SLOW_LABELS : isFirstMessage ? FIRST_MESSAGE_LABELS : THINKING_LABELS;
+  const interval = slow ? 4000 : 3000;
+  const label = pool[Math.floor(Date.now() / interval) % pool.length];
   return (
     <div role="status" aria-label="The assistant is thinking">
       <div className="mb-2 flex items-center gap-2">
