@@ -15,6 +15,7 @@ import {
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ApiError, type ChatMessage } from "@/src/lib/api-types";
+import { uuid } from "@/src/lib/uuid";
 import { mergeMapHighlights } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -472,7 +473,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
       // Mint session ID on first message if this is a new chat
       let activeSessionId = sessionId;
       if (!activeSessionId) {
-        activeSessionId = crypto.randomUUID();
+        activeSessionId = uuid();
         setSessionId(activeSessionId);
         router.replace(`/chat/${activeSessionId}`, { scroll: false });
       }
