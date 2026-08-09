@@ -288,9 +288,7 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
         )}
 
         {!sessionsLoading && !sessionsError && sessions.length === 0 && (
-          <p className="text-body-sm text-muted px-2 py-3">
-            Your conversations will appear here. Each one keeps its map state too.
-          </p>
+          <p className="text-body-sm text-muted px-2 py-3">Your conversations will appear here.</p>
         )}
 
         {!sessionsLoading &&
