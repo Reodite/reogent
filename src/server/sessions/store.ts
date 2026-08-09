@@ -68,6 +68,11 @@ export async function appendExchange(
   );
 }
 
+/** Updates the title of an existing session. */
+export async function updateSessionTitle(sessionId: string, title: string): Promise<void> {
+  await getPool().query(`UPDATE sessions SET title = $2 WHERE id = $1`, [sessionId, title]);
+}
+
 export async function getProfile(userId: string): Promise<Profile> {
   const { rows } = await getPool().query(`SELECT preferences, email, updated_at FROM profiles WHERE user_id = $1`, [
     userId,

@@ -6,6 +6,7 @@ import { modules } from "@/src/server/modules";
 import { rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
 import { appendExchange } from "@/src/server/sessions/store";
+import { generateSessionTitle } from "@/src/server/sessions/title";
 import { json, requireJson, serverError } from "../http";
 
 const MAX_BODY_BYTES = 256 * 1024; // 256 KB
@@ -88,6 +89,11 @@ export async function POST(request: Request): Promise<Response> {
               doneEvent.tool_calls,
               interstitial.length > 0 ? interstitial : undefined,
             );
+            // Generate a proper title on first exchange (fire-and-forget)
+            const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;
+            if (isFirstExchange) {
+              generateSessionTitle(sessionId, lastUser.content, doneEvent.message);
+            }
           }
         } catch (e) {
           // Strip file paths and internal details before sending to client
