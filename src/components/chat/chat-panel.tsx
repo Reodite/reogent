@@ -152,9 +152,10 @@ function toConversation(messages: DisplayMessage[]): ChatMessage[] {
   return messages.map(({ role, content }) => ({ role, content }));
 }
 
-export function ChatPanel({ sessionId }: { sessionId: string }) {
+export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string | null }) {
   const api = useApi();
   const router = useRouter();
+  const [sessionId, setSessionId] = useState<string>(() => initialSessionId ?? "");
   const prefersReducedMotion = useReducedMotion();
   const { setHighlight, sessions, refreshSessions, addOptimisticSession } = useChatShell();
 
@@ -239,6 +240,12 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
     setHighlight(null);
     pendingRetry.current = null;
     setSendError(null);
+    // New chat (no session ID yet) — start empty, skip fetch
+    if (!sessionId) {
+      setMessages([]);
+      setHistoryState("ready");
+      return;
+    }
     let cancelled = false;
     setHistoryState("loading");
     api
@@ -329,7 +336,8 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   }, [sending]);
 
   const runExchange = useCallback(
-    (conversation: ChatMessage[]) => {
+    (conversation: ChatMessage[], overrideSessionId?: string) => {
+      const activeId = overrideSessionId || sessionId;
       setSending(true);
       setSendError(null);
 
@@ -349,7 +357,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
 
       api
         .chat(
-          sessionId,
+          activeId,
           conversation,
           {
             onThinking(delta) {
@@ -460,19 +468,24 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   const send = useCallback(
     (text: string) => {
       if (sending) return;
-      // Synchronous guard: prevents double-fire in the same tick before React batches setSending
       if (abortRef.current) return;
+      // Mint session ID on first message if this is a new chat
+      let activeSessionId = sessionId;
+      if (!activeSessionId) {
+        activeSessionId = crypto.randomUUID();
+        setSessionId(activeSessionId);
+        router.replace(`/chat/${activeSessionId}`, { scroll: false });
+      }
       const userMessage: DisplayMessage = { id: nextId(), role: "user", content: text };
       const conversation = toConversation([...messagesRef.current, userMessage]);
       setMessages((current) => [...current, userMessage]);
-      // Optimistically show in sidebar immediately with "New chat" placeholder
       if (messagesRef.current.length === 0) {
-        addOptimisticSession(sessionId, text.slice(0, 80) || "New chat");
+        addOptimisticSession(activeSessionId, text.slice(0, 80) || "New chat");
       }
       announce("Message sent");
-      runExchange(conversation);
+      runExchange(conversation, activeSessionId);
     },
-    [sending, runExchange, announce, addOptimisticSession, sessionId],
+    [sending, runExchange, announce, addOptimisticSession, sessionId, router],
   );
 
   const retry = useCallback(() => {
@@ -540,7 +553,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
               </button>
               <button
                 type="button"
-                onClick={() => router.push(`/chat/${crypto.randomUUID()}`)}
+                onClick={() => router.push("/chat")}
                 className="neu-primary-button bg-primary text-on-primary flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
               >
                 Start new chat

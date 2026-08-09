@@ -216,7 +216,7 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
 
   function newConversation() {
     setSidebarOpen(false);
-    router.push(`/chat/${crypto.randomUUID()}`);
+    router.push("/chat");
   }
 
   return (
