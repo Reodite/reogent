@@ -22,20 +22,40 @@ import { Component, useCallback, useEffect, useMemo, useRef, useState, type Reac
 
 type HistoryState = "loading" | "ready" | "failed";
 
-const SUGGESTIONS = [
-  "How long is the walk from IKB to ICCS?",
-  "Find 3-credit CPSC courses with no prerequisites",
-  "What's tuition per credit for international Science students?",
-  "Where can I study right now?",
-  "What are the prereqs for CPSC 310?",
-  "How do I get from the Nest to Buchanan?",
-  "What are the easiest 3-credit electives?",
-  "Show me MATH courses available in Term 1",
-  "How much does a full-time Arts degree cost per year?",
-  "What's the grade distribution for CHEM 121?",
-  "Find BIOL courses that count toward a Science breadth requirement",
-  "How far is the bus loop from the engineering buildings?",
-];
+// Suggestions grouped by category. The picker selects one from each bucket,
+// guaranteeing the first impression covers routes (map aha), courses, money, and other.
+const SUGGESTION_BUCKETS = {
+  routes: [
+    "How long is the walk from IKB to ICCS?",
+    "How do I get from the Nest to Buchanan?",
+    "How far is the bus loop from the engineering buildings?",
+    "What's the walk from the Student Union Building to Koerner Library?",
+  ],
+  courses: [
+    "Find 3-credit CPSC courses with no prerequisites",
+    "What are the prereqs for CPSC 310?",
+    "Show me MATH courses available in Term 1",
+    "Find BIOL courses that count toward a Science breadth requirement",
+    "What are the easiest 3-credit electives?",
+    "What COMM courses can I take without prerequisites?",
+    "Find 200-level ENGL courses offered in Term 2",
+  ],
+  money: [
+    "What's tuition per credit for international Science students?",
+    "How much does a full-time Arts degree cost per year?",
+    "What are the student fees for 2025W?",
+    "What's the estimated living cost for a year at UBC?",
+  ],
+  other: [
+    "Where can I study right now?",
+    "What's the grade distribution for CHEM 121?",
+    "Any events on campus this week?",
+    "Where can I park near the engineering buildings?",
+    "What are the admission requirements for Computer Science?",
+    "When is the last day to drop a course without a W?",
+    "Find coffee shops near the Nest",
+  ],
+};
 
 const GREETINGS = [
   "What can I help you find today?",
@@ -104,10 +124,15 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   // Stable greeting — pick once per mount, don't flicker on re-render.
   const greeting = useMemo(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)], []);
 
-  // Pick 4 random suggestions once per session
+  // Pick one suggestion per category, route first to guarantee map aha moment
   const randomSuggestions = useMemo(() => {
-    const shuffled = [...SUGGESTIONS].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 4);
+    const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+    return [
+      pick(SUGGESTION_BUCKETS.routes),
+      pick(SUGGESTION_BUCKETS.courses),
+      pick(SUGGESTION_BUCKETS.money),
+      pick(SUGGESTION_BUCKETS.other),
+    ];
   }, []);
 
   const inputRef = useRef<ChatInputHandle>(null);
