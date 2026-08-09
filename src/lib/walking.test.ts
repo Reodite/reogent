@@ -204,6 +204,22 @@ describe("extractPlacesHighlight", () => {
     expect(extractPlacesHighlight({ ...healthy, name: "search_courses" })).toBeNull();
     expect(extractPlacesHighlight({ ...healthy, result: { status: "error", message: "none" } })).toBeNull();
   });
+
+  it("filters out places with out-of-range or non-finite coordinates", () => {
+    const result = extractPlacesHighlight({
+      ...healthy,
+      result: {
+        places: [
+          { name: "Valid", lat: 49, lon: -123, service_type: "cafe" },
+          { name: "Bad lat", lat: 91, lon: -123, service_type: "x" },
+          { name: "NaN lon", lat: 49, lon: NaN, service_type: "x" },
+          { name: "Infinity", lat: Infinity, lon: -123, service_type: "x" },
+        ],
+      },
+    });
+    expect(result?.places).toHaveLength(1);
+    expect(result?.places[0].name).toBe("Valid");
+  });
 });
 
 describe("mock-mode journey: chat → highlight → map geometry", () => {
