@@ -45,15 +45,6 @@ function LoginContent() {
           </span>
           <h1 className="text-on-surface mb-2 text-2xl font-medium tracking-[-0.02em]">Welcome back</h1>
           <p className="text-muted mb-6 text-sm">Sign in to continue to Reogent</p>
-          <p className="text-on-surface-variant mb-6 flex items-center justify-center gap-3 text-xs">
-            <span>Courses</span>
-            <span className="text-border">·</span>
-            <span>Walking routes</span>
-            <span className="text-border">·</span>
-            <span>Tuition</span>
-            <span className="text-border">·</span>
-            <span>Grades</span>
-          </p>
           <AuthForm mode="login" />
         </div>
       </motion.div>
