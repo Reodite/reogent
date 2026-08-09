@@ -337,13 +337,13 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
     if (historyState === "ready" && !sending) inputRef.current?.focus();
   }, [historyState, sending]);
 
-  // Honest expectations: flag responses that pass 8 s (multi-tool calls run 10–30 s).
+  // Honest expectations: flag responses that pass 5s.
   useEffect(() => {
     if (!sending) {
       setSlowResponse(false);
       return;
     }
-    const timer = setTimeout(() => setSlowResponse(true), 8000);
+    const timer = setTimeout(() => setSlowResponse(true), 5000);
     return () => clearTimeout(timer);
   }, [sending]);
 
