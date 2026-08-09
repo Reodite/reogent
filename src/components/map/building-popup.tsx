@@ -38,7 +38,7 @@ function Carousel({ label, children }: { label: string; children: React.ReactNod
       </button>
       <div
         ref={scroller}
-        className="flex min-w-0 flex-1 snap-x snap-mandatory [scrollbar-width:none] gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden"
+        className="flex min-w-0 flex-1 snap-x snap-mandatory [scrollbar-width:none] gap-2 overflow-x-auto [overscroll-behavior-x:contain] [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </div>
@@ -206,7 +206,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [overscroll-behavior-y:contain] px-3.5 py-3">
         {!details && !failed && (
           <div className="flex flex-col gap-2" role="status" aria-label="Loading details">
             <div className="bg-surface-container h-32 animate-pulse rounded-lg" />
