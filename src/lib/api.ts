@@ -176,7 +176,12 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
           } else if (event.type === "turn_start" && callbacks?.onTurnStart) {
             callbacks.onTurnStart();
           } else if (event.type === "done") {
-            result = { message: event.message, tool_calls: event.tool_calls, warning: event.warning };
+            result = {
+              message: event.message,
+              tool_calls: event.tool_calls,
+              warning: event.warning,
+              follow_ups: event.follow_ups,
+            };
           } else if (event.type === "error") {
             throw new ApiError(500, event.message);
           }

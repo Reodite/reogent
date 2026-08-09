@@ -21,6 +21,8 @@ export interface DisplayMessage {
   stopped?: boolean;
   /** Interstitial blocks shown before the final answer (thinking + tool calls). */
   interstitial?: InterstitialBlock[];
+  /** LLM-generated follow-up question suggestions. */
+  followUps?: string[];
 }
 
 // Lazy-load the markdown pipeline (~80-120 KB) — only fetched once the first
