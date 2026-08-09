@@ -318,6 +318,8 @@ export function MapBottomSheet() {
   function onPointerDown(event: React.PointerEvent) {
     drag.current = { startY: event.clientY, delta: 0 };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    // Suppress CSS transition during drag for responsive feel
+    if (sheetRef.current) sheetRef.current.style.transitionProperty = "none";
   }
 
   function onPointerMove(event: React.PointerEvent) {
@@ -331,13 +333,17 @@ export function MapBottomSheet() {
     const state = drag.current;
     drag.current = null;
     if (!sheet || !state) return;
+    sheet.style.transitionProperty = "";
     sheet.style.transform = "";
     if (state.delta > sheet.offsetHeight * 0.2) setMobileMapOpen(false);
   }
 
   function onPointerCancel() {
     drag.current = null;
-    if (sheetRef.current) sheetRef.current.style.transform = "";
+    if (sheetRef.current) {
+      sheetRef.current.style.transitionProperty = "";
+      sheetRef.current.style.transform = "";
+    }
   }
 
   return (
