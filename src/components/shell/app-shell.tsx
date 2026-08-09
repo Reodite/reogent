@@ -135,7 +135,7 @@ function SidebarDrawer() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { sidebarOpen, setSidebarOpen, mapOpen, setMobileMapOpen, mobileMapOpen } = useChatShell();
+  const { sidebarOpen, setSidebarOpen, mapOpen, setMobileMapOpen, mobileMapOpen, highlight } = useChatShell();
   const [sessionsCollapsed, setSessionsCollapsed] = useState(false);
   const sessionsMenuRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
@@ -193,9 +193,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => setMobileMapOpen(true)}
               aria-label="Open campus map"
-              className="neu-button bg-surface text-on-surface-variant hover:text-primary flex size-11 items-center justify-center rounded-xl sm:hidden sm:size-9"
+              className="neu-button bg-surface text-on-surface-variant hover:text-primary relative flex size-11 items-center justify-center rounded-xl sm:hidden sm:size-9"
             >
               <Icon name="map" size={19} />
+              {highlight && !mobileMapOpen && (
+                <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" aria-hidden="true" />
+              )}
             </button>
             <ThemeToggle className="hidden sm:grid" />
             <UserMenu />
