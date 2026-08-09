@@ -53,7 +53,7 @@ function ToolBadge({ call }: { call: ToolCall }) {
   const summary = summarizeToolInput(call.input);
   return (
     <span
-      className={`inline-flex max-w-full items-center gap-2 rounded-lg px-2 py-1 font-mono text-xs ${
+      className={`inline-flex max-w-full items-center gap-2 overflow-hidden rounded-lg px-2 py-1 font-mono text-xs ${
         failed ? "bg-error-container/40 text-on-surface-variant" : "bg-secondary-container/15 text-on-surface-variant"
       }`}
       title={failed && isToolError(call.result) ? call.result.message : undefined}
