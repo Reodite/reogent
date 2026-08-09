@@ -93,7 +93,7 @@ function SessionItem({
           aria-label="Confirm rename"
           className="text-secondary hover:text-on-surface flex size-6 items-center justify-center rounded-md"
         >
-          <Icon name="checkCircle" size={14} />
+          <Icon name="check" size={14} />
         </button>
         <button
           type="button"
@@ -118,7 +118,7 @@ function SessionItem({
           aria-label="Confirm delete"
           className="text-error hover:text-on-surface flex size-6 items-center justify-center rounded-md"
         >
-          <Icon name="checkCircle" size={14} />
+          <Icon name="check" size={14} />
         </button>
         <button
           type="button"

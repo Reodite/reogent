@@ -55,6 +55,8 @@ const BODIES = {
     '<path fill="currentColor" d="M8.5 7a1 1 0 0 0 0 2zm2 2a1 1 0 1 0 0-2zm-2 2a1 1 0 1 0 0 2zm2 2a1 1 0 1 0 0-2zm-2 2a1 1 0 1 0 0 2zm2 2a1 1 0 1 0 0-2zM3 19a1 1 0 1 0 0 2zm18 2a1 1 0 1 0 0-2zM5 20h1V5H4v15zM6 4v1h7V3H6zm8 1h-1v15h2V5zm0 5v1h4V9h-4zm5 1h-1v9h2v-9zM8.5 8v1h2V7h-2zm0 4v1h2v-2h-2zm0 4v1h2v-2h-2zM3 20v1h18v-2H3zm15-10v1h2a2 2 0 0 0-2-2zm-5-6v1h2a2 2 0 0 0-2-2zM5 5h1V3a2 2 0 0 0-2 2z"/>',
   bling:
     '<path fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2" d="M9.949 5.365L11 3l1.051 2.365a12 12 0 0 0 5.083 5.585L19 12l-1.866 1.05a12 12 0 0 0-5.083 5.585L11 21l-1.051-2.365a12 12 0 0 0-5.083-5.585L3 12l1.866-1.05A12 12 0 0 0 9.95 5.365Z"/><path fill="none" stroke="currentColor" stroke-width="2" d="M19 3.745c.335.467.73.889 1.175 1.255c-.444.366-.84.787-1.175 1.254A6.7 6.7 0 0 0 17.824 5c.445-.366.84-.787 1.176-1.255Z"/>',
+  check:
+    '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l5 5L20 7"/>',
   checkCircle:
     '<path fill="currentColor" d="M8.464 11.21a1 1 0 0 0-1.414 1.414l.707-.707zm2.122 3.535l-.707.707a1 1 0 0 0 1.414 0zm6.364-4.95a1 1 0 0 0-1.415-1.414l.707.707zM21 12h-1a8 8 0 0 1-8 8v2c5.523 0 10-4.477 10-10zm-9 9v-1a8 8 0 0 1-8-8H2c0 5.523 4.477 10 10 10zm-9-9h1a8 8 0 0 1 8-8V2C6.477 2 2 6.477 2 12zm9-9v1a8 8 0 0 1 8 8h2c0-5.523-4.477-10-10-10zm-4.243 8.917l-.707.707l2.829 2.828l.707-.707l.707-.707l-2.829-2.828zm2.829 2.828l.707.707l5.657-5.657l-.707-.707l-.708-.707l-5.656 5.657z"/>',
   computer:
