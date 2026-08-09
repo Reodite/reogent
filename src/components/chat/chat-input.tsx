@@ -15,12 +15,13 @@ interface ChatInputProps {
   disabled: boolean;
   thinking: boolean;
   showDisclaimer: boolean;
+  tip?: string;
   onSend: (text: string) => void;
   onStop?: () => void;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { disabled, thinking, showDisclaimer, onSend, onStop },
+  { disabled, thinking, showDisclaimer, tip, onSend, onStop },
   ref,
 ) {
   const [value, setValue] = useState("");
@@ -99,16 +100,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           </button>
         )}
       </form>
-      {(showDisclaimer || value.length > 9000) && (
-        <div className="mt-2 flex items-center justify-between px-1">
-          {showDisclaimer && (
-            <p className="text-muted flex-1 text-center text-xs">AI can make mistakes. Verify important information.</p>
-          )}
-          {value.length > 9000 && (
-            <span className="text-muted ml-auto text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
-          )}
-        </div>
-      )}
+      <div className="mt-2 flex items-center justify-between px-1">
+        <p className="text-muted flex-1 text-center text-xs">
+          {showDisclaimer ? "AI can make mistakes. Verify important information." : tip ? `Tip: ${tip}` : null}
+        </p>
+        {value.length > 9000 && (
+          <span className="text-muted ml-auto text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
+        )}
+      </div>
     </div>
   );
 });

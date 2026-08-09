@@ -139,7 +139,7 @@ function FollowUpChips({ onSend, followUps }: { onSend: (text: string) => void; 
           key={chip}
           type="button"
           onClick={() => onSend(chip)}
-          className="border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] rounded-2xl border px-4 py-2.5 text-xs font-medium transition-colors duration-150 text-left"
+          className="border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] rounded-2xl border px-4 py-2.5 text-left text-xs font-medium transition-colors duration-150"
         >
           {chip}
         </button>
@@ -507,7 +507,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
       <div
         ref={scrollRef}
         aria-busy={historyState === "loading" || sending}
-        className="chat-message-well min-h-0 flex-1 overflow-y-auto p-4 sm:p-6"
+        className="chat-message-well min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6"
       >
         {historyState === "loading" && (
           <div
@@ -580,7 +580,6 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
                   </button>
                 ))}
               </nav>
-              <p className="text-muted mt-4 text-xs">{tip}</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -663,6 +662,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
           disabled={sending || historyState !== "ready"}
           thinking={sending}
           showDisclaimer={messages.length > 0}
+          tip={tip}
           onSend={send}
           onStop={sending ? stopGenerating : undefined}
         />
