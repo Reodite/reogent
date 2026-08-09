@@ -15,7 +15,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+const SPLASH_TIPS = [
+  "Walking routes draw on the campus map.",
+  "Grade data goes back several years.",
+  "Tuition estimates break down by program.",
+  "Room schedules update with real availability.",
+  "Ask about any building to see it on the map.",
+];
+
 function Splash({ label }: { label: string }) {
+  const tip = SPLASH_TIPS[Math.floor(Math.random() * SPLASH_TIPS.length)];
   return (
     <div className="app-shell-canvas flex min-h-svh items-center justify-center">
       <div className="neu-panel bg-surface flex flex-col items-center gap-3 rounded-2xl px-10 py-8">
@@ -24,6 +33,7 @@ function Splash({ label }: { label: string }) {
         </span>
         <span className="text-primary animate-pulse text-xl font-medium tracking-[-0.02em]">Reogent</span>
         <span className="text-body-sm text-muted">{label}</span>
+        <span className="text-muted mt-1 max-w-48 text-center text-xs">{tip}</span>
       </div>
     </div>
   );
