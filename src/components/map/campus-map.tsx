@@ -44,6 +44,24 @@ interface PickedBuilding {
   y: number;
 }
 
+const TOOLTIP_OFFSET = 12;
+const TOOLTIP_WIDTH = 240; // max-w-60 = 15rem = 240px
+const TOOLTIP_HEIGHT_EST = 56; // approximate height for two lines
+
+/** Position the building tooltip, flipping anchor when it would overflow the container. */
+function tooltipPosition(picked: PickedBuilding, container: HTMLDivElement | null): React.CSSProperties {
+  const w = container?.clientWidth ?? 800;
+  const h = container?.clientHeight ?? 600;
+
+  const fitsRight = picked.x + TOOLTIP_OFFSET + TOOLTIP_WIDTH < w;
+  const fitsBelow = picked.y + TOOLTIP_OFFSET + TOOLTIP_HEIGHT_EST < h;
+
+  return {
+    left: fitsRight ? picked.x + TOOLTIP_OFFSET : picked.x - TOOLTIP_OFFSET - TOOLTIP_WIDTH,
+    top: fitsBelow ? picked.y + TOOLTIP_OFFSET : picked.y - TOOLTIP_OFFSET - TOOLTIP_HEIGHT_EST,
+  };
+}
+
 const UBC_CENTER: LngLat = [-123.246, 49.2626];
 const INITIAL_VIEW = { center: UBC_CENTER, zoom: 14.4, pitch: 40, bearing: -8 };
 
@@ -745,7 +763,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
       {picked && (picked.name || picked.code) && (
         <div
           className="bg-surface-bright pointer-events-none absolute z-10 max-w-60 rounded-lg px-3 py-2 shadow-md"
-          style={{ left: picked.x + 12, top: picked.y + 12 }}
+          style={tooltipPosition(picked, containerRef.current)}
           role="status"
         >
           {picked.name && <p className="text-on-surface text-sm leading-snug font-medium">{picked.name}</p>}
