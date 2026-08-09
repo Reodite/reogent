@@ -375,7 +375,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         }
 
         canvasEl.addEventListener("pointerdown", (e) => {
-          if (e.button !== 0) return;
+          if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
           dragging = true;
           animating = false;
           lastPt = { x: e.clientX, y: e.clientY };
