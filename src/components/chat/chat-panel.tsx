@@ -157,14 +157,30 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
   const greeting = useMemo(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)], []);
   const tip = useMemo(() => TIPS[Math.floor(Math.random() * TIPS.length)], []);
 
-  // Pick one suggestion per category, route first to guarantee map aha moment
+  // Pick one suggestion per category, route first to guarantee map aha moment.
+  // The "other" pick is time-aware: study spaces in evening, events on weekdays.
   const randomSuggestions = useMemo(() => {
     const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+    const hour = new Date().getHours();
+    const otherPool = SUGGESTION_BUCKETS.other;
+    // Bias toward contextually relevant "other" suggestions
+    let otherPick: string;
+    if (hour >= 18 || hour < 6) {
+      // Evening/night: study spaces and room availability
+      const evening = otherPool.filter((s) => /study|room|free/i.test(s));
+      otherPick = evening.length > 0 ? pick(evening) : pick(otherPool);
+    } else if (hour >= 6 && hour < 12) {
+      // Morning: events and calendar
+      const morning = otherPool.filter((s) => /event|registration|drop|date/i.test(s));
+      otherPick = morning.length > 0 ? pick(morning) : pick(otherPool);
+    } else {
+      otherPick = pick(otherPool);
+    }
     return [
       pick(SUGGESTION_BUCKETS.routes),
       pick(SUGGESTION_BUCKETS.courses),
       pick(SUGGESTION_BUCKETS.money),
-      pick(SUGGESTION_BUCKETS.other),
+      otherPick,
     ];
   }, []);
 
