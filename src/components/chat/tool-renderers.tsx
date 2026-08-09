@@ -6,6 +6,8 @@
 // the generic badge, so a new backend module needs only one renderer here.
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
+import { ErrorBoundary } from "@/src/components/ui/error-boundary";
+import { MapPill, ToolResultCard } from "@/src/components/ui/tool-result-card";
 import {
   isToolError,
   type CourseDoc,
@@ -15,6 +17,7 @@ import {
 } from "@/src/lib/api-types";
 import { formatCad, formatMeters, formatMinutes, summarizeToolInput } from "@/src/lib/format";
 import { extractBuildingHighlight, extractPlacesHighlight, extractWalkingHighlight } from "@/src/lib/walking";
+import { motion, useReducedMotion } from "motion/react";
 import { useMemo } from "react";
 
 export interface ToolCallRendererProps {
@@ -41,10 +44,8 @@ function ToolBadge({ call }: { call: ToolCall }) {
   const summary = summarizeToolInput(call.input);
   return (
     <span
-      className={`inline-flex max-w-full items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-xs ${
-        failed
-          ? "border-error/40 bg-error-container/40 text-on-surface-variant"
-          : "border-border-subtle bg-surface-container-low text-on-surface-variant"
+      className={`inline-flex max-w-full items-center gap-2 overflow-hidden rounded-lg px-2 py-1 font-mono text-xs ${
+        failed ? "bg-error-container/40 text-on-surface-variant" : "bg-secondary-container/15 text-on-surface-variant"
       }`}
       title={failed && isToolError(call.result) ? call.result.message : undefined}
     >
@@ -53,6 +54,7 @@ function ToolBadge({ call }: { call: ToolCall }) {
         {call.name}
         {summary ? `(${summary})` : "()"}
       </span>
+      {failed && <span className="sr-only">(failed)</span>}
     </span>
   );
 }
@@ -66,9 +68,10 @@ function isCourseDoc(value: unknown): value is CourseDoc {
 }
 
 function sectionLine(course: CourseDoc): string | null {
+  if (!Array.isArray(course.sections)) return null;
   const s = course.sections[0];
   if (!s) return null;
-  const days = s.days.map((d) => d.toUpperCase()).join("·");
+  const days = Array.isArray(s.days) ? s.days.map((d) => d.toUpperCase()).join("·") : "";
   const time = s.start_time && s.end_time ? `${s.start_time}–${s.end_time}` : null;
   return [s.term, days, time].filter(Boolean).join("  ");
 }
@@ -85,7 +88,7 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
           </span>
         )}
       </div>
-      <h4 className="text-on-surface mt-0.5 text-sm font-medium">{course.title}</h4>
+      <h4 className="text-on-surface mt-0.5 line-clamp-2 text-sm font-medium">{course.title}</h4>
       {detailed && course.description && (
         <p className="text-body-sm text-on-surface-variant mt-1.5 line-clamp-3 leading-relaxed">{course.description}</p>
       )}
@@ -106,7 +109,8 @@ function SearchCoursesRenderer({ call }: ToolCallRendererProps) {
   return (
     <div className="mt-2 flex flex-col gap-2">
       {shown.map((course) => (
-        <CourseCard key={course.code} course={course} />
+        // biome-ignore lint/suspicious/noArrayIndexKey: course codes may duplicate in cross-listed results
+        <CourseCard key={`${course.code}-${course.title}`} course={course} />
       ))}
       {courses.length > shown.length && (
         <p className="text-muted text-xs">+ {courses.length - shown.length} more matches</p>
@@ -133,22 +137,17 @@ function isTuitionResult(value: unknown): value is TuitionResult {
 function TuitionRenderer({ call }: ToolCallRendererProps) {
   if (!isTuitionResult(call.result)) return null;
   const t = call.result;
-  const label = t.per_credit_cad != null ? "per credit" : (t.unit ?? "flat");
+  const label = t.per_credit_cad != null ? "per credit" : t.unit || "flat";
   const amount = t.per_credit_cad ?? t.amount_cad ?? 0;
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
-      <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon name="currencyDollar" size={18} />
+    <ToolResultCard icon="currencyDollar">
+      <span className="text-on-surface block text-base font-medium">
+        {formatCad(amount)} <span className="text-body-sm text-on-surface-variant font-normal">{label}</span>
       </span>
-      <span className="min-w-0">
-        <span className="text-on-surface block text-base font-medium">
-          {formatCad(amount)} <span className="text-body-sm text-on-surface-variant font-normal">{label}</span>
-        </span>
-        <span className="text-muted block truncate text-xs">
-          {t.program} · {t.student_type} · {t.cohort_year} cohort
-        </span>
+      <span className="text-muted block truncate text-xs">
+        {t.program || "—"} · {t.student_type || "—"} · {t.cohort_year || "—"} cohort
       </span>
-    </div>
+    </ToolResultCard>
   );
 }
 
@@ -162,28 +161,23 @@ function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
 
   if (!highlight) return null;
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
-      <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon name="walk" size={18} />
+    <ToolResultCard
+      icon="walk"
+      action={
+        <MapPill
+          label={`Show route from ${highlight.from} to ${highlight.to} on map`}
+          onClick={() => {
+            setHighlight(highlight);
+            showOnMap();
+          }}
+        />
+      }
+    >
+      <span className="text-on-surface block text-base font-medium">{formatMinutes(highlight.minutes)}</span>
+      <span className="text-on-surface-variant block truncate text-xs">
+        {formatMeters(highlight.meters)} · {highlight.from} → {highlight.to}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-on-surface block text-base font-medium">{formatMinutes(highlight.minutes)}</span>
-        <span className="text-muted block truncate text-xs">
-          {formatMeters(highlight.meters)} · {highlight.from} → {highlight.to}
-        </span>
-      </span>
-      <button
-        type="button"
-        // Restores THIS card's route — older cards stay openable after newer answers.
-        onClick={() => {
-          setHighlight(highlight);
-          showOnMap();
-        }}
-        className="border-primary text-primary hover:bg-accent-subtle shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-95"
-      >
-        Show on map
-      </button>
-    </div>
+    </ToolResultCard>
   );
 }
 
@@ -193,29 +187,24 @@ function FindBuildingRenderer({ call }: ToolCallRendererProps) {
   const { setHighlight, showOnMap } = useChatShell();
   const highlight = useMemo(() => extractBuildingHighlight(call), [call]);
 
-  if (!highlight) return null;
+  if (!highlight || highlight.buildings.length === 0) return null;
   const building = highlight.buildings[0];
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
-      <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon name="map" size={18} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-on-surface block text-base font-medium">{building.name}</span>
-        <span className="text-muted block truncate font-mono text-xs">{building.code}</span>
-      </span>
-      <button
-        type="button"
-        // Restores THIS card's building — older cards stay openable after newer answers.
-        onClick={() => {
-          setHighlight(highlight);
-          showOnMap();
-        }}
-        className="border-primary text-primary hover:bg-accent-subtle shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-95"
-      >
-        Show on map
-      </button>
-    </div>
+    <ToolResultCard
+      icon="map"
+      action={
+        <MapPill
+          label={`Show ${building.name} on map`}
+          onClick={() => {
+            setHighlight(highlight);
+            showOnMap();
+          }}
+        />
+      }
+    >
+      <span className="text-on-surface block truncate text-base font-medium">{building.name}</span>
+      <span className="text-muted block truncate font-mono text-xs">{building.code}</span>
+    </ToolResultCard>
   );
 }
 
@@ -225,38 +214,33 @@ function FindPlacesRenderer({ call }: ToolCallRendererProps) {
   const { setHighlight, showOnMap } = useChatShell();
   const highlight = useMemo(() => extractPlacesHighlight(call), [call]);
 
-  if (!highlight) return null;
+  if (!highlight || highlight.places.length === 0) return null;
   const preview = highlight.places
     .slice(0, 3)
     .map((p) => p.name)
     .join(", ");
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
-      <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon name="location" size={18} />
+    <ToolResultCard
+      icon="location"
+      action={
+        <MapPill
+          label={`Show ${highlight.places.length} place${highlight.places.length === 1 ? "" : "s"} on map`}
+          onClick={() => {
+            setHighlight(highlight);
+            showOnMap();
+          }}
+        />
+      }
+    >
+      <span className="text-on-surface block text-base font-medium">
+        {highlight.places.length} place{highlight.places.length === 1 ? "" : "s"}
+        {highlight.near ? ` near ${highlight.near}` : ""}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-on-surface block text-base font-medium">
-          {highlight.places.length} place{highlight.places.length === 1 ? "" : "s"}
-          {highlight.near ? ` near ${highlight.near}` : ""}
-        </span>
-        <span className="text-muted block truncate text-xs">
-          {preview}
-          {highlight.places.length > 3 ? "…" : ""}
-        </span>
+      <span className="text-muted block truncate text-xs">
+        {preview}
+        {highlight.places.length > 3 ? "…" : ""}
       </span>
-      <button
-        type="button"
-        // Restores THIS card's pins — older cards stay openable after newer answers.
-        onClick={() => {
-          setHighlight(highlight);
-          showOnMap();
-        }}
-        className="border-primary text-primary hover:bg-accent-subtle shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-95"
-      >
-        Show on map
-      </button>
-    </div>
+    </ToolResultCard>
   );
 }
 
@@ -282,20 +266,32 @@ function callKeys(calls: ToolCall[]): string[] {
 }
 
 export function ToolCallsView({ calls, isLatest }: { calls: ToolCall[]; isLatest: boolean }) {
+  const reduced = useReducedMotion();
   if (calls.length === 0) return null;
   const keys = callKeys(calls);
   return (
     <div>
       <div className="mt-3 flex flex-wrap gap-2">
         {calls.map((call, i) => (
-          <ToolBadge key={keys[i]} call={call} />
+          <motion.span
+            key={keys[i]}
+            initial={reduced ? false : { opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 30, delay: i * 0.05 }}
+          >
+            <ToolBadge call={call} />
+          </motion.span>
         ))}
       </div>
       {calls.map((call, i) => {
         if (isToolError(call.result)) return null;
         const Renderer = renderers[call.name];
         if (!Renderer) return null;
-        return <Renderer key={`render-${keys[i]}`} call={call} isLatest={isLatest} />;
+        return (
+          <ErrorBoundary key={`render-${keys[i]}`}>
+            <Renderer call={call} isLatest={isLatest} />
+          </ErrorBoundary>
+        );
       })}
     </div>
   );

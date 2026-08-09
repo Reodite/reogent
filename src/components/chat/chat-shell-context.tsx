@@ -3,7 +3,6 @@
 // Shared state for the /chat shell: the walking-route highlight the map renders,
 // panel open/collapsed state, and the session list (sidebar refreshes after each
 // completed exchange).
-
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import type { SessionSummary } from "@/src/lib/api-types";
@@ -31,6 +30,12 @@ interface ChatShellState {
   sessionsLoading: boolean;
   sessionsError: string | null;
   refreshSessions: () => void;
+  /** Optimistically prepend a new session to the list before server confirms. */
+  addOptimisticSession: (sessionId: string, title: string) => void;
+  /** Optimistically rename a session locally without server refetch. */
+  renameSessionLocally: (sessionId: string, title: string) => void;
+  /** Optimistically remove a session locally without server refetch. */
+  removeSessionLocally: (sessionId: string) => void;
 }
 
 const ChatShellContext = createContext<ChatShellState | null>(null);
@@ -55,38 +60,75 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const loadSeq = useRef(0);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
-  const refreshSessions = useCallback(() => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+  }, []);
+
+  const doRefresh = useCallback(() => {
     const seq = ++loadSeq.current;
     setSessionsError(null);
     api
       .listSessions()
       .then((list) => {
-        if (loadSeq.current !== seq) return;
+        if (loadSeq.current !== seq || !mountedRef.current) return;
         setSessions(list);
         setSessionsLoading(false);
       })
       .catch((error: unknown) => {
-        if (loadSeq.current !== seq) return;
+        if (loadSeq.current !== seq || !mountedRef.current) return;
         setSessionsLoading(false);
         setSessionsError(error instanceof Error ? error.message : "Couldn't load sessions");
       });
   }, [api]);
 
+  const refreshSessions = useCallback(() => {
+    // Debounce: at most one refresh per 2s to avoid spamming during rapid exchanges
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(doRefresh, 2000);
+  }, [doRefresh]);
+
+  // Initial load is immediate, not debounced
   useEffect(() => {
-    if (auth.status === "signedIn") refreshSessions();
-  }, [auth.status, refreshSessions]);
+    if (auth.status === "signedIn") doRefresh();
+  }, [auth.status, doRefresh]);
 
   const setHighlight = useCallback((next: MapHighlight | null) => {
     setHighlightState(next);
-    if (next) setFocusNonce((n) => n + 1);
+    if (next) {
+      setFocusNonce((n) => n + 1);
+      // Auto-open mobile bottom sheet when a map highlight arrives
+      if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) {
+        setMobileMapOpen(true);
+      }
+    }
+  }, []);
+
+  const addOptimisticSession = useCallback((sessionId: string, title: string) => {
+    setSessions((prev) => {
+      if (prev.some((s) => s.session_id === sessionId)) return prev;
+      return [{ session_id: sessionId, title, updatedAt: new Date().toISOString() }, ...prev];
+    });
+  }, []);
+
+  const renameSessionLocally = useCallback((sessionId: string, title: string) => {
+    setSessions((prev) => prev.map((s) => (s.session_id === sessionId ? { ...s, title } : s)));
+  }, []);
+
+  const removeSessionLocally = useCallback((sessionId: string) => {
+    setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
   }, []);
 
   const showOnMap = useCallback(() => {
     setFocusNonce((n) => n + 1);
     setMapOpen(true);
-    // The bottom sheet is only reachable on mobile; opening it is harmless elsewhere.
-    if (window.matchMedia("(max-width: 639px)").matches) setMobileMapOpen(true);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) setMobileMapOpen(true);
   }, []);
 
   const value = useMemo<ChatShellState>(
@@ -105,6 +147,9 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       sessionsLoading,
       sessionsError,
       refreshSessions,
+      addOptimisticSession,
+      renameSessionLocally,
+      removeSessionLocally,
     }),
     [
       highlight,
@@ -118,6 +163,9 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       sessionsLoading,
       sessionsError,
       refreshSessions,
+      addOptimisticSession,
+      renameSessionLocally,
+      removeSessionLocally,
     ],
   );
 

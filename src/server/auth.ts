@@ -26,8 +26,8 @@ export async function signToken(userId: string, username: string): Promise<strin
 
 /** Verifies the Bearer token and returns user info, or a 401 Response. */
 export async function requireUser(request: Request): Promise<AuthedUser | Response> {
-  // Auth disabled: return default user
-  if (process.env.AUTH_ENABLED === "false") {
+  // Auth bypass only in non-production environments
+  if (process.env.AUTH_ENABLED === "false" && process.env.NODE_ENV !== "production") {
     return { sub: "default", username: "local" };
   }
 
@@ -36,8 +36,9 @@ export async function requireUser(request: Request): Promise<AuthedUser | Respon
 
   try {
     const { payload } = await jose.jwtVerify(token, getSecret());
+    if (!payload.sub) return unauthorized("Token missing subject claim");
     return {
-      sub: payload.sub ?? "unknown",
+      sub: payload.sub,
       username: (payload.username as string) ?? "unknown",
     };
   } catch {

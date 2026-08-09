@@ -5,6 +5,8 @@
 import { Icon } from "@/src/components/icons";
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 
+const PLACEHOLDER = "Ask about courses, routes, tuition...";
+
 export interface ChatInputHandle {
   focus: () => void;
 }
@@ -12,11 +14,14 @@ export interface ChatInputHandle {
 interface ChatInputProps {
   disabled: boolean;
   thinking: boolean;
+  showDisclaimer: boolean;
+  tip?: string;
   onSend: (text: string) => void;
+  onStop?: () => void;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function ChatInput(
-  { disabled, thinking, onSend },
+  { disabled, thinking, showDisclaimer, tip, onSend, onStop },
   ref,
 ) {
   const [value, setValue] = useState("");
@@ -50,11 +55,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   }
 
   return (
-    <div className="shrink-0 bg-transparent px-3 pt-2 pb-3 sm:px-4 sm:pb-4">
+    <div className="shrink-0 bg-transparent px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-4">
       <form
         data-thinking={thinking}
         aria-busy={thinking}
-        className="chat-composer neu-inset bg-surface-container-low focus-within:border-primary relative flex items-end rounded-2xl border p-1.5 transition-[border-color,box-shadow] duration-150"
+        className="chat-composer neu-inset bg-surface-container-low relative flex items-end rounded-2xl p-1.5 transition-[box-shadow] duration-150"
         onSubmit={(event) => {
           event.preventDefault();
           submit();
@@ -65,25 +70,44 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           rows={1}
           value={value}
           disabled={disabled}
+          maxLength={10000}
           onChange={(event) => {
             setValue(event.target.value);
             autosize();
           }}
           onKeyDown={onKeyDown}
-          placeholder="Ask about courses, campus, or academic rules…"
+          placeholder={PLACEHOLDER}
           aria-label="Message the assistant"
-          className="text-on-surface placeholder:text-muted relative z-10 block max-h-24 min-h-9 min-w-0 flex-1 resize-none bg-transparent px-3 py-2 text-sm outline-none disabled:opacity-60"
+          className="text-on-surface placeholder:text-muted relative z-10 block max-h-24 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-3 py-3 text-sm outline-none disabled:opacity-60"
         />
-        <button
-          type="submit"
-          disabled={!canSend}
-          aria-label="Send message"
-          className="neu-primary-button bg-primary text-on-primary relative z-10 flex size-9 shrink-0 items-center justify-center rounded-xl disabled:pointer-events-none disabled:opacity-45"
-        >
-          <Icon name="arrowUp" size={18} />
-        </button>
+        {onStop ? (
+          <button
+            type="button"
+            onClick={onStop}
+            aria-label="Stop generating"
+            className="neu-button bg-surface text-on-surface-variant relative z-10 flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-9"
+          >
+            <Icon name="stop" size={16} />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!canSend}
+            aria-label="Send message"
+            className="neu-primary-button bg-primary text-on-primary relative z-10 flex size-11 shrink-0 items-center justify-center rounded-xl disabled:pointer-events-none disabled:opacity-45 sm:size-9"
+          >
+            <Icon name="arrowUp" size={18} />
+          </button>
+        )}
       </form>
-      <p className="text-muted mt-2 text-center text-xs">AI can make mistakes. Verify important information.</p>
+      <div className="mt-2 flex items-center justify-between px-1">
+        <p className="text-muted flex-1 text-center text-xs">
+          {showDisclaimer ? "AI can make mistakes. Verify important information." : tip ? `Tip: ${tip}` : null}
+        </p>
+        {value.length > 9000 && (
+          <span className="text-muted ml-auto text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
+        )}
+      </div>
     </div>
   );
 });

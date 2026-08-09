@@ -54,6 +54,9 @@ export function extractWalkingHighlight(call: ToolCall): WalkingHighlight | null
   if (call.name !== "walking_distance" || isToolError(call.result)) return null;
   const result = call.result as Partial<WalkingDistanceResult> | undefined;
   if (typeof result?.meters !== "number" || typeof result.minutes !== "number") return null;
+  // Reject non-finite or negative values
+  if (!Number.isFinite(result.meters) || !Number.isFinite(result.minutes)) return null;
+  if (result.meters < 0 || result.minutes < 0) return null;
   const from =
     (typeof result.from === "string" && result.from) ||
     (typeof call.input.from_building === "string" && call.input.from_building) ||
@@ -81,6 +84,9 @@ export function extractBuildingHighlight(call: ToolCall): BuildingsHighlight | n
   ) {
     return null;
   }
+  // Reject coordinates outside valid WGS84 range
+  if (!Number.isFinite(result.lat) || !Number.isFinite(result.lon)) return null;
+  if (result.lat < -90 || result.lat > 90 || result.lon < -180 || result.lon > 180) return null;
   const name = typeof result.name === "string" && result.name ? result.name : result.code;
   return { kind: "buildings", buildings: [{ code: result.code, name, lat: result.lat, lon: result.lon }] };
 }
@@ -96,6 +102,9 @@ export function extractPlacesHighlight(call: ToolCall): PlacesHighlight | null {
   const places: PlacePin[] = [];
   for (const p of result.places as Partial<PlacePin>[]) {
     if (typeof p?.name !== "string" || !p.name || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+    // Filter entries with invalid coordinates
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
+    if (p.lat < -90 || p.lat > 90 || p.lon < -180 || p.lon > 180) continue;
     places.push({
       name: p.name,
       lat: p.lat,

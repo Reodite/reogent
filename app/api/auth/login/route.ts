@@ -1,11 +1,28 @@
 import { signToken } from "@/src/server/auth";
+import { rateLimitResponse } from "@/src/server/rate-limit";
 import { getUserByUsername } from "@/src/server/sessions/store";
 import bcrypt from "bcryptjs";
-import { json, serverError } from "../../http";
+import { json, requireJson, serverError } from "../../http";
+
+const LOGIN_LIMIT = { windowMs: 60_000, maxRequests: 10 };
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const { username, password } = await request.json();
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const limited = rateLimitResponse(`login:${ip}`, LOGIN_LIMIT);
+    if (limited) return limited;
+
+    const ctError = requireJson(request);
+    if (ctError) return ctError;
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400);
+    }
+
+    const { username, password } = body as Record<string, unknown>;
     if (!username || !password) return json({ error: "Username and password required" }, 400);
 
     const user = await getUserByUsername(username);

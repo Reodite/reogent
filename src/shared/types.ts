@@ -26,8 +26,8 @@ export interface ToolCall {
 export interface ChatResponse {
   message: string;
   tool_calls: ToolCall[];
-  /** Present iff the 8-call iteration limit was hit. */
   warning?: string;
+  follow_ups?: string[];
 }
 
 export interface SessionSummary {

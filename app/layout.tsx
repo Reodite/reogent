@@ -24,8 +24,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8f8f6" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f7f5" },
     { media: "(prefers-color-scheme: dark)", color: "#121214" },
   ],
 };
@@ -39,7 +40,7 @@ const BOOTSTRAP =
 
 const DIRECTION_CONTRACT = `impeccable direction contract
 THESIS: one conversational surface that proves its answers — the map lights up with the exact route the assistant just computed; refuses the generic chatbot-in-a-box with decorative sidebar.
-OWN-WORLD: soft neumorphism on warm gray (#F8F8F6) with steel-blue primary (#416375); surfaces float on warm diffuse shadows, inputs recess; Aspekta + Commit Mono for data.
+OWN-WORLD: precision neumorphism on warm linen (#F7F7F5) with muted indigo primary (#4A4E7A); tight crisp shadows, inputs recess; Aspekta + Commit Mono for data.
 STORY: a student asks about courses, tuition, or a walk; sees which tool grounded the answer; watches the route draw on the real campus.
 FIRST VIEWPORT: landing — "Know your campus." over a radial accent halo and 3–4% topographic contours; app — sidebar (recessed), chat card, map card side-by-side.
 FORM: established world per DESIGN.md + UX_SPEC.md; precisely specified brief, no concept roll.

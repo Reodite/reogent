@@ -1,24 +1,17 @@
 "use client";
 
-// Header avatar + animated dropdown: signed-in email, contained theme preference,
-// and sign out. The menu stays mounted so closing can fade cleanly.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
-import { useTheme, type ThemeMode } from "@/src/components/providers";
+import { ThemeToggle } from "@/src/components/theme-toggle";
 import { useEffect, useRef, useState } from "react";
-
-const THEME_OPTIONS: Array<{ mode: ThemeMode; label: string }> = [
-  { mode: "light", label: "Light" },
-  { mode: "system", label: "Auto" },
-  { mode: "dark", label: "Dark" },
-];
 
 export function UserMenu() {
   const auth = useAppAuth();
-  const { mode, setMode } = useTheme();
   const [open, setOpen] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const signOutRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -30,6 +23,11 @@ export function UserMenu() {
         setOpen(false);
         triggerRef.current?.focus();
       }
+      // Arrow key navigation within the menu
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        signOutRef.current?.focus();
+      }
     };
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -39,7 +37,18 @@ export function UserMenu() {
     };
   }, [open]);
 
-  const initial = (auth.user?.username ?? "?").trim().charAt(0).toUpperCase();
+  const username = auth.user?.username || "User";
+  const initial = username.trim().charAt(0).toUpperCase() || "U";
+
+  async function handleSignOut() {
+    try {
+      setSignOutError(false);
+      auth.signOut();
+      setOpen(false);
+    } catch {
+      setSignOutError(true);
+    }
+  }
 
   return (
     <div ref={rootRef} className="relative">
@@ -47,70 +56,63 @@ export function UserMenu() {
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
-        aria-haspopup="dialog"
+        aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        className="neu-button bg-surface text-primary flex size-9 items-center justify-center rounded-xl text-sm font-medium"
+        className="neu-button bg-surface text-primary flex size-11 items-center justify-center rounded-xl text-sm font-medium sm:size-9"
       >
         <span className="bg-primary-container text-on-primary-container flex size-6 items-center justify-center rounded-lg">
           {initial}
         </span>
       </button>
 
+      {/* Scrim overlay */}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={() => setOpen(false)}
+        className={`fixed inset-0 z-40 transition-opacity duration-200 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
+      />
+
       <div
         inert={!open}
         aria-hidden={!open}
-        role="dialog"
+        role="menu"
         aria-label="Account"
-        className={`profile-menu-surface neu-panel glass-neu bg-surface absolute top-12 right-0 z-50 w-64 max-w-[calc(100vw-2rem)] origin-top-right rounded-2xl border p-2.5 ${
+        className={`profile-menu-surface glass-neu absolute top-12 right-0 z-50 w-64 max-w-[calc(100vw-2rem)] origin-top-right rounded-2xl p-3 ${
           open
             ? "blur-0 visible translate-y-0 scale-100 opacity-100"
             : "pointer-events-none invisible -translate-y-1.5 scale-[0.97] opacity-0 blur-[2px]"
         }`}
       >
-        <div className="rounded-xl px-2.5 py-2">
+        <div className="px-3 py-2">
           <p className="text-muted text-xs font-medium">Signed in as</p>
-          <p className="text-body-sm text-on-surface mt-0.5 truncate" title={auth.user?.username}>
-            {auth.user?.username ?? "Signed in"}
+          <p className="text-body-sm text-on-surface mt-0.5 truncate" title={auth.user?.username ?? undefined}>
+            {username}
           </p>
         </div>
 
         <div className="bg-border-subtle my-1 h-px" />
 
-        <div className="px-1 py-2">
-          <div className="text-on-surface mb-2 flex items-center gap-2 px-1 text-sm font-medium">
-            <Icon name={mode === "dark" ? "moon" : "sun"} size={16} className="text-primary" />
-            Appearance
-          </div>
-          <div className="neu-inset bg-surface-container-low grid grid-cols-3 gap-1 rounded-xl border p-1">
-            {THEME_OPTIONS.map((option) => (
-              <button
-                key={option.mode}
-                type="button"
-                onClick={() => setMode(option.mode)}
-                aria-pressed={mode === option.mode}
-                className={`h-8 rounded-lg text-xs font-medium transition-all duration-150 ${
-                  mode === option.mode
-                    ? "neu-raised border-border-subtle bg-surface text-primary border"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-between px-3 py-2 sm:hidden">
+          <span className="text-on-surface-variant text-xs font-medium">Theme</span>
+          <ThemeToggle />
         </div>
 
-        <div className="bg-border-subtle my-1 h-px" />
+        <div className="bg-border-subtle my-1 h-px sm:hidden" />
 
         <button
+          ref={signOutRef}
           type="button"
-          onClick={() => auth.signOut()}
-          className="text-on-surface hover:bg-surface-container flex h-10 w-full items-center gap-2 rounded-xl px-3 text-sm transition-colors duration-150"
+          role="menuitem"
+          onClick={handleSignOut}
+          className="text-on-surface hover:bg-error/10 hover:text-error flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
         >
           <Icon name="exit" size={16} className="text-on-surface-variant" />
           Sign out
         </button>
+        {signOutError && <p className="text-error mt-1 px-3 text-xs">Sign out failed. Try again.</p>}
       </div>
     </div>
   );

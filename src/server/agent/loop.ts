@@ -11,6 +11,7 @@ import type {
 import { executeTool, isToolError } from "./executor";
 
 export const ITERATION_LIMIT = 8;
+const HARD_LIMIT = 10;
 
 const NUDGE =
   "You have used many tool calls. Please provide your final answer now based on the information you have gathered so far. Do not call more tools unless absolutely necessary.";
@@ -18,6 +19,12 @@ const NUDGE =
 export const SYSTEM_PROMPT = `You are the UBC Vancouver campus assistant. Answer questions about courses, admissions, tuition and costs, campus buildings and walking routes, study spaces and library room bookings, food and services, parking, events, key dates, and university policies.
 
 Always use the provided tools to look up facts instead of answering from memory. If a tool returns an error or no results, say what you could not find rather than guessing.
+
+Call multiple tools in parallel when the question requires several lookups — this is strongly preferred over sequential calls. For example:
+- "Compare CPSC 110 and CPSC 121" → call get_course for both at once
+- "Walk from IKB to ICCS and also find food nearby" → call walking_distance and find_places simultaneously
+- "What's tuition for Science and Engineering?" → call get_tuition for both programs in one turn
+Never chain tool calls that don't depend on each other. Batch independent lookups into a single response.
 
 When you need to use tools, call them directly without any preceding text explanation. Do not output text like "Let me search for that" before a tool call — just call the tool. Only output text as your final answer after all tool calls are complete.
 
@@ -64,6 +71,15 @@ export async function runAgentLoop(messages: ChatMessage[], deps: AgentDeps): Pr
   let lastText = "";
 
   for (let i = 0; ; i++) {
+    // Hard cap: terminate unconditionally to prevent runaway loops
+    if (i >= HARD_LIMIT) {
+      return {
+        message: lastText || "I ran out of processing steps. Here is what I found so far.",
+        tool_calls: toolCalls,
+        warning: "Response may be incomplete — processing limit reached.",
+      };
+    }
+
     // After hitting the soft limit, nudge the model to wrap up but keep tools available
     if (i === ITERATION_LIMIT) {
       convo.push({ role: "user", content: [{ text: NUDGE }] });
@@ -82,10 +98,13 @@ export async function runAgentLoop(messages: ChatMessage[], deps: AgentDeps): Pr
     }
 
     const results: ContentBlock[] = [];
-    for (const block of res.message.content ?? []) {
-      if (!block.toolUse) continue;
-      const { toolUseId, name, input } = block.toolUse;
-      const result = await executeTool(deps.modules, name, input, deps.search);
+    const toolBlocks = (res.message.content ?? []).filter((b) => b.toolUse);
+    const execResults = await Promise.all(
+      toolBlocks.map((block) => executeTool(deps.modules, block.toolUse!.name, block.toolUse!.input, deps.search)),
+    );
+    for (let i = 0; i < toolBlocks.length; i++) {
+      const { toolUseId, name, input } = toolBlocks[i].toolUse!;
+      const result = execResults[i];
       toolCalls.push({ name, input, result });
       results.push({
         toolResult: {

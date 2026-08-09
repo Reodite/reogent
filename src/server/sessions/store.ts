@@ -42,11 +42,12 @@ export async function appendExchange(
 ): Promise<void> {
   const pool = getPool();
 
-  // Upsert session (creates on first message, updates timestamp on subsequent)
+  // Upsert session. ON CONFLICT verifies user_id matches to prevent cross-user writes.
   await pool.query(
     `INSERT INTO sessions (id, user_id, title, updated_at)
      VALUES ($1, $2, $3, now())
-     ON CONFLICT (id) DO UPDATE SET updated_at = now()`,
+     ON CONFLICT (id) DO UPDATE SET updated_at = now()
+     WHERE sessions.user_id = $2`,
     [sessionId, userId, userMessage.slice(0, 80)],
   );
 
@@ -65,6 +66,30 @@ export async function appendExchange(
       interstitial?.length ? JSON.stringify(interstitial) : null,
     ],
   );
+}
+
+/** Updates the title of an existing session. */
+export async function updateSessionTitle(sessionId: string, title: string): Promise<void> {
+  await getPool().query(`UPDATE sessions SET title = $2 WHERE id = $1`, [sessionId, title]);
+}
+
+/** Renames a session. Returns false if session doesn't belong to user. */
+export async function renameSession(userId: string, sessionId: string, title: string): Promise<boolean> {
+  const { rowCount } = await getPool().query(`UPDATE sessions SET title = $2 WHERE id = $1 AND user_id = $3`, [
+    sessionId,
+    title,
+    userId,
+  ]);
+  return (rowCount ?? 0) > 0;
+}
+
+/** Deletes a session and its messages. Returns false if session doesn't belong to user. */
+export async function deleteSession(userId: string, sessionId: string): Promise<boolean> {
+  const pool = getPool();
+  const { rowCount } = await pool.query(`DELETE FROM sessions WHERE id = $1 AND user_id = $2`, [sessionId, userId]);
+  if ((rowCount ?? 0) === 0) return false;
+  await pool.query(`DELETE FROM messages WHERE session_id = $1`, [sessionId]);
+  return true;
 }
 
 export async function getProfile(userId: string): Promise<Profile> {

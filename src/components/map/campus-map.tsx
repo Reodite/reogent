@@ -11,22 +11,15 @@
 //
 // maplibre + deck are imported dynamically inside the init effect so the ~1 MB
 // of map code stays out of the initial bundle (and out of SSR).
-
+// Precomputed convex hull of campus buildings + buffer distance in degrees (~1.5km)
+import campusHull from "@/data/campus-hull.json";
 import type { MapHighlight } from "@/src/components/chat/chat-shell-context";
 import { BuildingPopup, type SelectedBuilding } from "@/src/components/map/building-popup";
-import { useApi } from "@/src/components/providers";
-import { useTheme, type ResolvedTheme } from "@/src/components/providers";
+import { useApi, useTheme, type ResolvedTheme } from "@/src/components/providers";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
-import {
-  featureCentroid,
-  featuresBounds,
-  findBuilding,
-  type BuildingFeature,
-  type LngLat,
-} from "@/src/lib/geo";
+import { featureCentroid, featuresBounds, findBuilding, type BuildingFeature, type LngLat } from "@/src/lib/geo";
 import type { FeatureCollection } from "geojson";
 import { useEffect, useRef, useState } from "react";
-import "maplibre-gl/dist/maplibre-gl.css";
 
 export type MapStatus = "loading" | "ready" | "error";
 
@@ -53,8 +46,64 @@ interface PickedBuilding {
   y: number;
 }
 
+const TOOLTIP_OFFSET = 12;
+
+/** Position the building tooltip, flipping anchor when it would overflow the container. */
+function tooltipPosition(picked: PickedBuilding, container: HTMLDivElement | null): React.CSSProperties {
+  const w = container?.clientWidth ?? 800;
+  const h = container?.clientHeight ?? 600;
+
+  const fitsRight = picked.x + TOOLTIP_OFFSET + 240 < w;
+  const fitsBelow = picked.y + TOOLTIP_OFFSET + 56 < h;
+
+  return {
+    // Fits right: tooltip starts offset to the right of cursor
+    // Doesn't fit: tooltip ends offset to the left of cursor (right edge near cursor)
+    left: fitsRight ? picked.x + TOOLTIP_OFFSET : undefined,
+    right: fitsRight ? undefined : w - picked.x + TOOLTIP_OFFSET,
+    top: fitsBelow ? picked.y + TOOLTIP_OFFSET : undefined,
+    bottom: fitsBelow ? undefined : h - picked.y + TOOLTIP_OFFSET,
+  };
+}
+
 const UBC_CENTER: LngLat = [-123.246, 49.2626];
 const INITIAL_VIEW = { center: UBC_CENTER, zoom: 14.4, pitch: 40, bearing: -8 };
+
+const PAN_BUFFER_DEG = 0.0045; // ~0.5km buffer from hull edge
+
+/** Signed distance from point to hull. Negative = inside, positive = outside. */
+function distToHull(lng: number, lat: number): number {
+  const hull = campusHull as [number, number][];
+  // Point-in-polygon (ray casting)
+  let inside = false;
+  for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) {
+    const [xi, yi] = hull[i],
+      [xj, yj] = hull[j];
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  // Distance to nearest edge segment
+  let minDist = Infinity;
+  for (let i = 0, j = hull.length - 1; i < hull.length; j = i++) {
+    const [ax, ay] = hull[j],
+      [bx, by] = hull[i];
+    const dx = bx - ax,
+      dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((lng - ax) * dx + (lat - ay) * dy) / len2)) : 0;
+    const px = ax + t * dx,
+      py = ay + t * dy;
+    const d = Math.sqrt((lng - px) ** 2 + (lat - py) ** 2);
+    if (d < minDist) minDist = d;
+  }
+  return inside ? -minDist : minDist;
+}
+
+/** How far past the allowed boundary (hull + buffer). 0 = inside, positive = overshoot. */
+function overshootFromBoundary(lng: number, lat: number): number {
+  return Math.max(0, distToHull(lng, lat) - PAN_BUFFER_DEG);
+}
 
 const STYLE_URLS: Record<ResolvedTheme, string> = {
   light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -63,32 +112,106 @@ const STYLE_URLS: Record<ResolvedTheme, string> = {
 
 type Rgba = [number, number, number, number];
 
-const MAP_COLORS: Record<ResolvedTheme, Record<"fill" | "line" | "fillHighlight" | "lineHighlight" | "route" | "routeCasing" | "label" | "labelBg" | "walkway", Rgba>> = {
+// ---- Map color system ----
+// Derived from DESIGN.md tokens. Buildings are the same neumorphic "raised surface"
+// material; highlights use primary indigo; routes use secondary verdant; the basemap
+// blends seamlessly with --background.
+
+const MAP_COLORS: Record<
+  ResolvedTheme,
+  Record<
+    "fill" | "line" | "fillHighlight" | "lineHighlight" | "route" | "routeCasing" | "label" | "labelBg" | "walkway",
+    Rgba
+  >
+> = {
   light: {
-    fill: [216, 220, 222, 170],
-    line: [154, 162, 166, 200],
-    fillHighlight: [65, 99, 117, 235],
-    lineHighlight: [16, 53, 70, 255],
-    route: [65, 99, 117, 230],
-    routeCasing: [255, 255, 255, 200],
-    label: [16, 53, 70, 255],
-    labelBg: [255, 255, 255, 215],
-    walkway: [124, 158, 178, 90],
+    // Buildings
+    fill: [190, 190, 197, 255],
+    line: [195, 196, 202, 255],
+    // Highlighted: primary muted indigo #4a4e7a
+    fillHighlight: [74, 78, 122, 220],
+    lineHighlight: [26, 29, 58, 255],
+    // Route: primary #4a4e7a
+    route: [74, 78, 122, 235],
+    routeCasing: [250, 250, 250, 190],
+    // Labels: on-surface-variant for legibility without heaviness
+    label: [62, 67, 72, 255],
+    labelBg: [250, 250, 250, 215],
+    // Walkways: primary accent at 25%
+    walkway: [74, 78, 122, 64],
   },
   dark: {
-    fill: [58, 58, 64, 190],
-    line: [90, 92, 98, 220],
-    fillHighlight: [169, 203, 224, 235],
-    lineHighlight: [196, 231, 253, 255],
-    route: [169, 203, 224, 235],
-    routeCasing: [18, 18, 20, 200],
-    label: [196, 231, 253, 255],
-    labelBg: [26, 26, 30, 215],
-    walkway: [124, 158, 178, 70],
+    // Buildings
+    fill: [9, 9, 11, 255],
+    line: [64, 65, 72, 255],
+    // Highlighted: dark-mode primary #b0b4d8
+    fillHighlight: [176, 180, 216, 220],
+    lineHighlight: [208, 210, 235, 255],
+    // Route: dark-mode primary #b0b4d8
+    route: [176, 180, 216, 220],
+    routeCasing: [18, 18, 20, 190],
+    // Labels: on-surface-variant (dark) for clarity
+    label: [194, 199, 204, 255],
+    labelBg: [14, 14, 16, 215],
+    // Walkways: primary accent at 25%
+    walkway: [176, 180, 216, 64],
   },
 };
 
 const ROUTE_DRAW_MS = 2500;
+
+// Basemap layer overrides: makes CARTO tiles seamless with the app shell.
+// Positron (light) gets matched to --background; Dark Matter loses its black.
+const BASEMAP_OVERRIDES: Record<
+  ResolvedTheme,
+  { background: string; landcover: string; water: string; road: string; roadMinor: string }
+> = {
+  light: {
+    background: "#f7f7f5", // --background
+    landcover: "#eff2ee", // hint of life, barely-there warm green
+    water: "#e2e6ee", // cool blue-gray from the indigo family
+    road: "#eae9e6", // --border adjacent — hairline dividers
+    roadMinor: "#f0efed", // even subtler for small paths
+  },
+  dark: {
+    background: "#141416", // between --background #121214 and --surface-container-lowest
+    landcover: "#171819", // barely differentiated, no tint
+    water: "#111113", // dark, not black — subtle depth
+    road: "#1e1f22", // --border-subtle adjacent
+    roadMinor: "#191a1d", // ghostly
+  },
+};
+
+function patchBasemapColors(map: import("maplibre-gl").Map, resolvedTheme: ResolvedTheme) {
+  const ov = BASEMAP_OVERRIDES[resolvedTheme];
+  try {
+    const style = map.getStyle();
+    if (!style?.layers) return;
+    for (const layer of style.layers) {
+      const id = layer.id;
+      if (id === "background" && layer.type === "background") {
+        map.setPaintProperty(id, "background-color", ov.background);
+      } else if (layer.type === "fill") {
+        if (id.includes("water")) {
+          map.setPaintProperty(id, "fill-color", ov.water);
+        } else if (id.includes("landcover") || id.includes("landuse") || id.includes("park")) {
+          map.setPaintProperty(id, "fill-color", ov.landcover);
+        } else if (id.includes("building")) {
+          // Hide basemap flat buildings — deck.gl renders them in 3D
+          map.setPaintProperty(id, "fill-opacity", 0);
+        }
+      } else if (layer.type === "line") {
+        if (id.includes("road") || id.includes("highway") || id.includes("street")) {
+          if (id.includes("path") || id.includes("pedestrian")) continue;
+          const isMinor = id.includes("minor") || id.includes("service");
+          map.setPaintProperty(id, "line-color", isMinor ? ov.roadMinor : ov.road);
+        }
+      }
+    }
+  } catch {
+    // Non-critical — deck.gl layers render regardless of basemap tinting
+  }
+}
 
 /** Real height where the dataset has one; ~3.5 m per floor otherwise; low default. */
 function buildingHeight(feature: BuildingFeature): number {
@@ -105,6 +228,7 @@ interface MapHandles {
     ScatterplotLayer: typeof import("@deck.gl/layers").ScatterplotLayer;
     TextLayer: typeof import("@deck.gl/layers").TextLayer;
   };
+  gradientExtension: import("@deck.gl/core").LayerExtension;
 }
 
 function prefersReducedMotion(): boolean {
@@ -146,6 +270,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<MapHandles | null>(null);
   const appliedStyleRef = useRef<ResolvedTheme | null>(null);
+  const didPanRef = useRef(false);
   const [status, setStatus] = useState<MapStatus>("loading");
   const [buildings, setBuildings] = useState<FeatureCollection | null>(null);
   const [walkingRoutes, setWalkingRoutes] = useState<FeatureCollection | null>(null);
@@ -171,10 +296,12 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
 
     (async () => {
       try {
-        const [maplibre, { MapboxOverlay }, layers] = await Promise.all([
+        const [maplibre, { MapboxOverlay }, layers, core] = await Promise.all([
           import("maplibre-gl"),
           import("@deck.gl/mapbox"),
           import("@deck.gl/layers"),
+          import("@deck.gl/core"),
+          import("maplibre-gl/dist/maplibre-gl.css"),
         ]);
         if (disposed) return;
 
@@ -194,6 +321,145 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         // Bottom-left keeps the required attribution clear of the zoom stack.
         map.addControl(new maplibre.AttributionControl({ compact: true }), "bottom-left");
 
+        // Elastic circular boundary: custom drag with rubber-band physics.
+        // MapLibre's dragPan is disabled to avoid setCenter fights.
+        // All animation uses jumpTo + rAF to avoid MapLibre's internal ease system.
+        map.dragPan.disable();
+
+        const canvasEl = map.getCanvasContainer();
+        let dragging = false;
+        let lastPt = { x: 0, y: 0 };
+        let vel = { x: 0, y: 0 };
+        let lastT = 0;
+        let animating = false;
+
+        function snapBack() {
+          const c = map.getCenter();
+          const overshoot = overshootFromBoundary(c.lng, c.lat);
+          if (overshoot <= 0) {
+            animating = false;
+            return;
+          }
+          // Find nearest point on the boundary (hull + buffer) by moving toward hull center
+          const d = distToHull(c.lng, c.lat);
+          const targetDist = d - overshoot; // move inward by overshoot amount
+          const scale = targetDist > 0 ? targetDist / d : 0;
+          // Direction: from center of hull toward current position, stop at boundary
+          const hullCenterLng = (campusHull as [number, number][]).reduce((s, p) => s + p[0], 0) / campusHull.length;
+          const hullCenterLat = (campusHull as [number, number][]).reduce((s, p) => s + p[1], 0) / campusHull.length;
+          const dx = c.lng - hullCenterLng;
+          const dy = c.lat - hullCenterLat;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          // Target: pull back toward hull center by overshoot amount
+          const pullRatio = Math.max(0, 1 - overshoot / dist);
+          const targetLng = hullCenterLng + dx * pullRatio;
+          const targetLat = hullCenterLat + dy * pullRatio;
+
+          animating = true;
+          const startLng = c.lng,
+            startLat = c.lat;
+          const startTime = performance.now();
+          const duration = 250;
+          (function animate() {
+            if (dragging) {
+              animating = false;
+              return;
+            }
+            const t = Math.min((performance.now() - startTime) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);
+            const lng = startLng + (targetLng - startLng) * ease;
+            const lat = startLat + (targetLat - startLat) * ease;
+            map.jumpTo({ center: [lng, lat] });
+            if (t < 1) requestAnimationFrame(animate);
+            else animating = false;
+          })();
+        }
+
+        canvasEl.addEventListener("pointerdown", (e) => {
+          if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
+          dragging = true;
+          didPanRef.current = false;
+          animating = false;
+          lastPt = { x: e.clientX, y: e.clientY };
+          lastT = performance.now();
+          vel = { x: 0, y: 0 };
+          canvasEl.setPointerCapture(e.pointerId);
+        });
+
+        canvasEl.addEventListener("pointermove", (e) => {
+          if (!dragging) return;
+          didPanRef.current = true;
+          const now = performance.now();
+          const dt = now - lastT;
+          let dx = e.clientX - lastPt.x;
+          let dy = e.clientY - lastPt.y;
+          if (dt > 0) vel = { x: dx / dt, y: dy / dt };
+          lastPt = { x: e.clientX, y: e.clientY };
+          lastT = now;
+
+          // Dampen pixel movement when past the hull boundary
+          const c = map.getCenter();
+          const overshoot = overshootFromBoundary(c.lng, c.lat);
+          if (overshoot > 0) {
+            const dampen = 1 / (1 + (overshoot / PAN_BUFFER_DEG) * 4);
+            dx *= dampen;
+            dy *= dampen;
+          }
+
+          const cur = map.project(c);
+          const target = map.unproject([cur.x - dx, cur.y - dy]);
+          map.jumpTo({ center: [target.lng, target.lat] });
+        });
+
+        function endDrag(e: PointerEvent) {
+          if (!dragging) return;
+          dragging = false;
+          canvasEl.releasePointerCapture(e.pointerId);
+
+          const c = map.getCenter();
+          if (overshootFromBoundary(c.lng, c.lat) > 0) {
+            snapBack();
+            return;
+          }
+
+          // Inside boundary: apply inertia coast
+          const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+          if (speed > 0.05) {
+            animating = true;
+            let vx = vel.x,
+              vy = vel.y;
+            const decay = 0.93;
+            (function coast() {
+              if (dragging) {
+                animating = false;
+                return;
+              }
+              vx *= decay;
+              vy *= decay;
+              if (Math.abs(vx) < 0.002 && Math.abs(vy) < 0.002) {
+                snapBack();
+                return;
+              }
+              const cur = map.project(map.getCenter());
+              const target = map.unproject([cur.x - vx * 16, cur.y - vy * 16]);
+              if (overshootFromBoundary(target.lng, target.lat) > 0) {
+                snapBack();
+                return;
+              }
+              map.jumpTo({ center: [target.lng, target.lat] });
+              requestAnimationFrame(coast);
+            })();
+          }
+        }
+
+        canvasEl.addEventListener("pointerup", endDrag);
+        canvasEl.addEventListener("pointercancel", endDrag);
+
+        // Constrain zoom/keyboard-induced pan
+        map.on("moveend", () => {
+          if (!dragging && !animating) snapBack();
+        });
+
         const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
         map.addControl(overlay);
 
@@ -210,8 +476,34 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           console.warn("Map error", event.error?.message);
         });
         map.on("load", () => {
-          if (!disposed) setStatus("ready");
+          if (!disposed) {
+            setStatus("ready");
+            // Defer basemap tinting to next frame so deck.gl overlay initializes first
+            requestAnimationFrame(() => patchBasemapColors(map, initialTheme));
+          }
         });
+
+        // WebGL context loss: report error so the parent can offer retry
+        const canvas = map.getCanvas();
+        canvas.addEventListener("webglcontextlost", () => {
+          if (!disposed) setStatus("error");
+        });
+
+        // Shader extension: bottom-to-top gradient on building sides
+        class GradientExtension extends core.LayerExtension {
+          getShaders() {
+            return {
+              inject: {
+                "vs:#decl": "out float vHeightFrac;",
+                "vs:#main-end": "vHeightFrac = clamp(geometry.position.z / 35.0, 0.0, 1.0);",
+                "fs:#decl": "in float vHeightFrac;",
+                "fs:DECKGL_FILTER_COLOR": `
+                  color.rgb *= mix(0.7, 1.0, vHeightFrac);
+                `,
+              },
+            };
+          }
+        }
 
         handlesRef.current = {
           map,
@@ -222,6 +514,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
             ScatterplotLayer: layers.ScatterplotLayer,
             TextLayer: layers.TextLayer,
           },
+          gradientExtension: new GradientExtension(),
         };
 
         if (controls) {
@@ -241,6 +534,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
 
     return () => {
       disposed = true;
+      if (controls.current) controls.current = null;
       const handles = handlesRef.current;
       handlesRef.current = null;
       if (handles) {
@@ -319,11 +613,17 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
     setDrawProgress(0);
     let frame = 0;
     let start: number | undefined;
+    let frameCount = 0;
     const tick = (now: number) => {
       start ??= now;
-      const t = Math.min(1, (now - start) / ROUTE_DRAW_MS);
-      setDrawProgress(t);
-      if (t < 1) frame = requestAnimationFrame(tick);
+      const raw = Math.min(1, (now - start) / ROUTE_DRAW_MS);
+      const t = 1 - Math.pow(1 - raw, 3); // ease-out cubic
+      // Throttle state updates to every 3rd frame to reduce layer rebuilds
+      frameCount++;
+      if (frameCount % 3 === 0 || raw >= 1) {
+        setDrawProgress(t);
+      }
+      if (raw < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
@@ -339,9 +639,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
     const route = resolveRoute(buildings, highlight);
     const focusedBuildings = highlight?.kind === "buildings" ? highlight.buildings : [];
     const highlightedCodes = new Set(
-      [route?.from, route?.to]
-        .map((f) => (f?.properties?.BLDG_CODE ?? "").toString().toUpperCase())
-        .filter(Boolean),
+      [route?.from, route?.to].map((f) => (f?.properties?.BLDG_CODE ?? "").toString().toUpperCase()).filter(Boolean),
     );
     for (const b of focusedBuildings) highlightedCodes.add(b.code.toUpperCase());
     if (selected) highlightedCodes.add(selected.code.toUpperCase());
@@ -378,9 +676,11 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         data: buildings,
         extruded: true,
         wireframe: false,
+        extensions: [handles.gradientExtension],
         getElevation: (feature) => buildingHeight(feature as BuildingFeature),
         getFillColor: (feature) => (isHighlighted(feature as BuildingFeature) ? colors.fillHighlight : colors.fill),
         getLineColor: (feature) => (isHighlighted(feature as BuildingFeature) ? colors.lineHighlight : colors.line),
+        material: { ambient: 1, diffuse: 0.6, shininess: 1 },
         stroked: true,
         getLineWidth: 1,
         lineWidthUnits: "pixels" as const,
@@ -405,6 +705,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         },
         // Click/tap opens the details popup (rooms, study rooms, services).
         onClick: (info) => {
+          if (didPanRef.current) return; // suppress click after drag
           const properties = (info.object as BuildingFeature | undefined)?.properties;
           if (!properties?.BLDG_CODE) {
             setSelected(null);
@@ -528,18 +829,43 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         : null,
     ].filter(Boolean);
 
-    handles.overlay.setProps({ layers });
+    try {
+      handles.overlay.setProps({ layers });
+    } catch (e) {
+      console.warn("deck.gl layer error:", e);
+      setStatus("error");
+    }
   }, [buildings, walkingRoutes, showRoutes, highlight, theme, status, routePath, drawProgress, selected]);
 
-  // ---- Theme: swap basemap style (appliedStyleRef is seeded at init, so a
-  // toggle that lands while the first style is still loading applies at ready) ----
+  // ---- Theme: swap basemap style ----
   useEffect(() => {
     const handles = handlesRef.current;
     if (!handles || status !== "ready") return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (appliedStyleRef.current !== theme) {
       appliedStyleRef.current = theme;
-      handles.map.setStyle(STYLE_URLS[theme]);
+      const el = containerRef.current;
+      const vtActive = document.documentElement.classList.contains("vt-active");
+      const fade = !vtActive && !prefersReducedMotion() && el;
+      if (fade) {
+        el.style.transition = "opacity 200ms ease-out";
+        el.style.opacity = "0";
+      }
+      const apply = () => {
+        handles.map.setStyle(STYLE_URLS[theme]);
+        handles.map.once("style.load", () => {
+          requestAnimationFrame(() => patchBasemapColors(handles.map, theme));
+          if (fade) {
+            el.style.opacity = "1";
+          }
+        });
+      };
+      if (fade) timer = setTimeout(apply, 200);
+      else apply();
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [theme, status]);
 
   // ---- Camera: focus the highlight (re-runs on "Show on map" bumps) ----
@@ -571,6 +897,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
       const anchor = highlight.near && buildings ? findBuilding(buildings, highlight.near) : null;
       const anchorCenter = anchor ? featureCentroid(anchor) : null;
       const points = [...highlight.places.map((p): LngLat => [p.lon, p.lat]), ...(anchorCenter ? [anchorCenter] : [])];
+      if (points.length === 0) return;
       const lons = points.map((p) => p[0]);
       const lats = points.map((p) => p[1]);
       handles.map.fitBounds(
@@ -605,17 +932,24 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   }, [buildings, highlight, focusNonce, status, routePath]);
 
   return (
-    <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" />
+    // biome-ignore lint/a11y/noStaticElementInteractions: mouseleave clears tooltip
+    <div className="relative h-full w-full overflow-hidden rounded-2xl" onMouseLeave={() => setPicked(null)}>
+      <div
+        ref={containerRef}
+        className="h-full w-full"
+        role="application"
+        aria-label="Interactive campus map"
+        aria-roledescription="map"
+      />
       {selected && <BuildingPopup building={selected} onClose={() => setSelected(null)} />}
       {picked && (picked.name || picked.code) && (
         <div
-          className="pointer-events-none absolute z-10 max-w-60 rounded-lg border border-border bg-surface-bright px-3 py-2 shadow-md"
-          style={{ left: picked.x + 12, top: picked.y + 12 }}
+          className="bg-surface-bright pointer-events-none absolute z-10 max-w-60 rounded-lg px-3 py-2 shadow-md"
+          style={tooltipPosition(picked, containerRef.current)}
           role="status"
         >
-          {picked.name && <p className="text-sm font-medium leading-snug text-on-surface">{picked.name}</p>}
-          {picked.code && <p className="mt-0.5 font-mono text-xs text-on-surface-variant">{picked.code}</p>}
+          {picked.name && <p className="text-on-surface text-sm leading-snug font-medium">{picked.name}</p>}
+          {picked.code && <p className="text-on-surface-variant mt-0.5 font-mono text-xs">{picked.code}</p>}
         </div>
       )}
       {highlight && (

@@ -2,7 +2,7 @@
 // and executes tools. The non-streaming loop in loop.ts remains for property tests.
 
 import type { ChatMessage, ContentBlock, ConverseMessage, DatasetModule, SearchClient, ToolCall } from "../core/types";
-import { converseStream } from "../llm";
+import { converse, converseStream } from "../llm";
 import { executeTool, isToolError } from "./executor";
 import { ITERATION_LIMIT, systemPrompt } from "./loop";
 
@@ -14,7 +14,7 @@ export type StreamEvent =
   | { type: "tool_start"; name: string; input: Record<string, unknown> }
   | { type: "tool_end"; name: string; result: unknown }
   | { type: "turn_start" }
-  | { type: "done"; message: string; tool_calls: ToolCall[]; warning?: string }
+  | { type: "done"; message: string; tool_calls: ToolCall[]; warning?: string; follow_ups?: string[] }
   | { type: "error"; message: string };
 
 export interface StreamAgentDeps {
@@ -91,15 +91,75 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
     convo.push({ role: "assistant", content: assistantContent });
 
     if (stopReason !== "tool_use") {
-      yield { type: "done", message: fullText, tool_calls: toolCalls };
+      // Generate context-aware follow-up suggestions
+      let follow_ups: string[] | undefined;
+      try {
+        const FOLLOW_UP_SYSTEM = `You suggest follow-up questions for a UBC campus assistant. The assistant can ONLY:
+- Search courses (by subject, credits, prerequisites, term)
+- Look up tuition and cost estimates
+- Calculate walking distances between buildings
+- Find buildings on campus
+- Find places (food, services) near buildings
+- Search study spaces and free rooms
+- Look up grade distributions
+- Search events, parking, admission requirements, key dates
+
+Rules:
+- Suggest 2-3 questions the user would naturally ask next
+- Only suggest things the assistant can actually answer (from the list above)
+- Never repeat what was already asked in this conversation
+- Never suggest biking, transit, driving, or anything not walking-based for routes
+- If the assistant said it couldn't help with something, don't suggest variations of that
+- If the conversation hit a dead end, suggest a completely different topic
+- Return ONLY a JSON array of strings, nothing else`;
+
+        const summary = convo
+          .slice(-6)
+          .map(
+            (m) =>
+              `${m.role}: ${m.content
+                .map((b) => b.text)
+                .filter(Boolean)
+                .join("")
+                .slice(0, 200)}`,
+          )
+          .join("\n");
+
+        const followUpResult = await converse({
+          system: FOLLOW_UP_SYSTEM,
+          messages: [{ role: "user", content: [{ text: summary }] }],
+          toolSpecs: [],
+        });
+        const raw = (followUpResult.message.content ?? [])
+          .map((b) => b.text)
+          .filter(Boolean)
+          .join("")
+          .trim();
+        const jsonMatch = raw.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed)) {
+            follow_ups = parsed.filter((s): s is string => typeof s === "string" && s.length > 0).slice(0, 3);
+          }
+        }
+      } catch {
+        // Follow-up generation is best-effort
+      }
+      yield { type: "done", message: fullText, tool_calls: toolCalls, follow_ups };
       return;
     }
 
-    // Execute tools
-    const results: ContentBlock[] = [];
-    for (const { toolUseId, name, input } of toolUses) {
+    // Execute tools in parallel for faster responses
+    for (const { name, input } of toolUses) {
       yield { type: "tool_start", name, input };
-      const result = await executeTool(deps.modules, name, input, deps.search);
+    }
+    const execResults = await Promise.all(
+      toolUses.map(({ name, input }) => executeTool(deps.modules, name, input, deps.search)),
+    );
+    const results: ContentBlock[] = [];
+    for (let i = 0; i < toolUses.length; i++) {
+      const { toolUseId, name, input } = toolUses[i];
+      const result = execResults[i];
       toolCalls.push({ name, input, result });
       yield { type: "tool_end", name, result };
       results.push({

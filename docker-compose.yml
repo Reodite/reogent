@@ -16,6 +16,27 @@ services:
       - MEILI_URL=http://meilisearch:7700
       - HOSTNAME=0.0.0.0
 
+  dev:
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./Unified-UBC-Data/data:/data:ro
+    environment:
+      - DATABASE_URL=postgres://reogent:${POSTGRES_PASSWORD:-reogent}@postgres:5432/reogent
+      - MEILI_URL=http://meilisearch:7700
+      - HOSTNAME=0.0.0.0
+
   postgres:
     image: postgres:17-alpine
     ports:

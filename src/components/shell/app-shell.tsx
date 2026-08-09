@@ -9,72 +9,72 @@ import { Icon } from "@/src/components/icons";
 import { MapBottomSheet, MapPanel } from "@/src/components/map/map-panel";
 import { SessionSidebar } from "@/src/components/shell/session-sidebar";
 import { UserMenu } from "@/src/components/shell/user-menu";
+import { ThemeToggle } from "@/src/components/theme-toggle";
+import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-function Splash({ label }: { label: string }) {
-  return (
-    <div className="app-shell-canvas flex min-h-svh items-center justify-center">
-      <div className="neu-panel bg-surface flex flex-col items-center gap-3 rounded-2xl border px-10 py-8">
-        <span className="bg-primary-container text-on-primary-container shadow-inset flex size-11 items-center justify-center rounded-xl">
-          <Icon name="school" size={22} />
-        </span>
-        <span className="text-primary animate-pulse text-xl font-medium tracking-[-0.02em]">Reogent</span>
-        <span className="text-body-sm text-muted">{label}</span>
-      </div>
-    </div>
-  );
-}
-
-/** Gate: initializing → splash; signed out → redirect to landing/login. */
+/** Gate: initializing → null (brief); signed out → redirect to login. */
 function RequireAuth({ children }: { children: ReactNode }) {
   const auth = useAppAuth();
   const router = useRouter();
-  const wasSignedIn = useRef(false);
 
   useEffect(() => {
-    if (auth.status === "signedIn") {
-      wasSignedIn.current = true;
-      return;
-    }
+    if (auth.status === "signedIn") return;
     if (auth.status === "signedOut") {
-      router.replace("/");
+      router.replace("/login");
     }
   }, [auth, router]);
 
   if (auth.status === "signedIn") return <>{children}</>;
 
   if (auth.status === "signedOut" && !auth.configured) {
+    const isDev = process.env.NODE_ENV !== "production";
     return (
       <div className="app-shell-canvas flex min-h-svh items-center justify-center px-6">
-        <div className="neu-panel bg-surface max-w-md rounded-2xl border p-6">
-          <h1 className="text-on-surface text-base font-medium">Sign-in isn&apos;t configured</h1>
+        <div className="neu-panel bg-surface max-w-md rounded-2xl p-6">
+          <h1 className="text-on-surface text-base font-medium">
+            {isDev ? "Auth not configured" : "Temporarily unavailable"}
+          </h1>
           <p className="text-on-surface-variant mt-2 text-sm leading-relaxed">
-            Set <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_AUTHORITY</code> and{" "}
-            <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_CLIENT_ID</code> to use the deployed stack, or
-            run with <code className="text-body-sm font-mono">NEXT_PUBLIC_API_MOCK=1</code> for the offline demo.
+            {isDev ? (
+              <>
+                Set <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_AUTHORITY</code> and{" "}
+                <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_CLIENT_ID</code>, or run with{" "}
+                <code className="text-body-sm font-mono">NEXT_PUBLIC_API_MOCK=1</code>.
+              </>
+            ) : (
+              "Sign-in is unavailable right now. Try again later."
+            )}
           </p>
         </div>
       </div>
     );
   }
 
-  return <Splash label={auth.status === "signedOut" ? "Redirecting to sign-in…" : "Loading…"} />;
+  return null;
 }
 
 function SidebarDrawer() {
   const { sidebarOpen, setSidebarOpen } = useChatShell();
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!sidebarOpen) return;
-    closeRef.current?.focus();
+    // Focus first focusable in the dialog
+    const btn = dialogRef.current?.querySelector<HTMLElement>("button");
+    btn?.focus();
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setSidebarOpen(false);
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [sidebarOpen, setSidebarOpen]);
 
   return (
@@ -82,29 +82,21 @@ function SidebarDrawer() {
       <button
         type="button"
         tabIndex={-1}
-        aria-label="Close sessions"
+        aria-hidden="true"
         onClick={() => setSidebarOpen(false)}
         className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-250 ${sidebarOpen ? "opacity-100" : "opacity-0"}`}
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Chat sessions"
-        className={`fixed inset-y-0 left-0 z-50 w-[18.5rem] p-3 transition-transform duration-250 ease-out ${
+        className={`fixed inset-y-0 left-0 z-50 w-[min(18.5rem,calc(100vw-3rem))] p-3 transition-transform duration-250 [transition-timing-function:var(--neu-ease)] ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="relative h-full">
-          <SessionSidebar />
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close sessions"
-            className="neu-button bg-surface text-on-surface-variant hover:text-primary absolute top-3 right-3 flex size-8 items-center justify-center rounded-lg"
-          >
-            <Icon name="close" size={18} />
-          </button>
+        <div className="h-full">
+          <SessionSidebar onClose={() => setSidebarOpen(false)} />
         </div>
       </div>
     </div>
@@ -112,9 +104,10 @@ function SidebarDrawer() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { setSidebarOpen, mapOpen, setMobileMapOpen } = useChatShell();
+  const { sidebarOpen, setSidebarOpen, mapOpen, setMobileMapOpen, mobileMapOpen, highlight } = useChatShell();
   const [sessionsCollapsed, setSessionsCollapsed] = useState(false);
   const sessionsMenuRef = useRef<HTMLButtonElement>(null);
+  const reduce = useReducedMotion();
 
   function collapseSessions() {
     setSessionsCollapsed(true);
@@ -129,25 +122,37 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <RequireAuth>
       <div className="app-shell-canvas flex h-svh flex-col overflow-hidden">
-        <header className="neu-panel glass-neu bg-surface/90 relative z-30 mx-3 mt-3 flex h-14 shrink-0 items-center justify-between rounded-2xl border px-3 backdrop-blur-sm sm:px-4">
+        <a
+          href="#main-content"
+          className="focus-visible:bg-primary focus-visible:text-on-primary sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:z-[100] focus-visible:rounded-xl focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium"
+        >
+          Skip to main content
+        </a>
+        <motion.header
+          initial={reduce ? false : { opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          inert={sidebarOpen || mobileMapOpen || undefined}
+          className="neu-panel relative z-30 mx-2 mt-3 flex h-14 shrink-0 items-center justify-between rounded-2xl px-2 sm:mx-3 sm:px-4"
+        >
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open sessions"
-              className="neu-button bg-surface text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl lg:hidden"
+              className="neu-button bg-surface text-on-surface-variant hover:text-primary flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-9 lg:hidden"
             >
               <Icon name="menu" size={21} />
             </button>
             <Link
               href="/"
               aria-label="Go to Reogent homepage"
-              className="group flex min-w-0 items-center gap-2.5 rounded-xl py-1 pr-2 focus-visible:outline-offset-4"
+              className="group flex min-w-0 items-center gap-2 rounded-xl py-1 pr-2 focus-visible:outline-offset-4"
             >
-              <span className="neu-raised bg-surface-container-low text-primary hidden size-8 shrink-0 items-center justify-center rounded-lg border transition-transform duration-150 group-hover:-translate-y-0.5 sm:flex">
+              <span className="bg-surface-container-low text-primary group-hover:text-on-surface hidden size-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 sm:flex">
                 <Icon name="school" size={17} />
               </span>
-              <span className="text-primary group-hover:text-on-surface truncate text-lg font-medium tracking-[-0.025em] transition-colors duration-150 sm:text-xl">
+              <span className="text-primary group-hover:text-on-surface truncate text-base font-medium tracking-[-0.025em] transition-colors duration-150 sm:text-xl">
                 Reogent
               </span>
             </Link>
@@ -157,47 +162,65 @@ export function AppShell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => setMobileMapOpen(true)}
               aria-label="Open campus map"
-              className="neu-button bg-surface text-on-surface-variant hover:text-primary flex size-9 items-center justify-center rounded-xl sm:hidden"
+              className="neu-button bg-surface text-on-surface-variant hover:text-primary relative flex size-11 items-center justify-center rounded-xl sm:hidden sm:size-9"
             >
               <Icon name="map" size={19} />
+              {highlight && !mobileMapOpen && (
+                <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" aria-hidden="true" />
+              )}
             </button>
+            <ThemeToggle className="hidden sm:grid" />
             <UserMenu />
           </div>
-        </header>
+        </motion.header>
 
-        <div data-sessions-state={sessionsCollapsed ? "collapsed" : "expanded"} className="shell-body min-h-0 flex-1">
-          <aside aria-label="Chat sessions" className="relative hidden min-h-0 min-w-0 overflow-hidden p-3 lg:block">
-            <div
-              id="desktop-session-panel"
-              inert={sessionsCollapsed}
-              aria-hidden={sessionsCollapsed}
-              className="sessions-panel-layer h-full w-[17rem]"
-            >
-              <SessionSidebar onCollapse={collapseSessions} />
-            </div>
-            <button
-              ref={sessionsMenuRef}
-              type="button"
-              onClick={expandSessions}
-              tabIndex={sessionsCollapsed ? 0 : -1}
-              aria-label="Expand session history"
-              aria-controls="desktop-session-panel"
-              aria-expanded={!sessionsCollapsed}
-              title="Expand sessions"
-              className="sessions-menu-trigger neu-button glass-neu-compact bg-surface text-on-surface-variant hover:text-primary absolute top-3 left-3 flex size-9 items-center justify-center rounded-xl"
-            >
-              <Icon name="menu" size={20} />
-            </button>
-          </aside>
-          <SidebarDrawer />
+        <SidebarDrawer />
 
-          <main
-            data-map-state={mapOpen ? "open" : "collapsed"}
-            className="chat-workspace min-h-0 min-w-0 flex-1 gap-3 p-3 lg:pl-0"
-          >
-            <div className="flex min-h-0 min-w-0">{children}</div>
-            <div className="hidden min-h-0 min-w-0 sm:flex">
-              <MapPanel />
+        <div inert={sidebarOpen || mobileMapOpen || undefined} className="shell-body min-h-0 flex-1">
+          <main className="chat-workspace min-h-0 min-w-0 flex-1 gap-3 p-3">
+            <motion.aside
+              aria-label="Chat sessions"
+              animate={{ width: sessionsCollapsed ? "3.75rem" : "17rem" }}
+              transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+              className="sessions-aside relative hidden min-h-0 min-w-0 overflow-hidden lg:block"
+            >
+              <div
+                className={`sessions-panel-layer h-full w-[17rem] transition-opacity duration-200 ${sessionsCollapsed ? "pointer-events-none opacity-0" : "opacity-100 delay-75"}`}
+              >
+                <SessionSidebar onCollapse={collapseSessions} />
+              </div>
+              <div
+                className={`neu-panel text-on-surface-variant absolute inset-y-0 left-0 flex w-[3.75rem] flex-col items-center rounded-2xl py-3 transition-opacity duration-200 ${sessionsCollapsed ? "opacity-100" : "pointer-events-none opacity-0"}`}
+              >
+                <button
+                  ref={sessionsMenuRef}
+                  type="button"
+                  onClick={expandSessions}
+                  tabIndex={sessionsCollapsed ? 0 : -1}
+                  aria-label="Expand session history"
+                  aria-controls="desktop-session-panel"
+                  aria-expanded={!sessionsCollapsed}
+                  title="Expand sessions"
+                  className="neu-panel text-primary hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors duration-150"
+                >
+                  <Icon name="menu" size={20} />
+                </button>
+                <span className="mt-4 text-xs font-medium tracking-[0.06em] select-none [writing-mode:vertical-rl]">
+                  Sessions
+                </span>
+              </div>
+            </motion.aside>
+            <div className="chat-map-area flex min-h-0 min-w-0 flex-1 gap-3">
+              <div id="main-content" className="flex min-h-0 min-w-0 flex-1">
+                {children}
+              </div>
+              <motion.div
+                animate={{ width: mapOpen ? "50%" : "3.75rem" }}
+                transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+                className="map-aside hidden min-h-0 min-w-0 overflow-hidden sm:flex"
+              >
+                <MapPanel />
+              </motion.div>
             </div>
           </main>
         </div>

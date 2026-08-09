@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-08T00:00:00Z",
+  "title": "Design System: Reogent",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "Warm Linen",
+        "canonical": "#f7f7f5",
+        "tonalRamp": ["#1a1a18", "#2e2e2c", "#484846", "#6b6b69", "#8e8e8c", "#b4b4b2", "#d6d6d4", "#f7f7f5"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Soft White",
+        "canonical": "#fafafa",
+        "tonalRamp": ["#1a1a1a", "#303030", "#4a4a4a", "#6e6e6e", "#929292", "#b8b8b8", "#dcdcdc", "#fafafa"]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Muted Indigo",
+        "canonical": "#4a4e7a",
+        "tonalRamp": ["#0f1018", "#1a1d30", "#282c4a", "#363b60", "#4a4e7a", "#646896", "#8286b2", "#a8abcf"]
+      },
+      "primary-container": {
+        "role": "primary",
+        "displayName": "Indigo Container",
+        "canonical": "#7a7ea8",
+        "tonalRamp": ["#1a1d30", "#282c4a", "#363b60", "#4a4e7a", "#5e6290", "#7a7ea8", "#9a9ec2", "#bfc2de"]
+      },
+      "secondary": {
+        "role": "secondary",
+        "displayName": "Campus Verdant",
+        "canonical": "#2d6b47",
+        "tonalRamp": ["#001f0e", "#05301a", "#0e4126", "#185534", "#2d6b47", "#4a8a64", "#6eaa84", "#98d4a9"]
+      },
+      "secondary-container": {
+        "role": "secondary",
+        "displayName": "Verdant Container",
+        "canonical": "#b0efc2",
+        "tonalRamp": ["#001f0e", "#0a3a1e", "#185534", "#2d6b47", "#4a8a64", "#6eaa84", "#92cca2", "#b0efc2"]
+      },
+      "tertiary": {
+        "role": "tertiary",
+        "displayName": "Warm Bark",
+        "canonical": "#7a5733",
+        "tonalRamp": ["#1e1508", "#352510", "#4a3623", "#5f401e", "#7a5733", "#9a7450", "#bb9269", "#ebbe92"]
+      },
+      "tertiary-container": {
+        "role": "tertiary",
+        "displayName": "Bark Container",
+        "canonical": "#f4e3cf",
+        "tonalRamp": ["#4a3010", "#5f401e", "#7a5733", "#9a7450", "#b89070", "#d4b494", "#e8d0b4", "#f4e3cf"]
+      },
+      "error": {
+        "role": "error",
+        "displayName": "Quiet Ember",
+        "canonical": "#9c4040",
+        "tonalRamp": ["#280c0c", "#461616", "#662626", "#823434", "#9c4040", "#b85a5a", "#d09090", "#ffdad6"]
+      },
+      "accent-subtle": {
+        "role": "neutral",
+        "displayName": "Indigo Mist",
+        "canonical": "#edeef5",
+        "tonalRamp": ["#1a1b24", "#282a38", "#3c3e52", "#52546c", "#6c6e88", "#9092a8", "#b8bace", "#edeef5"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "AA-Safe Gray",
+        "canonical": "#5a6066",
+        "tonalRamp": ["#0e0f11", "#1c1e20", "#2e3133", "#3e4245", "#4c5156", "#5a6066", "#787e84", "#a4abb1"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display / Hero",
+        "purpose": "Landing page hero only. text-4xl to text-6xl responsive. Never appears in-app."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Page titles, panel headers, greeting text. One per visible viewport."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Card titles, session names, route info primary values, building names."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Chat messages, descriptions, button labels. 14px base for information-dense UI."
+      },
+      "body-sm": {
+        "displayName": "Body Small",
+        "purpose": "Timestamps, secondary info, tool badge content, sidebar session previews."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Labels, metadata, navigation group headers, tool call summaries."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Course codes, times, building codes, inline code, tool parameters, dollar amounts."
+      }
+    },
+    "shadows": [
+      {
+        "name": "elevation-sm",
+        "value": "2px 2px 4px rgba(174,174,174,0.04), -1px -1px 3px rgba(255,255,255,0.25)",
+        "purpose": "Small controls at rest."
+      },
+      {
+        "name": "elevation-md",
+        "value": "3px 3px 7px rgba(174,174,174,0.05), -2px -2px 5px rgba(255,255,255,0.3)",
+        "purpose": "Tooltips, hovered controls."
+      },
+      {
+        "name": "elevation-lg",
+        "value": "4px 4px 10px rgba(174,174,174,0.06), -3px -3px 8px rgba(255,255,255,0.35)",
+        "purpose": "Modals, dropdowns."
+      },
+      {
+        "name": "elevation-inset",
+        "value": "inset 1px 1px 3px rgba(174,174,174,0.05), inset -1px -1px 3px rgba(255,255,255,0.22)",
+        "purpose": "Recessed inputs, pressed state."
+      },
+      {
+        "name": "elevation-glow",
+        "value": "0 2px 8px rgba(74,78,122,0.1)",
+        "purpose": "Primary action button glow."
+      },
+      {
+        "name": "neu-surface-shadow",
+        "value": "3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight)",
+        "purpose": "All .neu-panel and .neu-raised surfaces. Unified composed shadow."
+      },
+      {
+        "name": "neu-inset-shadow",
+        "value": "inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight)",
+        "purpose": "Sidebar, composer, recessed wells. Whisper-level recess."
+      }
+    ],
+    "motion": [
+      {
+        "name": "neu-ease",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Panel animations, collapse/expand, menu entrance. Settling-into-place feel."
+      },
+      {
+        "name": "message-in",
+        "value": "200ms ease-out, opacity 0→1 + translateY(6px→0)",
+        "purpose": "Chat message entrance animation."
+      },
+      {
+        "name": "thinking-border-orbit",
+        "value": "2.4s linear infinite, conic-gradient rotation",
+        "purpose": "Composer border during agent processing."
+      },
+      {
+        "name": "rise-in",
+        "value": "420ms var(--neu-ease), opacity 0→1 + translateY(24px→0)",
+        "purpose": "Landing page scroll reveals."
+      },
+      {
+        "name": "ripple-in",
+        "value": "400ms ease-in-out, clip-path circle expansion",
+        "purpose": "Theme toggle view transition."
+      },
+      {
+        "name": "details-open",
+        "value": "200ms var(--neu-ease), opacity 0→1 + translateY(-4px→0)",
+        "purpose": "Collapsible details content entrance."
+      },
+      {
+        "name": "topo-drift",
+        "value": "30s ease-in-out infinite, subtle translate + rotate",
+        "purpose": "Landing page background texture movement."
+      },
+      {
+        "name": "spring-hero",
+        "value": "type: spring, stiffness: 80-120, damping: 18-20",
+        "purpose": "Landing page hero and CTA entrances. Spring physics, not CSS."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main CTA with whisper glow and physical press feedback.",
+      "html": "<button class=\"ds-btn-primary\">New Conversation</button>",
+      "css": ".ds-btn-primary { background: #4a4e7a; color: #fff; padding: 8px 16px; height: 36px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; border: none; border-radius: 16px; cursor: pointer; box-shadow: 0 3px 8px rgba(74,78,122,0.1), -2px -2px 6px rgba(255,255,255,0.2); transition: filter 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:hover { box-shadow: 0 4px 10px rgba(74,78,122,0.12), -2px -2px 7px rgba(255,255,255,0.2); filter: brightness(1.03); transform: translateY(-1px); } .ds-btn-primary:active { box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -1px -1px 4px rgba(255,255,255,0.08); transform: translateY(1px) scale(0.985); } .ds-btn-primary:focus-visible { outline: 2px solid color-mix(in srgb, #4a4e7a 50%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Button Large",
+      "kind": "button",
+      "refersTo": "button-primary-large",
+      "description": "Large CTA for landing page and auth forms. 48px height.",
+      "html": "<button class=\"ds-btn-primary-lg\">Get Started</button>",
+      "css": ".ds-btn-primary-lg { background: #4a4e7a; color: #fff; padding: 12px 32px; height: 48px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 1rem; font-weight: 500; border: none; border-radius: 16px; cursor: pointer; box-shadow: 0 3px 8px rgba(74,78,122,0.1), -2px -2px 6px rgba(255,255,255,0.2); transition: filter 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary-lg:hover { filter: brightness(1.03); transform: translateY(-1px); } .ds-btn-primary-lg:active { box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -1px -1px 4px rgba(255,255,255,0.08); transform: translateY(1px) scale(0.985); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Raised surface button for secondary actions.",
+      "html": "<button class=\"ds-btn-secondary\">Retry</button>",
+      "css": ".ds-btn-secondary { background: #fafafa; color: #18191b; padding: 8px 16px; height: 36px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; border: 1px solid #efefeb; border-radius: 16px; cursor: pointer; box-shadow: 3px 3px 8px rgba(105,112,116,0.045), -2px -2px 6px rgba(255,255,255,0.2); transition: color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-secondary:hover { box-shadow: 4px 4px 10px rgba(105,112,116,0.045), -2px -2px 7px rgba(255,255,255,0.2); transform: translateY(-1px); } .ds-btn-secondary:active { box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2); transform: translateY(1px) scale(0.98); } .ds-btn-secondary:focus-visible { outline: 2px solid color-mix(in srgb, #4a4e7a 50%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Chat Composer",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Recessed input well with whisper inset shadow. Focus adds ring glow.",
+      "html": "<div class=\"ds-composer\"><textarea placeholder=\"Ask about courses, tuition, or campus...\"></textarea><button class=\"ds-send\" aria-label=\"Send\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 19V5M5 12l7-7 7 7\"/></svg></button></div>",
+      "css": ".ds-composer { position: relative; display: flex; align-items: flex-end; background: #f3f3f5; border-radius: 16px; padding: 6px; box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2); transition: box-shadow 150ms ease-out; } .ds-composer:focus-within { box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2); outline: 2px solid rgba(74,78,122,0.28); outline-offset: -2px; } .ds-composer textarea { background: transparent; border: none; outline: none; flex: 1; padding: 8px 12px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: #18191b; resize: none; min-height: 36px; max-height: 96px; } .ds-composer textarea::placeholder { color: #5a6066; } .ds-send { width: 36px; height: 36px; border-radius: 16px; background: #4a4e7a; color: #fff; border: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; box-shadow: 0 3px 8px rgba(74,78,122,0.1), -2px -2px 6px rgba(255,255,255,0.2); transition: transform 150ms ease-out; } .ds-send:hover { transform: translateY(-1px); } .ds-send:active { transform: translateY(1px) scale(0.985); }"
+    },
+    {
+      "name": "Nav Item",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Sidebar session item with left-border active indicator.",
+      "html": "<a class=\"ds-nav ds-nav-active\" href=\"#\"><span class=\"ds-nav-text\">Course planning for Fall</span></a>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 8px; padding: 8px 12px; height: 36px; border-radius: 12px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: #3e4348; text-decoration: none; transition: background-color 150ms ease-out, color 150ms ease-out; } .ds-nav:hover { background: #e6e6e8; color: #18191b; } .ds-nav-active { background: #edeef5; color: #4a4e7a; font-weight: 500; border-left: 2px solid #4a4e7a; } .ds-nav-active:hover { background: #edeef5; } .ds-nav-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-nav:focus-visible { box-shadow: 0 0 0 2px rgba(74,78,122,0.4); outline: none; }"
+    },
+    {
+      "name": "Tool Badge",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Compact mono-set inline indicator for tool calls.",
+      "html": "<span class=\"ds-badge\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.35-4.35\"/></svg>search_courses</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; background: rgba(176,239,194,0.15); border-radius: 8px; font-family: 'Commit Mono', ui-monospace, monospace; font-size: 0.75rem; color: #3e4348; }"
+    },
+    {
+      "name": "Quick Action Pill",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Suggested action chip with primary border. 44px touch target.",
+      "html": "<button class=\"ds-pill\">What are the prerequisites?</button>",
+      "css": ".ds-pill { background: transparent; border: 1px solid #4a4e7a; border-radius: 9999px; padding: 12px 16px; min-height: 44px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; color: #4a4e7a; cursor: pointer; text-align: left; transition: background-color 150ms ease-out; } .ds-pill:hover { background: #edeef5; } .ds-pill:focus-visible { box-shadow: 0 0 0 2px rgba(74,78,122,0.4); outline: none; }"
+    },
+    {
+      "name": "Panel Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Standard neumorphic panel with whisper-level shadow.",
+      "html": "<div class=\"ds-panel\"><h3 class=\"ds-panel-title\">CPSC 310</h3><p class=\"ds-panel-meta\">Introduction to Software Engineering</p><p class=\"ds-panel-detail\">Credits: 4 · Prerequisites: CPSC 210</p></div>",
+      "css": ".ds-panel { background: #fafafa; border-radius: 16px; padding: 16px; box-shadow: 3px 3px 8px rgba(105,112,116,0.045), -2px -2px 6px rgba(255,255,255,0.2); } .ds-panel-title { font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 1rem; font-weight: 500; color: #18191b; margin: 0 0 4px; } .ds-panel-meta { font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: #3e4348; margin: 0 0 8px; line-height: 1.5; } .ds-panel-detail { font-family: 'Commit Mono', ui-monospace, monospace; font-size: 0.8125rem; color: #5a6066; margin: 0; }"
+    },
+    {
+      "name": "User Message",
+      "kind": "custom",
+      "refersTo": "button-secondary",
+      "description": "Right-aligned user bubble with asymmetric radius. Flat, no shadow.",
+      "html": "<div class=\"ds-user-msg\">What are the prerequisites for CPSC 310?</div>",
+      "css": ".ds-user-msg { background: #edeef5; border-radius: 16px 16px 5px 16px; padding: 12px 16px; max-width: 85%; margin-left: auto; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: #18191b; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }"
+    },
+    {
+      "name": "Auth Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Recessed form input with ring-based focus and error states.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Username\" />",
+      "css": ".ds-input { background: #f3f3f5; color: #18191b; border: none; border-radius: 12px; height: 44px; padding: 8px 12px; width: 100%; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2); } .ds-input::placeholder { color: #5a6066; } .ds-input:focus-visible { outline: none; box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2), 0 0 0 2px rgba(74,78,122,0.4); } .ds-input[aria-invalid=\"true\"] { box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2), 0 0 0 2px rgba(156,64,64,0.3); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Whisper Instrument",
+    "overview": "Reogent's interface is a precision instrument where every surface is permanently shaped — dimensioned at rest, but barely. Shadows function at whisper intensity: tiny offsets, minimal blur, near-transparent opacity. You feel what is pressable, what is a well, what is content, but the depth registers subconsciously rather than announcing itself.\n\nThe system reads as one continuous material shaped into different forms for different functions: raised for actions, recessed for input, flat for content. No decoration, no illustration, no ornament. Quality lives in restraint: the lightest possible shadow that still communicates depth.\n\nThe landing page breaks this discipline intentionally — larger type (4xl-6xl), spring physics, blur reveals, scroll-driven parallax — creating contrast between marketing energy and in-app calm. This is a designed boundary, not inconsistency.",
+    "keyCharacteristics": [
+      "Whisper-level dimension on every surface — felt, not seen",
+      "Minimal shadows: 2-3px offsets, 4-8px blur, 4-6% opacity",
+      "Single-material coherence across all elements",
+      "Precision and consistency as the aesthetic itself",
+      "Muted indigo accent, used sparingly, always meaning interactive",
+      "Content-forward: neumorphic frame never competes with chat or map data",
+      "Landing page permitted to be expressive; in-app is disciplined"
+    ],
+    "rules": [
+      {
+        "name": "The Muted-for-AA Rule",
+        "body": "All subdued text uses --muted (#5a6066). Never --outline or --outline-variant for text — they fail WCAG AA on light surfaces.",
+        "section": "colors"
+      },
+      {
+        "name": "The Indigo Scarcity Rule",
+        "body": "The primary indigo appears only on interactive elements and active states. Never for decorative purposes, background fills, or large surfaces. Its presence always means actionable or current.",
+        "section": "colors"
+      },
+      {
+        "name": "The Opacity Layering Rule",
+        "body": "Use fractional opacity modifiers (/15, /40, /60) to create tinted surfaces that remain translucent. Solid token colors for text and borders; opacity modifiers for background tints and state indicators.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight-Not-Bold Rule",
+        "body": "Emphasis uses weight 500–550. Bold (700+) never appears. Maximum weight is 600 for markdown strong, table headers, and list markers.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono-for-Data Rule",
+        "body": "Structured identifiers (course codes, times, building codes, distances, amounts) render in Commit Mono. Data has a different texture than prose.",
+        "section": "typography"
+      },
+      {
+        "name": "The 14px-Base Rule",
+        "body": "Body text is 0.875rem (14px). This is an information-dense tool, not a reading experience. Tighter base allows more content visible without scrolling.",
+        "section": "typography"
+      },
+      {
+        "name": "The Landing Exception Rule",
+        "body": "The landing page uses text-4xl through text-6xl, custom line-heights (1.05), tighter tracking (-0.035em), and spring physics. These values are exclusive to the marketing surface.",
+        "section": "typography"
+      },
+      {
+        "name": "The Dual-Tier Rule",
+        "body": "Tier 1 (Tailwind shadow-* utilities) for one-off depth. Tier 2 (.neu-* classes) for composed surfaces. Never mix on the same element.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Light-Source Rule",
+        "body": "Light source is always upper-left. Every shadow falls bottom-right, every highlight top-left. Consistent across both tiers.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Whisper-Dimension Rule",
+        "body": "Neumorphic surfaces have depth at rest, but at minimal intensity (4-6% opacity shadows). Depth is felt rather than seen. Hover/active modify the recipe.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do apply .neu-panel / .neu-raised / .neu-inset for composed surfaces — they carry the unified shadow recipe.",
+      "Do use --muted (#5a6066) for all subdued text. Never --outline or --outline-variant for text.",
+      "Do use --neu-ease (cubic-bezier 0.16, 1, 0.3, 1) for all in-app layout animations at 150-350ms.",
+      "Do respect prefers-reduced-motion — all animations collapse to 0.01ms, reveals show immediately.",
+      "Do use [data-theme=\"dark\"] for theme switching — never prefers-color-scheme media query.",
+      "Do maintain whisper-level dimension on all surfaces at all times.",
+      "Do use asymmetric bubble radii to indicate message direction.",
+      "Do use opacity modifiers on color tokens for tinted backgrounds.",
+      "Do enforce 44px minimum touch targets on mobile.",
+      "Do use env(safe-area-inset-bottom) for bottom-pinned elements."
+    ],
+    "donts": [
+      "Don't mix Tier 1 (shadow-* utilities) and Tier 2 (.neu-* classes) on the same element.",
+      "Don't add border to .neu-panel or .neu-raised elements. Exception: .neu-button has 1px border-subtle.",
+      "Don't use pure black in any shadow — warm gray in light mode, deep neutral in dark mode only.",
+      "Don't apply backdrop-filter outside .glass-neu. Glass is for overlays, never decorative.",
+      "Don't animate shadow values directly — animate transform and switch classes via state.",
+      "Don't apply neumorphic depth to text content — depth frames containers, content stays flat.",
+      "Don't use font-weight 700+ anywhere. Maximum is 600.",
+      "Don't use primary indigo for backgrounds, decoration, or large surfaces. It means interactive only.",
+      "Don't use spring physics or blur reveals in the app shell. Those belong to the landing page only.",
+      "Don't create new shadow recipes. Use --neu-surface-shadow or --neu-inset-shadow, or the five Tier 1 utilities."
+    ]
+  }
+}

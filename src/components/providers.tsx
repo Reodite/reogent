@@ -88,18 +88,27 @@ function ApiProvider({ children }: { children: ReactNode }) {
   const authRef = useRef(auth);
   authRef.current = auth;
 
-  // Stable instance: token and 401 handling read the latest auth via ref, so the
-  // geo cache survives re-renders and sign-in state changes.
-  const api = useMemo(
-    () =>
-      createChatApi({
+  const api = useMemo(() => {
+    try {
+      return createChatApi({
         getToken: () => authRef.current.getToken(),
         onUnauthorized: () => {
           authRef.current.signOut();
         },
-      }),
-    [],
-  );
+      });
+    } catch (e) {
+      console.error("Failed to create API client:", e);
+      return null;
+    }
+  }, []);
+
+  if (!api) {
+    return (
+      <div className="flex min-h-svh items-center justify-center p-6 text-center">
+        <p className="text-on-surface-variant text-sm">Failed to initialize. Please reload the page.</p>
+      </div>
+    );
+  }
 
   return <ApiContext.Provider value={api}>{children}</ApiContext.Provider>;
 }

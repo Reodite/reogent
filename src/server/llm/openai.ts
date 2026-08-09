@@ -80,6 +80,7 @@ export function createOpenAIAdapter(): LlmAdapter {
       model: getModel(),
       messages: toOpenAIMessages(messages, system),
       tools: toolSpecs.length ? toOpenAITools(toolSpecs) : undefined,
+      parallel_tool_calls: toolSpecs.length > 0 ? true : undefined,
     });
 
     const choice = res.choices[0];
@@ -116,6 +117,7 @@ export function createOpenAIAdapter(): LlmAdapter {
       model: getModel(),
       messages: toOpenAIMessages(req.messages, req.system),
       tools: req.toolSpecs.length ? toOpenAITools(req.toolSpecs) : undefined,
+      parallel_tool_calls: req.toolSpecs.length > 0 ? true : undefined,
       stream: true,
     });
 

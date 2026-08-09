@@ -3,14 +3,31 @@ import { requireUser } from "@/src/server/auth";
 import type { InterstitialBlock } from "@/src/server/core/types";
 import { validateChatRequest } from "@/src/server/core/validate";
 import { modules } from "@/src/server/modules";
+import { rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
 import { appendExchange } from "@/src/server/sessions/store";
-import { json, serverError } from "../http";
+import { generateSessionTitle } from "@/src/server/sessions/title";
+import { json, requireJson, serverError } from "../http";
+
+const MAX_BODY_BYTES = 256 * 1024; // 256 KB
+const CHAT_LIMIT = { windowMs: 60_000, maxRequests: 20 };
 
 export async function POST(request: Request): Promise<Response> {
   try {
+    const ctError = requireJson(request);
+    if (ctError) return ctError;
+
+    // Reject oversized bodies before parsing
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
+      return json({ error: "Request body exceeds 256 KB limit" }, 413);
+    }
+
     const user = await requireUser(request);
     if (user instanceof Response) return user;
+
+    const limited = rateLimitResponse(`chat:${user.sub}`, CHAT_LIMIT);
+    if (limited) return limited;
 
     let body: unknown;
     try {
@@ -72,9 +89,19 @@ export async function POST(request: Request): Promise<Response> {
               doneEvent.tool_calls,
               interstitial.length > 0 ? interstitial : undefined,
             );
+            // Generate a proper title on first exchange (fire-and-forget)
+            const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;
+            if (isFirstExchange) {
+              generateSessionTitle(sessionId, lastUser.content, doneEvent.message);
+            }
           }
         } catch (e) {
-          const message = e instanceof Error ? e.message : "Internal server error";
+          // Strip file paths and internal details before sending to client
+          const raw = e instanceof Error ? e.message : "Internal server error";
+          const message = raw
+            .replace(/\/[\w./-]+/g, "[path]")
+            .replace(/at .+:\d+:\d+/g, "")
+            .slice(0, 200);
           controller.enqueue(encoder.encode(JSON.stringify({ type: "error", message }) + "\n"));
         } finally {
           controller.close();

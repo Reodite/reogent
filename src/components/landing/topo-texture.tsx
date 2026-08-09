@@ -1,7 +1,9 @@
 // Topographic contour texture for the landing hero and closing CTA — felt more
 // than seen (3–4% opacity), evoking "this is about a place" without being literal.
 
-export function TopoTexture({ className }: { className?: string }) {
+import { memo } from "react";
+
+export const TopoTexture = memo(function TopoTexture({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -24,11 +26,18 @@ export function TopoTexture({ className }: { className?: string }) {
       <path d="M 980 640 C 900 520 1030 350 1220 370 C 1410 390 1480 580 1390 720 C 1300 860 1060 760 980 640 Z" />
       <path d="M 940 680 C 840 530 1000 310 1240 330 C 1480 350 1570 590 1460 770 C 1350 950 1040 830 940 680 Z" />
       <path d="M 900 720 C 780 540 970 270 1260 290 C 1550 310 1660 600 1530 820 C 1400 1040 1020 900 900 720 Z" />
-      {/* Connecting ridge lines */}
-      <path d="M 420 620 C 560 540 760 560 880 660" />
-      <path d="M 400 680 C 560 580 780 600 920 720" />
-      <path d="M 520 160 C 680 200 820 320 860 460" />
-      <path d="M 600 120 C 780 170 930 310 960 470" />
+      {/* Fades ridge line ends — objectBoundingBox per-path */}
+      <linearGradient id="ridge-fade" x1="0" y1="0.5" x2="1" y2="0.5">
+        <stop offset="0%" stopColor="currentColor" stopOpacity="0" />
+        <stop offset="15%" stopColor="currentColor" stopOpacity="1" />
+        <stop offset="85%" stopColor="currentColor" stopOpacity="1" />
+        <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+      </linearGradient>
+      {/* Connecting ridge lines — ends fade via gradient stroke */}
+      <path d="M 420 620 C 560 540 760 560 880 660" stroke="url(#ridge-fade)" />
+      <path d="M 400 680 C 560 580 780 600 920 720" stroke="url(#ridge-fade)" />
+      <path d="M 520 160 C 680 200 820 320 860 460" stroke="url(#ridge-fade)" />
+      <path d="M 600 120 C 780 170 930 310 960 470" stroke="url(#ridge-fade)" />
     </svg>
   );
-}
+});

@@ -29,11 +29,16 @@ export interface ChatApi {
       onToolEnd?: (name: string, result: unknown) => void;
       onTurnStart?: () => void;
     },
+    signal?: AbortSignal,
   ): Promise<ChatResponse>;
   /** GET /api/sessions — caller's sessions, most recently updated first. */
   listSessions(): Promise<SessionSummary[]>;
   /** GET /api/sessions/{id} — messages in chronological order; 404 if not the caller's. */
   getSession(id: string): Promise<ChatMessage[]>;
+  /** DELETE /api/sessions/{id} — delete a session and its messages. */
+  deleteSession(id: string): Promise<void>;
+  /** PATCH /api/sessions/{id} — rename a session. */
+  renameSession(id: string, title: string): Promise<void>;
   /** GET /api/profile */
   getProfile(): Promise<Profile>;
   /** PUT /api/profile */
@@ -78,6 +83,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     }
     const response = await fetch(`${baseUrl}${path}`, {
       ...init,
+      signal: init?.signal ?? AbortSignal.timeout(30_000),
       headers: {
         Authorization: `Bearer ${token}`,
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
@@ -104,6 +110,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       onToolEnd?: (name: string, result: unknown) => void;
       onTurnStart?: () => void;
     },
+    signal?: AbortSignal,
   ): Promise<ChatResponse> {
     const token = await getToken();
     if (!token) {
@@ -117,6 +124,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ session_id: sessionId, messages }),
+      signal,
     });
     if (!response.ok) {
       const error = await parseError(response);
@@ -129,11 +137,24 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     const decoder = new TextDecoder();
     let buffer = "";
     let result: ChatResponse | null = null;
+    const STALL_TIMEOUT_MS = 60_000;
+    const MAX_LINE_BYTES = 1_048_576; // 1 MB
 
     for (;;) {
-      const { done, value } = await reader.read();
+      // Abort if no data arrives within 60s
+      const readPromise = reader.read();
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new ApiError(504, "Stream stalled — no data received for 60s")), STALL_TIMEOUT_MS),
+      );
+      const { done, value } = await Promise.race([readPromise, timeout]);
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
+
+      // Guard against unbounded single-line buffering
+      if (buffer.length > MAX_LINE_BYTES) {
+        reader.cancel();
+        throw new ApiError(500, "Stream line exceeded 1 MB limit");
+      }
 
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
@@ -155,7 +176,12 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
           } else if (event.type === "turn_start" && callbacks?.onTurnStart) {
             callbacks.onTurnStart();
           } else if (event.type === "done") {
-            result = { message: event.message, tool_calls: event.tool_calls, warning: event.warning };
+            result = {
+              message: event.message,
+              tool_calls: event.tool_calls,
+              warning: event.warning,
+              follow_ups: event.follow_ups,
+            };
           } else if (event.type === "error") {
             throw new ApiError(500, event.message);
           }
@@ -174,6 +200,9 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     chat: chatStream,
     listSessions: () => request<SessionSummary[]>("/sessions"),
     getSession: (id) => request<ChatMessage[]>(`/sessions/${encodeURIComponent(id)}`),
+    deleteSession: (id) => request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    renameSession: (id, title) =>
+      request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) }),
     getProfile: () => request<Profile>("/profile"),
     putProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
     getGeo: (name) => request<FeatureCollection>(`/geo/${name}`),
