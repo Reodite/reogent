@@ -574,7 +574,7 @@ export function ChatPanel({ sessionId }: { sessionId: string }) {
                     onClick={() => send(suggestion)}
                     disabled={sending}
                     style={{ animationDelay: `${i * 60}ms` }}
-                    className="animate-message-in border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] rounded-full border px-4 py-3 text-left text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                    className="animate-message-in border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] rounded-2xl border px-4 py-3 text-center text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
                   >
                     {suggestion}
                   </button>
