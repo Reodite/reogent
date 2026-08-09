@@ -168,7 +168,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="app-shell-canvas flex h-svh flex-col overflow-hidden">
         <a
           href="#main-content"
-          className="bg-primary text-on-primary fixed top-2 left-2 z-[100] rounded-xl px-4 py-2 text-sm font-medium opacity-0 focus:opacity-100"
+          className="focus-visible:bg-primary focus-visible:text-on-primary sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:z-[100] focus-visible:rounded-xl focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium"
         >
           Skip to main content
         </a>
