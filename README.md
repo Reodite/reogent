@@ -46,7 +46,7 @@ Walking routes use Dijkstra shortest-path on a pedestrian network derived from G
 app/                          Route handlers + pages
 ├── api/                      /api/* endpoints
 │   ├── chat/route.ts         POST streaming agent response
-│   ├── sessions/route.ts     GET/POST sessions
+│   ├── sessions/route.ts     GET sessions
 │   ├── sessions/[id]/route.ts GET/DELETE/PATCH one session
 │   ├── route/route.ts        GET walking-route polyline
 │   ├── building/[code]/route.ts GET building details
@@ -59,7 +59,7 @@ src/
 ├── components/               UI (auth, chat, map, shell, landing)
 ├── lib/                      Client utils (API client, formatting, geo)
 └── server/
-    ├── agent/                Tool-calling loop (streaming + non-streaming)
+    ├── agent/                Streaming tool-calling loop
     ├── modules/              12 data modules (tool definitions + dataset access)
     ├── llm/                  LLM adapters (openai, anthropic, google)
     ├── sessions/             Postgres session store
@@ -85,6 +85,7 @@ npm install
 git submodule update --init
 cp .env.example .env
 docker compose up -d postgres meilisearch
+npm run prep-grades
 npm run ingest
 npm run dev
 ```
@@ -127,7 +128,6 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | ------ | ---------------------- | -------------------------------------------- |
 | POST   | `/api/chat`            | Stream agent response (NDJSON)               |
 | GET    | `/api/sessions`        | List user sessions                           |
-| POST   | `/api/sessions`        | Create a session                             |
 | GET    | `/api/sessions/:id`    | Session messages                             |
 | PATCH  | `/api/sessions/:id`    | Rename a session                             |
 | DELETE | `/api/sessions/:id`    | Delete a session                             |
