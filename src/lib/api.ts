@@ -50,7 +50,7 @@ export interface ChatApi {
 }
 
 export interface ChatApiOptions {
-  /** Returns the Cognito ID token, or null when signed out. */
+  /** Returns the app session token (JWT), or null when signed out. */
   getToken: () => Promise<string | null>;
   /** Called once per 401 so the app can redirect to sign-in. */
   onUnauthorized?: () => void;
