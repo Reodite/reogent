@@ -1,3 +1,4 @@
+import { uuid } from "@/src/lib/uuid";
 import { streamAgent } from "@/src/server/agent/stream";
 import { requireUser } from "@/src/server/auth";
 import type { InterstitialBlock } from "@/src/server/core/types";
@@ -38,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
     const parsed = validateChatRequest(body);
     if (!parsed.ok) return json({ error: parsed.error }, 400);
 
-    const sessionId = parsed.value.session_id ?? crypto.randomUUID();
+    const sessionId = parsed.value.session_id ?? uuid();
     const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
 
     const encoder = new TextEncoder();

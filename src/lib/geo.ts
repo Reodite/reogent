@@ -6,7 +6,7 @@ import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from
 export type { LngLat };
 export { haversineMeters };
 
-export interface BuildingFeatureProperties {
+interface BuildingFeatureProperties {
   BLDG_CODE?: string;
   NAME?: string;
   [key: string]: unknown;

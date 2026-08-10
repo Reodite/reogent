@@ -73,11 +73,6 @@ export interface WalkingDistanceResult {
   method?: "network" | "estimate";
 }
 
-export interface WalkingDistanceInput {
-  from_building: string;
-  to_building: string;
-}
-
 export interface RouteResponse {
   from: string;
   to: string;

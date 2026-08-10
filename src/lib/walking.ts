@@ -120,11 +120,6 @@ export function extractPlacesHighlight(call: ToolCall): PlacesHighlight | null {
   return { kind: "places", near, places };
 }
 
-/** Any map-driving highlight in the call — used to decide when to clear the map. */
-export function extractMapHighlight(call: ToolCall): MapHighlight | null {
-  return extractWalkingHighlight(call) ?? extractBuildingHighlight(call) ?? extractPlacesHighlight(call);
-}
-
 /**
  * The map state for a whole response: the route if one was computed (the
  * "going A → B" answer), else place pins, else ALL looked-up buildings
