@@ -46,3 +46,6 @@ infra/cdk.out/
 
 # OpenNext
 .open-next/
+
+# impeccable design tooling state (keep design.json only)
+.impeccable/critique/
