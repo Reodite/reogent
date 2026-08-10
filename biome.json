@@ -18,6 +18,6 @@
     "enabled": false
   },
   "files": {
-    "includes": ["app/**", "src/**", "scripts/**", "infra/**", "!**/cdk.out", "!**/.next"]
+    "includes": ["app/**", "src/**", "scripts/**"]
   }
 }
