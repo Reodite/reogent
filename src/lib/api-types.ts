@@ -22,6 +22,8 @@ export interface CourseDoc {
   prerequisite: string | null;
   corequisite: string | null;
   sections: CourseSection[];
+  /** Distinct section term names, e.g. "2026-27 Winter Term 1". */
+  terms: string[];
   total_sections?: number;
 }
 
