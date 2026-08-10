@@ -194,7 +194,6 @@
 
   /* Animation: message entrance */
   --animate-message-in: message-in 200ms ease-out both;
-  --animate-spin-slow: spin 1s linear infinite;
 }
 
 /* ---- Base ---- */
@@ -249,17 +248,6 @@ body {
   }
 }
 
-@keyframes typing-dot {
-  0%,
-  60%,
-  100% {
-    opacity: 0.35;
-  }
-  30% {
-    opacity: 1;
-  }
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -282,10 +270,6 @@ body {
 /* Animation utilities (not in @theme because they use custom keyframes) */
 .animate-message-in {
   animation: message-in 200ms ease-out both;
-}
-
-.animate-spin-slow {
-  animation: spin 1s linear infinite;
 }
 
 .animate-topo-drift {
@@ -336,6 +320,15 @@ html[data-auth-pending] .landing-root {
 
 html:not([data-auth-pending]) .auth-splash {
   display: none;
+}
+
+@keyframes ripple-in {
+  from {
+    clip-path: circle(0px at var(--ripple-x, 50%) var(--ripple-y, 50%));
+  }
+  to {
+    clip-path: circle(200vmax at var(--ripple-x, 50%) var(--ripple-y, 50%));
+  }
 }
 
 /* ---- Theme ripple transition ---- */
