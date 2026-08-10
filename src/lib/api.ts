@@ -1,7 +1,6 @@
-// Typed client for the /api/* contract (api-spec.md). `createChatApi` returns the
-// HTTP implementation, or the in-memory mock when NEXT_PUBLIC_API_MOCK=1 so all UI
-// work runs without a deployed backend. GeoJSON responses are cached client-side
-// after the first fetch.
+// Typed client for the /api/* contract (api-spec.md). `createChatApi` returns
+// the HTTP implementation. GeoJSON responses are cached client-side after the
+// first fetch.
 
 import {
   ApiError,
@@ -13,7 +12,6 @@ import {
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
-import { createMockApi } from "@/src/lib/mock/mock-api";
 import type { FeatureCollection } from "geojson";
 
 export interface ChatApi {
@@ -59,8 +57,8 @@ export interface ChatApiOptions {
   baseUrl?: string;
 }
 
-export function isMockMode(): boolean {
-  return process.env.NEXT_PUBLIC_API_MOCK === "1";
+export function createChatApi(options: ChatApiOptions): ChatApi {
+  return withGeoCache(createHttpApi(options));
 }
 
 async function parseError(response: Response): Promise<ApiError> {
@@ -228,13 +226,4 @@ export function withGeoCache(api: ChatApi): ChatApi {
       return pending;
     },
   };
-}
-
-export function createChatApi(options: ChatApiOptions): ChatApi {
-  // NEXT_PUBLIC_API_MOCK is inlined at build time, so the unused branch
-  // (mock fixtures included) is eliminated from production bundles.
-  if (isMockMode()) {
-    return withGeoCache(createMockApi({ getToken: options.getToken }));
-  }
-  return withGeoCache(createHttpApi(options));
 }

@@ -41,8 +41,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
             {isDev ? (
               <>
                 Set <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_AUTHORITY</code> and{" "}
-                <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_CLIENT_ID</code>, or run with{" "}
-                <code className="text-body-sm font-mono">NEXT_PUBLIC_API_MOCK=1</code>.
+                <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_CLIENT_ID</code>.
               </>
             ) : (
               "Sign-in is unavailable right now. Try again later."

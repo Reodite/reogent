@@ -199,8 +199,6 @@ npm run dev
 
 Opens at http://localhost:3000.
 
-Set `NEXT_PUBLIC_API_MOCK=1` in `.env` to use offline mock data without AWS credentials.
-
 ## Scripts
 
 | Command             | Action                     |
