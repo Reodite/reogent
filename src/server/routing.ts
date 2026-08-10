@@ -1,11 +1,10 @@
 import { ESTIMATE_DETOUR, haversineMetersObj, WALK_SPEED_M_PER_MIN, type LngLat } from "@/src/shared/types";
 import { dataStore } from "./data";
 
-/** Shortest walking routes over the campus pedestrian network
- *  (walking-routes.geojson, derived at ingest from ubcv_routes.geojson). */
+/** Shortest walking routes over the campus pedestrian network. */
 
-export { WALK_SPEED_M_PER_MIN };
-export type { LngLat };
+export const WALKING_ROUTES_KEY = "derived/walking-routes.geojson";
+export const BUILDING_ENTRANCES_KEY = "derived/building-entrances.json";
 
 export interface RouteResult {
   meters: number;
@@ -86,7 +85,7 @@ export function buildGraph(features: Feature[]): Graph {
 
 /** Finds the closest graph node using the spatial grid. Checks a 3x3 cell
  *  neighborhood first; expands the search radius if no node is found nearby. */
-export function nearestNode(graph: Graph, p: { lat: number; lon: number }): number {
+function nearestNode(graph: Graph, p: { lat: number; lon: number }): number {
   const { grid, coords } = graph;
   const cx = Math.floor(p.lon / grid.cellSize);
   const cy = Math.floor(p.lat / grid.cellSize);
@@ -248,20 +247,14 @@ let graphLoadedAt = 0;
 /** Cache TTL in milliseconds. Reloads the graph after this period. */
 const GRAPH_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-/** Preload the graph from raw features (local dev/tests without the data store). */
-export function primeGraph(features: Feature[]): void {
-  graphPromise = Promise.resolve(buildGraph(features));
-  graphLoadedAt = Date.now();
-}
-
 /** Lazy-loaded graph from the derived walking-routes artifact in the data store.
  *  Reloads after GRAPH_TTL_MS to pick up re-ingested data. */
-export function getGraph(): Promise<Graph> {
+function getGraph(): Promise<Graph> {
   if (graphPromise && Date.now() - graphLoadedAt > GRAPH_TTL_MS) {
     graphPromise = undefined;
   }
   graphPromise ??= dataStore()
-    .getJson("derived/walking-routes.geojson")
+    .getJson(WALKING_ROUTES_KEY)
     .then((geo) => {
       graphLoadedAt = Date.now();
       return buildGraph((geo as { features: Feature[] }).features);
@@ -279,12 +272,12 @@ let entrancesLoadedAt = 0;
 /** Lazy-loaded building-entrance map (derived/building-entrances.json).
  *  Resolves to {} when the artifact is missing (pre-ingest) so routing
  *  falls back to centroids. */
-export function getEntrances(): Promise<Record<string, LngLat[]>> {
+function getEntrances(): Promise<Record<string, LngLat[]>> {
   if (entrancesPromise && Date.now() - entrancesLoadedAt > GRAPH_TTL_MS) {
     entrancesPromise = undefined;
   }
   entrancesPromise ??= dataStore()
-    .getJson("derived/building-entrances.json")
+    .getJson(BUILDING_ENTRANCES_KEY)
     .then((data) => {
       entrancesLoadedAt = Date.now();
       return data as Record<string, LngLat[]>;

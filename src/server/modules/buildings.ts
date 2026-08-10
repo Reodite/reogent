@@ -1,7 +1,7 @@
 import type { FeatureCollection } from "geojson";
 import type { DatasetModule, SearchClient } from "../core/types";
 import { dataStore } from "../data";
-import { route } from "../routing";
+import { BUILDING_ENTRANCES_KEY, route, WALKING_ROUTES_KEY } from "../routing";
 
 export interface BuildingDoc {
   code: string;
@@ -18,11 +18,9 @@ type Feature = Record<string, any>;
 const BUILDINGS_KEY = "geospatial/ubcv/locations/geojson/ubcv_buildings.geojson";
 const ROUTES_KEY = "geospatial/ubcv/transportation/geojson/ubcv_routes.geojson";
 const ENTRANCES_KEY = "geospatial/ubcv/locations/geojson/ubcv_building_entraces.geojson"; // (sic — dataset typo)
-const WALKING_ROUTES_KEY = "derived/walking-routes.geojson";
-export const BUILDING_ENTRANCES_KEY = "derived/building-entrances.json";
 
 /** Average of all footprint vertices — good enough for walking estimates. */
-export function centroid(geometry: Feature): { lat: number; lon: number } {
+function centroid(geometry: Feature): { lat: number; lon: number } {
   let latSum = 0;
   let lonSum = 0;
   let n = 0;
@@ -42,7 +40,7 @@ export function centroid(geometry: Feature): { lat: number; lon: number } {
 
 /** Initial-letter prefixes (length ≥ 2) of each name — how people abbreviate
  *  buildings colloquially: "Irving K. Barber Learning Centre" → IK, IKB, IKBL, IKBLC. */
-export function acronymAliases(...names: (string | null | undefined)[]): string[] {
+function acronymAliases(...names: (string | null | undefined)[]): string[] {
   const out = new Set<string>();
   for (const name of names) {
     if (!name) continue;

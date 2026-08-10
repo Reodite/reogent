@@ -1,20 +1,4 @@
-import type {
-  AgentResult,
-  ChatMessage,
-  ContentBlock,
-  ConverseFn,
-  ConverseMessage,
-  DatasetModule,
-  SearchClient,
-  ToolCall,
-} from "../core/types";
-import { executeTool, isToolError } from "./executor";
-
 export const ITERATION_LIMIT = 8;
-const HARD_LIMIT = 10;
-
-const NUDGE =
-  "You have used many tool calls. Please provide your final answer now based on the information you have gathered so far. Do not call more tools unless absolutely necessary.";
 
 export const SYSTEM_PROMPT = `You are the UBC Vancouver campus assistant. Answer questions about courses, admissions, tuition and costs, campus buildings and walking routes, study spaces and library room bookings, food and services, parking, events, key dates, and university policies.
 
@@ -52,68 +36,4 @@ export function systemPrompt(now = new Date()): string {
     hour12: false,
   });
   return `${SYSTEM_PROMPT}\n\nIt is now ${date} (Vancouver time).`;
-}
-
-export interface AgentDeps {
-  converse: ConverseFn;
-  modules: DatasetModule[];
-  search: SearchClient;
-}
-
-/** The tool-calling loop against the Converse API (Requirements 2.2–2.7). */
-export async function runAgentLoop(messages: ChatMessage[], deps: AgentDeps): Promise<AgentResult> {
-  const toolSpecs = deps.modules.flatMap((m) => m.tools.map((t) => t.spec));
-  const convo: ConverseMessage[] = messages.map((m) => ({
-    role: m.role,
-    content: [{ text: m.content }],
-  }));
-  const toolCalls: ToolCall[] = [];
-  let lastText = "";
-
-  for (let i = 0; ; i++) {
-    // Hard cap: terminate unconditionally to prevent runaway loops
-    if (i >= HARD_LIMIT) {
-      return {
-        message: lastText || "I ran out of processing steps. Here is what I found so far.",
-        tool_calls: toolCalls,
-        warning: "Response may be incomplete — processing limit reached.",
-      };
-    }
-
-    // After hitting the soft limit, nudge the model to wrap up but keep tools available
-    if (i === ITERATION_LIMIT) {
-      convo.push({ role: "user", content: [{ text: NUDGE }] });
-    }
-
-    const res = await deps.converse({ messages: convo, system: systemPrompt(), toolSpecs });
-    convo.push(res.message);
-    const text = (res.message.content ?? [])
-      .map((b) => b.text)
-      .filter(Boolean)
-      .join("");
-    if (text) lastText = text;
-
-    if (res.stopReason !== "tool_use") {
-      return { message: lastText, tool_calls: toolCalls };
-    }
-
-    const results: ContentBlock[] = [];
-    const toolBlocks = (res.message.content ?? []).filter((b) => b.toolUse);
-    const execResults = await Promise.all(
-      toolBlocks.map((block) => executeTool(deps.modules, block.toolUse!.name, block.toolUse!.input, deps.search)),
-    );
-    for (let i = 0; i < toolBlocks.length; i++) {
-      const { toolUseId, name, input } = toolBlocks[i].toolUse!;
-      const result = execResults[i];
-      toolCalls.push({ name, input, result });
-      results.push({
-        toolResult: {
-          toolUseId,
-          content: [{ json: result }],
-          ...(isToolError(result) ? { status: "error" as const } : {}),
-        },
-      });
-    }
-    convo.push({ role: "user", content: results });
-  }
 }

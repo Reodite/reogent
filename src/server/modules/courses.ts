@@ -26,12 +26,6 @@ export interface CourseDoc {
 // biome-ignore lint/suspicious/noExplicitAny: raw dataset rows
 type Row = Record<string, any>;
 
-/** `has_no_prereqs=true` admits exactly the courses whose prerequisite is
- *  null, absent, or the empty string (Requirement 3.1 / Property 6). */
-export function hasNoPrereqs(record: { prerequisite?: string | null }): boolean {
-  return record.prerequisite === undefined || record.prerequisite === null || record.prerequisite === "";
-}
-
 const normalize = (s: unknown): string | null => {
   const v = typeof s === "string" ? s.trim() : "";
   return v === "" ? null : v;

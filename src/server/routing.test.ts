@@ -1,6 +1,6 @@
-import { haversineMetersObj } from "@/src/shared/types";
+import { haversineMetersObj, type LngLat } from "@/src/shared/types";
 import { describe, expect, it } from "vitest";
-import { buildGraph, nearestEntrancePair, routeOnGraph, shortestPath, type LngLat } from "./routing";
+import { buildGraph, nearestEntrancePair, routeOnGraph, shortestPath } from "./routing";
 
 // A small L-shaped network near UBC: A --- B --- C, plus a disconnected segment.
 //   A (-123.2500, 49.2600) — B (-123.2500, 49.2650) — C (-123.2450, 49.2650)
