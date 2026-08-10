@@ -4,15 +4,9 @@
 export {
   type ChatMessage,
   type ChatResponse,
-  type InterstitialBlock,
-  type LngLat,
   type SessionSummary,
   type ToolCall,
-  type ToolErrorResult,
   isToolError,
-  haversineMeters,
-  WALK_SPEED_M_PER_MIN,
-  ESTIMATE_DETOUR,
 } from "@/src/shared/types";
 
 // Tool result payloads shaped as the API returns them.
