@@ -1,5 +1,5 @@
 import {
-  GenerativeModel,
+  type GenerativeModel,
   GoogleGenerativeAI,
   type Content,
   type FunctionDeclaration,

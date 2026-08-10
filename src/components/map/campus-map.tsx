@@ -341,10 +341,6 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
             return;
           }
           // Find nearest point on the boundary (hull + buffer) by moving toward hull center
-          const d = distToHull(c.lng, c.lat);
-          const targetDist = d - overshoot; // move inward by overshoot amount
-          const scale = targetDist > 0 ? targetDist / d : 0;
-          // Direction: from center of hull toward current position, stop at boundary
           const hullCenterLng = (campusHull as [number, number][]).reduce((s, p) => s + p[0], 0) / campusHull.length;
           const hullCenterLat = (campusHull as [number, number][]).reduce((s, p) => s + p[1], 0) / campusHull.length;
           const dx = c.lng - hullCenterLng;
@@ -366,7 +362,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
               return;
             }
             const t = Math.min((performance.now() - startTime) / duration, 1);
-            const ease = 1 - Math.pow(1 - t, 3);
+            const ease = 1 - (1 - t) ** 3;
             const lng = startLng + (targetLng - startLng) * ease;
             const lat = startLat + (targetLat - startLat) * ease;
             map.jumpTo({ center: [lng, lat] });
@@ -617,7 +613,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
     const tick = (now: number) => {
       start ??= now;
       const raw = Math.min(1, (now - start) / ROUTE_DRAW_MS);
-      const t = 1 - Math.pow(1 - raw, 3); // ease-out cubic
+      const t = 1 - (1 - raw) ** 3; // ease-out cubic
       // Throttle state updates to every 3rd frame to reduce layer rebuilds
       frameCount++;
       if (frameCount % 3 === 0 || raw >= 1) {

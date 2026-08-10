@@ -53,7 +53,7 @@ export async function POST(request: Request): Promise<Response> {
           const interstitial: InterstitialBlock[] = [];
 
           for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch() })) {
-            controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+            controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
             if (event.type === "thinking") {
               const last = interstitial[interstitial.length - 1];
               if (last?.type === "thinking") {
@@ -102,7 +102,7 @@ export async function POST(request: Request): Promise<Response> {
             .replace(/\/[\w./-]+/g, "[path]")
             .replace(/at .+:\d+:\d+/g, "")
             .slice(0, 200);
-          controller.enqueue(encoder.encode(JSON.stringify({ type: "error", message }) + "\n"));
+          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error", message })}\n`));
         } finally {
           controller.close();
         }

@@ -1,5 +1,5 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const V1_DIR = join(ROOT, "ubc-pair-grade-data/tableau-dashboard/UBCV");
@@ -79,7 +79,7 @@ function processV1(csvDir) {
       for (const r of parseCSV(text)) {
         if (r.Campus !== "UBCV") continue;
         if (r.Section === "OVERALL") continue;
-        if (r.Detail && r.Detail.trim()) continue;
+        if (r.Detail?.trim()) continue;
         const dist = {};
         for (const b of BUCKETS) dist[b] = toInt(r[b]) ?? 0;
         rows.push({
@@ -115,7 +115,7 @@ function processV2(csvDir) {
       for (const r of parseCSV(text)) {
         if (r.Campus !== "UBCV") continue;
         if (r.Section === "OVERALL") continue;
-        if (r.Detail && r.Detail.trim()) continue;
+        if (r.Detail?.trim()) continue;
         const dist = {};
         for (const b of BUCKETS) dist[b] = toInt(r[b]) ?? 0;
         rows.push({
