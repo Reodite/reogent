@@ -6,7 +6,7 @@ import { dataStore } from "./data";
 export const WALKING_ROUTES_KEY = "derived/walking-routes.geojson";
 export const BUILDING_ENTRANCES_KEY = "derived/building-entrances.json";
 
-export interface RouteResult {
+interface RouteResult {
   meters: number;
   minutes: number;
   /** "network" = shortest path over walking paths; "estimate" = straight-line fallback */
@@ -14,7 +14,7 @@ export interface RouteResult {
   polyline: LngLat[]; // GeoJSON coordinate order, building to building
 }
 
-export interface Graph {
+interface Graph {
   coords: LngLat[]; // node id -> coordinate
   adj: { to: number; w: number }[][]; // node id -> edges
   grid: SpatialGrid;

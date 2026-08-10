@@ -1,6 +1,6 @@
 import * as jose from "jose";
 
-export interface AuthedUser {
+interface AuthedUser {
   sub: string;
   username: string;
 }

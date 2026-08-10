@@ -1,7 +1,6 @@
-import { isToolError, type ToolErrorResult } from "@/src/shared/types";
+import { isToolError } from "@/src/shared/types";
 import type { DatasetModule, SearchClient } from "../core/types";
 
-export type { ToolErrorResult };
 export { isToolError };
 
 const TOOL_TIMEOUT_MS = 30_000;

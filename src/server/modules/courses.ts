@@ -33,7 +33,7 @@ const normalize = (s: unknown): string | null => {
   return v === "" ? null : v;
 };
 
-export function parseCredits(credit: unknown): number | null {
+function parseCredits(credit: unknown): number | null {
   const m = typeof credit === "string" ? credit.match(/[\d.]+/) : null;
   return m ? Number(m[0]) : null;
 }

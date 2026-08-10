@@ -1,8 +1,6 @@
 import type { ConverseFn, ConverseMessage, ToolSpec } from "../core/types";
 import type { ConverseStreamEvent, LlmAdapter } from "./types";
 
-export type { ConverseStreamEvent };
-
 let adapter: LlmAdapter | undefined;
 
 function getAdapter(): LlmAdapter {

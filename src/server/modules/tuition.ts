@@ -46,7 +46,7 @@ export function transformTuition(row: Row): { id: string; doc: TuitionDoc } | nu
   return { id: tuitionId(doc), doc };
 }
 
-export function tuitionId(doc: TuitionDoc): string {
+function tuitionId(doc: TuitionDoc): string {
   return [
     doc.program_slug,
     doc.student_type,
@@ -81,7 +81,7 @@ export function meltTuition(rows: Row[]): TuitionDoc[] {
 
 /** Cohort resolution: exact-year match wins, else the newest `or_later` rule
  *  at or before the cohort year, else the rate with no cohort restriction. */
-export function pickCohortRow(rows: TuitionDoc[], cohortYear: number): TuitionDoc | null {
+function pickCohortRow(rows: TuitionDoc[], cohortYear: number): TuitionDoc | null {
   const exact = rows.find((r) => r.cohort_rule === "exactly" && r.cohort_year === cohortYear);
   if (exact) return exact;
   const orLater = rows

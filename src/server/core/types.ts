@@ -1,6 +1,6 @@
 // Core types shared by the agent loop, dataset modules, and API handlers.
 
-import type { ChatMessage, ChatResponse } from "@/src/shared/types";
+import type { ChatMessage } from "@/src/shared/types";
 import type { MeiliSearch } from "meilisearch";
 
 export type { ChatMessage, InterstitialBlock, SessionSummary, ToolCall } from "@/src/shared/types";
@@ -9,8 +9,6 @@ export interface ChatRequest {
   session_id?: string;
   messages: ChatMessage[];
 }
-
-export type AgentResult = ChatResponse;
 
 // LLM message shapes
 

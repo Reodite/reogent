@@ -40,7 +40,7 @@ export interface StudentFeeDoc {
 // biome-ignore lint/suspicious/noExplicitAny: raw dataset rows
 type Row = Record<string, any>;
 
-export function transformCostEstimate(row: Row): { id: string; doc: CostEstimateDoc } | null {
+function transformCostEstimate(row: Row): { id: string; doc: CostEstimateDoc } | null {
   if (row.program_id == null || !row.program) return null;
   return {
     id: String(row.program_id),

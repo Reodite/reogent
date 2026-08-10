@@ -68,7 +68,7 @@ export function transformStudySpace(row: Row): { id: string; doc: StudySpaceDoc 
   };
 }
 
-export function transformLibRoom(row: Row): { id: string; doc: LibRoomDoc } | null {
+function transformLibRoom(row: Row): { id: string; doc: LibRoomDoc } | null {
   if (row.eid == null || !row.title) return null;
   return {
     id: String(row.eid),
