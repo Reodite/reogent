@@ -17,7 +17,7 @@ Conversational AI for UBC students. Ask about courses, tuition, walking routes, 
 - Next.js 16 (App Router), React 19, TypeScript
 - LLM layer: `src/server/llm/` (Anthropic, OpenAI, Google; selectable via `LLM_API_TYPE`)
 - Postgres + Meilisearch, run via `docker-compose.yml`
-- Data from git submodules under `Unified-UBC-Data/` and `ubc-pair-grade-data/`
+- Data from git submodule `ubc-unified-data/` (grades raw data under `data/grades/raw/`, synced by `scripts/sync-grades.sh` inside the submodule)
 - Map: MapLibre GL + deck.gl
 
 ## Commands

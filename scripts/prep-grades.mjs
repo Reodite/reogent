@@ -2,9 +2,8 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const V1_DIR = join(ROOT, "ubc-pair-grade-data/tableau-dashboard/UBCV");
-const V2_DIR = join(ROOT, "ubc-pair-grade-data/tableau-dashboard-v2/UBCV");
-const OUT = join(ROOT, "Unified-UBC-Data/data/grades/distributions.json");
+const V2_DIR = join(ROOT, "ubc-unified-data/data/grades/raw");
+const OUT = join(ROOT, "ubc-unified-data/data/grades/distributions.json");
 
 const BUCKETS = ["<50", "50-54", "55-59", "60-63", "64-67", "68-71", "72-75", "76-79", "80-84", "85-89", "90-100"];
 
@@ -66,46 +65,6 @@ function toFloat(v) {
   return Number.isNaN(n) ? null : n;
 }
 
-function key(r) {
-  return `${r.year}|${r.session}|${r.subject}|${r.course}|${r.section}`;
-}
-
-function processV1(csvDir) {
-  const rows = [];
-  for (const session of readdirSync(csvDir)) {
-    const dir = join(csvDir, session);
-    for (const file of readdirSync(dir).filter((f) => f.endsWith(".csv"))) {
-      const text = readFileSync(join(dir, file), "utf-8");
-      for (const r of parseCSV(text)) {
-        if (r.Campus !== "UBCV") continue;
-        if (r.Section === "OVERALL") continue;
-        if (r.Detail?.trim()) continue;
-        const dist = {};
-        for (const b of BUCKETS) dist[b] = toInt(r[b]) ?? 0;
-        rows.push({
-          subject: r.Subject,
-          course: r.Course,
-          section: r.Section,
-          year: toInt(r.Year),
-          session: r.Session,
-          title: r.Title,
-          professor: r.Professor,
-          enrolled: toInt(r.Enrolled),
-          avg: toFloat(r.Avg),
-          std_dev: toFloat(r["Std dev"]) ?? null,
-          median: null,
-          percentile_25: null,
-          percentile_75: null,
-          high: toInt(r.High) ?? toFloat(r.High),
-          low: toInt(r.Low) ?? toFloat(r.Low),
-          distribution: dist,
-        });
-      }
-    }
-  }
-  return rows;
-}
-
 function processV2(csvDir) {
   const rows = [];
   for (const session of readdirSync(csvDir)) {
@@ -142,13 +101,9 @@ function processV2(csvDir) {
   return rows;
 }
 
-// v2 wins on duplicates
-const v2Rows = processV2(V2_DIR);
-const v2Keys = new Set(v2Rows.map(key));
-const v1Rows = processV1(V1_DIR).filter((r) => !v2Keys.has(key(r)));
+const rows = processV2(V2_DIR);
 
-const all = [...v1Rows, ...v2Rows];
-all.sort(
+rows.sort(
   (a, b) =>
     a.year - b.year ||
     a.session.localeCompare(b.session) ||
@@ -157,6 +112,6 @@ all.sort(
     a.section.localeCompare(b.section),
 );
 
-mkdirSync(join(ROOT, "Unified-UBC-Data/data/grades"), { recursive: true });
-writeFileSync(OUT, JSON.stringify(all, null, 2));
-console.log(`Wrote ${all.length} rows to ${OUT}`);
+mkdirSync(join(ROOT, "ubc-unified-data/data/grades"), { recursive: true });
+writeFileSync(OUT, JSON.stringify(rows, null, 2));
+console.log(`Wrote ${rows.length} rows to ${OUT}`);

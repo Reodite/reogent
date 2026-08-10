@@ -1,6 +1,3 @@
-[submodule "Unified-UBC-Data"]
-	path = Unified-UBC-Data
-	url = https://github.com/maxlbchung/Unified-UBC-Data.git
-[submodule "ubc-pair-grade-data"]
-	path = ubc-pair-grade-data
-	url = https://github.com/DonneyF/ubc-pair-grade-data.git
+[submodule "ubc-unified-data"]
+	path = ubc-unified-data
+	url = https://github.com/reogent-ubc/ubc-unified-data.git

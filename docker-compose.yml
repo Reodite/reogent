@@ -10,7 +10,7 @@ services:
       meilisearch:
         condition: service_healthy
     volumes:
-      - ./Unified-UBC-Data/data:/data:ro
+      - ./ubc-unified-data/data:/data:ro
     environment:
       - DATABASE_URL=postgres://reogent:${POSTGRES_PASSWORD:-reogent}@postgres:5432/reogent
       - MEILI_URL=http://meilisearch:7700
@@ -31,7 +31,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-      - ./Unified-UBC-Data/data:/data:ro
+      - ./ubc-unified-data/data:/data:ro
     environment:
       - DATABASE_URL=postgres://reogent:${POSTGRES_PASSWORD:-reogent}@postgres:5432/reogent
       - MEILI_URL=http://meilisearch:7700

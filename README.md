@@ -74,7 +74,7 @@ scripts/
 
 ## Data
 
-`Unified-UBC-Data` and `ubc-pair-grade-data` are git submodules holding scraped UBC datasets: courses, tuition, building and walking GeoJSON, study spaces, events, and grade distributions.
+`ubc-unified-data` is a git submodule holding scraped UBC datasets: courses, tuition, building and walking GeoJSON, study spaces, events, and grade distributions (`data/grades/`, synced from [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data) by `scripts/sync-grades.sh` inside the submodule).
 
 ## Setup
 
