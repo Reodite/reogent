@@ -38,14 +38,6 @@ const BOOTSTRAP =
   `try{var t=localStorage.getItem("campus.theme");document.documentElement.dataset.theme=(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}` +
   `try{if(location.pathname==="/"&&localStorage.getItem(${JSON.stringify(AUTH_KEY)}))document.documentElement.dataset.authPending=""}catch(e){}`;
 
-const DIRECTION_CONTRACT = `impeccable direction contract
-THESIS: one conversational surface that proves its answers — the map lights up with the exact route the assistant just computed; refuses the generic chatbot-in-a-box with decorative sidebar.
-OWN-WORLD: precision neumorphism on warm linen (#F7F7F5) with muted indigo primary (#4A4E7A); tight crisp shadows, inputs recess; Aspekta + Commit Mono for data.
-STORY: a student asks about courses, tuition, or a walk; sees which tool grounded the answer; watches the route draw on the real campus.
-FIRST VIEWPORT: landing — "Know your campus." over a radial accent halo and 3–4% topographic contours; app — sidebar (recessed), chat card, map card side-by-side.
-FORM: established world per DESIGN.md + UX_SPEC.md; precisely specified brief, no concept roll.
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md`;
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${aspekta.variable} ${commitMono.variable}`} suppressHydrationWarning>
@@ -54,8 +46,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: BOOTSTRAP }} />
       </head>
       <body>
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static build-time direction contract */}
-        <div hidden dangerouslySetInnerHTML={{ __html: `<!-- ${DIRECTION_CONTRACT} -->` }} />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>
