@@ -2,11 +2,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { DataWriter } from "./core/types";
 
-const DATA_PATH = () => process.env.DATA_PATH || path.join(process.cwd(), "data");
+const dataPath = () => process.env.DATA_PATH || path.join(process.cwd(), "data");
+export { dataPath };
 
 /** Filesystem-backed data store implementing DataWriter interface. */
 export function dataStore(): DataWriter {
-  const root = DATA_PATH();
+  const root = dataPath();
   return {
     async getJson(key) {
       const content = await readFile(path.join(root, key), "utf-8");
