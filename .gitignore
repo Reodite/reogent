@@ -1,6 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies (recursive — covers infra/node_modules)
+# dependencies (recursive)
 **/node_modules
 /.pnp
 .pnp.*
@@ -33,9 +33,6 @@ yarn-error.log*
 # env files
 .env*
 !.env.example
-
-# vercel
-.vercel
 
 # typescript
 *.tsbuildinfo
