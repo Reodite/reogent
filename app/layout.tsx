@@ -1,4 +1,5 @@
 import { AppProviders } from "@/src/components/providers";
+import { THEME_STORAGE_KEY } from "@/src/lib/theme";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -35,7 +36,7 @@ export const viewport: Viewport = {
 // Returning users skip the landing page flash.
 const AUTH_KEY = "reogent.auth.user";
 const BOOTSTRAP =
-  `try{var t=localStorage.getItem("campus.theme");document.documentElement.dataset.theme=(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}` +
+  `try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});document.documentElement.dataset.theme=(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}` +
   `try{if(location.pathname==="/"&&localStorage.getItem(${JSON.stringify(AUTH_KEY)}))document.documentElement.dataset.authPending=""}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

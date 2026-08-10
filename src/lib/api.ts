@@ -43,7 +43,7 @@ export interface ChatApi {
   getBuildingDetails(code: string): Promise<BuildingDetails>;
 }
 
-export interface ChatApiOptions {
+interface ChatApiOptions {
   /** Returns the app session token (JWT), or null when signed out. */
   getToken: () => Promise<string | null>;
   /** Called once per 401 so the app can redirect to sign-in. */
@@ -203,7 +203,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
 }
 
 /** Memoizes `getGeo` per dataset; a failed fetch is evicted so it can be retried. */
-export function withGeoCache(api: ChatApi): ChatApi {
+function withGeoCache(api: ChatApi): ChatApi {
   const cache = new Map<GeoName, Promise<FeatureCollection>>();
   return {
     ...api,

@@ -6,10 +6,10 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import type { SessionSummary } from "@/src/lib/api-types";
-import type { MapHighlight, WalkingHighlight } from "@/src/lib/walking";
+import type { MapHighlight } from "@/src/lib/walking";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-export type { MapHighlight, WalkingHighlight };
+export type { MapHighlight };
 
 interface ChatShellState {
   highlight: MapHighlight | null;

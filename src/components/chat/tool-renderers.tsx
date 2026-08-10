@@ -20,11 +20,11 @@ import { extractBuildingHighlight, extractPlacesHighlight, extractWalkingHighlig
 import { motion, useReducedMotion } from "motion/react";
 import { useMemo } from "react";
 
-export interface ToolCallRendererProps {
+interface ToolCallRendererProps {
   call: ToolCall;
 }
 
-export type ToolCallRenderer = React.ComponentType<ToolCallRendererProps>;
+type ToolCallRenderer = React.ComponentType<ToolCallRendererProps>;
 
 const TOOL_ICONS: Record<string, IconName> = {
   search_courses: "search",

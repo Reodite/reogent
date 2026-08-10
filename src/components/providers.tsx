@@ -4,14 +4,13 @@
 // and the shared ChatApi instance.
 import { AppAuthProvider, useAppAuth } from "@/src/components/auth/app-auth";
 import { createChatApi, type ChatApi } from "@/src/lib/api";
+import { THEME_STORAGE_KEY } from "@/src/lib/theme";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 // ---- Theme ----
 
 export type ThemeMode = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
-
-export const THEME_STORAGE_KEY = "campus.theme";
 
 interface ThemeContextValue {
   theme: ResolvedTheme;

@@ -4,7 +4,7 @@
 
 import { isToolError, type ToolCall, type WalkingDistanceResult } from "@/src/lib/api-types";
 
-export interface WalkingHighlight {
+interface WalkingHighlight {
   kind: "route";
   /** Building identifiers as the tool reported them (code preferred). */
   from: string;
@@ -13,26 +13,26 @@ export interface WalkingHighlight {
   minutes: number;
 }
 
-export interface BuildingRef {
+interface BuildingRef {
   code: string;
   name: string;
   lat: number;
   lon: number;
 }
 
-export interface BuildingsHighlight {
+interface BuildingsHighlight {
   kind: "buildings";
   buildings: BuildingRef[];
 }
 
-export interface PlacePin {
+interface PlacePin {
   name: string;
   lat: number;
   lon: number;
   service_type: string | null;
 }
 
-export interface PlacesHighlight {
+interface PlacesHighlight {
   kind: "places";
   /** Building code the search was anchored to, when given. */
   near: string | null;
