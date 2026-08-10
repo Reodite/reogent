@@ -17,7 +17,6 @@ export interface AppAuthUser {
 export interface AppAuth {
   status: AppAuthStatus;
   user: AppAuthUser | null;
-  configured: boolean;
   signIn: (username: string, password: string) => Promise<{ error?: string }>;
   register: (username: string, password: string) => Promise<{ error?: string }>;
   signOut: () => void;
@@ -27,7 +26,6 @@ export interface AppAuth {
 const INITIALIZING: AppAuth = {
   status: "initializing",
   user: null,
-  configured: true,
   signIn: async () => ({}),
   register: async () => ({}),
   signOut: () => {},
@@ -159,7 +157,6 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
     () => ({
       status: user === undefined ? "initializing" : user ? "signedIn" : "signedOut",
       user: user ?? null,
-      configured: true,
       signIn,
       register,
       signOut,

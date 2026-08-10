@@ -29,29 +29,6 @@ function RequireAuth({ children }: { children: ReactNode }) {
 
   if (auth.status === "signedIn") return <>{children}</>;
 
-  if (auth.status === "signedOut" && !auth.configured) {
-    const isDev = process.env.NODE_ENV !== "production";
-    return (
-      <div className="app-shell-canvas flex min-h-svh items-center justify-center px-6">
-        <div className="neu-panel bg-surface max-w-md rounded-2xl p-6">
-          <h1 className="text-on-surface text-base font-medium">
-            {isDev ? "Auth not configured" : "Temporarily unavailable"}
-          </h1>
-          <p className="text-on-surface-variant mt-2 text-sm leading-relaxed">
-            {isDev ? (
-              <>
-                Set <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_AUTHORITY</code> and{" "}
-                <code className="text-body-sm font-mono">NEXT_PUBLIC_COGNITO_CLIENT_ID</code>.
-              </>
-            ) : (
-              "Sign-in is unavailable right now. Try again later."
-            )}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return null;
 }
 
