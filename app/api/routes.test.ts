@@ -14,12 +14,12 @@ vi.mock("@/src/server/sessions/store", () => ({
     id === "mine" ? [{ role: "user", content: "q" }] : null,
   ),
   appendExchange: vi.fn(async () => {}),
+  updateSessionTitle: vi.fn(async () => {}),
 }));
 
 const converse = vi.fn();
 vi.mock("@/src/server/llm", () => ({
   converse: (...args: unknown[]) => converse(...args),
-  converseStream: vi.fn(),
 }));
 
 const streamAgent = vi.fn();
