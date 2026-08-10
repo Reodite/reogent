@@ -1,4 +1,4 @@
-import type { DatasetModule, DataReader, SearchClient } from "../core/types";
+import type { DataReader, DatasetModule, SearchClient } from "../core/types";
 
 interface GradeRow {
   subject: string;
