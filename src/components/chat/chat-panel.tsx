@@ -523,13 +523,6 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     abortRef.current?.abort();
   }, []);
 
-  const latestAssistantId = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return messages[i].id;
-    }
-    return null;
-  }, [messages]);
-
   return (
     <section aria-label="Conversation" className="neu-panel flex min-h-0 w-full flex-col overflow-hidden rounded-2xl">
       <div className="flex shrink-0 items-center justify-between bg-transparent px-4 py-3">
@@ -625,7 +618,6 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                 <AssistantMessage
                   key={message.id}
                   message={message}
-                  isLatest={message.id === latestAssistantId}
                   showAvatar={idx === 0 || messages[idx - 1].role !== "assistant"}
                 />
               ) : null,
