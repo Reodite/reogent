@@ -8,7 +8,6 @@ import {
   type ChatMessage,
   type ChatResponse,
   type GeoName,
-  type Profile,
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
@@ -37,10 +36,6 @@ export interface ChatApi {
   deleteSession(id: string): Promise<void>;
   /** PATCH /api/sessions/{id} — rename a session. */
   renameSession(id: string, title: string): Promise<void>;
-  /** GET /api/profile */
-  getProfile(): Promise<Profile>;
-  /** PUT /api/profile */
-  putProfile(profile: Profile): Promise<void>;
   /** GET /api/geo/{name} — GeoJSON FeatureCollection. */
   getGeo(name: GeoName): Promise<FeatureCollection>;
   /** GET /api/route?from=&to= — walking route with the polyline the map draws. */
@@ -201,8 +196,6 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     deleteSession: (id) => request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }),
     renameSession: (id, title) =>
       request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) }),
-    getProfile: () => request<Profile>("/profile"),
-    putProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
     getGeo: (name) => request<FeatureCollection>(`/geo/${name}`),
     getRoute: (from, to) =>
       request<RouteResponse>(`/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),

@@ -14,8 +14,6 @@ vi.mock("@/src/server/sessions/store", () => ({
     id === "mine" ? [{ role: "user", content: "q" }] : null,
   ),
   appendExchange: vi.fn(async () => {}),
-  getProfile: vi.fn(async () => ({ preferences: {} })),
-  putProfile: vi.fn(async () => {}),
 }));
 
 const converse = vi.fn();

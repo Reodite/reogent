@@ -8,7 +8,6 @@ export {
   type ChatResponse,
   type InterstitialBlock,
   type LngLat,
-  type Profile,
   type SessionSummary,
   type ToolCall,
   type ToolErrorResult,

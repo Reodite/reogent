@@ -12,7 +12,7 @@ Built with Next.js 16 (App Router), React 19, and TypeScript.
 | Map      | MapLibre GL + deck.gl                                 |
 | Auth     | Username/password, JWT (HS256, 7-day expiry)          |
 | AI       | Anthropic, OpenAI-compatible, or Google, via adapters |
-| Database | Postgres (users, sessions, messages, profiles)        |
+| Database | Postgres (users, sessions, messages)                  |
 | Search   | Meilisearch (campus datasets)                         |
 | Testing  | Vitest, fast-check (property tests)                   |
 | Lint     | Biome, Prettier                                       |
@@ -49,7 +49,6 @@ app/                          Route handlers + pages
 │   ├── sessions/route.ts     GET/POST sessions
 │   ├── sessions/[id]/route.ts GET/DELETE/PATCH one session
 │   ├── route/route.ts        GET walking-route polyline
-│   ├── profile/route.ts      GET/PUT user profile
 │   ├── building/[code]/route.ts GET building details
 │   ├── geo/[name]/route.ts   GET GeoJSON layers
 │   ├── auth/login|register   POST sign-in / sign-up
@@ -133,8 +132,6 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | PATCH  | `/api/sessions/:id`    | Rename a session                             |
 | DELETE | `/api/sessions/:id`    | Delete a session                             |
 | GET    | `/api/route?from=&to=` | Walking-route polyline                       |
-| GET    | `/api/profile`         | Current user profile                         |
-| PUT    | `/api/profile`         | Update user profile                          |
 | GET    | `/api/building/:code`  | Building details (rooms, POIs, availability) |
 | GET    | `/api/geo/:name`       | GeoJSON layer                                |
 | POST   | `/api/auth/login`      | Sign in, returns JWT                         |
