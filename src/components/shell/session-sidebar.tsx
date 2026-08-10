@@ -6,7 +6,7 @@ import { useApi } from "@/src/components/providers";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { motion, useReducedMotion } from "motion/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 function groupSessions(sessions: SessionSummary[]): Array<[SessionGroup, SessionSummary[]]> {
@@ -187,6 +187,7 @@ interface SessionSidebarProps {
 export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}) {
   const router = useRouter();
   const params = useParams<{ session_id?: string }>();
+  const pathname = usePathname();
   const {
     sessions,
     sessionsLoading,
@@ -195,8 +196,11 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
     setSidebarOpen,
     renameSessionLocally,
     removeSessionLocally,
+    startNewChat,
   } = useChatShell();
-  const activeId = params.session_id;
+  // Pathname, not params: a locally-minted session exists only in the URL
+  // (the router stays on /chat), so params would miss the highlight.
+  const activeId = /^\/chat\/([^/]+)/.exec(pathname)?.[1];
   const reduce = useReducedMotion();
   const hasAnimated = useRef(false);
   const [renderLimit, setRenderLimit] = useState(100);
@@ -216,7 +220,15 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
 
   function newConversation() {
     setSidebarOpen(false);
-    router.push("/chat");
+    // On a real session URL the router navigates (fresh mounted panel). On a
+    // locally-minted URL the router still thinks it's on /chat, so push is a
+    // no-op — reset the panel via context instead.
+    if (params.session_id) {
+      router.push("/chat");
+    } else {
+      window.history.replaceState(null, "", "/chat");
+      startNewChat();
+    }
   }
 
   return (

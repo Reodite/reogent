@@ -147,7 +147,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   // Tracks whether the session ID was minted locally (skip history fetch)
   const mintedLocally = useRef(!initialSessionId);
   const prefersReducedMotion = useReducedMotion();
-  const { setHighlight, sessions, refreshSessions, addOptimisticSession } = useChatShell();
+  const { setHighlight, sessions, refreshSessions, addOptimisticSession, newChatNonce } = useChatShell();
 
   const [historyState, setHistoryState] = useState<HistoryState>("loading");
   const [historyNonce, setHistoryNonce] = useState(0);
@@ -204,6 +204,9 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   const alive = useRef(true);
   const deltaFlushRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Set while a reset discards an in-flight exchange; its abort must not write
+  // stopped messages into the fresh conversation.
+  const discardingRef = useRef(false);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -222,6 +225,22 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     const firstUser = messages.find((m) => m.role === "user");
     return firstUser ? firstUser.content : "New conversation";
   }, [sessions, sessionId, messages]);
+
+  // "New conversation" from the sidebar: the minted session only exists in the
+  // URL (the router is still parked on /chat), so router.push("/chat") is a
+  // no-op. Reset this panel in place and drop the minted URL.
+  useEffect(() => {
+    if (newChatNonce === 0) return;
+    mintedLocally.current = true;
+    pendingRetry.current = null;
+    setSendError(null);
+    setSessionId("");
+    if (abortRef.current) {
+      discardingRef.current = true;
+      abortRef.current.abort();
+    }
+    inputRef.current?.focus();
+  }, [newChatNonce]);
 
   // Fresh session context: clear any route from a previous session, load history.
   // historyNonce re-runs the load for the failed-state "Try again" button.
@@ -423,6 +442,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           refreshSessions();
         })
         .catch((error: unknown) => {
+          if (discardingRef.current) {
+            discardingRef.current = false;
+            return;
+          }
           if (!alive.current) return;
           // Abort is not an error — mark the partial message as stopped so the user
           // knows the response was intentionally cut short.

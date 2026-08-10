@@ -25,6 +25,9 @@ interface ChatShellState {
   setMobileMapOpen: (open: boolean) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  /** Bumped to reset the chat panel to a blank new conversation. */
+  newChatNonce: number;
+  startNewChat: () => void;
 
   sessions: SessionSummary[];
   sessionsLoading: boolean;
@@ -55,6 +58,7 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   const [mapOpen, setMapOpen] = useState(true);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [newChatNonce, setNewChatNonce] = useState(0);
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
@@ -125,6 +129,10 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     setSessions((prev) => prev.filter((s) => s.session_id !== sessionId));
   }, []);
 
+  const startNewChat = useCallback(() => {
+    setNewChatNonce((n) => n + 1);
+  }, []);
+
   const showOnMap = useCallback(() => {
     setFocusNonce((n) => n + 1);
     setMapOpen(true);
@@ -143,6 +151,8 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       setMobileMapOpen,
       sidebarOpen,
       setSidebarOpen,
+      newChatNonce,
+      startNewChat,
       sessions,
       sessionsLoading,
       sessionsError,
@@ -159,6 +169,8 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       mapOpen,
       mobileMapOpen,
       sidebarOpen,
+      newChatNonce,
+      startNewChat,
       sessions,
       sessionsLoading,
       sessionsError,
