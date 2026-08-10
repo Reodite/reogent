@@ -24,6 +24,8 @@ export async function POST(request: Request): Promise<Response> {
 
     const { username, password } = body as Record<string, unknown>;
     if (!username || !password) return json({ error: "Username and password required" }, 400);
+    if (typeof username !== "string" || typeof password !== "string")
+      return json({ error: "Username and password must be strings" }, 400);
 
     const user = await getUserByUsername(username);
     if (!user) return json({ error: "Invalid credentials" }, 401);

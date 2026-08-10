@@ -7,17 +7,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 const TOKEN_KEY = "reogent.auth.token";
 const USER_KEY = "reogent.auth.user";
 
-export type AppAuthStatus = "initializing" | "signedOut" | "signedIn";
+type AppAuthStatus = "initializing" | "signedOut" | "signedIn";
 
-export interface AppAuthUser {
+interface AppAuthUser {
   username: string;
   userId: string;
 }
 
-export interface AppAuth {
+interface AppAuth {
   status: AppAuthStatus;
   user: AppAuthUser | null;
-  configured: boolean;
   signIn: (username: string, password: string) => Promise<{ error?: string }>;
   register: (username: string, password: string) => Promise<{ error?: string }>;
   signOut: () => void;
@@ -27,7 +26,6 @@ export interface AppAuth {
 const INITIALIZING: AppAuth = {
   status: "initializing",
   user: null,
-  configured: true,
   signIn: async () => ({}),
   register: async () => ({}),
   signOut: () => {},
@@ -159,7 +157,6 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
     () => ({
       status: user === undefined ? "initializing" : user ? "signedIn" : "signedOut",
       user: user ?? null,
-      configured: true,
       signIn,
       register,
       signOut,

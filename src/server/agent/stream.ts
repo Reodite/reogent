@@ -7,7 +7,7 @@ import { executeTool, isToolError } from "./executor";
 import { ITERATION_LIMIT, systemPrompt } from "./loop";
 
 // Stream event types sent as NDJSON lines to the client
-export type StreamEvent =
+type StreamEvent =
   | { type: "thinking"; delta: string }
   | { type: "text"; delta: string }
   | { type: "text_clear" }
@@ -17,7 +17,7 @@ export type StreamEvent =
   | { type: "done"; message: string; tool_calls: ToolCall[]; warning?: string; follow_ups?: string[] }
   | { type: "error"; message: string };
 
-export interface StreamAgentDeps {
+interface StreamAgentDeps {
   modules: DatasetModule[];
   search: SearchClient;
 }

@@ -1,4 +1,4 @@
-import type { ChatMessage, InterstitialBlock, Profile, SessionSummary, ToolCall } from "../core/types";
+import type { ChatMessage, InterstitialBlock, SessionSummary, ToolCall } from "../core/types";
 import { getPool } from "../db";
 
 /** Sessions for this user, most recently updated first. */
@@ -90,23 +90,6 @@ export async function deleteSession(userId: string, sessionId: string): Promise<
   if ((rowCount ?? 0) === 0) return false;
   await pool.query(`DELETE FROM messages WHERE session_id = $1`, [sessionId]);
   return true;
-}
-
-export async function getProfile(userId: string): Promise<Profile> {
-  const { rows } = await getPool().query(`SELECT preferences, email, updated_at FROM profiles WHERE user_id = $1`, [
-    userId,
-  ]);
-  if (rows.length === 0) return { preferences: {} };
-  return { preferences: rows[0].preferences ?? {}, email: rows[0].email, updatedAt: rows[0].updated_at?.toISOString() };
-}
-
-export async function putProfile(userId: string, profile: Profile): Promise<void> {
-  await getPool().query(
-    `INSERT INTO profiles (user_id, preferences, email, updated_at)
-     VALUES ($1, $2, $3, now())
-     ON CONFLICT (user_id) DO UPDATE SET preferences = $2, email = $3, updated_at = now()`,
-    [userId, JSON.stringify(profile.preferences ?? {}), profile.email ?? null],
-  );
 }
 
 // --- User management (for auth) ---

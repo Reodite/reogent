@@ -38,12 +38,6 @@ export interface SessionSummary {
   updatedAt: string;
 }
 
-export interface Profile {
-  preferences: Record<string, string>;
-  email?: string;
-  updatedAt?: string;
-}
-
 /** Failed tool calls carry this as `result`; renderers treat it as "no visualization". */
 export interface ToolErrorResult {
   status: "error";

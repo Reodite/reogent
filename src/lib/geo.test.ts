@@ -1,4 +1,5 @@
-import { featureCentroid, featuresBounds, findBuilding, haversineMeters, type BuildingFeature } from "@/src/lib/geo";
+import { featureCentroid, featuresBounds, findBuilding, type BuildingFeature } from "@/src/lib/geo";
+import { haversineMeters } from "@/src/shared/types";
 import fc from "fast-check";
 import type { FeatureCollection } from "geojson";
 import { describe, expect, it } from "vitest";

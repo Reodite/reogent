@@ -1,8 +1,6 @@
 import type { ConverseFn, ConverseMessage, ToolSpec } from "../core/types";
 import type { ConverseStreamEvent, LlmAdapter } from "./types";
 
-export type { ConverseStreamEvent };
-
 let adapter: LlmAdapter | undefined;
 
 function getAdapter(): LlmAdapter {
@@ -14,23 +12,21 @@ function getAdapter(): LlmAdapter {
     case "openai": {
       const { createOpenAIAdapter } = require("./openai") as typeof import("./openai");
       adapter = createOpenAIAdapter();
-      break;
+      return adapter;
     }
     case "anthropic": {
       const { createAnthropicAdapter } = require("./anthropic") as typeof import("./anthropic");
       adapter = createAnthropicAdapter();
-      break;
+      return adapter;
     }
     case "google": {
       const { createGoogleAdapter } = require("./google") as typeof import("./google");
       adapter = createGoogleAdapter();
-      break;
+      return adapter;
     }
     default:
       throw new Error(`Unsupported LLM_API_TYPE: "${apiType}". Valid values: openai, anthropic, google`);
   }
-
-  return adapter!;
 }
 
 export const converse: ConverseFn = (req) => getAdapter().converse(req);

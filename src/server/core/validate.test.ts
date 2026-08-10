@@ -56,7 +56,7 @@ describe("chat request validation", () => {
     }));
     const result = validateChatRequest({ messages });
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("100");
+    if (!result.ok) expect(result.error).toContain("100");
   });
 
   it("accepts exactly 100 messages", () => {
@@ -71,7 +71,7 @@ describe("chat request validation", () => {
     const longContent = "x".repeat(32_001);
     const result = validateChatRequest({ messages: [{ role: "user", content: longContent }] });
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("32000");
+    if (!result.ok) expect(result.error).toContain("32000");
   });
 
   it("accepts message content at exactly 32000 characters", () => {

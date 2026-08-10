@@ -1,11 +1,10 @@
-// The mock-mode user journey, verified end to end at the logic level with
+// The user journey, verified end to end at the logic level with
 // vitest (UI rendering itself is verified visually per the task notes):
-// sign-in token → chat walking question → renderer highlight extraction →
-// building resolution from geo data → route + camera bounds the map draws.
+// walking question → highlight extraction → building resolution from geo
+// data → route + camera bounds the map draws.
 
 import type { ToolCall } from "@/src/lib/api-types";
 import { featureCentroid, featuresBounds, findBuilding } from "@/src/lib/geo";
-import { createMockApi } from "@/src/lib/mock/mock-api";
 import {
   extractBuildingHighlight,
   extractPlacesHighlight,
@@ -13,6 +12,7 @@ import {
   mergeMapHighlights,
 } from "@/src/lib/walking";
 import fc from "fast-check";
+import type { FeatureCollection } from "geojson";
 import { describe, expect, it } from "vitest";
 
 describe("extractWalkingHighlight", () => {
@@ -222,22 +222,58 @@ describe("extractPlacesHighlight", () => {
   });
 });
 
-describe("mock-mode journey: chat → highlight → map geometry", () => {
-  it("resolves the answered route to two footprints, centroids, and camera bounds", async () => {
-    const api = createMockApi({ getToken: async () => "token", latencyMs: 0, seed: false });
-    const sessionId = crypto.randomUUID();
+describe("journey: highlight → geo resolution → camera bounds", () => {
+  const routeCall: ToolCall = {
+    name: "walking_distance",
+    input: { from_building: "IKB", to_building: "ICCS" },
+    result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11 },
+  };
 
-    // 1) Ask the walking question (as the suggestion chip does).
-    const response = await api.chat(sessionId, [{ role: "user", content: "How long is the walk from IKB to ICCS?" }]);
+  // Building footprint stand-ins, shaped like /api/geo/buildings polygons.
+  const buildings: FeatureCollection = {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { name: "Irving K. Barber Learning Centre", BLDG_CODE: "IBLC" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [-123.2533, 49.2689],
+              [-123.2517, 49.2689],
+              [-123.2517, 49.2677],
+              [-123.2533, 49.2677],
+              [-123.2533, 49.2689],
+            ],
+          ],
+        },
+      },
+      {
+        type: "Feature",
+        properties: { name: "ICCS", BLDG_CODE: "ICCS" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [-123.2507, 49.2612],
+              [-123.249, 49.2612],
+              [-123.249, 49.2601],
+              [-123.2507, 49.2601],
+              [-123.2507, 49.2612],
+            ],
+          ],
+        },
+      },
+    ],
+  };
 
-    // 2) The renderer extracts highlight state for the map.
-    const call = response.tool_calls.find((c) => c.name === "walking_distance");
-    if (!call) throw new Error("expected a walking_distance call");
-    const highlight = extractWalkingHighlight(call);
+  it("resolves the answered route to two footprints, centroids, and camera bounds", () => {
+    // 1) The renderer extracts highlight state for the map.
+    const highlight = extractWalkingHighlight(routeCall);
     if (!highlight) throw new Error("expected a highlight from the healthy walking_distance result");
 
-    // 3) The map resolves both buildings from /api/geo/buildings…
-    const buildings = await api.getGeo("buildings");
+    // 2) The map resolves both buildings from /api/geo/buildings…
     const from = findBuilding(buildings, highlight.from);
     const to = findBuilding(buildings, highlight.to);
     if (!from || !to) throw new Error("both highlighted buildings must exist in the geo data");
@@ -257,20 +293,14 @@ describe("mock-mode journey: chat → highlight → map geometry", () => {
       expect(lat).toBeGreaterThanOrEqual(bounds.south);
       expect(lat).toBeLessThanOrEqual(bounds.north);
     }
-
-    // 4) Session reload returns the exchange for the sidebar flow — including
-    // the tool calls, so switching back to a session keeps its cards.
-    const history = await api.getSession(sessionId);
-    expect(history[0]).toEqual({ role: "user", content: "How long is the walk from IKB to ICCS?" });
-    expect(history[1].role).toBe("assistant");
-    expect(history[1].toolCalls?.map((c) => c.name)).toContain("walking_distance");
   });
 
-  it("clears the route when the latest response has no walking_distance call", async () => {
-    const api = createMockApi({ getToken: async () => "token", latencyMs: 0, seed: false });
-    const sessionId = crypto.randomUUID();
-    const response = await api.chat(sessionId, [{ role: "user", content: "Find CPSC courses about software" }]);
-    // The chat panel clears the highlight exactly when this predicate is false.
-    expect(response.tool_calls.some((call) => extractWalkingHighlight(call))).toBe(false);
+  it("clears the route when a call carries no walking highlight", () => {
+    const courseCall: ToolCall = {
+      name: "search_courses",
+      input: { query: "CPSC" },
+      result: { courses: [] },
+    };
+    expect(extractWalkingHighlight(courseCall)).toBeNull();
   });
 });

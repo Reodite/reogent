@@ -22,7 +22,7 @@ function toOpenAIMessages(messages: ConverseMessage[], system: string): ChatComp
     } else {
       const textParts = m.content
         .filter((b) => b.text)
-        .map((b) => b.text!)
+        .map((b) => b.text ?? "")
         .join("");
       const toolCalls = m.content
         .filter((b) => b.toolUse)
@@ -141,10 +141,11 @@ export function createOpenAIAdapter(): LlmAdapter {
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
           const idx = tc.index;
-          if (!toolCalls.has(idx)) {
-            toolCalls.set(idx, { id: tc.id || "", name: tc.function?.name || "", args: "" });
+          let entry = toolCalls.get(idx);
+          if (!entry) {
+            entry = { id: tc.id || "", name: tc.function?.name || "", args: "" };
+            toolCalls.set(idx, entry);
           }
-          const entry = toolCalls.get(idx)!;
           if (tc.id) entry.id = tc.id;
           if (tc.function?.name) entry.name = tc.function.name;
           if (tc.function?.arguments) entry.args += tc.function.arguments;

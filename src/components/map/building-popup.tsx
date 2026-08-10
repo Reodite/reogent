@@ -27,7 +27,7 @@ function Carousel({ label, children }: { label: string; children: React.ReactNod
   const scrollBy = (dir: -1 | 1) =>
     scroller.current?.scrollBy({ left: dir * scroller.current.clientWidth, behavior: "smooth" });
   return (
-    <div className="flex items-center gap-1" role="region" aria-roledescription="carousel" aria-label={label}>
+    <section className="flex items-center gap-1" aria-roledescription="carousel" aria-label={label}>
       <button
         type="button"
         aria-label={`Previous ${label}`}
@@ -50,7 +50,7 @@ function Carousel({ label, children }: { label: string; children: React.ReactNod
       >
         <Icon name="right" size={14} />
       </button>
-    </div>
+    </section>
   );
 }
 

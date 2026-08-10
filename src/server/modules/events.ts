@@ -50,8 +50,8 @@ export const events: DatasetModule = {
         filterableAttributes: ["categories", "start_date"],
         sortableAttributes: ["start_date"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("events/events.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("events/events.json")) as Row[];
       },
       transform: transformEvent,
     },

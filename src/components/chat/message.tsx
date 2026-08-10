@@ -226,11 +226,9 @@ function ToolCallBlock({ name, input, result }: { name: string; input?: Record<s
 
 export const AssistantMessage = memo(function AssistantMessage({
   message,
-  isLatest,
   showAvatar = true,
 }: {
   message: DisplayMessage;
-  isLatest: boolean;
   showAvatar?: boolean;
 }) {
   const reduce = useReducedMotion();
@@ -277,7 +275,7 @@ export const AssistantMessage = memo(function AssistantMessage({
             Response stopped
           </p>
         )}
-        {!interstitial.length && <ToolCallsView calls={tools} isLatest={isLatest} />}
+        {!interstitial.length && <ToolCallsView calls={tools} />}
       </div>
     </motion.div>
   );

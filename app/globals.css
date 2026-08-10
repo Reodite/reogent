@@ -194,7 +194,6 @@
 
   /* Animation: message entrance */
   --animate-message-in: message-in 200ms ease-out both;
-  --animate-spin-slow: spin 1s linear infinite;
 }
 
 /* ---- Base ---- */
@@ -249,61 +248,9 @@ body {
   }
 }
 
-@keyframes typing-dot {
-  0%,
-  60%,
-  100% {
-    opacity: 0.35;
-  }
-  30% {
-    opacity: 1;
-  }
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes scroll-hint {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(6px);
-  }
-}
-
-@keyframes rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes mock-in {
-  from {
-    opacity: 0;
-    transform: perspective(1200px) rotateX(2deg) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: perspective(1200px) rotateX(2deg) scale(1);
-  }
-}
-
-@keyframes ripple-in {
-  from {
-    clip-path: circle(0px at var(--ripple-x, 50%) var(--ripple-y, 50%));
-  }
-  to {
-    clip-path: circle(150vmax at var(--ripple-x, 50%) var(--ripple-y, 50%));
   }
 }
 
@@ -325,34 +272,8 @@ body {
   animation: message-in 200ms ease-out both;
 }
 
-.animate-spin-slow {
-  animation: spin 1s linear infinite;
-}
-
-.animate-scroll-hint {
-  animation: scroll-hint 2s ease-in-out infinite;
-}
-
 .animate-topo-drift {
   animation: topo-drift 30s ease-in-out infinite;
-}
-
-/* ---- Landing scroll reveals ---- */
-
-.reveal {
-  opacity: 0;
-}
-
-.reveal[data-inview] {
-  animation: rise-in 420ms var(--neu-ease) both;
-}
-
-.reveal-mock {
-  opacity: 0;
-}
-
-.reveal-mock[data-inview] {
-  animation: mock-in 600ms var(--neu-ease) both;
 }
 
 /* ---- Details expand ---- */
@@ -389,11 +310,6 @@ details[open] > *:not(summary) {
     /* biome-ignore lint/complexity/noImportantStyles: see above */
     scroll-behavior: auto !important;
   }
-
-  .reveal,
-  .reveal-mock {
-    opacity: 1;
-  }
 }
 
 /* ---- Auth guards ---- */
@@ -404,6 +320,15 @@ html[data-auth-pending] .landing-root {
 
 html:not([data-auth-pending]) .auth-splash {
   display: none;
+}
+
+@keyframes ripple-in {
+  from {
+    clip-path: circle(0px at var(--ripple-x, 50%) var(--ripple-y, 50%));
+  }
+  to {
+    clip-path: circle(200vmax at var(--ripple-x, 50%) var(--ripple-y, 50%));
+  }
 }
 
 /* ---- Theme ripple transition ---- */

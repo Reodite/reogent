@@ -19,7 +19,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
     "@deck.gl/core": "^9.3.7",
-    "@deck.gl/extensions": "^9.3.7",
     "@deck.gl/layers": "^9.3.7",
     "@deck.gl/mapbox": "^9.3.7",
     "@google/generative-ai": "^0.24.1",
@@ -45,7 +44,6 @@
     "@types/node": "^24",
     "@types/pg": "^8.15.4",
     "@types/react": "^19",
-    "@types/react-dom": "^19",
     "fast-check": "^4.9.0",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
@@ -53,8 +51,5 @@
     "tsx": "^4.23.9",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
-  },
-  "overrides": {
-    "brace-expansion": "^5.0.9"
   }
 }

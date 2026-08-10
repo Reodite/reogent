@@ -13,7 +13,13 @@ const room = (eid: number, title: string): LibRoomDoc => ({
   thumbnail: null,
 });
 
-const interval = (eid: number, date: string, start: string, end: string, state: AvailabilityDoc["state"]): AvailabilityDoc => ({
+const interval = (
+  eid: number,
+  date: string,
+  start: string,
+  end: string,
+  state: AvailabilityDoc["state"],
+): AvailabilityDoc => ({
   eid,
   location: "IKB",
   building_code: "IKB",
@@ -50,10 +56,7 @@ describe("summarizeAvailability", () => {
   it("falls back to the latest snapshot date when today is absent", () => {
     const out = summarizeAvailability(
       [room(1, "Room A")],
-      [
-        interval(1, "2026-08-01", "09:00", "10:00", "free"),
-        interval(1, "2026-08-03", "11:00", "12:00", "free"),
-      ],
+      [interval(1, "2026-08-01", "09:00", "10:00", "free"), interval(1, "2026-08-03", "11:00", "12:00", "free")],
       now,
     );
     // Evaluated at the start of 2026-08-03: not free "now", next free at 11:00.

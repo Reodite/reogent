@@ -21,26 +21,26 @@ export interface CourseDoc {
   prerequisite: string | null; // null when absent/empty (drives has_no_prereqs)
   corequisite: string | null;
   sections: CourseSection[];
+  /** Distinct section term names, e.g. "2026-27 Winter Term 1". */
+  terms: string[];
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: raw dataset rows
 type Row = Record<string, any>;
-
-/** `has_no_prereqs=true` admits exactly the courses whose prerequisite is
- *  null, absent, or the empty string (Requirement 3.1 / Property 6). */
-export function hasNoPrereqs(record: { prerequisite?: string | null }): boolean {
-  return record.prerequisite === undefined || record.prerequisite === null || record.prerequisite === "";
-}
 
 const normalize = (s: unknown): string | null => {
   const v = typeof s === "string" ? s.trim() : "";
   return v === "" ? null : v;
 };
 
-export function parseCredits(credit: unknown): number | null {
+function parseCredits(credit: unknown): number | null {
   const m = typeof credit === "string" ? credit.match(/[\d.]+/) : null;
   return m ? Number(m[0]) : null;
 }
+
+const courseTerms = (sections: CourseSection[]): string[] => [
+  ...new Set(sections.map((s) => s.term).filter((t): t is string => t != null)),
+];
 
 /** Joins the academic-calendar catalogue with courses/sections per QUERYING.md:
  *  calendar code = subjects[related.course_code].name + " " + field_course_number,
@@ -82,6 +82,7 @@ export function joinCourses(tables: {
     if (!subject || number == null) continue;
     const code = `${subject} ${number}`;
     if (docs.has(code)) continue;
+    const sections = sectionsByCode.get(code) ?? [];
     docs.set(code, {
       code,
       subject,
@@ -91,7 +92,8 @@ export function joinCourses(tables: {
       credits: parseCredits(row.field_course_credit),
       prerequisite: normalize(row.prerequisite),
       corequisite: normalize(row.corequisite),
-      sections: sectionsByCode.get(code) ?? [],
+      sections,
+      terms: courseTerms(sections),
     });
   }
 
@@ -118,6 +120,7 @@ export function joinCourses(tables: {
       prerequisite: normalize(row.prerequisite),
       corequisite: normalize(row.corequisite),
       sections,
+      terms: courseTerms(sections),
     });
   }
   return [...docs.values()];
@@ -160,17 +163,17 @@ export const courses: DatasetModule = {
       index: "courses",
       settings: {
         searchableAttributes: ["title", "description", "code", "subject", "number"],
-        filterableAttributes: ["code", "subject", "credits", "prerequisite"],
+        filterableAttributes: ["code", "subject", "credits", "prerequisite", "terms"],
         sortableAttributes: ["code"],
       },
-      async *read(s3) {
+      async *read(store) {
         const [calCourses, calSubjects, schedCourses, sections, terms, statuses] = (await Promise.all([
-          s3.getJson("academic-calendar/vancouver/courses.json"),
-          s3.getJson("academic-calendar/vancouver/subjects.json"),
-          s3.getJson("courses/courses.json"),
-          s3.getJson("courses/sections.json"),
-          s3.getJson("courses/terms.json"),
-          s3.getJson("courses/statuses.json"),
+          store.getJson("academic-calendar/vancouver/courses.json"),
+          store.getJson("academic-calendar/vancouver/subjects.json"),
+          store.getJson("courses/courses.json"),
+          store.getJson("courses/sections.json"),
+          store.getJson("courses/terms.json"),
+          store.getJson("courses/statuses.json"),
         ])) as Row[][];
         yield* joinCourses({ calCourses, calSubjects, schedCourses, sections, terms, statuses });
       },
@@ -201,11 +204,12 @@ export const courses: DatasetModule = {
         },
       },
       async execute(input, search) {
-        const { query, subject, credits, has_no_prereqs, limit } = input;
+        const { query, subject, credits, has_no_prereqs, term, limit } = input;
         const filters: string[] = [];
         if (subject) filters.push(`subject = '${upSubject(String(subject))}'`);
         if (credits !== undefined) filters.push(`credits = ${credits}`);
         if (has_no_prereqs) filters.push("prerequisite IS NULL");
+        if (term) filters.push(`terms = '${String(term)}'`);
         const res = await search.index("courses").search(String(query), {
           filter: filters.length > 0 ? filters.join(" AND ") : undefined,
           limit: Math.min(Number(limit) || 20, 50),

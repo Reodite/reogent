@@ -1,6 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies (recursive — covers infra/node_modules)
+# dependencies (recursive)
 **/node_modules
 /.pnp
 .pnp.*
@@ -34,15 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
-# vercel
-.vercel
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
-# CDK
-infra/cdk.out/
-
-# OpenNext
-.open-next/
+# impeccable design tooling state (keep design.json only)
+.impeccable/critique/

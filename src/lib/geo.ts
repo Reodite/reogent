@@ -1,12 +1,11 @@
 // Pure geometry helpers for the campus map: centroids, bounds, and building lookup.
 
-import { haversineMeters, type LngLat } from "@/src/shared/types";
+import type { LngLat } from "@/src/shared/types";
 import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from "geojson";
 
 export type { LngLat };
-export { haversineMeters };
 
-export interface BuildingFeatureProperties {
+interface BuildingFeatureProperties {
   BLDG_CODE?: string;
   NAME?: string;
   [key: string]: unknown;
@@ -104,7 +103,7 @@ export function pointInFeature(feature: BuildingFeature, point: LngLat): boolean
   );
 }
 
-export interface Bounds {
+interface Bounds {
   west: number;
   south: number;
   east: number;

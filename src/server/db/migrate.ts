@@ -26,13 +26,6 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS profiles (
-  user_id UUID PRIMARY KEY REFERENCES users(id),
-  preferences JSONB DEFAULT '{}',
-  email TEXT,
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
 `;

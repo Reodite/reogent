@@ -95,11 +95,11 @@ export const admissions: DatasetModule = {
         searchableAttributes: ["name", "summary", "interests", "degrees"],
         filterableAttributes: ["degrees", "requirement_key"],
       },
-      async *read(s3) {
+      async *read(store) {
         const [programs, programRequirements, interests] = (await Promise.all([
-          s3.getJson("admissions/programs.json"),
-          s3.getJson("admissions/requirements/program_requirements.json"),
-          s3.getJson("admissions/interests.json"),
+          store.getJson("admissions/programs.json"),
+          store.getJson("admissions/requirements/program_requirements.json"),
+          store.getJson("admissions/interests.json"),
         ])) as Row[][];
         yield* joinPrograms({ programs, programRequirements, interests });
       },
@@ -114,8 +114,8 @@ export const admissions: DatasetModule = {
         filterableAttributes: ["requirement_key", "location_term_id", "advisory", "kind", "curriculum"],
         sortableAttributes: ["position"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("admissions/requirements/required_courses.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("admissions/requirements/required_courses.json")) as Row[];
       },
       transform: transformRequirement,
     },
@@ -139,11 +139,15 @@ export const admissions: DatasetModule = {
         },
       },
       async execute(input, search) {
-        const res = await search.index("admission_programs").search(String(input.query), {
+        const query = String(input.query);
+        const filters: string[] = [];
+        if (input.degree) filters.push(`degrees = '${String(input.degree)}'`);
+        const res = await search.index("admission_programs").search(query, {
+          filter: filters.length > 0 ? filters.join(" AND ") : undefined,
           limit: Math.min(Number(input.limit) || 10, 30),
         });
         const hits = res.hits;
-        if (hits.length === 0) throw new Error(`No UBC programs matched "${input.query}"`);
+        if (hits.length === 0) throw new Error(`No UBC programs matched "${query}"`);
         return {
           programs: hits.map((h) => {
             const p = h as unknown as AdmissionProgramDoc;

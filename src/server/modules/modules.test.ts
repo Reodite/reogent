@@ -1,31 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { transformBuilding } from "./buildings";
-import { hasNoPrereqs } from "./courses";
 import { modules } from "./index";
 import { transformTuition } from "./tuition";
-
-describe("has_no_prereqs filter", () => {
-  // Feature: reogent, Property 6: `has_no_prereqs` filter semantics
-  it("Property 6: admits exactly the records whose prerequisite is null, absent, or empty", () => {
-    fc.assert(
-      fc.property(
-        fc.array(
-          fc.record({ prerequisite: fc.oneof(fc.string(), fc.constant(""), fc.constant(null)) }, { requiredKeys: [] }),
-          { maxLength: 20 },
-        ),
-        (records) => {
-          const admitted = records.filter(hasNoPrereqs);
-          const expected = records.filter(
-            (r) => !("prerequisite" in r) || r.prerequisite === null || r.prerequisite === "",
-          );
-          expect(admitted).toEqual(expected);
-        },
-      ),
-      { numRuns: 200 },
-    );
-  });
-});
 
 describe("ingest document IDs", () => {
   const tuitionRow = fc.record({

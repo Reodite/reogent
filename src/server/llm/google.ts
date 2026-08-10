@@ -1,8 +1,8 @@
 import {
-  GenerativeModel,
   GoogleGenerativeAI,
   type Content,
   type FunctionDeclaration,
+  type GenerativeModel,
   type Part,
 } from "@google/generative-ai";
 import type { ContentBlock, ConverseMessage, ToolSpec } from "../core/types";

@@ -4,16 +4,9 @@
 export {
   type ChatMessage,
   type ChatResponse,
-  type InterstitialBlock,
-  type LngLat,
-  type Profile,
   type SessionSummary,
   type ToolCall,
-  type ToolErrorResult,
   isToolError,
-  haversineMeters,
-  WALK_SPEED_M_PER_MIN,
-  ESTIMATE_DETOUR,
 } from "@/src/shared/types";
 
 // Tool result payloads shaped as the API returns them.
@@ -29,6 +22,8 @@ export interface CourseDoc {
   prerequisite: string | null;
   corequisite: string | null;
   sections: CourseSection[];
+  /** Distinct section term names, e.g. "2026-27 Winter Term 1". */
+  terms: string[];
   total_sections?: number;
 }
 
@@ -72,11 +67,6 @@ export interface WalkingDistanceResult {
   meters: number;
   minutes: number;
   method?: "network" | "estimate";
-}
-
-export interface WalkingDistanceInput {
-  from_building: string;
-  to_building: string;
 }
 
 export interface RouteResponse {

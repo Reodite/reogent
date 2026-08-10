@@ -40,7 +40,7 @@ export interface StudentFeeDoc {
 // biome-ignore lint/suspicious/noExplicitAny: raw dataset rows
 type Row = Record<string, any>;
 
-export function transformCostEstimate(row: Row): { id: string; doc: CostEstimateDoc } | null {
+function transformCostEstimate(row: Row): { id: string; doc: CostEstimateDoc } | null {
   if (row.program_id == null || !row.program) return null;
   return {
     id: String(row.program_id),
@@ -106,8 +106,8 @@ export const costs: DatasetModule = {
         searchableAttributes: ["program", "degrees"],
         filterableAttributes: ["area"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("finances/program_cost_estimates.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("finances/program_cost_estimates.json")) as Row[];
       },
       transform: transformCostEstimate,
     },
@@ -117,8 +117,8 @@ export const costs: DatasetModule = {
         searchableAttributes: ["item"],
         filterableAttributes: ["variant", "basis"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("finances/living_costs.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("finances/living_costs.json")) as Row[];
       },
       transform: transformLivingCost,
     },
@@ -128,8 +128,8 @@ export const costs: DatasetModule = {
         searchableAttributes: ["item", "divider", "section", "context"],
         filterableAttributes: ["student_type"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("finances/student_fees.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("finances/student_fees.json")) as Row[];
       },
       transform: transformStudentFee,
     },

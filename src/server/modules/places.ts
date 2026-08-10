@@ -45,7 +45,7 @@ export function transformPoi(f: Feature): { id: string; doc: PoiDoc } | null {
  *  stays on haversine deliberately; only walking_distance/api-route use the
  *  path network. */
 // ponytail: haversine over ≤500 docs sorted in JS, no geo_point mapping; move to geo queries if datasets grow
-export function nearestFirst<T extends { lat: number; lon: number }>(
+function nearestFirst<T extends { lat: number; lon: number }>(
   items: T[],
   from: BuildingDoc,
 ): (T & { walk_meters: number; walk_minutes: number })[] {
@@ -87,8 +87,8 @@ export const places: DatasetModule = {
         searchableAttributes: ["name", "abbreviation"],
         filterableAttributes: ["service_type"],
       },
-      async *read(s3) {
-        yield* ((await s3.getJson("geospatial/ubcv/locations/geojson/ubcv_poi.geojson")) as { features: Feature[] })
+      async *read(store) {
+        yield* ((await store.getJson("geospatial/ubcv/locations/geojson/ubcv_poi.geojson")) as { features: Feature[] })
           .features;
       },
       transform: transformPoi,

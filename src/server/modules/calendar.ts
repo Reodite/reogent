@@ -63,11 +63,11 @@ export const calendar: DatasetModule = {
         filterableAttributes: ["kind"],
         sortableAttributes: ["start"],
       },
-      async *read(s3) {
-        for (const row of (await s3.getJson("academic-calendar/vancouver/dates.json")) as Row[]) {
+      async *read(store) {
+        for (const row of (await store.getJson("academic-calendar/vancouver/dates.json")) as Row[]) {
           yield { kind: "academic", row };
         }
-        for (const row of (await s3.getJson("campus-services/statutory_holidays.json")) as Row[]) {
+        for (const row of (await store.getJson("campus-services/statutory_holidays.json")) as Row[]) {
           yield { kind: "holiday", row };
         }
       },

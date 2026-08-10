@@ -1,7 +1,8 @@
+import { featureCentroid, type BuildingFeature } from "@/src/lib/geo";
 import type { FeatureCollection } from "geojson";
 import type { DatasetModule, SearchClient } from "../core/types";
 import { dataStore } from "../data";
-import { route } from "../routing";
+import { BUILDING_ENTRANCES_KEY, route, WALKING_ROUTES_KEY } from "../routing";
 
 export interface BuildingDoc {
   code: string;
@@ -18,31 +19,10 @@ type Feature = Record<string, any>;
 const BUILDINGS_KEY = "geospatial/ubcv/locations/geojson/ubcv_buildings.geojson";
 const ROUTES_KEY = "geospatial/ubcv/transportation/geojson/ubcv_routes.geojson";
 const ENTRANCES_KEY = "geospatial/ubcv/locations/geojson/ubcv_building_entraces.geojson"; // (sic — dataset typo)
-const WALKING_ROUTES_KEY = "derived/walking-routes.geojson";
-export const BUILDING_ENTRANCES_KEY = "derived/building-entrances.json";
-
-/** Average of all footprint vertices — good enough for walking estimates. */
-export function centroid(geometry: Feature): { lat: number; lon: number } {
-  let latSum = 0;
-  let lonSum = 0;
-  let n = 0;
-  const walk = (c: unknown) => {
-    if (!Array.isArray(c)) return;
-    if (typeof c[0] === "number" && typeof c[1] === "number") {
-      lonSum += c[0];
-      latSum += c[1];
-      n++;
-    } else {
-      for (const child of c) walk(child);
-    }
-  };
-  walk(geometry?.coordinates);
-  return { lat: latSum / n, lon: lonSum / n };
-}
 
 /** Initial-letter prefixes (length ≥ 2) of each name — how people abbreviate
  *  buildings colloquially: "Irving K. Barber Learning Centre" → IK, IKB, IKBL, IKBLC. */
-export function acronymAliases(...names: (string | null | undefined)[]): string[] {
+function acronymAliases(...names: (string | null | undefined)[]): string[] {
   const out = new Set<string>();
   for (const name of names) {
     if (!name) continue;
@@ -59,7 +39,9 @@ export function acronymAliases(...names: (string | null | undefined)[]): string[
 export function transformBuilding(f: Feature): { id: string; doc: BuildingDoc } | null {
   const code = f?.properties?.BLDG_CODE;
   if (!code) return null;
-  const { lat, lon } = centroid(f.geometry);
+  const pt = featureCentroid(f as BuildingFeature);
+  if (!pt) return null;
+  const [lon, lat] = pt;
   const name = f.properties.NAME ?? code;
   return { id: code, doc: { code, name, aliases: acronymAliases(name, f.properties.SHORTNAME), lat, lon } };
 }
@@ -114,15 +96,15 @@ export const buildings: DatasetModule = {
         searchableAttributes: ["code", "name", "aliases"],
         filterableAttributes: ["code", "aliases"],
       },
-      async *read(s3) {
-        yield* ((await s3.getJson(BUILDINGS_KEY)) as { features: Feature[] }).features;
+      async *read(store) {
+        yield* ((await store.getJson(BUILDINGS_KEY)) as { features: Feature[] }).features;
       },
       transform: transformBuilding,
-      async derive(s3) {
+      async derive(store) {
         // pedestrian-only route lines, properties stripped — serves both the
         // map overlay and the routing graph (src/server/routing.ts)
-        const routes = (await s3.getJson(ROUTES_KEY)) as { features: Feature[] };
-        await s3.putJson(WALKING_ROUTES_KEY, {
+        const routes = (await store.getJson(ROUTES_KEY)) as { features: Feature[] };
+        await store.putJson(WALKING_ROUTES_KEY, {
           type: "FeatureCollection",
           features: routes.features
             .filter((f) => f.properties?.PEDESTRIAN_ACCESS === "Y")
@@ -132,8 +114,8 @@ export const buildings: DatasetModule = {
         // building code -> entrance coordinates, joined via BLDG_UID — routing
         // snaps route endpoints to the nearest entrance pair instead of centroids
         const [buildingsGeo, entrancesGeo] = await Promise.all([
-          s3.getJson(BUILDINGS_KEY) as Promise<{ features: Feature[] }>,
-          s3.getJson(ENTRANCES_KEY) as Promise<{ features: Feature[] }>,
+          store.getJson(BUILDINGS_KEY) as Promise<{ features: Feature[] }>,
+          store.getJson(ENTRANCES_KEY) as Promise<{ features: Feature[] }>,
         ]);
         const uidToCode = new Map<string, string>();
         for (const f of buildingsGeo.features) {
@@ -149,7 +131,7 @@ export const buildings: DatasetModule = {
           byCode[code] ??= [];
           byCode[code].push(f.geometry.coordinates as [number, number]);
         }
-        await s3.putJson(BUILDING_ENTRANCES_KEY, byCode);
+        await store.putJson(BUILDING_ENTRANCES_KEY, byCode);
       },
     },
   ],
@@ -203,7 +185,7 @@ export const buildings: DatasetModule = {
     },
   ],
   geo: [
-    { name: "buildings", s3Key: BUILDINGS_KEY },
-    { name: "walking-routes", s3Key: WALKING_ROUTES_KEY },
+    { name: "buildings", path: BUILDINGS_KEY },
+    { name: "walking-routes", path: WALKING_ROUTES_KEY },
   ],
 };

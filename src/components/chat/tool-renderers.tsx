@@ -20,13 +20,11 @@ import { extractBuildingHighlight, extractPlacesHighlight, extractWalkingHighlig
 import { motion, useReducedMotion } from "motion/react";
 import { useMemo } from "react";
 
-export interface ToolCallRendererProps {
+interface ToolCallRendererProps {
   call: ToolCall;
-  /** True when this call belongs to the newest assistant response. */
-  isLatest: boolean;
 }
 
-export type ToolCallRenderer = React.ComponentType<ToolCallRendererProps>;
+type ToolCallRenderer = React.ComponentType<ToolCallRendererProps>;
 
 const TOOL_ICONS: Record<string, IconName> = {
   search_courses: "search",
@@ -109,7 +107,6 @@ function SearchCoursesRenderer({ call }: ToolCallRendererProps) {
   return (
     <div className="mt-2 flex flex-col gap-2">
       {shown.map((course) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: course codes may duplicate in cross-listed results
         <CourseCard key={`${course.code}-${course.title}`} course={course} />
       ))}
       {courses.length > shown.length && (
@@ -265,7 +262,7 @@ function callKeys(calls: ToolCall[]): string[] {
   });
 }
 
-export function ToolCallsView({ calls, isLatest }: { calls: ToolCall[]; isLatest: boolean }) {
+export function ToolCallsView({ calls }: { calls: ToolCall[] }) {
   const reduced = useReducedMotion();
   if (calls.length === 0) return null;
   const keys = callKeys(calls);
@@ -289,7 +286,7 @@ export function ToolCallsView({ calls, isLatest }: { calls: ToolCall[]; isLatest
         if (!Renderer) return null;
         return (
           <ErrorBoundary key={`render-${keys[i]}`}>
-            <Renderer call={call} isLatest={isLatest} />
+            <Renderer call={call} />
           </ErrorBoundary>
         );
       })}

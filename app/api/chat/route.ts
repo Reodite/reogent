@@ -1,3 +1,4 @@
+import { uuid } from "@/src/lib/uuid";
 import { streamAgent } from "@/src/server/agent/stream";
 import { requireUser } from "@/src/server/auth";
 import type { InterstitialBlock } from "@/src/server/core/types";
@@ -38,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
     const parsed = validateChatRequest(body);
     if (!parsed.ok) return json({ error: parsed.error }, 400);
 
-    const sessionId = parsed.value.session_id ?? crypto.randomUUID();
+    const sessionId = parsed.value.session_id ?? uuid();
     const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
 
     const encoder = new TextEncoder();
@@ -53,7 +54,7 @@ export async function POST(request: Request): Promise<Response> {
           const interstitial: InterstitialBlock[] = [];
 
           for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch() })) {
-            controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+            controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
             if (event.type === "thinking") {
               const last = interstitial[interstitial.length - 1];
               if (last?.type === "thinking") {
@@ -102,7 +103,7 @@ export async function POST(request: Request): Promise<Response> {
             .replace(/\/[\w./-]+/g, "[path]")
             .replace(/at .+:\d+:\d+/g, "")
             .slice(0, 200);
-          controller.enqueue(encoder.encode(JSON.stringify({ type: "error", message }) + "\n"));
+          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error", message })}\n`));
         } finally {
           controller.close();
         }

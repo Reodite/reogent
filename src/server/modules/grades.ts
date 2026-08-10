@@ -1,4 +1,4 @@
-import type { DatasetModule, S3Reader, SearchClient } from "../core/types";
+import type { DataReader, DatasetModule, SearchClient } from "../core/types";
 
 interface GradeRow {
   subject: string;
@@ -29,8 +29,8 @@ export const grades: DatasetModule = {
         filterableAttributes: ["subject", "course", "section", "year", "session", "avg"],
         sortableAttributes: ["year"],
       },
-      async *read(s3: S3Reader) {
-        const rows = (await s3.getJson("grades/distributions.json")) as GradeRow[];
+      async *read(store: DataReader) {
+        const rows = (await store.getJson("grades/distributions.json")) as GradeRow[];
         yield* rows;
       },
       transform(raw: GradeRow) {

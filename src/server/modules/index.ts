@@ -12,9 +12,9 @@ import { places } from "./places";
 import { spaces } from "./spaces";
 import { tuition } from "./tuition";
 
-/** The dataset-module registry. Ingest, toolConfig, tool dispatch, and the
- *  /api/geo allowlist all derive from this list — adding a data source is one
- *  module file plus one entry here. */
+/** The dataset-module registry. Ingest, tool dispatch, and the /api/geo
+ *  allowlist all derive from this list — adding a data source is one module
+ *  file plus one entry here. */
 export const modules: DatasetModule[] = [
   courses,
   tuition,

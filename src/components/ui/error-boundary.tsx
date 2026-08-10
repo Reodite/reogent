@@ -11,8 +11,6 @@ export class ErrorBoundary extends Component<{ children: ReactNode; fallback?: R
     return { failed: true };
   }
 
-  reset = () => this.setState({ failed: false });
-
   render() {
     if (this.state.failed) return this.props.fallback ?? null;
     return this.props.children;

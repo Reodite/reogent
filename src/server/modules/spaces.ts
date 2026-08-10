@@ -68,7 +68,7 @@ export function transformStudySpace(row: Row): { id: string; doc: StudySpaceDoc 
   };
 }
 
-export function transformLibRoom(row: Row): { id: string; doc: LibRoomDoc } | null {
+function transformLibRoom(row: Row): { id: string; doc: LibRoomDoc } | null {
   if (row.eid == null || !row.title) return null;
   return {
     id: String(row.eid),
@@ -116,8 +116,8 @@ export const spaces: DatasetModule = {
         filterableAttributes: ["building_code", "space_type", "capacity"],
         sortableAttributes: ["capacity"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("learning-spaces/rooms.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("learning-spaces/rooms.json")) as Row[];
       },
       transform: transformStudySpace,
     },
@@ -127,8 +127,8 @@ export const spaces: DatasetModule = {
         searchableAttributes: ["title", "location"],
         filterableAttributes: ["building_code", "capacity", "eid"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("room-bookings/rooms.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("room-bookings/rooms.json")) as Row[];
       },
       transform: transformLibRoom,
     },
@@ -139,8 +139,8 @@ export const spaces: DatasetModule = {
         filterableAttributes: ["state", "minutes", "capacity", "date", "eid"],
         sortableAttributes: ["start", "capacity"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("room-bookings/availability.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("room-bookings/availability.json")) as Row[];
       },
       transform: transformAvailability,
     },

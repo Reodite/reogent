@@ -11,5 +11,3 @@ export function getPool(): pg.Pool {
   }
   return pool;
 }
-
-export { type pg };

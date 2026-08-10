@@ -1,7 +1,5 @@
-// Typed client for the /api/* contract (api-spec.md). `createChatApi` returns the
-// HTTP implementation, or the in-memory mock when NEXT_PUBLIC_API_MOCK=1 so all UI
-// work runs without a deployed backend. GeoJSON responses are cached client-side
-// after the first fetch.
+// Typed client for the /api/* contract. GeoJSON responses are cached client-side after the
+// first fetch.
 
 import {
   ApiError,
@@ -9,11 +7,9 @@ import {
   type ChatMessage,
   type ChatResponse,
   type GeoName,
-  type Profile,
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
-import { createMockApi } from "@/src/lib/mock/mock-api";
 import type { FeatureCollection } from "geojson";
 
 export interface ChatApi {
@@ -39,10 +35,6 @@ export interface ChatApi {
   deleteSession(id: string): Promise<void>;
   /** PATCH /api/sessions/{id} — rename a session. */
   renameSession(id: string, title: string): Promise<void>;
-  /** GET /api/profile */
-  getProfile(): Promise<Profile>;
-  /** PUT /api/profile */
-  putProfile(profile: Profile): Promise<void>;
   /** GET /api/geo/{name} — GeoJSON FeatureCollection. */
   getGeo(name: GeoName): Promise<FeatureCollection>;
   /** GET /api/route?from=&to= — walking route with the polyline the map draws. */
@@ -51,16 +43,16 @@ export interface ChatApi {
   getBuildingDetails(code: string): Promise<BuildingDetails>;
 }
 
-export interface ChatApiOptions {
-  /** Returns the Cognito ID token, or null when signed out. */
+interface ChatApiOptions {
+  /** Returns the app session token (JWT), or null when signed out. */
   getToken: () => Promise<string | null>;
   /** Called once per 401 so the app can redirect to sign-in. */
   onUnauthorized?: () => void;
   baseUrl?: string;
 }
 
-export function isMockMode(): boolean {
-  return process.env.NEXT_PUBLIC_API_MOCK === "1";
+export function createChatApi(options: ChatApiOptions): ChatApi {
+  return withGeoCache(createHttpApi(options));
 }
 
 async function parseError(response: Response): Promise<ApiError> {
@@ -203,8 +195,6 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     deleteSession: (id) => request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }),
     renameSession: (id, title) =>
       request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) }),
-    getProfile: () => request<Profile>("/profile"),
-    putProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
     getGeo: (name) => request<FeatureCollection>(`/geo/${name}`),
     getRoute: (from, to) =>
       request<RouteResponse>(`/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
@@ -213,7 +203,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
 }
 
 /** Memoizes `getGeo` per dataset; a failed fetch is evicted so it can be retried. */
-export function withGeoCache(api: ChatApi): ChatApi {
+function withGeoCache(api: ChatApi): ChatApi {
   const cache = new Map<GeoName, Promise<FeatureCollection>>();
   return {
     ...api,
@@ -228,13 +218,4 @@ export function withGeoCache(api: ChatApi): ChatApi {
       return pending;
     },
   };
-}
-
-export function createChatApi(options: ChatApiOptions): ChatApi {
-  // NEXT_PUBLIC_API_MOCK is inlined at build time, so the unused branch
-  // (mock fixtures included) is eliminated from production bundles.
-  if (isMockMode()) {
-    return withGeoCache(createMockApi({ getToken: options.getToken }));
-  }
-  return withGeoCache(createHttpApi(options));
 }

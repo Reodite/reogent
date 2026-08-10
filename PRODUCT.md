@@ -38,7 +38,7 @@ When `AUTH_ENABLED=false` (development), all requests bypass auth with a default
 
 - Each conversation is a "session" with a UUID identifier
 - Sessions persist in PostgreSQL across visits. A student can close the browser and resume later.
-- Session title: auto-generated from the first user message (first 80 characters)
+- Session title: LLM-generated from the opening exchange (max 60 characters)
 - Sessions are listed in the sidebar, grouped by recency: Today, Yesterday, This Week, This Month, Older
 - Starting a new conversation mints a fresh UUID and navigates to `/chat/:id`
 - Sessions are created server-side on first message (upsert)
@@ -79,7 +79,7 @@ The app has three zones, left to right:
 
 ## Capabilities and Constraints
 
-### Agent Tools (15+ tools across 12 modules)
+### Agent Tools (20 tools across 12 modules)
 
 | Module     | Tools                                                          | Output                                                      |
 | ---------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -108,7 +108,7 @@ The app has three zones, left to right:
 
 ### Technical Constraints
 
-- **Non-streaming tool execution**: Text streams, but tool calls execute in sequence within each iteration. A tool result must complete before the next LLM turn.
+- **Sequential tool execution**: Tool results must complete before the next LLM turn.
 - **8-iteration limit**: Agent loop stops after 8 tool-calling turns. A nudge message forces a final text response at iteration 8.
 - **Data freshness**: Data is as current as the last ingest script run. Not real-time.
 - **No file upload**: Text-only input.
