@@ -1,5 +1,4 @@
-// Typed client for the /api/* contract (api-spec.md). `createChatApi` returns
-// the HTTP implementation. GeoJSON responses are cached client-side after the
+// Typed client for the /api/* contract. GeoJSON responses are cached client-side after the
 // first fetch.
 
 import {
