@@ -1,5 +1,5 @@
 import type { MeiliSearch } from "meilisearch";
-import type { DatasetModule, S3Writer } from "./core/types";
+import type { DatasetModule, DataWriter } from "./core/types";
 
 const BATCH_DOCS = 500;
 
@@ -10,7 +10,7 @@ function sanitizeId(id: string): string {
 
 /** Indexes all dataset modules into Meilisearch. Creates indexes if absent,
  *  applies settings, then adds documents in batches. */
-export async function runIngest(modules: DatasetModule[], search: MeiliSearch, s3: S3Writer): Promise<void> {
+export async function runIngest(modules: DatasetModule[], search: MeiliSearch, store: DataWriter): Promise<void> {
   for (const module of modules) {
     for (const idx of module.indices) {
       try {
@@ -40,7 +40,7 @@ export async function runIngest(modules: DatasetModule[], search: MeiliSearch, s
           batch = [];
         };
 
-        for await (const raw of idx.read(s3)) {
+        for await (const raw of idx.read(store)) {
           const t = idx.transform(raw);
           if (!t) continue;
           batch.push({ id: sanitizeId(t.id), ...t.doc });
@@ -51,7 +51,7 @@ export async function runIngest(modules: DatasetModule[], search: MeiliSearch, s
         console.log(`${idx.index}: indexed ${count} docs`);
 
         if (idx.derive) {
-          await idx.derive(s3);
+          await idx.derive(store);
           console.log(`${idx.index}: derived artifacts written`);
         }
       } catch (e) {

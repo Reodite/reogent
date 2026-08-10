@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ name
     const artifact = modules.flatMap((m) => m.geo ?? []).find((g) => g.name === name);
     if (!artifact) return json({ error: `Unknown geo artifact: ${name}` }, 404);
 
-    const filePath = path.join(DATA_PATH(), artifact.s3Key);
+    const filePath = path.join(DATA_PATH(), artifact.path);
     if (!existsSync(filePath)) return json({ error: `File not found: ${name}` }, 404);
 
     const stream = Readable.toWeb(createReadStream(filePath)) as ReadableStream;

@@ -53,11 +53,11 @@ export type ConverseFn = (req: {
 
 // Dataset module system
 
-export interface S3Reader {
+export interface DataReader {
   getJson(key: string): Promise<unknown>;
 }
 
-export interface S3Writer extends S3Reader {
+export interface DataWriter extends DataReader {
   putJson(key: string, value: unknown): Promise<void>;
 }
 
@@ -73,9 +73,9 @@ export interface IndexDef<TRaw = any> {
     filterableAttributes?: string[];
     sortableAttributes?: string[];
   };
-  read(s3: S3Reader): AsyncIterable<TRaw>;
+  read(store: DataReader): AsyncIterable<TRaw>;
   transform(raw: TRaw): { id: string; doc: Record<string, unknown> | object } | null;
-  derive?(s3: S3Writer): Promise<void>;
+  derive?(store: DataWriter): Promise<void>;
 }
 
 export interface ToolDef {
@@ -85,7 +85,7 @@ export interface ToolDef {
 
 export interface GeoArtifact {
   name: string;
-  s3Key: string;
+  path: string;
 }
 
 export interface DatasetModule {

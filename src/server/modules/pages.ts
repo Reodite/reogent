@@ -77,16 +77,16 @@ export const pages: DatasetModule = {
         searchableAttributes: ["title", "text"],
         filterableAttributes: ["source"],
       },
-      async *read(s3) {
-        for (const row of (await s3.getJson("academic-calendar/vancouver/pages.json")) as Row[]) {
+      async *read(store) {
+        for (const row of (await store.getJson("academic-calendar/vancouver/pages.json")) as Row[]) {
           yield { source: "calendar", shape: "drupal", row } satisfies TaggedPage;
         }
         for (const [source, key] of WP_SOURCES) {
-          for (const row of (await s3.getJson(key)) as Row[]) {
+          for (const row of (await store.getJson(key)) as Row[]) {
             yield { source, shape: "wordpress", row } satisfies TaggedPage;
           }
         }
-        for (const row of (await s3.getJson("reports/documents.json")) as Row[]) {
+        for (const row of (await store.getJson("reports/documents.json")) as Row[]) {
           yield { source: "reports", shape: "report", row } satisfies TaggedPage;
         }
       },

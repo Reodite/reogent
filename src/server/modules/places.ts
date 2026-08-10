@@ -87,8 +87,8 @@ export const places: DatasetModule = {
         searchableAttributes: ["name", "abbreviation"],
         filterableAttributes: ["service_type"],
       },
-      async *read(s3) {
-        yield* ((await s3.getJson("geospatial/ubcv/locations/geojson/ubcv_poi.geojson")) as { features: Feature[] })
+      async *read(store) {
+        yield* ((await store.getJson("geospatial/ubcv/locations/geojson/ubcv_poi.geojson")) as { features: Feature[] })
           .features;
       },
       transform: transformPoi,

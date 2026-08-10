@@ -245,16 +245,16 @@ export function nearestEntrancePair(fromEntrances: LngLat[], toEntrances: LngLat
 let graphPromise: Promise<Graph> | undefined;
 let graphLoadedAt = 0;
 
-/** Cache TTL in milliseconds. Reloads the graph from S3 after this period. */
+/** Cache TTL in milliseconds. Reloads the graph after this period. */
 const GRAPH_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-/** Preload the graph from raw features (local dev/tests without S3). */
+/** Preload the graph from raw features (local dev/tests without the data store). */
 export function primeGraph(features: Feature[]): void {
   graphPromise = Promise.resolve(buildGraph(features));
   graphLoadedAt = Date.now();
 }
 
-/** Lazy-loaded graph from the derived walking-routes artifact in S3.
+/** Lazy-loaded graph from the derived walking-routes artifact in the data store.
  *  Reloads after GRAPH_TTL_MS to pick up re-ingested data. */
 export function getGraph(): Promise<Graph> {
   if (graphPromise && Date.now() - graphLoadedAt > GRAPH_TTL_MS) {

@@ -114,15 +114,15 @@ export const buildings: DatasetModule = {
         searchableAttributes: ["code", "name", "aliases"],
         filterableAttributes: ["code", "aliases"],
       },
-      async *read(s3) {
-        yield* ((await s3.getJson(BUILDINGS_KEY)) as { features: Feature[] }).features;
+      async *read(store) {
+        yield* ((await store.getJson(BUILDINGS_KEY)) as { features: Feature[] }).features;
       },
       transform: transformBuilding,
-      async derive(s3) {
+      async derive(store) {
         // pedestrian-only route lines, properties stripped — serves both the
         // map overlay and the routing graph (src/server/routing.ts)
-        const routes = (await s3.getJson(ROUTES_KEY)) as { features: Feature[] };
-        await s3.putJson(WALKING_ROUTES_KEY, {
+        const routes = (await store.getJson(ROUTES_KEY)) as { features: Feature[] };
+        await store.putJson(WALKING_ROUTES_KEY, {
           type: "FeatureCollection",
           features: routes.features
             .filter((f) => f.properties?.PEDESTRIAN_ACCESS === "Y")
@@ -132,8 +132,8 @@ export const buildings: DatasetModule = {
         // building code -> entrance coordinates, joined via BLDG_UID — routing
         // snaps route endpoints to the nearest entrance pair instead of centroids
         const [buildingsGeo, entrancesGeo] = await Promise.all([
-          s3.getJson(BUILDINGS_KEY) as Promise<{ features: Feature[] }>,
-          s3.getJson(ENTRANCES_KEY) as Promise<{ features: Feature[] }>,
+          store.getJson(BUILDINGS_KEY) as Promise<{ features: Feature[] }>,
+          store.getJson(ENTRANCES_KEY) as Promise<{ features: Feature[] }>,
         ]);
         const uidToCode = new Map<string, string>();
         for (const f of buildingsGeo.features) {
@@ -149,7 +149,7 @@ export const buildings: DatasetModule = {
           byCode[code] ??= [];
           byCode[code].push(f.geometry.coordinates as [number, number]);
         }
-        await s3.putJson(BUILDING_ENTRANCES_KEY, byCode);
+        await store.putJson(BUILDING_ENTRANCES_KEY, byCode);
       },
     },
   ],
@@ -203,7 +203,7 @@ export const buildings: DatasetModule = {
     },
   ],
   geo: [
-    { name: "buildings", s3Key: BUILDINGS_KEY },
-    { name: "walking-routes", s3Key: WALKING_ROUTES_KEY },
+    { name: "buildings", path: BUILDINGS_KEY },
+    { name: "walking-routes", path: WALKING_ROUTES_KEY },
   ],
 };

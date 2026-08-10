@@ -1,11 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { S3Writer } from "./core/types";
+import type { DataWriter } from "./core/types";
 
 const DATA_PATH = () => process.env.DATA_PATH || path.join(process.cwd(), "data");
 
-/** Filesystem-backed data store implementing S3Writer interface. */
-export function dataStore(basePath?: string): S3Writer {
+/** Filesystem-backed data store implementing DataWriter interface. */
+export function dataStore(basePath?: string): DataWriter {
   const root = basePath ?? DATA_PATH();
   return {
     async getJson(key) {

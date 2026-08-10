@@ -95,11 +95,11 @@ export const admissions: DatasetModule = {
         searchableAttributes: ["name", "summary", "interests", "degrees"],
         filterableAttributes: ["degrees", "requirement_key"],
       },
-      async *read(s3) {
+      async *read(store) {
         const [programs, programRequirements, interests] = (await Promise.all([
-          s3.getJson("admissions/programs.json"),
-          s3.getJson("admissions/requirements/program_requirements.json"),
-          s3.getJson("admissions/interests.json"),
+          store.getJson("admissions/programs.json"),
+          store.getJson("admissions/requirements/program_requirements.json"),
+          store.getJson("admissions/interests.json"),
         ])) as Row[][];
         yield* joinPrograms({ programs, programRequirements, interests });
       },
@@ -114,8 +114,8 @@ export const admissions: DatasetModule = {
         filterableAttributes: ["requirement_key", "location_term_id", "advisory", "kind", "curriculum"],
         sortableAttributes: ["position"],
       },
-      async *read(s3) {
-        yield* (await s3.getJson("admissions/requirements/required_courses.json")) as Row[];
+      async *read(store) {
+        yield* (await store.getJson("admissions/requirements/required_courses.json")) as Row[];
       },
       transform: transformRequirement,
     },

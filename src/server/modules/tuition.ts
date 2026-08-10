@@ -100,8 +100,8 @@ export const tuition: DatasetModule = {
         searchableAttributes: ["program", "program_slug"],
         filterableAttributes: ["program_slug", "student_type", "cohort_year", "cohort_rule"],
       },
-      async *read(s3) {
-        yield* meltTuition((await s3.getJson("finances/tuition.json")) as Row[]);
+      async *read(store) {
+        yield* meltTuition((await store.getJson("finances/tuition.json")) as Row[]);
       },
       transform(doc: TuitionDoc) {
         return { id: tuitionId(doc), doc };

@@ -163,14 +163,14 @@ export const courses: DatasetModule = {
         filterableAttributes: ["code", "subject", "credits", "prerequisite"],
         sortableAttributes: ["code"],
       },
-      async *read(s3) {
+      async *read(store) {
         const [calCourses, calSubjects, schedCourses, sections, terms, statuses] = (await Promise.all([
-          s3.getJson("academic-calendar/vancouver/courses.json"),
-          s3.getJson("academic-calendar/vancouver/subjects.json"),
-          s3.getJson("courses/courses.json"),
-          s3.getJson("courses/sections.json"),
-          s3.getJson("courses/terms.json"),
-          s3.getJson("courses/statuses.json"),
+          store.getJson("academic-calendar/vancouver/courses.json"),
+          store.getJson("academic-calendar/vancouver/subjects.json"),
+          store.getJson("courses/courses.json"),
+          store.getJson("courses/sections.json"),
+          store.getJson("courses/terms.json"),
+          store.getJson("courses/statuses.json"),
         ])) as Row[][];
         yield* joinCourses({ calCourses, calSubjects, schedCourses, sections, terms, statuses });
       },

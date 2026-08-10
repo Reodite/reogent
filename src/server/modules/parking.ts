@@ -59,9 +59,9 @@ export const parking: DatasetModule = {
         searchableAttributes: ["name"],
         filterableAttributes: ["ev_charging", "accessible_stalls", "motorcycle", "bike_cage"],
       },
-      async *read(s3) {
+      async *read(store) {
         yield* (
-          (await s3.getJson("geospatial/ubcv/parking/geojson/ubcv_parking_www.geojson")) as {
+          (await store.getJson("geospatial/ubcv/parking/geojson/ubcv_parking_www.geojson")) as {
             features: Feature[];
           }
         ).features;
