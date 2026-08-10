@@ -534,7 +534,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
 
     return () => {
       disposed = true;
-      if (controls.current) controls.current = null;
+      if (controls?.current) controls.current = null;
       const handles = handlesRef.current;
       handlesRef.current = null;
       if (handles) {
