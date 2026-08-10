@@ -59,7 +59,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
       <form
         data-thinking={thinking}
         aria-busy={thinking}
-        className="chat-composer neu-inset bg-surface-container-low relative flex items-center rounded-2xl p-1.5 transition-[box-shadow] duration-150"
+        className="chat-composer neu-inset bg-surface-container-low relative flex items-center rounded-2xl p-1.5 transition-[box-shadow] duration-150 sm:pr-2.5"
         onSubmit={(event) => {
           event.preventDefault();
           submit();
