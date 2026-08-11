@@ -27,7 +27,7 @@ Conversational AI for UBC students. Ask about courses, tuition, walking routes, 
 - `npm test` — Vitest (run once; `--passWithNoTests`)
 - `npm run format` / `npm run format:check` — Prettier
 - `npm run ingest` — re-index datasets into Meilisearch
-- `npm run prep-grades` — regenerate grade fixtures
+- `npm run prep-grades` (in `ubc-unified-data/`) — regenerate grade fixtures
 - Never run long-lived watchers; run them manually in a terminal.
 
 ## Conventions
