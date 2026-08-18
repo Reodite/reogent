@@ -10,7 +10,7 @@ const MARKER_RE = /\[(\d+)\]/g;
  * `children` prop, so each listed element kind injects only its own direct
  * string leaves — no nested double-injection (REQ-13.4). */
 export function injectChips(children: ReactNode, citations: Citation[] | null | undefined): ReactNode {
-  if (!citations || citations.length === 0 || children == null || children === "") {
+  if (!Array.isArray(citations) || citations.length === 0 || children == null || children === "") {
     return children;
   }
   let counter = 0;

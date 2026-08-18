@@ -8,7 +8,7 @@ import { useRef } from "react";
 export function SourcesPanel({ citations }: { citations: Citation[] | null | undefined }) {
   const ref = useRef<HTMLElement>(null);
   const reducedMotion = useReducedMotion();
-  if (!citations || citations.length === 0) return null;
+  if (!Array.isArray(citations) || citations.length === 0) return null;
 
   const used = citations.filter((c) => c.used);
   const unused = citations.filter((c) => !c.used);

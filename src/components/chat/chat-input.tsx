@@ -2,6 +2,7 @@
 
 // The recessed chat composer. Enter sends; Shift+Enter adds a line;
 // Cmd/Ctrl+Enter always sends. Submit locks while a request is in flight.
+import { ComposerToolsMenu } from "@/src/components/chat/composer-tools-menu";
 import { Icon } from "@/src/components/icons";
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 
@@ -65,6 +66,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           submit();
         }}
       >
+        <ComposerToolsMenu />
         <textarea
           ref={textareaRef}
           rows={1}

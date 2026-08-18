@@ -75,6 +75,7 @@ function sectionLine(course: CourseDoc): string | null {
 }
 
 function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?: boolean }) {
+  const { setActiveChannel } = useChatShell();
   const times = sectionLine(course);
   return (
     <article className="bg-surface-container-low rounded-lg p-3">
@@ -95,6 +96,17 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
         {course.prerequisite ? `Prereq: ${course.prerequisite}` : "No prerequisites"}
         {detailed && course.corequisite ? ` · Coreq: ${course.corequisite}` : ""}
       </p>
+      {course.prerequisite && (
+        <button
+          data-action="open-prereq-tree"
+          data-code={course.code}
+          type="button"
+          onClick={() => setActiveChannel("prereq-tree", { root: course.code, selections: {} })}
+          className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-95"
+        >
+          <Icon name="tree" size={12} /> Prereq Tree
+        </button>
+      )}
     </article>
   );
 }
