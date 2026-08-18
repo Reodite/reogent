@@ -1,0 +1,92 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CourseNode variants (REQ-9.4) > renders coreq variant (bg-secondary-container) 1`] = `
+<div>
+  <section
+    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-secondary-container text-on-secondary-container"
+    data-node-id="math200"
+    data-variant="coreq"
+  >
+    <div
+      class="font-mono text-sm font-medium"
+    >
+      MATH 200
+    </div>
+  </section>
+</div>
+`;
+
+exports[`CourseNode variants (REQ-9.4) > renders known variant (bg-surface) 1`] = `
+<div>
+  <section
+    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-surface text-on-surface"
+    data-node-id="cpsc221"
+    data-variant="known"
+  >
+    <div
+      class="font-mono text-sm font-medium"
+    >
+      CPSC 221
+    </div>
+  </section>
+</div>
+`;
+
+exports[`CourseNode variants (REQ-9.4) > renders note variant with label prose (bg-surface-container-low text-muted) 1`] = `
+<div>
+  <section
+    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-surface-container-low text-muted"
+    data-node-id="lit1"
+    data-variant="note"
+  >
+    <div
+      class="font-mono text-sm font-medium"
+    >
+      Third-year standing
+    </div>
+  </section>
+</div>
+`;
+
+exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label (bg-primary-container) 1`] = `
+<div>
+  <section
+    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-primary-container text-on-primary-container"
+    data-node-id="cpsc320"
+    data-variant="root"
+  >
+    <div
+      class="text-[0.625rem] tracking-wide uppercase opacity-70"
+    >
+      ROOT
+    </div>
+    <div
+      class="font-mono text-sm font-medium"
+    >
+      CPSC 320
+    </div>
+  </section>
+</div>
+`;
+
+exports[`CourseNode variants (REQ-9.4) > renders unknown variant with the not-in-catalog note (bg-error-container) 1`] = `
+<div>
+  <section
+    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-error-container text-on-error-container"
+    data-node-id="calc12"
+    data-variant="unknown"
+  >
+    <div
+      class="font-mono text-sm font-medium"
+    >
+      CALC 12
+    </div>
+    <div
+      class="text-on-error-container text-[0.625rem]"
+      title="Not in UBC Vancouver catalog"
+    >
+      not in catalog
+    </div>
+  </section>
+</div>
+`;

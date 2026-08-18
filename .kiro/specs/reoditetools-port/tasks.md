@@ -131,7 +131,7 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [ ] 8. Implement Prerequisite Tree client components (`src/components/prereq-tree/`)
   - [x] 8.1 Implement `selection-key.ts` encode/decode (`${ownerCode}::${path}`)
     - _Requirements: REQ-8.1_
-  - [ ] 8.2 Implement `CourseNode` with `known`/`unknown`/`root`/`note` variants
+  - [x] 8.2 Implement `CourseNode` with `known`/`unknown`/`root`/`note` variants
     - Apply neumorphic raised-surface treatment; recessed on press
     - _Requirements: REQ-9.4, REQ-20.1_
   - [ ] 8.3 Implement `DropdownDisjunctionNode` (REQ-9.1 — `one of A, B, C` variant) and `StackedDisjunctionNode` (REQ-9.2 — `Either (a) … or (b) …` variant)
