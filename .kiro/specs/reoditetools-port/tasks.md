@@ -128,7 +128,7 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [x] 7. Checkpoint - Prerequisite Tree server tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement Prerequisite Tree client components (`src/components/prereq-tree/`)
+- [x] 8. Implement Prerequisite Tree client components (`src/components/prereq-tree/`)
   - [x] 8.1 Implement `selection-key.ts` encode/decode (`${ownerCode}::${path}`)
     - _Requirements: REQ-8.1_
   - [x] 8.2 Implement `CourseNode` with `known`/`unknown`/`root`/`note` variants
@@ -154,23 +154,23 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x]\* 8.9 Property test — Default index 0
     - **Property 17: Disjunctions with absent Selection Keys default to child index 0**
     - **Validates: Requirements REQ-8.2**
-  - [ ]\* 8.10 Example test — Dropdown-absorption (selected option routes edges into the dropdown group node)
+  - [x]\* 8.10 Example test — Dropdown-absorption (selected option routes edges into the dropdown group node)
     - _Requirements: REQ-8.5_
-  - [ ]\* 8.11 Example test — Course → Course Lookup one-click navigation
+  - [x]\* 8.11 Example test — Course → Course Lookup one-click navigation
     - _Requirements: REQ-4.2, REQ-9.5_
-  - [ ]\* 8.12 Snapshot test — CourseNode variants (root/known/unknown/note), DropdownDisjunctionNode, StackedDisjunctionNode
+  - [x]\* 8.12 Snapshot test — CourseNode variants (root/known/unknown/note), DropdownDisjunctionNode, StackedDisjunctionNode
     - _Requirements: REQ-9.4_
-  - [ ]\* 8.13 Example test — Menu inherits canvas zoom (dropdown scales with current zoom; closes on zoom change)
+  - [x]\* 8.13 Example test — Menu inherits canvas zoom (dropdown scales with current zoom; closes on zoom change)
     - _Requirements: REQ-9.1, REQ-9.2_
-  - [ ]\* 8.14 Property test — Soft-toggle effect on top-level `Soft` blocks
+  - [x]\* 8.14 Property test — Soft-toggle effect on top-level `Soft` blocks
     - **Property 36: When the optional toggle for a `Soft`-wrapped subtree is enabled (`M[p] === 1`, mirroring `activeChannel.state.softToggles[path]` per §C, root = `''`) the subtree's outgoing edges render; when disabled (`M[p] === 0`) they hide. The label is invariant under the toggle (Property 10).**
     - **Validates: Requirements REQ-10.2**
     - Generator: `arbSoftSelection` from design.md §Domain 5; render the same `(tree, path)` at both `M[p] = 0` and `M[p] = 1`, assert the child-subtree edge count differs.
-  - [ ]\* 8.15 Example test — Prereq Tree root-input switch re-roots the tree (REQ-4.3 nav direction)
+  - [x]\* 8.15 Example test — Prereq Tree root-input switch re-roots the tree (REQ-4.3 nav direction)
     - Enter a new code in the tree's root input; assert the tree re-fetches and re-roots with the new code as root.
     - _Requirements: REQ-4.3_
 
-- [ ] 9. Checkpoint - Prerequisite Tree client tests pass
+- [x] 9. Checkpoint - Prerequisite Tree client tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. Implement Sidebar collapse persistence + version badge (inline into `src/components/shell/session-sidebar.tsx`)
