@@ -116,3 +116,36 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
   });
 });
+
+describe("13.2 — ARIA landmarks (REQ-8.2)", () => {
+  it("the ChatSurface wrapper is the sole <main> and carries #main-content; the Answer canvas is a labelled region", () => {
+    const { container } = renderShell(true);
+    const main = container.querySelectorAll("main");
+    expect(main.length).toBe(1);
+    expect(main[0]?.id).toBe("main-content");
+    expect(main[0]?.getAttribute("data-pane")).toBe("chat");
+    expect(container.querySelector('[aria-label="Answer canvas"]')).not.toBeNull();
+  });
+});
+
+describe("13.3 — focus move/return + inert (REQ-2.5, REQ-8.1, REQ-8.3)", () => {
+  it("closing the Answer sheet returns focus to the Map entry that opened it", () => {
+    const { container } = renderShell(false);
+    const mapEntry = container.querySelector('[aria-label="Open answer canvas"]') as HTMLButtonElement;
+    fireEvent.click(mapEntry);
+    expect(container.querySelector('[data-answer-sheet="open"]')).not.toBeNull();
+    fireEvent.click(container.querySelector("[data-answer-scrim]") as HTMLElement);
+    expect(container.querySelector('[data-answer-sheet="closed"]')).not.toBeNull();
+    expect(document.activeElement).toBe(mapEntry);
+  });
+
+  it("closing the left drawer returns focus to the Open-sidebar button", () => {
+    const { container } = renderShell(false);
+    const opener = container.querySelector('[aria-label="Open sidebar"]') as HTMLButtonElement;
+    fireEvent.click(opener);
+    expect(container.querySelector('[role="dialog"]')?.parentElement?.hasAttribute("inert")).toBe(false);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(container.querySelector('[role="dialog"]')?.parentElement?.hasAttribute("inert")).toBe(true);
+    expect(document.activeElement).toBe(opener);
+  });
+});

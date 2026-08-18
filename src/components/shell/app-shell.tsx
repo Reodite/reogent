@@ -99,15 +99,29 @@ export function AppShell({ children }: { children: ReactNode }) {
   const wide = useIsWide();
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sessionsMenuRef = useRef<HTMLButtonElement>(null);
+  const mapEntryRef = useRef<HTMLButtonElement>(null);
+  const sidebarOpenRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
 
-  // Crossing to wide closes a lingering Answer Sheet (the button that opens it
+  // Crossing to wide closes a lingering Answer sheet (the button that opens it
   // is hidden at wide); nothing else needs this, so a one-shot close suffices.
   useEffect(() => {
     if (wide && answerSheetOpen) setAnswerSheetOpen(false);
   }, [wide, answerSheetOpen, setAnswerSheetOpen]);
 
   const sheetInert = mode === "ai" && answerSheetOpen && !wide;
+
+  // Restore focus to the triggering control when a sheet or drawer closes.
+  const prevSheetOpen = useRef(false);
+  useEffect(() => {
+    if (prevSheetOpen.current && !answerSheetOpen && !wide) mapEntryRef.current?.focus();
+    prevSheetOpen.current = answerSheetOpen;
+  }, [answerSheetOpen, wide]);
+  const prevSidebarOpen = useRef(false);
+  useEffect(() => {
+    if (prevSidebarOpen.current && !sidebarOpen) sidebarOpenRef.current?.focus();
+    prevSidebarOpen.current = sidebarOpen;
+  }, [sidebarOpen]);
 
   function collapseSessions() {
     setSessionsCollapsed(true);
@@ -136,6 +150,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <div className="flex min-w-0 items-center gap-2">
             <button
+              ref={sidebarOpenRef}
               type="button"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open sidebar"
@@ -159,6 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2">
             {mode === "ai" && (
               <button
+                ref={mapEntryRef}
                 type="button"
                 onClick={() => setAnswerSheetOpen(true)}
                 aria-label="Open answer canvas"
@@ -179,7 +195,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SidebarDrawer />
 
         <div inert={sidebarOpen || undefined} className="shell-body min-h-0 flex-1">
-          <main className="chat-workspace min-h-0 min-w-0 flex-1 gap-3 p-3">
+          <div className="chat-workspace min-h-0 min-w-0 flex-1 gap-3 p-3">
             <motion.aside
               aria-label={mode === "ai" ? "Chat sessions" : "Tools"}
               animate={{ width: sessionsCollapsed ? "3.75rem" : "17rem" }}
@@ -214,24 +230,24 @@ export function AppShell({ children }: { children: ReactNode }) {
             </motion.aside>
             {mode === "ai" ? (
               <div className="chat-map-area flex min-h-0 min-w-0 flex-1 gap-3">
-                <section
+                <main
                   id="main-content"
                   data-pane="chat"
                   className="flex min-h-0 min-w-0 flex-1"
                   inert={sheetInert || undefined}
                 >
                   {children}
-                </section>
+                </main>
                 <AnswerSheet open={answerSheetOpen} onClose={() => setAnswerSheetOpen(false)}>
                   <AnswerCanvas view={workspaceView} />
                 </AnswerSheet>
               </div>
             ) : (
-              <section id="main-content" data-pane="tool" className="flex min-h-0 min-w-0 flex-1">
+              <main id="main-content" data-pane="tool" className="flex min-h-0 min-w-0 flex-1">
                 <FullBleedTool view={workspaceView} />
-              </section>
+              </main>
             )}
-          </main>
+          </div>
         </div>
 
         <LiveRegion />

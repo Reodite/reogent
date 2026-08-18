@@ -117,17 +117,17 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - Delete `composer-tools-menu.tsx`'s AI-mode entry and `PaneBottomSheet` (replaced by `AnswerSheet`).
     - _Requirements: REQ-2.5, REQ-6.4_
 
-- [ ] 13. Responsive, a11y, focus, inert, reduced-motion pass
-  - [ ] 13.1 Breakpoint transitions preserve state
+- [x] 13. Responsive, a11y, focus, inert, reduced-motion pass
+  - [x] 13.1 Breakpoint transitions preserve state
     - Verify regions rearrange across `md`/`lg` boundaries without unmounting the map (desk scene survives) or losing `workspaceView`/`mode`/session. The shell does not conditionally swap AnswerCanvas↔AnswerSheet by remounting — keep `MapArea` mounted; only its wrapper changes.
     - _Requirements: REQ-5.1, REQ-7.1, REQ-9.4_
-  - [ ] 13.2 ARIA roles + labels
+  - [x] 13.2 ARIA roles + labels
     - TopBar `banner`; ChatSurface wrapper `main` + `#main-content`; AnswerCanvas a labelled `region` (`aria-label="Answer canvas"`); ToolList + SessionList `navigation`; each `ResponseWidget` `role="button"` (mapped) or omitted (unmapped).
     - _Requirements: REQ-8.2_
-  - [ ] 13.3 Focus move/return + inert management
+  - [x] 13.3 Focus move/return + inert management
     - Opening `AnswerSheet` or a drawer moves focus in; closing returns to the triggering control. `inert` on the shell behind an open sheet/drawer; kept out of the tab order and accessibility tree.
     - _Requirements: REQ-2.5, REQ-8.1, REQ-8.3_
-  - [ ] 13.4 Reduced-motion
+  - [x] 13.4 Reduced-motion
     - All region/sheet/toggle animations collapse to near-zero when `prefers-reduced-motion: reduce` (reuse the existing `useReducedMotion` gating on `motion.*`).
     - _Requirements: REQ-8.4_
 
