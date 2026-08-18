@@ -510,6 +510,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
       let activeSessionId = sessionId;
       if (!activeSessionId) {
         activeSessionId = uuid();
+        mintedLocally.current = true;
         setSessionId(activeSessionId);
         // Update URL without triggering a navigation/remount
         window.history.replaceState(null, "", `/chat/${activeSessionId}`);
