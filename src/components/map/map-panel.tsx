@@ -219,6 +219,12 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
   );
 }
 
+/** Registry-facing map pane. Renders the interactive surface; collapse routes through the shell context. */
+export function MapArea() {
+  const { setMapOpen } = useChatShell();
+  return <MapSurface onCollapse={() => setMapOpen(false)} />;
+}
+
 /** Desktop/tablet: a persistent tool slot that collapses into a passive rail. */
 export function MapPanel() {
   const { mapOpen, setMapOpen, highlight } = useChatShell();

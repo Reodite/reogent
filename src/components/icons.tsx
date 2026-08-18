@@ -36,7 +36,8 @@ const ICON_MAP = {
   bling: "bling-line",
   check: "check-line",
   computer: "computer-line",
-  pencil: "pencil-2-line",
+  calendar: "calendar-2-line",
+  tree: "tree-line",
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;
