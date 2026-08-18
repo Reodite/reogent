@@ -7,13 +7,13 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { MapBottomSheet, MapPanel } from "@/src/components/map/map-panel";
-import { SessionSidebar } from "@/src/components/shell/session-sidebar";
+import { SessionSidebar, useSidebarCollapsed } from "@/src/components/shell/session-sidebar";
 import { UserMenu } from "@/src/components/shell/user-menu";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 /** Gate: initializing → null (brief); signed out → redirect to login. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -81,7 +81,7 @@ function SidebarDrawer() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { sidebarOpen, setSidebarOpen, mapOpen, setMobileMapOpen, mobileMapOpen, highlight } = useChatShell();
-  const [sessionsCollapsed, setSessionsCollapsed] = useState(false);
+  const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sessionsMenuRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
 

@@ -173,17 +173,17 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [x] 9. Checkpoint - Prerequisite Tree client tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Implement Sidebar collapse persistence + version badge (inline into `src/components/shell/session-sidebar.tsx`)
-  - [ ] 10.1 Add `useSidebarCollapsed()` hook + `<VersionBadge />` JSX inline in `src/components/shell/session-sidebar.tsx`
+- [x] 10. Implement Sidebar collapse persistence + version badge (inline into `src/components/shell/session-sidebar.tsx`)
+  - [x] 10.1 Add `useSidebarCollapsed()` hook + `<VersionBadge />` JSX inline in `src/components/shell/session-sidebar.tsx`
     - `useSyncExternalStore` for pre-paint hydration against `localStorage["reogent.sidebar.collapsed"] = "0" | "1"`; SSR returns default expanded; client effect reconciles within a microtask to satisfy "re-render on first paint". `<VersionBadge />` reads `process.env.__REOGENT_VERSION__` (injected via `next.config` build-time from `package.json`) and renders `text-[0.625rem]` mono in sidebar footer bottom-left. Both inline rather than split files: existing sidebar file already owns the layout and consumes `useChatShell()`. Ponytail: one file edit instead of three new files (`collapse-persist.ts`, `version-badge.tsx`, `next.config` wiring is a separate 10.2 line).
     - _Requirements: REQ-11.1, REQ-11.2, REQ-11.3_
-  - [ ] 10.2 Wire `next.config` injection of `__REOGENT_VERSION__`
+  - [x] 10.2 Wire `next.config` injection of `__REOGENT_VERSION__`
     - Build-time `process.env.__REOGENT_VERSION__` from `package.json` `version` field. One-line addition in `next.config.ts`.
     - _Requirements: REQ-11.3_
-  - [ ]\* 10.3 Example test — Sidebar collapsed-state round-trips across reload
+  - [x]\* 10.3 Example test — Sidebar collapsed-state round-trips across reload
     - Write `localStorage["reogent.sidebar.collapsed"] = "1"`, reload, assert collapsed; toggle to `"0"`, reload, assert expanded. Merges old 10.4 + 10.5 into one round-trip smoke.
     - _Requirements: REQ-11.1, REQ-11.2_
-  - [ ]\* 10.4 Smoke test — `AUTH_ENABLED=false` path unchanged
+  - [x]\* 10.4 Smoke test — `AUTH_ENABLED=false` path unchanged
     - _Requirements: REQ-11.4_
 
 - [ ] 11. Implement Pane Host + Registry (`src/components/shell/`)

@@ -7,7 +7,74 @@ import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { motion, useReducedMotion } from "motion/react";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+
+const SIDEBAR_KEY = "reogent.sidebar.collapsed";
+const EXPANDED = "0";
+const COLLAPSED = "1";
+
+const sidebarListeners = new Set<() => void>();
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === SIDEBAR_KEY) {
+      sidebarListeners.forEach((fn) => {
+        fn();
+      });
+    }
+  });
+}
+
+function subscribeSidebar(listener: () => void): () => void {
+  sidebarListeners.add(listener);
+  return () => {
+    sidebarListeners.delete(listener);
+  };
+}
+
+function getSidebarSnapshot(): string {
+  try {
+    return window.localStorage.getItem(SIDEBAR_KEY) ?? EXPANDED;
+  } catch {
+    return EXPANDED;
+  }
+}
+
+function getSidebarServerSnapshot(): string {
+  return EXPANDED;
+}
+
+function setSidebarCollapsed(next: boolean): void {
+  try {
+    window.localStorage.setItem(SIDEBAR_KEY, next ? COLLAPSED : EXPANDED);
+  } catch {
+    /* localStorage unavailable or over quota */
+  }
+  sidebarListeners.forEach((fn) => {
+    fn();
+  });
+}
+
+/**
+ * Persists the desktop sidebar's collapsed state in
+ * `localStorage["reogent.sidebar.collapsed"]` ("0" | "1"). SSR returns the
+ * expanded default so server HTML is stable; React's `useSyncExternalStore`
+ * re-renders with the stored value after hydration so the rail paints in its
+ * prior state on first paint.
+ */
+export function useSidebarCollapsed(): [boolean, (next: boolean) => void] {
+  const value = useSyncExternalStore(subscribeSidebar, getSidebarSnapshot, getSidebarServerSnapshot);
+  return [value === COLLAPSED, setSidebarCollapsed];
+}
+
+export function VersionBadge() {
+  const version = process.env.__REOGENT_VERSION__;
+  if (!version) return null;
+  return (
+    <div className="text-on-surface-variant px-3 py-1.5 font-mono text-[0.625rem]">
+      <span className="sr-only">Reogent version </span>v{version}
+    </div>
+  );
+}
 
 function groupSessions(sessions: SessionSummary[]): Array<[SessionGroup, SessionSummary[]]> {
   const buckets = new Map<SessionGroup, SessionSummary[]>();
@@ -354,6 +421,7 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
       <output className="sr-only" aria-live="polite">
         {!sessionsLoading && sessions.length > 0 ? `${sessions.length} conversations` : ""}
       </output>
+      <VersionBadge />
     </div>
   );
 }
