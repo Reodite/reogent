@@ -37,14 +37,14 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - Extend the existing inline `<head>` bootstrap (which sets `data-theme` and `data-auth-pending`) to also read `reogent.shell.mode` and write `documentElement.dataset.shellMode`, preventing a mode flash on load. Covered by `suppressHydrationWarning`.
     - _Requirements: REQ-1.6, REQ-4.5_
 
-- [ ] 5. `ResponseWidget` — unify streaming and history tool rendering
-  - [ ] 5.1 Refactor `src/components/chat/tool-renderers.tsx` so the per-call card is an activatable widget
+- [x] 5. `ResponseWidget` — unify streaming and history tool rendering
+  - [x] 5.1 Refactor `src/components/chat/tool-renderers.tsx` so the per-call card is an activatable widget
     - Rename/extract `ToolCallsView` into `ResponseWidget` (one per `ToolCall`): reuses the existing per-tool summary renderers + `ToolBadge` + `ToolResultCard` visuals; adds `active` ring when `workspaceView` matches `toolCallToCanvasView(call)`; `onClick`/Enter/Space → `activateCanvasView(call)` for mapped tools; unmapped tools render a static non-focusable summary. `role="button"` + `tabIndex={0}` only when `toolCallToCanvasView(call)` is non-null.
     - _Requirements: REQ-3.2, REQ-3.3, REQ-3.4, REQ-8.1_
-  - [ ] 5.2 Unify the streaming interstitial block with the widget
+  - [x] 5.2 Unify the streaming interstitial block with the widget
     - In `src/components/chat/message.tsx`, render `ResponseWidget` for every `tool_call` interstitial block during streaming (replacing `ToolCallBlock`) AND for every `message.toolCalls` entry on history reload (replacing the `ToolCallsView` branch at `message.tsx:301`). One component, both paths. Pass `toolCalls` into `AssistantMarkdown`'s context only if inline chips are later desired (deferred per design — block widgets only for now).
     - _Requirements: REQ-3.2, REQ-3.5_
-  - [ ]* 5.3 Component tests for `ResponseWidget`
+  - [x]* 5.3 Component tests for `ResponseWidget`
     - Click activates the canvas for a mapped tool; unmapped renders static and non-focusable; `active` ring reflects `workspaceView`; keyboard Enter/Space activates.
     - _Requirements: REQ-3.3, REQ-3.4, REQ-8.1_
 

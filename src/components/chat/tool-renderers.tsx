@@ -6,8 +6,9 @@
 // the generic badge, so a new backend module needs only one renderer here.
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
+import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
-import { MapPill, ToolResultCard } from "@/src/components/ui/tool-result-card";
+import { ToolResultCard } from "@/src/components/ui/tool-result-card";
 import {
   isToolError,
   type CourseDoc,
@@ -16,7 +17,12 @@ import {
   type TuitionResult,
 } from "@/src/lib/api-types";
 import { formatCad, formatMeters, formatMinutes, summarizeToolInput } from "@/src/lib/format";
-import { extractBuildingHighlight, extractPlacesHighlight, extractWalkingHighlight } from "@/src/lib/walking";
+import {
+  extractBuildingHighlight,
+  extractPlacesHighlight,
+  extractWalkingHighlight,
+  toolCallToCanvasView,
+} from "@/src/lib/walking";
 import { motion, useReducedMotion } from "motion/react";
 import { useMemo } from "react";
 
@@ -39,6 +45,7 @@ const TOOL_ICONS: Record<string, IconName> = {
 
 function ToolBadge({ call }: { call: ToolCall }) {
   const failed = isToolError(call.result);
+  const loading = call.result === undefined;
   const summary = summarizeToolInput(call.input);
   return (
     <span
@@ -47,7 +54,15 @@ function ToolBadge({ call }: { call: ToolCall }) {
       }`}
       title={failed && isToolError(call.result) ? call.result.message : undefined}
     >
-      <Icon name={failed ? "alert" : (TOOL_ICONS[call.name] ?? "route")} size={14} className="shrink-0" />
+      {loading ? (
+        <span
+          role="status"
+          aria-label="Loading"
+          className="border-primary size-3 shrink-0 animate-spin rounded-full border-2 border-t-transparent"
+        />
+      ) : (
+        <Icon name={failed ? "alert" : (TOOL_ICONS[call.name] ?? "route")} size={14} className="shrink-0" />
+      )}
       <span className="truncate">
         {call.name}
         {summary ? `(${summary})` : "()"}
@@ -75,7 +90,7 @@ function sectionLine(course: CourseDoc): string | null {
 }
 
 function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?: boolean }) {
-  const { setActiveChannel } = useChatShell();
+  const { setWorkspaceView } = useChatShell();
   const times = sectionLine(course);
   return (
     <article className="bg-surface-container-low rounded-lg p-3">
@@ -101,7 +116,10 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
           data-action="open-prereq-tree"
           data-code={course.code}
           type="button"
-          onClick={() => setActiveChannel("prereq-tree", { root: course.code, selections: {} })}
+          onClick={(e) => {
+            e.stopPropagation();
+            setWorkspaceView({ paneId: "prereq-tree", state: { root: course.code, selections: {} } });
+          }}
           className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-95"
         >
           <Icon name="tree" size={12} /> Prereq Tree
@@ -162,25 +180,14 @@ function TuitionRenderer({ call }: ToolCallRendererProps) {
 
 // ---- walking_distance ----
 
-// The chat panel publishes the merged highlight per response; renderers only
-// restore their own card's view via "Show on map".
+// The widget envelope activates the map for these tools; the renderer supplies
+// the summary visual only.
 function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
-  const { showOnMap } = useChatShell();
   const highlight = useMemo(() => extractWalkingHighlight(call), [call]);
 
   if (!highlight) return null;
   return (
-    <ToolResultCard
-      icon="walk"
-      action={
-        <MapPill
-          label={`Show route from ${highlight.from} to ${highlight.to} on map`}
-          onClick={() => {
-            showOnMap(highlight);
-          }}
-        />
-      }
-    >
+    <ToolResultCard icon="walk">
       <span className="text-on-surface block text-base font-medium">{formatMinutes(highlight.minutes)}</span>
       <span className="text-on-surface-variant block truncate text-xs">
         {formatMeters(highlight.meters)} · {highlight.from} → {highlight.to}
@@ -192,23 +199,12 @@ function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
 // ---- find_building ----
 
 function FindBuildingRenderer({ call }: ToolCallRendererProps) {
-  const { showOnMap } = useChatShell();
   const highlight = useMemo(() => extractBuildingHighlight(call), [call]);
 
   if (!highlight || highlight.buildings.length === 0) return null;
   const building = highlight.buildings[0];
   return (
-    <ToolResultCard
-      icon="map"
-      action={
-        <MapPill
-          label={`Show ${building.name} on map`}
-          onClick={() => {
-            showOnMap(highlight);
-          }}
-        />
-      }
-    >
+    <ToolResultCard icon="map">
       <span className="text-on-surface block truncate text-base font-medium">{building.name}</span>
       <span className="text-muted block truncate font-mono text-xs">{building.code}</span>
     </ToolResultCard>
@@ -218,7 +214,6 @@ function FindBuildingRenderer({ call }: ToolCallRendererProps) {
 // ---- find_places ----
 
 function FindPlacesRenderer({ call }: ToolCallRendererProps) {
-  const { showOnMap } = useChatShell();
   const highlight = useMemo(() => extractPlacesHighlight(call), [call]);
 
   if (!highlight || highlight.places.length === 0) return null;
@@ -227,17 +222,7 @@ function FindPlacesRenderer({ call }: ToolCallRendererProps) {
     .map((p) => p.name)
     .join(", ");
   return (
-    <ToolResultCard
-      icon="location"
-      action={
-        <MapPill
-          label={`Show ${highlight.places.length} place${highlight.places.length === 1 ? "" : "s"} on map`}
-          onClick={() => {
-            showOnMap(highlight);
-          }}
-        />
-      }
-    >
+    <ToolResultCard icon="location">
       <span className="text-on-surface block text-base font-medium">
         {highlight.places.length} place{highlight.places.length === 1 ? "" : "s"}
         {highlight.near ? ` near ${highlight.near}` : ""}
@@ -261,6 +246,66 @@ export const renderers: Record<string, ToolCallRenderer> = {
   find_places: FindPlacesRenderer,
 };
 
+/** True when a tool call's canvas view matches the current workspace view. The
+ *  mapped states are small serializable objects, so structural stringify is the
+ *  cheap correct equality for flat {highlight}/{code}/{root,selections}/{cursor,kinds}. */
+function canvasViewsEqual(a: CanvasView, b: CanvasView): boolean {
+  if (a.paneId !== b.paneId) return false;
+  return JSON.stringify(a.state) === JSON.stringify(b.state);
+}
+
+/**
+ * One tool call as a clickable summary card. A mapped tool loads its canvas
+ * view into the Answer Canvas on click and on Enter/Space, and shows the active
+ * ring while its view matches `workspaceView`. Unmapped tools (and error
+ * results) render a static, non-focusable summary badge.
+ */
+export function ResponseWidget({ call }: { call: ToolCall }) {
+  const reduce = useReducedMotion();
+  const { workspaceView, activateCanvasView } = useChatShell();
+  const view = useMemo(() => toolCallToCanvasView(call), [call]);
+  const mapped = view !== null;
+  const active = mapped && workspaceView !== null && canvasViewsEqual(view, workspaceView);
+  const Renderer = renderers[call.name];
+  const loaded = !isToolError(call.result) && call.result !== undefined;
+
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 30 }}
+      role={mapped ? "button" : undefined}
+      tabIndex={mapped ? 0 : undefined}
+      aria-pressed={mapped ? active : undefined}
+      data-widget={call.name}
+      data-active={active || undefined}
+      onClick={mapped ? () => activateCanvasView(call) : undefined}
+      onKeyDown={
+        mapped
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                activateCanvasView(call);
+              }
+            }
+          : undefined
+      }
+      className={
+        mapped
+          ? `focus-visible:ring-primary/40 mt-3 cursor-pointer rounded-lg outline-none focus-visible:ring-2 ${active ? "ring-primary ring-2" : ""}`
+          : "mt-3"
+      }
+    >
+      <ToolBadge call={call} />
+      {Renderer && loaded ? (
+        <ErrorBoundary>
+          <Renderer call={call} />
+        </ErrorBoundary>
+      ) : null}
+    </motion.div>
+  );
+}
+
 /** Stable keys for an ordered, append-only call list: name + occurrence count. */
 function callKeys(calls: ToolCall[]): string[] {
   const seen = new Map<string, number>();
@@ -272,33 +317,13 @@ function callKeys(calls: ToolCall[]): string[] {
 }
 
 export function ToolCallsView({ calls }: { calls: ToolCall[] }) {
-  const reduced = useReducedMotion();
   if (calls.length === 0) return null;
   const keys = callKeys(calls);
   return (
-    <div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {calls.map((call, i) => (
-          <motion.span
-            key={keys[i]}
-            initial={reduced ? false : { opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 30, delay: i * 0.05 }}
-          >
-            <ToolBadge call={call} />
-          </motion.span>
-        ))}
-      </div>
-      {calls.map((call, i) => {
-        if (isToolError(call.result)) return null;
-        const Renderer = renderers[call.name];
-        if (!Renderer) return null;
-        return (
-          <ErrorBoundary key={`render-${keys[i]}`}>
-            <Renderer call={call} />
-          </ErrorBoundary>
-        );
-      })}
-    </div>
+    <>
+      {calls.map((call, i) => (
+        <ResponseWidget key={keys[i]} call={call} />
+      ))}
+    </>
   );
 }
