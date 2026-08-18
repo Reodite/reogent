@@ -17,7 +17,7 @@ import { useApi } from "@/src/components/providers";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { ApiError, type ChatMessage } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
-import { mergeMapHighlights } from "@/src/lib/walking";
+import { toolCallToCanvasView } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -148,9 +148,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   const mintedLocally = useRef(!initialSessionId);
   const prefersReducedMotion = useReducedMotion();
   const {
-    showOnMap,
     setActiveChannel,
     setPreviousUserChannel,
+    activateCanvasView,
+    setWorkspaceView,
     sessions,
     refreshSessions,
     addOptimisticSession,
@@ -285,12 +286,13 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             citations: m.citations ?? undefined,
           })),
         );
-        // Put this conversation's last map state back on the map.
+        // Restore this conversation's last mapped widget, else reset to idle map.
         const lastWithCalls = [...history].reverse().find((m) => m.toolCalls?.length);
-        if (lastWithCalls?.toolCalls) {
-          const h = mergeMapHighlights(lastWithCalls.toolCalls);
-          if (h) showOnMap(h);
-        }
+        const mapped = lastWithCalls?.toolCalls
+          ? [...lastWithCalls.toolCalls].reverse().find((c) => toolCallToCanvasView(c))
+          : undefined;
+        if (mapped) activateCanvasView(mapped);
+        else setWorkspaceView(null);
         setHistoryState("ready");
       })
       .catch((error: unknown) => {
@@ -306,7 +308,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     return () => {
       cancelled = true;
     };
-  }, [api, sessionId, setActiveChannel, setPreviousUserChannel, showOnMap, historyNonce]);
+  }, [api, sessionId, setActiveChannel, setPreviousUserChannel, activateCanvasView, setWorkspaceView, historyNonce]);
 
   // Stick-to-bottom: auto-scroll when new content arrives IF user is near the bottom.
   const isNearBottom = useRef(true);
@@ -453,11 +455,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             citations: response.citations,
             interstitial: interstitialBlocks.length > 0 ? [...interstitialBlocks] : undefined,
           });
-          // One merged highlight per response (route > places > all buildings);
-          // null clears a stale highlight when the answer has no map content.
-          const highlight = mergeMapHighlights(response.tool_calls);
-          if (highlight) showOnMap(highlight);
-          else setActiveChannel(null);
+          // Drive the canvas to the last mapped tool call; leave the canvas
+          // as-is when the answer has no mapped widget (REQ-3.6: no auto-close).
+          const mapped = [...(response.tool_calls ?? [])].reverse().find((c) => toolCallToCanvasView(c));
+          if (mapped) activateCanvasView(mapped);
           announce("New response from assistant");
           refreshSessions();
         })
@@ -500,7 +501,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           }
         });
     },
-    [api, sessionId, showOnMap, setActiveChannel, refreshSessions, announce],
+    [api, sessionId, activateCanvasView, refreshSessions, announce],
   );
 
   const send = useCallback(

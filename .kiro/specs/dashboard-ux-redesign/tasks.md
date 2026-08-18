@@ -92,14 +92,14 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - Snapshot baselines: wide AI, below-wide AI (sheet), wide Tools, below-wide Tools (drawer). Assert `#main-content` target present in each layout.
     - _Requirements: REQ-4.1, REQ-4.5, REQ-7.1_
 
-- [ ] 11. `ChatPanel` wiring — generalized canvas drive + reload re-activation
-  - [ ] 11.1 Replace the map-only post-response drive with the general mapper
+- [x] 11. `ChatPanel` wiring — generalized canvas drive + reload re-activation
+  - [x] 11.1 Replace the map-only post-response drive with the general mapper
     - At `src/components/chat/chat-panel.tsx:456-460`, replace `mergeMapHighlights(response.tool_calls)` + `showOnMap`/`else setActiveChannel(null)` with: find the last `ToolCall` in `response.tool_calls` for which `toolCallToCanvasView(call)` is non-null; if found, `activateCanvasView(call)`; if none, leave `workspaceView` as-is (the canvas is persistent — do NOT auto-close per REQ-3.6).
     - _Requirements: REQ-3.1, REQ-3.6, REQ-9.1_
-  - [ ] 11.2 Re-activate the latest widget on session load
+  - [x] 11.2 Re-activate the latest widget on session load
     - At `chat-panel.tsx:289-293`, replace the `mergeMapHighlights`-only restore with a scan of `history` (reverse) for the last assistant message with `toolCalls`, then the last call mapping to a view; `activateCanvasView` it, else set `workspaceView(null)` (idle map).
     - _Requirements: REQ-3.8, REQ-9.5_
-  - [ ] 11.3 Remove manual tool launch from AI Mode
+  - [x] 11.3 Remove manual tool launch from AI Mode
     - Remove the composer `+` tools menu (`composer-tools-menu.tsx`) from AI Mode; manual tool use moves to Tools Mode via `ToolList`. Keep the composer input and citation chips unchanged.
     - _Requirements: REQ-2.1, REQ-6.4_
 
