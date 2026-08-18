@@ -40,6 +40,14 @@
   --tertiary-container: #f4e3cf;
   --on-tertiary-container: #4a3010;
 
+  /* Event-family accents (calendar only) — aliases of the secondary (academic) and tertiary (holiday) families */
+  --event-academic: var(--secondary);
+  --on-event-academic: var(--on-secondary);
+  --event-academic-container: var(--secondary-container);
+  --event-holiday: var(--tertiary);
+  --on-event-holiday: #ffffff;
+  --event-holiday-container: var(--tertiary-container);
+
   /* Error: Quiet Ember */
   --error: #9c4040;
   --error-container: #ffdad6;
@@ -103,6 +111,14 @@
   --tertiary: #ebbe92;
   --tertiary-container: #4a3623;
   --on-tertiary-container: #f7dfc3;
+
+  /* Event-family accents — calendar only */
+  --event-academic: var(--secondary);
+  --on-event-academic: var(--on-secondary);
+  --event-academic-container: var(--secondary-container);
+  --event-holiday: var(--tertiary);
+  --on-event-holiday: #161310;
+  --event-holiday-container: var(--tertiary-container);
   --error: #e0a3a3;
   --error-container: #93000a;
   --on-error-container: #ffdad6;
@@ -161,6 +177,12 @@
   --color-tertiary: var(--tertiary);
   --color-tertiary-container: var(--tertiary-container);
   --color-on-tertiary-container: var(--on-tertiary-container);
+  --color-event-academic: var(--event-academic);
+  --color-event-academic-container: var(--event-academic-container);
+  --color-on-event-academic: var(--on-event-academic);
+  --color-event-holiday: var(--event-holiday);
+  --color-event-holiday-container: var(--event-holiday-container);
+  --color-on-event-holiday: var(--on-event-holiday);
   --color-error: var(--error);
   --color-error-container: var(--error-container);
   --color-on-error-container: var(--on-error-container);

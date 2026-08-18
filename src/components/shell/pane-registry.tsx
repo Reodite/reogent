@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarPane } from "@/src/components/calendar/calendar-pane";
 import { CourseLookupPane } from "@/src/components/course-lookup/course-lookup-pane";
 import { Icon, type IconName } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
@@ -26,10 +27,6 @@ function iconGlyph(name: IconName) {
   return function PaneIcon({ className }: { className?: string }) {
     return <Icon name={name} className={className} />;
   };
-}
-
-function ComingSoonPane() {
-  return null;
 }
 
 function PrereqTreeRegistryPane({ state }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
@@ -70,7 +67,7 @@ export const PANE_REGISTRY: PaneEntry[] = [
     id: "calendar",
     label: "Calendar",
     icon: iconGlyph("calendar"),
-    Component: ComingSoonPane,
+    Component: CalendarPane as PaneEntry["Component"],
     defaultState: { cursor: thisMonth(), kinds: ["academic", "holiday"] },
     preemptableByAgentMap: true,
   },
