@@ -407,23 +407,23 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [x] 21. Checkpoint - Calendar tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 22. Wire discovery surfaces + agent-grounded answer precedence
-  - [ ] 22.1 Implement `ToolsStrip` component (icon-only neumorphic raised buttons reading `PANE_REGISTRY`) in `src/components/shell/tools-strip.tsx`; mount it inside `pane-host.tsx`'s 3.75rem collapsed rail (desktop, `sm:`+) and inside the sidebar drawer footer (mobile `<1024px`, `lg:hidden`)
+- [x] 22. Wire discovery surfaces + agent-grounded answer precedence
+  - [x] 22.1 Implement `ToolsStrip` component (icon-only neumorphic raised buttons reading `PANE_REGISTRY`) in `src/components/shell/tools-strip.tsx`; mount it inside `pane-host.tsx`'s 3.75rem collapsed rail (desktop, `sm:`+) and inside the sidebar drawer footer (mobile `<1024px`, `lg:hidden`)
     - Vertical column of `PaneEntry.icon`-only `neu-raised` buttons (`size-9 rounded-xl`, `data-tool-id={entry.id}`, `aria-label={entry.label}`, `aria-pressed={active}`); tooltip = `entry.label`; click calls `setActiveChannel(entry.id, entry.defaultState)`. Active state: `bg-accent-subtle text-primary`. Rail nav class = `w-[3.75rem] flex flex-col items-center gap-1.5 py-3 px-0.5` (the `hidden sm:flex` visibility lives on the pane-host aside, task 11.2). Drawer footer nav class = `lg:hidden grid grid-cols-3 gap-1.5 pt-2 mt-2 border-t border-border-subtle/60 px-2 pb-2`.
     - _Requirements: REQ-19.5_
-  - [ ] 22.2 Implement chat composer "+" menu listing `PaneEntry.label` rows
+  - [x] 22.2 Implement chat composer "+" menu listing `PaneEntry.label` rows
     - Prereq Tree row shows an inline code input before committing
     - _Requirements: REQ-4.3, REQ-19.5_
-  - [ ] 22.3 Wire Course tool-renderer cards to "Prereq Tree" affordance
+  - [x] 22.3 Wire Course tool-renderer cards to "Prereq Tree" affordance
     - Clicking sets `activeChannel = { id: "prereq-tree", state: { root: code } }` directly via `setActiveChannel` (no URL serialization layer; no `toSearchParams`)
     - _Requirements: REQ-4.2_
-  - [ ]\* 22.4 Integration test — Tool-grounded calendar answer takes priority over the Widget's static rendering
+  - [x]\* 22.4 Integration test — Tool-grounded calendar answer takes priority over the Widget's static rendering
     - Agent emits a calendar-deadline claim while the Calendar Widget is open; assert the claim renders in Chat text within a `[data-pane="chat"]` ancestor and the chat rect does not sit behind the widget rect (Property 32's oracle, applied to the calendar case).
-  - [ ]\* 22.5 Property test — Tool-grounded answer priority (universal)
+  - [x]\* 22.5 Property test — Tool-grounded answer priority (universal)
     - **Property 32: For any agent turn emitting tool-grounded claim text `c` while pane `p` is open, the claim renders in Chat, the chat rect has non-zero size, and the chat rect does not overlap or sit behind pane `p`'s rect**
     - **Validates: Requirements REQ-19.4**
     - Generator: `arbToolGroundedTurnWithOpenPane` from design.md §Domain 9.
-  - [ ]\* 22.6 Example test — Tool-result-card routes its course code into the Prereq Tree with one click (REQ-4.2 second leg; 13.11 covers card→tree, 22.3 is impl)
+  - [x]\* 22.6 Example test — Tool-result-card routes its course code into the Prereq Tree with one click (REQ-4.2 second leg; 13.11 covers card→tree, 22.3 is impl)
     - Render an Agent tool-call result card for `get_course` returning a record with a Prereq Tree affordance; click it; assert the Prereq Tree pane opens rooted at the tool card's code.
     - _Requirements: REQ-4.2_
 
