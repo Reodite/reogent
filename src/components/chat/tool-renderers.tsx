@@ -292,8 +292,10 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
       }
       className={
         mapped
-          ? `focus-visible:ring-primary/40 mt-3 cursor-pointer rounded-lg outline-none focus-visible:ring-2 ${active ? "ring-primary ring-2" : ""}`
-          : "mt-3"
+          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 mt-3 cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
+              active ? "bg-accent-subtle ring-primary ring-2" : ""
+            }`
+          : "mt-3 rounded-lg"
       }
     >
       <ToolBadge call={call} />

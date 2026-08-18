@@ -233,7 +233,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <main
                   id="main-content"
                   data-pane="chat"
-                  className="flex min-h-0 min-w-0 flex-1"
+                  className="flex min-h-0 min-w-0 flex-1 lg:min-w-88"
                   inert={sheetInert || undefined}
                 >
                   {children}

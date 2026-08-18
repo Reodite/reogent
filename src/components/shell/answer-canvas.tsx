@@ -18,7 +18,13 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
   return <ActiveCanvasView view={view} />;
 }
 
-/** Map-first idle: highlight is null because `workspaceView` is null. */
+/**
+ * Map-first idle: highlight is null because `workspaceView` is null.  Renders
+ * the same full-bleed `<MapArea>` shell as the active-map path — no `neu-panel`
+ * frame, since the map is content (idle overview OR a focused highlight), not a
+ * contained card. Non-map panes get the framed `.neu-panel` treatment; the map
+ * intentionally does not, to keep its viewport edge-to-edge.
+ */
 function AnswerCanvasIdle() {
   return (
     <section aria-label="Answer canvas" data-pane="map" className="h-full w-full">

@@ -30,7 +30,10 @@ export function AnswerSheet({ open, onClose, children }: { open: boolean; onClos
     return () => document.removeEventListener("keydown", onKey);
   }, [showDialog, onClose]);
 
-  const slotClass = `flex min-h-0 flex-col lg:h-full lg:flex-1 lg:min-w-0 ${
+  // 22rem floor at wide: matches the chat pane's `lg:min-w-88` so the two split
+  // ~50/50 at the lg breakpoint (1024px) once the 17rem sidebar + gaps are
+  // accounted for. Below-wide the panel goes fixed at 80dvh and ignores width.
+  const slotClass = `flex min-h-0 flex-col lg:h-full lg:flex-1 lg:min-w-88 ${
     open
       ? "max-lg:neu-panel max-lg:bg-surface max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:h-[80dvh] max-lg:flex-col max-lg:overflow-hidden max-lg:rounded-t-2xl max-lg:pb-[env(safe-area-inset-bottom)]"
       : "max-lg:hidden"
