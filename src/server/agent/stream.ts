@@ -1,6 +1,10 @@
 // Streaming agent loop: yields NDJSON events as the model generates text
 // and executes tools. The non-streaming loop in loop.ts remains for property tests.
 
+import type { Citation, CitationSeed } from "@/src/shared/citations/citation";
+import { allocateCitations } from "../citations/allocator";
+import { CITATION_EXTRACTORS } from "../citations/extractors";
+import { stampUsed } from "../citations/stamp-used";
 import type { ChatMessage, ContentBlock, ConverseMessage, DatasetModule, SearchClient, ToolCall } from "../core/types";
 import { converse, converseStream } from "../llm";
 import { executeTool, isToolError } from "./executor";
@@ -13,8 +17,16 @@ type StreamEvent =
   | { type: "text_clear" }
   | { type: "tool_start"; name: string; input: Record<string, unknown> }
   | { type: "tool_end"; name: string; result: unknown }
+  | { type: "citations"; citations: Citation[] }
   | { type: "turn_start" }
-  | { type: "done"; message: string; tool_calls: ToolCall[]; warning?: string; follow_ups?: string[] }
+  | {
+      type: "done";
+      message: string;
+      tool_calls: ToolCall[];
+      citations: Citation[];
+      warning?: string;
+      follow_ups?: string[];
+    }
   | { type: "error"; message: string };
 
 interface StreamAgentDeps {
@@ -31,6 +43,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   }));
   const toolCalls: ToolCall[] = [];
   let fullText = "";
+  const pendingCitations: CitationSeed[] = [];
 
   for (let i = 0; ; i++) {
     if (i > 0) yield { type: "turn_start" as const };
@@ -57,7 +70,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
     // and re-emit the text as thinking.
     for await (const event of converseStream({
       messages: convo,
-      system: systemPrompt(),
+      system: systemPrompt(new Date(), allocateCitations(pendingCitations)),
       toolSpecs,
     })) {
       if (event.type === "thinking") {
@@ -145,7 +158,9 @@ Rules:
       } catch {
         // Follow-up generation is best-effort
       }
-      yield { type: "done", message: fullText, tool_calls: toolCalls, follow_ups };
+      const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
+      yield { type: "citations", citations: finalCitations };
+      yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations, follow_ups };
       return;
     }
 
@@ -162,6 +177,11 @@ Rules:
       const result = execResults[i];
       toolCalls.push({ name, input, result });
       yield { type: "tool_end", name, result };
+      const extractor = CITATION_EXTRACTORS[name];
+      if (extractor) {
+        pendingCitations.push(...extractor(result, input));
+        yield { type: "citations", citations: allocateCitations(pendingCitations) };
+      }
       results.push({
         toolResult: {
           toolUseId,
