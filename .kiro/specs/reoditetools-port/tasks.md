@@ -60,10 +60,10 @@ Property-based test sub-tasks are annotated with their property number from `des
     - **Property 5: For all `string` (incl. random bytes, unbalanced parens, embedded NULs, `none.`): `parsePrereq(s)` returns `null` or `Expr`, never throws**
     - **Validates: Requirements REQ-5.1, REQ-5.2, REQ-5.3**
     - Generator: `fc.string({ minLength: 0, maxLength: 2000 })` + adversarial constants; run count 1000
-  - [ ]\* 4.3 Property test — Okanagan stripping
+  - [x]* 4.3 Property test — Okanagan stripping
     - **Property 6: `walkCodeLeaves(parsePrereq(s))` yields no `_O` codes**
     - **Validates: Requirements REQ-5.4**
-  - [ ]\* 4.4 Property test — Soft-tail only at top level
+  - [x]* 4.4 Property test — Soft-tail only at top level
     - **Property 7: mid-clause `recommended` inside unbalanced parens does NOT produce a top-level `Soft` wrapper**
     - **Validates: Requirements REQ-5.6**
   - [ ]\* 4.5 Property test — Round-trip code set
@@ -77,7 +77,7 @@ Property-based test sub-tasks are annotated with their property number from `des
     - **Validates: Requirements REQ-6.4**
   - [x] 4.8 Example test — KIN 320 mid-clause recommended, AANB 500 `_V` strip
     - _Requirements: REQ-5.6, REQ-1.2_
-  - [ ]\* 4.9 Property test — Soft-tail positive split (top-level clear cases)
+  - [x] 4.9 Property test — Soft-tail positive split (top-level clear cases)
     - **Property 38: when a Prerequisite String ends with a top-level `recommended` tail (e.g. "X is recommended"), `parsePrereq(s)` produces a `Soft`-rooted expression for that tail**
     - **Validates: Requirements REQ-5.5**
     - Generator: `arbRecommendedTail` from design.md §Domain 2.
