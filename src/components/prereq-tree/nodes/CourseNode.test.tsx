@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CourseNode, type CourseNodeData } from "./CourseNode";
 
@@ -37,5 +37,26 @@ describe("CourseNode variants (REQ-9.4)", () => {
     const el = renderNode({ id: "cpsc110", code: "CPSC 110", variant: "known" }).querySelector("section");
     expect(el?.getAttribute("data-node-id")).toBe("cpsc110");
     expect(el?.getAttribute("data-variant")).toBe("known");
+  });
+
+  it("emits the code on click when onNavigate is wired (REQ-9.5); note variants are not navigable", () => {
+    const onNavigate = vi.fn();
+    const known = renderNode({ id: "k", code: "CPSC 210", variant: "known", onNavigate });
+    fireEvent.click(known.querySelector('button[data-nav="course"]') as HTMLButtonElement);
+    expect(onNavigate).toHaveBeenCalledWith("CPSC 210");
+
+    onNavigate.mockClear();
+    const root = renderNode({ id: "r", code: "CPSC 320", variant: "root", onNavigate });
+    fireEvent.click(root.querySelector('button[data-nav="course"]') as HTMLButtonElement);
+    expect(onNavigate).toHaveBeenCalledWith("CPSC 320");
+
+    const note = renderNode({ id: "n", label: "Third-year standing", variant: "note", onNavigate });
+    expect(note.querySelector('button[data-nav="course"]')).toBeNull();
+  });
+
+  it("renders the code as a plain div when onNavigate is absent (no nav affordance)", () => {
+    const el = renderNode({ id: "k", code: "CPSC 210", variant: "known" });
+    expect(el.querySelector('button[data-nav="course"]')).toBeNull();
+    expect(el.querySelector(".font-mono")?.tagName).toBe("DIV");
   });
 });

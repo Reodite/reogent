@@ -11,6 +11,7 @@ export interface CourseNodeData {
   code?: string;
   label?: string;
   variant?: CourseNodeVariant;
+  onNavigate?: (code: string) => void;
 }
 
 /** Whisper-Neumorphic surface tokens per `data-variant` (design.md §B). */
@@ -43,7 +44,19 @@ export function CourseNode({ data }: NodeProps<CourseNodeData>) {
     >
       <Handle type="target" position={Position.Left} style={HIDDEN_HANDLE} />
       {variant === "root" && <div className="text-[0.625rem] tracking-wide uppercase opacity-70">ROOT</div>}
-      <div className="font-mono text-sm font-medium">{data?.code ?? data?.label}</div>
+      {data?.onNavigate && data?.code ? (
+        <button
+          type="button"
+          data-nav="course"
+          className="font-mono text-sm font-medium hover:underline focus-visible:underline"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => data?.onNavigate?.(data.code as string)}
+        >
+          {data?.code ?? data?.label}
+        </button>
+      ) : (
+        <div className="font-mono text-sm font-medium">{data?.code ?? data?.label}</div>
+      )}
       {variant === "unknown" && (
         <div className="text-on-error-container text-[0.625rem]" title="Not in UBC Vancouver catalog">
           not in catalog

@@ -137,7 +137,13 @@ function AccordionFallback({ graph }: { graph: PrereqGraph }) {
   return <div className="text-on-surface overflow-auto">{renderNode(root.id)}</div>;
 }
 
-export function PrereqTreePane({ initialRoot = "CPSC 320" }: { initialRoot?: string }) {
+export function PrereqTreePane({
+  initialRoot = "CPSC 320",
+  onNavigateCourse,
+}: {
+  initialRoot?: string;
+  onNavigateCourse?: (code: string) => void;
+}) {
   const [root, setRoot] = useState(initialRoot);
   const [code, setCode] = useState(initialRoot);
   const [graph, setGraph] = useState<PrereqGraph | null>(null);
@@ -206,7 +212,7 @@ export function PrereqTreePane({ initialRoot = "CPSC 320" }: { initialRoot?: str
         id: n.id,
         type: n.kind,
         position: pos,
-        data: { id: n.id, code: n.code, label: n.label, variant: n.variant },
+        data: { id: n.id, code: n.code, label: n.label, variant: n.variant, onNavigate: onNavigateCourse },
       };
     });
     const rfEdges: Edge[] = graph.edges.map((e) => {
@@ -233,7 +239,7 @@ export function PrereqTreePane({ initialRoot = "CPSC 320" }: { initialRoot?: str
         }),
       }));
     return { rfNodes, rfEdges, disjunctions };
-  }, [graph, selections, softToggles, onSelect, onToggle]);
+  }, [graph, selections, softToggles, onSelect, onToggle, onNavigateCourse]);
 
   function submit(e: FormEvent) {
     e.preventDefault();
