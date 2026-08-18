@@ -84,7 +84,7 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
 
 describe("VersionBadge — sidebar footer version render (REQ-11.3)", () => {
   it("renders the injected version in mono treatment", () => {
-    vi.stubEnv("__REOGENT_VERSION__", "0.1.0");
+    vi.stubEnv("NEXT_PUBLIC_REOGENT_VERSION", "0.1.0");
     render(<VersionBadge />);
     const badge = screen.getByText("v0.1.0");
     expect(badge.className).toContain("font-mono");
@@ -92,7 +92,7 @@ describe("VersionBadge — sidebar footer version render (REQ-11.3)", () => {
   });
 
   it("exposes an sr-only 'Reogent version' label for screen readers", () => {
-    vi.stubEnv("__REOGENT_VERSION__", "0.1.0");
+    vi.stubEnv("NEXT_PUBLIC_REOGENT_VERSION", "0.1.0");
     render(<VersionBadge />);
     expect(screen.getByText(/Reogent version/)).toBeTruthy();
   });
@@ -110,7 +110,7 @@ describe("AUTH_ENABLED=false smoke (REQ-11.4)", () => {
     render(<Probe />);
     expect(screen.getByTestId("state").textContent).toBe("collapsed");
     cleanup();
-    vi.stubEnv("__REOGENT_VERSION__", "0.1.0");
+    vi.stubEnv("NEXT_PUBLIC_REOGENT_VERSION", "0.1.0");
     render(<VersionBadge />);
     expect(screen.getByText("v0.1.0")).toBeTruthy();
   });

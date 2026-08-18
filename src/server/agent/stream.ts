@@ -1,7 +1,8 @@
 // Streaming agent loop: yields NDJSON events as the model generates text
 // and executes tools. The non-streaming loop in loop.ts remains for property tests.
 
-import type { Citation, CitationSeed } from "@/src/shared/citations/citation";
+import type { CitationSeed } from "@/src/server/citations/extractors";
+import type { Citation } from "@/src/shared/citations/citation";
 import { allocateCitations } from "../citations/allocator";
 import { CITATION_EXTRACTORS } from "../citations/extractors";
 import { stampUsed } from "../citations/stamp-used";

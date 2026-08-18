@@ -67,7 +67,7 @@ export function useSidebarCollapsed(): [boolean, (next: boolean) => void] {
 }
 
 export function VersionBadge() {
-  const version = process.env.__REOGENT_VERSION__;
+  const version = process.env.NEXT_PUBLIC_REOGENT_VERSION;
   if (!version) return null;
   return (
     <div className="text-on-surface-variant px-3 py-1.5 font-mono text-[0.625rem]">

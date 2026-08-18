@@ -35,7 +35,7 @@ const storagePolyfill: Storage = {
   setItem: (k, v) => void mem.set(k, String(v)),
   removeItem: (k) => void mem.delete(k),
   clear: () => mem.clear(),
-  k: (i) => Array.from(mem.keys())[i] ?? null,
+  key: (i: number) => Array.from(mem.keys())[i] ?? null,
   get length() {
     return mem.size;
   },

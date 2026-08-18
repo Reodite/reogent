@@ -2,7 +2,7 @@ import { requireUser } from "@/src/server/auth";
 import { presentCourse, type CourseDoc } from "@/src/server/modules/courses";
 import { getSearch } from "@/src/server/search";
 import { matchesLevel, type LevelOp } from "@/src/shared/course-code";
-import { json, serverError } from "../../http";
+import { json, serverError } from "../http";
 
 const upSubject = (s: string) => {
   const up = s.trim().toUpperCase();

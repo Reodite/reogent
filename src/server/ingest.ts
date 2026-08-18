@@ -1,4 +1,4 @@
-import type { MeiliSearch } from "meilisearch";
+import type { Meilisearch } from "meilisearch";
 import type { DatasetModule, DataWriter } from "./core/types";
 
 const BATCH_DOCS = 500;
@@ -10,7 +10,7 @@ function sanitizeId(id: string): string {
 
 /** Indexes all dataset modules into Meilisearch. Creates indexes if absent,
  *  applies settings, then adds documents in batches. */
-export async function runIngest(modules: DatasetModule[], search: MeiliSearch, store: DataWriter): Promise<void> {
+export async function runIngest(modules: DatasetModule[], search: Meilisearch, store: DataWriter): Promise<void> {
   for (const module of modules) {
     for (const idx of module.indices) {
       try {
@@ -36,7 +36,7 @@ export async function runIngest(modules: DatasetModule[], search: MeiliSearch, s
         const flush = async () => {
           if (batch.length === 0) return;
           const task = await index.addDocuments(batch);
-          await search.waitForTask(task.taskUid);
+          await search.tasks.waitForTask(task.taskUid);
           batch = [];
         };
 

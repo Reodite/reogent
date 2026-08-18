@@ -1,7 +1,7 @@
 // Core types shared by the agent loop, dataset modules, and API handlers.
 
 import type { ChatMessage } from "@/src/shared/types";
-import type { MeiliSearch } from "meilisearch";
+import type { Meilisearch } from "meilisearch";
 
 export type { ChatMessage, InterstitialBlock, SessionSummary, ToolCall } from "@/src/shared/types";
 
@@ -46,7 +46,7 @@ export interface DataWriter extends DataReader {
 }
 
 /** Search client passed to tool execute functions. */
-export type SearchClient = MeiliSearch;
+export type SearchClient = Meilisearch;
 
 // biome-ignore lint/suspicious/noExplicitAny: raw rows are dataset-specific
 export interface IndexDef<TRaw = any> {

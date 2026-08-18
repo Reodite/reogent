@@ -1,4 +1,5 @@
-import type { Citation, CitationSeed } from "@/src/shared/citations/citation";
+import type { CitationSeed } from "@/src/server/citations/extractors";
+import type { Citation } from "@/src/shared/citations/citation";
 
 const dedupeKey = (s: CitationSeed): string => `${s.source_url ?? ""}\u0000${s.label}`;
 
