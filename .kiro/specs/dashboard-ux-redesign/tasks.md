@@ -48,11 +48,11 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - Click activates the canvas for a mapped tool; unmapped renders static and non-focusable; `active` ring reflects `workspaceView`; keyboard Enter/Space activates.
     - _Requirements: REQ-3.3, REQ-3.4, REQ-8.1_
 
-- [ ] 6. `AnswerCanvas` (AI-mode right region)
-  - [ ] 6.1 Implement `AnswerCanvas` + `AnswerCanvasIdle` in `src/components/shell/answer-canvas.tsx`
+- [x] 6. `AnswerCanvas` (AI-mode right region)
+  - [x] 6.1 Implement `AnswerCanvas` + `AnswerCanvasIdle` in `src/components/shell/answer-canvas.tsx`
     - `view === null` → `AnswerCanvasIdle` renders `MapArea` with `highlight = null` at the default extent (map-first idle). `view !== null` → resolve `PANE_BY_ID[view.paneId]` and render `<entry.Component state={view.state} setState={..real..} />`. For `paneId === "map"`, `CampusMap` reads `highlight` from `view.state` and `focusNonce` from context (unchanged). Fix the existing `noopSetState` bug (`pane-host.tsx:11`): pass a real `setState` that merges back into `workspaceView.state` so course-lookup submit and calendar month-nav persist. Host the map here (moved up from `ChatPanel`).
     - _Requirements: REQ-2.1, REQ-2.3, REQ-3.1, REQ-9.4_
-  - [ ]* 6.2 Component tests for `AnswerCanvas`
+  - [x]* 6.2 Component tests for `AnswerCanvas`
     - Idle map rendered when `workspaceView === null`; pane component rendered for a given `CanvasView`; `setState` writes back into `workspaceView.state` (the noop-bug fix).
     - _Requirements: REQ-2.3, REQ-3.1_
 
