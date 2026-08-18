@@ -6,7 +6,6 @@ import {
   getSelection,
   rootSwitchSelection,
   toggleSelection,
-  type SelectionKeyMap,
 } from "./selection-key";
 
 describe("selection-key encode/decode", () => {
@@ -39,7 +38,7 @@ const arbKey = fc.tuple(arbOwner, arbPath).map(([o, p]) => encodeSelectionKey(o,
 const arbMap = fc.dictionary(arbKey, fc.integer({ min: 0, max: 5 }));
 
 describe("selection-key properties (Domain 5)", () => {
-  it("Property 15: toggling path p modifies only the `${owner}::${p}` key (REQ-8.3)", () => {
+  it("Property 15: toggling path p modifies only the owner::p selection key (REQ-8.3)", () => {
     fc.assert(
       fc.property(arbMap, arbOwner, arbPath, fc.integer({ min: 0, max: 5 }), (map, ownerCode, path, index) => {
         const key = encodeSelectionKey(ownerCode, path);
