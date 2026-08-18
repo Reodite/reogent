@@ -46,7 +46,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ]\* 2.5 Property test — Canonicalization idempotence
     - **Property 4: `canonicalize(canonicalize(s).raw) === canonicalize(s)`**
     - **Validates: Requirements REQ-1.1**
-  - [ ]\* 2.6 Example test — `_V` suffix strip, multi-space, mixed case
+  - [x] 2.6 Example test — `_V` suffix strip, multi-space, mixed case
     - _Requirements: REQ-1.1, REQ-1.2_
 
 - [ ] 3. Checkpoint - Course canonicalization tests pass

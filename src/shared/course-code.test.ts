@@ -21,6 +21,20 @@ describe("canonicalize", () => {
       number: "447B",
       raw: "STAT 447B",
     });
+    // Multi-space between subject and number collapses to a single space.
+    expect(canonicalize("cpsc   110")).toEqual({
+      kind: "code",
+      subject: "CPSC",
+      number: "110",
+      raw: "CPSC 110",
+    });
+    // No space between subject and number still canonicalizes.
+    expect(canonicalize("AANB500")).toEqual({
+      kind: "code",
+      subject: "AANB",
+      number: "500",
+      raw: "AANB 500",
+    });
   });
 
   it("rejects Okanagan (_O) codes", () => {
