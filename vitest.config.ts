@@ -8,5 +8,6 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "app/**/*.test.ts", "app/**/*.test.tsx", "scripts/**/*.test.ts"],
     environment: "node",
+    globals: true,
   },
 });
