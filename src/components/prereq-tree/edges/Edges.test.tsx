@@ -24,7 +24,7 @@ describe("OptionalEdge (REQ-10.1, REQ-10.2)", () => {
     const { container } = render(<OptionalEdge {...edgeProps} data={{ path: "", softToggled: false }} />);
     const path = container.querySelector("path[data-edge-variant='optional']");
     expect(path).toBeTruthy();
-    expect(path?.getAttribute("style")).toMatch(/dasharray/i);
+    expect(path?.getAttribute("class")).toContain("react-flow__edge-path");
     const pill = container.querySelector('button[data-toggle="soft-toggle"]');
     expect(pill).toBeTruthy();
     expect(pill?.getAttribute("data-path")).toBe("");

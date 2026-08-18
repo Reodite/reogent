@@ -35,13 +35,7 @@ export function OptionalEdge({
   const on = data?.softToggled === true;
   return (
     <>
-      <path
-        d={edgePath}
-        fill="none"
-        data-edge-variant="optional"
-        style={{ strokeDasharray: "6 4" }}
-        className="react-flow__edge-path"
-      />
+      <path d={edgePath} fill="none" data-edge-variant="optional" className="react-flow__edge-path" />
       <EdgeLabelRenderer>
         <button
           type="button"
