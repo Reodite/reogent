@@ -19,14 +19,14 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Doc-only Decision: pigment React Flow CSS variables per `DESIGN.md` tokens. The decision lands as a comment block at the top of `prereq-tree-pane.tsx` when Task 8.6 creates that file (no forward-reference to a file that doesn't exist; this task records the decision, the comment is written by 8.6).
     - _Requirements: REQ-20_
 
-- [ ] 1. Set up project structure and install dependencies
-  - [ ] 1.1 Create directory scaffold
+- [x] 1. Set up project structure and install dependencies
+  - [x] 1.1 Create directory scaffold
     - Create `src/shared/{course-code,prereq-ast,calendar,citations}/`, `src/server/{prereq,citations}/`, `src/components/{shell,course-lookup,prereq-tree,chat/citations,calendar}/`, and the route folders `app/api/{courses,prereq-tree,calendar}/`. No `src/components/shell/sidebar/` subdirectory — sidebar collapse + version-badge inline into the existing `src/components/shell/session-sidebar.tsx` (Task 10.1).
     - _Requirements: REQ-19_
-  - [ ] 1.2 Install `reactflow@^11`
+  - [x] 1.2 Install `reactflow@^11`
     - Add to `package.json`; verify React 19 peer compatibility via `npm ls reactflow` (peer range is `react: >=17`)
     - _Requirements: REQ-9_
-  - [ ] 1.3 Copy donor `reoditetools/web/src/lib/prereqAst.ts` verbatim into `src/shared/prereq-ast/index.ts`; author `src/shared/prereq-ast/walk.ts` companion
+  - [x] 1.3 Copy donor `reoditetools/web/src/lib/prereqAst.ts` verbatim into `src/shared/prereq-ast/index.ts`; author `src/shared/prereq-ast/walk.ts` companion
     - Donor file has zero imports and exports `{ Expr, parsePrereq, displayExpr, isSatisfied, missingPrereqs }` only. The donor does NOT export `walkCodeLeaves` or `MAX_DEPTH`; author `walk.ts` with `MAX_DEPTH = 15` and `walkCodeLeaves(expr): { parent: Expr | null; leaf: Extract<Expr, { kind: 'code' }> }[]` as a structural recursion over the donor's lowercase-kind AST (`'and'`, `'or'`, `'code'`, `'literal'`, `'flattened'`, `'soft'`; `Or.ui: 'dropdown' | 'stacked'`; `Flattened.text`/`subExpr`). Re-export `walkCodeLeaves` and `MAX_DEPTH` from `index.ts` alongside the donor API so callers import from one module.
     - _Requirements: REQ-5, REQ-6, REQ-7_
 
