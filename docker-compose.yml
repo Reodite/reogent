@@ -12,7 +12,7 @@ services:
     volumes:
       - ./ubc-unified-data/data:/data:ro
     environment:
-      - DATABASE_URL=postgres://reogent:${POSTGRES_PASSWORD:-reogent}@postgres:5432/reogent
+      - DATABASE_URL=postgres://reodite:${POSTGRES_PASSWORD:-reodite}@postgres:5432/reodite
       - MEILI_URL=http://meilisearch:7700
       - HOSTNAME=0.0.0.0
 
@@ -33,7 +33,7 @@ services:
       - /app/node_modules
       - ./ubc-unified-data/data:/data:ro
     environment:
-      - DATABASE_URL=postgres://reogent:${POSTGRES_PASSWORD:-reogent}@postgres:5432/reogent
+      - DATABASE_URL=postgres://reodite:${POSTGRES_PASSWORD:-reodite}@postgres:5432/reodite
       - MEILI_URL=http://meilisearch:7700
       - HOSTNAME=0.0.0.0
 
@@ -42,13 +42,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: reogent
-      POSTGRES_USER: reogent
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reogent}
+      POSTGRES_DB: reodite
+      POSTGRES_USER: reodite
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reodite}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U reogent"]
+      test: ["CMD-SHELL", "pg_isready -U reodite"]
       interval: 5s
       timeout: 3s
       retries: 5

@@ -122,14 +122,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
             <Link
               href="/"
-              aria-label="Go to Reogent homepage"
+              aria-label="Go to Reodite homepage"
               className="group flex min-w-0 items-center gap-2 rounded-xl py-1 pr-2 focus-visible:outline-offset-4"
             >
               <span className="bg-surface-container-low text-primary group-hover:text-on-surface hidden size-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 sm:flex">
                 <Icon name="school" size={17} />
               </span>
               <span className="text-primary group-hover:text-on-surface truncate text-base font-medium tracking-[-0.025em] transition-colors duration-150 sm:text-xl">
-                Reogent
+                Reodite
               </span>
             </Link>
           </div>

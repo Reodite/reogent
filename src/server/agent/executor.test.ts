@@ -8,7 +8,7 @@ const search = {} as SearchClient;
 const spec = (name: string) => ({ name, description: "d", inputSchema: { json: {} } });
 
 describe("tool executor", () => {
-  // Feature: reogent, Property 4: Tool failures are contained
+  // Feature: reodite, Property 4: Tool failures are contained
   it("Property 4: throwing tools, unknown tools, and empty results never escape as exceptions", async () => {
     await fc.assert(
       fc.asyncProperty(

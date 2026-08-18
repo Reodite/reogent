@@ -8,7 +8,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# Project: Reogent
+# Project: Reodite
 
 Conversational AI for UBC students. Ask about courses, tuition, walking routes, parking, events, or study spaces; answers render on an interactive campus map.
 

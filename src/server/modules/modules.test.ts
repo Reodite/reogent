@@ -14,7 +14,7 @@ describe("ingest document IDs", () => {
     cohort_rule: fc.option(fc.constantFrom("exactly" as const, "or_later" as const), { nil: null }),
   });
 
-  // Feature: reogent, Property 8: Ingest document IDs are deterministic and unique
+  // Feature: reodite, Property 8: Ingest document IDs are deterministic and unique
   it("Property 8: IDs are stable across calls and differ when the natural key differs", () => {
     fc.assert(
       fc.property(tuitionRow, tuitionRow, (a, b) => {

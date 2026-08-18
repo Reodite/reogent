@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-08-08T00:00:00Z",
-  "title": "Design System: Reogent",
+  "title": "Design System: Reodite",
   "extensions": {
     "colorMeta": {
       "background": {
@@ -269,7 +269,7 @@
   ],
   "narrative": {
     "northStar": "The Whisper Instrument",
-    "overview": "Reogent's interface is a precision instrument where every surface is permanently shaped — dimensioned at rest, but barely. Shadows function at whisper intensity: tiny offsets, minimal blur, near-transparent opacity. You feel what is pressable, what is a well, what is content, but the depth registers subconsciously rather than announcing itself.\n\nThe system reads as one continuous material shaped into different forms for different functions: raised for actions, recessed for input, flat for content. No decoration, no illustration, no ornament. Quality lives in restraint: the lightest possible shadow that still communicates depth.\n\nThe landing page breaks this discipline intentionally — larger type (4xl-6xl), spring physics, blur reveals, scroll-driven parallax — creating contrast between marketing energy and in-app calm. This is a designed boundary, not inconsistency.",
+    "overview": "Reodite's interface is a precision instrument where every surface is permanently shaped — dimensioned at rest, but barely. Shadows function at whisper intensity: tiny offsets, minimal blur, near-transparent opacity. You feel what is pressable, what is a well, what is content, but the depth registers subconsciously rather than announcing itself.\n\nThe system reads as one continuous material shaped into different forms for different functions: raised for actions, recessed for input, flat for content. No decoration, no illustration, no ornament. Quality lives in restraint: the lightest possible shadow that still communicates depth.\n\nThe landing page breaks this discipline intentionally — larger type (4xl-6xl), spring physics, blur reveals, scroll-driven parallax — creating contrast between marketing energy and in-app calm. This is a designed boundary, not inconsistency.",
     "keyCharacteristics": [
       "Whisper-level dimension on every surface — felt, not seen",
       "Minimal shadows: 2-3px offsets, 4-8px blur, 4-6% opacity",
