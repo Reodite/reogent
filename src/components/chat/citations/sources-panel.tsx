@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
+import { announce } from "@/src/components/ui/live-region";
 import type { Citation } from "@/src/shared/citations/citation";
 import { useReducedMotion } from "motion/react";
 import { useRef } from "react";
@@ -19,6 +20,9 @@ export function SourcesPanel({ citations }: { citations: Citation[] | null | und
         block: "nearest",
         behavior: reducedMotion ? "auto" : "smooth",
       });
+      announce("Sources panel expanded");
+    } else {
+      announce("Sources panel collapsed");
     }
   };
 

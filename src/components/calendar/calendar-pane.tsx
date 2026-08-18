@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
+import { announce } from "@/src/components/ui/live-region";
 import {
   addMonths,
   buildMonthGrid,
@@ -78,7 +79,11 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           type="button"
           data-calendar-nav="prev"
           aria-label="Previous month"
-          onClick={() => setState({ cursor: formatMonthBadge(addMonths(cursorDate, -1)) })}
+          onClick={() => {
+            const next = addMonths(cursorDate, -1);
+            setState({ cursor: formatMonthBadge(next) });
+            announce(`Moved to ${formatMonthHeading(next)}`);
+          }}
           className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
         >
           <Icon name="left" size={18} />
@@ -86,7 +91,11 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
         <button
           type="button"
           data-calendar-nav="today"
-          onClick={() => setState({ cursor: formatMonthBadge(startOfMonth(today)) })}
+          onClick={() => {
+            const next = startOfMonth(today);
+            setState({ cursor: formatMonthBadge(next) });
+            announce(`Moved to ${formatMonthHeading(next)}`);
+          }}
           className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container min-h-9 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2"
         >
           This month
@@ -96,7 +105,11 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           data-calendar-nav="next"
           aria-label="Next month"
           disabled={beyondHorizon}
-          onClick={() => setState({ cursor: formatMonthBadge(addMonths(cursorDate, 1)) })}
+          onClick={() => {
+            const next = addMonths(cursorDate, 1);
+            setState({ cursor: formatMonthBadge(next) });
+            announce(`Moved to ${formatMonthHeading(next)}`);
+          }}
           className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
         >
           <Icon name="right" size={18} />

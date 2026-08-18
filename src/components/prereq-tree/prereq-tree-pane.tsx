@@ -1,6 +1,7 @@
 "use client";
 
 import "reactflow/dist/style.css";
+import { announce } from "@/src/components/ui/live-region";
 import type { PrereqGraph, PrereqNode } from "@/src/server/prereq/build-graph";
 import {
   Component,
@@ -179,6 +180,7 @@ export function PrereqTreePane({
 
   const onSelect = useCallback((selectionKey: string, index: number) => {
     setSelections((prev) => ({ ...prev, [selectionKey]: index }));
+    announce(`Prereq selection updated: option ${index + 1}`);
   }, []);
 
   const onToggle = useCallback((path: string) => {

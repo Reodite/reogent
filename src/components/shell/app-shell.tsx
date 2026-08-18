@@ -11,6 +11,7 @@ import { PaneHost } from "@/src/components/shell/pane-host";
 import { SessionSidebar, useSidebarCollapsed } from "@/src/components/shell/session-sidebar";
 import { UserMenu } from "@/src/components/shell/user-menu";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import { LiveRegion } from "@/src/components/ui/live-region";
 import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -197,6 +198,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <MapBottomSheet />
+        <LiveRegion />
       </div>
     </RequireAuth>
   );
