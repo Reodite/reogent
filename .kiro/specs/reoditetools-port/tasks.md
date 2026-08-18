@@ -90,7 +90,7 @@ Property-based test sub-tasks are annotated with their property number from `des
     - **Validates: Requirements REQ-6.3**
     - Generator: `arbExpr` from design.md §Domain 3.
 
-- [ ] 5. Checkpoint - Prerequisite AST parser tests pass
+- [x] 5. Checkpoint - Prerequisite AST parser tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Implement Prerequisite Tree server BFS (`src/server/prereq/`)
