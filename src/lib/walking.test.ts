@@ -7,9 +7,11 @@ import type { ToolCall } from "@/src/lib/api-types";
 import { featureCentroid, featuresBounds, findBuilding } from "@/src/lib/geo";
 import {
   extractBuildingHighlight,
+  extractParkingHighlight,
   extractPlacesHighlight,
   extractWalkingHighlight,
   mergeMapHighlights,
+  toolCallToCanvasView,
 } from "@/src/lib/walking";
 import fc from "fast-check";
 import type { FeatureCollection } from "geojson";
@@ -302,5 +304,161 @@ describe("journey: highlight → geo resolution → camera bounds", () => {
       result: { courses: [] },
     };
     expect(extractWalkingHighlight(courseCall)).toBeNull();
+  });
+});
+
+describe("extractParkingHighlight", () => {
+  const healthy: ToolCall = {
+    name: "find_parking",
+    input: { near_building: "SWNG" },
+    result: {
+      near_building: "SWNG",
+      parking: [
+        { name: "Rose Garden Parkade", lat: 49.27, lon: -123.25, rate: "$4.50/hr" },
+        { name: "North Parkade", lat: 49.271, lon: -123.251 },
+      ],
+    },
+  };
+
+  it("extracts parking pins as a places highlight anchored to the building", () => {
+    const highlight = extractParkingHighlight(healthy);
+    expect(highlight?.kind).toBe("places");
+    expect(highlight?.near).toBe("SWNG");
+    expect(highlight?.places).toEqual([
+      { name: "Rose Garden Parkade", lat: 49.27, lon: -123.25, service_type: null },
+      { name: "North Parkade", lat: 49.271, lon: -123.251, service_type: null },
+    ]);
+  });
+
+  it("returns null for other tools, error results, and malformed payloads", () => {
+    expect(extractParkingHighlight({ ...healthy, name: "find_places" })).toBeNull();
+    expect(extractParkingHighlight({ ...healthy, result: { status: "error", message: "none" } })).toBeNull();
+    expect(extractParkingHighlight({ ...healthy, result: { parking: [] } })).toBeNull();
+    expect(extractParkingHighlight({ ...healthy, result: undefined })).toBeNull();
+  });
+});
+
+describe("toolCallToCanvasView", () => {
+  const month = new Date().toISOString().slice(0, 7);
+
+  function mapKind(view: { paneId: string; state: Record<string, unknown> } | null): string | undefined {
+    if (!view) return undefined;
+    const highlight = view.state.highlight as { kind?: string } | undefined;
+    return highlight?.kind;
+  }
+
+  it("maps a walking_distance call to the map pane with the route highlight", () => {
+    const view = toolCallToCanvasView({
+      name: "walking_distance",
+      input: { from_building: "IBLC", to_building: "ICCS" },
+      result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11 },
+    });
+    expect(view?.paneId).toBe("map");
+    expect(view?.state.highlight).toEqual({ kind: "route", from: "IBLC", to: "ICCS", meters: 830, minutes: 11 });
+  });
+
+  it("maps a find_places call to the map pane", () => {
+    const view = toolCallToCanvasView({
+      name: "find_places",
+      input: { service_type: "restaurant", near_building: "SWNG" },
+      result: { places: [{ name: "Mercante", lat: 49.2637, lon: -123.2551, service_type: "restaurant" }] },
+    });
+    expect(view?.paneId).toBe("map");
+    expect(mapKind(view)).toBe("places");
+  });
+
+  it("maps a find_building call to the map pane", () => {
+    const view = toolCallToCanvasView({
+      name: "find_building",
+      input: { query: "life sciences" },
+      result: { code: "LSC", name: "Life Sciences Centre", lat: 49.2626, lon: -123.2453 },
+    });
+    expect(view?.paneId).toBe("map");
+    expect(mapKind(view)).toBe("buildings");
+  });
+
+  it("maps a find_parking call to the map pane", () => {
+    const view = toolCallToCanvasView({
+      name: "find_parking",
+      input: { near_building: "SWNG" },
+      result: { parking: [{ name: "Rose Garden Parkade", lat: 49.27, lon: -123.25 }] },
+    });
+    expect(view?.paneId).toBe("map");
+    expect(mapKind(view)).toBe("places");
+  });
+
+  it("maps a get_course call to the course-lookup pane seeded with the code", () => {
+    const view = toolCallToCanvasView({
+      name: "get_course",
+      input: { course_code: "CPSC 110" },
+      result: { code: "CPSC 110", title: "Computation, Programs, and Programming" },
+    } as ToolCall);
+    expect(view?.paneId).toBe("course-lookup");
+    expect(view?.state.code).toBe("CPSC 110");
+  });
+
+  it("maps a search_courses call to the course-lookup pane using the first hit", () => {
+    const view = toolCallToCanvasView({
+      name: "search_courses",
+      input: { query: "machine learning", subject: "CPSC" },
+      result: { courses: [{ code: "CPSC 340", title: "Machine Learning" }] },
+    } as ToolCall);
+    expect(view?.paneId).toBe("course-lookup");
+    expect(view?.state.code).toBe("CPSC 340");
+  });
+
+  it("maps a get_prereq_tree call to the prereq-tree pane seeded with the root", () => {
+    const view = toolCallToCanvasView({
+      name: "get_prereq_tree",
+      input: { course_code: "CPSC 320" },
+      result: { rootCode: "CPSC 320", nodes: [], edges: [], selectionKeys: [] },
+    } as ToolCall);
+    expect(view?.paneId).toBe("prereq-tree");
+    expect(view?.state.root).toBe("CPSC 320");
+    expect(view?.state.selections).toEqual({});
+  });
+
+  it("maps a get_key_dates call to the calendar pane at the current month", () => {
+    const view = toolCallToCanvasView({
+      name: "get_key_dates",
+      input: { query: "withdrawal" },
+      result: { dates: [{ kind: "academic", name: "Withdrawal deadline", start: "2026-10-01", end: null }] },
+    } as ToolCall);
+    expect(view?.paneId).toBe("calendar");
+    expect(view?.state.cursor).toBe(month);
+    expect(view?.state.kinds).toEqual(["academic", "holiday"]);
+  });
+
+  it("returns null for an unmapped tool", () => {
+    expect(
+      toolCallToCanvasView({
+        name: "get_tuition",
+        input: { program: "BSc" },
+        result: { program: "BSc", amount_cad: 5000, student_type: "domestic", cohort_year: 2026 },
+      } as ToolCall),
+    ).toBeNull();
+  });
+
+  it("returns null for every mapped tool when its result is an error", () => {
+    const err = { status: "error", message: "nope" };
+    const names = [
+      ["walking_distance", { from_building: "A", to_building: "B" }],
+      ["find_places", { service_type: "cafe" }],
+      ["find_building", { query: "x" }],
+      ["find_parking", {}],
+      ["get_course", { course_code: "X" }],
+      ["search_courses", { query: "X" }],
+      ["get_prereq_tree", { course_code: "X" }],
+      ["get_key_dates", { query: "X" }],
+    ] as const;
+    for (const [name, input] of names) {
+      expect(toolCallToCanvasView({ name, input, result: err } as ToolCall)).toBeNull();
+    }
+  });
+
+  it("tolerates a null/undefined result without crashing", () => {
+    expect(toolCallToCanvasView({ name: "get_course", input: {}, result: undefined } as ToolCall)).toBeNull();
+    expect(toolCallToCanvasView({ name: "walking_distance", input: {}, result: undefined } as ToolCall)).toBeNull();
+    expect(toolCallToCanvasView({ name: "get_prereq_tree", input: {}, result: undefined } as ToolCall)).toBeNull();
   });
 });

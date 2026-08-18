@@ -18,11 +18,11 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - `activateCanvasView(call)` = `const v = toolCallToCanvasView(call); if (v) setWorkspaceView(v)`. `showOnMap(highlight)` becomes `setWorkspaceView({ paneId: "map", state: { highlight } })` + `focusNonce++` + open the below-wide sheet (preserved contract). `setWorkspaceView(null)` = idle (AI) / default tool (Tools). Keep the callback deps `[]` so callers' effect deps don't churn.
     - _Requirements: REQ-3.1, REQ-3.6, REQ-8_
 
-- [ ] 2. `toolCallToCanvasView` mapper (pure, standalone)
-  - [ ] 2.1 Implement `toolCallToCanvasView` in `src/lib/walking.ts` (generalize next to `mergeMapHighlights`)
+- [x] 2. `toolCallToCanvasView` mapper (pure, standalone)
+  - [x] 2.1 Implement `toolCallToCanvasView` in `src/lib/walking.ts` (generalize next to `mergeMapHighlights`)
     - Pure function over the design mapping table: `walking_distance`/`find_places`/`find_building`/`find_parking` → `{ paneId: "map", state: { highlight: extract*Highlight(call) } }`; `get_course`/`search_courses` → `{ paneId: "course-lookup", state: { code: result.code ?? input.code ?? input.subject } }`; `get_prereq_tree` → `{ paneId: "prereq-tree", state: { root: result.rootCode ?? input.code, selections: {} } }`; `get_key_dates` → `{ paneId: "calendar", state: { cursor: thisMonth(), kinds: ["academic","holiday"] } }`. Error results (`isToolError`) and unmapped tools return `null`. Reuse the existing `extract*Highlight` helpers; do not change the `walking_distance` polyline split (polyline stays fetched by `/api/route`).
     - _Requirements: REQ-3.1, REQ-3.7_
-  - [ ]* 2.2 Example tests for `toolCallToCanvasView`
+  - [x]* 2.2 Example tests for `toolCallToCanvasView`
     - One passing + one error-result case per mapped tool name; unmapped-name returns `null`; null result tolerated. Colocate as `walking.test.ts` next to the source.
     - _Requirements: REQ-3.1, REQ-3.7_
 

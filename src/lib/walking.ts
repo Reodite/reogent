@@ -2,6 +2,7 @@
 // emit map highlight state) and the chat panel (which clears it when the
 // latest response has no map-driving call).
 
+import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { isToolError, type ToolCall, type WalkingDistanceResult } from "@/src/lib/api-types";
 
 interface WalkingHighlight {
@@ -137,4 +138,92 @@ export function mergeMapHighlights(calls: ToolCall[]): MapHighlight | null {
   }
   if (byCode.size > 0) return { kind: "buildings", buildings: [...byCode.values()] };
   return null;
+}
+
+/**
+ * Parking pins from a healthy find_parking call: each lot with a name and
+ * coordinates becomes a map marker (same `places` highlight shape the map
+ * already renders, with `service_type` null since parking lots have none).
+ */
+export function extractParkingHighlight(call: ToolCall): PlacesHighlight | null {
+  if (call.name !== "find_parking" || isToolError(call.result)) return null;
+  const result = call.result as { near_building?: unknown; parking?: unknown } | undefined;
+  if (!Array.isArray(result?.parking)) return null;
+  const places: PlacePin[] = [];
+  for (const p of result.parking as Partial<{ name: string; lat: number; lon: number }>[]) {
+    if (typeof p?.name !== "string" || !p.name || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
+    if (p.lat < -90 || p.lat > 90 || p.lon < -180 || p.lon > 180) continue;
+    places.push({ name: p.name, lat: p.lat, lon: p.lon, service_type: null });
+  }
+  if (places.length === 0) return null;
+  const near =
+    (typeof result.near_building === "string" && result.near_building) ||
+    (typeof call.input.near_building === "string" && call.input.near_building) ||
+    null;
+  return { kind: "places", near, places };
+}
+
+/** Tries every map-driving extractor; only one matches a given call name. */
+function extractMapHighlight(call: ToolCall): MapHighlight | null {
+  return (
+    extractWalkingHighlight(call) ??
+    extractPlacesHighlight(call) ??
+    extractBuildingHighlight(call) ??
+    extractParkingHighlight(call)
+  );
+}
+
+/**
+ * The canvas pane a tool call should load, or null when the call does not map
+ * to a pane (unmapped tools render a static widget and never touch the canvas).
+ * Map-driving tools reuse the existing extractors; course/prereq/calendar tools
+ * seed the matching pane's state from the result. Error results yield null.
+ */
+export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
+  const highlight = extractMapHighlight(call);
+  if (highlight) return { paneId: "map", state: { highlight } };
+
+  switch (call.name) {
+    case "get_course": {
+      if (isToolError(call.result)) return null;
+      const result = call.result as Partial<{ code: string }> | undefined;
+      const code =
+        (typeof result?.code === "string" && result.code) ||
+        (typeof call.input.course_code === "string" && call.input.course_code) ||
+        "";
+      if (!code) return null;
+      return { paneId: "course-lookup", state: { code } };
+    }
+    case "search_courses": {
+      if (isToolError(call.result)) return null;
+      const result = call.result as Partial<{ courses: { code?: string }[] }> | undefined;
+      const first = Array.isArray(result?.courses) ? result.courses[0] : undefined;
+      const code =
+        (typeof first?.code === "string" && first.code) ||
+        (typeof call.input.subject === "string" && call.input.subject) ||
+        "";
+      if (!code) return null;
+      return { paneId: "course-lookup", state: { code } };
+    }
+    case "get_prereq_tree": {
+      if (isToolError(call.result)) return null;
+      const result = call.result as Partial<{ rootCode: string }> | undefined;
+      const root =
+        (typeof result?.rootCode === "string" && result.rootCode) ||
+        (typeof call.input.course_code === "string" && call.input.course_code) ||
+        "";
+      if (!root) return null;
+      return { paneId: "prereq-tree", state: { root, selections: {} } };
+    }
+    case "get_key_dates": {
+      if (isToolError(call.result)) return null;
+      return {
+        paneId: "calendar",
+        state: { cursor: new Date().toISOString().slice(0, 7), kinds: ["academic", "holiday"] },
+      };
+    }
+    default:
+      return null;
+  }
 }

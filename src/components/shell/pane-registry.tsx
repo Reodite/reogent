@@ -13,6 +13,10 @@ export type PaneId = "map" | "course-lookup" | "prereq-tree" | "calendar" | (str
 /** Per-pane runtime state carried in `activeChannel.state`. Values are whatever the pane needs. */
 export type PaneState = Record<string, unknown>;
 
+/** A pane selection bound to runtime state: the single source of truth for what
+ *  the Answer Canvas (AI Mode) or Full-Bleed Tool (Tools Mode) renders. */
+export type CanvasView = { paneId: PaneId; state: PaneState };
+
 export type PaneEntry<S extends PaneState = PaneState> = {
   id: PaneId;
   label: string;
