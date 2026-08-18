@@ -250,43 +250,43 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [x] 14. Checkpoint - Course Lookup tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 15. Implement Citations server (`src/server/citations/`)
-  - [ ] 15.1 Implement `src/shared/citations/citation.ts` types (`Citation`, `CitationSeed`, `CitationKind`)
+- [x] 15. Implement Citations server (`src/server/citations/`)
+  - [x] 15.1 Implement `src/shared/citations/citation.ts` types (`Citation`, `CitationSeed`, `CitationKind`)
     - `CitationKind` is `"course" | "program" | "event" | "calendar" | "page" | "generic" | (string & {})` — open-string-enum
     - _Requirements: REQ-12.1, REQ-12.3_
-  - [ ] 15.2 Implement `src/server/citations/extractors.ts` with `CITATION_EXTRACTORS: Record<string, CitationExtractor>`
+  - [x] 15.2 Implement `src/server/citations/extractors.ts` with `CITATION_EXTRACTORS: Record<string, CitationExtractor>`
     - One entry per existing tool returning a URL-bearing payload (`search_courses`, `get_course`, `search_programs`, `search_events`, `get_key_dates`, `search_ubc_pages`); each extractor maps `(result, input) → CitationSeed[]`
     - _Requirements: REQ-12.2, REQ-15.3_
-  - [ ] 15.3 Implement `src/server/citations/allocator.ts` (`allocateCitations`)
+  - [x] 15.3 Implement `src/server/citations/allocator.ts` (`allocateCitations`)
     - 1-indexed `index` assignment; dedupe by `source_url + label`; no gaps, no duplicates
     - _Requirements: REQ-12.1, REQ-12.2_
-  - [ ] 15.4 Implement `src/server/citations/stamp-used.ts` (`stampUsed`)
+  - [x] 15.4 Implement `src/server/citations/stamp-used.ts` (`stampUsed`)
     - Apply `/\[(\d+)\]/g` over final assistant text; mark `used: true` for matching indices; runs on `done`, not mid-stream
     - _Requirements: REQ-12.2_
-  - [ ] 15.5 Extend agent loop in `src/server/agent/` to emit NDJSON `citations` event after each `tool_end` and a final stamped array on `done`
+  - [x] 15.5 Extend agent loop in `src/server/agent/` to emit NDJSON `citations` event after each `tool_end` and a final stamped array on `done`
     - Live stream carries `used: false`; the `done` event carries the stamped array
     - _Requirements: REQ-12.2_
-  - [ ] 15.6 Extend system prompt in `src/server/agent/loop.ts` with the `[N]` citation contract
+  - [x] 15.6 Extend system prompt in `src/server/agent/loop.ts` with the `[N]` citation contract
     - Append to the `SYSTEM_PROMPT` template const at `src/server/agent/loop.ts:3-24` (the builder at `systemPrompt(now)`, lines 27-39, prepends the date — the citation paragraph goes in `SYSTEM_PROMPT` so it travels through every provider).
     - Contract paragraph is provider-agnostic — text only, lives in the system prompt, identical across Anthropic/OpenAI/Google.
     - Append the turn's current `citations` array (index + label) so the model can attribute.
     - _Requirements: REQ-15.1, REQ-15.2, REQ-15.3, REQ-15.4_
-  - [ ]\* 15.7 Property test — Index-1 continuity
+  - [x]\* 15.7 Property test — Index-1 continuity
     - **Property 18: `index` values form exactly `1..length` with no gaps or duplicates**
     - **Validates: Requirements REQ-12.1, REQ-12.2**
-  - [ ]\* 15.8 Property test — Source-url honesty
+  - [x]\* 15.8 Property test — Source-url honesty
     - **Property 19: `source_url` undefined or empty is omitted (not `""`)**
     - **Validates: Requirements REQ-12.3**
-  - [ ]\* 15.9 Property test — Used-only-after-stamp
+  - [x]\* 15.9 Property test — Used-only-after-stamp
     - **Property 20: Live `citations` events carry `used: false`; only `done` carries stamped `used` bits**
     - **Validates: Requirements REQ-12.2**
-  - [ ]\* 15.10 Integration test — Per-provider system-prompt parity smoke (Anthropic, OpenAI, Google)
+  - [x]\* 15.10 Integration test — Per-provider system-prompt parity smoke (Anthropic, OpenAI, Google)
     - _Requirements: REQ-15.4_
   - [ ]\* 15.11 Property test — Citations array shape robustness
     - **Property 41: For all assistant messages, `citations` may be `null`, `undefined`, a non-array, or a `Citation[]` (including `[]`); the renderer emits no chips and no panel for null/undefined, falls back to `[]` for non-array types, and renders every element of the array branch (schema-conformant, Property-18 stamped).**
     - **Validates: Requirements REQ-12.4**
     - Generator: `arbCitationArray` from design.md §Domain 6.
-  - [ ]\* 15.12 Example test — System prompt includes the citation contract paragraph verbatim
+  - [x]\* 15.12 Example test — System prompt includes the citation contract paragraph verbatim
     - Snapshot against the `SYSTEM_PROMPT` const at `src/server/agent/loop.ts:3-24` (test reads the module's exported const and asserts the paragraph is present) so future edits surface as a snapshot diff.
     - _Requirements: REQ-15.1, REQ-15.4_
 
