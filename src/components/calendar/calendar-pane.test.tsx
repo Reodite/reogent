@@ -1,0 +1,205 @@
+// @vitest-environment happy-dom
+import fixture from "@/__fixtures__/calendar-events.json";
+import { CalendarPane } from "@/src/components/calendar/calendar-pane";
+import type { CalendarEvent } from "@/src/shared/calendar/event";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const fixtureEvents = fixture.output as CalendarEvent[];
+
+beforeAll(() => {
+  Object.defineProperty(window, "matchMedia", {
+    value: () => ({
+      matches: false,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+    }),
+    configurable: true,
+    writable: true,
+  });
+});
+
+beforeEach(() => {
+  vi.useFakeTimers({ now: new Date("2024-04-15T00:00:00Z").getTime(), toFake: ["Date"] });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+  cleanup();
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
+
+interface State {
+  cursor: string;
+  kinds: string[];
+}
+
+function renderPane(state: Partial<State> = {}, events: CalendarEvent[] = fixtureEvents) {
+  const setState = vi.fn();
+  const original = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify(events), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })) as unknown as typeof globalThis.fetch;
+  const result = render(
+    <CalendarPane
+      state={{ cursor: state.cursor ?? "2024-04", kinds: state.kinds ?? ["academic", "holiday"] }}
+      setState={setState}
+    />,
+  );
+  const restore = () => {
+    globalThis.fetch = original;
+  };
+  return { ...result, setState, restore };
+}
+
+async function waitForCell(container: HTMLElement, day: string, selector: string) {
+  await waitFor(() => {
+    const cell = container.querySelector(`[data-calendar-day="${day}"]`);
+    expect(cell?.querySelector(selector)).not.toBeNull();
+  });
+  return container.querySelector(`[data-calendar-day="${day}"]`) as HTMLElement;
+}
+
+describe("Property 25 — empty month renders no markers (REQ-16.5)", () => {
+  it("August 2024 is empty in the fixture: no event markers anywhere", async () => {
+    const { container, restore } = renderPane({ cursor: "2024-08" });
+    await waitFor(() => expect(container.querySelectorAll("[data-calendar-marker]")).toHaveLength(0));
+    expect(container.querySelector("[role='alert']")).toBeNull();
+    expect(container.querySelector("[data-calendar-upcoming]")).not.toBeNull();
+    restore();
+  });
+});
+
+describe("Property 26 — two events on one day with different kinds render two distinct markers (REQ-16.2)", () => {
+  it("2025-02-17 has both a Family Day holiday and the Winter Term 2 Reading week begin (academic)", async () => {
+    const { container, restore } = renderPane({ cursor: "2025-02" });
+    const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
+    const markers = cell.querySelectorAll("[data-calendar-marker]");
+    expect(markers).toHaveLength(2);
+    const kinds = Array.from(markers)
+      .map((m) => m.getAttribute("data-calendar-marker"))
+      .sort();
+    expect(kinds).toEqual(["academic", "holiday"]);
+    restore();
+  });
+});
+
+describe("Property 27 — days with k > 1 events indicate k (REQ-16.4)", () => {
+  it("2024-11-29 has two academic events and shows the count '2' next to the markers", async () => {
+    const { container, restore } = renderPane({ cursor: "2024-11" });
+    const cell = await waitForCell(container, "2024-11-29", "[data-calendar-count]");
+    const count = cell.querySelector("[data-calendar-count]");
+    expect(count?.getAttribute("data-calendar-count")).toBe("2");
+    expect(count?.textContent).toContain("2");
+    restore();
+  });
+});
+
+describe("Property 28 — today's cell receives the 'today' style independent of event markers (REQ-17.4)", () => {
+  it("a today cell with no events still carries data-calendar-today + the ring-2 class", async () => {
+    const { container, restore } = renderPane({ cursor: "2024-04" });
+    await waitFor(() => expect(container.querySelector('[data-calendar-today="2024-04-15"]')).not.toBeNull());
+    const todayCell = container.querySelector('[data-calendar-today="2024-04-15"]') as HTMLElement;
+    const numSpan = todayCell.querySelector("button > span");
+    expect(numSpan?.className).toContain("ring-2");
+    expect(numSpan?.className).toContain("ring-primary/40");
+    expect(todayCell.querySelectorAll("[data-calendar-marker]")).toHaveLength(0);
+    restore();
+  });
+});
+
+describe("Property 29 — cursors beyond futureHorizonMonths disable the next-month affordance (REQ-17.5)", () => {
+  it("next-month is enabled at April 2024 and disabled past the 24-month horizon", async () => {
+    const near = renderPane({ cursor: "2024-04" });
+    await waitFor(() => expect(near.container.querySelector("[data-calendar-day]")).not.toBeNull());
+    expect(near.container.querySelector('[data-calendar-nav="next"]')?.hasAttribute("disabled")).toBe(false);
+    near.unmount();
+    const far = renderPane({ cursor: "2026-04" });
+    await waitFor(() => expect(far.container.querySelector("[data-calendar-day]")).not.toBeNull());
+    expect(far.container.querySelector('[data-calendar-nav="next"]')?.hasAttribute("disabled")).toBe(true);
+    far.restore();
+  });
+});
+
+describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17.1/17.2/17.3)", () => {
+  it("prev-month button decrements cursor by one month", async () => {
+    const { container, setState, restore } = renderPane({ cursor: "2024-04" });
+    await waitFor(() => expect(container.querySelector('[data-calendar-nav="prev"]')).not.toBeNull());
+    fireEvent.click(container.querySelector('[data-calendar-nav="prev"]') as HTMLElement);
+    expect(setState).toHaveBeenCalledWith({ cursor: "2024-03" });
+    restore();
+  });
+  it("next-month button advances cursor by one month when within horizon", async () => {
+    const { container, setState, restore } = renderPane({ cursor: "2024-04" });
+    await waitFor(() => expect(container.querySelector('[data-calendar-nav="next"]')).not.toBeNull());
+    fireEvent.click(container.querySelector('[data-calendar-nav="next"]') as HTMLElement);
+    expect(setState).toHaveBeenCalledWith({ cursor: "2024-05" });
+    restore();
+  });
+  it("today button resets cursor to this month", async () => {
+    const { container, setState, restore } = renderPane({ cursor: "2023-01" });
+    await waitFor(() => expect(container.querySelector('[data-calendar-nav="today"]')).not.toBeNull());
+    fireEvent.click(container.querySelector('[data-calendar-nav="today"]') as HTMLElement);
+    expect(setState).toHaveBeenCalledWith({ cursor: "2024-04" });
+    restore();
+  });
+});
+
+describe("20.13 + Property 27b — multi-event-day popover enumerates each event by row with labels and source links (REQ-16.3, REQ-16.4)", () => {
+  it("opens the popover on the multi-event day with three mix-kind events and lists exactly three rows", async () => {
+    const events: CalendarEvent[] = [
+      {
+        kind: "academic",
+        date: "2024-09-17",
+        label: "Add/drop deadline",
+        source_url: "https://students.ubc.ca/enrolled/important-dates",
+        tags: ["deadline"],
+      },
+      {
+        kind: "holiday",
+        date: "2024-09-17",
+        label: "National Day for Truth and Reconciliation",
+        source_url: null,
+        tags: [],
+      },
+      {
+        kind: "academic",
+        date: "2024-09-17",
+        label: "Midterm exam week begins",
+        source_url: "https://students.ubc.ca/enrolled/important-dates",
+        tags: ["exam"],
+      },
+    ];
+    const { container, restore } = renderPane({ cursor: "2024-09" }, events);
+    const cell = await waitForCell(container, "2024-09-17", "[data-calendar-marker]");
+    const dayButton = cell.querySelector("button") as HTMLElement;
+    expect(dayButton.hasAttribute("disabled")).toBe(false);
+    act(() => {
+      fireEvent.click(dayButton);
+    });
+    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
+    const popover = container.querySelector("[data-calendar-popover]");
+    const rows = popover?.querySelectorAll("[data-event-row]");
+    expect(rows).toHaveLength(3);
+    const labels = Array.from(rows ?? []).map((r) => r.querySelector("span")?.textContent ?? "");
+    expect(labels).toContain("Add/drop deadline");
+    expect(labels).toContain("National Day for Truth and Reconciliation");
+    expect(labels).toContain("Midterm exam week begins");
+    const anchors = popover?.querySelectorAll("a");
+    expect(anchors).toHaveLength(2);
+    expect(
+      Array.from(anchors ?? []).some(
+        (a) => a.getAttribute("href") === "https://students.ubc.ca/enrolled/important-dates",
+      ),
+    ).toBe(true);
+    restore();
+  });
+});
