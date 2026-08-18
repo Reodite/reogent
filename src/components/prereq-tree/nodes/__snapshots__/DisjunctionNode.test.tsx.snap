@@ -14,7 +14,7 @@ exports[`DropdownDisjunctionNode (REQ-9.1) > matches the closed dropdown snapsho
   <button
     aria-expanded="false"
     aria-haspopup="listbox"
-    class="neu-inset bg-surface text-on-surface mt-1 w-full rounded-md px-2 py-1 text-left font-mono text-sm"
+    class="neu-inset focus-visible:ring-primary/40 bg-surface text-on-surface mt-1 w-full rounded-md px-2 py-1 text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
     type="button"
   >
     MATH 100
@@ -41,7 +41,7 @@ exports[`StackedDisjunctionNode (REQ-9.2) > matches the stacked radiogroup snaps
       class="flex items-start gap-2 rounded-md border px-2 py-1 text-left border-transparent opacity-45"
     >
       <input
-        class="accent-primary mt-0.5 size-3 shrink-0"
+        class="accent-primary focus-visible:ring-primary/40 mt-0.5 size-3 shrink-0 focus-visible:ring-2 focus-visible:ring-offset-1"
         name="CPSC 320::0"
         type="radio"
       />
@@ -56,7 +56,7 @@ exports[`StackedDisjunctionNode (REQ-9.2) > matches the stacked radiogroup snaps
     >
       <input
         checked=""
-        class="accent-primary mt-0.5 size-3 shrink-0"
+        class="accent-primary focus-visible:ring-primary/40 mt-0.5 size-3 shrink-0 focus-visible:ring-2 focus-visible:ring-offset-1"
         name="CPSC 320::0"
         type="radio"
       />
@@ -70,7 +70,7 @@ exports[`StackedDisjunctionNode (REQ-9.2) > matches the stacked radiogroup snaps
       class="flex items-start gap-2 rounded-md border px-2 py-1 text-left border-transparent opacity-45"
     >
       <input
-        class="accent-primary mt-0.5 size-3 shrink-0"
+        class="accent-primary focus-visible:ring-primary/40 mt-0.5 size-3 shrink-0 focus-visible:ring-2 focus-visible:ring-offset-1"
         name="CPSC 320::0"
         type="radio"
       />

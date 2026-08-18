@@ -89,7 +89,7 @@ export function DropdownDisjunctionNode({ data }: NodeProps<DisjunctionNodeData>
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={() => setOpen((o) => !o)}
-        className="neu-inset bg-surface text-on-surface mt-1 w-full rounded-md px-2 py-1 text-left font-mono text-sm"
+        className="neu-inset focus-visible:ring-primary/40 bg-surface text-on-surface mt-1 w-full rounded-md px-2 py-1 text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
       >
         {current}
       </button>
@@ -114,7 +114,7 @@ export function DropdownDisjunctionNode({ data }: NodeProps<DisjunctionNodeData>
                 data.onSelect(data.selectionKey, i);
                 setOpen(false);
               }}
-              className={`block w-full rounded px-2 py-1 text-left font-mono text-sm ${
+              className={`focus-visible:ring-primary/40 block w-full rounded px-2 py-1 text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-offset-1 ${
                 i === selected ? "bg-accent-subtle text-primary" : "hover:bg-surface-container-high"
               }`}
             >
@@ -160,7 +160,7 @@ export function StackedDisjunctionNode({ data }: NodeProps<DisjunctionNodeData>)
                 name={data.selectionKey}
                 checked={isSelected}
                 onChange={() => data.onSelect(data.selectionKey, i)}
-                className="accent-primary mt-0.5 size-3 shrink-0"
+                className="accent-primary focus-visible:ring-primary/40 mt-0.5 size-3 shrink-0 focus-visible:ring-2 focus-visible:ring-offset-1"
               />
               <span className="font-mono text-sm leading-tight">{opt.label}</span>
             </label>

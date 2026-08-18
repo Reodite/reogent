@@ -85,7 +85,7 @@ export function ComposerToolsMenu() {
           setOpen((v) => !v);
           setPrereqOpen(false);
         }}
-        className="neu-button bg-surface text-on-surface-variant hover:text-primary grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl transition-colors sm:size-9"
+        className="neu-button focus-visible:ring-primary/40 bg-surface text-on-surface-variant hover:text-primary grid size-11 min-h-[44px] min-w-[44px] place-items-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-9"
       >
         <Icon name="add" size={18} />
       </button>
