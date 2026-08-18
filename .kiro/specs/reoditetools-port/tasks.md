@@ -459,7 +459,7 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Assert every ported chip/dropdown/radio/day-cell/nav-arrow renders the recessed variant on `:active` or pressed (touch-equivalent) state.
     - _Requirements: REQ-20.1_
 
-- [ ] 24. Final checkpoint - All tests, lint, and format clean
+- [x] 24. Final checkpoint - All tests, lint, and format clean
   - Run `npm test` (Vitest once), `npm run lint` (Biome), `npm run format:check` (Prettier); fix any failures; ask user if blockers arise
   - Ensure all tasks marked complete have no hanging or orphaned code; every component is wired through to a registry, route, or consumer
 
