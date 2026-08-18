@@ -125,7 +125,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x]\* 6.11 Example test — Root not-found state
     - _Requirements: REQ-10.4_
 
-- [ ] 7. Checkpoint - Prerequisite Tree server tests pass
+- [x] 7. Checkpoint - Prerequisite Tree server tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement Prerequisite Tree client components (`src/components/prereq-tree/`)
