@@ -17,7 +17,7 @@ Conversational AI for UBC students. Ask about courses, tuition, walking routes, 
 - Next.js 16 (App Router), React 19, TypeScript
 - LLM layer: `src/server/llm/` (Anthropic, OpenAI, Google; selectable via `LLM_API_TYPE`)
 - Postgres + Meilisearch, run via `docker-compose.yml`
-- Data from git submodule `ubc-unified-data/` (grades raw data under `data/grades/raw/`, synced by `scripts/sync-grades.sh` inside the submodule)
+- Data from git submodule `ubc-unified-data/` (grades raw data under `data/grades/raw/`, collected by its `grades` collector)
 - Map: MapLibre GL + deck.gl
 
 ## Commands
@@ -27,7 +27,6 @@ Conversational AI for UBC students. Ask about courses, tuition, walking routes, 
 - `npm test` — Vitest (run once; `--passWithNoTests`)
 - `npm run format` / `npm run format:check` — Prettier
 - `npm run ingest` — re-index datasets into Meilisearch
-- `npm run prep-grades` (in `ubc-unified-data/`) — regenerate grade fixtures
 - Never run long-lived watchers; run them manually in a terminal.
 
 ## Conventions
