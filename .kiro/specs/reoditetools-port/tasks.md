@@ -37,13 +37,13 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x] 2.2 Property test — Round-trip with subject subset
     - **Property 1: Canonical form invariant**
     - **Validates: Requirements REQ-1.1, REQ-1.2**
-  - [ ]\* 2.3 Property test — Okanagan rejection invariant
+  - [x]* 2.3 Property test — Okanagan rejection invariant
     - **Property 2: No `_O` code emits `{ kind: "code" }`**
     - **Validates: Requirements REQ-1.3**
-  - [ ]\* 2.4 Property test — Subject-prefix shape
+  - [x]* 2.4 Property test — Subject-prefix shape
     - **Property 3: Bare subjects produce `{ kind: "subject" }`**
     - **Validates: Requirements REQ-1.4**
-  - [ ]\* 2.5 Property test — Canonicalization idempotence
+  - [x]* 2.5 Property test — Canonicalization idempotence
     - **Property 4: `canonicalize(canonicalize(s).raw) === canonicalize(s)`**
     - **Validates: Requirements REQ-1.1**
   - [x] 2.6 Example test — `_V` suffix strip, multi-space, mixed case

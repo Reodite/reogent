@@ -32,3 +32,26 @@ export const arbCourseCode = fc
     const input = `${lowercase ? subject.toLowerCase() : subject}${hasV ? "_V" : ""}${" ".repeat(spaces)}${number}`;
     return { input, subject, number };
   });
+
+/** Okanagan (_O) course code: subject + `_O` + 1-3 spaces + 3-digit number. */
+export const arbOkanaganCode = fc
+  .tuple(arbSubject, fc.integer({ min: 100, max: 999 }), fc.integer({ min: 1, max: 3 }))
+  .map(([subject, num, spaces]) => `${subject}_O${" ".repeat(spaces)}${num}`);
+
+/** Domain-2 generator: random bytes plus adversarial constants (design.md:409). */
+export const arbPrereqString = fc.oneof(
+  fc.string({ minLength: 0, maxLength: 2000 }),
+  fc.constantFrom(
+    "MATH 100",
+    "one of MATH 100, MATH 102",
+    "CPSC 110 is recommended",
+    "KIN_V 320",
+    "none.",
+    "NoNE.",
+    "NONE",
+    "None.  ",
+    "(())))",
+    "\x00\x00CPSC 110",
+    "",
+  ),
+);
