@@ -52,7 +52,7 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [x] 3. Checkpoint - Course canonicalization tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Verify ported Prerequisite AST parser and lock its properties (`src/shared/prereq-ast/`)
+- [x] 4. Verify ported Prerequisite AST parser and lock its properties (`src/shared/prereq-ast/`)
   - [x] 4.1 Baseline the verbatim copy with a fixture corpus
     - Port `__fixtures__/prereq-strings.json` (CPSC 110, MATH 200, AANB 500, KIN 320 mid-clause, multi-`recommended` tails); write a snapshot test asserting parser outputs against the fixture set so donor drift surfaces
     - _Requirements: REQ-5, REQ-6_
@@ -93,7 +93,7 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [x] 5. Checkpoint - Prerequisite AST parser tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement Prerequisite Tree server BFS (`src/server/prereq/`)
+- [x] 6. Implement Prerequisite Tree server BFS (`src/server/prereq/`)
   - [x] 6.1 Implement `build-graph.ts` with `PrereqNode`, `PrereqEdge`, `PrereqGraph`, `buildPrereqGraph`
     - Use `walkCodeLeaves(parsePrereq(root.prerequisite))` as BFS seed; first-seen-wins visited set; depth-capped at `MAX_DEPTH = 15`; coreq column adjacent to root with coreq-of-coreq not walked; selectionKey computed server-side for each disjunction
     - _Requirements: REQ-7.1, REQ-7.2, REQ-7.3, REQ-7.4, REQ-7.5, REQ-8.1_
@@ -186,7 +186,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x]\* 10.4 Smoke test — `AUTH_ENABLED=false` path unchanged
     - _Requirements: REQ-11.4_
 
-- [ ] 11. Implement Pane Host + Registry (`src/components/shell/`)
+- [x] 11. Implement Pane Host + Registry (`src/components/shell/`)
   - [x] 11.1 Implement `pane-registry.ts` with `PaneId`, `PaneState`, `PaneEntry`, `PANE_REGISTRY`, `PANE_BY_ID`
     - First four entries: `map` (existing, `preemptableByAgentMap: false`, `icon = map`), `course-lookup` (`icon = search`), `prereq-tree` (`{ root: "", selections: {} }`, `icon = tree`), `calendar` (`{ cursor: <this-month>, kinds: ["academic","holiday"] }`, `icon = calendar`). Each `PaneEntry.icon` is `(props) => <Icon name={...} {...props} />` referencing the `src/components/icons.tsx` `ICON_MAP`. Add two entries to `ICON_MAP`: `calendar: "calendar-2-line"`, `tree: "tree-line"` (both confirmed in `@iconify-json/mingcute`). The `search` and `map` glyphs already exist.
     - _Requirements: REQ-19.5_
@@ -427,33 +427,33 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Render an Agent tool-call result card for `get_course` returning a record with a Prereq Tree affordance; click it; assert the Prereq Tree pane opens rooted at the tool card's code.
     - _Requirements: REQ-4.2_
 
-- [ ] 23. UX / Accessibility pass across all ported controls
-  - [ ] 23.1 Apply neumorphic raised-surface + recessed-on-press treatment across all ported interactive controls (chips, dropdowns, radios, day cells, navigation arrows)
+- [x] 23. UX / Accessibility pass across all ported controls
+  - [x] 23.1 Apply neumorphic raised-surface + recessed-on-press treatment across all ported interactive controls (chips, dropdowns, radios, day cells, navigation arrows)
     - _Requirements: REQ-20.1_
-  - [ ] 23.2 Implement `prefers-reduced-motion: reduce` collapse across all ported animations
+  - [x] 23.2 Implement `prefers-reduced-motion: reduce` collapse across all ported animations
     - All registered transitions collapse ≤0.01ms; reveals render at final state on first paint
     - _Requirements: REQ-20.2_
-  - [ ] 23.3 Verify keyboard tab order + focus rings (`ring-primary/40 ring-2` with ring-offset)
+  - [x] 23.3 Verify keyboard tab order + focus rings (`ring-primary/40 ring-2` with ring-offset)
     - _Requirements: REQ-20.3_
-  - [ ] 23.4 Add `sr-only` live region announcements for status changes (citation panel expand, calendar month change, prereq selection flip, citation chip click)
+  - [x] 23.4 Add `sr-only` live region announcements for status changes (citation panel expand, calendar month change, prereq selection flip, citation chip click)
     - _Requirements: REQ-20.4_
-  - [ ] 23.5 Contrast audit on "Other retrieved context" panel + "note" variant Prereq Tree node
+  - [x] 23.5 Contrast audit on "Other retrieved context" panel + "note" variant Prereq Tree node
     - All text ≥4.5:1 body, ≥3:1 large text against its rendered surface
     - _Requirements: REQ-20.5_
-  - [ ] 23.6 Implement Prereq Tree dropdown menu wheel-event + outside-pointerdown + Escape dismiss
+  - [x] 23.6 Implement Prereq Tree dropdown menu wheel-event + outside-pointerdown + Escape dismiss
     - _Requirements: REQ-20.6_
-  - [ ]\* 23.7 Property test sweep — Accessibility invariants (reduced-motion + focus-ring + live-region)
+  - [x]\* 23.7 Property test sweep — Accessibility invariants (reduced-motion + focus-ring + live-region)
     - **Property 33: For all `prefers-reduced-motion: reduce` environments, registered transitions collapse ≤0.01ms**
     - **Property 34: Keyboard focus applies `ring-primary/40 ring-2` on every ported interactive control**
     - **Property 35: Status changes update an `sr-only` live region within one animation frame**
     - **Validates: Requirements REQ-20.2, REQ-20.3, REQ-20.4**
-    - One file (`__tests__/a11y-properties.test.ts`), three property bodies in the same sweep. Shared fixtures: `prefers-reduced-motion: reduce` via matchMedia mock; `ring-primary/40 ring-2` assertion via computed-style read; live-region toggle via MutationObserver tick.
-  - [ ]\* 23.8 Example test — Contrast audit on "Other retrieved context" panel + "note" variant Prereq Tree node
+    - One file (`src/components/ui/a11y-properties.test.tsx`), three property bodies in the same sweep. Shared fixtures: `prefers-reduced-motion: reduce` via matchMedia mock; `ring-primary/40 ring-2` assertion via class read; live-region toggle via React state tick.
+  - [x]\* 23.8 Example test — Contrast audit on "Other retrieved context" panel + "note" variant Prereq Tree node
     - Assert computed color contrast against the rendered Whisper-Neumorphic surface token (`DESIGN.md` neumorphic `recessed`/`raised` palette) is ≥4.5:1 for body text and ≥3:1 for large text.
     - _Requirements: REQ-20.5_
-  - [ ]\* 23.9 Example test — Prereq Tree dropdown Escape dismiss + outside-pointerdown dismiss
+  - [x]\* 23.9 Example test — Prereq Tree dropdown Escape dismiss + outside-pointerdown dismiss
     - _Requirements: REQ-20.6_
-  - [ ]\* 23.10 Example test — Raised-to-recessed interactive controls (pressed state)
+  - [x]\* 23.10 Example test — Raised-to-recessed interactive controls (pressed state)
     - Assert every ported chip/dropdown/radio/day-cell/nav-arrow renders the recessed variant on `:active` or pressed (touch-equivalent) state.
     - _Requirements: REQ-20.1_
 
