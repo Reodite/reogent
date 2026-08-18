@@ -129,7 +129,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 8. Implement Prerequisite Tree client components (`src/components/prereq-tree/`)
-  - [ ] 8.1 Implement `selection-key.ts` encode/decode (`${ownerCode}::${path}`)
+  - [x] 8.1 Implement `selection-key.ts` encode/decode (`${ownerCode}::${path}`)
     - _Requirements: REQ-8.1_
   - [ ] 8.2 Implement `CourseNode` with `known`/`unknown`/`root`/`note` variants
     - Apply neumorphic raised-surface treatment; recessed on press
@@ -145,13 +145,13 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Wire root-input box for switching root course without leaving the pane
     - Append the `[data-pane="prereq-tree"] .react-flow__*` CSS scoping (edge stroke, dasharray for optional, attribution hidden, node inherits font) to `app/globals.css` per UI/UX §B. Node variant classes (`bg-primary-container` root, `bg-surface` known, `bg-error-container` unknown, `bg-surface-container-low text-muted` note, `bg-secondary-container` coreq) applied per `data-variant`. `data-node-id`, `data-edge-variant="optional"`, `data-toggle="soft-toggle"` attributes carry the property-oracle contract.
     - _Requirements: REQ-4.3, REQ-10.3, REQ-10.4, REQ-10.5_
-  - [ ]\* 8.7 Property test — Sibling isolation
+  - [x]\* 8.7 Property test — Sibling isolation
     - **Property 15: Toggling path `p` modifies only the `${owner}::${p}` selection key**
     - **Validates: Requirements REQ-8.3**
-  - [ ]\* 8.8 Property test — Root-switch survival
+  - [x]\* 8.8 Property test — Root-switch survival
     - **Property 16: Every Selection Key Map entry survives a root switch with the same value**
     - **Validates: Requirements REQ-8.4**
-  - [ ]\* 8.9 Property test — Default index 0
+  - [x]\* 8.9 Property test — Default index 0
     - **Property 17: Disjunctions with absent Selection Keys default to child index 0**
     - **Validates: Requirements REQ-8.2**
   - [ ]\* 8.10 Example test — Dropdown-absorption (selected option routes edges into the dropdown group node)
