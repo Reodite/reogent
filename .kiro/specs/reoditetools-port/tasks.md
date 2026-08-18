@@ -30,8 +30,8 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Donor file has zero imports and exports `{ Expr, parsePrereq, displayExpr, isSatisfied, missingPrereqs }` only. The donor does NOT export `walkCodeLeaves` or `MAX_DEPTH`; author `walk.ts` with `MAX_DEPTH = 15` and `walkCodeLeaves(expr): { parent: Expr | null; leaf: Extract<Expr, { kind: 'code' }> }[]` as a structural recursion over the donor's lowercase-kind AST (`'and'`, `'or'`, `'code'`, `'literal'`, `'flattened'`, `'soft'`; `Or.ui: 'dropdown' | 'stacked'`; `Flattened.text`/`subExpr`). Re-export `walkCodeLeaves` and `MAX_DEPTH` from `index.ts` alongside the donor API so callers import from one module.
     - _Requirements: REQ-5, REQ-6, REQ-7_
 
-- [ ] 2. Implement Course Code Canonicalization (`src/shared/course-code.ts`)
-  - [ ] 2.1 Implement `CODE_RE`, `canonicalize`, `extractCourseCodes`, `isOkanagan`
+- [x] 2. Implement Course Code Canonicalization (`src/shared/course-code.ts`)
+  - [x] 2.1 Implement `CODE_RE`, `canonicalize`, `extractCourseCodes`, `isOkanagan`
     - `canonicalize(input: string): CanonicalResult` where `CanonicalResult = { kind: 'code'; raw: string } | { kind: 'subject'; raw: string } | { kind: 'rejected'; raw: string } | null`. `extractCourseCodes(s: string): string[]` returns canonical-codes array (empty on `null`/rejection). `isOkanagan(s: string): boolean` returns true iff `s` carries an `_O` campus suffix. `CODE_RE = /\b([A-Za-z]{2,4})\s*([0-9]{3}[A-Za-z]?)\b/g`; `'AANB_V 500' → { kind: 'code', raw: 'AANB 500' }`; `'_O' codes → { kind: 'rejected', raw: ... }`; bare subject → `{ kind: 'subject', raw: ... }`; bare random text → `null`. The type `CanonicalResult` is exported.
     - _Requirements: REQ-1.1, REQ-1.2, REQ-1.3, REQ-1.4_
   - [ ]\* 2.2 Property test — Round-trip with subject subset
