@@ -8,14 +8,14 @@ Property-based test sub-tasks are annotated with their property number from `des
 
 ## Tasks
 
-- [ ] 0. Resolve Open Questions deferred from design.md
-  - [ ] 0.1 Confirm migration approach for `messages.citations JSONB` (no additive-down tooling exists)
+- [x] 0. Resolve Open Questions deferred from design.md
+  - [x] 0.1 Confirm migration approach for `messages.citations JSONB` (no additive-down tooling exists)
     - Doc-only reach: reogent's schema lives in a single `SCHEMA` template literal at `src/server/db/migrate.ts:3` with `CREATE TABLE IF NOT EXISTS` blocks. There is no migration tooling to wire — additive-up + additive-down is not configurable; the system applies the entire `SCHEMA` idempotently on each boot. A "rollback" therefore means dropping the dev database with `docker-compose down -v && up`. Confirm this approach is acceptable: the column is server-only, history rows tolerate `null`, and a malformed boot is recoverable without data loss. (If the user later wants per-step migrations, that's a separate infrastructure task outside this port.)
     - _Requirements: REQ-12.5_
-  - [ ] 0.2 Confirm `/api/calendar` unauthenticated OPSEC acceptable
+  - [x] 0.2 Confirm `/api/calendar` unauthenticated OPSEC acceptable
     - Doc-only reach: calendar data is public UBC content; route ships `Cache-Control: public, max-age=300`
     - _Requirements: REQ-16.1_
-  - [ ] 0.3 Confirm React Flow `[data-theme="dark"]` styling approach
+  - [x] 0.3 Confirm React Flow `[data-theme="dark"]` styling approach
     - Doc-only Decision: pigment React Flow CSS variables per `DESIGN.md` tokens. The decision lands as a comment block at the top of `prereq-tree-pane.tsx` when Task 8.6 creates that file (no forward-reference to a file that doesn't exist; this task records the decision, the comment is written by 8.6).
     - _Requirements: REQ-20_
 
@@ -34,19 +34,19 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ] 2.1 Implement `CODE_RE`, `canonicalize`, `extractCourseCodes`, `isOkanagan`
     - `canonicalize(input: string): CanonicalResult` where `CanonicalResult = { kind: 'code'; raw: string } | { kind: 'subject'; raw: string } | { kind: 'rejected'; raw: string } | null`. `extractCourseCodes(s: string): string[]` returns canonical-codes array (empty on `null`/rejection). `isOkanagan(s: string): boolean` returns true iff `s` carries an `_O` campus suffix. `CODE_RE = /\b([A-Za-z]{2,4})\s*([0-9]{3}[A-Za-z]?)\b/g`; `'AANB_V 500' → { kind: 'code', raw: 'AANB 500' }`; `'_O' codes → { kind: 'rejected', raw: ... }`; bare subject → `{ kind: 'subject', raw: ... }`; bare random text → `null`. The type `CanonicalResult` is exported.
     - _Requirements: REQ-1.1, REQ-1.2, REQ-1.3, REQ-1.4_
-  - [ ]* 2.2 Property test — Round-trip with subject subset
+  - [ ]\* 2.2 Property test — Round-trip with subject subset
     - **Property 1: Canonical form invariant**
     - **Validates: Requirements REQ-1.1, REQ-1.2**
-  - [ ]* 2.3 Property test — Okanagan rejection invariant
+  - [ ]\* 2.3 Property test — Okanagan rejection invariant
     - **Property 2: No `_O` code emits `{ kind: "code" }`**
     - **Validates: Requirements REQ-1.3**
-  - [ ]* 2.4 Property test — Subject-prefix shape
+  - [ ]\* 2.4 Property test — Subject-prefix shape
     - **Property 3: Bare subjects produce `{ kind: "subject" }`**
     - **Validates: Requirements REQ-1.4**
-  - [ ]* 2.5 Property test — Canonicalization idempotence
+  - [ ]\* 2.5 Property test — Canonicalization idempotence
     - **Property 4: `canonicalize(canonicalize(s).raw) === canonicalize(s)`**
     - **Validates: Requirements REQ-1.1**
-  - [ ]* 2.6 Example test — `_V` suffix strip, multi-space, mixed case
+  - [ ]\* 2.6 Example test — `_V` suffix strip, multi-space, mixed case
     - _Requirements: REQ-1.1, REQ-1.2_
 
 - [ ] 3. Checkpoint - Course canonicalization tests pass
@@ -56,36 +56,36 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ] 4.1 Baseline the verbatim copy with a fixture corpus
     - Port `__fixtures__/prereq-strings.json` (CPSC 110, MATH 200, AANB 500, KIN 320 mid-clause, multi-`recommended` tails); write a snapshot test asserting parser outputs against the fixture set so donor drift surfaces
     - _Requirements: REQ-5, REQ-6_
-  - [ ]* 4.2 Property test — No-throw
+  - [ ]\* 4.2 Property test — No-throw
     - **Property 5: For all `string` (incl. random bytes, unbalanced parens, embedded NULs, `none.`): `parsePrereq(s)` returns `null` or `Expr`, never throws**
     - **Validates: Requirements REQ-5.1, REQ-5.2, REQ-5.3**
     - Generator: `fc.string({ minLength: 0, maxLength: 2000 })` + adversarial constants; run count 1000
-  - [ ]* 4.3 Property test — Okanagan stripping
+  - [ ]\* 4.3 Property test — Okanagan stripping
     - **Property 6: `walkCodeLeaves(parsePrereq(s))` yields no `_O` codes**
     - **Validates: Requirements REQ-5.4**
-  - [ ]* 4.4 Property test — Soft-tail only at top level
+  - [ ]\* 4.4 Property test — Soft-tail only at top level
     - **Property 7: mid-clause `recommended` inside unbalanced parens does NOT produce a top-level `Soft` wrapper**
     - **Validates: Requirements REQ-5.6**
-  - [ ]* 4.5 Property test — Round-trip code set
+  - [ ]\* 4.5 Property test — Round-trip code set
     - **Property 9: Code-leaf set of `parsePrereq(displayExpr(e))` equals that of `e`**
     - **Validates: Requirements REQ-6.6**
-  - [ ]* 4.6 Property test — displayExpr non-empty
+  - [ ]\* 4.6 Property test — displayExpr non-empty
     - **Property 8: `displayExpr(e)` non-empty (sentinel for empty-text nodes)**
     - **Validates: Requirements REQ-6.1, REQ-6.5**
-  - [ ]* 4.7 Property test — Soft-flattening
+  - [ ]\* 4.7 Property test — Soft-flattening
     - **Property 10: `displayExpr(Soft(child)) === displayExpr(child)`**
     - **Validates: Requirements REQ-6.4**
-  - [ ]* 4.8 Example test — KIN 320 mid-clause recommended, AANB 500 `_V` strip
+  - [ ]\* 4.8 Example test — KIN 320 mid-clause recommended, AANB 500 `_V` strip
     - _Requirements: REQ-5.6, REQ-1.2_
-  - [ ]* 4.9 Property test — Soft-tail positive split (top-level clear cases)
+  - [ ]\* 4.9 Property test — Soft-tail positive split (top-level clear cases)
     - **Property 38: when a Prerequisite String ends with a top-level `recommended` tail (e.g. "X is recommended"), `parsePrereq(s)` produces a `Soft`-rooted expression for that tail**
     - **Validates: Requirements REQ-5.5**
     - Generator: `arbRecommendedTail` from design.md §Domain 2.
-  - [ ]* 4.10 Property test — Code node canonical form output
+  - [ ]\* 4.10 Property test — Code node canonical form output
     - **Property 39: `displayExpr(parsePrereq(s))` is in canonical `<subject> <number>` form (subject uppercase, single space, no `_V`, no trailing whitespace)**
     - **Validates: Requirements REQ-6.2**
     - Generator: `arbExpr` from design.md §Domain 3 feeding `parsePrereq` outputs.
-  - [ ]* 4.11 Property test — And/Or separator presence
+  - [ ]\* 4.11 Property test — And/Or separator presence
     - **Property 40: `displayExpr(e)` contains `' + '` between operands whose AST parent is `kind: 'and'` and `' / '` between operands whose parent is `kind: 'or'` (donor's joiners at `prereqAst.ts:1368,1370`)**
     - **Validates: Requirements REQ-6.3**
     - Generator: `arbExpr` from design.md §Domain 3.
@@ -103,26 +103,26 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ] 6.3 Implement `src/server/prereq/agent-tool.ts` (`get_prereq_tree` agent tool façade)
     - Append a `prereqModule` to the `modules` array in `src/server/modules/index.ts` (becomes module #13); tool name `get_prereq_tree`; returns `PrereqGraph`. Aggregation via the existing `modules.flatMap((m) => m.tools)` pipeline at `src/server/agent/stream.ts:27` (no slot numbering).
     - _Requirements: REQ-4.1, REQ-7_
-  - [ ]* 6.4 Property test — Cycle-safety invariant
+  - [ ]\* 6.4 Property test — Cycle-safety invariant
     - **Property 11: Each code appears at most once in `PrereqGraph.nodes`**
     - **Validates: Requirements REQ-7.1**
-  - [ ]* 6.5 Property test — Depth cap
+  - [ ]\* 6.5 Property test — Depth cap
     - **Property 12: No node has BFS depth greater than `depthCap`**
     - **Validates: Requirements REQ-7.2**
-  - [ ]* 6.6 Property test — No coreq-of-coreq
+  - [ ]\* 6.6 Property test — No coreq-of-coreq
     - **Property 13: Edges contain no coreq-of-coreq-of-coreq chain**
     - **Validates: Requirements REQ-7.4**
-  - [ ]* 6.7 Property test — Coreq depth invariant
+  - [ ]\* 6.7 Property test — Coreq depth invariant
     - **Property 14: Every `kind: 'coreq'` node has BFS depth exactly `1` (pure graph-side invariant, `arbCourseDataset` generator)**
     - **Validates: Requirements REQ-7.3**
-  - [ ]* 6.8 Example test — Coreq column adjacency (`hasCoreqs === true`)
+  - [ ]\* 6.8 Example test — Coreq column adjacency (`hasCoreqs === true`)
     - Render the graph for a root with a non-empty `corequisite`; assert the coreq nodes sit in the column between root (depth 0) and the first prereq column. This is the rendering-side example of Property 14 (whose pure graph invariant — coreq nodes at BFS depth 1 — is covered by the property test in 6.7).
-  - [ ]* 6.9 Integration test — Server BFS against mocked `get_course`
+  - [ ]\* 6.9 Integration test — Server BFS against mocked `get_course`
     - Mock Meilisearch `get_course` to return fixtures with known cycles + depth chains; assert graph shape
     - _Requirements: REQ-7.1, REQ-7.2, REQ-7.4_
-  - [ ]* 6.10 Example test — Empty no-prereqs state
+  - [ ]\* 6.10 Example test — Empty no-prereqs state
     - _Requirements: REQ-10.3_
-  - [ ]* 6.11 Example test — Root not-found state
+  - [ ]\* 6.11 Example test — Root not-found state
     - _Requirements: REQ-10.4_
 
 - [ ] 7. Checkpoint - Prerequisite Tree server tests pass
@@ -145,28 +145,28 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Wire root-input box for switching root course without leaving the pane
     - Append the `[data-pane="prereq-tree"] .react-flow__*` CSS scoping (edge stroke, dasharray for optional, attribution hidden, node inherits font) to `app/globals.css` per UI/UX §B. Node variant classes (`bg-primary-container` root, `bg-surface` known, `bg-error-container` unknown, `bg-surface-container-low text-muted` note, `bg-secondary-container` coreq) applied per `data-variant`. `data-node-id`, `data-edge-variant="optional"`, `data-toggle="soft-toggle"` attributes carry the property-oracle contract.
     - _Requirements: REQ-4.3, REQ-10.3, REQ-10.4, REQ-10.5_
-  - [ ]* 8.7 Property test — Sibling isolation
+  - [ ]\* 8.7 Property test — Sibling isolation
     - **Property 15: Toggling path `p` modifies only the `${owner}::${p}` selection key**
     - **Validates: Requirements REQ-8.3**
-  - [ ]* 8.8 Property test — Root-switch survival
+  - [ ]\* 8.8 Property test — Root-switch survival
     - **Property 16: Every Selection Key Map entry survives a root switch with the same value**
     - **Validates: Requirements REQ-8.4**
-  - [ ]* 8.9 Property test — Default index 0
+  - [ ]\* 8.9 Property test — Default index 0
     - **Property 17: Disjunctions with absent Selection Keys default to child index 0**
     - **Validates: Requirements REQ-8.2**
-  - [ ]* 8.10 Example test — Dropdown-absorption (selected option routes edges into the dropdown group node)
+  - [ ]\* 8.10 Example test — Dropdown-absorption (selected option routes edges into the dropdown group node)
     - _Requirements: REQ-8.5_
-  - [ ]* 8.11 Example test — Course → Course Lookup one-click navigation
+  - [ ]\* 8.11 Example test — Course → Course Lookup one-click navigation
     - _Requirements: REQ-4.2, REQ-9.5_
-  - [ ]* 8.12 Snapshot test — CourseNode variants (root/known/unknown/note), DropdownDisjunctionNode, StackedDisjunctionNode
+  - [ ]\* 8.12 Snapshot test — CourseNode variants (root/known/unknown/note), DropdownDisjunctionNode, StackedDisjunctionNode
     - _Requirements: REQ-9.4_
-  - [ ]* 8.13 Example test — Menu inherits canvas zoom (dropdown scales with current zoom; closes on zoom change)
+  - [ ]\* 8.13 Example test — Menu inherits canvas zoom (dropdown scales with current zoom; closes on zoom change)
     - _Requirements: REQ-9.1, REQ-9.2_
-  - [ ]* 8.14 Property test — Soft-toggle effect on top-level `Soft` blocks
+  - [ ]\* 8.14 Property test — Soft-toggle effect on top-level `Soft` blocks
     - **Property 36: When the optional toggle for a `Soft`-wrapped subtree is enabled (`M[p] === 1`, mirroring `activeChannel.state.softToggles[path]` per §C, root = `''`) the subtree's outgoing edges render; when disabled (`M[p] === 0`) they hide. The label is invariant under the toggle (Property 10).**
     - **Validates: Requirements REQ-10.2**
     - Generator: `arbSoftSelection` from design.md §Domain 5; render the same `(tree, path)` at both `M[p] = 0` and `M[p] = 1`, assert the child-subtree edge count differs.
-  - [ ]* 8.15 Example test — Prereq Tree root-input switch re-roots the tree (REQ-4.3 nav direction)
+  - [ ]\* 8.15 Example test — Prereq Tree root-input switch re-roots the tree (REQ-4.3 nav direction)
     - Enter a new code in the tree's root input; assert the tree re-fetches and re-roots with the new code as root.
     - _Requirements: REQ-4.3_
 
@@ -180,10 +180,10 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ] 10.2 Wire `next.config` injection of `__REOGENT_VERSION__`
     - Build-time `process.env.__REOGENT_VERSION__` from `package.json` `version` field. One-line addition in `next.config.ts`.
     - _Requirements: REQ-11.3_
-  - [ ]* 10.3 Example test — Sidebar collapsed-state round-trips across reload
+  - [ ]\* 10.3 Example test — Sidebar collapsed-state round-trips across reload
     - Write `localStorage["reogent.sidebar.collapsed"] = "1"`, reload, assert collapsed; toggle to `"0"`, reload, assert expanded. Merges old 10.4 + 10.5 into one round-trip smoke.
     - _Requirements: REQ-11.1, REQ-11.2_
-  - [ ]* 10.4 Smoke test — `AUTH_ENABLED=false` path unchanged
+  - [ ]\* 10.4 Smoke test — `AUTH_ENABLED=false` path unchanged
     - _Requirements: REQ-11.4_
 
 - [ ] 11. Implement Pane Host + Registry (`src/components/shell/`)
@@ -204,13 +204,13 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Map is non-preemptable so `pane-preempt` does not appear for it.
     - Add `data-pane="chat"` to the chat panel root element (the `{children}` wrapper at `app-shell.tsx:190` `#main-content` or `chat-panel.tsx` root) so Property 32's `document.querySelector('[data-pane="chat"]')` oracle resolves. Every pane surface root carries `data-pane={entry.id}` via the `pane-host.tsx` frame (task 11.2).
     - _Requirements: REQ-19.1, REQ-19.2, REQ-19.3_
-  - [ ]* 11.5 Property test — Chat-never-hidden
+  - [ ]\* 11.5 Property test — Chat-never-hidden
     - **Property 30: For all `activeChannel` states, the Chat panel remains visible**
     - **Validates: Requirements REQ-19.1, REQ-19.2**
-  - [ ]* 11.6 Property test — Map-precedence-non-preemption
+  - [ ]\* 11.6 Property test — Map-precedence-non-preemption
     - **Property 31: Agent map data over a user tool switches pane to `map` and previous user channel is recoverable**
     - **Validates: Requirements REQ-19.3**
-  - [ ]* 11.7 Integration test — Agent emits map data while Course Lookup is open → Back-to pill offered
+  - [ ]\* 11.7 Integration test — Agent emits map data while Course Lookup is open → Back-to pill offered
     - _Requirements: REQ-19.3_
 
 - [ ] 12. Checkpoint - Sidebar + Pane Host tests pass
@@ -231,19 +231,19 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ] 13.5 Create `app/api/courses/[code]/route.ts` exact-lookup REST route
     - New route (does not exist today); today only the agent `get_course` tool reaches the courses module (`src/server/modules/courses.ts`). Calls `requireUser(request)` from `@/src/server/auth`. Canonicalizes input via `src/shared/course-code.ts`; calls reogent's existing `findByCode` at `src/server/modules/courses.ts:144-157` (which already canonicalizes inline; do not refactor it during this port — defer to a follow-up PR). Returns 200 with the Course Record (omit null fields per REQ-2.2), 404 on miss (REQ-1), 400 on rejected `_O` code (REQ-1.3). JSON response.
     - _Requirements: REQ-1.1, REQ-1.2, REQ-1.3, REQ-2.2_
-  - [ ]* 13.6 Snapshot test — Course Detail Card render with sections
+  - [ ]\* 13.6 Snapshot test — Course Detail Card render with sections
     - _Requirements: REQ-2.1_
-  - [ ]* 13.7 Example test — Null-field omission (universal property)
+  - [ ]\* 13.7 Example test — Null-field omission (universal property)
     - _Requirements: REQ-2.2_
-  - [ ]* 13.8 Example test — Subject cap 200 + footer notice
+  - [ ]\* 13.8 Example test — Subject cap 200 + footer notice
     - _Requirements: REQ-3.2_
-  - [ ]* 13.9 Example test — Did-you-mean 8-chip cap + click re-lookup
+  - [ ]\* 13.9 Example test — Did-you-mean 8-chip cap + click re-lookup
     - _Requirements: REQ-3.5, REQ-3.6_
-  - [ ]* 13.10 Property test — Level-operator relation
+  - [ ]\* 13.10 Property test — Level-operator relation
     - **Property 37: for `<subject> <op><digit>`, `=` returns courses whose `number`'s first digit equals `digit`; `+` returns courses whose first digit ≥ `digit`; `-` returns courses whose first digit ≤ `digit`. First digit computed as `Number(String(number).charAt(0))`.**
     - **Validates: Requirements REQ-3.1, REQ-3.2, REQ-3.3**
     - Generator: `arbLevelQuery` from design.md §Domain 1 (`subject × op ∈ {=, +, -} × digit ∈ 1..5`); assert every returned row's first digit satisfies the operator relation.
-  - [ ]* 13.11 Example test — "Prereq Tree" affordance on Course Detail Card opens the tree with the record's code as root (REQ-4.1 nav direction)
+  - [ ]\* 13.11 Example test — "Prereq Tree" affordance on Course Detail Card opens the tree with the record's code as root (REQ-4.1 nav direction)
     - Render a Course Record with non-null `prerequisite`; click the "Prereq Tree" affordance; assert `activeChannel` becomes `{ id: "prereq-tree", state: { root: <that code> } }`.
     - _Requirements: REQ-4.1_
 
@@ -271,22 +271,22 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Contract paragraph is provider-agnostic — text only, lives in the system prompt, identical across Anthropic/OpenAI/Google.
     - Append the turn's current `citations` array (index + label) so the model can attribute.
     - _Requirements: REQ-15.1, REQ-15.2, REQ-15.3, REQ-15.4_
-  - [ ]* 15.7 Property test — Index-1 continuity
+  - [ ]\* 15.7 Property test — Index-1 continuity
     - **Property 18: `index` values form exactly `1..length` with no gaps or duplicates**
     - **Validates: Requirements REQ-12.1, REQ-12.2**
-  - [ ]* 15.8 Property test — Source-url honesty
+  - [ ]\* 15.8 Property test — Source-url honesty
     - **Property 19: `source_url` undefined or empty is omitted (not `""`)**
     - **Validates: Requirements REQ-12.3**
-  - [ ]* 15.9 Property test — Used-only-after-stamp
+  - [ ]\* 15.9 Property test — Used-only-after-stamp
     - **Property 20: Live `citations` events carry `used: false`; only `done` carries stamped `used` bits**
     - **Validates: Requirements REQ-12.2**
-  - [ ]* 15.10 Integration test — Per-provider system-prompt parity smoke (Anthropic, OpenAI, Google)
+  - [ ]\* 15.10 Integration test — Per-provider system-prompt parity smoke (Anthropic, OpenAI, Google)
     - _Requirements: REQ-15.4_
-  - [ ]* 15.11 Property test — Citations array shape robustness
+  - [ ]\* 15.11 Property test — Citations array shape robustness
     - **Property 41: For all assistant messages, `citations` may be `null`, `undefined`, a non-array, or a `Citation[]` (including `[]`); the renderer emits no chips and no panel for null/undefined, falls back to `[]` for non-array types, and renders every element of the array branch (schema-conformant, Property-18 stamped).**
     - **Validates: Requirements REQ-12.4**
     - Generator: `arbCitationArray` from design.md §Domain 6.
-  - [ ]* 15.12 Example test — System prompt includes the citation contract paragraph verbatim
+  - [ ]\* 15.12 Example test — System prompt includes the citation contract paragraph verbatim
     - Snapshot against the `SYSTEM_PROMPT` const at `src/server/agent/loop.ts:3-24` (test reads the module's exported const and asserts the paragraph is present) so future edits surface as a snapshot diff.
     - _Requirements: REQ-15.1, REQ-15.4_
 
@@ -296,9 +296,9 @@ Property-based test sub-tasks are annotated with their property number from `des
     - _Requirements: REQ-12.5_
   - [ ] 16.2 Extend `appendExchange` write path to accept citations on the assistant half
     - _Requirements: REQ-12.5_
-  - [ ]* 16.3 Integration test — History rehydration round-trip
+  - [ ]\* 16.3 Integration test — History rehydration round-trip
     - Drive the persisted-message path (JSONB column → history reload); assert the reloaded `citations` render identically to the live stream (byte-equality oracle per Property 21).
-  - [ ]* 16.4 Property test — History rehydration byte-equality
+  - [ ]\* 16.4 Property test — History rehydration byte-equality
     - **Property 21: `JSON.stringify(JSON.parse(rawRow.citations))` byte-equals `JSON.stringify(messages.citations)` for all persisted assistant messages (no `?? []` normalization; `'null' === 'null'` for the null branch)**
     - **Validates: Requirements REQ-12.5**
     - Generator: `arbPersistedMessage` from design.md §Domain 6.
@@ -316,20 +316,20 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ] 17.4 Extend `chatStream` (the `ChatApi.chat` impl at `src/lib/api.ts:94`) NDJSON consumer with `onCitations` callback
     - Add `onCitations?: (citations: Citation[]) => void` to the `callbacks` parameter at `src/lib/api.ts:97-104` (sibling to existing `onDelta`, `onTextClear`, `onThinking`, `onToolStart`, `onToolEnd`, `onTurnStart`). Wire it inside the NDJSON loop at the same offset as `onDelta` (line 158) and `onToolStart` (line 164). Store the array on the in-flight `ChatResponse`; re-render chips as the array fills.
     - _Requirements: REQ-12.2_
-  - [ ]* 17.5 Property test — Out-of-range literal invariant
+  - [ ]\* 17.5 Property test — Out-of-range literal invariant
     - **Property 22: `[k]` outside `1..N` renders as the literal string `[k]`**
     - **Validates: Requirements REQ-13.3**
-  - [ ]* 17.6 Property test — Recursive-leaf injection
+  - [ ]\* 17.6 Property test — Recursive-leaf injection
     - **Property 23: (23a) In-range `[N]` becomes chips at every leaf string of the listed markdown elements; (23b) the injector's chip sequence is invariant under markdown re-rendering**
     - **Validates: Requirements REQ-13.4**
-  - [ ]* 17.7 Property test — No empty-href anchor + label tooltip
+  - [ ]\* 17.7 Property test — No empty-href anchor + label tooltip
     - **Property 24: If `source_url` is absent, the chip DOM contains no `<a>` and the chip exposes the citation's `label` as tooltip (`title` or `aria-label`)**
     - **Validates: Requirements REQ-13.2**
-  - [ ]* 17.8 Example test — Two-list rendering edge cases
+  - [ ]\* 17.8 Example test — Two-list rendering edge cases
     - _Requirements: REQ-14.1, REQ-14.2_
-  - [ ]* 17.9 Example test — Collapsed-by-default + scroll-into-view on expand
+  - [ ]\* 17.9 Example test — Collapsed-by-default + scroll-into-view on expand
     - _Requirements: REQ-14.3, REQ-14.4_
-  - [ ]* 17.10 Integration test — Sources-panel renders against live stream's `citations` array as it fills
+  - [ ]\* 17.10 Integration test — Sources-panel renders against live stream's `citations` array as it fills
     - Drive `chatStream` (the `ChatApi.chat` impl at `src/lib/api.ts:94`) callbacks (`onCitations` at `src/lib/api.ts:97-104`) with a synthetic NDJSON feed carrying `tool_end` events whose results match `CITATION_EXTRACTORS` shapes; assert the panel's "Sources used" / "Other retrieved context" lists update within one animation frame.
     - Fixture lives at `__fixtures__/agent-turns.json` (see 17.13).
     - _Requirements: REQ-14.1, REQ-14.2, REQ-14.3, REQ-14.4, REQ-14.5_
@@ -376,31 +376,31 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ] 20.4 Implement upcoming-events list (N=10) + mobile stacking (<640px vertical, ≥640px side-by-side)
     - Mobile controls meet 44×44px tap target; reduced-motion month-change collapses to ≤0.01ms
     - _Requirements: REQ-18.1, REQ-18.2, REQ-18.3, REQ-18.4, REQ-18.5_
-  - [ ]* 20.5 Property test — Empty-month correctness
+  - [ ]\* 20.5 Property test — Empty-month correctness
     - **Property 25: Empty month → no markers, no error state, no missing-data notice**
     - **Validates: Requirements REQ-16.5**
-  - [ ]* 20.6 Property test — Kind-driven style distinctness
+  - [ ]\* 20.6 Property test — Kind-driven style distinctness
     - **Property 26: Two events on one day with different kinds render two distinct markers**
     - **Validates: Requirements REQ-16.2**
-  - [ ]* 20.7 Property test — Multi-event count
+  - [ ]\* 20.7 Property test — Multi-event count
     - **Property 27: Days with `k > 1` events indicate `k`**
     - **Validates: Requirements REQ-16.4**
-  - [ ]* 20.8 Property test — Today-independence
+  - [ ]\* 20.8 Property test — Today-independence
     - **Property 28: Today's cell receives `today` style independent of event markers**
     - **Validates: Requirements REQ-17.4**
-  - [ ]* 20.9 Property test — Horizon-disable
+  - [ ]\* 20.9 Property test — Horizon-disable
     - **Property 29: Cursors beyond `futureHorizonMonths` disable next-month affordance**
     - **Validates: Requirements REQ-17.5**
-  - [ ]* 20.10 Example test — Prev/next jumps; today jump via month-header click
+  - [ ]\* 20.10 Example test — Prev/next jumps; today jump via month-header click
     - _Requirements: REQ-17.1, REQ-17.2, REQ-17.3_
-  - [ ]* 20.11 Snapshot test — Mobile responsive snapshots at 375px + 1024px
+  - [ ]\* 20.11 Snapshot test — Mobile responsive snapshots at 375px + 1024px
     - _Requirements: REQ-18.1, REQ-18.2_
-  - [ ]* 20.12 Example test — Reduced-motion collapse ≤0.01ms
+  - [ ]\* 20.12 Example test — Reduced-motion collapse ≤0.01ms
     - _Requirements: REQ-18.5_
-  - [ ]* 20.13 Example test — Multi-event-day popover enumerates each event
+  - [ ]\* 20.13 Example test — Multi-event-day popover enumerates each event
     - Render a day with three events (mix academic + holiday); open the popover; assert each event's label + `source_url` link (or absence) renders in a distinct row. (REQ-16.4's popover-enumeration aspect — complementary to 20.7's count-only property.)
     - _Requirements: REQ-16.3, REQ-16.4_
-  - [ ]* 20.14 Property test — Popover enumeration
+  - [ ]\* 20.14 Property test — Popover enumeration
     - **Property 27b: For all days with `k > 1` events, the expanded popover lists exactly `k` rows, each with the event's `label` and a `source_url` anchor when present**
     - **Validates: Requirements REQ-16.4**
 
@@ -417,13 +417,13 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ] 22.3 Wire Course tool-renderer cards to "Prereq Tree" affordance
     - Clicking sets `activeChannel = { id: "prereq-tree", state: { root: code } }` directly via `setActiveChannel` (no URL serialization layer; no `toSearchParams`)
     - _Requirements: REQ-4.2_
-  - [ ]* 22.4 Integration test — Tool-grounded calendar answer takes priority over the Widget's static rendering
+  - [ ]\* 22.4 Integration test — Tool-grounded calendar answer takes priority over the Widget's static rendering
     - Agent emits a calendar-deadline claim while the Calendar Widget is open; assert the claim renders in Chat text within a `[data-pane="chat"]` ancestor and the chat rect does not sit behind the widget rect (Property 32's oracle, applied to the calendar case).
-  - [ ]* 22.5 Property test — Tool-grounded answer priority (universal)
+  - [ ]\* 22.5 Property test — Tool-grounded answer priority (universal)
     - **Property 32: For any agent turn emitting tool-grounded claim text `c` while pane `p` is open, the claim renders in Chat, the chat rect has non-zero size, and the chat rect does not overlap or sit behind pane `p`'s rect**
     - **Validates: Requirements REQ-19.4**
     - Generator: `arbToolGroundedTurnWithOpenPane` from design.md §Domain 9.
-  - [ ]* 22.6 Example test — Tool-result-card routes its course code into the Prereq Tree with one click (REQ-4.2 second leg; 13.11 covers card→tree, 22.3 is impl)
+  - [ ]\* 22.6 Example test — Tool-result-card routes its course code into the Prereq Tree with one click (REQ-4.2 second leg; 13.11 covers card→tree, 22.3 is impl)
     - Render an Agent tool-call result card for `get_course` returning a record with a Prereq Tree affordance; click it; assert the Prereq Tree pane opens rooted at the tool card's code.
     - _Requirements: REQ-4.2_
 
@@ -442,18 +442,18 @@ Property-based test sub-tasks are annotated with their property number from `des
     - _Requirements: REQ-20.5_
   - [ ] 23.6 Implement Prereq Tree dropdown menu wheel-event + outside-pointerdown + Escape dismiss
     - _Requirements: REQ-20.6_
-  - [ ]* 23.7 Property test sweep — Accessibility invariants (reduced-motion + focus-ring + live-region)
+  - [ ]\* 23.7 Property test sweep — Accessibility invariants (reduced-motion + focus-ring + live-region)
     - **Property 33: For all `prefers-reduced-motion: reduce` environments, registered transitions collapse ≤0.01ms**
     - **Property 34: Keyboard focus applies `ring-primary/40 ring-2` on every ported interactive control**
     - **Property 35: Status changes update an `sr-only` live region within one animation frame**
     - **Validates: Requirements REQ-20.2, REQ-20.3, REQ-20.4**
     - One file (`__tests__/a11y-properties.test.ts`), three property bodies in the same sweep. Shared fixtures: `prefers-reduced-motion: reduce` via matchMedia mock; `ring-primary/40 ring-2` assertion via computed-style read; live-region toggle via MutationObserver tick.
-  - [ ]* 23.8 Example test — Contrast audit on "Other retrieved context" panel + "note" variant Prereq Tree node
+  - [ ]\* 23.8 Example test — Contrast audit on "Other retrieved context" panel + "note" variant Prereq Tree node
     - Assert computed color contrast against the rendered Whisper-Neumorphic surface token (`DESIGN.md` neumorphic `recessed`/`raised` palette) is ≥4.5:1 for body text and ≥3:1 for large text.
     - _Requirements: REQ-20.5_
-  - [ ]* 23.9 Example test — Prereq Tree dropdown Escape dismiss + outside-pointerdown dismiss
+  - [ ]\* 23.9 Example test — Prereq Tree dropdown Escape dismiss + outside-pointerdown dismiss
     - _Requirements: REQ-20.6_
-  - [ ]* 23.10 Example test — Raised-to-recessed interactive controls (pressed state)
+  - [ ]\* 23.10 Example test — Raised-to-recessed interactive controls (pressed state)
     - Assert every ported chip/dropdown/radio/day-cell/nav-arrow renders the recessed variant on `:active` or pressed (touch-equivalent) state.
     - _Requirements: REQ-20.1_
 
