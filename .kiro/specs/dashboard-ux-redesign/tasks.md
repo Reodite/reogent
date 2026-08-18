@@ -78,17 +78,17 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - Toggling swaps left contents between SessionList and ToolList and persists; `ToolList` selection sets `workspaceView`; toggle reachable from both modes.
     - _Requirements: REQ-1.4, REQ-6.4_
 
-- [ ] 10. `AppShell` refactor + mobile Answer Sheet
-  - [ ] 10.1 Rewrite `src/components/shell/app-shell.tsx` to compose the new regions
+- [x] 10. `AppShell` refactor + mobile Answer Sheet
+  - [x] 10.1 Rewrite `src/components/shell/app-shell.tsx` to compose the new regions
     - TopBar + LeftSidebar + WorkspaceArea(`{mode === "ai" ? <ChatSurface>{children}</ChatSurface><AnswerCanvas view={workspaceView}/> : <FullBleedTool view={workspaceView}/>}`). Host `AnswerCanvas`/`MapArea` in `AppShell` (not inside `ChatPanel`) so the map survives session swaps. Keep `RequireAuth`, skip-link, `#main-content` target (AI: on ChatSurface; Tools: on FullBleedTool).
     - _Requirements: REQ-2.1, REQ-2.2, REQ-4.1, REQ-4.4, REQ-9.4_
-  - [ ] 10.2 Implement the below-wide Answer Sheet for AI Mode
+  - [x] 10.2 Implement the below-wide Answer Sheet for AI Mode
     - Replace the existing `MapBottomSheet` + `PaneBottomSheet` split with one `AnswerSheet` (a Bottom Sheet hosting `AnswerCanvas`) opened from the TopBar "Map" entry. Scrim + `inert` on the shell + Close Control in the header + dismiss on scrim tap/Escape. Map waiting-answer cue when `highlight` set and sheet closed.
     - _Requirements: REQ-2.4, REQ-2.5, REQ-5.4, REQ-6.5, REQ-6.6_
-  - [ ] 10.3 Below-wide Tools Mode drawer for the Tool List
+  - [x] 10.3 Below-wide Tools Mode drawer for the Tool List
     - Collapse `ToolList` into the existing left drawer pattern below wide; keep `FullBleedTool` full-bleed on all viewports.
     - _Requirements: REQ-4.6, REQ-5.1_
-  - [ ]* 10.4 Component tests for `AppShell` layouts (snapshot)
+  - [x]* 10.4 Component tests for `AppShell` layouts (snapshot)
     - Snapshot baselines: wide AI, below-wide AI (sheet), wide Tools, below-wide Tools (drawer). Assert `#main-content` target present in each layout.
     - _Requirements: REQ-4.1, REQ-4.5, REQ-7.1_
 
