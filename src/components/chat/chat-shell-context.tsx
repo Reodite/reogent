@@ -14,7 +14,7 @@ export type { MapHighlight };
 export type ActiveChannel = { id: PaneId; state: PaneState } | null;
 export type PreviousUserChannel = { id: PaneId; state: PaneState } | null;
 
-interface ChatShellState {
+export interface ChatShellState {
   activeChannel: ActiveChannel;
   previousUserChannel: PreviousUserChannel;
   /** Sets the active pane. Switching to `map` from a user tool captures the prior channel for the "Back to" pill. `null` collapses to the rail. */
@@ -81,6 +81,13 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   const auth = useAppAuth();
 
   const [activeChannel, setActiveChannelState] = useState<ActiveChannel>(null);
+  // Latest-value ref so setActiveChannel can read the current channel without
+  // depending on activeChannel in its callback deps — keeps the callback stable
+  // (same pattern as authRef in ApiProvider). ChatPanel's session-load effect
+  // lists setActiveChannel in its deps; if it churned on every open, the effect
+  // would re-run and reset activeChannel back to null, closing the pane.
+  const activeChannelRef = useRef<ActiveChannel>(null);
+  activeChannelRef.current = activeChannel;
   const [previousUserChannel, setPreviousUserChannelState] = useState<PreviousUserChannel>(readPreviousUserChannel);
   const [focusNonce, setFocusNonce] = useState(0);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
@@ -129,20 +136,18 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     if (auth.status === "signedIn") doRefresh();
   }, [auth.status, doRefresh]);
 
-  const setActiveChannel = useCallback(
-    (id: PaneId | null, state: PaneState = {}) => {
-      if (id === "map" && activeChannel && activeChannel.id !== "map") {
-        const captured: PreviousUserChannel = { id: activeChannel.id, state: activeChannel.state };
-        setPreviousUserChannelState(captured);
-        writePreviousUserChannel(captured);
-      } else if (id && id !== "map") {
-        setPreviousUserChannelState(null);
-        writePreviousUserChannel(null);
-      }
-      setActiveChannelState(id ? { id, state } : null);
-    },
-    [activeChannel],
-  );
+  const setActiveChannel = useCallback((id: PaneId | null, state: PaneState = {}) => {
+    const prev = activeChannelRef.current;
+    if (id === "map" && prev && prev.id !== "map") {
+      const captured: PreviousUserChannel = { id: prev.id, state: prev.state };
+      setPreviousUserChannelState(captured);
+      writePreviousUserChannel(captured);
+    } else if (id && id !== "map") {
+      setPreviousUserChannelState(null);
+      writePreviousUserChannel(null);
+    }
+    setActiveChannelState(id ? { id, state } : null);
+  }, []);
 
   const setPreviousUserChannel = useCallback((channel: PreviousUserChannel) => {
     setPreviousUserChannelState(channel);

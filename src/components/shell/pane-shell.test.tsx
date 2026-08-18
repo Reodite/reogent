@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
+import { PaneHost } from "@/src/components/shell/pane-host";
 import { PanePreempt } from "@/src/components/shell/pane-preempt";
 import type { MapHighlight } from "@/src/lib/walking";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { useEffect } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/src/components/providers", () => ({
@@ -19,6 +21,16 @@ vi.mock("@/src/components/prereq-tree/prereq-tree-pane", () => ({
 vi.mock("@/src/components/map/map-panel", () => ({
   MapArea: function MockMapArea() {
     return null;
+  },
+}));
+vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({
+  CourseLookupPane: function MockCourseLookupPane() {
+    return <div data-mock-course />;
+  },
+}));
+vi.mock("@/src/components/calendar/calendar-pane", () => ({
+  CalendarPane: function MockCalendarPane() {
+    return <div data-mock-calendar />;
   },
 }));
 
@@ -146,5 +158,50 @@ describe("Integration — agent emits map while Course Lookup open: Back-to pill
     expect(shellRef.current?.activeChannel?.id).toBe("course-lookup");
     expect(shellRef.current?.activeChannel?.state.code).toBe("CPSC 320");
     expect(shellRef.current?.previousUserChannel).toBeNull();
+  });
+});
+
+// Regression: setActiveChannel must stay stable across activeChannel changes.
+// ChatPanel's session-load effect lists setActiveChannel (and showOnMap, which
+// depends on it) in its deps and resets activeChannel to null. If setActiveChannel
+// churned on every open, that effect re-fired and closed the pane the instant a
+// user opened it — the right panel "never opened". Pin the stability contract.
+describe("setActiveChannel stability — pane stays open against consumer effects that reset", () => {
+  it("setActiveChannel keeps identity across activeChannel changes", () => {
+    shellRef.current = null;
+    render(
+      <ChatShellProvider>
+        <div data-pane="chat">chat</div>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    const before = shellRef.current?.setActiveChannel;
+    act(() => shellRef.current?.setActiveChannel("course-lookup", { code: "CPSC 110" }));
+    const after = shellRef.current?.setActiveChannel;
+    expect(after).toBe(before);
+  });
+
+  it("an opened pane stays open in the presence of a consumer effect that resets activeChannel on setActiveChannel change", () => {
+    function ClobberConsumer() {
+      const { setActiveChannel, setPreviousUserChannel } = useChatShell();
+      useEffect(() => {
+        setActiveChannel(null);
+        setPreviousUserChannel(null);
+      }, [setActiveChannel, setPreviousUserChannel]);
+      return null;
+    }
+
+    render(
+      <ChatShellProvider>
+        <PaneHost />
+        <ClobberConsumer />
+      </ChatShellProvider>,
+    );
+    const btn = document.querySelector('[data-tool-id="course-lookup"]') as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    act(() => {
+      fireEvent.click(btn);
+    });
+    expect(document.querySelector('section[data-pane="course-lookup"]')).not.toBeNull();
   });
 });
