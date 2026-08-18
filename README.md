@@ -1,4 +1,4 @@
-# Reogent
+# Reodite
 
 Conversational AI for UBC students. Ask about courses, tuition, walking routes, parking, events, or study spaces. A streaming agent answers from indexed campus data and draws walking routes on an interactive map.
 

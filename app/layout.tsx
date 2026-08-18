@@ -19,7 +19,7 @@ const commitMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Reogent — AI for your campus",
+  title: "Reodite — AI for your campus",
   description:
     "Courses, prerequisites, tuition, and walking routes — answered instantly from real UBC data, with routes drawn on a live campus map.",
 };
@@ -34,7 +34,7 @@ export const viewport: Viewport = {
 
 // Runs before first paint: applies stored or system theme.
 // Returning users skip the landing page flash.
-const AUTH_KEY = "reogent.auth.user";
+const AUTH_KEY = "reodite.auth.user";
 const BOOTSTRAP =
   `try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});document.documentElement.dataset.theme=(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}` +
   `try{if(location.pathname==="/"&&localStorage.getItem(${JSON.stringify(AUTH_KEY)}))document.documentElement.dataset.authPending=""}catch(e){}`;

@@ -53,7 +53,7 @@ export function Landing() {
           <span className="bg-primary-container text-on-primary-container shadow-inset flex size-9 items-center justify-center rounded-xl">
             <Icon name="school" size={18} />
           </span>
-          <span className="text-primary animate-pulse text-xl font-medium tracking-[-0.02em]">Reogent</span>
+          <span className="text-primary animate-pulse text-xl font-medium tracking-[-0.02em]">Reodite</span>
         </div>
       </div>
     );
@@ -130,11 +130,11 @@ function LandingContent() {
               scrolled ? "neu-panel" : ""
             }`}
           >
-            <Link href="/" className="flex items-center gap-2" aria-label="Reogent home">
+            <Link href="/" className="flex items-center gap-2" aria-label="Reodite home">
               <span className="bg-primary-container text-on-primary-container flex size-8 items-center justify-center rounded-xl">
                 <Icon name="school" size={16} />
               </span>
-              <span className="text-on-surface text-sm font-medium tracking-[-0.02em]">Reogent</span>
+              <span className="text-on-surface text-sm font-medium tracking-[-0.02em]">Reodite</span>
             </Link>
             <div className="flex items-center gap-2">
               <ThemeToggle />
@@ -193,7 +193,7 @@ function LandingContent() {
                 animate={heroSublineVariant.visible}
                 transition={{ duration: 0.5, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
-                Courses, tuition, walking routes, deadlines. Reogent searches indexed campus data and responds with
+                Courses, tuition, walking routes, deadlines. Reodite searches indexed campus data and responds with
                 facts you can trust.
               </motion.p>
               <motion.div

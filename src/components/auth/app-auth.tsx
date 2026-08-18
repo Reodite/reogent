@@ -4,8 +4,8 @@
 // Stores JWT in localStorage. Login/register call /api/auth/* endpoints.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-const TOKEN_KEY = "reogent.auth.token";
-const USER_KEY = "reogent.auth.user";
+const TOKEN_KEY = "reodite.auth.token";
+const USER_KEY = "reodite.auth.user";
 
 type AppAuthStatus = "initializing" | "signedOut" | "signedIn";
 

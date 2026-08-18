@@ -1,4 +1,4 @@
-# Reogent
+# Reodite
 
 <!-- impeccable:product-schema 1 -->
 
@@ -8,7 +8,7 @@ web
 
 ## Users
 
-UBC Vancouver undergraduate and graduate students. They use Reogent during two windows: (1) course registration periods (mid-March for summer, mid-June for fall, mid-October for spring) to search courses, check prerequisites, and compare tuition costs, and (2) the first two weeks of each term when campus is unfamiliar and they need walking directions between buildings.
+UBC Vancouver undergraduate and graduate students. They use Reodite during two windows: (1) course registration periods (mid-March for summer, mid-June for fall, mid-October for spring) to search courses, check prerequisites, and compare tuition costs, and (2) the first two weeks of each term when campus is unfamiliar and they need walking directions between buildings.
 
 Secondary context: mid-term schedule crunches when students need study spaces, room availability, or campus services.
 
@@ -16,7 +16,7 @@ They are task-focused and time-pressured, often between classes on a laptop or w
 
 ## Product Purpose
 
-Reogent is an AI agent that answers university-specific questions using real UBC data. It replaces checking 4-6 separate university systems (course catalog, tuition calculator, campus map, room finder, academic calendar, grade distributions) with one conversational interface.
+Reodite is an AI agent that answers university-specific questions using real UBC data. It replaces checking 4-6 separate university systems (course catalog, tuition calculator, campus map, room finder, academic calendar, grade distributions) with one conversational interface.
 
 The agent calls tools against indexed UBC datasets. When an answer has a spatial or visual dimension (walking routes, building locations, data tables), a right pane opens to show that content. Conversation is the primary surface; visual content is supplementary and agent-triggered.
 

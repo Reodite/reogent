@@ -62,7 +62,7 @@ export function ProductMock({ inView, chatZ, mapZ }: ProductMockProps) {
               <span className="bg-primary-container text-on-primary-container flex size-7 items-center justify-center rounded-lg text-[0.6875rem] font-medium">
                 R
               </span>
-              <span className="text-muted text-xs font-medium">Reogent</span>
+              <span className="text-muted text-xs font-medium">Reodite</span>
             </div>
             <div className="bg-surface max-w-[88%] rounded-[16px_16px_16px_5px] px-4 py-3">
               <p className="text-on-surface text-sm leading-relaxed">

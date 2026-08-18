@@ -1,5 +1,5 @@
 ---
-name: Reogent
+name: Reodite
 description: AI campus assistant with whisper-neumorphic surfaces
 colors:
   background: "#f7f7f5"
@@ -141,7 +141,7 @@ components:
     borderLeft: "2px solid {colors.primary}"
 ---
 
-# Design System: Reogent
+# Design System: Reodite
 
 ## Overview
 
@@ -230,7 +230,7 @@ Color tokens accept Tailwind opacity modifiers for layered effects:
 ### In-App Hierarchy
 
 - **Title** (500, 1.25rem/text-xl, -0.02em): Page titles, panel headers, greeting text. One per visible viewport. Line-height varies by context: Tailwind default for text-xl or `leading-tight` (1.25) in compact headings.
-- **Brand Title** (500, text-base sm:text-xl, -0.025em): The "Reogent" text in the header. Uses tighter tracking than standard Title.
+- **Brand Title** (500, text-base sm:text-xl, -0.025em): The "Reodite" text in the header. Uses tighter tracking than standard Title.
 - **Heading** (500, 1rem/text-base, -0.01em): Card titles, session names, route info primary values. Uses `leading-tight` (1.25) or `leading-snug` (1.375) in space-constrained contexts.
 - **Body** (400, 0.875rem/text-sm, 1.5): Chat messages, descriptions, button labels. Base size. 14px for information density. Uses `leading-relaxed` (1.625) in chat bubbles and descriptions for extra breathing room.
 - **Body Small** (400, 0.8125rem/text-body-sm, 1.5): Secondary info, timestamps, tool badge content, sidebar session previews.

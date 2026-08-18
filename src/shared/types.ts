@@ -1,4 +1,4 @@
-// Canonical shared types for the Reogent API contract.
+// Canonical shared types for the Reodite API contract.
 // Both src/lib/ (frontend) and src/server/ (backend) import from here.
 
 export interface ChatMessage {

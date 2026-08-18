@@ -46,7 +46,7 @@ function SignupContent() {
           <h1 className="text-on-surface mb-2 text-center text-2xl font-medium tracking-[-0.02em]">
             Create an account
           </h1>
-          <p className="text-muted mb-6 text-center text-sm">Sign up to start using Reogent — it&apos;s free</p>
+          <p className="text-muted mb-6 text-center text-sm">Sign up to start using Reodite — it&apos;s free</p>
           <AuthForm mode="signup" />
         </div>
       </motion.div>

@@ -245,7 +245,7 @@ export const AssistantMessage = memo(function AssistantMessage({
           <span className="bg-primary-container text-on-primary-container flex size-7 items-center justify-center rounded-lg text-[0.6875rem] font-medium">
             R
           </span>
-          <span className="text-muted text-xs font-medium">Reogent</span>
+          <span className="text-muted text-xs font-medium">Reodite</span>
         </div>
       )}
       <div className="bg-surface max-w-[88%] min-w-0 rounded-[16px_16px_16px_5px] px-4 py-3">
@@ -300,7 +300,7 @@ export function TypingIndicator({ slow, isFirstMessage }: { slow: boolean; isFir
         <span className="bg-primary-container text-on-primary-container flex size-7 items-center justify-center rounded-lg text-[0.6875rem] font-medium">
           R
         </span>
-        <span className="text-muted text-xs font-medium">Reogent</span>
+        <span className="text-muted text-xs font-medium">Reodite</span>
       </div>
       <div className="bg-surface inline-flex items-center gap-3 rounded-[16px_16px_16px_5px] px-4 py-3">
         <span className="thinking-orb" aria-hidden="true" />
