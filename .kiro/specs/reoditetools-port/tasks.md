@@ -187,16 +187,16 @@ Property-based test sub-tasks are annotated with their property number from `des
     - _Requirements: REQ-11.4_
 
 - [ ] 11. Implement Pane Host + Registry (`src/components/shell/`)
-  - [ ] 11.1 Implement `pane-registry.ts` with `PaneId`, `PaneState`, `PaneEntry`, `PANE_REGISTRY`, `PANE_BY_ID`
+  - [x] 11.1 Implement `pane-registry.ts` with `PaneId`, `PaneState`, `PaneEntry`, `PANE_REGISTRY`, `PANE_BY_ID`
     - First four entries: `map` (existing, `preemptableByAgentMap: false`, `icon = map`), `course-lookup` (`icon = search`), `prereq-tree` (`{ root: "", selections: {} }`, `icon = tree`), `calendar` (`{ cursor: <this-month>, kinds: ["academic","holiday"] }`, `icon = calendar`). Each `PaneEntry.icon` is `(props) => <Icon name={...} {...props} />` referencing the `src/components/icons.tsx` `ICON_MAP`. Add two entries to `ICON_MAP`: `calendar: "calendar-2-line"`, `tree: "tree-line"` (both confirmed in `@iconify-json/mingcute`). The `search` and `map` glyphs already exist.
     - _Requirements: REQ-19.5_
-  - [ ] 11.2 Implement `pane-host.tsx` rendering the active channel's `PaneEntry.Component`
+  - [x] 11.2 Implement `pane-host.tsx` rendering the active channel's `PaneEntry.Component`
     - At `activeChannel === null`, render the 3.75rem right-side rail containing `<ToolsStrip orientation="rail" />` (chat takes the remaining width). At non-null, expand to 50% with the pane's header + body inside a `<section data-pane={entry.id} className="neu-panel rounded-2xl flex flex-col h-full overflow-hidden">` frame per UI/UX §Shell. Width animates via the existing spring (stiffness 300, damping 30); reduced-motion instant. Map pane (`entry.id === "map"`) skips the frame header — `MapPanel` owns its chrome. Mobile (`<640px`): the rail is `hidden`; user-tool panes render via `<PaneBottomSheet>` (80vh bottom sheet) per UI/UX §Shell.
     - _Requirements: REQ-19.1, REQ-19.2_
-  - [ ] 11.3 Implement `pane-preempt.tsx` ("Back to <tool>" pill)
+  - [x] 11.3 Implement `pane-preempt.tsx` ("Back to <tool>" pill)
     - Captures previous user channel into `sessionStorage["reogent.pane.previousUserChannel"]`; offers one-click restore. SessionStorage semantics: dies on tab close, no cross-tab sync, no expiry sweep. **Provenance gate**: the pill renders only when `previousUserChannel !== null` — i.e., a user tool must have been opened before the agent emitted map data. If the agent is the first to set `activeChannel`, `previousUserChannel` is `null` and no pill appears.
     - _Requirements: REQ-19.3_
-  - [ ] 11.4 Migrate `chat-shell-context.tsx` from `mapOpen: boolean` + `highlight: MapHighlight | null` to `activeChannel: { id; state } | null` + `previousUserChannel`
+  - [x] 11.4 Migrate `chat-shell-context.tsx` from `mapOpen: boolean` + `highlight: MapHighlight | null` to `activeChannel: { id; state } | null` + `previousUserChannel`
     - `MapHighlight` lives at `src/lib/walking.ts:43`; current shell API surface: `setMapOpen(open: boolean)` at `chat-shell-context.tsx:23`, `setHighlight(highlight: MapHighlight | null)` at line 18 (interface, `:106` impl), and `mobileMapOpen`/`setMobileMapOpen` bottom-sheet state (lines 59, 111-113, 139). Re-route every existing call site:
       - `setHighlight` writes: `src/components/chat/tool-renderers.tsx:167,196,226`; `src/components/chat/chat-panel.tsx:249,280,440` — each `setHighlight(payload)` becomes `setActiveChannel("map", { highlight: payload })` (or `setActiveChannel(null)` for the `setHighlight(null)` clear at chat-panel.tsx:249).
       - `mapOpen` reads/writes: `src/components/shell/app-shell.tsx:83` (read), `:194` (the `animate={{ width: mapOpen ? "50%" : "3.75rem" }}` layout — becomes `activeChannel?.id === "map"`), and `src/components/map/map-panel.tsx:224-256` (surface/tab layer visibility, collapse/expand buttons).
@@ -204,16 +204,16 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Map is non-preemptable so `pane-preempt` does not appear for it.
     - Add `data-pane="chat"` to the chat panel root element (the `{children}` wrapper at `app-shell.tsx:190` `#main-content` or `chat-panel.tsx` root) so Property 32's `document.querySelector('[data-pane="chat"]')` oracle resolves. Every pane surface root carries `data-pane={entry.id}` via the `pane-host.tsx` frame (task 11.2).
     - _Requirements: REQ-19.1, REQ-19.2, REQ-19.3_
-  - [ ]\* 11.5 Property test — Chat-never-hidden
+  - [x]\* 11.5 Property test — Chat-never-hidden
     - **Property 30: For all `activeChannel` states, the Chat panel remains visible**
     - **Validates: Requirements REQ-19.1, REQ-19.2**
-  - [ ]\* 11.6 Property test — Map-precedence-non-preemption
+  - [x]\* 11.6 Property test — Map-precedence-non-preemption
     - **Property 31: Agent map data over a user tool switches pane to `map` and previous user channel is recoverable**
     - **Validates: Requirements REQ-19.3**
-  - [ ]\* 11.7 Integration test — Agent emits map data while Course Lookup is open → Back-to pill offered
+  - [x]\* 11.7 Integration test — Agent emits map data while Course Lookup is open → Back-to pill offered
     - _Requirements: REQ-19.3_
 
-- [ ] 12. Checkpoint - Sidebar + Pane Host tests pass
+- [x] 12. Checkpoint - Sidebar + Pane Host tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 13. Implement Course Lookup (`src/components/course-lookup/` + `app/api/courses/`)
