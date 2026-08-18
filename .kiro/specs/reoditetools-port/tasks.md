@@ -75,7 +75,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [ ]\* 4.7 Property test — Soft-flattening
     - **Property 10: `displayExpr(Soft(child)) === displayExpr(child)`**
     - **Validates: Requirements REQ-6.4**
-  - [ ]\* 4.8 Example test — KIN 320 mid-clause recommended, AANB 500 `_V` strip
+  - [x] 4.8 Example test — KIN 320 mid-clause recommended, AANB 500 `_V` strip
     - _Requirements: REQ-5.6, REQ-1.2_
   - [ ]\* 4.9 Property test — Soft-tail positive split (top-level clear cases)
     - **Property 38: when a Prerequisite String ends with a top-level `recommended` tail (e.g. "X is recommended"), `parsePrereq(s)` produces a `Soft`-rooted expression for that tail**
