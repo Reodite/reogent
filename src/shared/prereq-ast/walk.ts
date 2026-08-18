@@ -16,8 +16,9 @@ export interface CodeLeafWithParent {
  * `and`, `or`, `soft`, and `flattened.subExpr`; `literal` and `flattened` text
  * carry no codes. Stops descending past {@link MAX_DEPTH} levels.
  */
-export function walkCodeLeaves(expr: Expr): CodeLeafWithParent[] {
+export function walkCodeLeaves(expr: Expr | null): CodeLeafWithParent[] {
   const out: CodeLeafWithParent[] = [];
+  if (!expr) return out;
   const visit = (node: Expr, parent: Expr | null, depth: number): void => {
     if (depth > MAX_DEPTH) return;
     switch (node.kind) {
