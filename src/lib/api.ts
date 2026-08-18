@@ -6,6 +6,7 @@ import {
   type BuildingDetails,
   type ChatMessage,
   type ChatResponse,
+  type CourseDoc,
   type GeoName,
   type RouteResponse,
   type SessionSummary,
@@ -41,6 +42,13 @@ export interface ChatApi {
   getRoute(from: string, to: string): Promise<RouteResponse>;
   /** GET /api/building/{code} — popup details: rooms, POIs, availability. */
   getBuildingDetails(code: string): Promise<BuildingDetails>;
+  /** GET /api/courses/{code} — exact course record; 404 on miss. */
+  getCourse(code: string): Promise<CourseDoc>;
+  /** GET /api/courses — prefix/subject/level-operator search. */
+  searchCourses(params: { q?: string; subject?: string; level?: "eq" | "plus" | "minus"; digit?: number }): Promise<{
+    courses: CourseDoc[];
+    subject_total?: number;
+  }>;
 }
 
 interface ChatApiOptions {
@@ -199,6 +207,15 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     getRoute: (from, to) =>
       request<RouteResponse>(`/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
     getBuildingDetails: (code) => request<BuildingDetails>(`/building/${encodeURIComponent(code)}`),
+    getCourse: (code) => request<CourseDoc>(`/courses/${encodeURIComponent(code)}`),
+    searchCourses: (params) => {
+      const sp = new URLSearchParams();
+      if (params.q) sp.set("q", params.q);
+      if (params.subject) sp.set("subject", params.subject);
+      if (params.level) sp.set("level", params.level);
+      if (params.digit !== undefined) sp.set("digit", String(params.digit));
+      return request<{ courses: CourseDoc[]; subject_total?: number }>(`/courses?${sp.toString()}`);
+    },
   };
 }
 

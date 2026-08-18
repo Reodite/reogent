@@ -60,3 +60,17 @@ export function extractCourseCodes(text: string): string[] {
   }
   return out;
 }
+
+/** Level-operator kind for subject+level queries (`<subject> =3`, `+3`, `-3`). */
+export type LevelOp = "=" | "+" | "-";
+
+/** Leading digit of a course `number` field, e.g. `firstDigit("320") === 3`. Returns `NaN` for an empty string. */
+export function firstDigit(number: string): number {
+  return Number(String(number).charAt(0));
+}
+
+/** True iff `number`'s first digit satisfies the relation against `digit`: `=` equals, `+` at least, `-` at most. */
+export function matchesLevel(number: string, op: LevelOp, digit: number): boolean {
+  const d = firstDigit(number);
+  return op === "=" ? d === digit : op === "+" ? d >= digit : d <= digit;
+}

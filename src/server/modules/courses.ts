@@ -127,7 +127,7 @@ export function joinCourses(tables: {
 }
 
 /** Section times go to the model as human-readable HH:MM (Requirement 3.7). */
-function presentCourse(doc: CourseDoc, maxSections = Number.POSITIVE_INFINITY) {
+export function presentCourse(doc: CourseDoc, maxSections = Number.POSITIVE_INFINITY) {
   const sections = doc.sections.slice(0, maxSections).map(({ start_seconds, end_seconds, ...rest }) => ({
     ...rest,
     start_time: start_seconds === null ? null : formatSeconds(start_seconds),

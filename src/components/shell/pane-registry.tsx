@@ -1,5 +1,6 @@
 "use client";
 
+import { CourseLookupPane } from "@/src/components/course-lookup/course-lookup-pane";
 import { Icon, type IconName } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PrereqTreePane } from "@/src/components/prereq-tree/prereq-tree-pane";
@@ -53,7 +54,7 @@ export const PANE_REGISTRY: PaneEntry[] = [
     id: "course-lookup",
     label: "Course lookup",
     icon: iconGlyph("search"),
-    Component: ComingSoonPane,
+    Component: CourseLookupPane,
     defaultState: { code: "" },
     preemptableByAgentMap: true,
   },
