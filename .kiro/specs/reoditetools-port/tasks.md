@@ -290,15 +290,15 @@ Property-based test sub-tasks are annotated with their property number from `des
     - Snapshot against the `SYSTEM_PROMPT` const at `src/server/agent/loop.ts:3-24` (test reads the module's exported const and asserts the paragraph is present) so future edits surface as a snapshot diff.
     - _Requirements: REQ-15.1, REQ-15.4_
 
-- [ ] 16. Citations Postgres migration + history rehydration
-  - [ ] 16.1 Extend the `SCHEMA` template const in `src/server/db/migrate.ts:3` with `citations JSONB` on the `messages` block
+- [x] 16. Citations Postgres migration + history rehydration
+  - [x] 16.1 Extend the `SCHEMA` template const in `src/server/db/migrate.ts:3` with `citations JSONB` on the `messages` block
     - The table is created with `CREATE TABLE IF NOT EXISTS` for a fresh Postgres instance; this is the only edit needed — existing dev databases are dropped and recreated by `docker-compose down -v && up`. There is no additive migration tool to wire. The new column is nullable so legacy rows (in already-migrated dev databases) tolerate `null`; the client treats `null` and `[]` identically.
     - _Requirements: REQ-12.5_
-  - [ ] 16.2 Extend `appendExchange` write path to accept citations on the assistant half
+  - [x] 16.2 Extend `appendExchange` write path to accept citations on the assistant half
     - _Requirements: REQ-12.5_
-  - [ ]\* 16.3 Integration test — History rehydration round-trip
+  - [x]\* 16.3 Integration test — History rehydration round-trip
     - Drive the persisted-message path (JSONB column → history reload); assert the reloaded `citations` render identically to the live stream (byte-equality oracle per Property 21).
-  - [ ]\* 16.4 Property test — History rehydration byte-equality
+  - [x]\* 16.4 Property test — History rehydration byte-equality
     - **Property 21: `JSON.stringify(JSON.parse(rawRow.citations))` byte-equals `JSON.stringify(messages.citations)` for all persisted assistant messages (no `?? []` normalization; `'null' === 'null'` for the null branch)**
     - **Validates: Requirements REQ-12.5**
     - Generator: `arbPersistedMessage` from design.md §Domain 6.
