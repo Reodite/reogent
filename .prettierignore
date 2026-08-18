@@ -5,3 +5,6 @@ package-lock.json
 data
 Unified-UBC-Data
 ubc-pair-grade-data
+ubc-unified-data
+.kiro
+.opencode

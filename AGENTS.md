@@ -88,6 +88,7 @@ After completing each unit of work, create a git commit. One commit per unit kee
 **Format:** `<type>: <description>` (one line, no scope, no description body).
 
 **Allowed types:**
+
 - `build:` - Changes to build system or dependencies
 - `chore:` - Routine maintenance tasks
 - `ci:` - CI/CD configuration changes
@@ -100,6 +101,7 @@ After completing each unit of work, create a git commit. One commit per unit kee
 - `fix:` - Bug fixes
 
 **Examples:**
+
 - `feat: add user authentication`
 - `fix: resolve null pointer exception`
 - `refactor: simplify error handling`

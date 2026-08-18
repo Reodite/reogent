@@ -18,6 +18,6 @@
     "enabled": false
   },
   "files": {
-    "includes": ["app/**", "src/**", "scripts/**"]
+    "includes": ["app/**", "src/**", "scripts/**", "!ubc-unified-data", "!ubc-unified-data/**"]
   }
 }
