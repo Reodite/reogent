@@ -1,31 +1,53 @@
 "use client";
 
-// Shared state for the /chat shell: which pane holds the visual slot, the walking
-// route the map renders, the mobile bottom sheet, and the session list.
+// Shared state for the /chat shell: the canvas view the Answer Canvas (AI Mode)
+// or Full-Bleed Tool (Tools Mode) renders, the map highlight and focus contract,
+// the AI/Tools mode toggle, the below-wide Answer Sheet, and the session list.
+//
+// `workspaceView` is the single source of truth for the right pane. `activeChannel`
+// mirrors it as `{ id, state }` for consumers that key on `id`, so the staged move
+// onto `workspaceView` keeps existing readers intact. `setActiveChannel` and
+// `showOnMap` capture the prior user-tool channel into `previousUserChannel` when
+// switching the canvas to the map (the "Back to" pill). `activateCanvasView` and
+// `setWorkspaceView` skip that capture: the agent-driven and Tools-mode path has
+// no user-tool to return to.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
-import type { PaneId, PaneState } from "@/src/components/shell/pane-registry";
-import type { SessionSummary } from "@/src/lib/api-types";
+import type { CanvasView, PaneId, PaneState } from "@/src/components/shell/pane-registry";
+import type { SessionSummary, ToolCall } from "@/src/lib/api-types";
+import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { MapHighlight } from "@/src/lib/walking";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-export type { MapHighlight };
+export type { CanvasView, MapHighlight };
+
+export type ShellMode = "ai" | "tools";
 
 export type ActiveChannel = { id: PaneId; state: PaneState } | null;
 export type PreviousUserChannel = { id: PaneId; state: PaneState } | null;
 
 export interface ChatShellState {
+  workspaceView: CanvasView | null;
+  setWorkspaceView: (view: CanvasView | null) => void;
+  /** Loads the canvas for a mapped tool call. Unmapped calls are a no-op. */
+  activateCanvasView: (call: ToolCall) => void;
+
+  mode: ShellMode;
+  setMode: (mode: ShellMode) => void;
+
+  answerSheetOpen: boolean;
+  setAnswerSheetOpen: (open: boolean) => void;
+
   activeChannel: ActiveChannel;
   previousUserChannel: PreviousUserChannel;
   /** Sets the active pane. Switching to `map` from a user tool captures the prior channel for the "Back to" pill. `null` collapses to the rail. */
   setActiveChannel: (id: PaneId | null, state?: PaneState) => void;
   setPreviousUserChannel: (channel: PreviousUserChannel) => void;
 
-  // Read-only views of the map pane's state.
   highlight: MapHighlight | null;
   mapOpen: boolean;
   focusNonce: number;
-  /** Emits a map highlight: opens the map pane with the payload, re-focuses the route, and opens the mobile sheet on small viewports. */
+  /** Opens the map pane with the payload, re-focuses the route, and opens the mobile sheet on small viewports. */
   showOnMap: (highlight: MapHighlight) => void;
 
   mobileMapOpen: boolean;
@@ -80,19 +102,22 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   const api = useApi();
   const auth = useAppAuth();
 
-  const [activeChannel, setActiveChannelState] = useState<ActiveChannel>(null);
-  // Latest-value ref so setActiveChannel can read the current channel without
-  // depending on activeChannel in its callback deps — keeps the callback stable
-  // (same pattern as authRef in ApiProvider). ChatPanel's session-load effect
-  // lists setActiveChannel in its deps; if it churned on every open, the effect
-  // would re-run and reset activeChannel back to null, closing the pane.
-  const activeChannelRef = useRef<ActiveChannel>(null);
-  activeChannelRef.current = activeChannel;
+  const [workspaceView, setWorkspaceViewState] = useState<CanvasView | null>(null);
+  // Latest-value ref so setActiveChannel/showOnMap read the current view without
+  // depending on workspaceView in their callback deps — keeps the callbacks
+  // identity-stable (same pattern as authRef in ApiProvider). ChatPanel's
+  // session-load effect lists setActiveChannel in its deps; if it churned on
+  // every open, the effect would re-run and reset workspaceView to null,
+  // closing the pane the instant a user opened it.
+  const workspaceViewRef = useRef<CanvasView | null>(null);
+  workspaceViewRef.current = workspaceView;
   const [previousUserChannel, setPreviousUserChannelState] = useState<PreviousUserChannel>(readPreviousUserChannel);
   const [focusNonce, setFocusNonce] = useState(0);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newChatNonce, setNewChatNonce] = useState(0);
+  const [mode, setModeState] = useState<ShellMode>("ai");
+  const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
@@ -136,17 +161,8 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     if (auth.status === "signedIn") doRefresh();
   }, [auth.status, doRefresh]);
 
-  const setActiveChannel = useCallback((id: PaneId | null, state: PaneState = {}) => {
-    const prev = activeChannelRef.current;
-    if (id === "map" && prev && prev.id !== "map") {
-      const captured: PreviousUserChannel = { id: prev.id, state: prev.state };
-      setPreviousUserChannelState(captured);
-      writePreviousUserChannel(captured);
-    } else if (id && id !== "map") {
-      setPreviousUserChannelState(null);
-      writePreviousUserChannel(null);
-    }
-    setActiveChannelState(id ? { id, state } : null);
+  const setWorkspaceView = useCallback((view: CanvasView | null) => {
+    setWorkspaceViewState(view);
   }, []);
 
   const setPreviousUserChannel = useCallback((channel: PreviousUserChannel) => {
@@ -154,16 +170,52 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     writePreviousUserChannel(channel);
   }, []);
 
+  // Switching the canvas to the map from a user tool captures the prior channel
+  // for the "Back to" pill; switching to any other tool clears it.
+  const capturePreviousForMap = useCallback((prev: CanvasView | null, next: CanvasView | null) => {
+    if (next?.paneId === "map" && prev && prev.paneId !== "map") {
+      const captured: PreviousUserChannel = { id: prev.paneId, state: prev.state };
+      setPreviousUserChannelState(captured);
+      writePreviousUserChannel(captured);
+    } else if (next && next.paneId !== "map") {
+      setPreviousUserChannelState(null);
+      writePreviousUserChannel(null);
+    }
+  }, []);
+
+  const activateCanvasView = useCallback(
+    (call: ToolCall) => {
+      const view = toolCallToCanvasView(call);
+      if (view) setWorkspaceView(view);
+    },
+    [setWorkspaceView],
+  );
+
+  const setActiveChannel = useCallback(
+    (id: PaneId | null, state: PaneState = {}) => {
+      const next: CanvasView | null = id ? { paneId: id, state } : null;
+      capturePreviousForMap(workspaceViewRef.current, next);
+      setWorkspaceViewState(next);
+    },
+    [capturePreviousForMap],
+  );
+
   const showOnMap = useCallback(
     (highlight: MapHighlight) => {
-      setActiveChannel("map", { highlight });
+      const next: CanvasView = { paneId: "map", state: { highlight } };
+      capturePreviousForMap(workspaceViewRef.current, next);
+      setWorkspaceViewState(next);
       setFocusNonce((n) => n + 1);
       if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) {
         setMobileMapOpen(true);
       }
     },
-    [setActiveChannel],
+    [capturePreviousForMap],
   );
+
+  const setMode = useCallback((next: ShellMode) => {
+    setModeState(next);
+  }, []);
 
   const addOptimisticSession = useCallback((sessionId: string, title: string) => {
     setSessions((prev) => {
@@ -184,12 +236,23 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     setNewChatNonce((n) => n + 1);
   }, []);
 
+  const activeChannel = useMemo<ActiveChannel>(
+    () => (workspaceView ? { id: workspaceView.paneId, state: workspaceView.state } : null),
+    [workspaceView],
+  );
   const highlight: MapHighlight | null =
     activeChannel?.id === "map" ? ((activeChannel.state.highlight as MapHighlight | undefined) ?? null) : null;
   const mapOpen = activeChannel?.id === "map";
 
   const value = useMemo<ChatShellState>(
     () => ({
+      workspaceView,
+      setWorkspaceView,
+      activateCanvasView,
+      mode,
+      setMode,
+      answerSheetOpen,
+      setAnswerSheetOpen,
       activeChannel,
       previousUserChannel,
       setActiveChannel,
@@ -213,6 +276,12 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       removeSessionLocally,
     }),
     [
+      workspaceView,
+      setWorkspaceView,
+      activateCanvasView,
+      mode,
+      setMode,
+      answerSheetOpen,
       activeChannel,
       previousUserChannel,
       setActiveChannel,

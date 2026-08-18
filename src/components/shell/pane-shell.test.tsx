@@ -2,6 +2,7 @@
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import { PaneHost } from "@/src/components/shell/pane-host";
 import { PanePreempt } from "@/src/components/shell/pane-preempt";
+import type { ToolCall } from "@/src/lib/api-types";
 import type { MapHighlight } from "@/src/lib/walking";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { useEffect } from "react";
@@ -203,5 +204,98 @@ describe("setActiveChannel stability — pane stays open against consumer effect
       fireEvent.click(btn);
     });
     expect(document.querySelector('section[data-pane="course-lookup"]')).not.toBeNull();
+  });
+});
+
+describe("workspaceView state contract (REQ-1.2, REQ-3.1)", () => {
+  const courseCall: ToolCall = {
+    name: "get_course",
+    input: { course_code: "CPSC 110" },
+    result: { code: "CPSC 110", title: "Computation, Programs, and Programming" },
+  } as ToolCall;
+  const tuitionCall: ToolCall = {
+    name: "get_tuition",
+    input: { program: "BSc" },
+    result: { program: "BSc", amount_cad: 5000, student_type: "domestic", cohort_year: 2026 },
+  } as ToolCall;
+
+  it("activateCanvasView loads the canvas for a mapped tool call", () => {
+    shellRef.current = null;
+    render(
+      <ChatShellProvider>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    act(() => shellRef.current?.activateCanvasView(courseCall));
+    expect(shellRef.current?.workspaceView?.paneId).toBe("course-lookup");
+    expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 110");
+  });
+
+  it("activateCanvasView is a no-op for an unmapped tool", () => {
+    shellRef.current = null;
+    render(
+      <ChatShellProvider>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    act(() =>
+      shellRef.current?.setWorkspaceView({
+        paneId: "calendar",
+        state: { cursor: "2026-01", kinds: ["academic", "holiday"] },
+      }),
+    );
+    act(() => shellRef.current?.activateCanvasView(tuitionCall));
+    expect(shellRef.current?.workspaceView?.paneId).toBe("calendar");
+  });
+
+  it("setWorkspaceView(null) clears the canvas and activeChannel mirrors it", () => {
+    shellRef.current = null;
+    render(
+      <ChatShellProvider>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    act(() => shellRef.current?.activateCanvasView(courseCall));
+    act(() => shellRef.current?.setWorkspaceView(null));
+    expect(shellRef.current?.workspaceView).toBeNull();
+    expect(shellRef.current?.activeChannel).toBeNull();
+  });
+
+  it("activeChannel mirrors workspaceView as { id, state }", () => {
+    shellRef.current = null;
+    render(
+      <ChatShellProvider>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    act(() =>
+      shellRef.current?.setWorkspaceView({ paneId: "prereq-tree", state: { root: "CPSC 320", selections: {} } }),
+    );
+    expect(shellRef.current?.activeChannel?.id).toBe("prereq-tree");
+    expect(shellRef.current?.activeChannel?.state.root).toBe("CPSC 320");
+  });
+
+  it("activateCanvasView keeps identity across workspaceView changes", () => {
+    shellRef.current = null;
+    render(
+      <ChatShellProvider>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    const before = shellRef.current?.activateCanvasView;
+    act(() => shellRef.current?.activateCanvasView(courseCall));
+    expect(shellRef.current?.activateCanvasView).toBe(before);
+  });
+
+  it("setMode toggles between ai and tools", () => {
+    shellRef.current = null;
+    render(
+      <ChatShellProvider>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    expect(shellRef.current?.mode).toBe("ai");
+    act(() => shellRef.current?.setMode("tools"));
+    expect(shellRef.current?.mode).toBe("tools");
   });
 });

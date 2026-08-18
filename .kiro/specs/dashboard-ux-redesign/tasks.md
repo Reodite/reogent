@@ -10,11 +10,11 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
 
 ## Tasks
 
-- [ ] 1. Foundation — state contract and types
-  - [ ] 1.1 Define shell-state types in `src/components/chat/chat-shell-context.tsx`
+- [x] 1. Foundation — state contract and types
+  - [x] 1.1 Define shell-state types in `src/components/chat/chat-shell-context.tsx`
     - Add `type ShellMode = "ai" | "tools"` and `type CanvasView = { paneId: PaneId; state: PaneState }`. Extend `ChatShellState` (design §Component 2): add `mode`, `setMode`, `workspaceView: CanvasView | null`, `setWorkspaceView`, `activateCanvasView: (call: ToolCall) => void`, `answerSheetOpen`, `setAnswerSheetOpen`. Keep `showOnMap`/`highlight`/`mapOpen`/`focusNonce` and all session fields. Add a latest-value ref for `workspaceView` mirroring the existing `activeChannelRef` stability pattern so `activateCanvasView` stays identity-stable.
     - _Requirements: REQ-1.2, REQ-1.3, REQ-3.1, REQ-3.4_
-  - [ ] 1.2 Implement `activateCanvasView` and reconcile `showOnMap`
+  - [x] 1.2 Implement `activateCanvasView` and reconcile `showOnMap`
     - `activateCanvasView(call)` = `const v = toolCallToCanvasView(call); if (v) setWorkspaceView(v)`. `showOnMap(highlight)` becomes `setWorkspaceView({ paneId: "map", state: { highlight } })` + `focusNonce++` + open the below-wide sheet (preserved contract). `setWorkspaceView(null)` = idle (AI) / default tool (Tools). Keep the callback deps `[]` so callers' effect deps don't churn.
     - _Requirements: REQ-3.1, REQ-3.6, REQ-8_
 
@@ -26,7 +26,7 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - One passing + one error-result case per mapped tool name; unmapped-name returns `null`; null result tolerated. Colocate as `walking.test.ts` next to the source.
     - _Requirements: REQ-3.1, REQ-3.7_
 
-- [ ] 3. Checkpoint — mapper and state-contract tests pass
+- [x] 3. Checkpoint — mapper and state-contract tests pass
   - Ensure `npx vitest run` is green; ask the user if questions arise.
 
 - [ ] 4. ShellMode persistence + bootstrap
