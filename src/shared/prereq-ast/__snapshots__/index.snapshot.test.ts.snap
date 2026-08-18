@@ -1,0 +1,48 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`prereq parser fixture baseline > aanb-500: parser display + code set is stable 1`] = `
+{
+  "codes": [
+    "AANB 500",
+  ],
+  "display": "AANB 500",
+}
+`;
+
+exports[`prereq parser fixture baseline > cpsc-110: parser display + code set is stable 1`] = `
+{
+  "codes": [],
+  "display": "No prerequisite",
+}
+`;
+
+exports[`prereq parser fixture baseline > kin-320-mid-clause: parser display + code set is stable 1`] = `
+{
+  "codes": [
+    "KIN 320",
+  ],
+  "display": "KIN 320 + (MATH 100 is recommended) and one of BIOL 112, BIOL 121.",
+}
+`;
+
+exports[`prereq parser fixture baseline > math-200: parser display + code set is stable 1`] = `
+{
+  "codes": [
+    "MATH 101",
+    "MATH 103",
+    "MATH 105",
+    "SCIE 001",
+  ],
+  "display": "MATH 101 / MATH 103 / MATH 105 / SCIE 001",
+}
+`;
+
+exports[`prereq parser fixture baseline > multi-recommended-tails: parser display + code set is stable 1`] = `
+{
+  "codes": [
+    "MATH 100",
+    "MATH 101",
+  ],
+  "display": "MATH 100 + MATH 101",
+}
+`;

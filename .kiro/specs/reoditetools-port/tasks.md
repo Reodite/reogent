@@ -53,7 +53,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 4. Verify ported Prerequisite AST parser and lock its properties (`src/shared/prereq-ast/`)
-  - [ ] 4.1 Baseline the verbatim copy with a fixture corpus
+  - [x] 4.1 Baseline the verbatim copy with a fixture corpus
     - Port `__fixtures__/prereq-strings.json` (CPSC 110, MATH 200, AANB 500, KIN 320 mid-clause, multi-`recommended` tails); write a snapshot test asserting parser outputs against the fixture set so donor drift surfaces
     - _Requirements: REQ-5, REQ-6_
   - [ ]\* 4.2 Property test — No-throw
