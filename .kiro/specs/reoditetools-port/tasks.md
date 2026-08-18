@@ -97,10 +97,10 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x] 6.1 Implement `build-graph.ts` with `PrereqNode`, `PrereqEdge`, `PrereqGraph`, `buildPrereqGraph`
     - Use `walkCodeLeaves(parsePrereq(root.prerequisite))` as BFS seed; first-seen-wins visited set; depth-capped at `MAX_DEPTH = 15`; coreq column adjacent to root with coreq-of-coreq not walked; selectionKey computed server-side for each disjunction
     - _Requirements: REQ-7.1, REQ-7.2, REQ-7.3, REQ-7.4, REQ-7.5, REQ-8.1_
-  - [ ] 6.2 Implement `app/api/prereq-tree/route.ts` REST façade (`GET /api/prereq-tree?root=CPSC+320`)
+  - [x] 6.2 Implement `app/api/prereq-tree/route.ts` REST façade (`GET /api/prereq-tree?root=CPSC+320`)
     - Auth-gated by `requireUser(request)` from `@/src/server/auth` (no central middleware exists per route — each route imports `requireUser` directly). Rate-limit `RATE_LIMIT_PREREQ` (default 10 req/min/IP) wired via the in-route map (no middleware exists).
     - _Requirements: REQ-4.1, REQ-4.3, REQ-7_
-  - [ ] 6.3 Implement `src/server/prereq/agent-tool.ts` (`get_prereq_tree` agent tool façade)
+  - [x] 6.3 Implement `src/server/prereq/agent-tool.ts` (`get_prereq_tree` agent tool façade)
     - Append a `prereqModule` to the `modules` array in `src/server/modules/index.ts` (becomes module #13); tool name `get_prereq_tree`; returns `PrereqGraph`. Aggregation via the existing `modules.flatMap((m) => m.tools)` pipeline at `src/server/agent/stream.ts:27` (no slot numbering).
     - _Requirements: REQ-4.1, REQ-7_
   - [ ]\* 6.4 Property test — Cycle-safety invariant

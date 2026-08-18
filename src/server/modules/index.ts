@@ -1,4 +1,5 @@
 import type { DatasetModule } from "../core/types";
+import { prereqModule } from "../prereq/agent-tool";
 import { admissions } from "./admissions";
 import { buildings } from "./buildings";
 import { calendar } from "./calendar";
@@ -28,4 +29,5 @@ export const modules: DatasetModule[] = [
   events,
   pages,
   grades,
+  prereqModule,
 ];
