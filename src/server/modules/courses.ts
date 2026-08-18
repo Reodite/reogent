@@ -141,7 +141,7 @@ const upSubject = (s: string) => {
   return up.includes("_") ? up : `${up}_V`;
 };
 
-async function findByCode(search: SearchClient, courseCode: string): Promise<CourseDoc | null> {
+export async function findByCode(search: SearchClient, courseCode: string): Promise<CourseDoc | null> {
   const norm = courseCode.trim().toUpperCase().replace(/\s+/g, " ");
   const [subject = "", number = ""] = norm.split(" ");
   const candidates = [...new Set([norm, `${upSubject(subject)} ${number}`])];

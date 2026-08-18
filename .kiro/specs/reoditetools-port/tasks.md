@@ -94,7 +94,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Implement Prerequisite Tree server BFS (`src/server/prereq/`)
-  - [ ] 6.1 Implement `build-graph.ts` with `PrereqNode`, `PrereqEdge`, `PrereqGraph`, `buildPrereqGraph`
+  - [x] 6.1 Implement `build-graph.ts` with `PrereqNode`, `PrereqEdge`, `PrereqGraph`, `buildPrereqGraph`
     - Use `walkCodeLeaves(parsePrereq(root.prerequisite))` as BFS seed; first-seen-wins visited set; depth-capped at `MAX_DEPTH = 15`; coreq column adjacent to root with coreq-of-coreq not walked; selectionKey computed server-side for each disjunction
     - _Requirements: REQ-7.1, REQ-7.2, REQ-7.3, REQ-7.4, REQ-7.5, REQ-8.1_
   - [ ] 6.2 Implement `app/api/prereq-tree/route.ts` REST façade (`GET /api/prereq-tree?root=CPSC+320`)
