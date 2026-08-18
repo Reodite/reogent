@@ -39,7 +39,7 @@ const HIDDEN_HANDLE = {
  *  transform). */
 export function DropdownDisjunctionNode({ data }: NodeProps<DisjunctionNodeData>) {
   const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLUListElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const selected = data.selected ?? 0;
   const current = data.options[selected]?.label ?? "—";
 
