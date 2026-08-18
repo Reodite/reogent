@@ -187,7 +187,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </motion.aside>
             <div className="chat-map-area flex min-h-0 min-w-0 flex-1 gap-3">
-              <div id="main-content" className="flex min-h-0 min-w-0 flex-1">
+              <div id="main-content" data-pane="chat" className="flex min-h-0 min-w-0 flex-1">
                 {children}
               </div>
               <motion.div

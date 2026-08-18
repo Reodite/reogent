@@ -221,19 +221,14 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
 
 /** Registry-facing map pane. Renders the interactive surface; collapse routes through the shell context. */
 export function MapArea() {
-  const { setMapOpen } = useChatShell();
-  return <MapSurface onCollapse={() => setMapOpen(false)} />;
+  const { setActiveChannel } = useChatShell();
+  return <MapSurface onCollapse={() => setActiveChannel(null)} />;
 }
 
 /** Desktop/tablet: a persistent tool slot that collapses into a passive rail. */
 export function MapPanel() {
-  const { mapOpen, setMapOpen, highlight } = useChatShell();
+  const { mapOpen, setActiveChannel } = useChatShell();
   const isMobile = useMediaQuery("(max-width: 639px)");
-
-  // A fresh route is the moment the map earns attention — reopen the tab.
-  useEffect(() => {
-    if (highlight) setMapOpen(true);
-  }, [highlight, setMapOpen]);
 
   if (isMobile) return null;
 
@@ -245,7 +240,7 @@ export function MapPanel() {
         aria-label="Campus map"
         className={`map-surface-layer neu-panel absolute inset-0 flex min-w-0 overflow-hidden rounded-2xl transition-opacity duration-200 ${mapOpen ? "opacity-100 delay-75" : "pointer-events-none opacity-0"}`}
       >
-        <MapSurface onCollapse={() => setMapOpen(false)} />
+        <MapSurface onCollapse={() => setActiveChannel(null)} />
       </section>
 
       <aside
@@ -256,7 +251,7 @@ export function MapPanel() {
       >
         <button
           type="button"
-          onClick={() => setMapOpen(true)}
+          onClick={() => setActiveChannel("map", {})}
           tabIndex={mapOpen ? -1 : 0}
           aria-label="Expand campus map"
           aria-expanded={mapOpen}

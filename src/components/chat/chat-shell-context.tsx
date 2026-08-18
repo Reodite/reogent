@@ -1,31 +1,37 @@
 "use client";
 
-// Shared state for the /chat shell: the walking-route highlight the map renders,
-// panel open/collapsed state, and the session list (sidebar refreshes after each
-// completed exchange).
+// Shared state for the /chat shell: which pane holds the visual slot, the walking
+// route the map renders, the mobile bottom sheet, and the session list.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
+import type { PaneId, PaneState } from "@/src/components/shell/pane-registry";
 import type { SessionSummary } from "@/src/lib/api-types";
 import type { MapHighlight } from "@/src/lib/walking";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type { MapHighlight };
 
-interface ChatShellState {
-  highlight: MapHighlight | null;
-  /** Bumped when the user asks to re-focus the route (e.g. "Show on map"). */
-  focusNonce: number;
-  setHighlight: (highlight: MapHighlight | null) => void;
-  /** Re-focus the current highlight and reveal the map. */
-  showOnMap: () => void;
+export type ActiveChannel = { id: PaneId; state: PaneState } | null;
+export type PreviousUserChannel = { id: PaneId; state: PaneState } | null;
 
+interface ChatShellState {
+  activeChannel: ActiveChannel;
+  previousUserChannel: PreviousUserChannel;
+  /** Sets the active pane. Switching to `map` from a user tool captures the prior channel for the "Back to" pill. `null` collapses to the rail. */
+  setActiveChannel: (id: PaneId | null, state?: PaneState) => void;
+  setPreviousUserChannel: (channel: PreviousUserChannel) => void;
+
+  // Read-only views of the map pane's state.
+  highlight: MapHighlight | null;
   mapOpen: boolean;
-  setMapOpen: (open: boolean) => void;
+  focusNonce: number;
+  /** Emits a map highlight: opens the map pane with the payload, re-focuses the route, and opens the mobile sheet on small viewports. */
+  showOnMap: (highlight: MapHighlight) => void;
+
   mobileMapOpen: boolean;
   setMobileMapOpen: (open: boolean) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
-  /** Bumped to reset the chat panel to a blank new conversation. */
   newChatNonce: number;
   startNewChat: () => void;
 
@@ -33,11 +39,8 @@ interface ChatShellState {
   sessionsLoading: boolean;
   sessionsError: string | null;
   refreshSessions: () => void;
-  /** Optimistically prepend a new session to the list before server confirms. */
   addOptimisticSession: (sessionId: string, title: string) => void;
-  /** Optimistically rename a session locally without server refetch. */
   renameSessionLocally: (sessionId: string, title: string) => void;
-  /** Optimistically remove a session locally without server refetch. */
   removeSessionLocally: (sessionId: string) => void;
 }
 
@@ -49,13 +52,37 @@ export function useChatShell(): ChatShellState {
   return value;
 }
 
+const PREVIOUS_USER_CHANNEL_KEY = "reogent.pane.previousUserChannel";
+
+function writePreviousUserChannel(channel: PreviousUserChannel): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (channel) window.sessionStorage.setItem(PREVIOUS_USER_CHANNEL_KEY, JSON.stringify(channel));
+    else window.sessionStorage.removeItem(PREVIOUS_USER_CHANNEL_KEY);
+  } catch {
+    /* sessionStorage unavailable */
+  }
+}
+
+function readPreviousUserChannel(): PreviousUserChannel {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(PREVIOUS_USER_CHANNEL_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id: string; state: PaneState };
+    return { id: parsed.id as PaneId, state: parsed.state };
+  } catch {
+    return null;
+  }
+}
+
 export function ChatShellProvider({ children }: { children: ReactNode }) {
   const api = useApi();
   const auth = useAppAuth();
 
-  const [highlight, setHighlightState] = useState<MapHighlight | null>(null);
+  const [activeChannel, setActiveChannelState] = useState<ActiveChannel>(null);
+  const [previousUserChannel, setPreviousUserChannelState] = useState<PreviousUserChannel>(readPreviousUserChannel);
   const [focusNonce, setFocusNonce] = useState(0);
-  const [mapOpen, setMapOpen] = useState(true);
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newChatNonce, setNewChatNonce] = useState(0);
@@ -98,21 +125,40 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     debounceTimer.current = setTimeout(doRefresh, 2000);
   }, [doRefresh]);
 
-  // Initial load is immediate, not debounced
   useEffect(() => {
     if (auth.status === "signedIn") doRefresh();
   }, [auth.status, doRefresh]);
 
-  const setHighlight = useCallback((next: MapHighlight | null) => {
-    setHighlightState(next);
-    if (next) {
+  const setActiveChannel = useCallback(
+    (id: PaneId | null, state: PaneState = {}) => {
+      if (id === "map" && activeChannel && activeChannel.id !== "map") {
+        const captured: PreviousUserChannel = { id: activeChannel.id, state: activeChannel.state };
+        setPreviousUserChannelState(captured);
+        writePreviousUserChannel(captured);
+      } else if (id && id !== "map") {
+        setPreviousUserChannelState(null);
+        writePreviousUserChannel(null);
+      }
+      setActiveChannelState(id ? { id, state } : null);
+    },
+    [activeChannel],
+  );
+
+  const setPreviousUserChannel = useCallback((channel: PreviousUserChannel) => {
+    setPreviousUserChannelState(channel);
+    writePreviousUserChannel(channel);
+  }, []);
+
+  const showOnMap = useCallback(
+    (highlight: MapHighlight) => {
+      setActiveChannel("map", { highlight });
       setFocusNonce((n) => n + 1);
-      // Auto-open mobile bottom sheet when a map highlight arrives
       if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) {
         setMobileMapOpen(true);
       }
-    }
-  }, []);
+    },
+    [setActiveChannel],
+  );
 
   const addOptimisticSession = useCallback((sessionId: string, title: string) => {
     setSessions((prev) => {
@@ -133,20 +179,20 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     setNewChatNonce((n) => n + 1);
   }, []);
 
-  const showOnMap = useCallback(() => {
-    setFocusNonce((n) => n + 1);
-    setMapOpen(true);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) setMobileMapOpen(true);
-  }, []);
+  const highlight: MapHighlight | null =
+    activeChannel?.id === "map" ? ((activeChannel.state.highlight as MapHighlight | undefined) ?? null) : null;
+  const mapOpen = activeChannel?.id === "map";
 
   const value = useMemo<ChatShellState>(
     () => ({
+      activeChannel,
+      previousUserChannel,
+      setActiveChannel,
+      setPreviousUserChannel,
       highlight,
-      focusNonce,
-      setHighlight,
-      showOnMap,
       mapOpen,
-      setMapOpen,
+      focusNonce,
+      showOnMap,
       mobileMapOpen,
       setMobileMapOpen,
       sidebarOpen,
@@ -162,11 +208,14 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       removeSessionLocally,
     }),
     [
+      activeChannel,
+      previousUserChannel,
+      setActiveChannel,
+      setPreviousUserChannel,
       highlight,
-      focusNonce,
-      setHighlight,
-      showOnMap,
       mapOpen,
+      focusNonce,
+      showOnMap,
       mobileMapOpen,
       sidebarOpen,
       newChatNonce,

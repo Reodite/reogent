@@ -147,7 +147,15 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   // Tracks whether the session ID was minted locally (skip history fetch)
   const mintedLocally = useRef(!initialSessionId);
   const prefersReducedMotion = useReducedMotion();
-  const { setHighlight, sessions, refreshSessions, addOptimisticSession, newChatNonce } = useChatShell();
+  const {
+    showOnMap,
+    setActiveChannel,
+    setPreviousUserChannel,
+    sessions,
+    refreshSessions,
+    addOptimisticSession,
+    newChatNonce,
+  } = useChatShell();
 
   const [historyState, setHistoryState] = useState<HistoryState>("loading");
   const [historyNonce, setHistoryNonce] = useState(0);
@@ -246,7 +254,8 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   // historyNonce re-runs the load for the failed-state "Try again" button.
   useEffect(() => {
     void historyNonce;
-    setHighlight(null);
+    setActiveChannel(null);
+    setPreviousUserChannel(null);
     pendingRetry.current = null;
     setSendError(null);
     // New chat (no session ID yet) — start empty, skip fetch
@@ -277,7 +286,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
         );
         // Put this conversation's last map state back on the map.
         const lastWithCalls = [...history].reverse().find((m) => m.toolCalls?.length);
-        if (lastWithCalls?.toolCalls) setHighlight(mergeMapHighlights(lastWithCalls.toolCalls));
+        if (lastWithCalls?.toolCalls) {
+          const h = mergeMapHighlights(lastWithCalls.toolCalls);
+          if (h) showOnMap(h);
+        }
         setHistoryState("ready");
       })
       .catch((error: unknown) => {
@@ -293,7 +305,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     return () => {
       cancelled = true;
     };
-  }, [api, sessionId, setHighlight, historyNonce]);
+  }, [api, sessionId, setActiveChannel, setPreviousUserChannel, showOnMap, historyNonce]);
 
   // Stick-to-bottom: auto-scroll when new content arrives IF user is near the bottom.
   const isNearBottom = useRef(true);
@@ -437,7 +449,9 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           });
           // One merged highlight per response (route > places > all buildings);
           // null clears a stale highlight when the answer has no map content.
-          setHighlight(mergeMapHighlights(response.tool_calls));
+          const highlight = mergeMapHighlights(response.tool_calls);
+          if (highlight) showOnMap(highlight);
+          else setActiveChannel(null);
           announce("New response from assistant");
           refreshSessions();
         })
@@ -480,7 +494,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           }
         });
     },
-    [api, sessionId, setHighlight, refreshSessions, announce],
+    [api, sessionId, showOnMap, setActiveChannel, refreshSessions, announce],
   );
 
   const send = useCallback(

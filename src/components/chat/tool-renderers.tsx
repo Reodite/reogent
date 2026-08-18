@@ -153,7 +153,7 @@ function TuitionRenderer({ call }: ToolCallRendererProps) {
 // The chat panel publishes the merged highlight per response; renderers only
 // restore their own card's view via "Show on map".
 function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
-  const { setHighlight, showOnMap } = useChatShell();
+  const { showOnMap } = useChatShell();
   const highlight = useMemo(() => extractWalkingHighlight(call), [call]);
 
   if (!highlight) return null;
@@ -164,8 +164,7 @@ function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
         <MapPill
           label={`Show route from ${highlight.from} to ${highlight.to} on map`}
           onClick={() => {
-            setHighlight(highlight);
-            showOnMap();
+            showOnMap(highlight);
           }}
         />
       }
@@ -181,7 +180,7 @@ function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
 // ---- find_building ----
 
 function FindBuildingRenderer({ call }: ToolCallRendererProps) {
-  const { setHighlight, showOnMap } = useChatShell();
+  const { showOnMap } = useChatShell();
   const highlight = useMemo(() => extractBuildingHighlight(call), [call]);
 
   if (!highlight || highlight.buildings.length === 0) return null;
@@ -193,8 +192,7 @@ function FindBuildingRenderer({ call }: ToolCallRendererProps) {
         <MapPill
           label={`Show ${building.name} on map`}
           onClick={() => {
-            setHighlight(highlight);
-            showOnMap();
+            showOnMap(highlight);
           }}
         />
       }
@@ -208,7 +206,7 @@ function FindBuildingRenderer({ call }: ToolCallRendererProps) {
 // ---- find_places ----
 
 function FindPlacesRenderer({ call }: ToolCallRendererProps) {
-  const { setHighlight, showOnMap } = useChatShell();
+  const { showOnMap } = useChatShell();
   const highlight = useMemo(() => extractPlacesHighlight(call), [call]);
 
   if (!highlight || highlight.places.length === 0) return null;
@@ -223,8 +221,7 @@ function FindPlacesRenderer({ call }: ToolCallRendererProps) {
         <MapPill
           label={`Show ${highlight.places.length} place${highlight.places.length === 1 ? "" : "s"} on map`}
           onClick={() => {
-            setHighlight(highlight);
-            showOnMap();
+            showOnMap(highlight);
           }}
         />
       }
