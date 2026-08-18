@@ -40,3 +40,6 @@ next-env.d.ts
 
 # impeccable design tooling state (keep design.json only)
 .impeccable/critique/
+
+# opencode local runtime (ralph-loop state)
+.opencode/
