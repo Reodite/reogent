@@ -1,15 +1,21 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const zoomRef = vi.hoisted(() => ({ value: 1 }));
 
 // ReactFlow's Handle needs a ReactFlowProvider store; stub it so the nodes
 // render standalone. Position is a runtime enum; NodeProps is type-only.
 vi.mock("reactflow", () => ({
   Handle: () => null,
   Position: { Left: "left", Right: "right" },
+  useStore: () => zoomRef.value,
 }));
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  zoomRef.value = 1;
+});
 
 const { DropdownDisjunctionNode, StackedDisjunctionNode } = await import("./DisjunctionNode");
 
@@ -55,6 +61,21 @@ describe("DropdownDisjunctionNode (REQ-9.1)", () => {
     expect(screen.getByRole("listbox")).toBeTruthy();
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("keeps wheel events inside the open menu and closes it when the canvas zoom changes (REQ-9.1)", async () => {
+    zoomRef.value = 1;
+    const { rerender } = render(
+      <DropdownDisjunctionNode id="z" data={{ id: "z", selectionKey: "k", options, selected: 0, onSelect: vi.fn() }} />,
+    );
+    fireEvent.click(screen.getByRole("button"));
+    const menu = screen.getByRole("listbox");
+    expect(menu.className).toContain("nowheel");
+    zoomRef.value = 2;
+    rerender(
+      <DropdownDisjunctionNode id="z" data={{ id: "z", selectionKey: "k", options, selected: 0, onSelect: vi.fn() }} />,
+    );
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   });
 
   it("matches the closed dropdown snapshot (REQ-9.4)", () => {

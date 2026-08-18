@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Handle, Position, type NodeProps } from "reactflow";
+import { Handle, Position, useStore, type NodeProps } from "reactflow";
 
 /** One branch in a disjunction (an `Or` AST node child). */
 export interface DisjunctionOption {
@@ -42,6 +42,18 @@ export function DropdownDisjunctionNode({ data }: NodeProps<DisjunctionNodeData>
   const menuRef = useRef<HTMLDivElement>(null);
   const selected = data.selected ?? 0;
   const current = data.options[selected]?.label ?? "—";
+
+  // Canvas zoom closes the open menu (REQ-9.1): ReactFlow nodes scale with the
+  // viewport, so a menu opened at one zoom drifts out of alignment after a
+  // zoom gesture. Close on change rather than fight the transform.
+  const zoom = useStore((s) => s.transform[2]);
+  const lastZoom = useRef(zoom);
+  useEffect(() => {
+    if (lastZoom.current !== zoom) {
+      if (open) setOpen(false);
+      lastZoom.current = zoom;
+    }
+  }, [zoom, open]);
 
   // Outside-pointerdown + Escape dismiss (REQ-20.6). Capture-phase
   // pointerdown so ReactFlow's pan handler can't preventDefault the
