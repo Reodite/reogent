@@ -165,4 +165,24 @@ describe("buildPrereqGraph", () => {
     expect(transitive?.softPath ?? null).toBeNull();
     expect(g.nodes.find((n) => n.id === "MATH 100")?.title).toBe("Calculus I");
   });
+
+  it("routes the upstream edge into the dropdown group node, not the standalone option codes (dropdown-absorption, REQ-8.5)", async () => {
+    const search = mockSearch([
+      doc("CPSC 320", { prerequisite: "one of MATH 200, MATH 220" }),
+      doc("MATH 200", {}),
+      doc("MATH 220", {}),
+    ]);
+    const g = await buildPrereqGraph(code("CPSC 320"), search);
+    const orId = "disj:CPSC 320::";
+    // The root's only edge into the disjunction targets the dropdown group node.
+    expect(g.edges.some((e) => e.source === "CPSC 320" && e.target === orId)).toBe(true);
+    expect(g.edges.some((e) => e.source === "CPSC 320" && (e.target === "MATH 200" || e.target === "MATH 220"))).toBe(
+      false,
+    );
+    // Each option code receives its sole incoming edge from the dropdown group node.
+    expect(g.edges.filter((e) => e.target === "MATH 200")).toHaveLength(1);
+    expect(g.edges.filter((e) => e.target === "MATH 200")[0]?.source).toBe(orId);
+    expect(g.edges.filter((e) => e.target === "MATH 220")).toHaveLength(1);
+    expect(g.edges.filter((e) => e.target === "MATH 220")[0]?.source).toBe(orId);
+  });
 });
