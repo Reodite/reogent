@@ -56,6 +56,16 @@ describe("DropdownDisjunctionNode (REQ-9.1)", () => {
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("listbox")).toBeNull();
   });
+
+  it("matches the closed dropdown snapshot (REQ-9.4)", () => {
+    const { container } = render(
+      <DropdownDisjunctionNode
+        id="snap"
+        data={{ id: "snap", selectionKey: "CPSC 320::0", options, selected: 0, onSelect: vi.fn() }}
+      />,
+    );
+    expect(container.firstChild).toMatchSnapshot();
+  });
 });
 
 describe("StackedDisjunctionNode (REQ-9.2)", () => {
@@ -68,5 +78,15 @@ describe("StackedDisjunctionNode (REQ-9.2)", () => {
     expect(radios[1].checked).toBe(false);
     fireEvent.click(radios[1]);
     expect(onSelect).toHaveBeenCalledWith("k", 1);
+  });
+
+  it("matches the stacked radiogroup snapshot with the selected row checked (REQ-9.4)", () => {
+    const { container } = render(
+      <StackedDisjunctionNode
+        id="snap"
+        data={{ id: "snap", selectionKey: "CPSC 320::0", options, selected: 1, onSelect: vi.fn() }}
+      />,
+    );
+    expect(container.firstChild).toMatchSnapshot();
   });
 });
