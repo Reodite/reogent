@@ -56,7 +56,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x] 4.1 Baseline the verbatim copy with a fixture corpus
     - Port `__fixtures__/prereq-strings.json` (CPSC 110, MATH 200, AANB 500, KIN 320 mid-clause, multi-`recommended` tails); write a snapshot test asserting parser outputs against the fixture set so donor drift surfaces
     - _Requirements: REQ-5, REQ-6_
-  - [ ]\* 4.2 Property test — No-throw
+  - [x] 4.2 Property test — No-throw
     - **Property 5: For all `string` (incl. random bytes, unbalanced parens, embedded NULs, `none.`): `parsePrereq(s)` returns `null` or `Expr`, never throws**
     - **Validates: Requirements REQ-5.1, REQ-5.2, REQ-5.3**
     - Generator: `fc.string({ minLength: 0, maxLength: 2000 })` + adversarial constants; run count 1000
