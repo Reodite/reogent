@@ -49,7 +49,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x] 2.6 Example test — `_V` suffix strip, multi-space, mixed case
     - _Requirements: REQ-1.1, REQ-1.2_
 
-- [ ] 3. Checkpoint - Course canonicalization tests pass
+- [x] 3. Checkpoint - Course canonicalization tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 4. Verify ported Prerequisite AST parser and lock its properties (`src/shared/prereq-ast/`)
