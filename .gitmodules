@@ -1,3 +1,4 @@
 [submodule "ubc-unified-data"]
 	path = ubc-unified-data
-	url = https://github.com/reogent-ubc/ubc-unified-data.git
+	url = https://github.com/reodite/ubc-unified-data.git
+	branch = main
