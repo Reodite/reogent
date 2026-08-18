@@ -1,4 +1,4 @@
-import type { SelectionKeyMap } from "../selection-key";
+import type { SelectionKeyMap } from "./selection-key";
 
 export interface DisjunctionDetail {
   selectionKey: string;
