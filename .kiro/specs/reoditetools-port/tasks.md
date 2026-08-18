@@ -34,7 +34,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x] 2.1 Implement `CODE_RE`, `canonicalize`, `extractCourseCodes`, `isOkanagan`
     - `canonicalize(input: string): CanonicalResult` where `CanonicalResult = { kind: 'code'; raw: string } | { kind: 'subject'; raw: string } | { kind: 'rejected'; raw: string } | null`. `extractCourseCodes(s: string): string[]` returns canonical-codes array (empty on `null`/rejection). `isOkanagan(s: string): boolean` returns true iff `s` carries an `_O` campus suffix. `CODE_RE = /\b([A-Za-z]{2,4})\s*([0-9]{3}[A-Za-z]?)\b/g`; `'AANB_V 500' → { kind: 'code', raw: 'AANB 500' }`; `'_O' codes → { kind: 'rejected', raw: ... }`; bare subject → `{ kind: 'subject', raw: ... }`; bare random text → `null`. The type `CanonicalResult` is exported.
     - _Requirements: REQ-1.1, REQ-1.2, REQ-1.3, REQ-1.4_
-  - [ ]\* 2.2 Property test — Round-trip with subject subset
+  - [x] 2.2 Property test — Round-trip with subject subset
     - **Property 1: Canonical form invariant**
     - **Validates: Requirements REQ-1.1, REQ-1.2**
   - [ ]\* 2.3 Property test — Okanagan rejection invariant
