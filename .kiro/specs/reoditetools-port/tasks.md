@@ -66,13 +66,13 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x]* 4.4 Property test — Soft-tail only at top level
     - **Property 7: mid-clause `recommended` inside unbalanced parens does NOT produce a top-level `Soft` wrapper**
     - **Validates: Requirements REQ-5.6**
-  - [ ]\* 4.5 Property test — Round-trip code set
+  - [x]* 4.5 Property test — Round-trip code set
     - **Property 9: Code-leaf set of `parsePrereq(displayExpr(e))` equals that of `e`**
     - **Validates: Requirements REQ-6.6**
-  - [ ]\* 4.6 Property test — displayExpr non-empty
+  - [x]* 4.6 Property test — displayExpr non-empty
     - **Property 8: `displayExpr(e)` non-empty (sentinel for empty-text nodes)**
     - **Validates: Requirements REQ-6.1, REQ-6.5**
-  - [ ]\* 4.7 Property test — Soft-flattening
+  - [x]* 4.7 Property test — Soft-flattening
     - **Property 10: `displayExpr(Soft(child)) === displayExpr(child)`**
     - **Validates: Requirements REQ-6.4**
   - [x] 4.8 Example test — KIN 320 mid-clause recommended, AANB 500 `_V` strip
@@ -81,11 +81,11 @@ Property-based test sub-tasks are annotated with their property number from `des
     - **Property 38: when a Prerequisite String ends with a top-level `recommended` tail (e.g. "X is recommended"), `parsePrereq(s)` produces a `Soft`-rooted expression for that tail**
     - **Validates: Requirements REQ-5.5**
     - Generator: `arbRecommendedTail` from design.md §Domain 2.
-  - [ ]\* 4.10 Property test — Code node canonical form output
+  - [x]* 4.10 Property test — Code node canonical form output
     - **Property 39: `displayExpr(parsePrereq(s))` is in canonical `<subject> <number>` form (subject uppercase, single space, no `_V`, no trailing whitespace)**
     - **Validates: Requirements REQ-6.2**
     - Generator: `arbExpr` from design.md §Domain 3 feeding `parsePrereq` outputs.
-  - [ ]\* 4.11 Property test — And/Or separator presence
+  - [x]* 4.11 Property test — And/Or separator presence
     - **Property 40: `displayExpr(e)` contains `' + '` between operands whose AST parent is `kind: 'and'` and `' / '` between operands whose parent is `kind: 'or'` (donor's joiners at `prereqAst.ts:1368,1370`)**
     - **Validates: Requirements REQ-6.3**
     - Generator: `arbExpr` from design.md §Domain 3.
