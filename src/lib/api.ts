@@ -6,6 +6,7 @@ import {
   type BuildingDetails,
   type ChatMessage,
   type ChatResponse,
+  type Citation,
   type CourseDoc,
   type GeoName,
   type RouteResponse,
@@ -25,6 +26,7 @@ export interface ChatApi {
       onToolStart?: (name: string, input: Record<string, unknown>) => void;
       onToolEnd?: (name: string, result: unknown) => void;
       onTurnStart?: () => void;
+      onCitations?: (citations: Citation[]) => void;
     },
     signal?: AbortSignal,
   ): Promise<ChatResponse>;
@@ -109,6 +111,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       onToolStart?: (name: string, input: Record<string, unknown>) => void;
       onToolEnd?: (name: string, result: unknown) => void;
       onTurnStart?: () => void;
+      onCitations?: (citations: Citation[]) => void;
     },
     signal?: AbortSignal,
   ): Promise<ChatResponse> {
@@ -173,15 +176,21 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
             callbacks.onToolStart(event.name, event.input);
           } else if (event.type === "tool_end" && callbacks?.onToolEnd) {
             callbacks.onToolEnd(event.name, event.result);
+          } else if (event.type === "citations" && callbacks?.onCitations) {
+            callbacks.onCitations(event.citations);
           } else if (event.type === "turn_start" && callbacks?.onTurnStart) {
             callbacks.onTurnStart();
           } else if (event.type === "done") {
             result = {
               message: event.message,
               tool_calls: event.tool_calls,
+              citations: event.citations,
               warning: event.warning,
               follow_ups: event.follow_ups,
             };
+            if (callbacks?.onCitations && event.citations) {
+              callbacks.onCitations(event.citations);
+            }
           } else if (event.type === "error") {
             throw new ApiError(500, event.message);
           }

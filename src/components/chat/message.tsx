@@ -3,13 +3,15 @@
 // Tactile message surfaces: user messages stay literal, while assistant
 // responses render safe GitHub-flavored Markdown without allowing raw HTML.
 // Interstitial blocks (thinking + tool calls) render inline before the final text.
+import { injectChips } from "@/src/components/chat/citations/chip-injector";
+import { SourcesPanel } from "@/src/components/chat/citations/sources-panel";
 import { ToolCallsView } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
-import type { ToolCall } from "@/src/lib/api-types";
+import type { Citation, ToolCall } from "@/src/lib/api-types";
 import type { InterstitialBlock } from "@/src/shared/types";
 import { motion, useReducedMotion } from "motion/react";
-import { lazy, memo, Suspense, useState } from "react";
+import { lazy, memo, Suspense, useMemo, useState } from "react";
 
 export type { InterstitialBlock };
 
@@ -25,6 +27,8 @@ export interface DisplayMessage {
   interstitial?: InterstitialBlock[];
   /** LLM-generated follow-up question suggestions. */
   followUps?: string[];
+  /** Citations attributed to this assistant turn (used by CitationChip chips + SourcesPanel). */
+  citations?: Citation[];
 }
 
 // Lazy-load the markdown pipeline (~80-120 KB) — only fetched once the first
@@ -33,10 +37,11 @@ const LazyMarkdown = lazy(() =>
   import("react-markdown").then((mod) => {
     // Co-import remark-gfm so both land in the same async chunk.
     return import("remark-gfm").then((gfm) => ({
-      default: function MarkdownWithGfm({ content }: { content: string }) {
+      default: function MarkdownWithGfm({ content, citations }: { content: string; citations?: Citation[] }) {
         const Markdown = mod.default;
+        const components = useMemo(() => markdownComponents(citations), [citations]);
         return (
-          <Markdown remarkPlugins={[gfm.default]} components={markdownComponents} skipHtml>
+          <Markdown remarkPlugins={[gfm.default]} components={components} skipHtml>
             {content}
           </Markdown>
         );
@@ -45,40 +50,58 @@ const LazyMarkdown = lazy(() =>
   }),
 );
 
-const markdownComponents = {
-  a: ({ href, title, children }: { href?: string; title?: string; children?: React.ReactNode }) => {
-    const opensNewTab = typeof href === "string" && /^https?:\/\//i.test(href);
-    return (
-      <a
-        href={href}
-        title={title}
-        target={opensNewTab ? "_blank" : undefined}
-        rel={opensNewTab ? "noreferrer" : undefined}
-      >
-        {children}
-        {opensNewTab && <span className="sr-only"> (opens in a new tab)</span>}
-      </a>
-    );
-  },
-  img: ({ alt }: { alt?: string }) => (
-    <span className="markdown-image-alt">{alt ? `[Image: ${alt}]` : "[Image omitted]"}</span>
-  ),
-  table: ({ children }: { children?: React.ReactNode }) => (
-    <div className="markdown-table-wrap">
-      <table>{children}</table>
-    </div>
-  ),
+const markdownComponents = (citations: Citation[] | null | undefined) => {
+  const inject = (children: React.ReactNode) => injectChips(children, citations);
+  const leafOverride = ({ children }: { children?: React.ReactNode }) => inject(children);
+  return {
+    a: ({ href, title, children }: { href?: string; title?: string; children?: React.ReactNode }) => {
+      const opensNewTab = typeof href === "string" && /^https?:\/\//i.test(href);
+      return (
+        <a
+          href={href}
+          title={title}
+          target={opensNewTab ? "_blank" : undefined}
+          rel={opensNewTab ? "noreferrer" : undefined}
+        >
+          {inject(children)}
+          {opensNewTab && <span className="sr-only"> (opens in a new tab)</span>}
+        </a>
+      );
+    },
+    img: ({ alt }: { alt?: string }) => (
+      <span className="markdown-image-alt">{alt ? `[Image: ${alt}]` : "[Image omitted]"}</span>
+    ),
+    table: ({ children }: { children?: React.ReactNode }) => (
+      <div className="markdown-table-wrap">
+        <table>{children}</table>
+      </div>
+    ),
+    p: leafOverride,
+    li: leafOverride,
+    strong: leafOverride,
+    em: leafOverride,
+    th: leafOverride,
+    td: leafOverride,
+    h1: leafOverride,
+    h2: leafOverride,
+    h3: leafOverride,
+    h4: leafOverride,
+    h5: leafOverride,
+    h6: leafOverride,
+    blockquote: leafOverride,
+  };
 };
 
-function AssistantMarkdown({ content }: { content: string }) {
+function AssistantMarkdown({ content, citations }: { content: string; citations?: Citation[] }) {
   const raw = <p className="break-words whitespace-pre-wrap">{content}</p>;
   return (
     <div className="assistant-markdown">
       <ErrorBoundary fallback={raw}>
         <Suspense fallback={raw}>
-          <LazyMarkdown content={content} />
+          <LazyMarkdown content={content} citations={citations} />
         </Suspense>
       </ErrorBoundary>
+      <SourcesPanel citations={citations} />
     </div>
   );
 }
@@ -268,7 +291,7 @@ export const AssistantMessage = memo(function AssistantMessage({
             )}
           </div>
         )}
-        {message.content && <AssistantMarkdown content={message.content} />}
+        {message.content && <AssistantMarkdown content={message.content} citations={message.citations} />}
         {message.stopped && (
           <p className="text-muted mt-2 flex items-center gap-1.5 text-xs">
             <Icon name="stop" size={12} className="shrink-0" />

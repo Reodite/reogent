@@ -8,6 +8,7 @@ export {
   type ToolCall,
   isToolError,
 } from "@/src/shared/types";
+export type { Citation } from "@/src/shared/citations/citation";
 
 // Tool result payloads shaped as the API returns them.
 

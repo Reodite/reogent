@@ -282,6 +282,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             content: m.content,
             toolCalls: m.toolCalls,
             interstitial: m.interstitial,
+            citations: m.citations ?? undefined,
           })),
         );
         // Put this conversation's last map state back on the map.
@@ -433,6 +434,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                 });
               }
             },
+            onCitations(citations) {
+              if (!alive.current) return;
+              updateMessage({ citations });
+            },
           },
           controller.signal,
         )
@@ -445,6 +450,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             toolCalls: response.tool_calls,
             warning: response.warning,
             followUps: response.follow_ups,
+            citations: response.citations,
             interstitial: interstitialBlocks.length > 0 ? [...interstitialBlocks] : undefined,
           });
           // One merged highlight per response (route > places > all buildings);
