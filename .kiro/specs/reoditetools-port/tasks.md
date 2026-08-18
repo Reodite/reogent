@@ -103,26 +103,26 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x] 6.3 Implement `src/server/prereq/agent-tool.ts` (`get_prereq_tree` agent tool façade)
     - Append a `prereqModule` to the `modules` array in `src/server/modules/index.ts` (becomes module #13); tool name `get_prereq_tree`; returns `PrereqGraph`. Aggregation via the existing `modules.flatMap((m) => m.tools)` pipeline at `src/server/agent/stream.ts:27` (no slot numbering).
     - _Requirements: REQ-4.1, REQ-7_
-  - [ ]\* 6.4 Property test — Cycle-safety invariant
+  - [x]\* 6.4 Property test — Cycle-safety invariant
     - **Property 11: Each code appears at most once in `PrereqGraph.nodes`**
     - **Validates: Requirements REQ-7.1**
-  - [ ]\* 6.5 Property test — Depth cap
+  - [x]\* 6.5 Property test — Depth cap
     - **Property 12: No node has BFS depth greater than `depthCap`**
     - **Validates: Requirements REQ-7.2**
-  - [ ]\* 6.6 Property test — No coreq-of-coreq
+  - [x]\* 6.6 Property test — No coreq-of-coreq
     - **Property 13: Edges contain no coreq-of-coreq-of-coreq chain**
     - **Validates: Requirements REQ-7.4**
-  - [ ]\* 6.7 Property test — Coreq depth invariant
+  - [x]\* 6.7 Property test — Coreq depth invariant
     - **Property 14: Every `kind: 'coreq'` node has BFS depth exactly `1` (pure graph-side invariant, `arbCourseDataset` generator)**
     - **Validates: Requirements REQ-7.3**
-  - [ ]\* 6.8 Example test — Coreq column adjacency (`hasCoreqs === true`)
+  - [x]\* 6.8 Example test — Coreq column adjacency (`hasCoreqs === true`)
     - Render the graph for a root with a non-empty `corequisite`; assert the coreq nodes sit in the column between root (depth 0) and the first prereq column. This is the rendering-side example of Property 14 (whose pure graph invariant — coreq nodes at BFS depth 1 — is covered by the property test in 6.7).
-  - [ ]\* 6.9 Integration test — Server BFS against mocked `get_course`
+  - [x]\* 6.9 Integration test — Server BFS against mocked `get_course`
     - Mock Meilisearch `get_course` to return fixtures with known cycles + depth chains; assert graph shape
     - _Requirements: REQ-7.1, REQ-7.2, REQ-7.4_
-  - [ ]\* 6.10 Example test — Empty no-prereqs state
+  - [x]\* 6.10 Example test — Empty no-prereqs state
     - _Requirements: REQ-10.3_
-  - [ ]\* 6.11 Example test — Root not-found state
+  - [x]\* 6.11 Example test — Root not-found state
     - _Requirements: REQ-10.4_
 
 - [ ] 7. Checkpoint - Prerequisite Tree server tests pass

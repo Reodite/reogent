@@ -98,3 +98,21 @@ export const arbExpr = fc.letrec((t) => ({
 export const arbRecommendedTail = fc
   .tuple(arbCodeExpr, fc.constantFrom("is recommended", "is strongly recommended", "are recommended"))
   .map(([e, tail]) => `${displayExpr(e)} ${tail}`);
+
+/**
+ * Domain-4 dataset for BFS property tests (design.md:432). Each record pairs a
+ * canonical course code with free-form prereq/coreq strings. ponytail: the
+ * generic `arbPrereqString` constants rarely collide with random `arbCourseCode`
+ * draws, so most lookups miss and the graph stays shallow; the hand-crafted
+ * cycle/depthCap tests in build-graph.test.ts cover the deep cases
+ * deterministically, while these properties stress dedup, coreq depth, and the
+ * no-coreq-of-coreq edge invariant across 30 random datasets.
+ */
+export const arbCourseDataset = fc.array(
+  fc.record({
+    code: arbCourseCode.map((c) => `${c.subject} ${c.number}`),
+    prereq: arbPrereqString,
+    coreq: arbPrereqString,
+  }),
+  { minLength: 1, maxLength: 40 },
+);
