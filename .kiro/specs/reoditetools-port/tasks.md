@@ -363,48 +363,48 @@ Property-based test sub-tasks are annotated with their property number from `des
     - One representative academic year (~30-50 events) of `KeyDateDoc[]` input + the projected `CalendarEvent[]` output the route should produce. Includes academic + holiday kinds; multi-event day; empty-month case; multi-tag case (`["reading-week", "exam"]`). Drives 19.4, 20.5, 20.6, 20.7, 20.8.
     - _Requirements: REQ-16.1_
 
-- [ ] 20. Implement Calendar client (`src/components/calendar/`)
-  - [ ] 20.1 Implement `use-calendar-events.ts` SWR-style hook keyed on `[cursor, kinds]`
+- [x] 20. Implement Calendar client (`src/components/calendar/`)
+  - [x] 20.1 Implement `use-calendar-events.ts` SWR-style hook keyed on `[cursor, kinds]`
     - Focus revalidation; falls back to last-good on network error; silent revalidation. Ponytail comment: the route is a thin wrapper over data that updates at most weekly, so this hook is a small per-component cache rather than a global store — avoid lifting it to a context provider unless a second consumer appears.
     - _Requirements: REQ-16_
-  - [ ] 20.2 Implement `calendar-pane.tsx` month grid + prev/next/today nav
+  - [x] 20.2 Implement `calendar-pane.tsx` month grid + prev/next/today nav
     - Today cell gets `ring-2 ring-primary/40` independent of event markers; next-month disabled beyond 24-month horizon. Append to `app/globals.css` per UI/UX §D: in `:root` + `[data-theme="dark"]` add `--event-academic`, `--on-event-academic`, `--event-academic-container`, `--event-holiday`, `--on-event-holiday`, `--event-holiday-container` (aliasing `--secondary` / `--tertiary` families); in the `@theme inline` block add the six matching `--color-event-academic*` / `--color-event-holiday*` entries so utilities `bg-event-academic`, `text-event-academic`, `bg-event-academic-container`, `bg-event-holiday`, `text-event-holiday`, `bg-event-holiday-container` resolve. Day numbers use `text-muted` `font-mono`; grid cells use `bg-surface-container-low` with `neu-inset`. Property 26's `getComputedStyle` oracle requires the calendar stylesheet loaded into the test harness.
     - _Requirements: REQ-17.1, REQ-17.2, REQ-17.3, REQ-17.4, REQ-17.5_
-  - [ ] 20.3 Implement day-cell markers + popover/tooltip
+  - [x] 20.3 Implement day-cell markers + popover/tooltip
     - Two distinct `kind`-driven styles (academic vs holiday); one popover per day; multi-event days indicate count and enumerate; "Open source" link when `source_url` present
     - _Requirements: REQ-16.2, REQ-16.3, REQ-16.4_
-  - [ ] 20.4 Implement upcoming-events list (N=10) + mobile stacking (<640px vertical, ≥640px side-by-side)
+  - [x] 20.4 Implement upcoming-events list (N=10) + mobile stacking (<640px vertical, ≥640px side-by-side)
     - Mobile controls meet 44×44px tap target; reduced-motion month-change collapses to ≤0.01ms
     - _Requirements: REQ-18.1, REQ-18.2, REQ-18.3, REQ-18.4, REQ-18.5_
-  - [ ]\* 20.5 Property test — Empty-month correctness
+  - [x]\* 20.5 Property test — Empty-month correctness
     - **Property 25: Empty month → no markers, no error state, no missing-data notice**
     - **Validates: Requirements REQ-16.5**
-  - [ ]\* 20.6 Property test — Kind-driven style distinctness
+  - [x]\* 20.6 Property test — Kind-driven style distinctness
     - **Property 26: Two events on one day with different kinds render two distinct markers**
     - **Validates: Requirements REQ-16.2**
-  - [ ]\* 20.7 Property test — Multi-event count
+  - [x]\* 20.7 Property test — Multi-event count
     - **Property 27: Days with `k > 1` events indicate `k`**
     - **Validates: Requirements REQ-16.4**
-  - [ ]\* 20.8 Property test — Today-independence
+  - [x]\* 20.8 Property test — Today-independence
     - **Property 28: Today's cell receives `today` style independent of event markers**
     - **Validates: Requirements REQ-17.4**
-  - [ ]\* 20.9 Property test — Horizon-disable
+  - [x]\* 20.9 Property test — Horizon-disable
     - **Property 29: Cursors beyond `futureHorizonMonths` disable next-month affordance**
     - **Validates: Requirements REQ-17.5**
-  - [ ]\* 20.10 Example test — Prev/next jumps; today jump via month-header click
+  - [x]\* 20.10 Example test — Prev/next jumps; today jump via month-header click
     - _Requirements: REQ-17.1, REQ-17.2, REQ-17.3_
   - [ ]\* 20.11 Snapshot test — Mobile responsive snapshots at 375px + 1024px
     - _Requirements: REQ-18.1, REQ-18.2_
   - [ ]\* 20.12 Example test — Reduced-motion collapse ≤0.01ms
     - _Requirements: REQ-18.5_
-  - [ ]\* 20.13 Example test — Multi-event-day popover enumerates each event
+  - [x]\* 20.13 Example test — Multi-event-day popover enumerates each event
     - Render a day with three events (mix academic + holiday); open the popover; assert each event's label + `source_url` link (or absence) renders in a distinct row. (REQ-16.4's popover-enumeration aspect — complementary to 20.7's count-only property.)
     - _Requirements: REQ-16.3, REQ-16.4_
-  - [ ]\* 20.14 Property test — Popover enumeration
+  - [x]\* 20.14 Property test — Popover enumeration
     - **Property 27b: For all days with `k > 1` events, the expanded popover lists exactly `k` rows, each with the event's `label` and a `source_url` anchor when present**
     - **Validates: Requirements REQ-16.4**
 
-- [ ] 21. Checkpoint - Calendar tests pass
+- [x] 21. Checkpoint - Calendar tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 22. Wire discovery surfaces + agent-grounded answer precedence
