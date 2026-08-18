@@ -1,4 +1,5 @@
 import fc from "fast-check";
+import { displayExpr } from "./prereq-ast";
 
 /** Test-only fast-check generators ported from design.md §Correctness-Properties. */
 
@@ -55,3 +56,45 @@ export const arbPrereqString = fc.oneof(
     "",
   ),
 );
+
+/** UBC course number drawn as 100-5999 (design.md:502); parsePrereq's CODE_RE accepts 2-4 digits. */
+const arbNumber = fc.integer({ min: 100, max: 5999 }).map(String);
+
+/** A single canonical code leaf: `{ kind: 'code', code: 'SUBJ NUM' }` (design.md:503). */
+export const arbCode = fc.record({
+  kind: fc.constant("code"),
+  code: fc.tuple(arbSubject, arbNumber).map(([s, n]) => `${s} ${n}`),
+});
+
+/** A literal leaf: `{ kind: 'literal', text }` with non-empty text (design.md:504). */
+export const arbLiteral = fc.record({
+  kind: fc.constant("literal"),
+  text: fc.string({ minLength: 1, maxLength: 20 }),
+});
+
+/** Code-bearing expressions (a code or an AND of codes) for tail suffixes (design.md:505). */
+export const arbCodeExpr = fc.oneof(
+  arbCode,
+  fc.record({ kind: fc.constant("and"), children: fc.array(arbCode, { minLength: 2 }) }),
+);
+
+/** Recursive Expr tree over code/literal/and/or/soft (design.md:424). */
+export const arbExpr = fc.letrec((t) => ({
+  code: arbCode,
+  literal: arbLiteral,
+  node: fc.oneof(
+    t("code"),
+    t("literal"),
+    fc.array(t("node"), { minLength: 2 }).map((children) => ({ kind: "and", children })),
+    fc.array(t("node"), { minLength: 2 }).map((children) => ({ kind: "or", ui: "dropdown" as const, children })),
+    t("node").map((child) => ({ kind: "soft", child })),
+  ),
+})).node;
+
+/**
+ * Soft-tail suffix `X <recommended-phrase>` composed from a code expression
+ * (design.md:414); pair with a prefix via `arbPrereqString` for Property 38.
+ */
+export const arbRecommendedTail = fc
+  .tuple(arbCodeExpr, fc.constantFrom("is recommended", "is strongly recommended", "are recommended"))
+  .map(([e, tail]) => `${displayExpr(e)} ${tail}`);
