@@ -139,7 +139,7 @@ Property-based test sub-tasks are annotated with their property number from `des
     - _Requirements: REQ-9.1, REQ-9.2, REQ-20.6_
   - [x] 8.4 Implement `DisjunctionDetailStrip` rendering the selected course's title or "(not in calendar)" sentinel
     - _Requirements: REQ-9.3_
-  - [ ] 8.5 Implement `OptionalEdge` (dashed bezier + "optional" toggle pill) and `HardEdge`
+  - [x] 8.5 Implement `OptionalEdge` (dashed bezier + "optional" toggle pill) and `HardEdge`
     - _Requirements: REQ-10.1, REQ-10.2_
   - [ ] 8.6 Implement `prereq-tree-pane.tsx` rendering states: empty no-prereqs, not-found, "Loading course index…"
     - Wire root-input box for switching root course without leaving the pane
