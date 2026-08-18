@@ -137,7 +137,7 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x] 8.3 Implement `DropdownDisjunctionNode` (REQ-9.1 — `one of A, B, C` variant) and `StackedDisjunctionNode` (REQ-9.2 — `Either (a) … or (b) …` variant)
     - Dropdown menu scales with canvas zoom; wheel events go to the menu, not the canvas, while open; outside-pointerdown + Escape dismiss
     - _Requirements: REQ-9.1, REQ-9.2, REQ-20.6_
-  - [ ] 8.4 Implement `DisjunctionDetailStrip` rendering the selected course's title or "(not in calendar)" sentinel
+  - [x] 8.4 Implement `DisjunctionDetailStrip` rendering the selected course's title or "(not in calendar)" sentinel
     - _Requirements: REQ-9.3_
   - [ ] 8.5 Implement `OptionalEdge` (dashed bezier + "optional" toggle pill) and `HardEdge`
     - _Requirements: REQ-10.1, REQ-10.2_
