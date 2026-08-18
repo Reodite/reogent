@@ -56,15 +56,15 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - Idle map rendered when `workspaceView === null`; pane component rendered for a given `CanvasView`; `setState` writes back into `workspaceView.state` (the noop-bug fix).
     - _Requirements: REQ-2.3, REQ-3.1_
 
-- [ ] 7. `FullBleedTool` (Tools-mode workspace)
-  - [ ] 7.1 Implement `FullBleedTool` in `src/components/shell/full-bleed-tool.tsx`
+- [x] 7. `FullBleedTool` (Tools-mode workspace)
+  - [x] 7.1 Implement `FullBleedTool` in `src/components/shell/full-bleed-tool.tsx`
     - Renders the selected pane's `Component` across the full workspace area (the AI-mode chat+canvas split collapses to one region). `view === null` → default to the first `PANE_REGISTRY` entry (Campus Map). Real `setState` round-trip (same fix as §6.1). Exactly one tool at a time.
     - _Requirements: REQ-4.3, REQ-4.4, REQ-4.5_
-  - [ ]* 7.2 Component tests for `FullBleedTool`
+  - [x]* 7.2 Component tests for `FullBleedTool`
     - Default tool when `view === null`; selecting another tool replaces it; `setState` round-trips.
     - _Requirements: REQ-4.4, REQ-4.5_
 
-- [ ] 8. Checkpoint — components render and tests pass
+- [x] 8. Checkpoint — components render and tests pass
   - Ensure `npx vitest run` and `npm run lint` are green; ask the user if questions arise.
 
 - [ ] 9. `ModeToggle` + `LeftSidebar` mode swap
