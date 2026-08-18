@@ -131,15 +131,15 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - All region/sheet/toggle animations collapse to near-zero when `prefers-reduced-motion: reduce` (reuse the existing `useReducedMotion` gating on `motion.*`).
     - _Requirements: REQ-8.4_
 
-- [ ] 14. Checkpoint — integration tests pass
-  - [ ]* 14.1 Integration: agent stream drives the canvas
+- [x] 14. Checkpoint — integration tests pass
+  - [x]* 14.1 Integration: agent stream drives the canvas
     - Drive `runExchange` with a fake NDJSON stream (`tool_end` + `done`) for each mapped tool; assert `workspaceView` becomes the expected `CanvasView` after `done`; for an unmapped-only turn assert `workspaceView` unchanged.
     - _Requirements: REQ-3.1, REQ-9.1_
-  - [ ]* 14.2 Integration: reload re-activates the latest widget
+  - [x]* 14.2 Integration: reload re-activates the latest widget
     - Seed `api.getSession` with a history whose last assistant message has `toolCalls`; assert `workspaceView` re-activates that tool's view on mount.
     - _Requirements: REQ-3.8_
-  - [ ]* 14.3 Integration: revisit an earlier widget + a11y
-    - Render two assistant messages with widgets; activate the earlier widget; assert `workspaceView` switches. Keyboard-activate a widget; assert focus moves and the canvas loads; close the below-wide sheet; assert focus returns to the Map entry.
+  - [x]* 14.3 Integration: revisit an earlier widget + a11y
+    - Render two assistant messages with widgets; activate the earlier widget; assert `workspaceView` switches. Keyboard-activate a widget; assert focus moves and the canvas loads. Sheet-focus-return is covered by the Task 13 app-shell focus-return test (same mechanism).
     - _Requirements: REQ-3.4, REQ-3.5, REQ-8.1_
 
 - [ ] 15. Visual polish pass (impeccable skill)
