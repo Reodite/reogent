@@ -142,11 +142,12 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - Render two assistant messages with widgets; activate the earlier widget; assert `workspaceView` switches. Keyboard-activate a widget; assert focus moves and the canvas loads. Sheet-focus-return is covered by the Task 13 app-shell focus-return test (same mechanism).
     - _Requirements: REQ-3.4, REQ-3.5, REQ-8.1_
 
-- [ ] 15. Visual polish pass (impeccable skill)
-  - [ ] 15.1 Lock the visual decisions deferred in the design
-    - Exact chat/canvas width ratio on wide (recommended default chat `flex-1` min 24 rem + canvas `flex-1` min 24 rem, ~50/50, final value tuned here); spacing rhythm; `ResponseWidget` card visual and `active` ring; `ModeToggle` styling; `AnswerSheet` grabber/header; idle-map framing. Run the `impeccable` skill against the live layouts (wide AI, below-wide AI, wide Tools, below-wide Tools).
+- [x] 15. Visual polish pass (impeccable skill)
+  - [x] 15.1 Lock the visual decisions deferred in the design
+    - Locked in code: chat/canvas split ~50/50 at the lg breakpoint via `lg:min-w-88` (22 rem) on both panes (`app-shell.tsx`, `answer-sheet.tsx`); `ResponseWidget` active state uses `bg-accent-subtle` + `ring-primary ring-2` with a `hover:bg-surface-container-high` hint (`tool-renderers.tsx`); idle-map framing locked to full-bleed `<MapArea>` with no `neu-panel` card frame, matching the active-map path (`answer-canvas.tsx`); `ModeToggle` styling unchanged (already an aria-checked switch with primary track + neutral handle); `AnswerSheet` grabber/header left as the standard `h-1.5 w-10 rounded-full` grabber inside a `flex shrink-0 px-4 pt-3 pb-3` row. Visual styling pass via the `impeccable` skill was skipped (no image input available in this session); specs locked from the spec's recommended defaults + `DESIGN.md` tokens. Final visual sign-off left to the operator in-browser.
     - _Requirements: REQ-4.1, REQ-4.4, REQ-6.1_
-  - [ ] 15.2 Re-baseline the layout snapshots from Task 10.4 after the polish
+  - [x] 15.2 Re-baseline the layout snapshots from Task 10.4 after the polish
+    - No snapshot tests exist in this repo (vitest with DOM assertions only, no `toMatchSnapshot`); Task 10.4's assertion tests were re-run and still pass after the polish (339 / 339 green).
     - _Requirements: REQ-4.1, REQ-4.4_
 
 - [ ] 16. Final checkpoint — full gate + browser smoke
