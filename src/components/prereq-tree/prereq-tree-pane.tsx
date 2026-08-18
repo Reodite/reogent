@@ -19,6 +19,7 @@ import { OptionalEdge } from "./edges/OptionalEdge";
 import { CourseNode } from "./nodes/CourseNode";
 import { DropdownDisjunctionNode, StackedDisjunctionNode } from "./nodes/DisjunctionNode";
 import type { SelectionKeyMap } from "./selection-key";
+import { visibleGraph } from "./soft-hide";
 
 // ponytail: naive BFS column layout (x = depth*240, y = per-column counter). dagre
 // would pack tighter but adds a dep; fitView zooms to fit. Revisit if columns look sparse.
@@ -149,8 +150,9 @@ export function PrereqTreePane({
   const [graph, setGraph] = useState<PrereqGraph | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [selections, setSelections] = useState<SelectionKeyMap>({});
-  // ponytail: softToggles flips aria-pressed state only in 8.6; the reachability-based
-  // hide of the wrapped subtree's edges lands in 8.14 (REQ-10.2).
+  // Soft-toggle state (REQ-10.2): `softToggles[path]` flips the wrapped
+  // subtree's hard descendant edges on/off via `visibleGraph`. The soft's
+  // incoming edges + block stay (the pill re-enables).
   const [softToggles, setSoftToggles] = useState<Record<string, 0 | 1>>({});
 
   useEffect(() => {
@@ -185,10 +187,11 @@ export function PrereqTreePane({
 
   const transformed = useMemo(() => {
     if (!graph?.found) return null;
-    const byId = new Map(graph.nodes.map((n) => [n.id, n]));
-    const root = graph.nodes.find((n) => n.variant === "root");
-    const positions = layoutNodes(graph.nodes, graph.edges, root?.id ?? graph.nodes[0]?.id ?? "");
-    const rfNodes: Node[] = graph.nodes.map((n) => {
+    const { nodes, edges } = visibleGraph(graph, softToggles);
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const root = nodes.find((n) => n.variant === "root");
+    const positions = layoutNodes(nodes, edges, root?.id ?? nodes[0]?.id ?? "");
+    const rfNodes: Node[] = nodes.map((n) => {
       const pos = positions.get(n.id) ?? { x: 0, y: 0 };
       if (n.kind === "dropdown" || n.kind === "radio") {
         const options = (n.children ?? []).map((cid) => {
@@ -215,7 +218,7 @@ export function PrereqTreePane({
         data: { id: n.id, code: n.code, label: n.label, variant: n.variant, onNavigate: onNavigateCourse },
       };
     });
-    const rfEdges: Edge[] = graph.edges.map((e) => {
+    const rfEdges: Edge[] = edges.map((e) => {
       if (e.optional) {
         const path = e.softPath ?? "";
         return {
@@ -228,7 +231,7 @@ export function PrereqTreePane({
       }
       return { id: e.id, source: e.source, target: e.target, type: "hard" };
     });
-    const disjunctions: DisjunctionDetail[] = graph.nodes
+    const disjunctions: DisjunctionDetail[] = nodes
       .filter((n) => (n.kind === "dropdown" || n.kind === "radio") && n.selectionKey)
       .map((n) => ({
         selectionKey: n.selectionKey as string,
