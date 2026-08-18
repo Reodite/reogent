@@ -346,20 +346,20 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [x] 18. Checkpoint - Citations server + client tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 19. Implement Calendar server (REST route + donor date-math)
-  - [ ] 19.1 Selectively extract donor `reoditetools/web/src/lib/calendar.ts` helpers into `src/shared/calendar/date-math.ts`
+- [x] 19. Implement Calendar server (REST route + donor date-math)
+  - [x] 19.1 Selectively extract donor `reoditetools/web/src/lib/calendar.ts` helpers into `src/shared/calendar/date-math.ts`
     - Donor exports 14 names total: 10 pure date helpers (`parseISODate`, `toISODate`, `startOfMonth`, `addMonths`, `isSameDay`, `buildMonthGrid`, `formatMonthHeading`, `formatMonthBadge`, `formatFullDate`), 1 browser-only caller (`loadCalendar` — uses Vite's `import.meta.env.BASE_URL` at donor `calendar.ts:27`, not portable to Next.js), 3 corpus types (`CalendarItem`, `CalendarPayload`, `CalendarCategory` — structurally incompatible with reogent's `CalendarEvent`), and 1 single-day-bound helper (`itemCoversDate(item: CalendarItem, date: Date)` — its `endDate` branch is dead under `CalendarEvent`'s single-day shape; inline the one-line `isSameDay(parseISODate(event.date), d)` check directly in the calendar-pane render). Selectively port the 10 pure helpers; drop the other 4 explicitly. Ponytail comment: the donor file imports Vite-specific `import.meta.env.BASE_URL` inside `loadCalendar`; a verbatim file-level copy would land Vite-importing code into a Next.js repo, so selective function-by-function port is the smallest safe path.
     - _Requirements: REQ-16_
-  - [ ] 19.2 Implement `src/shared/calendar/event.ts` types (`CalendarEvent`, `CalendarEventKind`)
+  - [x] 19.2 Implement `src/shared/calendar/event.ts` types (`CalendarEvent`, `CalendarEventKind`)
     - `CalendarEvent` carries `{ kind: CalendarEventKind; date: string (ISO); label: string; source_url: string | null; tags: string[] }`. `CalendarEventKind = "academic" | "holiday" | (string & {})` — open-string-enum.
     - _Requirements: REQ-16.1_
-  - [ ] 19.3 Implement `app/api/calendar/route.ts` (`GET /api/calendar?from=&to=&kinds=`) with the canonicalization inlined
+  - [x] 19.3 Implement `app/api/calendar/route.ts` (`GET /api/calendar?from=&to=&kinds=`) with the canonicalization inlined
     - Unauthenticated; `Cache-Control: public, max-age=300`. The route reads `KeyDateDoc[]` from the existing `calendar` module (`src/server/modules/calendar.ts:4`) and inlines a ~30-line projection to `CalendarEvent[]` (kind tagging, `source_url` propagation, `tags` sub-kind extraction). No separate `src/server/calendar/list-events.ts` file — single consumer (the REST route). The agent tool `get_key_dates` continues to return `{ dates: KeyDateDoc[] }` unchanged; the citation extractor for `get_key_dates` adapts the existing `KeyDateDoc[]` shape (already carries `source_url` at `src/server/modules/calendar.ts:12`).
     - _Requirements: REQ-16.1_
-  - [ ] 19.4 Example test — `GET /api/calendar?from=&to=&kinds=academic` returns the projected `CalendarEvent[]` shape (snapshot a representative year)
+  - [x] 19.4 Example test — `GET /api/calendar?from=&to=&kinds=academic` returns the projected `CalendarEvent[]` shape (snapshot a representative year)
     - Fixture lives at `__fixtures__/calendar-events.json` (see 19.5).
     - _Requirements: REQ-16.1_
-  - [ ] 19.5 Fixture — `__fixtures__/calendar-events.json` for 19.4 snapshot + Calendar-pane render tests (Phase 20)
+  - [x] 19.5 Fixture — `__fixtures__/calendar-events.json` for 19.4 snapshot + Calendar-pane render tests (Phase 20)
     - One representative academic year (~30-50 events) of `KeyDateDoc[]` input + the projected `CalendarEvent[]` output the route should produce. Includes academic + holiday kinds; multi-event day; empty-month case; multi-tag case (`["reading-week", "exam"]`). Drives 19.4, 20.5, 20.6, 20.7, 20.8.
     - _Requirements: REQ-16.1_
 
