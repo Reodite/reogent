@@ -29,11 +29,11 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
 - [x] 3. Checkpoint — mapper and state-contract tests pass
   - Ensure `npx vitest run` is green; ask the user if questions arise.
 
-- [ ] 4. ShellMode persistence + bootstrap
-  - [ ] 4.1 Implement `useShellMode`
+- [x] 4. ShellMode persistence + bootstrap
+  - [x] 4.1 Implement `useShellMode`
     - Hook in `src/components/shell/use-shell-mode.ts`: `localStorage["reogent.shell.mode"]`, default `"ai"`, tolerant parse (invalid/absent → `"ai"`), persist on change.
     - _Requirements: REQ-1.5, REQ-1.6_
-  - [ ] 4.2 Pre-paint bootstrap in `app/layout.tsx`
+  - [x] 4.2 Pre-paint bootstrap in `app/layout.tsx`
     - Extend the existing inline `<head>` bootstrap (which sets `data-theme` and `data-auth-pending`) to also read `reogent.shell.mode` and write `documentElement.dataset.shellMode`, preventing a mode flash on load. Covered by `suppressHydrationWarning`.
     - _Requirements: REQ-1.6, REQ-4.5_
 

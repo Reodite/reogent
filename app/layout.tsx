@@ -1,4 +1,5 @@
 import { AppProviders } from "@/src/components/providers";
+import { SHELL_MODE_STORAGE_KEY } from "@/src/lib/shell-mode";
 import { THEME_STORAGE_KEY } from "@/src/lib/theme";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
@@ -32,11 +33,12 @@ export const viewport: Viewport = {
   ],
 };
 
-// Runs before first paint: applies stored or system theme.
-// Returning users skip the landing page flash.
+// Runs before first paint: applies stored or system theme, and the stored AI/Tools
+// shell mode so returning users skip the landing and mode flash.
 const AUTH_KEY = "reodite.auth.user";
 const BOOTSTRAP =
   `try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});document.documentElement.dataset.theme=(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}` +
+  `try{var m=localStorage.getItem(${JSON.stringify(SHELL_MODE_STORAGE_KEY)});document.documentElement.dataset.shellMode=(m==="tools")?"tools":"ai"}catch(e){document.documentElement.dataset.shellMode="ai"}` +
   `try{if(location.pathname==="/"&&localStorage.getItem(${JSON.stringify(AUTH_KEY)}))document.documentElement.dataset.authPending=""}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -14,14 +14,15 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import type { CanvasView, PaneId, PaneState } from "@/src/components/shell/pane-registry";
+import { useShellMode } from "@/src/components/shell/use-shell-mode";
 import type { SessionSummary, ToolCall } from "@/src/lib/api-types";
+import type { ShellMode } from "@/src/lib/shell-mode";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { MapHighlight } from "@/src/lib/walking";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type { CanvasView, MapHighlight };
-
-export type ShellMode = "ai" | "tools";
+export type { ShellMode };
 
 export type ActiveChannel = { id: PaneId; state: PaneState } | null;
 export type PreviousUserChannel = { id: PaneId; state: PaneState } | null;
@@ -116,7 +117,7 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newChatNonce, setNewChatNonce] = useState(0);
-  const [mode, setModeState] = useState<ShellMode>("ai");
+  const [mode, setMode] = useShellMode();
   const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -212,10 +213,6 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     },
     [capturePreviousForMap],
   );
-
-  const setMode = useCallback((next: ShellMode) => {
-    setModeState(next);
-  }, []);
 
   const addOptimisticSession = useCallback((sessionId: string, title: string) => {
     setSessions((prev) => {
