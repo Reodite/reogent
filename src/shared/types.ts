@@ -1,6 +1,8 @@
 // Canonical shared types for the Reodite API contract.
 // Both src/lib/ (frontend) and src/server/ (backend) import from here.
 
+import type { Citation } from "./citations/citation";
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -8,6 +10,8 @@ export interface ChatMessage {
   toolCalls?: ToolCall[];
   /** Interstitial thinking/tool-call blocks shown before the answer. */
   interstitial?: InterstitialBlock[];
+  /** Citations attributed to this assistant turn; null for user rows or turns with no tool results. */
+  citations?: Citation[] | null;
 }
 
 export interface InterstitialBlock {
@@ -26,6 +30,7 @@ export interface ToolCall {
 export interface ChatResponse {
   message: string;
   tool_calls: ToolCall[];
+  citations?: Citation[];
   warning?: string;
   follow_ups?: string[];
 }

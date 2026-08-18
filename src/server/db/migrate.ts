@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS messages (
   content TEXT NOT NULL,
   tool_calls JSONB,
   interstitial JSONB,
+  citations JSONB,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

@@ -1,3 +1,4 @@
+import type { Citation } from "@/src/shared/citations/citation";
 import type { ChatMessage, InterstitialBlock, SessionSummary, ToolCall } from "../core/types";
 import { getPool } from "../db";
 
@@ -20,13 +21,14 @@ export async function getSessionMessages(userId: string, sessionId: string): Pro
   if (session.rows.length === 0) return null;
 
   const { rows } = await getPool().query(
-    `SELECT role, content, tool_calls, interstitial FROM messages WHERE session_id = $1 ORDER BY id ASC`,
+    `SELECT role, content, tool_calls, interstitial, citations FROM messages WHERE session_id = $1 ORDER BY id ASC`,
     [sessionId],
   );
   return rows.map((r) => {
     const msg: ChatMessage = { role: r.role, content: r.content };
     if (r.tool_calls) msg.toolCalls = r.tool_calls;
     if (r.interstitial) msg.interstitial = r.interstitial;
+    msg.citations = r.citations === undefined ? null : r.citations;
     return msg;
   });
 }
@@ -39,6 +41,7 @@ export async function appendExchange(
   assistantMessage: string,
   toolCalls: ToolCall[],
   interstitial?: InterstitialBlock[],
+  citations?: Citation[] | null,
 ): Promise<void> {
   const pool = getPool();
 
@@ -51,19 +54,21 @@ export async function appendExchange(
     [sessionId, userId, userMessage.slice(0, 80)],
   );
 
-  // Insert both messages
+  // Insert both messages. Citations are persisted on the assistant half only.
   await pool.query(
-    `INSERT INTO messages (session_id, role, content, tool_calls, interstitial) VALUES ($1, $2, $3, $4, $5), ($1, $6, $7, $8, $9)`,
+    `INSERT INTO messages (session_id, role, content, tool_calls, interstitial, citations) VALUES ($1, $2, $3, $4, $5, $6), ($1, $7, $8, $9, $10, $11)`,
     [
       sessionId,
       "user",
       userMessage,
       null,
       null,
+      null,
       "assistant",
       assistantMessage,
       toolCalls.length ? JSON.stringify(toolCalls) : null,
       interstitial?.length ? JSON.stringify(interstitial) : null,
+      citations && citations.length > 0 ? JSON.stringify(citations) : null,
     ],
   );
 }

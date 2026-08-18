@@ -49,7 +49,16 @@ export async function POST(request: Request): Promise<Response> {
           let doneEvent: {
             message: string;
             tool_calls: { name: string; input: Record<string, unknown>; result?: unknown }[];
+            citations: {
+              index: number;
+              label: string;
+              kind: string;
+              used: boolean;
+              source_url?: string;
+              tool: string;
+            }[];
             warning?: string;
+            follow_ups?: string[];
           } | null = null;
           const interstitial: InterstitialBlock[] = [];
 
@@ -89,6 +98,7 @@ export async function POST(request: Request): Promise<Response> {
               doneEvent.message,
               doneEvent.tool_calls,
               interstitial.length > 0 ? interstitial : undefined,
+              doneEvent.citations,
             );
             // Generate a proper title on first exchange (fire-and-forget)
             const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;
