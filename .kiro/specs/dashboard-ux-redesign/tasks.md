@@ -67,14 +67,14 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
 - [x] 8. Checkpoint — components render and tests pass
   - Ensure `npx vitest run` and `npm run lint` are green; ask the user if questions arise.
 
-- [ ] 9. `ModeToggle` + `LeftSidebar` mode swap
-  - [ ] 9.1 Implement `ModeToggle`
+- [x] 9. `ModeToggle` + `LeftSidebar` mode swap
+  - [x] 9.1 Implement `ModeToggle`
     - Segmented "AI mode" switch pinned at the left-sidebar footer; calls `setMode`; persists via `useShellMode`; visible at all viewports in both modes; keyboard-operable.
     - _Requirements: REQ-1.1, REQ-1.2, REQ-1.3, REQ-1.7_
-  - [ ] 9.2 Refactor `LeftSidebar` to swap contents by mode
+  - [x] 9.2 Refactor `LeftSidebar` to swap contents by mode
     - AI Mode → `<SessionList>` (reuse the existing `SessionSidebar` body minus the footer tool grid; new-conversation + history + optimistic ops). Tools Mode → `<ToolList>` (one row per `PANE_REGISTRY` entry; selecting a row calls `setWorkspaceView({ paneId, state: entry.defaultState })`). Footer always renders `<ModeToggle>`. Keep the wide/below-wide sidebar collapse (17 rem ⇄ 3.75 rem) and below-wide drawer pattern; remove the tools-strip drawer footer in AI Mode.
     - _Requirements: REQ-1.4, REQ-6.3, REQ-6.4_
-  - [ ]* 9.3 Component tests for `ModeToggle` + `LeftSidebar`
+  - [x]* 9.3 Component tests for `ModeToggle` + `LeftSidebar`
     - Toggling swaps left contents between SessionList and ToolList and persists; `ToolList` selection sets `workspaceView`; toggle reachable from both modes.
     - _Requirements: REQ-1.4, REQ-6.4_
 

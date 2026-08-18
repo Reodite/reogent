@@ -7,7 +7,7 @@ import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { motion, useReducedMotion } from "motion/react";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 const SIDEBAR_KEY = "reogent.sidebar.collapsed";
 const EXPANDED = "0";
@@ -249,9 +249,11 @@ function SessionItem({
 interface SessionSidebarProps {
   onCollapse?: () => void;
   onClose?: () => void;
+  /** Optional footer pinned under the session list (e.g. the ModeToggle). */
+  footer?: ReactNode;
 }
 
-export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}) {
+export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarProps = {}) {
   const router = useRouter();
   const params = useParams<{ session_id?: string }>();
   const pathname = usePathname();
@@ -422,6 +424,7 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
         {!sessionsLoading && sessions.length > 0 ? `${sessions.length} conversations` : ""}
       </output>
       <VersionBadge />
+      {footer}
     </div>
   );
 }
