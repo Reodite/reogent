@@ -282,7 +282,7 @@ Property-based test sub-tasks are annotated with their property number from `des
     - **Validates: Requirements REQ-12.2**
   - [x]\* 15.10 Integration test — Per-provider system-prompt parity smoke (Anthropic, OpenAI, Google)
     - _Requirements: REQ-15.4_
-  - [ ]\* 15.11 Property test — Citations array shape robustness
+  - [x]\* 15.11 Property test — Citations array shape robustness
     - **Property 41: For all assistant messages, `citations` may be `null`, `undefined`, a non-array, or a `Citation[]` (including `[]`); the renderer emits no chips and no panel for null/undefined, falls back to `[]` for non-array types, and renders every element of the array branch (schema-conformant, Property-18 stamped).**
     - **Validates: Requirements REQ-12.4**
     - Generator: `arbCitationArray` from design.md §Domain 6.
@@ -303,47 +303,47 @@ Property-based test sub-tasks are annotated with their property number from `des
     - **Validates: Requirements REQ-12.5**
     - Generator: `arbPersistedMessage` from design.md §Domain 6.
 
-- [ ] 17. Implement Citations client (`src/components/chat/citations/`)
-  - [ ] 17.1 Implement `citation-chip.tsx` (anchored / span literal / literal `[N]`)
+- [x] 17. Implement Citations client (`src/components/chat/citations/`)
+  - [x] 17.1 Implement `citation-chip.tsx` (anchored / span literal / literal `[N]`)
     - When `citations[N-1].source_url` present → `<a target="_blank" rel="noopener noreferrer">`; when absent → non-clickable `<span>` with `label` tooltip; when `N` out of `1..citations.length` → literal string `[N]`
     - _Requirements: REQ-13.1, REQ-13.2, REQ-13.3_
-  - [ ] 17.2 Implement `chip-injector.ts` recursive leaf-string walker
+  - [x] 17.2 Implement `chip-injector.ts` recursive leaf-string walker
     - Walk the markdown AST; inject `<CitationChip>` at every leaf string child of paragraph/list-item/strong/em/table-cell/heading/blockquote/link
     - _Requirements: REQ-13.4_
-  - [ ] 17.3 Implement `sources-panel.tsx` "Sources used" / "Other retrieved context" split
+  - [x] 17.3 Implement `sources-panel.tsx` "Sources used" / "Other retrieved context" split
     - Defaults to collapsed with height transition; "Other retrieved context" rows render at reduced opacity (`text-primary/60`); "Sources used (M)" summary header when used-list empty and other-list non-empty; scrolls into view on expand. Surface tokens: `bg-surface-container-low` panel, `text-on-surface-variant` section headers, transition uses `cubic-bezier(0.16, 1, 0.3, 1)` (DESIGN.md motion). `data-sources-panel` on root; used rows carry `data-citation-row` + `data-used="true"`, other rows `data-used="false"`.
     - _Requirements: REQ-14.1, REQ-14.2, REQ-14.3, REQ-14.4, REQ-14.5_
-  - [ ] 17.4 Extend `chatStream` (the `ChatApi.chat` impl at `src/lib/api.ts:94`) NDJSON consumer with `onCitations` callback
+  - [x] 17.4 Extend `chatStream` (the `ChatApi.chat` impl at `src/lib/api.ts:94`) NDJSON consumer with `onCitations` callback
     - Add `onCitations?: (citations: Citation[]) => void` to the `callbacks` parameter at `src/lib/api.ts:97-104` (sibling to existing `onDelta`, `onTextClear`, `onThinking`, `onToolStart`, `onToolEnd`, `onTurnStart`). Wire it inside the NDJSON loop at the same offset as `onDelta` (line 158) and `onToolStart` (line 164). Store the array on the in-flight `ChatResponse`; re-render chips as the array fills.
     - _Requirements: REQ-12.2_
-  - [ ]\* 17.5 Property test — Out-of-range literal invariant
+  - [x]\* 17.5 Property test — Out-of-range literal invariant
     - **Property 22: `[k]` outside `1..N` renders as the literal string `[k]`**
     - **Validates: Requirements REQ-13.3**
-  - [ ]\* 17.6 Property test — Recursive-leaf injection
+  - [x]\* 17.6 Property test — Recursive-leaf injection
     - **Property 23: (23a) In-range `[N]` becomes chips at every leaf string of the listed markdown elements; (23b) the injector's chip sequence is invariant under markdown re-rendering**
     - **Validates: Requirements REQ-13.4**
-  - [ ]\* 17.7 Property test — No empty-href anchor + label tooltip
+  - [x]\* 17.7 Property test — No empty-href anchor + label tooltip
     - **Property 24: If `source_url` is absent, the chip DOM contains no `<a>` and the chip exposes the citation's `label` as tooltip (`title` or `aria-label`)**
     - **Validates: Requirements REQ-13.2**
-  - [ ]\* 17.8 Example test — Two-list rendering edge cases
+  - [x]\* 17.8 Example test — Two-list rendering edge cases
     - _Requirements: REQ-14.1, REQ-14.2_
-  - [ ]\* 17.9 Example test — Collapsed-by-default + scroll-into-view on expand
+  - [x]\* 17.9 Example test — Collapsed-by-default + scroll-into-view on expand
     - _Requirements: REQ-14.3, REQ-14.4_
-  - [ ]\* 17.10 Integration test — Sources-panel renders against live stream's `citations` array as it fills
+  - [x]\* 17.10 Integration test — Sources-panel renders against live stream's `citations` array as it fills
     - Drive `chatStream` (the `ChatApi.chat` impl at `src/lib/api.ts:94`) callbacks (`onCitations` at `src/lib/api.ts:97-104`) with a synthetic NDJSON feed carrying `tool_end` events whose results match `CITATION_EXTRACTORS` shapes; assert the panel's "Sources used" / "Other retrieved context" lists update within one animation frame.
     - Fixture lives at `__fixtures__/agent-turns.json` (see 17.13).
     - _Requirements: REQ-14.1, REQ-14.2, REQ-14.3, REQ-14.4, REQ-14.5_
-  - [ ] 17.11 Wire `chip-injector` + `sources-panel` into the existing assistant message renderer at `src/components/chat/message.tsx`
+  - [x] 17.11 Wire `chip-injector` + `sources-panel` into the existing assistant message renderer at `src/components/chat/message.tsx`
     - The existing renderer is at `src/components/chat/message.tsx` (read it first). After parsing the assistant turn's markdown, run `chip-injector` on every paragraph/list-item/strong/em/table-cell/heading/blockquote/link leaf that contains a `[N]` marker where `N ∈ 1..citations.length`. Mount `<CitationChip>` for in-range markers; leave the literal `[N]` for out-of-range. Append `<SourcesPanel citations={citations} />` as the last child of the assistant message's container `<div>`. No URL state — the chip array lives on the rendered message component from the stream callback's `onCitations` prop.
     - _Requirements: REQ-13.1, REQ-13.4, REQ-14.1_
-  - [ ] 17.12 Wire `onCitations` callback through chat-shell-context to the active assistant message state
+  - [x] 17.12 Wire `onCitations` callback through chat-shell-context to the active assistant message state
     - In `src/components/chat/chat-shell-context.tsx` (existing context at `:1`), expose a `citations: Citation[]` slot on the active assistant message state. `chatStream`'s new `onCitations` callback (from task 17.4) pushes into this slot, the renderer reads it, and the sources-panel re-renders are gated on this slot's identity. No new context provider — single consumer.
     - _Requirements: REQ-12.2, REQ-13.1_
-  - [ ] 17.13 Fixture — `__fixtures__/agent-turns.json` for synthetic NDJSON stream in 17.10
+  - [x] 17.13 Fixture — `__fixtures__/agent-turns.json` for synthetic NDJSON stream in 17.10
     - 3-5 turn fixtures covering: turn with one `get_course` tool call + citations; turn with `get_key_dates` tool call + calendar citations (cite by `source_url` from KeyDateDoc); turn with zero citations (no chips emitted); turn with 8+ citations (overflow scroll test). Shape: `{ turns: [{ providers: { anthropic: NDJSONString, openai: NDJSONString, google: NDJSONString } }] }`.
     - _Requirements: REQ-14.1_
 
-- [ ] 18. Checkpoint - Citations server + client tests pass
+- [x] 18. Checkpoint - Citations server + client tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 19. Implement Calendar server (REST route + donor date-math)
