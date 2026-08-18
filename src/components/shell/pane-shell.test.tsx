@@ -1,11 +1,7 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
-import { PaneHost } from "@/src/components/shell/pane-host";
-import { PanePreempt } from "@/src/components/shell/pane-preempt";
 import type { ToolCall } from "@/src/lib/api-types";
-import type { MapHighlight } from "@/src/lib/walking";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
-import { useEffect } from "react";
+import { act, cleanup, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/src/components/providers", () => ({
@@ -35,26 +31,7 @@ vi.mock("@/src/components/calendar/calendar-pane", () => ({
   },
 }));
 
-// happy-dom via Node's experimental path lacks storage; install an in-memory one
-// so the shell's persisted previousUserChannel reads/writes don't throw.
-const mem = new Map<string, string>();
-const storagePolyfill: Storage = {
-  getItem: (k) => mem.get(k) ?? null,
-  setItem: (k, v) => void mem.set(k, String(v)),
-  removeItem: (k) => void mem.delete(k),
-  clear: () => mem.clear(),
-  key: (i) => Array.from(mem.keys())[i] ?? null,
-  get length() {
-    return mem.size;
-  },
-};
-
 beforeAll(() => {
-  Object.defineProperty(window, "sessionStorage", {
-    value: storagePolyfill,
-    configurable: true,
-    writable: true,
-  });
   Object.defineProperty(window, "matchMedia", {
     value: () => ({
       matches: false,
@@ -69,11 +46,10 @@ beforeAll(() => {
 });
 
 afterEach(() => {
-  mem.clear();
   cleanup();
 });
 afterAll(() => {
-  sessionStorage.clear();
+  vi.clearAllMocks();
 });
 
 const shellRef: { current: ChatShellState | null } = { current: null };
@@ -81,14 +57,6 @@ function Capture() {
   shellRef.current = useChatShell();
   return null;
 }
-
-const buildingPayload: MapHighlight = {
-  kind: "route",
-  from: "BUCH",
-  to: "FOREST",
-  meters: 320,
-  minutes: 4,
-};
 
 describe("Property 30 — chat panel stays visible across all activeChannel states (REQ-19.1, REQ-19.2)", () => {
   const channels: (string | null)[] = [null, "map", "course-lookup", "prereq-tree", "calendar", "unknown"];
@@ -107,66 +75,11 @@ describe("Property 30 — chat panel stays visible across all activeChannel stat
   }
 });
 
-describe("Property 31 — agent map over a user tool switches the pane and keeps the user channel recoverable (REQ-19.3)", () => {
-  it("records the prior user-tool channel in previousUserChannel when showOnMap fires from a user tool", () => {
-    shellRef.current = null;
-    render(
-      <ChatShellProvider>
-        <div data-pane="chat">chat</div>
-        <Capture />
-      </ChatShellProvider>,
-    );
-    act(() => shellRef.current?.setActiveChannel("prereq-tree", { root: "CPSC 320", selections: {} }));
-    act(() => shellRef.current?.showOnMap(buildingPayload));
-    expect(shellRef.current?.activeChannel?.id).toBe("map");
-    expect(shellRef.current?.previousUserChannel?.id).toBe("prereq-tree");
-    expect(shellRef.current?.previousUserChannel?.state.root).toBe("CPSC 320");
-  });
-
-  it("opening a user tool directly (no agent map) leaves previousUserChannel cleared", () => {
-    shellRef.current = null;
-    render(
-      <ChatShellProvider>
-        <div data-pane="chat">chat</div>
-        <Capture />
-      </ChatShellProvider>,
-    );
-    act(() => shellRef.current?.setActiveChannel("course-lookup", { code: "CPSC 110" }));
-    expect(shellRef.current?.activeChannel?.id).toBe("course-lookup");
-    expect(shellRef.current?.previousUserChannel).toBeNull();
-  });
-});
-
-describe("Integration — agent emits map while Course Lookup open: Back-to pill offered + restores (REQ-19.3)", () => {
-  it("renders the Back-to pill, then restoring clears the capture and returns to the user tool", () => {
-    shellRef.current = null;
-    render(
-      <ChatShellProvider>
-        <div data-pane="chat">chat</div>
-        <Capture />
-        <PanePreempt />
-      </ChatShellProvider>,
-    );
-    act(() => shellRef.current?.setActiveChannel("course-lookup", { code: "CPSC 320" }));
-    expect(document.querySelector("[data-preempt-restore]")).toBeNull();
-    act(() => shellRef.current?.showOnMap(buildingPayload));
-    const pill = document.querySelector("[data-preempt-restore]") as HTMLButtonElement | null;
-    expect(pill).not.toBeNull();
-    expect(pill?.textContent).toContain("Course lookup");
-    act(() => {
-      if (pill) fireEvent.click(pill);
-    });
-    expect(shellRef.current?.activeChannel?.id).toBe("course-lookup");
-    expect(shellRef.current?.activeChannel?.state.code).toBe("CPSC 320");
-    expect(shellRef.current?.previousUserChannel).toBeNull();
-  });
-});
-
 // Regression: setActiveChannel must stay stable across activeChannel changes.
-// ChatPanel's session-load effect lists setActiveChannel (and showOnMap, which
-// depends on it) in its deps and resets activeChannel to null. If setActiveChannel
-// churned on every open, that effect re-fired and closed the pane the instant a
-// user opened it — the right panel "never opened". Pin the stability contract.
+// ChatPanel's session-load effect lists setActiveChannel in its deps and resets
+// activeChannel to null. If setActiveChannel churned on every open, that effect
+// re-fired and closed the pane the instant a user opened it — the right panel
+// "never opened". Pin the stability contract.
 describe("setActiveChannel stability — pane stays open against consumer effects that reset", () => {
   it("setActiveChannel keeps identity across activeChannel changes", () => {
     shellRef.current = null;
@@ -180,30 +93,6 @@ describe("setActiveChannel stability — pane stays open against consumer effect
     act(() => shellRef.current?.setActiveChannel("course-lookup", { code: "CPSC 110" }));
     const after = shellRef.current?.setActiveChannel;
     expect(after).toBe(before);
-  });
-
-  it("an opened pane stays open in the presence of a consumer effect that resets activeChannel on setActiveChannel change", () => {
-    function ClobberConsumer() {
-      const { setActiveChannel, setPreviousUserChannel } = useChatShell();
-      useEffect(() => {
-        setActiveChannel(null);
-        setPreviousUserChannel(null);
-      }, [setActiveChannel, setPreviousUserChannel]);
-      return null;
-    }
-
-    render(
-      <ChatShellProvider>
-        <PaneHost />
-        <ClobberConsumer />
-      </ChatShellProvider>,
-    );
-    const btn = document.querySelector('[data-tool-id="course-lookup"]') as HTMLButtonElement;
-    expect(btn).not.toBeNull();
-    act(() => {
-      fireEvent.click(btn);
-    });
-    expect(document.querySelector('section[data-pane="course-lookup"]')).not.toBeNull();
   });
 });
 

@@ -18,14 +18,6 @@ describe("PANE_REGISTRY — composition (REQ-19.5, design.md §G)", () => {
     expect(PANE_REGISTRY.map((e) => e.id)).toEqual(["map", "course-lookup", "prereq-tree", "calendar"]);
   });
 
-  it("map is non-preemptable; user tools are preemptable", () => {
-    const byId = Object.fromEntries(PANE_REGISTRY.map((e) => [e.id, e.preemptableByAgentMap]));
-    expect(byId.map).toBe(false);
-    expect(byId["course-lookup"]).toBe(true);
-    expect(byId["prereq-tree"]).toBe(true);
-    expect(byId.calendar).toBe(true);
-  });
-
   it("every entry carries an id, label, icon, Component, and defaultState", () => {
     for (const entry of PANE_REGISTRY) {
       expect(typeof entry.id).toBe("string");

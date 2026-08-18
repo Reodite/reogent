@@ -122,25 +122,6 @@ export function extractPlacesHighlight(call: ToolCall): PlacesHighlight | null {
 }
 
 /**
- * The map state for a whole response: the route if one was computed (the
- * "going A → B" answer), else place pins, else ALL looked-up buildings
- * together — so "highlight the buildings" lights up every one, not just the
- * last call.
- */
-export function mergeMapHighlights(calls: ToolCall[]): MapHighlight | null {
-  const routes = calls.map(extractWalkingHighlight).filter((h) => h !== null);
-  if (routes.length > 0) return routes[routes.length - 1];
-  const places = calls.map(extractPlacesHighlight).filter((h) => h !== null);
-  if (places.length > 0) return places[places.length - 1];
-  const byCode = new Map<string, BuildingRef>();
-  for (const call of calls) {
-    for (const b of extractBuildingHighlight(call)?.buildings ?? []) byCode.set(b.code, b);
-  }
-  if (byCode.size > 0) return { kind: "buildings", buildings: [...byCode.values()] };
-  return null;
-}
-
-/**
  * Parking pins from a healthy find_parking call: each lot with a name and
  * coordinates becomes a map marker (same `places` highlight shape the map
  * already renders, with `service_type` null since parking lots have none).

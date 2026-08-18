@@ -23,8 +23,6 @@ export type PaneEntry<S extends PaneState = PaneState> = {
   icon: ComponentType<{ className?: string }>;
   Component: ComponentType<{ state: S; setState: (s: Partial<S>) => void }>;
   defaultState: S;
-  /** false for map — the agent's map data owns the pane and never yields to a user tool. */
-  preemptableByAgentMap: boolean;
 };
 
 function iconGlyph(name: IconName) {
@@ -49,7 +47,6 @@ export const PANE_REGISTRY: PaneEntry[] = [
     icon: iconGlyph("map"),
     Component: MapArea as PaneEntry["Component"],
     defaultState: {},
-    preemptableByAgentMap: false,
   },
   {
     id: "course-lookup",
@@ -57,7 +54,6 @@ export const PANE_REGISTRY: PaneEntry[] = [
     icon: iconGlyph("search"),
     Component: CourseLookupPane,
     defaultState: { code: "" },
-    preemptableByAgentMap: true,
   },
   {
     id: "prereq-tree",
@@ -65,7 +61,6 @@ export const PANE_REGISTRY: PaneEntry[] = [
     icon: iconGlyph("tree"),
     Component: PrereqTreeRegistryPane,
     defaultState: { root: "", selections: {} },
-    preemptableByAgentMap: true,
   },
   {
     id: "calendar",
@@ -73,7 +68,6 @@ export const PANE_REGISTRY: PaneEntry[] = [
     icon: iconGlyph("calendar"),
     Component: CalendarPane as PaneEntry["Component"],
     defaultState: { cursor: thisMonth(), kinds: ["academic", "holiday"] },
-    preemptableByAgentMap: true,
   },
 ];
 

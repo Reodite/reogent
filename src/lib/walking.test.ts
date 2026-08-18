@@ -10,7 +10,6 @@ import {
   extractParkingHighlight,
   extractPlacesHighlight,
   extractWalkingHighlight,
-  mergeMapHighlights,
   toolCallToCanvasView,
 } from "@/src/lib/walking";
 import fc from "fast-check";
@@ -137,38 +136,6 @@ describe("extractBuildingHighlight", () => {
     expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: 91, lon: -123 } })).toBeNull();
     expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: 49, lon: 181 } })).toBeNull();
     expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: NaN, lon: -123 } })).toBeNull();
-  });
-});
-
-describe("mergeMapHighlights", () => {
-  const building = (code: string): ToolCall => ({
-    name: "find_building",
-    input: { query: code },
-    result: { code, name: code, lat: 49.26, lon: -123.25 },
-  });
-  const walk: ToolCall = {
-    name: "walking_distance",
-    input: { from_building: "IBLC", to_building: "ICCS" },
-    result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11 },
-  };
-
-  it("merges every looked-up building into one highlight", () => {
-    const merged = mergeMapHighlights([building("NEST"), building("ICCS"), building("NEST")]);
-    expect(merged?.kind).toBe("buildings");
-    if (merged?.kind !== "buildings") throw new Error("expected buildings");
-    expect(merged.buildings.map((b) => b.code)).toEqual(["NEST", "ICCS"]); // deduped
-  });
-
-  it("prefers the route when one was computed (the A → B answer)", () => {
-    const merged = mergeMapHighlights([building("IBLC"), building("ICCS"), walk]);
-    expect(merged?.kind).toBe("route");
-  });
-
-  it("returns null when no call drives the map", () => {
-    expect(mergeMapHighlights([])).toBeNull();
-    expect(
-      mergeMapHighlights([{ name: "walking_distance", input: {}, result: { status: "error", message: "nope" } }]),
-    ).toBeNull();
   });
 });
 

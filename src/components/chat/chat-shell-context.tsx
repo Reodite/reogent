@@ -5,12 +5,9 @@
 // the AI/Tools mode toggle, the below-wide Answer Sheet, and the session list.
 //
 // `workspaceView` is the single source of truth for the right pane. `activeChannel`
-// mirrors it as `{ id, state }` for consumers that key on `id`, so the staged move
-// onto `workspaceView` keeps existing readers intact. `setActiveChannel` and
-// `showOnMap` capture the prior user-tool channel into `previousUserChannel` when
-// switching the canvas to the map (the "Back to" pill). `activateCanvasView` and
-// `setWorkspaceView` skip that capture: the agent-driven and Tools-mode path has
-// no user-tool to return to.
+// mirrors it as `{ id, state }` for consumers that key on `id`. `setActiveChannel`
+// writes through to `workspaceView`. `activateCanvasView` and `setWorkspaceView`
+// are the agent-driven and Tools-mode entry points.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import type { CanvasView, PaneId, PaneState } from "@/src/components/shell/pane-registry";
@@ -25,7 +22,6 @@ export type { CanvasView, MapHighlight };
 export type { ShellMode };
 
 export type ActiveChannel = { id: PaneId; state: PaneState } | null;
-export type PreviousUserChannel = { id: PaneId; state: PaneState } | null;
 
 export interface ChatShellState {
   workspaceView: CanvasView | null;
@@ -40,19 +36,12 @@ export interface ChatShellState {
   setAnswerSheetOpen: (open: boolean) => void;
 
   activeChannel: ActiveChannel;
-  previousUserChannel: PreviousUserChannel;
-  /** Sets the active pane. Switching to `map` from a user tool captures the prior channel for the "Back to" pill. `null` collapses to the rail. */
+  /** Sets the active pane (`null` collapses to the map rail). */
   setActiveChannel: (id: PaneId | null, state?: PaneState) => void;
-  setPreviousUserChannel: (channel: PreviousUserChannel) => void;
 
   highlight: MapHighlight | null;
-  mapOpen: boolean;
   focusNonce: number;
-  /** Opens the map pane with the payload, re-focuses the route, and opens the mobile sheet on small viewports. */
-  showOnMap: (highlight: MapHighlight) => void;
 
-  mobileMapOpen: boolean;
-  setMobileMapOpen: (open: boolean) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   newChatNonce: number;
@@ -75,46 +64,20 @@ export function useChatShell(): ChatShellState {
   return value;
 }
 
-const PREVIOUS_USER_CHANNEL_KEY = "reogent.pane.previousUserChannel";
-
-function writePreviousUserChannel(channel: PreviousUserChannel): void {
-  if (typeof window === "undefined") return;
-  try {
-    if (channel) window.sessionStorage.setItem(PREVIOUS_USER_CHANNEL_KEY, JSON.stringify(channel));
-    else window.sessionStorage.removeItem(PREVIOUS_USER_CHANNEL_KEY);
-  } catch {
-    /* sessionStorage unavailable */
-  }
-}
-
-function readPreviousUserChannel(): PreviousUserChannel {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(PREVIOUS_USER_CHANNEL_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { id: string; state: PaneState };
-    return { id: parsed.id as PaneId, state: parsed.state };
-  } catch {
-    return null;
-  }
-}
-
 export function ChatShellProvider({ children }: { children: ReactNode }) {
   const api = useApi();
   const auth = useAppAuth();
 
   const [workspaceView, setWorkspaceViewState] = useState<CanvasView | null>(null);
-  // Latest-value ref so setActiveChannel/showOnMap read the current view without
-  // depending on workspaceView in their callback deps — keeps the callbacks
-  // identity-stable (same pattern as authRef in ApiProvider). ChatPanel's
-  // session-load effect lists setActiveChannel in its deps; if it churned on
-  // every open, the effect would re-run and reset workspaceView to null,
-  // closing the pane the instant a user opened it.
+  // Latest-value ref so setActiveChannel reads the current view without depending
+  // on workspaceView in its callback deps — keeps the callback identity-stable
+  // (same pattern as authRef in ApiProvider). ChatPanel's session-load effect lists
+  // setActiveChannel in its deps; if it churned on every open, the effect would
+  // re-run and reset workspaceView to null, closing the pane the instant a user
+  // opened it.
   const workspaceViewRef = useRef<CanvasView | null>(null);
   workspaceViewRef.current = workspaceView;
-  const [previousUserChannel, setPreviousUserChannelState] = useState<PreviousUserChannel>(readPreviousUserChannel);
   const [focusNonce, setFocusNonce] = useState(0);
-  const [mobileMapOpen, setMobileMapOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newChatNonce, setNewChatNonce] = useState(0);
   const [mode, setMode] = useShellMode();
@@ -166,53 +129,21 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     setWorkspaceViewState(view);
   }, []);
 
-  const setPreviousUserChannel = useCallback((channel: PreviousUserChannel) => {
-    setPreviousUserChannelState(channel);
-    writePreviousUserChannel(channel);
-  }, []);
-
-  // Switching the canvas to the map from a user tool captures the prior channel
-  // for the "Back to" pill; switching to any other tool clears it.
-  const capturePreviousForMap = useCallback((prev: CanvasView | null, next: CanvasView | null) => {
-    if (next?.paneId === "map" && prev && prev.paneId !== "map") {
-      const captured: PreviousUserChannel = { id: prev.paneId, state: prev.state };
-      setPreviousUserChannelState(captured);
-      writePreviousUserChannel(captured);
-    } else if (next && next.paneId !== "map") {
-      setPreviousUserChannelState(null);
-      writePreviousUserChannel(null);
-    }
-  }, []);
-
   const activateCanvasView = useCallback(
     (call: ToolCall) => {
       const view = toolCallToCanvasView(call);
-      if (view) setWorkspaceView(view);
+      if (view) {
+        setWorkspaceView(view);
+        // Bump the focus nonce so the map re-focuses on the new highlight.
+        setFocusNonce((n) => n + 1);
+      }
     },
     [setWorkspaceView],
   );
 
-  const setActiveChannel = useCallback(
-    (id: PaneId | null, state: PaneState = {}) => {
-      const next: CanvasView | null = id ? { paneId: id, state } : null;
-      capturePreviousForMap(workspaceViewRef.current, next);
-      setWorkspaceViewState(next);
-    },
-    [capturePreviousForMap],
-  );
-
-  const showOnMap = useCallback(
-    (highlight: MapHighlight) => {
-      const next: CanvasView = { paneId: "map", state: { highlight } };
-      capturePreviousForMap(workspaceViewRef.current, next);
-      setWorkspaceViewState(next);
-      setFocusNonce((n) => n + 1);
-      if (typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches) {
-        setMobileMapOpen(true);
-      }
-    },
-    [capturePreviousForMap],
-  );
+  const setActiveChannel = useCallback((id: PaneId | null, state: PaneState = {}) => {
+    setWorkspaceViewState(id ? { paneId: id, state } : null);
+  }, []);
 
   const addOptimisticSession = useCallback((sessionId: string, title: string) => {
     setSessions((prev) => {
@@ -239,7 +170,6 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   );
   const highlight: MapHighlight | null =
     activeChannel?.id === "map" ? ((activeChannel.state.highlight as MapHighlight | undefined) ?? null) : null;
-  const mapOpen = activeChannel?.id === "map";
 
   const value = useMemo<ChatShellState>(
     () => ({
@@ -251,15 +181,9 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       answerSheetOpen,
       setAnswerSheetOpen,
       activeChannel,
-      previousUserChannel,
       setActiveChannel,
-      setPreviousUserChannel,
       highlight,
-      mapOpen,
       focusNonce,
-      showOnMap,
-      mobileMapOpen,
-      setMobileMapOpen,
       sidebarOpen,
       setSidebarOpen,
       newChatNonce,
@@ -280,14 +204,9 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
       setMode,
       answerSheetOpen,
       activeChannel,
-      previousUserChannel,
       setActiveChannel,
-      setPreviousUserChannel,
       highlight,
-      mapOpen,
       focusNonce,
-      showOnMap,
-      mobileMapOpen,
       sidebarOpen,
       newChatNonce,
       startNewChat,

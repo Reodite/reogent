@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider } from "@/src/components/chat/chat-shell-context";
 import { CitationChip } from "@/src/components/chat/citations/citation-chip";
-import { ComposerToolsMenu } from "@/src/components/chat/composer-tools-menu";
 import { announce, LiveRegion, readAnnouncement } from "@/src/components/ui/live-region";
 import type { Citation } from "@/src/shared/citations/citation";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
@@ -89,16 +88,6 @@ describe("Property 34 — focus-ring invariant: every ported interactive control
     const { container } = render(<CitationChip citation={usedCitation} />);
     expect(hasFocusRing(container.querySelector("a"))).toBe(true);
   });
-
-  it('composer "+" trigger applies the focus-ring tokens', async () => {
-    const { container } = render(
-      <ChatShellProvider>
-        <ComposerToolsMenu />
-      </ChatShellProvider>,
-    );
-    const trigger = container.querySelector("[data-composer-tools-trigger]");
-    expect(hasFocusRing(trigger)).toBe(true);
-  });
 });
 
 // Property 35 — live region updates within one tick after announce()
@@ -163,16 +152,6 @@ describe("Property 33 — reduced-motion collapses registered transitions to <= 
 // interactive control renders the recessed variant on :active via the
 // `active:[box-shadow:var(--neu-inset-shadow)]` token or `active:scale-95`.
 describe("23.10 — raised-to-recessed pressed-state token present on ported interactive controls (REQ-20.1)", () => {
-  it('composer "+" trigger carries the recessed-on-press active token', () => {
-    const { container } = render(
-      <ChatShellProvider>
-        <ComposerToolsMenu />
-      </ChatShellProvider>,
-    );
-    const trigger = container.querySelector("[data-composer-tools-trigger]");
-    expect(trigger?.getAttribute("class")).toContain("neu-button");
-  });
-
   it("course-detail Prereq Tree affordance carries active:scale-95 (recessed on press)", async () => {
     const { CourseDetailCard } = await import("@/src/components/course-lookup/course-detail-card");
     const record = {

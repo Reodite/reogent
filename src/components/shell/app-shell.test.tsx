@@ -11,7 +11,6 @@ vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: 
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
 vi.mock("@/src/components/map/map-panel", () => ({
   MapArea: () => <div data-testid="map-area" />,
-  MapBottomSheet: () => null,
 }));
 vi.mock("@/src/components/prereq-tree/prereq-tree-pane", () => ({ PrereqTreePane: () => null }));
 vi.mock("@/src/components/calendar/calendar-pane", () => ({ CalendarPane: () => null }));

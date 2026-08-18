@@ -149,7 +149,6 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   const prefersReducedMotion = useReducedMotion();
   const {
     setActiveChannel,
-    setPreviousUserChannel,
     activateCanvasView,
     setWorkspaceView,
     sessions,
@@ -256,7 +255,6 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   useEffect(() => {
     void historyNonce;
     setActiveChannel(null);
-    setPreviousUserChannel(null);
     pendingRetry.current = null;
     setSendError(null);
     // New chat (no session ID yet) — start empty, skip fetch
@@ -308,7 +306,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     return () => {
       cancelled = true;
     };
-  }, [api, sessionId, setActiveChannel, setPreviousUserChannel, activateCanvasView, setWorkspaceView, historyNonce]);
+  }, [api, sessionId, setActiveChannel, activateCanvasView, setWorkspaceView, historyNonce]);
 
   // Stick-to-bottom: auto-scroll when new content arrives IF user is near the bottom.
   const isNearBottom = useRef(true);

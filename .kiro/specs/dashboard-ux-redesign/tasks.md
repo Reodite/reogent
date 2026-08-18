@@ -103,17 +103,17 @@ Requirement clauses are referenced as `REQ-N.M` (Requirement N, acceptance crite
     - Remove the composer `+` tools menu (`composer-tools-menu.tsx`) from AI Mode; manual tool use moves to Tools Mode via `ToolList`. Keep the composer input and citation chips unchanged.
     - _Requirements: REQ-2.1, REQ-6.4_
 
-- [ ] 12. Retirements — delete superseded code
-  - [ ] 12.1 Remove `PaneHost`, `ToolsStrip`, `PanePreempt` + Back-to pill
+- [x] 12. Retirements — delete superseded code
+  - [x] 12.1 Remove `PaneHost`, `ToolsStrip`, `PanePreempt` + Back-to pill
     - Delete `src/components/shell/pane-host.tsx`, `tools-strip.tsx`, `pane-preempt.tsx`. Update imports in `app-shell.tsx`. Keep `pane-registry.tsx` (`PANE_REGISTRY`/`PANE_BY_ID` reused by `ToolList` + `AnswerCanvas`); drop the `preemptableByAgentMap` flag (no longer consulted — design retires the capture).
     - _Requirements: REQ-1.4, REQ-3.6_
-  - [ ] 12.2 Remove `previousUserChannel` + sessionStorage restore flow
+  - [x] 12.2 Remove `previousUserChannel` + sessionStorage restore flow
     - Remove `previousUserChannel`/`setPreviousUserChannel`/`readPreviousUserChannel`/`writePreviousUserChannel` and the `PREVIOUS_USER_CHANNEL_KEY` from `chat-shell-context.tsx`. Widgets in persisted `message.toolCalls` replace the restore mechanism.
     - _Requirements: REQ-3.4, REQ-3.8_
-  - [ ] 12.3 Remove `mergeMapHighlights` after Task 11 replaces all callers
+  - [x] 12.3 Remove `mergeMapHighlights` after Task 11 replaces all callers
     - Delete `mergeMapHighlights` from `src/lib/walking.ts` once `chat-panel.tsx` no longer references it (Tasks 11.1, 11.2). Keep the `extract*Highlight` helpers (reused by `toolCallToCanvasView`).
     - _Requirements: REQ-3.1_
-  - [ ] 12.4 Remove the AI-mode composer tools menu and `PaneBottomSheet`
+  - [x] 12.4 Remove the AI-mode composer tools menu and `PaneBottomSheet`
     - Delete `composer-tools-menu.tsx`'s AI-mode entry and `PaneBottomSheet` (replaced by `AnswerSheet`).
     - _Requirements: REQ-2.5, REQ-6.4_
 
