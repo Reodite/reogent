@@ -216,38 +216,38 @@ Property-based test sub-tasks are annotated with their property number from `des
 - [x] 12. Checkpoint - Sidebar + Pane Host tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 13. Implement Course Lookup (`src/components/course-lookup/` + `app/api/courses/`)
-  - [ ] 13.1 Implement `course-detail-card.tsx` rendering code / title / credits / description / prerequisite / corequisite / terms / sections
+- [x] 13. Implement Course Lookup (`src/components/course-lookup/` + `app/api/courses/`)
+  - [x] 13.1 Implement `course-detail-card.tsx` rendering code / title / credits / description / prerequisite / corequisite / terms / sections
     - Omit null/empty fields rather than render placeholders; render "Prereq Tree" affordance when `prerequisite` non-null (sets `activeChannel = { id: "prereq-tree", state: { root: code } }`). The affordance `<button>` carries `data-action="open-prereq-tree"` and `data-code={record.code}` (per UI/UX §A + the data-attribute contract). Surface tokens: `bg-surface-container-low` card, `.neu-raised` for the affordance button, `border-border-subtle` for section-row hairlines, `text-primary` for interactive text — all from `DESIGN.md` Whisper-Neumorphic palette.
     - _Requirements: REQ-2.1, REQ-2.2, REQ-2.3, REQ-4.1_
-  - [ ] 13.2 Implement `section-row.tsx` rendering term / days / HH:MM 24h / instructor
+  - [x] 13.2 Implement `section-row.tsx` rendering term / days / HH:MM 24h / instructor
     - _Requirements: REQ-2.4_
-  - [ ] 13.3 Implement `course-lookup-pane.tsx` with ambiguous-input handling
+  - [x] 13.3 Implement `course-lookup-pane.tsx` with ambiguous-input handling
     - Exact → prefix → substring fallback chain; "Did you mean" chips (up to 8) re-execute lookup on click. Empty-state message inline in this file (one-line variant lookup: "no results for `<applied filters>`" or "no course matching `<code>`") — no separate `empty-state.tsx` component (Ponytail: one line of JSX, one file).
     - _Requirements: REQ-3.1, REQ-3.4, REQ-3.5, REQ-3.6_
-  - [ ] 13.4 Implement `app/api/courses/route.ts` (`?q=...&subject=...&level=eq|plus|minus&digit=N`)
+  - [x] 13.4 Implement `app/api/courses/route.ts` (`?q=...&subject=...&level=eq|plus|minus&digit=N`)
     - Meilisearch prefix/subject/level-operator search; cap subject listing at 200 with "Showing first 200 of N" footer
     - _Requirements: REQ-3.1, REQ-3.2, REQ-3.3_
-  - [ ] 13.5 Create `app/api/courses/[code]/route.ts` exact-lookup REST route
+  - [x] 13.5 Create `app/api/courses/[code]/route.ts` exact-lookup REST route
     - New route (does not exist today); today only the agent `get_course` tool reaches the courses module (`src/server/modules/courses.ts`). Calls `requireUser(request)` from `@/src/server/auth`. Canonicalizes input via `src/shared/course-code.ts`; calls reogent's existing `findByCode` at `src/server/modules/courses.ts:144-157` (which already canonicalizes inline; do not refactor it during this port — defer to a follow-up PR). Returns 200 with the Course Record (omit null fields per REQ-2.2), 404 on miss (REQ-1), 400 on rejected `_O` code (REQ-1.3). JSON response.
     - _Requirements: REQ-1.1, REQ-1.2, REQ-1.3, REQ-2.2_
-  - [ ]\* 13.6 Snapshot test — Course Detail Card render with sections
+  - [x]\* 13.6 Snapshot test — Course Detail Card render with sections
     - _Requirements: REQ-2.1_
-  - [ ]\* 13.7 Example test — Null-field omission (universal property)
+  - [x]\* 13.7 Example test — Null-field omission (universal property)
     - _Requirements: REQ-2.2_
-  - [ ]\* 13.8 Example test — Subject cap 200 + footer notice
+  - [x]\* 13.8 Example test — Subject cap 200 + footer notice
     - _Requirements: REQ-3.2_
-  - [ ]\* 13.9 Example test — Did-you-mean 8-chip cap + click re-lookup
+  - [x]\* 13.9 Example test — Did-you-mean 8-chip cap + click re-lookup
     - _Requirements: REQ-3.5, REQ-3.6_
-  - [ ]\* 13.10 Property test — Level-operator relation
+  - [x]\* 13.10 Property test — Level-operator relation
     - **Property 37: for `<subject> <op><digit>`, `=` returns courses whose `number`'s first digit equals `digit`; `+` returns courses whose first digit ≥ `digit`; `-` returns courses whose first digit ≤ `digit`. First digit computed as `Number(String(number).charAt(0))`.**
     - **Validates: Requirements REQ-3.1, REQ-3.2, REQ-3.3**
     - Generator: `arbLevelQuery` from design.md §Domain 1 (`subject × op ∈ {=, +, -} × digit ∈ 1..5`); assert every returned row's first digit satisfies the operator relation.
-  - [ ]\* 13.11 Example test — "Prereq Tree" affordance on Course Detail Card opens the tree with the record's code as root (REQ-4.1 nav direction)
+  - [x]\* 13.11 Example test — "Prereq Tree" affordance on Course Detail Card opens the tree with the record's code as root (REQ-4.1 nav direction)
     - Render a Course Record with non-null `prerequisite`; click the "Prereq Tree" affordance; assert `activeChannel` becomes `{ id: "prereq-tree", state: { root: <that code> } }`.
     - _Requirements: REQ-4.1_
 
-- [ ] 14. Checkpoint - Course Lookup tests pass
+- [x] 14. Checkpoint - Course Lookup tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 15. Implement Citations server (`src/server/citations/`)
