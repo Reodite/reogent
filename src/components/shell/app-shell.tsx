@@ -6,7 +6,8 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
-import { MapBottomSheet, MapPanel } from "@/src/components/map/map-panel";
+import { MapBottomSheet } from "@/src/components/map/map-panel";
+import { PaneHost } from "@/src/components/shell/pane-host";
 import { SessionSidebar, useSidebarCollapsed } from "@/src/components/shell/session-sidebar";
 import { UserMenu } from "@/src/components/shell/user-menu";
 import { ThemeToggle } from "@/src/components/theme-toggle";
@@ -80,7 +81,7 @@ function SidebarDrawer() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { sidebarOpen, setSidebarOpen, mapOpen, setMobileMapOpen, mobileMapOpen, highlight } = useChatShell();
+  const { sidebarOpen, setSidebarOpen, setMobileMapOpen, mobileMapOpen, highlight } = useChatShell();
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sessionsMenuRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
@@ -190,13 +191,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div id="main-content" data-pane="chat" className="flex min-h-0 min-w-0 flex-1">
                 {children}
               </div>
-              <motion.div
-                animate={{ width: mapOpen ? "50%" : "3.75rem" }}
-                transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
-                className="map-aside hidden min-h-0 min-w-0 overflow-hidden sm:flex"
-              >
-                <MapPanel />
-              </motion.div>
+              <PaneHost />
             </div>
           </main>
         </div>

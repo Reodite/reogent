@@ -5,6 +5,7 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { CampusMap, type MapControls, type MapStatus } from "@/src/components/map/campus-map";
+import { PanePreempt } from "@/src/components/shell/pane-preempt";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
 import type { MapHighlight } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -219,51 +220,15 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
   );
 }
 
-/** Registry-facing map pane. Renders the interactive surface; collapse routes through the shell context. */
+/** Registry-facing map pane. Renders the interactive surface; collapse routes through the shell context. The Back-to pill mounts here when the agent preempted a user tool. */
 export function MapArea() {
   const { setActiveChannel } = useChatShell();
-  return <MapSurface onCollapse={() => setActiveChannel(null)} />;
-}
-
-/** Desktop/tablet: a persistent tool slot that collapses into a passive rail. */
-export function MapPanel() {
-  const { mapOpen, setActiveChannel } = useChatShell();
-  const isMobile = useMediaQuery("(max-width: 639px)");
-
-  if (isMobile) return null;
-
   return (
-    <div className="map-panel-root relative h-full min-h-0 w-full overflow-hidden">
-      <section
-        inert={!mapOpen}
-        aria-hidden={!mapOpen}
-        aria-label="Campus map"
-        className={`map-surface-layer neu-panel absolute inset-0 flex min-w-0 overflow-hidden rounded-2xl transition-opacity duration-200 ${mapOpen ? "opacity-100 delay-75" : "pointer-events-none opacity-0"}`}
-      >
-        <MapSurface onCollapse={() => setActiveChannel(null)} />
-      </section>
-
-      <aside
-        inert={mapOpen}
-        aria-hidden={mapOpen}
-        aria-label="Collapsed campus map"
-        className={`map-tab-layer neu-panel text-on-surface-variant absolute inset-y-0 right-0 flex w-[3.75rem] cursor-default flex-col items-center rounded-2xl py-3 transition-opacity duration-200 ${mapOpen ? "pointer-events-none opacity-0" : "opacity-100 delay-100"}`}
-      >
-        <button
-          type="button"
-          onClick={() => setActiveChannel("map", {})}
-          tabIndex={mapOpen ? -1 : 0}
-          aria-label="Expand campus map"
-          aria-expanded={mapOpen}
-          title="Expand campus map"
-          className="neu-panel text-primary hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors duration-150"
-        >
-          <Icon name="fullscreen" size={17} />
-        </button>
-        <span className="my-auto text-xs font-medium tracking-[0.06em] select-none [writing-mode:vertical-rl]">
-          Campus map
-        </span>
-      </aside>
+    <div className="relative h-full w-full">
+      <MapSurface onCollapse={() => setActiveChannel(null)} />
+      <div className="absolute top-3 left-1/2 z-20 -translate-x-1/2">
+        <PanePreempt />
+      </div>
     </div>
   );
 }
