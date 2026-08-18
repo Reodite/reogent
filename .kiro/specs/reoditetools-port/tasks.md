@@ -141,7 +141,7 @@ Property-based test sub-tasks are annotated with their property number from `des
     - _Requirements: REQ-9.3_
   - [x] 8.5 Implement `OptionalEdge` (dashed bezier + "optional" toggle pill) and `HardEdge`
     - _Requirements: REQ-10.1, REQ-10.2_
-  - [ ] 8.6 Implement `prereq-tree-pane.tsx` rendering states: empty no-prereqs, not-found, "Loading course index…"
+  - [x] 8.6 Implement `prereq-tree-pane.tsx` rendering states: empty no-prereqs, not-found, "Loading course index…"
     - Wire root-input box for switching root course without leaving the pane
     - Append the `[data-pane="prereq-tree"] .react-flow__*` CSS scoping (edge stroke, dasharray for optional, attribution hidden, node inherits font) to `app/globals.css` per UI/UX §B. Node variant classes (`bg-primary-container` root, `bg-surface` known, `bg-error-container` unknown, `bg-surface-container-low text-muted` note, `bg-secondary-container` coreq) applied per `data-variant`. `data-node-id`, `data-edge-variant="optional"`, `data-toggle="soft-toggle"` attributes carry the property-oracle contract.
     - _Requirements: REQ-4.3, REQ-10.3, REQ-10.4, REQ-10.5_
