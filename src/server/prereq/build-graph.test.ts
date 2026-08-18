@@ -11,12 +11,15 @@ function code(input: string): CanonicalCode {
   return c;
 }
 
-function doc(code: string, fields: { prerequisite?: string | null; corequisite?: string | null }): CourseDoc {
+function doc(
+  code: string,
+  fields: { prerequisite?: string | null; corequisite?: string | null; title?: string },
+): CourseDoc {
   return {
     code,
     subject: code.split(" ")[0],
     number: code.split(" ")[1],
-    title: "",
+    title: fields.title ?? "",
     description: "",
     credits: null,
     prerequisite: fields.prerequisite ?? null,
@@ -146,5 +149,20 @@ describe("buildPrereqGraph", () => {
     expect(dropdown?.kind).toBe("dropdown");
     expect(dropdown?.ui).toBe("dropdown");
     expect(dropdown?.children?.sort()).toEqual(["MATH 200", "MATH 220"]);
+  });
+
+  it("stamps the soft-immediate edge optional+softPath, hardens the transitive chain, and titles known courses (REQ-9.3, REQ-10.1)", async () => {
+    const search = mockSearch([
+      doc("CPSC 100", { prerequisite: "MATH 100 is recommended" }),
+      doc("MATH 100", { prerequisite: "MATH 101", title: "Calculus I" }),
+      doc("MATH 101", { title: "Pre-Calculus" }),
+    ]);
+    const g = await buildPrereqGraph(code("CPSC 100"), search);
+    const softEdge = g.edges.find((e) => e.target === "MATH 100" && e.optional);
+    expect(softEdge?.softPath).toBe("");
+    const transitive = g.edges.find((e) => e.source === "MATH 100" && e.target === "MATH 101");
+    expect(transitive?.optional ?? false).toBe(false);
+    expect(transitive?.softPath ?? null).toBeNull();
+    expect(g.nodes.find((n) => n.id === "MATH 100")?.title).toBe("Calculus I");
   });
 });

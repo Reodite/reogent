@@ -10,6 +10,9 @@ export type PrereqNode = {
   code?: string;
   variant?: "root" | "known" | "unknown" | "note" | "coreq";
   label: string;
+  /** Catalog title for a known course; the disjunction detail strip reads this
+   *  (REQ-9.3) and falls back to the "(not in calendar)" sentinel when absent. */
+  title?: string;
   /** BFS depth from the root course (course-lookup hops). Client columns and the depth-cap oracle read this. */
   depth?: number;
   children?: string[];
@@ -23,6 +26,10 @@ export type PrereqEdge = {
   source: string;
   target: string;
   optional?: boolean;
+  /** Soft path controlling this optional edge (`${owner}::${path}` at the `Soft`
+   *  node). Carried only when `optional` is true; the pane groups optional
+   *  edges by `softPath` to render + toggle the soft subtree. */
+  softPath?: string;
 };
 
 export type PrereqGraph = {
@@ -69,9 +76,12 @@ export async function buildPrereqGraph(
   const nodeByCode = new Map<string, string>();
   const visited = new Set<string>();
   let edgeSeq = 0;
-  const edge = (source: string, target: string, optional: boolean): PrereqEdge => {
+  const edge = (source: string, target: string, optional: boolean, softPath?: string): PrereqEdge => {
     const e: PrereqEdge = { id: `e${edgeSeq++}`, source, target };
-    if (optional) e.optional = true;
+    if (optional) {
+      e.optional = true;
+      if (softPath !== undefined) e.softPath = softPath;
+    }
     return e;
   };
   const childPath = (parent: string, index: number) => (parent === "" ? `${index}` : `${parent}.${index}`);
@@ -85,7 +95,7 @@ export async function buildPrereqGraph(
     return id;
   };
 
-  type Owner = { code: string; nodeId: string; depth: number; path: string; optional: boolean };
+  type Owner = { code: string; nodeId: string; depth: number; path: string; optional: boolean; softPath?: string };
 
   // Walks one course's prereq AST, emitting graph nodes/edges/selection keys and
   // enqueuing code leaves for transitive lookup. Top-level Literals drop out of
@@ -98,14 +108,17 @@ export async function buildPrereqGraph(
         return;
       case "code": {
         const id = ensureCourseNode(ast.code, owner.depth + 1);
-        edges.push(edge(owner.nodeId, id, owner.optional));
+        edges.push(edge(owner.nodeId, id, owner.optional, owner.softPath));
         if (!visited.has(ast.code)) {
-          queue.push({ code: ast.code, nodeId: id, depth: owner.depth + 1, optional: owner.optional });
+          queue.push({ code: ast.code, nodeId: id, depth: owner.depth + 1, optional: false });
         }
         return;
       }
       case "soft":
-        expand(ast.child, { ...owner, optional: true });
+        // The wrapper's path (owner.path) keys the per-subtree toggle; the soft's
+        // direct outgoing edges render dashed with this softPath, while the block's
+        // transitive prereq chain uses hard edges (the opt-in becomes required).
+        expand(ast.child, { ...owner, optional: true, softPath: owner.path });
         return;
       case "and":
         ast.children.forEach((c, i) => {
@@ -123,9 +136,9 @@ export async function buildPrereqGraph(
             const cid = ensureCourseNode(c.code, owner.depth + 1);
             childIds.push(cid);
             // Dropdown-absorption (REQ-8.5): edges to the selected code route into the dropdown group node.
-            edges.push(edge(orId, cid, owner.optional));
+            edges.push(edge(orId, cid, owner.optional, owner.softPath));
             if (!visited.has(c.code)) {
-              queue.push({ code: c.code, nodeId: cid, depth: owner.depth + 1, optional: owner.optional });
+              queue.push({ code: c.code, nodeId: cid, depth: owner.depth + 1, optional: false });
             }
           } else if (c.kind === "literal") {
             const lid = `lit:${orId}::${i}`;
@@ -137,12 +150,12 @@ export async function buildPrereqGraph(
               depth: owner.depth + 1,
             });
             childIds.push(lid);
-            edges.push(edge(orId, lid, owner.optional));
+            edges.push(edge(orId, lid, owner.optional, owner.softPath));
           } else if (c.kind === "flattened") {
             const fid = `flat:${orId}::${i}`;
             nodes.push({ id: fid, kind: "literal", variant: "note", label: displayExpr(c), depth: owner.depth + 1 });
             childIds.push(fid);
-            edges.push(edge(orId, fid, owner.optional));
+            edges.push(edge(orId, fid, owner.optional, owner.softPath));
             if (c.subExpr) {
               expand(c.subExpr, {
                 code: owner.code,
@@ -150,11 +163,12 @@ export async function buildPrereqGraph(
                 depth: owner.depth + 1,
                 path: cp,
                 optional: owner.optional,
+                softPath: owner.softPath,
               });
             }
           } else {
             // Nested And/Or/Soft inside a disjunction option: recurse under the dropdown node.
-            expand(c, { code: owner.code, nodeId: orId, depth: owner.depth + 1, path: cp, optional: owner.optional });
+            expand(c, { code: owner.code, nodeId: orId, depth: owner.depth + 1, path: cp, optional: false });
           }
         });
         nodes.push({
@@ -167,13 +181,13 @@ export async function buildPrereqGraph(
           optional: owner.optional,
           depth: owner.depth + 1,
         });
-        edges.push(edge(owner.nodeId, orId, owner.optional));
+        edges.push(edge(owner.nodeId, orId, owner.optional, owner.softPath));
         return;
       }
       case "flattened": {
         const fid = `flat:${owner.code}::${owner.path}`;
         nodes.push({ id: fid, kind: "literal", variant: "note", label: displayExpr(ast), depth: owner.depth + 1 });
-        edges.push(edge(owner.nodeId, fid, owner.optional));
+        edges.push(edge(owner.nodeId, fid, owner.optional, owner.softPath));
         if (ast.subExpr) {
           expand(ast.subExpr, {
             code: owner.code,
@@ -181,6 +195,7 @@ export async function buildPrereqGraph(
             depth: owner.depth + 1,
             path: owner.path,
             optional: owner.optional,
+            softPath: owner.softPath,
           });
         }
         return;
@@ -192,7 +207,15 @@ export async function buildPrereqGraph(
   const queue: Entry[] = [];
 
   const rootId = rootCode;
-  nodes.push({ id: rootId, kind: "course", variant: "root", code: rootCode, label: rootCode, depth: 0 });
+  nodes.push({
+    id: rootId,
+    kind: "course",
+    variant: "root",
+    code: rootCode,
+    label: rootCode,
+    depth: 0,
+    title: rootDoc.title,
+  });
   nodeByCode.set(rootCode, rootId);
   visited.add(rootCode);
 
@@ -245,7 +268,10 @@ export async function buildPrereqGraph(
       if (node && node.kind === "course") node.variant = "unknown";
       continue;
     }
-    if (node && node.kind === "course") node.variant = "known";
+    if (node && node.kind === "course") {
+      node.variant = "known";
+      node.title = doc.title;
+    }
     // Cap expansions so the deepest emitted node sits at depthCap (REQ-7.2).
     if (depth < depthCap && doc.prerequisite) {
       expand(parsePrereq(doc.prerequisite), { code, nodeId, depth, path: "", optional });
