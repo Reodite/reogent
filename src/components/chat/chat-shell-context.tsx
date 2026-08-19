@@ -11,11 +11,14 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import type { CanvasView, PaneId, PaneState } from "@/src/components/shell/pane-registry";
+import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useShellMode } from "@/src/components/shell/use-shell-mode";
 import type { SessionSummary, ToolCall } from "@/src/lib/api-types";
+import { parseToolSlug } from "@/src/lib/pane-route";
 import type { ShellMode } from "@/src/lib/shell-mode";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { MapHighlight } from "@/src/lib/walking";
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type { CanvasView, MapHighlight };
@@ -64,7 +67,7 @@ export function useChatShell(): ChatShellState {
   return value;
 }
 
-export function ChatShellProvider({ children }: { children: ReactNode }) {
+export function ChatShellProvider({ initialMode = "ai", children }: { initialMode?: ShellMode; children: ReactNode }) {
   const api = useApi();
   const auth = useAppAuth();
 
@@ -80,7 +83,7 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
   const [focusNonce, setFocusNonce] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newChatNonce, setNewChatNonce] = useState(0);
-  const [mode, setMode] = useShellMode();
+  const [mode, setMode] = useShellMode(initialMode);
   const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -220,5 +223,26 @@ export function ChatShellProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <ChatShellContext.Provider value={value}>{children}</ChatShellContext.Provider>;
+  return (
+    <ChatShellContext.Provider value={value}>
+      <ToolRouteActivator />
+      {children}
+    </ChatShellContext.Provider>
+  );
+}
+
+/** When the URL is `/tools/<slug>`, push the pane for `<slug>` onto the
+ * workspace canvas. Mounted in ChatShellProvider so it lives wherever the
+ * shell is rendered and runs the URL effect independent of AppShell's
+ * chat-vs-tool layout decision. */
+function ToolRouteActivator() {
+  const pathname = usePathname();
+  const { setActiveChannel } = useChatShell();
+  useEffect(() => {
+    if (!pathname?.startsWith("/tools/")) return;
+    const slug = pathname.slice("/tools/".length).split("/")[0];
+    const paneId = parseToolSlug(slug);
+    if (paneId) setActiveChannel(paneId, PANE_BY_ID[paneId].defaultState);
+  }, [pathname, setActiveChannel]);
+  return null;
 }

@@ -9,6 +9,11 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: "signedOut" }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: () => {}, push: () => {} }),
+  usePathname: () => "/chat",
+  useParams: () => ({}),
+}));
 vi.mock("@/src/components/map/map-panel", () => ({
   MapArea: () => <div data-testid="map-area" />,
 }));

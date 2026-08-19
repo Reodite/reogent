@@ -24,7 +24,7 @@ vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => null }));
 vi.mock("@/src/components/shell/user-menu", () => ({ UserMenu: () => null }));
 vi.mock("@/src/components/ui/live-region", () => ({ LiveRegion: () => null }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: () => {} }),
+  useRouter: () => ({ replace: () => {}, push: () => {} }),
   usePathname: () => "/",
   useParams: () => ({}),
 }));

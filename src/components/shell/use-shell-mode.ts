@@ -1,25 +1,32 @@
 "use client";
 
-import { parseShellMode, SHELL_MODE_STORAGE_KEY, type ShellMode } from "@/src/lib/shell-mode";
+import { SHELL_MODE_STORAGE_KEY, type ShellMode } from "@/src/lib/shell-mode";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * The AI/Tools shell mode, persisted to localStorage and mirrored to
- * `documentElement.dataset.shellMode`. The layout bootstrap sets that dataset
- * attribute pre-paint so the chrome matches before React hydrates; SSR and the
- * first client render stay "ai", and a post-mount effect applies the stored
- * mode, avoiding a hydration mismatch.
+ * The AI/Tools shell mode, derived from the current URL pathname and persisted
+ * to localStorage. `/tools/*` → "tools", anything else → "ai". The pathname
+ * effect keeps state in lockstep with navigation (including deep links and
+ * back/forward); `setMode` writes the local preference and lets the caller
+ * push the URL (see `mode-toggle.tsx`). Dataset mirror is for SSR/paint parity
+ * with the bootstrap script in `app/layout.tsx`.
  */
-export function useShellMode(): [ShellMode, (mode: ShellMode) => void] {
-  const [mode, setModeState] = useState<ShellMode>("ai");
+export function useShellMode(initial: ShellMode = "ai"): [ShellMode, (mode: ShellMode) => void] {
+  const [mode, setModeState] = useState<ShellMode>(initial);
+  const pathname = usePathname();
 
   useEffect(() => {
+    const next: ShellMode = pathname?.startsWith("/tools") ? "tools" : "ai";
+    setModeState(next);
+    // Dataset mirrors the URL so pre-paint chrome matches the active route.
+    // localStorage stays as the user preference (written only by `setMode`).
     try {
-      setModeState(parseShellMode(window.localStorage.getItem(SHELL_MODE_STORAGE_KEY)));
+      document.documentElement.dataset.shellMode = next;
     } catch {
-      /* localStorage unavailable */
+      /* dataset unavailable */
     }
-  }, []);
+  }, [pathname]);
 
   const setMode = useCallback((next: ShellMode) => {
     setModeState(next);
