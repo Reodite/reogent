@@ -140,26 +140,21 @@ describe("course-lookup-pane — subject cap 200 + footer notice (13.8, REQ-3.2)
   });
 });
 
-describe("course-lookup-pane — fuzzy fallback list + re-lookup (13.9, REQ-3.5/3.6)", () => {
-  it("lists all fuzzy matches after a dead-exact code and re-looks-up the picked code on click", async () => {
-    const twelve = Array.from({ length: 12 }, (_, i) => makeCourse(`CPSC ${110 + i}`, "CPSC", String(110 + i)));
-    const resolveHit = makeCourse("CPSC 110", "CPSC", "110");
-    apiState.getCourse.mockImplementation(async (code: string) => {
-      if (code === "CPSC 110") return resolveHit;
+describe("course-lookup-pane — dead exact code narrows to same-number match (13.9, REQ-3.5)", () => {
+  it("on a dead canonical code, subject search filters by exact number — no q-fuzzy spew", async () => {
+    const subjectCourses = Array.from({ length: 12 }, (_, i) => makeCourse(`CPSC ${110 + i}`, "CPSC", String(110 + i)));
+    apiState.getCourse.mockImplementation(async () => {
       throw new ApiError(404, "No course");
     });
-    apiState.searchCourses.mockResolvedValue({ courses: twelve });
+    apiState.searchCourses.mockResolvedValue({ courses: subjectCourses });
     const setState = vi.fn();
     render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
-    // A canonical 3-digit code the live catalog won't have — exercises the exact → prefix fallback.
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CPSC 999" } });
     await waitFor(() => {
-      expect(document.querySelectorAll("[data-course-list] button")).toHaveLength(12);
+      expect(document.querySelectorAll("[data-course-list] button")).toHaveLength(0);
     });
-    fireEvent.click(document.querySelectorAll("[data-course-list] button")[0]);
-    await waitFor(() => {
-      expect(apiState.getCourse).toHaveBeenCalledWith("CPSC 110");
-    });
+    expect(await screen.findByText(/No courses matching CPSC 999/)).not.toBeNull();
+    expect(apiState.searchCourses).toHaveBeenCalledWith({ subject: "CPSC" });
   });
 });
 

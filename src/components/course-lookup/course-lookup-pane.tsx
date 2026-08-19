@@ -82,9 +82,13 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
             return;
           } catch (e) {
             if (e instanceof ApiError && e.status === 404) {
-              const res = await api.searchCourses({ q: `${canonical.subject} ${canonical.number}` });
+              // ponytail: q-search spans all fields and Meilisearch ranks by
+              // relevance, surfacing APSC 160 and ELEC 331 for "CPSC 101".
+              // Narrow by subject + exact number so a dead code lands on a
+              // no-results state instead of fuzzy spew.
+              const res = await api.searchCourses({ subject: canonical.subject });
               if (my !== reqToken.current) return;
-              const courses = res.courses.map(toCandidate);
+              const courses = res.courses.filter((c) => c.number === canonical.number).map(toCandidate);
               setRecord(null);
               setList({ courses, total: courses.length });
               setStatus("idle");
