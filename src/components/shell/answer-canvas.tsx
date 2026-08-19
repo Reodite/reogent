@@ -3,7 +3,7 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PANE_BY_ID, type CanvasView, type PaneState } from "@/src/components/shell/pane-registry";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 /**
  * The AI Mode Answer Canvas: the idle map overview when no widget is active, or
@@ -40,11 +40,17 @@ function ActiveCanvasView({ view }: { view: CanvasView }) {
   // Real setState: merges the pane's partial state back into `workspaceView`,
   // so course-lookup submit and calendar month-nav persist the canvas view
   // instead of hitting a no-op (the bug fixed here from `pane-host.tsx`).
+  // `view.state` is tracked in a ref so setState identity stays stable across
+  // workspaceView updates — otherwise panes that write back from inside their
+  // own fetch effects (prereq tree, course lookup) re-fire the effect on every
+  // callback identity change and never settle.
+  const stateRef = useRef(view.state);
+  stateRef.current = view.state;
   const setState = useCallback(
     (patch: Partial<PaneState>) => {
-      setWorkspaceView({ paneId: view.paneId, state: { ...view.state, ...patch } });
+      setWorkspaceView({ paneId: view.paneId, state: { ...stateRef.current, ...patch } });
     },
-    [setWorkspaceView, view.paneId, view.state],
+    [setWorkspaceView, view.paneId],
   );
 
   // Unknown pane id (e.g. a future pane not yet registered): fall back to the
