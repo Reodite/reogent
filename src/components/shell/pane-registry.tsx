@@ -5,7 +5,7 @@ import { CourseLookupPane } from "@/src/components/course-lookup/course-lookup-p
 import { Icon, type IconName } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PrereqTreePane } from "@/src/components/prereq-tree/prereq-tree-pane";
-import type { ComponentType } from "react";
+import { useCallback, type ComponentType } from "react";
 
 /** Identifies a pane surface registered in {@link PANE_REGISTRY}. The `(string & {})` tail permits entries defined outside this module. */
 export type PaneId = "map" | "course-lookup" | "prereq-tree" | "calendar" | (string & {});
@@ -31,9 +31,10 @@ function iconGlyph(name: IconName) {
   };
 }
 
-function PrereqTreeRegistryPane({ state }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
-  const root = (state.root as string | undefined) ?? "";
-  return <PrereqTreePane initialRoot={root} />;
+function PrereqTreeRegistryPane({ state, setState }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
+  const root = (state.root as string | undefined) || "CPSC 320";
+  const onChangeRoot = useCallback((next: string) => setState({ root: next }), [setState]);
+  return <PrereqTreePane initialRoot={root} onChangeRoot={onChangeRoot} />;
 }
 
 function thisMonth(): string {

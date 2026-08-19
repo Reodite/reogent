@@ -133,7 +133,6 @@ describe("course-lookup-pane — subject cap 200 + footer notice (13.8, REQ-3.2)
     const setState = vi.fn();
     render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CPSC" } });
-    fireEvent.click(screen.getByRole("button", { name: "Look up" }));
     await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalled());
     expect(await screen.findByText(/Showing first 200 of 205/)).not.toBeNull();
     expect(document.querySelectorAll("[data-course-list] button")).toHaveLength(200);
@@ -154,7 +153,6 @@ describe("course-lookup-pane — did-you-mean 8-chip cap + re-lookup (13.9, REQ-
     render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
     // A canonical 3-digit code the live catalog won't have — exercises the exact → prefix fallback.
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CPSC 999" } });
-    fireEvent.click(screen.getByRole("button", { name: "Look up" }));
     await waitFor(() => {
       expect(document.querySelectorAll("[data-did-you-mean] button")).toHaveLength(8);
     });

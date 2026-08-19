@@ -1,18 +1,10 @@
 "use client";
 
 import "reactflow/dist/style.css";
+import { useApi } from "@/src/components/providers";
 import { announce } from "@/src/components/ui/live-region";
 import type { PrereqGraph, PrereqNode } from "@/src/server/prereq/build-graph";
-import {
-  Component,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ErrorInfo,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import { Component, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import ReactFlow, { type Edge, type Node } from "reactflow";
 import { DisjunctionDetailStrip, type DisjunctionDetail } from "./DisjunctionDetailStrip";
 import { HardEdge } from "./edges/HardEdge";
@@ -26,6 +18,7 @@ import { visibleGraph } from "./soft-hide";
 // would pack tighter but adds a dep; fitView zooms to fit. Revisit if columns look sparse.
 const COLUMN_W = 240;
 const ROW_H = 110;
+const DEBOUNCE_MS = 250;
 
 function layoutNodes(
   nodes: PrereqNode[],
@@ -141,11 +134,14 @@ function AccordionFallback({ graph }: { graph: PrereqGraph }) {
 
 export function PrereqTreePane({
   initialRoot = "CPSC 320",
+  onChangeRoot,
   onNavigateCourse,
 }: {
   initialRoot?: string;
+  onChangeRoot?: (root: string) => void;
   onNavigateCourse?: (code: string) => void;
 }) {
+  const api = useApi();
   const [root, setRoot] = useState(initialRoot);
   const [code, setCode] = useState(initialRoot);
   const [graph, setGraph] = useState<PrereqGraph | null>(null);
@@ -157,18 +153,21 @@ export function PrereqTreePane({
   const [softToggles, setSoftToggles] = useState<Record<string, 0 | 1>>({});
 
   useEffect(() => {
+    if (!root) {
+      setGraph(null);
+      setStatus("ready");
+      return;
+    }
     let cancelled = false;
     setStatus("loading");
     setGraph(null);
-    fetch(`/api/prereq-tree?root=${encodeURIComponent(root)}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(String(res.status));
-        return (await res.json()) as PrereqGraph;
-      })
+    api
+      .getPrereqTree(root)
       .then((g) => {
         if (cancelled) return;
         setGraph(g);
         setStatus("ready");
+        onChangeRoot?.(root);
       })
       .catch(() => {
         if (!cancelled) setStatus("error");
@@ -176,7 +175,17 @@ export function PrereqTreePane({
     return () => {
       cancelled = true;
     };
-  }, [root]);
+  }, [root, api, onChangeRoot]);
+
+  // Live debounced: typing changes `code`; after DEBOUNCE_MS, push to `root`
+  // to (re)fetch the tree.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const trimmed = code.trim();
+      if (trimmed && trimmed !== root) setRoot(trimmed);
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [code, root]);
 
   const onSelect = useCallback((selectionKey: string, index: number) => {
     setSelections((prev) => ({ ...prev, [selectionKey]: index }));
@@ -246,34 +255,17 @@ export function PrereqTreePane({
     return { rfNodes, rfEdges, disjunctions };
   }, [graph, selections, softToggles, onSelect, onToggle, onNavigateCourse]);
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const next = code.trim();
-    if (!next) return;
-    setRoot(next);
-  }
-
   const showTree = !!(transformed && graph?.found && (graph?.hasPrereqs || graph?.hasCoreqs));
 
   return (
     <div data-pane="prereq-tree" className="flex h-full flex-col gap-3 p-3">
-      <form onSubmit={submit} className="flex gap-2">
-        <input
-          aria-label="Root course code"
-          placeholder="CPSC 320"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
-        />
-        <button
-          type="submit"
-          className="neu-primary-button bg-primary text-on-primary rounded-xl px-4 text-sm font-medium"
-          disabled={code.trim() === ""}
-          style={{ minHeight: 44, minWidth: 44 }}
-        >
-          Build
-        </button>
-      </form>
+      <input
+        aria-label="Root course code"
+        placeholder="Search a root course — CPSC 320, MATH 200"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
+      />
       {status === "loading" && (
         <p className="text-muted inline-flex items-center gap-1.5 text-xs" aria-live="polite">
           <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />

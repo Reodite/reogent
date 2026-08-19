@@ -6,11 +6,12 @@ import type { PaneState } from "@/src/components/shell/pane-registry";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
 import { canonicalize, isOkanagan } from "@/src/shared/course-code";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Candidate = { code: string; subject: string; number: string; title: string };
 
 const LEVEL_OP: Record<string, "eq" | "plus" | "minus"> = { "=": "eq", "+": "plus", "-": "minus" };
+const DEBOUNCE_MS = 250;
 
 function parseLevel(input: string): { subject: string; level: "eq" | "plus" | "minus"; digit: number } | null {
   const m = input.trim().match(/^([A-Za-z]{2,4})\s*([=+-])\s*([1-5])$/);
@@ -32,107 +33,120 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
   const [rejected, setRejected] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
 
-  async function lookup(input: string) {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    if (isOkanagan(trimmed)) {
-      setRejected(true);
-      setRecord(null);
-      setDidYouMean(null);
-      setList(null);
-      setError(null);
-      return;
-    }
-    setRejected(false);
-    setStatus("loading");
-    setError(null);
+  // Token of the lookup currently in flight; the latest one wins, stale
+  // responses are dropped.
+  const reqToken = useRef(0);
 
-    const level = parseLevel(trimmed);
-    try {
-      if (level) {
-        const res = await api.searchCourses({ subject: level.subject, level: level.level, digit: level.digit });
-        const courses = res.courses.map(toCandidate);
+  const lookup = useCallback(
+    async (input: string) => {
+      const trimmed = input.trim();
+      if (!trimmed) {
         setRecord(null);
+        setList(null);
         setDidYouMean(null);
-        setList({ courses, total: res.subject_total ?? courses.length });
+        setError(null);
+        setRejected(false);
         setStatus("idle");
         return;
       }
-      const canonical = canonicalize(trimmed);
-      if (canonical?.kind === "code") {
-        try {
-          const rec = await api.getCourse(`${canonical.subject} ${canonical.number}`);
-          setRecord(rec);
+      if (isOkanagan(trimmed)) {
+        setRejected(true);
+        setRecord(null);
+        setDidYouMean(null);
+        setList(null);
+        setError(null);
+        setStatus("idle");
+        return;
+      }
+      setRejected(false);
+      setStatus("loading");
+      setError(null);
+      setState({ code: trimmed });
+      const my = ++reqToken.current;
+
+      const level = parseLevel(trimmed);
+      try {
+        if (level) {
+          const res = await api.searchCourses({ subject: level.subject, level: level.level, digit: level.digit });
+          if (my !== reqToken.current) return;
+          const courses = res.courses.map(toCandidate);
+          setRecord(null);
           setDidYouMean(null);
-          setList(null);
+          setList({ courses, total: res.subject_total ?? courses.length });
           setStatus("idle");
           return;
-        } catch (e) {
-          if (e instanceof ApiError && e.status === 404) {
-            const res = await api.searchCourses({ q: `${canonical.subject} ${canonical.number}` });
-            setRecord(null);
+        }
+        const canonical = canonicalize(trimmed);
+        if (canonical?.kind === "code") {
+          try {
+            const rec = await api.getCourse(`${canonical.subject} ${canonical.number}`);
+            if (my !== reqToken.current) return;
+            setRecord(rec);
+            setDidYouMean(null);
             setList(null);
-            setDidYouMean(res.courses.slice(0, 8).map(toCandidate));
             setStatus("idle");
             return;
+          } catch (e) {
+            if (e instanceof ApiError && e.status === 404) {
+              const res = await api.searchCourses({ q: `${canonical.subject} ${canonical.number}` });
+              if (my !== reqToken.current) return;
+              setRecord(null);
+              setList(null);
+              setDidYouMean(res.courses.slice(0, 8).map(toCandidate));
+              setStatus("idle");
+              return;
+            }
+            throw e;
           }
-          throw e;
         }
-      }
-      if (canonical?.kind === "subject") {
-        const res = await api.searchCourses({ subject: canonical.subject });
-        const courses = res.courses.map(toCandidate);
+        if (canonical?.kind === "subject") {
+          const res = await api.searchCourses({ subject: canonical.subject });
+          if (my !== reqToken.current) return;
+          const courses = res.courses.map(toCandidate);
+          setRecord(null);
+          setDidYouMean(null);
+          setList({ courses, total: res.subject_total ?? courses.length });
+          setStatus("idle");
+          return;
+        }
+        const res = await api.searchCourses({ q: trimmed });
+        if (my !== reqToken.current) return;
+        setRecord(null);
+        setList(null);
+        setDidYouMean(res.courses.slice(0, 8).map(toCandidate));
+        setStatus("idle");
+      } catch (e) {
+        if (my !== reqToken.current) return;
         setRecord(null);
         setDidYouMean(null);
-        setList({ courses, total: res.subject_total ?? courses.length });
+        setList(null);
+        setError(e instanceof Error ? e.message : "Lookup failed");
         setStatus("idle");
-        return;
       }
-      // Unrecognized input: substring fallback via q full-text search.
-      const res = await api.searchCourses({ q: trimmed });
-      setRecord(null);
-      setList(null);
-      setDidYouMean(res.courses.slice(0, 8).map(toCandidate));
-      setStatus("idle");
-    } catch (e) {
-      setRecord(null);
-      setDidYouMean(null);
-      setList(null);
-      setError(e instanceof Error ? e.message : "Lookup failed");
-      setStatus("idle");
-    }
-  }
+    },
+    [api, setState],
+  );
+
+  // Live debounced search on `code`.
+  useEffect(() => {
+    const t = setTimeout(() => lookup(code), DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [code, lookup]);
 
   const subjectOverflow = list !== null && list.total > 200;
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setState({ code });
-          lookup(code);
-        }}
-        className="flex gap-2"
-      >
-        <input
-          type="text"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="CPSC 110"
-          aria-label="Course code"
-          aria-invalid={rejected ? "true" : undefined}
-          aria-errormessage={rejected ? "code-error" : undefined}
-          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
-        />
-        <button
-          type="submit"
-          disabled={code.trim() === ""}
-          className="neu-primary-button bg-primary text-on-primary min-h-[44px] min-w-[44px] rounded-xl px-4 text-sm font-medium disabled:opacity-40"
-        >
-          Look up
-        </button>
-      </form>
+      <input
+        type="text"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        placeholder="Search a course code or subject — CPSC, MATH 200, CPSC+1"
+        aria-label="Course code"
+        aria-invalid={rejected ? "true" : undefined}
+        aria-errormessage={rejected ? "code-error" : undefined}
+        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+      />
 
       {rejected && (
         <p
@@ -162,14 +176,12 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
 
       {didYouMean && didYouMean.length > 0 && (
         <div data-did-you-mean className="flex flex-wrap gap-1.5">
+          <span className="text-on-surface-variant w-full text-xs">Did you mean?</span>
           {didYouMean.slice(0, 8).map((c) => (
             <button
               key={`${c.subject}-${c.number}`}
               type="button"
-              onClick={() => {
-                setCode(`${c.subject} ${c.number}`);
-                lookup(`${c.subject} ${c.number}`);
-              }}
+              onClick={() => setCode(`${c.subject} ${c.number}`)}
               className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[36px] min-w-[44px] rounded-full border px-4 py-2.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
             >
               <span className="font-mono">
@@ -190,10 +202,7 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
             <button
               key={c.code}
               type="button"
-              onClick={() => {
-                setCode(c.code);
-                lookup(c.code);
-              }}
+              onClick={() => setCode(c.code)}
               className="neu-raised bg-surface flex items-center gap-2 rounded-lg px-3 py-2 text-left"
             >
               <span className="font-mono text-sm font-medium">{c.code}</span>
@@ -207,7 +216,7 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
       {record && <CourseDetailCard record={record} />}
 
       {!code && !record && !didYouMean && !list && !error && !rejected && (
-        <p className="text-muted text-sm">Type a course code to see its details.</p>
+        <p className="text-muted text-sm">Start typing a course code or subject to see results.</p>
       )}
     </div>
   );
