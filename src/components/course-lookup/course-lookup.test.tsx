@@ -163,3 +163,26 @@ describe("course-lookup-pane — did-you-mean 8-chip cap + re-lookup (13.9, REQ-
     });
   });
 });
+
+describe("course-lookup-pane — partial-subject fallback (CPS → CPSC/CPEN)", () => {
+  it("falls back to q search filtered by subject-prefix when the subject code is not in the catalog", async () => {
+    apiState.searchCourses.mockImplementation(async (params: { subject?: string; q?: string }) => {
+      if (params.subject) return { courses: [], subject_total: 0 };
+      return {
+        courses: [
+          makeCourse("CPSC 110", "CPSC_V", "110"),
+          makeCourse("CPSC 121", "CPSC_V", "121"),
+          makeCourse("BIOF 200", "BIOF_V", "200"),
+        ],
+      };
+    });
+    const setState = vi.fn();
+    render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
+    fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CPS" } });
+    await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalledWith({ q: "CPS" }));
+    const listedCodes = [...document.querySelectorAll("[data-course-list] button .font-mono")].map((n) =>
+      n.textContent.trim(),
+    );
+    expect(listedCodes).toEqual(["CPSC 110", "CPSC 121"]);
+  });
+});

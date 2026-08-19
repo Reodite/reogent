@@ -103,9 +103,30 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
           const res = await api.searchCourses({ subject: canonical.subject });
           if (my !== reqToken.current) return;
           const courses = res.courses.map(toCandidate);
+          if (courses.length > 0) {
+            setRecord(null);
+            setDidYouMean(null);
+            setList({ courses, total: res.subject_total ?? courses.length });
+            setStatus("idle");
+            return;
+          }
+          // No exact subject — keep only q-fuzzy hits whose subject carries
+          // `canonical.subject` as a prefix, so "CPS" surfaces CPSC/CPEN rather
+          // than courses whose titles merely mention "CPS".
+          const fuzzy = await api.searchCourses({ q: canonical.subject });
+          if (my !== reqToken.current) return;
+          const lower = canonical.subject.toLowerCase();
+          const prefixMatches = fuzzy.courses
+            .filter((c) =>
+              c.subject
+                .replace(/_V$|_O$/, "")
+                .toLowerCase()
+                .startsWith(lower),
+            )
+            .map(toCandidate);
           setRecord(null);
           setDidYouMean(null);
-          setList({ courses, total: res.subject_total ?? courses.length });
+          setList({ courses: prefixMatches, total: prefixMatches.length });
           setStatus("idle");
           return;
         }
