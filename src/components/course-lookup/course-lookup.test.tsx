@@ -108,12 +108,12 @@ describe("CourseDetailCard — Prereq Tree affordance (13.11, REQ-4.1)", () => {
   });
 });
 
-function makeCourse(code: string, subject: string, number: string): CourseDoc {
+function makeCourse(code: string, subject: string, number: string, title?: string): CourseDoc {
   return {
     code,
     subject,
     number,
-    title: `${code} — ${subject}`,
+    title: title ?? `${code} — ${subject}`,
     description: "",
     credits: null,
     prerequisite: null,
@@ -155,6 +155,62 @@ describe("course-lookup-pane — dead exact code narrows to same-number match (1
     });
     expect(await screen.findByText(/No courses matching CPSC 999/)).not.toBeNull();
     expect(apiState.searchCourses).toHaveBeenCalledWith({ subject: "CPSC" });
+  });
+});
+
+describe("course-lookup-pane — partial-code narrows by number-prefix (13.9, REQ-3.5)", () => {
+  it("calls subject+number search and renders the server-filtered matches verbatim", async () => {
+    // Simulate the server's response (contains-prefix match, sorted ascending, capped at 8).
+    const cpscMatched = [
+      "CPSC_V 110",
+      "CPSC_V 111",
+      "CPSC_V 112",
+      "CPSC_V 113",
+      "CPSC_V 114",
+      "CPSC_V 117",
+      "CPSC_V 211",
+      "CPSC_V 311",
+    ].map((code) => {
+      const [subject, number] = code.split(" ");
+      return makeCourse(code, subject, number);
+    });
+    apiState.searchCourses.mockResolvedValue({ courses: cpscMatched, subject_total: 12 });
+    const setState = vi.fn();
+    render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
+    fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CPSC 11" } });
+    await waitFor(() => {
+      expect(document.querySelectorAll("[data-course-list] button")).toHaveLength(8);
+    });
+    const firstRow = document.querySelector("[data-course-list] button .font-mono")?.textContent.trim();
+    expect(firstRow).toBe("CPSC_V 110");
+    expect(apiState.searchCourses).toHaveBeenCalledWith({ subject: "CPSC", number: "11" });
+  });
+});
+
+describe("course-lookup-pane — partial-code falls back to title search when subject isn't real (13.9)", () => {
+  it("drops the trailing number and q-searches the subject fragment for title matching", async () => {
+    apiState.searchCourses.mockImplementation(async (params: { subject?: string; number?: string; q?: string }) => {
+      if (params.subject && params.number) return { courses: [], subject_total: 0 };
+      if (params.q === "CALC") {
+        return {
+          courses: [
+            makeCourse("MATH_V 402", "MATH_V", "402", "Calculus of Variations"),
+            makeCourse("MATH_V 190", "MATH_V", "190", "Calculus Survey"),
+            makeCourse("MATH_V 317", "MATH_V", "317", "Calculus IV"),
+            makeCourse("MATH_V 200", "MATH_V", "200", "Calculus III"),
+          ],
+        };
+      }
+      return { courses: [] };
+    });
+    const setState = vi.fn();
+    render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
+    fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "calc 3" } });
+    await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalledWith({ q: "CALC" }));
+    const rows = [...document.querySelectorAll("[data-course-list] button .font-mono")].map((n) =>
+      n.textContent.trim(),
+    );
+    expect(rows).toContain("MATH_V 200");
   });
 });
 

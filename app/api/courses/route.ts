@@ -19,12 +19,16 @@ export async function GET(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const q = (url.searchParams.get("q") ?? "").trim();
     const subject = (url.searchParams.get("subject") ?? "").trim();
+    const number = (url.searchParams.get("number") ?? "").trim().toUpperCase();
     const level = LEVEL_OPS[url.searchParams.get("level") ?? ""] ?? null;
     const digitRaw = url.searchParams.get("digit");
     const digit = digitRaw === null ? NaN : Number(digitRaw);
 
     if (level && !(subject && Number.isInteger(digit) && digit >= 1 && digit <= 5)) {
       return json({ error: "level requires a subject and a digit between 1 and 5." }, 400);
+    }
+    if (number && !subject) {
+      return json({ error: "number requires a subject." }, 400);
     }
 
     const search = getSearch();
@@ -42,6 +46,12 @@ export async function GET(request: Request): Promise<Response> {
         limit: 1000,
       });
       const allPresent = res.hits.map((h) => presentCourse(h as unknown as CourseDoc));
+      if (number) {
+        const matching = allPresent
+          .filter((c) => c.number.includes(number))
+          .sort((a, b) => a.number.localeCompare(b.number));
+        return json({ courses: matching.slice(0, 8), subject_total: matching.length });
+      }
       const matching = level ? allPresent.filter((c) => matchesLevel(c.number, level, digit)) : allPresent;
       const subject_total = level ? matching.length : (res.estimatedTotalHits ?? matching.length);
       return json({ courses: matching.slice(0, 200), subject_total });

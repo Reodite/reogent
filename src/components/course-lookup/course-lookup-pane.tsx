@@ -97,6 +97,29 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
             throw e;
           }
         }
+        if (canonical?.kind === "partialCode") {
+          // ponytail: server-side substring filter on `number` keeps "CPSC 11"
+          // scoped to the typed subject and ranks ascending so the smallest
+          // completion (110 for "11") surfaces first. If the subject part
+          // isn't a real catalogue subject (e.g. "calc "), drop the number and
+          // free-text q-search the subject-only fragment so "calc 3" lands on
+          // Calculus III via Meilisearch's prefix match.
+          const res = await api.searchCourses({ subject: canonical.subject, number: canonical.numberPrefix });
+          if (my !== reqToken.current) return;
+          if (res.courses.length > 0) {
+            setRecord(null);
+            setList({ courses: res.courses.map(toCandidate), total: res.subject_total ?? res.courses.length });
+            setStatus("idle");
+            return;
+          }
+          const qres = await api.searchCourses({ q: canonical.subject });
+          if (my !== reqToken.current) return;
+          const courses = qres.courses.slice(0, 8).map(toCandidate);
+          setRecord(null);
+          setList({ courses, total: courses.length });
+          setStatus("idle");
+          return;
+        }
         if (canonical?.kind === "subject") {
           const res = await api.searchCourses({ subject: canonical.subject });
           if (my !== reqToken.current) return;
@@ -149,7 +172,6 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
     return () => clearTimeout(t);
   }, [code, lookup]);
 
-  const subjectOverflow = list !== null && list.total > 200;
   const trimmed = code.trim();
 
   return (
@@ -235,7 +257,11 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
                 <span className="text-on-surface-variant truncate text-xs">{c.title}</span>
               </button>
             ))}
-            {subjectOverflow && <p className="text-muted px-1 text-xs">Showing first 200 of {list.total}.</p>}
+            {list.total > list.courses.length && (
+              <p className="text-muted px-1 text-xs">
+                Showing first {list.courses.length} of {list.total}.
+              </p>
+            )}
           </div>
         </>
       )}

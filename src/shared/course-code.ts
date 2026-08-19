@@ -11,8 +11,9 @@ export type CanonicalCode = {
   raw: string;
 };
 export type SubjectPrefix = { kind: "subject"; subject: string; raw: string };
+export type PartialCode = { kind: "partialCode"; subject: string; numberPrefix: string; raw: string };
 export type Rejected = { kind: "rejected"; reason: "okanagan"; raw: string };
-export type CanonicalResult = CanonicalCode | SubjectPrefix | Rejected | null;
+export type CanonicalResult = CanonicalCode | SubjectPrefix | PartialCode | Rejected | null;
 
 /** Canonical course-code shape: 2-4 letter subject, 3-digit number, no campus suffix. */
 export const CODE_RE = /\b([A-Za-z]{2,4})\s*([0-9]{3}[A-Za-z]?)\b/g;
@@ -20,6 +21,7 @@ export const CODE_RE = /\b([A-Za-z]{2,4})\s*([0-9]{3}[A-Za-z]?)\b/g;
 // Extraction/classification accept an optional _V campus suffix, stripped from the raw form.
 const V_CODE_RE = /\b([A-Za-z]{2,4})(?:_V)?\s*([0-9]{3}[A-Za-z]?)\b/g;
 const ANCHORED_V_CODE_RE = /^([A-Za-z]{2,4})(?:_V)?\s*([0-9]{3}[A-Za-z]?)$/;
+const PARTIAL_CODE_RE = /^([A-Za-z]{2,4})(?:_V)?\s*([0-9]{1,2}[A-Za-z]?)$/;
 const OKANAGAN_RE = /\b[A-Za-z]{2,4}_O\b/;
 const BARE_SUBJECT_RE = /^[A-Za-z]{2,5}$/;
 
@@ -28,7 +30,7 @@ export function isOkanagan(raw: string): boolean {
   return OKANAGAN_RE.test(raw);
 }
 
-/** Classify `input` as a course code, subject prefix, Okanagan rejection, or null. */
+/** Classify `input` as a course code, partial code, subject prefix, Okanagan rejection, or null. */
 export function canonicalize(input: string): CanonicalResult {
   const s = input.trim();
   if (!s) return null;
@@ -38,6 +40,10 @@ export function canonicalize(input: string): CanonicalResult {
     const subject = code[1].toUpperCase();
     const number = code[2].toUpperCase();
     return { kind: "code", subject, number, raw: `${subject} ${number}` };
+  }
+  const partial = s.match(PARTIAL_CODE_RE);
+  if (partial) {
+    return { kind: "partialCode", subject: partial[1].toUpperCase(), numberPrefix: partial[2].toUpperCase(), raw: s };
   }
   if (BARE_SUBJECT_RE.test(s)) {
     const subject = s.toUpperCase();
