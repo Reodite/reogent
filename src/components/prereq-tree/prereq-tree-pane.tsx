@@ -1,6 +1,7 @@
 "use client";
 
 import "reactflow/dist/style.css";
+import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
 import { useApi } from "@/src/components/providers";
 import { announce } from "@/src/components/ui/live-region";
 import type { PrereqGraph, PrereqNode } from "@/src/server/prereq/build-graph";
@@ -18,7 +19,6 @@ import { visibleGraph } from "./soft-hide";
 // would pack tighter but adds a dep; fitView zooms to fit. Revisit if columns look sparse.
 const COLUMN_W = 240;
 const ROW_H = 110;
-const DEBOUNCE_MS = 250;
 
 function layoutNodes(
   nodes: PrereqNode[],
@@ -145,7 +145,16 @@ export function PrereqTreePane({
   const [root, setRoot] = useState(initialRoot);
   const [code, setCode] = useState(initialRoot);
   const [graph, setGraph] = useState<PrereqGraph | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [treeStatus, setTreeStatus] = useState<"loading" | "ready" | "error">("loading");
+  const {
+    list: acList,
+    status: acStatus,
+    error: acError,
+    rejected,
+    lookup,
+  } = useCourseAutocomplete(code, {
+    onCanonicalCode: setRoot,
+  });
   const [selections, setSelections] = useState<SelectionKeyMap>({});
   // Soft-toggle state (REQ-10.2): `softToggles[path]` flips the wrapped
   // subtree's hard descendant edges on/off via `visibleGraph`. The soft's
@@ -155,37 +164,27 @@ export function PrereqTreePane({
   useEffect(() => {
     if (!root) {
       setGraph(null);
-      setStatus("ready");
+      setTreeStatus("ready");
       return;
     }
     let cancelled = false;
-    setStatus("loading");
+    setTreeStatus("loading");
     setGraph(null);
     api
       .getPrereqTree(root)
       .then((g) => {
         if (cancelled) return;
         setGraph(g);
-        setStatus("ready");
+        setTreeStatus("ready");
         onChangeRoot?.(root);
       })
       .catch(() => {
-        if (!cancelled) setStatus("error");
+        if (!cancelled) setTreeStatus("error");
       });
     return () => {
       cancelled = true;
     };
   }, [root, api, onChangeRoot]);
-
-  // Live debounced: typing changes `code`; after DEBOUNCE_MS, push to `root`
-  // to (re)fetch the tree.
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const trimmed = code.trim();
-      if (trimmed && trimmed !== root) setRoot(trimmed);
-    }, DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [code, root]);
 
   const onSelect = useCallback((selectionKey: string, index: number) => {
     setSelections((prev) => ({ ...prev, [selectionKey]: index }));
@@ -259,20 +258,25 @@ export function PrereqTreePane({
 
   return (
     <div data-pane="prereq-tree" className="flex h-full flex-col gap-3 p-3">
-      <input
-        aria-label="Root course code"
-        placeholder="Search a root course — CPSC 320, MATH 200"
+      <CourseSearchField
         value={code}
-        onChange={(e) => setCode(e.target.value)}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
+        onChange={setCode}
+        onSelect={setCode}
+        onRetry={() => lookup(code)}
+        status={acStatus}
+        list={acList}
+        error={acError}
+        rejected={rejected}
+        ariaLabel="Root course code"
+        placeholder="Search a root course — CPSC 320, MATH 200"
       />
-      {status === "loading" && (
+      {treeStatus === "loading" && (
         <p className="text-muted inline-flex items-center gap-1.5 text-xs" aria-live="polite">
           <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
           Loading course index…
         </p>
       )}
-      {status === "error" && (
+      {treeStatus === "error" && (
         <p
           role="alert"
           className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
@@ -283,8 +287,8 @@ export function PrereqTreePane({
           </button>
         </p>
       )}
-      {status === "ready" && graph && !graph.found && <NotFoundAlert code={root} onPick={setCode} />}
-      {status === "ready" && graph && graph.found && !graph.hasPrereqs && !graph.hasCoreqs && (
+      {treeStatus === "ready" && graph && !graph.found && <NotFoundAlert code={root} onPick={setCode} />}
+      {treeStatus === "ready" && graph && graph.found && !graph.hasPrereqs && !graph.hasCoreqs && (
         <p className="text-muted text-sm">{root} has no prerequisites or corequisites listed in the calendar.</p>
       )}
       {showTree && transformed && graph && (

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiState = vi.hoisted(() => ({
   getPrereqTree: vi.fn() as (root: string) => Promise<PrereqGraph>,
+  searchCourses: vi.fn() as (params: unknown) => Promise<{ courses: unknown[]; subject_total?: number }>,
 }));
 
 vi.mock("@/src/components/providers", () => ({
@@ -20,6 +21,8 @@ function graph(rootCode: string, found: boolean, hasPrereqs = false, hasCoreqs =
 describe("PrereqTreePane states", () => {
   beforeEach(() => {
     apiState.getPrereqTree.mockReset();
+    apiState.searchCourses.mockReset();
+    apiState.searchCourses.mockResolvedValue({ courses: [] });
   });
   afterEach(() => {
     vi.restoreAllMocks();
