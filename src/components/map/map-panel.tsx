@@ -143,7 +143,7 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
   }
 
   return (
-    <div className="relative h-full w-full" aria-busy={status === "loading"}>
+    <div className="relative h-full w-full" aria-busy={status === "loading"} data-map-status={status}>
       {status === "error" ? (
         <MapFallback onRetry={retryMap} />
       ) : (

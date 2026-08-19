@@ -7,7 +7,9 @@
   },
   "scripts": {
     "dev": "next dev",
+    "predev": "node scripts/sync-maplibre-worker.mjs",
     "build": "next build",
+    "prebuild": "node scripts/sync-maplibre-worker.mjs",
     "start": "next start",
     "lint": "biome lint .",
     "test": "vitest run --passWithNoTests",

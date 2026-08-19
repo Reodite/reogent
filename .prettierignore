@@ -8,3 +8,4 @@ ubc-pair-grade-data
 ubc-unified-data
 .kiro
 .opencode
+public/maplibre-gl-*.mjs

@@ -21,6 +21,14 @@ import { featureCentroid, featuresBounds, findBuilding, type BuildingFeature, ty
 import type { FeatureCollection } from "geojson";
 import { useEffect, useRef, useState } from "react";
 
+// MapLibre spawns its Web Worker via `new Worker(WORKER_URL)`. The default
+// worker URL resolves to the page route (/chat/{id}) in Turbopack builds, so
+// the spawn fails with a text/html MIME error and no basemap tiles render.
+// Synced to public/ by scripts/sync-maplibre-worker.mjs (predev/prebuild) and
+// loaded from a stable origin-relative path. The worker file's inner import
+// `./maplibre-gl-shared.mjs` resolves to `/maplibre-gl-shared.mjs`.
+const maplibreWorkerUrl = "/maplibre-gl-worker.mjs";
+
 export type MapStatus = "loading" | "ready" | "error";
 
 export interface MapControls {
@@ -307,6 +315,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
 
         const initialTheme: ResolvedTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
         appliedStyleRef.current = initialTheme;
+        maplibre.setWorkerUrl(maplibreWorkerUrl);
         const map = new maplibre.Map({
           container,
           style: STYLE_URLS[initialTheme],
@@ -470,6 +479,15 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
             setStatus("error");
           }
           console.warn("Map error", event.error?.message);
+        });
+        // Mark ready as soon as the style object loads, before all tiles
+        // resolve. The `load` event fires only when every source/tile has
+        // loaded, which in some envs never happens (e.g. slow tile workers),
+        // leaving the parent's 15s fallback to flip the map to error even
+        // though the canvas paints fine. style.load is the earliest signal
+        // that the map is operational.
+        map.on("style.load", () => {
+          setStatus("ready");
         });
         map.on("load", () => {
           if (!disposed) {
