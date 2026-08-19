@@ -12,6 +12,7 @@ import {
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
+import type { PrereqGraph } from "@/src/server/prereq/build-graph";
 import type { FeatureCollection } from "geojson";
 
 export interface ChatApi {
@@ -51,6 +52,8 @@ export interface ChatApi {
     courses: CourseDoc[];
     subject_total?: number;
   }>;
+  /** GET /api/prereq-tree?root={code} — the React-Flow graph for the course's prerequisite chain. */
+  getPrereqTree(root: string): Promise<PrereqGraph>;
 }
 
 interface ChatApiOptions {
@@ -225,6 +228,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       if (params.digit !== undefined) sp.set("digit", String(params.digit));
       return request<{ courses: CourseDoc[]; subject_total?: number }>(`/courses?${sp.toString()}`);
     },
+    getPrereqTree: (root) => request<PrereqGraph>(`/prereq-tree?root=${encodeURIComponent(root)}`),
   };
 }
 
