@@ -140,8 +140,8 @@ describe("course-lookup-pane — subject cap 200 + footer notice (13.8, REQ-3.2)
   });
 });
 
-describe("course-lookup-pane — did-you-mean 8-chip cap + re-lookup (13.9, REQ-3.5/3.6)", () => {
-  it("caps did-you-mean chips at 8 and re-looks-up the picked code on click", async () => {
+describe("course-lookup-pane — fuzzy fallback list + re-lookup (13.9, REQ-3.5/3.6)", () => {
+  it("lists all fuzzy matches after a dead-exact code and re-looks-up the picked code on click", async () => {
     const twelve = Array.from({ length: 12 }, (_, i) => makeCourse(`CPSC ${110 + i}`, "CPSC", String(110 + i)));
     const resolveHit = makeCourse("CPSC 110", "CPSC", "110");
     apiState.getCourse.mockImplementation(async (code: string) => {
@@ -154,10 +154,9 @@ describe("course-lookup-pane — did-you-mean 8-chip cap + re-lookup (13.9, REQ-
     // A canonical 3-digit code the live catalog won't have — exercises the exact → prefix fallback.
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CPSC 999" } });
     await waitFor(() => {
-      expect(document.querySelectorAll("[data-did-you-mean] button")).toHaveLength(8);
+      expect(document.querySelectorAll("[data-course-list] button")).toHaveLength(12);
     });
-    const chipButtons = document.querySelectorAll("[data-did-you-mean] button");
-    fireEvent.click(chipButtons[0]);
+    fireEvent.click(document.querySelectorAll("[data-course-list] button")[0]);
     await waitFor(() => {
       expect(apiState.getCourse).toHaveBeenCalledWith("CPSC 110");
     });

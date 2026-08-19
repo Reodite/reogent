@@ -1,6 +1,7 @@
 "use client";
 
 import { CourseDetailCard } from "@/src/components/course-lookup/course-detail-card";
+import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";
 import type { CourseDoc } from "@/src/lib/api-types";
@@ -28,13 +29,10 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
   const [code, setCode] = useState(((state.code as string | undefined) ?? "") as string);
   const [record, setRecord] = useState<CourseDoc | null>(null);
   const [list, setList] = useState<{ courses: Candidate[]; total: number } | null>(null);
-  const [didYouMean, setDidYouMean] = useState<Candidate[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rejected, setRejected] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
 
-  // Token of the lookup currently in flight; the latest one wins, stale
-  // responses are dropped.
   const reqToken = useRef(0);
 
   const lookup = useCallback(
@@ -43,7 +41,6 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
       if (!trimmed) {
         setRecord(null);
         setList(null);
-        setDidYouMean(null);
         setError(null);
         setRejected(false);
         setStatus("idle");
@@ -52,7 +49,6 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
       if (isOkanagan(trimmed)) {
         setRejected(true);
         setRecord(null);
-        setDidYouMean(null);
         setList(null);
         setError(null);
         setStatus("idle");
@@ -71,7 +67,6 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
           if (my !== reqToken.current) return;
           const courses = res.courses.map(toCandidate);
           setRecord(null);
-          setDidYouMean(null);
           setList({ courses, total: res.subject_total ?? courses.length });
           setStatus("idle");
           return;
@@ -82,7 +77,6 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
             const rec = await api.getCourse(`${canonical.subject} ${canonical.number}`);
             if (my !== reqToken.current) return;
             setRecord(rec);
-            setDidYouMean(null);
             setList(null);
             setStatus("idle");
             return;
@@ -90,9 +84,9 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
             if (e instanceof ApiError && e.status === 404) {
               const res = await api.searchCourses({ q: `${canonical.subject} ${canonical.number}` });
               if (my !== reqToken.current) return;
+              const courses = res.courses.map(toCandidate);
               setRecord(null);
-              setList(null);
-              setDidYouMean(res.courses.slice(0, 8).map(toCandidate));
+              setList({ courses, total: courses.length });
               setStatus("idle");
               return;
             }
@@ -105,7 +99,6 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
           const courses = res.courses.map(toCandidate);
           if (courses.length > 0) {
             setRecord(null);
-            setDidYouMean(null);
             setList({ courses, total: res.subject_total ?? courses.length });
             setStatus("idle");
             return;
@@ -125,21 +118,19 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
             )
             .map(toCandidate);
           setRecord(null);
-          setDidYouMean(null);
           setList({ courses: prefixMatches, total: prefixMatches.length });
           setStatus("idle");
           return;
         }
         const res = await api.searchCourses({ q: trimmed });
         if (my !== reqToken.current) return;
+        const courses = res.courses.map(toCandidate);
         setRecord(null);
-        setList(null);
-        setDidYouMean(res.courses.slice(0, 8).map(toCandidate));
+        setList({ courses, total: courses.length });
         setStatus("idle");
       } catch (e) {
         if (my !== reqToken.current) return;
         setRecord(null);
-        setDidYouMean(null);
         setList(null);
         setError(e instanceof Error ? e.message : "Lookup failed");
         setStatus("idle");
@@ -155,19 +146,36 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
   }, [code, lookup]);
 
   const subjectOverflow = list !== null && list.total > 200;
+  const trimmed = code.trim();
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
-      <input
-        type="text"
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        placeholder="Search a course code or subject — CPSC, MATH 200, CPSC+1"
-        aria-label="Course code"
-        aria-invalid={rejected ? "true" : undefined}
-        aria-errormessage={rejected ? "code-error" : undefined}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
-      />
+      <div className="relative">
+        <Icon
+          name="search"
+          className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+        />
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Search a course code or subject — CPSC, MATH 200, CPSC+1"
+          aria-label="Course code"
+          aria-invalid={rejected ? "true" : undefined}
+          aria-errormessage={rejected ? "code-error" : undefined}
+          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg pr-9 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+        />
+        {trimmed && (
+          <button
+            type="button"
+            onClick={() => setCode("")}
+            aria-label="Clear search"
+            className="text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+          >
+            <Icon name="close" className="size-4" />
+          </button>
+        )}
+      </div>
 
       {rejected && (
         <p
@@ -192,51 +200,49 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
       )}
 
       {status === "loading" && (
-        <div role="status" aria-busy="true" className="skeleton bg-surface-container h-48 animate-pulse rounded-lg" />
-      )}
-
-      {didYouMean && didYouMean.length > 0 && (
-        <div data-did-you-mean className="flex flex-wrap gap-1.5">
-          <span className="text-on-surface-variant w-full text-xs">Did you mean?</span>
-          {didYouMean.slice(0, 8).map((c) => (
-            <button
-              key={`${c.subject}-${c.number}`}
-              type="button"
-              onClick={() => setCode(`${c.subject} ${c.number}`)}
-              className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[36px] min-w-[44px] rounded-full border px-4 py-2.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
+        <div role="status" aria-busy="true" className="flex flex-col gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="bg-surface-container-low/60 flex h-11 animate-pulse items-center gap-3 rounded-lg px-3"
             >
-              <span className="font-mono">
-                {c.subject} {c.number}
-              </span>
-            </button>
+              <span className="bg-surface-container h-3 w-16 animate-pulse rounded" />
+              <span className="bg-surface-container h-3 flex-1 animate-pulse rounded" />
+            </div>
           ))}
         </div>
       )}
 
-      {didYouMean && didYouMean.length === 0 && !error && !rejected && (
-        <p className="text-muted text-sm">No course matching {code}.</p>
+      {list && status === "idle" && list.courses.length > 0 && (
+        <>
+          <p className="text-on-surface-variant px-1 text-xs">
+            {list.courses.length}
+            {list.courses.length === 1 ? " match" : " matches"}
+          </p>
+          <div data-course-list className="flex flex-col gap-1.5 overflow-auto">
+            {list.courses.map((c) => (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => setCode(c.code)}
+                className="neu-raised bg-surface hover:bg-surface-container-low focus-visible:ring-primary/40 flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-left focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99]"
+              >
+                <span className="font-mono text-sm font-medium tracking-tight">{c.code}</span>
+                <span className="text-on-surface-variant truncate text-xs">{c.title}</span>
+              </button>
+            ))}
+            {subjectOverflow && <p className="text-muted px-1 text-xs">Showing first 200 of {list.total}.</p>}
+          </div>
+        </>
       )}
 
-      {list && (
-        <div data-course-list className="flex flex-col gap-1.5 overflow-auto">
-          {list.courses.map((c) => (
-            <button
-              key={c.code}
-              type="button"
-              onClick={() => setCode(c.code)}
-              className="neu-raised bg-surface flex items-center gap-2 rounded-lg px-3 py-2 text-left"
-            >
-              <span className="font-mono text-sm font-medium">{c.code}</span>
-              <span className="text-on-surface-variant truncate text-xs">{c.title}</span>
-            </button>
-          ))}
-          {subjectOverflow && <p className="text-muted text-xs">Showing first 200 of {list.total}.</p>}
-        </div>
+      {list && status === "idle" && list.courses.length === 0 && !error && !rejected && (
+        <p className="text-muted px-1 text-sm">No courses matching {trimmed}.</p>
       )}
 
       {record && <CourseDetailCard record={record} />}
 
-      {!code && !record && !didYouMean && !list && !error && !rejected && (
+      {!trimmed && !record && !list && !error && !rejected && (
         <p className="text-muted text-sm">Start typing a course code or subject to see results.</p>
       )}
     </div>
