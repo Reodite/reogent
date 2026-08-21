@@ -38,6 +38,9 @@ export interface ChatShellState {
   answerSheetOpen: boolean;
   setAnswerSheetOpen: (open: boolean) => void;
 
+  rightPaneCollapsed: boolean;
+  setRightPaneCollapsed: (c: boolean) => void;
+
   activeChannel: ActiveChannel;
   /** Sets the active pane (`null` collapses to the map rail). */
   setActiveChannel: (id: PaneId | null, state?: PaneState) => void;
@@ -85,6 +88,9 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const [newChatNonce, setNewChatNonce] = useState(0);
   const [mode, setMode] = useShellMode(initialMode);
   const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
+  // Collapses the wide AI-mode right pane: chat fills the row when true, and a
+  // topbar button re-expands. Auto-expanded below when a tool activates.
+  const [rightPaneCollapsed, setRightPaneCollapsed] = useState(false);
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
@@ -127,6 +133,12 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   useEffect(() => {
     if (auth.status === "signedIn") doRefresh();
   }, [auth.status, doRefresh]);
+
+  // A collapsed pane would silently swallow tool activations (workspaceView set),
+  // so expand the right pane whenever a tool becomes active.
+  useEffect(() => {
+    if (workspaceView !== null) setRightPaneCollapsed(false);
+  }, [workspaceView]);
 
   const setWorkspaceView = useCallback((view: CanvasView | null) => {
     setWorkspaceViewState(view);
@@ -183,6 +195,8 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       setMode,
       answerSheetOpen,
       setAnswerSheetOpen,
+      rightPaneCollapsed,
+      setRightPaneCollapsed,
       activeChannel,
       setActiveChannel,
       highlight,
@@ -206,6 +220,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       mode,
       setMode,
       answerSheetOpen,
+      rightPaneCollapsed,
       activeChannel,
       setActiveChannel,
       highlight,

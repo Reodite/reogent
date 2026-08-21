@@ -94,13 +94,23 @@ function SidebarDrawer() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { sidebarOpen, setSidebarOpen, mode, workspaceView, answerSheetOpen, setAnswerSheetOpen, highlight } =
-    useChatShell();
+  const {
+    sidebarOpen,
+    setSidebarOpen,
+    mode,
+    workspaceView,
+    answerSheetOpen,
+    setAnswerSheetOpen,
+    highlight,
+    rightPaneCollapsed,
+    setRightPaneCollapsed,
+  } = useChatShell();
   const wide = useIsWide();
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sessionsMenuRef = useRef<HTMLButtonElement>(null);
   const mapEntryRef = useRef<HTMLButtonElement>(null);
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
+  const expandPaneRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
 
   // Crossing to wide closes a lingering Answer sheet (the button that opens it
@@ -130,6 +140,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   function expandSessions() {
     setSessionsCollapsed(false);
     requestAnimationFrame(() => document.getElementById("desktop-session-collapse")?.focus());
+  }
+  function collapseRightPane() {
+    setRightPaneCollapsed(true);
+    requestAnimationFrame(() => expandPaneRef.current?.focus());
+  }
+  function expandRightPane() {
+    setRightPaneCollapsed(false);
   }
 
   return (
@@ -187,6 +204,20 @@ export function AppShell({ children }: { children: ReactNode }) {
                 )}
               </button>
             )}
+            {mode === "ai" && rightPaneCollapsed && (
+              <button
+                ref={expandPaneRef}
+                type="button"
+                onClick={expandRightPane}
+                aria-label="Expand right pane"
+                className="neu-button bg-surface text-on-surface-variant hover:text-primary relative hidden size-11 items-center justify-center rounded-xl sm:size-9 lg:flex"
+              >
+                <Icon name="map" size={19} />
+                {highlight && (
+                  <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" aria-hidden="true" />
+                )}
+              </button>
+            )}
             <ThemeToggle className="hidden sm:grid" />
             <UserMenu />
           </div>
@@ -238,7 +269,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   {children}
                 </main>
-                <AnswerSheet open={answerSheetOpen} onClose={() => setAnswerSheetOpen(false)}>
+                <AnswerSheet
+                  open={answerSheetOpen}
+                  onClose={() => setAnswerSheetOpen(false)}
+                  collapsed={rightPaneCollapsed}
+                  onCollapse={collapseRightPane}
+                >
                   <AnswerCanvas view={workspaceView} />
                 </AnswerSheet>
               </div>

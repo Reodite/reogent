@@ -14,7 +14,19 @@ import { useEffect, useRef, type ReactNode } from "react";
  * `open` is only ever true below wide (the Top-Bar Map entry that sets it is
  * `lg:hidden`); leftover `open` at wide harmlessly shows the inline canvas.
  */
-export function AnswerSheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+export function AnswerSheet({
+  open,
+  onClose,
+  collapsed = false,
+  onCollapse,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  collapsed?: boolean;
+  onCollapse?: () => void;
+  children: ReactNode;
+}) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const showDialog = open;
 
@@ -33,7 +45,8 @@ export function AnswerSheet({ open, onClose, children }: { open: boolean; onClos
   // 22rem floor at wide: matches the chat pane's `lg:min-w-88` so the two split
   // ~50/50 at the lg breakpoint (1024px) once the 17rem sidebar + gaps are
   // accounted for. Below-wide the panel goes fixed at 80dvh and ignores width.
-  const slotClass = `flex min-h-0 flex-col lg:h-full lg:flex-1 lg:min-w-88 ${
+  // `collapsed` hides the wide slot: chat fills the row, topbar re-expands.
+  const slotClass = `flex min-h-0 flex-col lg:h-full lg:flex-1 lg:min-w-88 ${collapsed ? "lg:hidden" : ""} ${
     open
       ? "max-lg:neu-panel max-lg:bg-surface max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:h-[80dvh] max-lg:flex-col max-lg:overflow-hidden max-lg:rounded-t-2xl max-lg:pb-[env(safe-area-inset-bottom)]"
       : "max-lg:hidden"
@@ -52,6 +65,19 @@ export function AnswerSheet({ open, onClose, children }: { open: boolean; onClos
         />
       )}
       <div data-answer-sheet={open ? "open" : "closed"} className={slotClass}>
+        {!collapsed && (
+          <div className="hidden shrink-0 items-center justify-end gap-2 px-3 pt-3 pb-2 lg:flex">
+            <button
+              type="button"
+              onClick={onCollapse}
+              aria-label="Collapse right pane"
+              disabled={!onCollapse}
+              className="text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150"
+            >
+              <Icon name="right" size={18} />
+            </button>
+          </div>
+        )}
         {open && (
           <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-3 pb-3 lg:hidden">
             <span aria-hidden="true" className="bg-outline/40 mx-auto h-1.5 w-10 rounded-full" />

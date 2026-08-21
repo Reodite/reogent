@@ -123,7 +123,7 @@ function MapFallback({ onRetry }: { onRetry?: () => void }) {
   );
 }
 
-function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => void; hideOverlayControls?: boolean }) {
+function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) {
   const { highlight, focusNonce } = useChatShell();
   const [showRoutes, setShowRoutes] = useState(false);
   const [status, setStatus] = useState<MapStatus>("loading");
@@ -169,7 +169,6 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
 
           {/* Layer + view controls — floating top-right */}
           <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
-            {!hideOverlayControls && <GlassButton label="Collapse map" icon="right" onClick={onCollapse} />}
             <GlassButton
               label={showRoutes ? "Hide walking paths" : "Show walking paths"}
               icon="layer"
@@ -205,12 +204,12 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
   );
 }
 
-/** Registry-facing map pane. Renders the interactive surface; collapse routes through the shell context. */
+/** Registry-facing map pane. Shutdown of the active widget routes through the
+ * shell's workspaceView + the Answer Canvas header collapse button. */
 export function MapArea() {
-  const { setActiveChannel } = useChatShell();
   return (
     <div className="relative h-full w-full">
-      <MapSurface onCollapse={() => setActiveChannel(null)} />
+      <MapSurface />
     </div>
   );
 }
