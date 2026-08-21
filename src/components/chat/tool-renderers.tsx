@@ -63,7 +63,7 @@ function ToolBadge({ call }: { call: ToolCall }) {
       ) : (
         <Icon name={failed ? "alert" : (TOOL_ICONS[call.name] ?? "route")} size={14} className="shrink-0" />
       )}
-      <span className="truncate">
+      <span className="truncate leading-none">
         {call.name}
         {summary ? `(${summary})` : "()"}
       </span>
