@@ -178,7 +178,7 @@ export const AssistantMessage = memo(function AssistantMessage({
           </div>
         )}
         {interstitial.length > 0 && (
-          <div className="mb-3">
+          <div className="bg-surface-container mb-3 flex flex-col gap-2 rounded-lg p-2 [&>*]:mt-0 [&>*]:mb-0">
             {interstitial.map((block, idx) => {
               if (block.type === "thinking") {
                 return (
