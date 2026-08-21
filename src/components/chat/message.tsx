@@ -124,13 +124,13 @@ export const UserMessage = memo(function UserMessage({ message }: { message: Dis
   );
 });
 
-function ThinkingBlock({ content }: { content: string }) {
+function ThinkingBlock({ content, compact = false }: { content: string; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <details
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
-      className="group bg-surface-container-low mb-2 rounded-lg"
+      className={`group bg-surface-container-low rounded-lg ${compact ? "" : "mb-2"}`}
     >
       <summary className="text-muted flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium select-none">
         <Icon name="bling" size={14} className="text-muted shrink-0" />
@@ -178,18 +178,18 @@ export const AssistantMessage = memo(function AssistantMessage({
           </div>
         )}
         {interstitial.length > 0 && (
-          <div className="bg-surface-container mb-3 flex flex-col gap-2 rounded-lg p-2 [&>*]:mt-0 [&>*]:mb-0">
+          <div className="mb-3 flex flex-col gap-1.5">
             {interstitial.map((block, idx) => {
               if (block.type === "thinking") {
                 return (
                   // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
-                  <ThinkingBlock key={`t-${idx}`} content={block.content} />
+                  <ThinkingBlock key={`t-${idx}`} content={block.content} compact />
                 );
               }
               const call = { name: block.content, input: block.input ?? {}, result: block.result };
               return (
                 // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
-                <ResponseWidget key={`tc-${idx}`} call={call} />
+                <ResponseWidget key={`tc-${idx}`} call={call} compact />
               );
             })}
           </div>

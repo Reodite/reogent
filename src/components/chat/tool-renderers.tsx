@@ -260,7 +260,7 @@ function canvasViewsEqual(a: CanvasView, b: CanvasView): boolean {
  * ring while its view matches `workspaceView`. Unmapped tools (and error
  * results) render a static, non-focusable summary badge.
  */
-export function ResponseWidget({ call }: { call: ToolCall }) {
+export function ResponseWidget({ call, compact = false }: { call: ToolCall; compact?: boolean }) {
   const reduce = useReducedMotion();
   const { workspaceView, activateCanvasView } = useChatShell();
   const view = useMemo(() => toolCallToCanvasView(call), [call]);
@@ -292,10 +292,12 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
       }
       className={
         mapped
-          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 mt-3 cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
-              active ? "bg-accent-subtle ring-primary ring-2" : ""
-            }`
-          : "mt-3 rounded-lg"
+          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
+              compact ? "" : "mt-3"
+            } ${active ? "bg-accent-subtle ring-primary ring-2" : ""}`
+          : compact
+            ? "rounded-lg"
+            : "mt-3 rounded-lg"
       }
     >
       <ToolBadge call={call} />
