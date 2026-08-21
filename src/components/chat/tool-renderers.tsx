@@ -34,19 +34,11 @@ function ToolBadge({ call }: { call: ToolCall }) {
   const errorMessage = failed && isToolError(call.result) ? call.result.message : null;
   return (
     <span
-      className={`inline-flex max-w-full items-center gap-2 overflow-hidden rounded-lg px-2 py-1 font-mono text-xs ${
-        failed ? "bg-error-container/40 text-on-surface-variant" : "bg-surface-container-low text-on-surface-variant"
+      className={`inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border px-2.5 py-1 font-mono text-xs ${
+        failed ? "border-error/20 bg-error/10 text-error" : "border-primary/20 bg-primary/10 text-primary"
       }`}
     >
-      {loading ? (
-        <span
-          role="status"
-          aria-label="Loading"
-          className="border-primary size-3 shrink-0 animate-spin rounded-full border-2 border-t-transparent"
-        />
-      ) : (
-        <Icon name={failed ? "alert" : "check"} size={14} className="shrink-0" />
-      )}
+      <Icon name={failed ? "alert" : "code"} size={14} className={`shrink-0 ${loading ? "animate-pulse" : ""}`} />
       <span className="truncate leading-none">
         {call.name}
         {summary ? `(${summary})` : "()"}
