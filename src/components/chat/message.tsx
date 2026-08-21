@@ -194,7 +194,9 @@ export const AssistantMessage = memo(function AssistantMessage({
             ))}
           </div>
         )}
-        {message.content && <AssistantMarkdown content={message.content} citations={message.citations} />}
+        {!widgets.length && message.content && (
+          <AssistantMarkdown content={message.content} citations={message.citations} />
+        )}
         {message.stopped && (
           <p className="text-muted mt-2 flex items-center gap-1.5 text-xs">
             <Icon name="stop" size={12} className="shrink-0" />
