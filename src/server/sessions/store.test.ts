@@ -53,8 +53,7 @@ describe("16.4 Property 21 — History rehydration byte-equality", () => {
             {
               role: "assistant",
               content: "answer",
-              tool_calls: null,
-              interstitial: null,
+              activity: null,
               citations: JSON.parse(rawJson),
             },
           ],
@@ -112,7 +111,7 @@ describe("16.3 Integration — appendExchange → getSessionMessages round-trip"
       return { rows: [{ id: "sid" }] };
     });
 
-    await appendExchange("u1", "sid", "q", "a", [], [], live);
+    await appendExchange("u1", "sid", "q", "a", [], live);
 
     queryMock.mockReset();
     queryMock.mockResolvedValueOnce({ rows: [{ id: "sid" }] });
@@ -121,8 +120,7 @@ describe("16.3 Integration — appendExchange → getSessionMessages round-trip"
         {
           role: "assistant",
           content: "a",
-          tool_calls: null,
-          interstitial: null,
+          activity: null,
           citations: captured === null ? null : JSON.parse(captured),
         },
       ],
@@ -142,7 +140,7 @@ describe("16.3 Integration — appendExchange → getSessionMessages round-trip"
       return { rows: [{ id: "sid" }] };
     });
 
-    await appendExchange("u1", "sid", "q", "a", [], [], []);
+    await appendExchange("u1", "sid", "q", "a", [], []);
 
     expect(captured).toBeNull();
   });
@@ -158,13 +156,13 @@ describe("16.3 Integration — appendExchange → getSessionMessages round-trip"
       return { rows: [{ id: "sid" }] };
     });
 
-    await appendExchange("u1", "sid", "q", "a", [], [], null);
+    await appendExchange("u1", "sid", "q", "a", [], null);
 
     expect(captured).toBeNull();
     queryMock.mockReset();
     queryMock.mockResolvedValueOnce({ rows: [{ id: "sid" }] });
     queryMock.mockResolvedValueOnce({
-      rows: [{ role: "assistant", content: "a", tool_calls: null, interstitial: null, citations: null }],
+      rows: [{ role: "assistant", content: "a", activity: null, citations: null }],
     });
     const msgs = await getSessionMessages("u1", "sid");
     expect(JSON.stringify(msgs[0].citations)).toEqual("null");

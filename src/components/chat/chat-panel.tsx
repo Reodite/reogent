@@ -9,14 +9,13 @@ import {
   AssistantMessage,
   TypingIndicator,
   UserMessage,
+  type ActivityBlock,
   type DisplayMessage,
-  type InterstitialBlock,
 } from "@/src/components/chat/message";
-import { renderers } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
-import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
+import { ApiError, type ChatMessage } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -282,16 +281,16 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             id: nextId(),
             role: m.role,
             content: m.content,
-            toolCalls: m.toolCalls,
-            interstitial: m.interstitial,
+            activity: m.activity,
             citations: m.citations ?? undefined,
           })),
         );
-        // Restore this conversation's last mapped widget, else reset to idle map.
-        const lastWithCalls = [...history].reverse().find((m) => m.toolCalls?.length);
-        const mapped = lastWithCalls?.toolCalls
-          ? [...lastWithCalls.toolCalls].reverse().find((c) => toolCallToCanvasView(c))
-          : undefined;
+        // Restore this conversation's last mapped tool call, else reset to idle map.
+        const toCall = (b: ActivityBlock) => ({ name: b.content, input: b.input ?? {}, result: b.result });
+        const mapped = history
+          .flatMap((m) => (m.activity ?? []).filter((b) => b.type === "tool_call").map(toCall))
+          .reverse()
+          .find((c) => toolCallToCanvasView(c));
         setUserDismissedPane(false);
         if (mapped) {
           const view = toolCallToCanvasView(mapped);
@@ -338,23 +337,20 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     wasSendingRef.current = sending;
   }, [sending]);
 
-  // Scroll to bottom when messages change (new message, streaming content, interstitials, sending state).
+  // Scroll to bottom when messages change (new message, streaming content, activity, sending state).
   const messageCount = messages.length;
   const lastMessageContent = messages.length > 0 ? messages[messages.length - 1].content : "";
-  const lastInterstitialCount =
-    messages.length > 0
-      ? (messages[messages.length - 1].interstitial?.length ?? 0) + (messages[messages.length - 1].widgets?.length ?? 0)
-      : 0;
+  const lastActivityCount = messages.length > 0 ? (messages[messages.length - 1].activity?.length ?? 0) : 0;
   useEffect(() => {
     void messageCount;
     void sending;
     void lastMessageContent;
-    void lastInterstitialCount;
+    void lastActivityCount;
     const node = scrollRef.current;
     if (!node || !isNearBottom.current) return;
     const behavior = sending || prefersReducedMotion ? "instant" : "smooth";
     node.scrollTo({ top: node.scrollHeight, behavior });
-  }, [messageCount, sending, lastMessageContent, lastInterstitialCount, prefersReducedMotion]);
+  }, [messageCount, sending, lastMessageContent, lastActivityCount, prefersReducedMotion]);
 
   // Focus the input when the conversation is ready and after each response.
   useEffect(() => {
@@ -382,11 +378,12 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
 
       // Add a placeholder assistant message for streaming text
       const streamId = nextId();
-      setMessages((current) => [...current, { id: streamId, role: "assistant", content: "", interstitial: [] }]);
+      setMessages((current) => [...current, { id: streamId, role: "assistant", content: "", activity: [] }]);
 
       let streamedText = "";
-      const interstitialBlocks: InterstitialBlock[] = [];
-      const widgetCalls: ToolCall[] = [];
+      // Ordered thinking + tool-call blocks. Tool calls (widget and internal
+      // alike) live here, so history and canvas driving read one source.
+      const activity: ActivityBlock[] = [];
 
       const updateMessage = (updates: Partial<DisplayMessage>) => {
         setMessages((current) => current.map((m) => (m.id === streamId ? { ...m, ...updates } : m)));
@@ -400,49 +397,32 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             onThinking(delta) {
               if (!alive.current) return;
               // Append to the last thinking block only if it's immediately preceding (no tool calls in between)
-              const last = interstitialBlocks[interstitialBlocks.length - 1];
+              const last = activity[activity.length - 1];
               if (last?.type === "thinking") {
                 last.content += delta;
               } else {
-                interstitialBlocks.push({ type: "thinking", content: delta });
+                activity.push({ type: "thinking", content: delta });
               }
-              updateMessage({ interstitial: [...interstitialBlocks] });
+              updateMessage({ activity: [...activity] });
             },
             onToolStart(name, input) {
               if (!alive.current) return;
-              if (renderers[name]) {
-                // show_widget renders a data widget as the answer.
-                widgetCalls.push({ name, input, result: undefined });
-                updateMessage({ widgets: [...widgetCalls] });
-              } else {
-                // Internal tools show a compact badge only.
-                interstitialBlocks.push({ type: "tool_call", content: name, input, result: undefined });
-                updateMessage({ interstitial: [...interstitialBlocks] });
-              }
+              activity.push({ type: "tool_call", content: name, input, result: undefined });
+              updateMessage({ activity: [...activity] });
             },
             onToolEnd(name, result) {
               if (!alive.current) return;
-              if (renderers[name]) {
-                for (let i = widgetCalls.length - 1; i >= 0; i--) {
-                  if (widgetCalls[i].name === name && widgetCalls[i].result === undefined) {
-                    widgetCalls[i] = { ...widgetCalls[i], result };
-                    break;
-                  }
+              for (let i = activity.length - 1; i >= 0; i--) {
+                if (
+                  activity[i].type === "tool_call" &&
+                  activity[i].content === name &&
+                  activity[i].result === undefined
+                ) {
+                  activity[i] = { ...activity[i], result };
+                  break;
                 }
-                updateMessage({ widgets: [...widgetCalls] });
-              } else {
-                for (let i = interstitialBlocks.length - 1; i >= 0; i--) {
-                  if (
-                    interstitialBlocks[i].type === "tool_call" &&
-                    interstitialBlocks[i].content === name &&
-                    interstitialBlocks[i].result === undefined
-                  ) {
-                    interstitialBlocks[i] = { ...interstitialBlocks[i], result };
-                    break;
-                  }
-                }
-                updateMessage({ interstitial: [...interstitialBlocks] });
               }
+              updateMessage({ activity: [...activity] });
             },
             onTextClear() {
               if (!alive.current) return;
@@ -470,26 +450,21 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
         .then((response) => {
           if (!alive.current) return;
           pendingRetry.current = null;
-          // Replace placeholder with final message including tool calls, warning, and widgets
+          // Replace placeholder with final message including warning and follow-ups.
           updateMessage({
             content: response.message,
-            toolCalls: response.tool_calls,
             warning: response.warning,
             followUps: response.follow_ups,
             citations: response.citations,
-            interstitial: interstitialBlocks.length > 0 ? [...interstitialBlocks] : undefined,
-            widgets: widgetCalls.length > 0 ? [...widgetCalls] : undefined,
+            activity: activity.length > 0 ? [...activity] : undefined,
           });
           // Drive the canvas to the last mapped tool call; leave the canvas
           // as-is when the answer has no mapped widget (REQ-3.6: no auto-close).
-          // Both widget calls and internal tool calls can drive the canvas.
-          const allCalls = [
-            ...widgetCalls,
-            ...interstitialBlocks
-              .filter((b) => b.type === "tool_call")
-              .map((b) => ({ name: b.content, input: b.input ?? {}, result: b.result })),
-          ];
-          const mapped = allCalls.reverse().find((c) => toolCallToCanvasView(c));
+          const mapped = activity
+            .filter((b) => b.type === "tool_call")
+            .map((b) => ({ name: b.content, input: b.input ?? {}, result: b.result }))
+            .reverse()
+            .find((c) => toolCallToCanvasView(c));
           if (mapped) {
             if (userDismissedPane) {
               const view = toolCallToCanvasView(mapped);
@@ -520,7 +495,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           }
           pendingRetry.current = { conversation };
           // Remove the empty placeholder on error — the error banner communicates the failure
-          if (!streamedText && !interstitialBlocks.length && !widgetCalls.length) {
+          if (!streamedText && !activity.length) {
             setMessages((current) => current.filter((m) => m.id !== streamId));
           } else {
             // Partial content exists — mark it as failed
@@ -675,10 +650,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             {messages.map((message, idx) =>
               message.role === "user" ? (
                 <UserMessage key={message.id} message={message} />
-              ) : message.content ||
-                message.toolCalls ||
-                (message.interstitial && message.interstitial.length > 0) ||
-                (message.widgets && message.widgets.length > 0) ? (
+              ) : message.content || (message.activity && message.activity.length > 0) ? (
                 <AssistantMessage
                   key={message.id}
                   message={message}
@@ -690,9 +662,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
               {sending &&
                 (!messages.length ||
                   messages[messages.length - 1]?.role !== "assistant" ||
-                  (!messages[messages.length - 1]?.content &&
-                    !messages[messages.length - 1]?.interstitial?.length &&
-                    !messages[messages.length - 1]?.widgets?.length)) && (
+                  (!messages[messages.length - 1]?.content && !messages[messages.length - 1]?.activity?.length)) && (
                   <motion.div
                     key="typing-indicator"
                     initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}

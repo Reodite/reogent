@@ -41,6 +41,15 @@ interface ChatCallbacks {
   onToolEnd?: (name: string, result: unknown) => void;
 }
 
+/** An assistant history message with the given tool calls as activity blocks. */
+function activityMsg(content: string, tools: ToolCall[]): ChatMessage {
+  return {
+    role: "assistant",
+    content,
+    activity: tools.map((t) => ({ type: "tool_call" as const, content: t.name, input: t.input, result: t.result })),
+  };
+}
+
 const mem = new Map<string, string>();
 const storage: Storage = {
   getItem: (k) => mem.get(k) ?? null,
@@ -157,7 +166,7 @@ describe("14.1 — agent stream drives the canvas (REQ-3.1, REQ-9.1)", () => {
     // Existing session whose last assistant turn already drove the canvas.
     api.getSession.mockResolvedValue([
       { role: "user", content: "CPSC 110?" },
-      { role: "assistant", content: "ok", toolCalls: [courseCall("CPSC 110")] },
+      activityMsg("ok", [courseCall("CPSC 110")]),
     ]);
     renderPanel("sess-1");
     await waitFor(() => expect(shellRef.current?.workspaceView?.paneId).toBe("course-lookup"));
@@ -173,7 +182,7 @@ describe("14.2 — reload re-activates the latest widget (REQ-3.8, REQ-9.5)", ()
   it("re-activates the last mapped tool's view on session load", async () => {
     api.getSession.mockResolvedValue([
       { role: "user", content: "what is CPSC 110" },
-      { role: "assistant", content: "ok", toolCalls: [courseCall("CPSC 110")] },
+      activityMsg("ok", [courseCall("CPSC 110")]),
     ]);
     renderPanel("sess-2");
     await waitFor(() => {
@@ -183,10 +192,7 @@ describe("14.2 — reload re-activates the latest widget (REQ-3.8, REQ-9.5)", ()
   });
 
   it("resets to the idle map when no assistant turn mapped to a view", async () => {
-    api.getSession.mockResolvedValue([
-      { role: "user", content: "tuition?" },
-      { role: "assistant", content: "ok", toolCalls: [tuitionCall] },
-    ]);
+    api.getSession.mockResolvedValue([{ role: "user", content: "tuition?" }, activityMsg("ok", [tuitionCall])]);
     renderPanel("sess-3");
     await waitFor(() => expect(shellRef.current?.workspaceView).toBeNull());
   });
@@ -196,9 +202,9 @@ describe("14.3 — revisit an earlier widget + keyboard activation (REQ-3.4, REQ
   it("activating an earlier widget switches the canvas; Enter on a widget also loads it", async () => {
     api.getSession.mockResolvedValue([
       { role: "user", content: "CPSC 110?" },
-      { role: "assistant", content: "ok", toolCalls: [courseCall("CPSC 110")] },
+      activityMsg("ok", [courseCall("CPSC 110")]),
       { role: "user", content: "CPSC 320?" },
-      { role: "assistant", content: "ok", toolCalls: [courseCall("CPSC 320")] },
+      activityMsg("ok", [courseCall("CPSC 320")]),
     ]);
     const { container } = renderPanel("sess-4");
     // Reload restores the last mapped tool (CPSC 320).

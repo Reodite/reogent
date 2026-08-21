@@ -6,15 +6,13 @@ import type { Citation } from "./citations/citation";
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-  /** Tool calls made during this assistant turn (persisted for history display). */
-  toolCalls?: ToolCall[];
-  /** Interstitial thinking/tool-call blocks shown before the answer. */
-  interstitial?: InterstitialBlock[];
+  /** Ordered thinking + tool-call blocks for this assistant turn (persisted for history display). */
+  activity?: ActivityBlock[];
   /** Citations attributed to this assistant turn; null for user rows or turns with no tool results. */
   citations?: Citation[] | null;
 }
 
-export interface InterstitialBlock {
+export interface ActivityBlock {
   type: "thinking" | "tool_call";
   content: string;
   input?: Record<string, unknown>;

@@ -8,25 +8,22 @@ import { SourcesPanel } from "@/src/components/chat/citations/sources-panel";
 import { ResponseWidget, widgetHasContent } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
-import type { Citation, ToolCall } from "@/src/lib/api-types";
-import type { InterstitialBlock } from "@/src/shared/types";
+import type { Citation } from "@/src/lib/api-types";
+import type { ActivityBlock } from "@/src/shared/types";
 import { motion, useReducedMotion } from "motion/react";
 import { lazy, memo, Suspense, useMemo, useState } from "react";
 
-export type { InterstitialBlock };
+export type { ActivityBlock };
 
 export interface DisplayMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-  toolCalls?: ToolCall[];
   warning?: string;
   /** True when generation was stopped or errored with partial content. */
   stopped?: boolean;
-  /** Interstitial blocks shown before the answer (thinking blocks only). */
-  interstitial?: InterstitialBlock[];
-  /** Widget tool calls whose renderers are the answer. */
-  widgets?: ToolCall[];
+  /** Ordered thinking + tool-call blocks for this assistant turn. */
+  activity?: ActivityBlock[];
   /** LLM-generated follow-up question suggestions. */
   followUps?: string[];
   /** Citations attributed to this assistant turn (used by CitationChip chips + SourcesPanel). */
@@ -156,11 +153,12 @@ export const AssistantMessage = memo(function AssistantMessage({
   showAvatar?: boolean;
 }) {
   const reduce = useReducedMotion();
-  const interstitial = message.interstitial ?? [];
-  // Widgets: new format uses `widgets`; legacy messages use `toolCalls` (all were shown).
-  const widgets = message.widgets ?? message.toolCalls ?? [];
-  // Markdown is suppressed only when a widget actually rendered non-empty content.
-  const widgetsRendered = widgets.some(widgetHasContent);
+  const activity = message.activity ?? [];
+  // A widget block (show_widget) that renders non-empty content suppresses the
+  // markdown answer, since the widget itself is the answer.
+  const widgetsRendered = activity.some(
+    (b) => b.type === "tool_call" && widgetHasContent({ name: b.content, input: b.input ?? {}, result: b.result }),
+  );
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 6 }}
@@ -182,9 +180,9 @@ export const AssistantMessage = memo(function AssistantMessage({
             <span>{message.warning}</span>
           </div>
         )}
-        {(interstitial.length > 0 || widgets.length > 0) && (
+        {activity.length > 0 && (
           <div className="mb-3 flex flex-col gap-2">
-            {interstitial.map((block, idx) => {
+            {activity.map((block, idx) => {
               if (block.type === "thinking") {
                 return (
                   // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
@@ -197,10 +195,6 @@ export const AssistantMessage = memo(function AssistantMessage({
                 <ResponseWidget key={`tc-${idx}`} call={call} />
               );
             })}
-            {widgets.map((call, idx) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
-              <ResponseWidget key={`w-${idx}`} call={call} />
-            ))}
           </div>
         )}
         {!widgetsRendered && message.content && (

@@ -3,7 +3,7 @@
 import type { ChatMessage } from "@/src/shared/types";
 import type { Meilisearch } from "meilisearch";
 
-export type { ChatMessage, InterstitialBlock, SessionSummary, ToolCall } from "@/src/shared/types";
+export type { ActivityBlock, ChatMessage, SessionSummary, ToolCall } from "@/src/shared/types";
 
 export interface ChatRequest {
   session_id?: string;
