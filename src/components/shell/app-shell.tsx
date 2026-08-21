@@ -110,7 +110,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const sessionsMenuRef = useRef<HTMLButtonElement>(null);
   const mapEntryRef = useRef<HTMLButtonElement>(null);
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
-  const expandPaneRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
 
   // Crossing to wide closes a lingering Answer sheet (the button that opens it
@@ -143,10 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
   function collapseRightPane() {
     setRightPaneCollapsed(true);
-    requestAnimationFrame(() => expandPaneRef.current?.focus());
-  }
-  function expandRightPane() {
-    setRightPaneCollapsed(false);
+    requestAnimationFrame(() => mapEntryRef.current?.focus());
   }
 
   return (
@@ -193,27 +189,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 ref={mapEntryRef}
                 type="button"
-                onClick={() => setAnswerSheetOpen(true)}
-                aria-label="Open answer canvas"
-                aria-expanded={answerSheetOpen}
-                className="neu-button bg-surface text-on-surface-variant hover:text-primary relative flex size-11 items-center justify-center rounded-xl sm:size-9 lg:hidden"
+                onClick={() => (wide && rightPaneCollapsed ? setRightPaneCollapsed(false) : setAnswerSheetOpen(true))}
+                aria-label={wide && rightPaneCollapsed ? "Expand right pane" : "Open answer canvas"}
+                aria-expanded={answerSheetOpen || !rightPaneCollapsed}
+                className={`neu-button bg-surface text-on-surface-variant hover:text-primary relative flex size-11 items-center justify-center rounded-xl sm:size-9 ${wide && rightPaneCollapsed ? "lg:flex" : "lg:hidden"}`}
               >
                 <Icon name="map" size={19} />
                 {highlight && !answerSheetOpen && (
-                  <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" aria-hidden="true" />
-                )}
-              </button>
-            )}
-            {mode === "ai" && rightPaneCollapsed && (
-              <button
-                ref={expandPaneRef}
-                type="button"
-                onClick={expandRightPane}
-                aria-label="Expand right pane"
-                className="neu-button bg-surface text-on-surface-variant hover:text-primary relative hidden size-11 items-center justify-center rounded-xl sm:size-9 lg:flex"
-              >
-                <Icon name="map" size={19} />
-                {highlight && (
                   <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" aria-hidden="true" />
                 )}
               </button>
