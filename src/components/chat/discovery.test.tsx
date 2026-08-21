@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
-import { ToolCallsView } from "@/src/components/chat/tool-renderers";
+import { ResponseWidget } from "@/src/components/chat/tool-renderers";
 import type { CourseDoc, ToolCall } from "@/src/lib/api-types";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import fc from "fast-check";
@@ -95,7 +95,7 @@ describe("22.6 — Course tool card Prereq Tree affordance routes code into the 
     shellRef.current = null;
     const { container } = render(
       <ChatShellProvider>
-        <ToolCallsView calls={[getCourseCall]} />
+        <ResponseWidget call={getCourseCall} />
         <Capture />
       </ChatShellProvider>,
     );

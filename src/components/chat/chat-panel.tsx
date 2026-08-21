@@ -12,10 +12,11 @@ import {
   type DisplayMessage,
   type InterstitialBlock,
 } from "@/src/components/chat/message";
+import { renderers } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
-import { ApiError, type ChatMessage } from "@/src/lib/api-types";
+import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -335,7 +336,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   // Scroll to bottom when messages change (new message, streaming content, interstitials, sending state).
   const messageCount = messages.length;
   const lastMessageContent = messages.length > 0 ? messages[messages.length - 1].content : "";
-  const lastInterstitialCount = messages.length > 0 ? (messages[messages.length - 1].interstitial?.length ?? 0) : 0;
+  const lastInterstitialCount =
+    messages.length > 0
+      ? (messages[messages.length - 1].interstitial?.length ?? 0) + (messages[messages.length - 1].widgets?.length ?? 0)
+      : 0;
   useEffect(() => {
     void messageCount;
     void sending;
@@ -377,6 +381,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
 
       let streamedText = "";
       const interstitialBlocks: InterstitialBlock[] = [];
+      const widgetCalls: ToolCall[] = [];
 
       const updateMessage = (updates: Partial<DisplayMessage>) => {
         setMessages((current) => current.map((m) => (m.id === streamId ? { ...m, ...updates } : m)));
@@ -400,23 +405,22 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             },
             onToolStart(name, input) {
               if (!alive.current) return;
-              interstitialBlocks.push({ type: "tool_call", content: name, input, result: undefined });
-              updateMessage({ interstitial: [...interstitialBlocks] });
+              // Tool calls are internal; only calls with a renderer become widgets.
+              if (renderers[name]) {
+                widgetCalls.push({ name, input, result: undefined });
+                updateMessage({ widgets: [...widgetCalls] });
+              }
             },
             onToolEnd(name, result) {
               if (!alive.current) return;
-              // Find the last tool_call block with this name that has no result
-              for (let i = interstitialBlocks.length - 1; i >= 0; i--) {
-                if (
-                  interstitialBlocks[i].type === "tool_call" &&
-                  interstitialBlocks[i].content === name &&
-                  interstitialBlocks[i].result === undefined
-                ) {
-                  interstitialBlocks[i] = { ...interstitialBlocks[i], result };
+              if (!renderers[name]) return;
+              for (let i = widgetCalls.length - 1; i >= 0; i--) {
+                if (widgetCalls[i].name === name && widgetCalls[i].result === undefined) {
+                  widgetCalls[i] = { ...widgetCalls[i], result };
                   break;
                 }
               }
-              updateMessage({ interstitial: [...interstitialBlocks] });
+              updateMessage({ widgets: [...widgetCalls] });
             },
             onTextClear() {
               if (!alive.current) return;
@@ -444,7 +448,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
         .then((response) => {
           if (!alive.current) return;
           pendingRetry.current = null;
-          // Replace placeholder with final message including tool calls and warning
+          // Replace placeholder with final message including tool calls, warning, and widgets
           updateMessage({
             content: response.message,
             toolCalls: response.tool_calls,
@@ -452,10 +456,11 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             followUps: response.follow_ups,
             citations: response.citations,
             interstitial: interstitialBlocks.length > 0 ? [...interstitialBlocks] : undefined,
+            widgets: widgetCalls.length > 0 ? [...widgetCalls] : undefined,
           });
-          // Drive the canvas to the last mapped tool call; leave the canvas
+          // Drive the canvas to the last mapped widget tool call; leave the canvas
           // as-is when the answer has no mapped widget (REQ-3.6: no auto-close).
-          const mapped = [...(response.tool_calls ?? [])].reverse().find((c) => toolCallToCanvasView(c));
+          const mapped = [...widgetCalls].reverse().find((c) => toolCallToCanvasView(c));
           if (mapped) activateCanvasView(mapped);
           announce("New response from assistant");
           refreshSessions();
@@ -479,7 +484,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           }
           pendingRetry.current = { conversation };
           // Remove the empty placeholder on error — the error banner communicates the failure
-          if (!streamedText && !interstitialBlocks.length) {
+          if (!streamedText && !interstitialBlocks.length && !widgetCalls.length) {
             setMessages((current) => current.filter((m) => m.id !== streamId));
           } else {
             // Partial content exists — mark it as failed
@@ -634,7 +639,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             {messages.map((message, idx) =>
               message.role === "user" ? (
                 <UserMessage key={message.id} message={message} />
-              ) : message.content || message.toolCalls || (message.interstitial && message.interstitial.length > 0) ? (
+              ) : message.content ||
+                message.toolCalls ||
+                (message.interstitial && message.interstitial.length > 0) ||
+                (message.widgets && message.widgets.length > 0) ? (
                 <AssistantMessage
                   key={message.id}
                   message={message}
@@ -647,7 +655,8 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                 (!messages.length ||
                   messages[messages.length - 1]?.role !== "assistant" ||
                   (!messages[messages.length - 1]?.content &&
-                    !messages[messages.length - 1]?.interstitial?.length)) && (
+                    !messages[messages.length - 1]?.interstitial?.length &&
+                    !messages[messages.length - 1]?.widgets?.length)) && (
                   <motion.div
                     key="typing-indicator"
                     initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}

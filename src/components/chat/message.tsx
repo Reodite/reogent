@@ -5,7 +5,7 @@
 // Interstitial blocks (thinking + tool calls) render inline before the final text.
 import { injectChips } from "@/src/components/chat/citations/chip-injector";
 import { SourcesPanel } from "@/src/components/chat/citations/sources-panel";
-import { ResponseWidget, ToolCallsView } from "@/src/components/chat/tool-renderers";
+import { ResponseWidget } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import type { Citation, ToolCall } from "@/src/lib/api-types";
@@ -23,8 +23,10 @@ export interface DisplayMessage {
   warning?: string;
   /** True when generation was stopped or errored with partial content. */
   stopped?: boolean;
-  /** Interstitial blocks shown before the final answer (thinking + tool calls). */
+  /** Interstitial blocks shown before the answer (thinking blocks only). */
   interstitial?: InterstitialBlock[];
+  /** Widget tool calls whose renderers are the answer. */
+  widgets?: ToolCall[];
   /** LLM-generated follow-up question suggestions. */
   followUps?: string[];
   /** Citations attributed to this assistant turn (used by CitationChip chips + SourcesPanel). */
@@ -154,8 +156,9 @@ export const AssistantMessage = memo(function AssistantMessage({
   showAvatar?: boolean;
 }) {
   const reduce = useReducedMotion();
-  const tools = message.toolCalls ?? [];
   const interstitial = message.interstitial ?? [];
+  // Widgets: new format uses `widgets`; legacy messages use `toolCalls` (all were shown).
+  const widgets = message.widgets ?? message.toolCalls ?? [];
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 6 }}
@@ -177,21 +180,18 @@ export const AssistantMessage = memo(function AssistantMessage({
             <span>{message.warning}</span>
           </div>
         )}
-        {interstitial.length > 0 && (
-          <div className="mb-3 flex flex-col gap-1.5">
-            {interstitial.map((block, idx) => {
-              if (block.type === "thinking") {
-                return (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
-                  <ThinkingBlock key={`t-${idx}`} content={block.content} compact />
-                );
-              }
-              const call = { name: block.content, input: block.input ?? {}, result: block.result };
-              return (
+        {(interstitial.length > 0 || widgets.length > 0) && (
+          <div className="mb-3 flex flex-col gap-2">
+            {interstitial.map((block, idx) =>
+              block.type === "thinking" ? (
                 // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
-                <ResponseWidget key={`tc-${idx}`} call={call} compact />
-              );
-            })}
+                <ThinkingBlock key={`t-${idx}`} content={block.content} compact />
+              ) : null,
+            )}
+            {widgets.map((call, idx) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
+              <ResponseWidget key={`w-${idx}`} call={call} />
+            ))}
           </div>
         )}
         {message.content && <AssistantMarkdown content={message.content} citations={message.citations} />}
@@ -201,7 +201,6 @@ export const AssistantMessage = memo(function AssistantMessage({
             Response stopped
           </p>
         )}
-        {!interstitial.length && <ToolCallsView calls={tools} />}
       </div>
     </motion.div>
   );

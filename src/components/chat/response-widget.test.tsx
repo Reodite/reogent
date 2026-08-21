@@ -126,10 +126,9 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(shellRef.current?.workspaceView?.paneId).toBe("calendar");
   });
 
-  it("a loading call shows the spinner and stays non-focusable when unmapped", () => {
+  it("a loading call stays non-focusable when unmapped", () => {
     const { container } = renderWidget(walkingLoadingCall);
     const widget = container.querySelector('[data-widget="walking_distance"]') as HTMLElement;
     expect(widget.getAttribute("role")).toBeNull();
-    expect(widget.querySelector('[role="status"]')).not.toBeNull();
   });
 });

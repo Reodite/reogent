@@ -16,7 +16,7 @@ import {
   type ToolCall,
   type TuitionResult,
 } from "@/src/lib/api-types";
-import { formatCad, formatMeters, formatMinutes, summarizeToolInput } from "@/src/lib/format";
+import { formatCad, formatMeters, formatMinutes } from "@/src/lib/format";
 import {
   extractBuildingHighlight,
   extractPlacesHighlight,
@@ -41,36 +41,8 @@ const TOOL_ICONS: Record<string, IconName> = {
   find_places: "location",
 };
 
-// ---- Badges ----
-
-function ToolBadge({ call }: { call: ToolCall }) {
-  const failed = isToolError(call.result);
-  const loading = call.result === undefined;
-  const summary = summarizeToolInput(call.input);
-  return (
-    <span
-      className={`inline-flex max-w-full items-center gap-2 overflow-hidden rounded-lg px-2 py-1 font-mono text-xs ${
-        failed ? "bg-error-container/40 text-on-surface-variant" : "bg-secondary-container/15 text-on-surface-variant"
-      }`}
-      title={failed && isToolError(call.result) ? call.result.message : undefined}
-    >
-      {loading ? (
-        <span
-          role="status"
-          aria-label="Loading"
-          className="border-primary size-3 shrink-0 animate-spin rounded-full border-2 border-t-transparent"
-        />
-      ) : (
-        <Icon name={failed ? "alert" : (TOOL_ICONS[call.name] ?? "route")} size={14} className="shrink-0" />
-      )}
-      <span className="truncate leading-none">
-        {call.name}
-        {summary ? `(${summary})` : "()"}
-      </span>
-      {failed && <span className="sr-only">(failed)</span>}
-    </span>
-  );
-}
+// ---- Badge ----
+// Tool calls are internal, so no badge is shown. The widget is the answer itself.
 
 // ---- search_courses / get_course ----
 
@@ -260,7 +232,7 @@ function canvasViewsEqual(a: CanvasView, b: CanvasView): boolean {
  * ring while its view matches `workspaceView`. Unmapped tools (and error
  * results) render a static, non-focusable summary badge.
  */
-export function ResponseWidget({ call, compact = false }: { call: ToolCall; compact?: boolean }) {
+export function ResponseWidget({ call }: { call: ToolCall }) {
   const reduce = useReducedMotion();
   const { workspaceView, activateCanvasView } = useChatShell();
   const view = useMemo(() => toolCallToCanvasView(call), [call]);
@@ -293,41 +265,16 @@ export function ResponseWidget({ call, compact = false }: { call: ToolCall; comp
       className={
         mapped
           ? `hover:bg-surface-container-high focus-visible:ring-primary/40 cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
-              compact ? "" : "mt-3"
-            } ${active ? "bg-accent-subtle ring-primary ring-2" : ""}`
-          : compact
-            ? "rounded-lg"
-            : "mt-3 rounded-lg"
+              active ? "bg-accent-subtle ring-primary ring-2" : ""
+            }`
+          : "rounded-lg"
       }
     >
-      <ToolBadge call={call} />
       {Renderer && loaded ? (
         <ErrorBoundary>
           <Renderer call={call} />
         </ErrorBoundary>
       ) : null}
     </motion.div>
-  );
-}
-
-/** Stable keys for an ordered, append-only call list: name + occurrence count. */
-function callKeys(calls: ToolCall[]): string[] {
-  const seen = new Map<string, number>();
-  return calls.map((call) => {
-    const n = (seen.get(call.name) ?? 0) + 1;
-    seen.set(call.name, n);
-    return `${call.name}#${n}`;
-  });
-}
-
-export function ToolCallsView({ calls }: { calls: ToolCall[] }) {
-  if (calls.length === 0) return null;
-  const keys = callKeys(calls);
-  return (
-    <>
-      {calls.map((call, i) => (
-        <ResponseWidget key={keys[i]} call={call} />
-      ))}
-    </>
   );
 }
