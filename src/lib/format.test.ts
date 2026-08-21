@@ -1,10 +1,10 @@
 import {
+  describeToolCall,
   formatCad,
   formatMeters,
   formatMinutes,
   SESSION_GROUP_ORDER,
   sessionGroup,
-  summarizeToolInput,
 } from "@/src/lib/format";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -86,23 +86,40 @@ describe("formatters", () => {
   });
 });
 
-describe("summarizeToolInput", () => {
-  it("renders key=value pairs and skips empties", () => {
-    expect(summarizeToolInput({ query: "algorithms", limit: 3, term: undefined })).toBe('query="algorithms", limit=3');
-  });
-
-  it("handles circular references without throwing", () => {
-    const circular: Record<string, unknown> = { name: "test" };
-    circular.self = circular;
-    expect(() => summarizeToolInput(circular)).not.toThrow();
-    expect(summarizeToolInput(circular)).toContain("[complex]");
-  });
-
-  it("never exceeds the length budget (property)", () => {
-    fc.assert(
-      fc.property(fc.dictionary(fc.string({ minLength: 1, maxLength: 8 }), fc.string({ maxLength: 40 })), (input) => {
-        return summarizeToolInput(input).length <= 48;
-      }),
+describe("describeToolCall", () => {
+  it("describes walking_distance with from/to", () => {
+    expect(describeToolCall("walking_distance", { from_building: "CHBE", to_building: "UBC Bus Exchange" })).toBe(
+      "Searched for walking distance from CHBE to UBC Bus Exchange",
     );
+  });
+
+  it("describes find_building", () => {
+    expect(describeToolCall("find_building", { query: "Walter Gage" })).toBe("Searched for building: Walter Gage");
+  });
+
+  it("describes search_courses", () => {
+    expect(describeToolCall("search_courses", { query: "machine learning" })).toBe(
+      "Searched for courses: machine learning",
+    );
+  });
+
+  it("describes get_course", () => {
+    expect(describeToolCall("get_course", { course_code: "CPSC 110" })).toBe("Searched for course: CPSC 110");
+  });
+
+  it("describes find_places with optional near_building", () => {
+    expect(describeToolCall("find_places", { query: "coffee", near_building: "IKB" })).toBe(
+      "Searched for places: coffee near IKB",
+    );
+    expect(describeToolCall("find_places", { query: "coffee" })).toBe("Searched for places: coffee");
+  });
+
+  it("describes get_key_dates with and without query", () => {
+    expect(describeToolCall("get_key_dates", { query: "exam period" })).toBe("Searched for key dates: exam period");
+    expect(describeToolCall("get_key_dates", {})).toBe("Searched for key dates");
+  });
+
+  it("falls back for unknown tools", () => {
+    expect(describeToolCall("unknown_tool", { x: 1 })).toBe("Searched: unknown_tool");
   });
 });

@@ -14,7 +14,7 @@ import {
   type ToolCall,
   type TuitionResult,
 } from "@/src/lib/api-types";
-import { formatCad, formatMeters, formatMinutes, summarizeToolInput } from "@/src/lib/format";
+import { describeToolCall, formatCad, formatMeters, formatMinutes } from "@/src/lib/format";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import { motion, useReducedMotion } from "motion/react";
 import { useMemo } from "react";
@@ -42,7 +42,7 @@ function ToolBadge({
 }) {
   const failed = isToolError(call.result);
   const loading = call.result === undefined;
-  const summary = summarizeToolInput(call.input);
+  const description = describeToolCall(call.name, call.input);
   const errorMessage = failed && isToolError(call.result) ? call.result.message : null;
   return (
     <motion.span
@@ -71,10 +71,9 @@ function ToolBadge({
         mapped && active ? "bg-primary/15 ring-primary ring-2" : ""
       }`}
     >
-      <Icon name={failed ? "alert" : "code"} size={14} className={`shrink-0 ${loading ? "animate-pulse" : ""}`} />
+      <Icon name={failed ? "alert" : "search"} size={14} className={`shrink-0 ${loading ? "animate-pulse" : ""}`} />
       <span className="truncate leading-none">
-        {call.name}
-        {summary ? `(${summary})` : "()"}
+        {description}
         {failed && errorMessage ? ` — ${errorMessage}` : ""}
       </span>
       {failed && <span className="sr-only">(failed)</span>}

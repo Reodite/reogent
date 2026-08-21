@@ -48,23 +48,42 @@ export function formatMinutes(minutes: number): string {
   return `${rounded} min`;
 }
 
-/** Compact one-line summary of a tool call's input for the badge. */
-export function summarizeToolInput(input: Record<string, unknown>, maxLength = 48): string {
-  const parts: string[] = [];
-  for (const [key, value] of Object.entries(input)) {
-    if (value === undefined || value === null || value === "") continue;
-    let str: string;
-    try {
-      str = typeof value === "string" ? `${key}="${value}"` : `${key}=${JSON.stringify(value)}`;
-    } catch {
-      str = `${key}=[complex]`;
-    }
-    parts.push(str);
+/** Natural-language description of a tool call for the activity badge. */
+export function describeToolCall(name: string, input: Record<string, unknown>): string {
+  const s = (k: string) => {
+    const v = input[k];
+    return typeof v === "string" ? v : String(v ?? "");
+  };
+  const has = (k: string) => input[k] !== undefined && input[k] !== null && input[k] !== "";
+
+  switch (name) {
+    case "walking_distance":
+      return `Searched for walking distance from ${s("from_building")} to ${s("to_building")}`;
+    case "find_building":
+      return `Searched for building: ${s("query")}`;
+    case "search_courses":
+      return `Searched for courses: ${s("query")}`;
+    case "get_course":
+      return `Searched for course: ${s("course_code")}`;
+    case "get_tuition":
+      return `Searched for tuition: ${s("program_slug")}`;
+    case "find_places":
+      return has("near_building")
+        ? `Searched for places: ${s("query")} near ${s("near_building")}`
+        : `Searched for places: ${s("query")}`;
+    case "get_key_dates":
+      return has("query") ? `Searched for key dates: ${s("query")}` : "Searched for key dates";
+    case "search_events":
+      return has("query") ? `Searched for events: ${s("query")}` : "Searched for events";
+    case "search_programs":
+      return `Searched for programs: ${s("query")}`;
+    case "get_admission_requirements":
+      return has("query")
+        ? `Searched for admission requirements: ${s("query")}`
+        : "Searched for admission requirements";
+    case "show_widget":
+      return has("query") ? `Searched for: ${s("query")}` : "Searched";
+    default:
+      return `Searched: ${name}`;
   }
-  const joined = parts.join(", ");
-  if (joined.length <= maxLength) return joined;
-  // Codepoint-safe truncation: iterate by codepoint to avoid splitting surrogate pairs
-  const chars = Array.from(joined);
-  const truncated = chars.slice(0, maxLength - 1).join("");
-  return `${truncated}…`;
 }
