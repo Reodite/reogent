@@ -27,15 +27,48 @@ type ToolCallRenderer = React.ComponentType<ToolCallRendererProps>;
 
 // ---- Badges (internal tool calls) ----
 
-function ToolBadge({ call }: { call: ToolCall }) {
+function ToolBadge({
+  call,
+  mapped = false,
+  active = false,
+  reduce = false,
+  onToggle,
+}: {
+  call: ToolCall;
+  mapped?: boolean;
+  active?: boolean;
+  reduce?: boolean;
+  onToggle?: () => void;
+}) {
   const failed = isToolError(call.result);
   const loading = call.result === undefined;
   const summary = summarizeToolInput(call.input);
   const errorMessage = failed && isToolError(call.result) ? call.result.message : null;
   return (
-    <span
-      className={`inline-flex max-w-full items-center gap-1.5 overflow-hidden rounded-full border px-2.5 py-1 font-mono text-xs ${
+    <motion.span
+      initial={reduce ? false : { opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 30 }}
+      role={mapped ? "button" : undefined}
+      tabIndex={mapped ? 0 : undefined}
+      aria-pressed={mapped ? active : undefined}
+      data-widget={call.name}
+      data-active={active || undefined}
+      onClick={mapped ? onToggle : undefined}
+      onKeyDown={
+        mapped
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggle?.();
+              }
+            }
+          : undefined
+      }
+      className={`inline-flex w-fit max-w-full items-center gap-1.5 overflow-hidden rounded-full border px-2.5 py-1 font-mono text-xs ${
         failed ? "border-error/20 bg-error/10 text-error" : "border-primary/20 bg-primary/10 text-primary"
+      } ${mapped ? "hover:bg-primary/15 focus-visible:ring-primary/40 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-2" : ""} ${
+        mapped && active ? "bg-primary/15 ring-primary ring-2" : ""
       }`}
     >
       <Icon name={failed ? "alert" : "code"} size={14} className={`shrink-0 ${loading ? "animate-pulse" : ""}`} />
@@ -45,7 +78,7 @@ function ToolBadge({ call }: { call: ToolCall }) {
         {failed && errorMessage ? ` — ${errorMessage}` : ""}
       </span>
       {failed && <span className="sr-only">(failed)</span>}
-    </span>
+    </motion.span>
   );
 }
 
@@ -399,6 +432,19 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
   const widget = Renderer !== undefined;
   const loaded = !isToolError(call.result) && call.result !== undefined;
 
+  const toggle = () => {
+    if (active) {
+      setUserDismissedPane(true);
+      setWorkspaceView(null);
+      setAnswerSheetOpen(false);
+    } else {
+      setUserDismissedPane(false);
+      activateCanvasView(call);
+    }
+  };
+
+  if (!widget) return <ToolBadge call={call} mapped={mapped} active={active} reduce={reduce} onToggle={toggle} />;
+
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 4 }}
@@ -409,33 +455,13 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
       aria-pressed={mapped ? active : undefined}
       data-widget={call.name}
       data-active={active || undefined}
-      onClick={
-        mapped
-          ? () => {
-              if (active) {
-                setUserDismissedPane(true);
-                setWorkspaceView(null);
-                setAnswerSheetOpen(false);
-              } else {
-                setUserDismissedPane(false);
-                activateCanvasView(call);
-              }
-            }
-          : undefined
-      }
+      onClick={mapped ? toggle : undefined}
       onKeyDown={
         mapped
           ? (e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                if (active) {
-                  setUserDismissedPane(true);
-                  setWorkspaceView(null);
-                  setAnswerSheetOpen(false);
-                } else {
-                  setUserDismissedPane(false);
-                  activateCanvasView(call);
-                }
+                toggle();
               }
             }
           : undefined
@@ -445,13 +471,10 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
           ? `hover:bg-surface-container-high focus-visible:ring-primary/40 min-h-[44px] cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
               active ? "bg-accent-subtle ring-primary ring-2" : ""
             }`
-          : widget
-            ? ""
-            : "rounded-lg"
+          : "rounded-lg"
       }
     >
-      {!widget && <ToolBadge call={call} />}
-      {widget && loaded ? (
+      {loaded ? (
         <ErrorBoundary>
           <Renderer call={call} />
         </ErrorBoundary>
