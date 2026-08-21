@@ -135,7 +135,7 @@ function SearchCoursesRenderer({ call }: ToolCallRendererProps) {
   if (courses.length === 0) return null;
   const shown = courses.slice(0, 4);
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {shown.map((course) => (
         <CourseCard key={`${course.code}-${course.title}`} course={course} />
       ))}
@@ -149,7 +149,7 @@ function SearchCoursesRenderer({ call }: ToolCallRendererProps) {
 function GetCourseRenderer({ call }: ToolCallRendererProps) {
   if (!isCourseDoc(call.result)) return null;
   return (
-    <div className="mt-2">
+    <div>
       <CourseCard course={call.result} detailed />
     </div>
   );

@@ -14,7 +14,7 @@ export function ToolResultCard({
   action?: ReactNode;
 }) {
   return (
-    <div className="bg-surface-container-low mt-2 flex items-center gap-3 rounded-lg p-3">
+    <div className="bg-surface-container-low flex items-center gap-3 rounded-lg p-3">
       <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
         <Icon name={icon} size={18} />
       </span>
