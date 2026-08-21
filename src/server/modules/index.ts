@@ -12,11 +12,13 @@ import { parking } from "./parking";
 import { places } from "./places";
 import { spaces } from "./spaces";
 import { tuition } from "./tuition";
+import { createWidgetsModule } from "./widgets";
 
 /** The dataset-module registry. Ingest, tool dispatch, and the /api/geo
  *  allowlist all derive from this list — adding a data source is one module
- *  file plus one entry here. */
-export const modules: DatasetModule[] = [
+ *  file plus one entry here. The widgets module wraps the data modules so the
+ *  show_widget tool can delegate to their internal executes. */
+const dataModules: DatasetModule[] = [
   courses,
   tuition,
   buildings,
@@ -31,3 +33,5 @@ export const modules: DatasetModule[] = [
   grades,
   prereqModule,
 ];
+
+export const modules: DatasetModule[] = [...dataModules, createWidgetsModule(dataModules)];

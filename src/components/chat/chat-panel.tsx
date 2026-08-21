@@ -405,22 +405,39 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             },
             onToolStart(name, input) {
               if (!alive.current) return;
-              // Tool calls are internal; only calls with a renderer become widgets.
               if (renderers[name]) {
+                // show_widget renders a data widget as the answer.
                 widgetCalls.push({ name, input, result: undefined });
                 updateMessage({ widgets: [...widgetCalls] });
+              } else {
+                // Internal tools show a compact badge only.
+                interstitialBlocks.push({ type: "tool_call", content: name, input, result: undefined });
+                updateMessage({ interstitial: [...interstitialBlocks] });
               }
             },
             onToolEnd(name, result) {
               if (!alive.current) return;
-              if (!renderers[name]) return;
-              for (let i = widgetCalls.length - 1; i >= 0; i--) {
-                if (widgetCalls[i].name === name && widgetCalls[i].result === undefined) {
-                  widgetCalls[i] = { ...widgetCalls[i], result };
-                  break;
+              if (renderers[name]) {
+                for (let i = widgetCalls.length - 1; i >= 0; i--) {
+                  if (widgetCalls[i].name === name && widgetCalls[i].result === undefined) {
+                    widgetCalls[i] = { ...widgetCalls[i], result };
+                    break;
+                  }
                 }
+                updateMessage({ widgets: [...widgetCalls] });
+              } else {
+                for (let i = interstitialBlocks.length - 1; i >= 0; i--) {
+                  if (
+                    interstitialBlocks[i].type === "tool_call" &&
+                    interstitialBlocks[i].content === name &&
+                    interstitialBlocks[i].result === undefined
+                  ) {
+                    interstitialBlocks[i] = { ...interstitialBlocks[i], result };
+                    break;
+                  }
+                }
+                updateMessage({ interstitial: [...interstitialBlocks] });
               }
-              updateMessage({ widgets: [...widgetCalls] });
             },
             onTextClear() {
               if (!alive.current) return;
@@ -458,9 +475,16 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             interstitial: interstitialBlocks.length > 0 ? [...interstitialBlocks] : undefined,
             widgets: widgetCalls.length > 0 ? [...widgetCalls] : undefined,
           });
-          // Drive the canvas to the last mapped widget tool call; leave the canvas
+          // Drive the canvas to the last mapped tool call; leave the canvas
           // as-is when the answer has no mapped widget (REQ-3.6: no auto-close).
-          const mapped = [...widgetCalls].reverse().find((c) => toolCallToCanvasView(c));
+          // Both widget calls and internal tool calls can drive the canvas.
+          const allCalls = [
+            ...widgetCalls,
+            ...interstitialBlocks
+              .filter((b) => b.type === "tool_call")
+              .map((b) => ({ name: b.content, input: b.input ?? {}, result: b.result })),
+          ];
+          const mapped = allCalls.reverse().find((c) => toolCallToCanvasView(c));
           if (mapped) activateCanvasView(mapped);
           announce("New response from assistant");
           refreshSessions();

@@ -182,12 +182,19 @@ export const AssistantMessage = memo(function AssistantMessage({
         )}
         {(interstitial.length > 0 || widgets.length > 0) && (
           <div className="mb-3 flex flex-col gap-2">
-            {interstitial.map((block, idx) =>
-              block.type === "thinking" ? (
+            {interstitial.map((block, idx) => {
+              if (block.type === "thinking") {
+                return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
+                  <ThinkingBlock key={`t-${idx}`} content={block.content} compact />
+                );
+              }
+              const call = { name: block.content, input: block.input ?? {}, result: block.result };
+              return (
                 // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
-                <ThinkingBlock key={`t-${idx}`} content={block.content} compact />
-              ) : null,
-            )}
+                <ResponseWidget key={`tc-${idx}`} call={call} />
+              );
+            })}
             {widgets.map((call, idx) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
               <ResponseWidget key={`w-${idx}`} call={call} />

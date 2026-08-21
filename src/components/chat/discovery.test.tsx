@@ -84,9 +84,9 @@ const fullCourse: CourseDoc = {
 };
 
 const getCourseCall: ToolCall = {
-  name: "get_course",
-  input: { code: "CPSC 110" },
-  result: fullCourse,
+  name: "show_widget",
+  input: { type: "course_detail", query: "CPSC 110" },
+  result: { type: "course_detail", result: fullCourse },
   status: "ok",
 } as unknown as ToolCall;
 

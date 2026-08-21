@@ -1,9 +1,7 @@
 "use client";
 
-// Tool-call rendering (task 3.2): every call gets a mono badge; known tools with
-// healthy results also get a visualization from the `renderers` registry. Error
-// results (`status: "error"`) render as badge only. Unknown tools fall back to
-// the generic badge, so a new backend module needs only one renderer here.
+// Tool-call rendering: internal tool calls show a compact badge only; the
+// dedicated show_widget tool renders a rich data widget as the answer.
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
 import type { CanvasView } from "@/src/components/shell/pane-registry";
@@ -16,13 +14,8 @@ import {
   type ToolCall,
   type TuitionResult,
 } from "@/src/lib/api-types";
-import { formatCad, formatMeters, formatMinutes } from "@/src/lib/format";
-import {
-  extractBuildingHighlight,
-  extractPlacesHighlight,
-  extractWalkingHighlight,
-  toolCallToCanvasView,
-} from "@/src/lib/walking";
+import { formatCad, formatMeters, formatMinutes, summarizeToolInput } from "@/src/lib/format";
+import { toolCallToCanvasView } from "@/src/lib/walking";
 import { motion, useReducedMotion } from "motion/react";
 import { useMemo } from "react";
 
@@ -39,12 +32,41 @@ const TOOL_ICONS: Record<string, IconName> = {
   walking_distance: "location",
   find_building: "map",
   find_places: "location",
+  show_widget: "route",
 };
 
-// ---- Badge ----
-// Tool calls are internal, so no badge is shown. The widget is the answer itself.
+// ---- Badges (internal tool calls) ----
 
-// ---- search_courses / get_course ----
+function ToolBadge({ call }: { call: ToolCall }) {
+  const failed = isToolError(call.result);
+  const loading = call.result === undefined;
+  const summary = summarizeToolInput(call.input);
+  return (
+    <span
+      className={`inline-flex max-w-full items-center gap-2 overflow-hidden rounded-lg px-2 py-1 font-mono text-xs ${
+        failed ? "bg-error-container/40 text-on-surface-variant" : "bg-secondary-container/15 text-on-surface-variant"
+      }`}
+      title={failed && isToolError(call.result) ? call.result.message : undefined}
+    >
+      {loading ? (
+        <span
+          role="status"
+          aria-label="Loading"
+          className="border-primary size-3 shrink-0 animate-spin rounded-full border-2 border-t-transparent"
+        />
+      ) : (
+        <Icon name={failed ? "alert" : (TOOL_ICONS[call.name] ?? "route")} size={14} className="shrink-0" />
+      )}
+      <span className="truncate leading-none">
+        {call.name}
+        {summary ? `(${summary})` : "()"}
+      </span>
+      {failed && <span className="sr-only">(failed)</span>}
+    </span>
+  );
+}
+
+// ---- Widget renderers ----
 
 function isCourseDoc(value: unknown): value is CourseDoc {
   return (
@@ -101,121 +123,109 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
   );
 }
 
-function SearchCoursesRenderer({ call }: ToolCallRendererProps) {
-  const result = call.result as Partial<SearchCoursesResult> | undefined;
-  const courses = Array.isArray(result?.courses) ? result.courses.filter(isCourseDoc) : [];
-  if (courses.length === 0) return null;
-  const shown = courses.slice(0, 4);
-  return (
-    <div className="flex flex-col gap-2">
-      {shown.map((course) => (
-        <CourseCard key={`${course.code}-${course.title}`} course={course} />
-      ))}
-      {courses.length > shown.length && (
-        <p className="text-muted text-xs">+ {courses.length - shown.length} more matches</p>
-      )}
-    </div>
-  );
-}
-
-function GetCourseRenderer({ call }: ToolCallRendererProps) {
-  if (!isCourseDoc(call.result)) return null;
-  return (
-    <div>
-      <CourseCard course={call.result} detailed />
-    </div>
-  );
-}
-
-// ---- get_tuition ----
-
 function isTuitionResult(value: unknown): value is TuitionResult {
   return typeof value === "object" && value !== null && typeof (value as TuitionResult).amount_cad === "number";
 }
 
-function TuitionRenderer({ call }: ToolCallRendererProps) {
-  if (!isTuitionResult(call.result)) return null;
-  const t = call.result;
-  const label = t.per_credit_cad != null ? "per credit" : t.unit || "flat";
-  const amount = t.per_credit_cad ?? t.amount_cad ?? 0;
-  return (
-    <ToolResultCard icon="currencyDollar">
-      <span className="text-on-surface block text-base font-medium">
-        {formatCad(amount)} <span className="text-body-sm text-on-surface-variant font-normal">{label}</span>
-      </span>
-      <span className="text-muted block truncate text-xs">
-        {t.program || "—"} · {t.student_type || "—"} · {t.cohort_year || "—"} cohort
-      </span>
-    </ToolResultCard>
-  );
-}
+/** The show_widget tool returns { type, result } where `result` mirrors the
+ *  internal tool it delegated to. Each case renders the matching widget. */
+function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
+  const outer = call.result as { type?: string; result?: unknown } | undefined;
+  const data = outer?.result;
 
-// ---- walking_distance ----
-
-// The widget envelope activates the map for these tools; the renderer supplies
-// the summary visual only.
-function WalkingDistanceRenderer({ call }: ToolCallRendererProps) {
-  const highlight = useMemo(() => extractWalkingHighlight(call), [call]);
-
-  if (!highlight) return null;
-  return (
-    <ToolResultCard icon="walk">
-      <span className="text-on-surface block text-base font-medium">{formatMinutes(highlight.minutes)}</span>
-      <span className="text-on-surface-variant block truncate text-xs">
-        {formatMeters(highlight.meters)} · {highlight.from} → {highlight.to}
-      </span>
-    </ToolResultCard>
-  );
-}
-
-// ---- find_building ----
-
-function FindBuildingRenderer({ call }: ToolCallRendererProps) {
-  const highlight = useMemo(() => extractBuildingHighlight(call), [call]);
-
-  if (!highlight || highlight.buildings.length === 0) return null;
-  const building = highlight.buildings[0];
-  return (
-    <ToolResultCard icon="map">
-      <span className="text-on-surface block truncate text-base font-medium">{building.name}</span>
-      <span className="text-muted block truncate font-mono text-xs">{building.code}</span>
-    </ToolResultCard>
-  );
-}
-
-// ---- find_places ----
-
-function FindPlacesRenderer({ call }: ToolCallRendererProps) {
-  const highlight = useMemo(() => extractPlacesHighlight(call), [call]);
-
-  if (!highlight || highlight.places.length === 0) return null;
-  const preview = highlight.places
-    .slice(0, 3)
-    .map((p) => p.name)
-    .join(", ");
-  return (
-    <ToolResultCard icon="location">
-      <span className="text-on-surface block text-base font-medium">
-        {highlight.places.length} place{highlight.places.length === 1 ? "" : "s"}
-        {highlight.near ? ` near ${highlight.near}` : ""}
-      </span>
-      <span className="text-muted block truncate text-xs">
-        {preview}
-        {highlight.places.length > 3 ? "…" : ""}
-      </span>
-    </ToolResultCard>
-  );
+  switch (outer?.type) {
+    case "course": {
+      const courses = Array.isArray((data as Partial<SearchCoursesResult>)?.courses)
+        ? (data as SearchCoursesResult).courses.filter(isCourseDoc)
+        : [];
+      if (courses.length === 0) return null;
+      const shown = courses.slice(0, 4);
+      return (
+        <div className="flex flex-col gap-2">
+          {shown.map((course) => (
+            <CourseCard key={`${course.code}-${course.title}`} course={course} />
+          ))}
+          {courses.length > shown.length && (
+            <p className="text-muted text-xs">+ {courses.length - shown.length} more matches</p>
+          )}
+        </div>
+      );
+    }
+    case "course_detail":
+      if (!isCourseDoc(data)) return null;
+      return <CourseCard course={data} detailed />;
+    case "tuition": {
+      if (!isTuitionResult(data)) return null;
+      const label = data.per_credit_cad != null ? "per credit" : data.unit || "flat";
+      const amount = data.per_credit_cad ?? data.amount_cad ?? 0;
+      return (
+        <ToolResultCard icon="currencyDollar">
+          <span className="text-on-surface block text-base font-medium">
+            {formatCad(amount)} <span className="text-body-sm text-on-surface-variant font-normal">{label}</span>
+          </span>
+          <span className="text-muted block truncate text-xs">
+            {data.program || "—"} · {data.student_type || "—"} · {data.cohort_year || "—"} cohort
+          </span>
+        </ToolResultCard>
+      );
+    }
+    case "route": {
+      const r = data as { from?: string; to?: string; meters?: number; minutes?: number } | undefined;
+      if (typeof r?.meters !== "number" || !r.from || !r.to) return null;
+      return (
+        <ToolResultCard icon="walk">
+          <span className="text-on-surface block text-base font-medium">{formatMinutes(r.minutes)}</span>
+          <span className="text-on-surface-variant block truncate text-xs">
+            {formatMeters(r.meters)} · {r.from} → {r.to}
+          </span>
+        </ToolResultCard>
+      );
+    }
+    case "building": {
+      const b = data as { code?: string; name?: string; lat?: number; lon?: number } | undefined;
+      if (!b?.code) return null;
+      return (
+        <ToolResultCard icon="map">
+          <span className="text-on-surface block truncate text-base font-medium">{b.name ?? b.code}</span>
+          <span className="text-muted block truncate font-mono text-xs">{b.code}</span>
+        </ToolResultCard>
+      );
+    }
+    case "places": {
+      const p = data as
+        | {
+            near_building?: string;
+            places?: { name?: string; lat?: number; lon?: number; service_type?: string | null }[];
+          }
+        | undefined;
+      if (!Array.isArray(p?.places) || p.places.length === 0) return null;
+      const preview = p.places
+        .slice(0, 3)
+        .map((pl) => pl.name)
+        .filter(Boolean)
+        .join(", ");
+      return (
+        <ToolResultCard icon="location">
+          <span className="text-on-surface block text-base font-medium">
+            {p.places.length} place{p.places.length === 1 ? "" : "s"}
+            {p.near_building ? ` near ${p.near_building}` : ""}
+          </span>
+          <span className="text-muted block truncate text-xs">
+            {preview}
+            {p.places.length > 3 ? "…" : ""}
+          </span>
+        </ToolResultCard>
+      );
+    }
+    default:
+      return null;
+  }
 }
 
 // ---- Registry ----
 
 export const renderers: Record<string, ToolCallRenderer> = {
-  search_courses: SearchCoursesRenderer,
-  get_course: GetCourseRenderer,
-  get_tuition: TuitionRenderer,
-  walking_distance: WalkingDistanceRenderer,
-  find_building: FindBuildingRenderer,
-  find_places: FindPlacesRenderer,
+  show_widget: ShowWidgetRenderer,
 };
 
 /** True when a tool call's canvas view matches the current workspace view. The
@@ -227,10 +237,9 @@ function canvasViewsEqual(a: CanvasView, b: CanvasView): boolean {
 }
 
 /**
- * One tool call as a clickable summary card. A mapped tool loads its canvas
- * view into the Answer Canvas on click and on Enter/Space, and shows the active
- * ring while its view matches `workspaceView`. Unmapped tools (and error
- * results) render a static, non-focusable summary badge.
+ * One tool call in the activity stack. Internal tools render their compact
+ * badge only; the show_widget tool renders its data widget as the answer. A
+ * mapped widget is clickable and loads its canvas view on click/Enter.
  */
 export function ResponseWidget({ call }: { call: ToolCall }) {
   const reduce = useReducedMotion();
@@ -239,6 +248,7 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
   const mapped = view !== null;
   const active = mapped && workspaceView !== null && canvasViewsEqual(view, workspaceView);
   const Renderer = renderers[call.name];
+  const widget = Renderer !== undefined;
   const loaded = !isToolError(call.result) && call.result !== undefined;
 
   return (
@@ -267,10 +277,13 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
           ? `hover:bg-surface-container-high focus-visible:ring-primary/40 cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
               active ? "bg-accent-subtle ring-primary ring-2" : ""
             }`
-          : "rounded-lg"
+          : widget
+            ? ""
+            : "rounded-lg"
       }
     >
-      {Renderer && loaded ? (
+      {!widget && <ToolBadge call={call} />}
+      {widget && loaded ? (
         <ErrorBoundary>
           <Renderer call={call} />
         </ErrorBoundary>

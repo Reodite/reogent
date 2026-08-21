@@ -160,10 +160,71 @@ function extractMapHighlight(call: ToolCall): MapHighlight | null {
  * to a pane (unmapped tools render a static widget and never touch the canvas).
  * Map-driving tools reuse the existing extractors; course/prereq/calendar tools
  * seed the matching pane's state from the result. Error results yield null.
+ * show_widget delegates to the same shape via its result `type`.
  */
 export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
   const highlight = extractMapHighlight(call);
   if (highlight) return { paneId: "map", state: { highlight } };
+
+  if (call.name === "show_widget") {
+    const outer = call.result as { type?: string; result?: unknown } | undefined;
+    const data = outer?.result as Record<string, unknown> | undefined;
+    switch (outer?.type) {
+      case "route": {
+        const r = data as { from?: string; to?: string; meters?: number; minutes?: number } | undefined;
+        if (typeof r?.meters !== "number" || !r.from || !r.to) return null;
+        const highlightRoute: MapHighlight = {
+          kind: "route",
+          from: r.from,
+          to: r.to,
+          meters: r.meters,
+          minutes: r.minutes,
+        };
+        return { paneId: "map", state: { highlight: highlightRoute } };
+      }
+      case "building": {
+        const b = data as { code?: string; name?: string; lat?: number; lon?: number } | undefined;
+        if (!b?.code || typeof b.lat !== "number" || typeof b.lon !== "number") return null;
+        const highlightBuildings: MapHighlight = {
+          kind: "buildings",
+          buildings: [{ code: b.code, name: b.name ?? b.code, lat: b.lat, lon: b.lon }],
+        };
+        return { paneId: "map", state: { highlight: highlightBuildings } };
+      }
+      case "places": {
+        const p = data as
+          | {
+              near_building?: string;
+              places?: { name?: string; lat?: number; lon?: number; service_type?: string | null }[];
+            }
+          | undefined;
+        if (!Array.isArray(p?.places)) return null;
+        const places = p.places
+          .filter((pl) => typeof pl?.name === "string" && typeof pl.lat === "number" && typeof pl.lon === "number")
+          .map((pl) => ({
+            name: pl.name as string,
+            lat: pl.lat as number,
+            lon: pl.lon as number,
+            service_type: pl.service_type ?? null,
+          }));
+        if (places.length === 0) return null;
+        const highlightPlaces: MapHighlight = { kind: "places", near: p.near_building ?? null, places };
+        return { paneId: "map", state: { highlight: highlightPlaces } };
+      }
+      case "course_detail": {
+        const c = data as { code?: string } | undefined;
+        if (!c?.code) return null;
+        return { paneId: "course-lookup", state: { code: c.code } };
+      }
+      case "course": {
+        const list = data as { courses?: { code?: string }[] } | undefined;
+        const first = Array.isArray(list?.courses) ? list.courses[0] : undefined;
+        if (!first?.code) return null;
+        return { paneId: "course-lookup", state: { code: first.code } };
+      }
+    }
+    return null;
+  }
 
   switch (call.name) {
     case "get_course": {
