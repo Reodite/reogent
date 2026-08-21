@@ -43,7 +43,7 @@ function ToolBadge({
   const failed = isToolError(call.result);
   const loading = call.result === undefined;
   const description = describeToolCall(call.name, call.input);
-  const errorMessage = failed && isToolError(call.result) ? call.result.message : null;
+  const label = failed ? description.replace(/^Searched for /, "Failed to find ") : description;
   return (
     <motion.span
       initial={reduce ? false : { opacity: 0, y: 4 }}
@@ -72,10 +72,7 @@ function ToolBadge({
       }`}
     >
       <Icon name={failed ? "alert" : "search"} size={14} className={`shrink-0 ${loading ? "animate-pulse" : ""}`} />
-      <span className="truncate leading-none">
-        {description}
-        {failed && errorMessage ? ` — ${errorMessage}` : ""}
-      </span>
+      <span className="truncate leading-none">{label}</span>
       {failed && <span className="sr-only">(failed)</span>}
     </motion.span>
   );
