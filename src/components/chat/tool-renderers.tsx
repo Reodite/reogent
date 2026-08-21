@@ -139,6 +139,51 @@ function isTuitionResult(value: unknown): value is TuitionResult {
   return typeof value === "object" && value !== null && typeof (value as TuitionResult).amount_cad === "number";
 }
 
+// Minimal shapes for the widget renderers below. Each mirrors the fields the
+// matching tool returns; only what the card displays is typed.
+interface StudySpace {
+  id: string;
+  title: string;
+  name: string | null;
+  building_code: string | null;
+  building_name: string | null;
+  space_type: string | null;
+  capacity: number | null;
+}
+interface FreeRoom {
+  room: string;
+  location: string | null;
+  capacity: number | null;
+  minutes: number | null;
+  start: string;
+}
+interface GradeRecord {
+  subject?: string;
+  course?: string;
+  title?: string;
+  year?: number;
+  session?: string;
+  professor?: string;
+  avg?: number | null;
+}
+interface ParkingLot {
+  id: string;
+  name: string;
+  rate: string | null;
+  ev_charging?: boolean;
+}
+interface ProgramDoc {
+  id: number;
+  name: string;
+  url: string;
+  degrees: string[];
+}
+interface KeyDate {
+  name: string;
+  date_text: string | null;
+  start: string | null;
+}
+
 /** Parses a `yyyy-MM-dd HH:mm:ss` event timestamp as local time, or null. */
 function parseDateOnly(value: string): Date | null {
   const m = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
@@ -356,6 +401,163 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
         </div>
       );
     }
+    case "study_spaces": {
+      const spaces = (data as { spaces?: unknown[] } | undefined)?.spaces;
+      if (!Array.isArray(spaces) || spaces.length === 0) return null;
+      const shown = (spaces as StudySpace[]).slice(0, 5);
+      return (
+        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
+          {shown.map((s) => (
+            <div
+              key={s.id}
+              className="border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
+            >
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-on-surface truncate text-sm font-medium">{s.name ?? s.title}</span>
+                <span className="text-muted truncate text-xs">
+                  {[s.building_name ?? s.building_code, s.space_type].filter(Boolean).join(" · ")}
+                </span>
+              </div>
+              {s.capacity != null && (
+                <span className="bg-surface-container text-on-surface-variant shrink-0 rounded-full px-2 py-0.5 text-xs">
+                  {s.capacity} seats
+                </span>
+              )}
+            </div>
+          ))}
+          {spaces.length > shown.length && (
+            <div className="text-muted px-3 py-2 text-xs">+{spaces.length - shown.length} more</div>
+          )}
+        </div>
+      );
+    }
+    case "free_rooms": {
+      const rooms = (data as { rooms?: unknown[]; as_of?: string | null } | undefined)?.rooms;
+      const asOf = (data as { as_of?: string | null } | undefined)?.as_of;
+      if (!Array.isArray(rooms) || rooms.length === 0) return null;
+      const shown = (rooms as FreeRoom[]).slice(0, 5);
+      return (
+        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
+          {shown.map((r) => (
+            <div
+              key={`${r.room}-${r.start}`}
+              className="border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
+            >
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-on-surface truncate text-sm font-medium">{r.room}</span>
+                <span className="text-muted truncate text-xs">{r.location ?? "—"}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {r.capacity != null && <span className="text-on-surface-variant text-xs">{r.capacity} seats</span>}
+                {typeof r.minutes === "number" && (
+                  <span className="bg-secondary-container text-on-secondary-container rounded-full px-2 py-0.5 text-xs">
+                    free {formatMinutes(r.minutes)}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+          {asOf && <div className="text-muted px-3 py-2 text-xs">as of {new Date(asOf).toLocaleString()}</div>}
+        </div>
+      );
+    }
+    case "grades": {
+      const records = (data as { grades?: unknown[] } | undefined)?.grades;
+      if (!Array.isArray(records) || records.length === 0) return null;
+      const g = records[0] as GradeRecord;
+      return (
+        <ToolResultCard icon="school">
+          <span className="text-on-surface block text-base font-medium">
+            {typeof g.avg === "number" ? `${g.avg.toFixed(1)} avg` : "—"}
+            {g.subject && g.course ? (
+              <span className="text-body-sm text-on-surface-variant font-normal">
+                {" "}
+                {g.subject} {g.course}
+              </span>
+            ) : null}
+          </span>
+          <span className="text-muted block truncate text-xs">
+            {[g.title, g.year ? `${g.year}${g.session ?? ""}` : null, g.professor].filter(Boolean).join(" · ")}
+          </span>
+        </ToolResultCard>
+      );
+    }
+    case "parking": {
+      const lots = (data as { parking?: unknown[]; near_building?: string } | undefined)?.parking;
+      const near = (data as { near_building?: string } | undefined)?.near_building;
+      if (!Array.isArray(lots) || lots.length === 0) return null;
+      const shown = (lots as ParkingLot[]).slice(0, 5);
+      return (
+        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
+          {near && <div className="text-muted border-border-subtle border-b px-3 py-2 text-xs">near {near}</div>}
+          {shown.map((lot) => (
+            <div
+              key={lot.id}
+              className="border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
+            >
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-on-surface truncate text-sm font-medium">{lot.name}</span>
+                {lot.rate && <span className="text-muted truncate text-xs">{lot.rate}</span>}
+              </div>
+              {lot.ev_charging && (
+                <span className="bg-secondary-container text-on-secondary-container shrink-0 rounded-full px-2 py-0.5 text-xs">
+                  EV
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    case "program": {
+      const programs = (data as { programs?: unknown[] } | undefined)?.programs;
+      if (!Array.isArray(programs) || programs.length === 0) return null;
+      const shown = (programs as ProgramDoc[]).slice(0, 5);
+      return (
+        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
+          {shown.map((p) => (
+            <a
+              key={p.id}
+              href={p.url || undefined}
+              target={p.url ? "_blank" : undefined}
+              rel={p.url ? "noreferrer" : undefined}
+              onClick={(e) => e.stopPropagation()}
+              className="border-border-subtle hover:bg-surface-container-high flex flex-col gap-0.5 border-b px-3 py-2.5 transition-colors last:border-b-0"
+            >
+              <span className="text-on-surface truncate text-sm font-medium">{p.name}</span>
+              {Array.isArray(p.degrees) && p.degrees.length > 0 && (
+                <span className="text-muted truncate text-xs">{p.degrees.join(", ")}</span>
+              )}
+            </a>
+          ))}
+          {programs.length > shown.length && (
+            <div className="text-muted px-3 py-2 text-xs">+{programs.length - shown.length} more</div>
+          )}
+        </div>
+      );
+    }
+    case "key_dates": {
+      const dates = (data as { dates?: unknown[] } | undefined)?.dates;
+      if (!Array.isArray(dates) || dates.length === 0) return null;
+      const shown = (dates as KeyDate[]).slice(0, 6);
+      return (
+        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
+          {shown.map((d, i) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: static append-only list
+              key={`${d.name}-${i}`}
+              className="border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
+            >
+              <span className="text-on-surface min-w-0 truncate text-sm">{d.name}</span>
+              <span className="text-muted shrink-0 font-mono text-xs">{d.date_text ?? d.start ?? "—"}</span>
+            </div>
+          ))}
+          {dates.length > shown.length && (
+            <div className="text-muted px-3 py-2 text-xs">+{dates.length - shown.length} more</div>
+          )}
+        </div>
+      );
+    }
     default:
       return null;
   }
@@ -406,6 +608,30 @@ export function widgetHasContent(call: ToolCall): boolean {
     case "event": {
       const events = (data as { events?: unknown[] } | undefined)?.events;
       return Array.isArray(events) && events.length > 0;
+    }
+    case "study_spaces": {
+      const spaces = (data as { spaces?: unknown[] } | undefined)?.spaces;
+      return Array.isArray(spaces) && spaces.length > 0;
+    }
+    case "free_rooms": {
+      const rooms = (data as { rooms?: unknown[] } | undefined)?.rooms;
+      return Array.isArray(rooms) && rooms.length > 0;
+    }
+    case "grades": {
+      const records = (data as { grades?: unknown[] } | undefined)?.grades;
+      return Array.isArray(records) && records.length > 0;
+    }
+    case "parking": {
+      const lots = (data as { parking?: unknown[] } | undefined)?.parking;
+      return Array.isArray(lots) && lots.length > 0;
+    }
+    case "program": {
+      const programs = (data as { programs?: unknown[] } | undefined)?.programs;
+      return Array.isArray(programs) && programs.length > 0;
+    }
+    case "key_dates": {
+      const dates = (data as { dates?: unknown[] } | undefined)?.dates;
+      return Array.isArray(dates) && dates.length > 0;
     }
     default:
       return false;

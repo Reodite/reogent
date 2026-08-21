@@ -21,7 +21,7 @@ const CITATIONS: Citation[] = [
   },
 ];
 
-const CONTRACT_MARKER = "bracketed index number";
+const CONTRACT_MARKER = "bracketed index like";
 const emptyMsgs = [{ role: "user" as const, content: [{ text: "hi" }] }];
 
 const anthRec = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
@@ -73,9 +73,7 @@ const system = systemPrompt(new Date("2026-08-18T00:00:00Z"), CITATIONS);
 
 describe("15.12 SYSTEM_PROMPT contract paragraph verbatim", () => {
   it("includes the [N] attribution sentence verbatim", () => {
-    expect(SYSTEM_PROMPT).toContain(
-      "attribute every tool result you relied on with a bracketed index number like [1], [2].",
-    );
+    expect(SYSTEM_PROMPT).toContain("attribute every tool result you relied on with a bracketed index like [1], [2]");
     expect(SYSTEM_PROMPT).toContain("Sources this turn");
   });
 });

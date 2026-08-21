@@ -211,6 +211,22 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
         const highlightPlaces: MapHighlight = { kind: "places", near: p.near_building ?? null, places };
         return { paneId: "map", state: { highlight: highlightPlaces } };
       }
+      case "parking": {
+        const p = data as
+          { near_building?: string; parking?: { name?: string; lat?: number; lon?: number }[] } | undefined;
+        if (!Array.isArray(p?.parking)) return null;
+        const places = p.parking
+          .filter((pl) => typeof pl?.name === "string" && typeof pl.lat === "number" && typeof pl.lon === "number")
+          .map((pl) => ({
+            name: pl.name as string,
+            lat: pl.lat as number,
+            lon: pl.lon as number,
+            service_type: null,
+          }));
+        if (places.length === 0) return null;
+        const highlightParking: MapHighlight = { kind: "places", near: p.near_building ?? null, places };
+        return { paneId: "map", state: { highlight: highlightParking } };
+      }
       case "course_detail": {
         const c = data as { code?: string } | undefined;
         if (!c?.code) return null;
@@ -221,6 +237,14 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
         const first = Array.isArray(list?.courses) ? list.courses[0] : undefined;
         if (!first?.code) return null;
         return { paneId: "course-lookup", state: { code: first.code } };
+      }
+      case "key_dates": {
+        const list = data as { dates?: unknown[] } | undefined;
+        if (!Array.isArray(list?.dates) || list.dates.length === 0) return null;
+        return {
+          paneId: "calendar",
+          state: { cursor: new Date().toISOString().slice(0, 7), kinds: ["academic", "holiday"] },
+        };
       }
     }
     return null;
