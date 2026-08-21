@@ -5,7 +5,7 @@
 // Interstitial blocks (thinking + tool calls) render inline before the final text.
 import { injectChips } from "@/src/components/chat/citations/chip-injector";
 import { SourcesPanel } from "@/src/components/chat/citations/sources-panel";
-import { ResponseWidget } from "@/src/components/chat/tool-renderers";
+import { ResponseWidget, widgetHasContent } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import type { Citation, ToolCall } from "@/src/lib/api-types";
@@ -159,6 +159,8 @@ export const AssistantMessage = memo(function AssistantMessage({
   const interstitial = message.interstitial ?? [];
   // Widgets: new format uses `widgets`; legacy messages use `toolCalls` (all were shown).
   const widgets = message.widgets ?? message.toolCalls ?? [];
+  // Markdown is suppressed only when a widget actually rendered non-empty content.
+  const widgetsRendered = widgets.some(widgetHasContent);
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 6 }}
@@ -201,7 +203,7 @@ export const AssistantMessage = memo(function AssistantMessage({
             ))}
           </div>
         )}
-        {!widgets.length && message.content && (
+        {!widgetsRendered && message.content && (
           <AssistantMarkdown content={message.content} citations={message.citations} />
         )}
         {message.stopped && (

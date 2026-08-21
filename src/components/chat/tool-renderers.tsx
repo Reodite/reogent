@@ -3,7 +3,7 @@
 // Tool-call rendering: internal tool calls show a compact badge only; the
 // dedicated show_widget tool renders a rich data widget as the answer.
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
-import { Icon, type IconName } from "@/src/components/icons";
+import { Icon } from "@/src/components/icons";
 import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { ToolResultCard } from "@/src/components/ui/tool-result-card";
@@ -25,28 +25,18 @@ interface ToolCallRendererProps {
 
 type ToolCallRenderer = React.ComponentType<ToolCallRendererProps>;
 
-const TOOL_ICONS: Record<string, IconName> = {
-  search_courses: "search",
-  get_course: "book2",
-  get_tuition: "currencyDollar",
-  walking_distance: "location",
-  find_building: "map",
-  find_places: "location",
-  show_widget: "route",
-};
-
 // ---- Badges (internal tool calls) ----
 
 function ToolBadge({ call }: { call: ToolCall }) {
   const failed = isToolError(call.result);
   const loading = call.result === undefined;
   const summary = summarizeToolInput(call.input);
+  const errorMessage = failed && isToolError(call.result) ? call.result.message : null;
   return (
     <span
       className={`inline-flex max-w-full items-center gap-2 overflow-hidden rounded-lg px-2 py-1 font-mono text-xs ${
-        failed ? "bg-error-container/40 text-on-surface-variant" : "bg-secondary-container/15 text-on-surface-variant"
+        failed ? "bg-error-container/40 text-on-surface-variant" : "bg-surface-container-low text-on-surface-variant"
       }`}
-      title={failed && isToolError(call.result) ? call.result.message : undefined}
     >
       {loading ? (
         <span
@@ -55,11 +45,12 @@ function ToolBadge({ call }: { call: ToolCall }) {
           className="border-primary size-3 shrink-0 animate-spin rounded-full border-2 border-t-transparent"
         />
       ) : (
-        <Icon name={failed ? "alert" : (TOOL_ICONS[call.name] ?? "route")} size={14} className="shrink-0" />
+        <Icon name={failed ? "alert" : "check"} size={14} className="shrink-0" />
       )}
       <span className="truncate leading-none">
         {call.name}
         {summary ? `(${summary})` : "()"}
+        {failed && errorMessage ? ` — ${errorMessage}` : ""}
       </span>
       {failed && <span className="sr-only">(failed)</span>}
     </span>
@@ -127,9 +118,28 @@ function isTuitionResult(value: unknown): value is TuitionResult {
   return typeof value === "object" && value !== null && typeof (value as TuitionResult).amount_cad === "number";
 }
 
+/** Parses a `yyyy-MM-dd HH:mm:ss` event timestamp as local time, or null. */
+function parseDateOnly(value: string): Date | null {
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+  if (!m) return null;
+  const [, y, mo, d, h = "0", mi = "0"] = m;
+  const date = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Formats a time range like "10:00 AM – 4:00 PM", or a single time. */
+function formatEventTime(start: string | null | undefined, end: string | null | undefined): string {
+  const startDate = start ? parseDateOnly(start) : null;
+  const endDate = end ? parseDateOnly(end) : null;
+  if (!startDate) return "Time TBA";
+  const time = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return endDate ? `${time(startDate)} – ${time(endDate)}` : time(startDate);
+}
+
 /** The show_widget tool returns { type, result } where `result` mirrors the
  *  internal tool it delegated to. Each case renders the matching widget. */
 function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
+  const { setWorkspaceView, setActiveChannel } = useChatShell();
   const outer = call.result as { type?: string; result?: unknown } | undefined;
   const data = outer?.result;
 
@@ -141,12 +151,42 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       if (courses.length === 0) return null;
       const shown = courses.slice(0, 4);
       return (
-        <div className="flex flex-col gap-2">
-          {shown.map((course) => (
-            <CourseCard key={`${course.code}-${course.title}`} course={course} />
-          ))}
+        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
+          <div className="flex flex-col">
+            {shown.map((course) => (
+              <button
+                key={`${course.code}-${course.title}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setWorkspaceView({ paneId: "course-lookup", state: { code: course.code } });
+                }}
+                className="hover:bg-surface-container-high focus-visible:ring-primary/40 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2"
+              >
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-primary font-mono text-xs font-medium">{course.code.replace("_V", "")}</span>
+                    {course.credits !== null && (
+                      <span className="bg-surface-container text-on-surface-variant rounded-full px-2 py-0.5 text-xs">
+                        {course.credits} cr
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-body-sm text-on-surface-variant truncate">{course.title}</span>
+                </div>
+                <Icon name="right" size={16} className="text-muted shrink-0" />
+              </button>
+            ))}
+          </div>
           {courses.length > shown.length && (
-            <p className="text-muted text-xs">+ {courses.length - shown.length} more matches</p>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              className="border-border text-primary hover:bg-surface-container-high flex min-h-[44px] items-center justify-center gap-1 border-t px-3 py-2 text-xs transition-colors"
+            >
+              <Icon name="add" size={14} />
+              Show more related courses
+            </button>
           )}
         </div>
       );
@@ -217,6 +257,84 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
         </ToolResultCard>
       );
     }
+    case "event": {
+      const events = (data as { events?: unknown[] } | undefined)?.events;
+      if (!Array.isArray(events) || events.length === 0) return null;
+      const e = events[0] as {
+        title?: string;
+        text?: string;
+        start_date?: string | null;
+        end_date?: string | null;
+        all_day?: boolean;
+        venue?: string | null;
+        venue_address?: string | null;
+        categories?: string[];
+      };
+      if (!e.title) return null;
+      const startDate = e.start_date ? parseDateOnly(e.start_date) : null;
+      const month = startDate ? startDate.toLocaleString("en-US", { month: "short" }) : "";
+      const day = startDate ? startDate.getDate() : "";
+      const timeLabel = e.all_day ? "All day" : formatEventTime(e.start_date, e.end_date);
+      const venue = [e.venue, e.venue_address].filter(Boolean).join(", ");
+      return (
+        <div className="bg-surface-container-low flex max-w-sm flex-col gap-3 rounded-lg p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-on-surface text-sm font-medium">{e.title}</h3>
+              {e.text && <p className="text-muted mt-0.5 line-clamp-2 text-xs">{e.text}</p>}
+            </div>
+            {startDate && (
+              <div className="bg-surface-container flex size-11 shrink-0 flex-col items-center justify-center rounded-md">
+                <span className="text-on-surface-variant text-[0.6875rem] font-medium tracking-wider uppercase">
+                  {month}
+                </span>
+                <span className="text-on-surface font-mono text-sm leading-none font-medium">{day}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <div className="text-body-sm text-on-surface-variant flex items-center gap-1.5">
+              <Icon name="calendar" size={16} className="text-muted shrink-0" />
+              <span>{timeLabel}</span>
+            </div>
+            {venue && (
+              <div className="text-body-sm text-on-surface-variant flex items-center gap-1.5">
+                <Icon name="location" size={16} className="text-muted shrink-0" />
+                <span className="truncate">{venue}</span>
+              </div>
+            )}
+          </div>
+          <div className="mt-0.5 flex gap-2">
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                setActiveChannel("calendar", {
+                  cursor: startDate
+                    ? `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}`
+                    : new Date().toISOString().slice(0, 7),
+                  kinds: ["academic", "holiday"],
+                });
+              }}
+              className="bg-primary text-on-primary h-9 min-h-[44px] flex-1 rounded-xl px-4 text-sm font-medium transition-all hover:brightness-105 active:brightness-95"
+            >
+              Add to Calendar
+            </button>
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                setActiveChannel("map", {});
+              }}
+              className="bg-surface text-on-surface border-border-subtle hover:bg-surface-container-high flex size-9 min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border transition-colors"
+              aria-label="Show on map"
+            >
+              <Icon name="map" size={18} />
+            </button>
+          </div>
+        </div>
+      );
+    }
     default:
       return null;
   }
@@ -236,6 +354,43 @@ function canvasViewsEqual(a: CanvasView, b: CanvasView): boolean {
   return JSON.stringify(a.state) === JSON.stringify(b.state);
 }
 
+/** True when a widget tool call's renderer would produce non-null output.
+ *  Mirrors the null-return conditions inside ShowWidgetRenderer so message.tsx
+ *  can decide whether to suppress markdown without duplicating render logic. */
+export function widgetHasContent(call: ToolCall): boolean {
+  if (isToolError(call.result) || call.result === undefined) return false;
+  const outer = call.result as { type?: string; result?: unknown } | undefined;
+  const data = outer?.result;
+  switch (outer?.type) {
+    case "course": {
+      const list = (data as Partial<SearchCoursesResult> | undefined)?.courses;
+      return Array.isArray(list) && list.length > 0;
+    }
+    case "course_detail":
+      return isCourseDoc(data);
+    case "tuition":
+      return isTuitionResult(data);
+    case "route": {
+      const r = data as { meters?: number; from?: string; to?: string } | undefined;
+      return typeof r?.meters === "number" && !!r.from && !!r.to;
+    }
+    case "building": {
+      const b = data as { code?: string } | undefined;
+      return !!b?.code;
+    }
+    case "places": {
+      const p = data as { places?: unknown[] } | undefined;
+      return Array.isArray(p?.places) && p.places.length > 0;
+    }
+    case "event": {
+      const events = (data as { events?: unknown[] } | undefined)?.events;
+      return Array.isArray(events) && events.length > 0;
+    }
+    default:
+      return false;
+  }
+}
+
 /**
  * One tool call in the activity stack. Internal tools render their compact
  * badge only; the show_widget tool renders its data widget as the answer. A
@@ -243,7 +398,8 @@ function canvasViewsEqual(a: CanvasView, b: CanvasView): boolean {
  */
 export function ResponseWidget({ call }: { call: ToolCall }) {
   const reduce = useReducedMotion();
-  const { workspaceView, activateCanvasView } = useChatShell();
+  const { workspaceView, setWorkspaceView, activateCanvasView, setUserDismissedPane, setAnswerSheetOpen } =
+    useChatShell();
   const view = useMemo(() => toolCallToCanvasView(call), [call]);
   const mapped = view !== null;
   const active = mapped && workspaceView !== null && canvasViewsEqual(view, workspaceView);
@@ -261,20 +417,40 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
       aria-pressed={mapped ? active : undefined}
       data-widget={call.name}
       data-active={active || undefined}
-      onClick={mapped ? () => activateCanvasView(call) : undefined}
+      onClick={
+        mapped
+          ? () => {
+              if (active) {
+                setUserDismissedPane(true);
+                setWorkspaceView(null);
+                setAnswerSheetOpen(false);
+              } else {
+                setUserDismissedPane(false);
+                activateCanvasView(call);
+              }
+            }
+          : undefined
+      }
       onKeyDown={
         mapped
           ? (e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                activateCanvasView(call);
+                if (active) {
+                  setUserDismissedPane(true);
+                  setWorkspaceView(null);
+                  setAnswerSheetOpen(false);
+                } else {
+                  setUserDismissedPane(false);
+                  activateCanvasView(call);
+                }
               }
             }
           : undefined
       }
       className={
         mapped
-          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
+          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 min-h-[44px] cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
               active ? "bg-accent-subtle ring-primary ring-2" : ""
             }`
           : widget

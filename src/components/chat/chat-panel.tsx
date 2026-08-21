@@ -152,6 +152,8 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     setActiveChannel,
     activateCanvasView,
     setWorkspaceView,
+    userDismissedPane,
+    setUserDismissedPane,
     sessions,
     refreshSessions,
     addOptimisticSession,
@@ -290,8 +292,11 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
         const mapped = lastWithCalls?.toolCalls
           ? [...lastWithCalls.toolCalls].reverse().find((c) => toolCallToCanvasView(c))
           : undefined;
-        if (mapped) activateCanvasView(mapped);
-        else setWorkspaceView(null);
+        setUserDismissedPane(false);
+        if (mapped) {
+          const view = toolCallToCanvasView(mapped);
+          if (view) setWorkspaceView(view);
+        } else setWorkspaceView(null);
         setHistoryState("ready");
       })
       .catch((error: unknown) => {
@@ -307,7 +312,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     return () => {
       cancelled = true;
     };
-  }, [api, sessionId, setActiveChannel, activateCanvasView, setWorkspaceView, historyNonce]);
+  }, [api, sessionId, setActiveChannel, setWorkspaceView, setUserDismissedPane, historyNonce]);
 
   // Stick-to-bottom: auto-scroll when new content arrives IF user is near the bottom.
   const isNearBottom = useRef(true);
@@ -485,7 +490,14 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
               .map((b) => ({ name: b.content, input: b.input ?? {}, result: b.result })),
           ];
           const mapped = allCalls.reverse().find((c) => toolCallToCanvasView(c));
-          if (mapped) activateCanvasView(mapped);
+          if (mapped) {
+            if (userDismissedPane) {
+              const view = toolCallToCanvasView(mapped);
+              if (view) setWorkspaceView(view);
+            } else {
+              activateCanvasView(mapped);
+            }
+          }
           announce("New response from assistant");
           refreshSessions();
         })
@@ -528,7 +540,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           }
         });
     },
-    [api, sessionId, activateCanvasView, refreshSessions, announce],
+    [api, sessionId, activateCanvasView, setWorkspaceView, userDismissedPane, refreshSessions, announce],
   );
 
   const send = useCallback(

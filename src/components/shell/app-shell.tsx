@@ -104,6 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     highlight,
     rightPaneCollapsed,
     setRightPaneCollapsed,
+    setUserDismissedPane,
   } = useChatShell();
   const wide = useIsWide();
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
@@ -189,7 +190,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               <button
                 ref={mapEntryRef}
                 type="button"
-                onClick={() => (wide && rightPaneCollapsed ? setRightPaneCollapsed(false) : setAnswerSheetOpen(true))}
+                onClick={() => {
+                  setUserDismissedPane(false);
+                  if (wide && rightPaneCollapsed) setRightPaneCollapsed(false);
+                  else setAnswerSheetOpen(true);
+                }}
                 aria-label={wide && rightPaneCollapsed ? "Expand right pane" : "Open answer canvas"}
                 aria-expanded={answerSheetOpen || !rightPaneCollapsed}
                 className={`neu-button bg-surface text-on-surface-variant hover:text-primary relative flex size-11 items-center justify-center rounded-xl sm:size-9 ${wide && rightPaneCollapsed ? "lg:flex" : "lg:hidden"}`}
@@ -253,9 +258,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </main>
                 <AnswerSheet
                   open={answerSheetOpen}
-                  onClose={() => setAnswerSheetOpen(false)}
+                  onClose={() => {
+                    setAnswerSheetOpen(false);
+                    setUserDismissedPane(true);
+                  }}
                   collapsed={rightPaneCollapsed}
-                  onCollapse={collapseRightPane}
+                  onCollapse={() => {
+                    collapseRightPane();
+                    setUserDismissedPane(true);
+                  }}
                 >
                   <AnswerCanvas view={workspaceView} />
                 </AnswerSheet>

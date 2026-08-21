@@ -1,4 +1,4 @@
-import type { DatasetModule, SearchClient } from "../core/types";
+import type { DatasetModule } from "../core/types";
 
 function parseQuery(type: string, query: string): Record<string, unknown> {
   switch (type) {
@@ -23,6 +23,8 @@ function parseQuery(type: string, query: string): Record<string, unknown> {
       return { query };
     case "places":
       return { query, limit: 10 };
+    case "event":
+      return { query, limit: 5 };
     default:
       return {};
   }
@@ -44,14 +46,14 @@ export function createWidgetsModule(modules: DatasetModule[]): DatasetModule {
               properties: {
                 type: {
                   type: "string",
-                  enum: ["course", "course_detail", "tuition", "route", "building", "places"],
+                  enum: ["course", "course_detail", "tuition", "route", "building", "places", "event"],
                   description:
-                    'What to show: "course" (search results),"course_detail" (one course), "tuition" (rates), "route" (walking distance), "building" (location), "places" (POIs)',
+                    'What to show: "course" (search results),"course_detail" (one course), "tuition" (rates), "route" (walking distance), "building" (location), "places" (POIs), "event" (campus event)',
                 },
                 query: {
                   type: "string",
                   description:
-                    'What to display: for course/list a keyword, for course_detail a code like "CPSC 110", for tuition a program name + type, for route "from X to Y", for building a name/code, for places keywords + "near X"',
+                    'What to display: for course/list a keyword, for course_detail a code like "CPSC 110", for tuition a program name + type, for route "from X to Y", for building a name/code, for places keywords + "near X", for event keywords + a date range',
                 },
               },
               required: ["type", "query"],
@@ -68,6 +70,7 @@ export function createWidgetsModule(modules: DatasetModule[]): DatasetModule {
             route: "walking_distance",
             building: "find_building",
             places: "find_places",
+            event: "search_events",
           }[type];
           if (!toolName) throw new Error(`Unknown widget type: ${type}`);
           const toolInput = parseQuery(type, query);

@@ -113,7 +113,7 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(widget.getAttribute("data-active")).not.toBeNull();
   });
 
-  it("Enter and Space keys activate a mapped widget", () => {
+  it("Enter and Space keys activate a mapped widget, and toggle it closed when active", () => {
     const { container } = renderWidget(keyDatesCall);
     const widget = container.querySelector('[data-widget="get_key_dates"]') as HTMLElement;
     act(() => {
@@ -123,7 +123,7 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     act(() => {
       fireEvent.keyDown(widget, { key: " " });
     });
-    expect(shellRef.current?.workspaceView?.paneId).toBe("calendar");
+    expect(shellRef.current?.workspaceView).toBeNull();
   });
 
   it("a loading call stays non-focusable when unmapped", () => {

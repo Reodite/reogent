@@ -32,6 +32,10 @@ export interface ChatShellState {
   /** Loads the canvas for a mapped tool call. Unmapped calls are a no-op. */
   activateCanvasView: (call: ToolCall) => void;
 
+  /** True when the user intentionally dismissed the pane; auto-open skips. */
+  userDismissedPane: boolean;
+  setUserDismissedPane: (dismissed: boolean) => void;
+
   mode: ShellMode;
   setMode: (mode: ShellMode) => void;
 
@@ -91,6 +95,9 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   // Collapses the wide AI-mode right pane: chat fills the row when true, and a
   // topbar button re-expands. Auto-expanded below when a tool activates.
   const [rightPaneCollapsed, setRightPaneCollapsed] = useState(false);
+  // Set when the user manually dismisses the pane. Auto-open at stream-end skips
+  // while this is true; an explicit widget click-toggle and session start clear it.
+  const [userDismissedPane, setUserDismissedPane] = useState(false);
 
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
@@ -135,9 +142,12 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   }, [auth.status, doRefresh]);
 
   // A collapsed pane would silently swallow tool activations (workspaceView set),
-  // so expand the right pane whenever a tool becomes active.
+  // so expand the right pane whenever a tool becomes active — unless the user
+  // previously dismissed the pane.
+  const userDismissedPaneRef = useRef(false);
+  userDismissedPaneRef.current = userDismissedPane;
   useEffect(() => {
-    if (workspaceView !== null) setRightPaneCollapsed(false);
+    if (workspaceView !== null && !userDismissedPaneRef.current) setRightPaneCollapsed(false);
   }, [workspaceView]);
 
   const setWorkspaceView = useCallback((view: CanvasView | null) => {
@@ -151,6 +161,9 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
         setWorkspaceView(view);
         // Bump the focus nonce so the map re-focuses on the new highlight.
         setFocusNonce((n) => n + 1);
+        // Widget-driven pane opens as a bottom sheet on mobile unless the user
+        // previously dismissed the pane.
+        if (!userDismissedPaneRef.current) setAnswerSheetOpen(true);
       }
     },
     [setWorkspaceView],
@@ -191,6 +204,8 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       workspaceView,
       setWorkspaceView,
       activateCanvasView,
+      userDismissedPane,
+      setUserDismissedPane,
       mode,
       setMode,
       answerSheetOpen,
@@ -217,6 +232,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       workspaceView,
       setWorkspaceView,
       activateCanvasView,
+      userDismissedPane,
       mode,
       setMode,
       answerSheetOpen,
