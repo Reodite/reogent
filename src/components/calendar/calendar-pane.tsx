@@ -284,10 +284,10 @@ function MonthGrid({
           </div>
         ))}
       </div>
-      <div className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-px">
+      <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-1.5">
         {cells.map((cell) => {
           if (!cell.date || !cell.iso) {
-            return <div key={cell.key} className="bg-surface-container-low min-h-[3rem] rounded-sm" aria-hidden />;
+            return <div key={cell.key} className="min-h-[3rem] rounded-xl" aria-hidden />;
           }
           const iso = cell.iso;
           const d = cell.date;
@@ -301,8 +301,8 @@ function MonthGrid({
               key={cell.key}
               data-calendar-day={iso}
               {...(isToday ? { "data-calendar-today": iso } : {})}
-              className={`hover:bg-surface-container flex min-h-[3rem] cursor-pointer flex-col items-stretch gap-0.5 rounded-sm p-1 text-left transition-colors ${
-                isSelected ? "bg-surface-container ring-primary/20 ring-2 ring-inset" : "bg-surface"
+              className={`hover:bg-surface-container-high flex min-h-[3rem] cursor-pointer flex-col items-stretch gap-0.5 rounded-xl p-1.5 text-left transition-colors duration-150 ${
+                isSelected ? "bg-accent-subtle ring-primary/30 ring-2 ring-inset" : "bg-surface-container-low/50"
               }`}
               onClick={() => onDayClick(iso)}
               aria-label={`${formatFullDate(d)} — ${dayEvents.length} events`}
@@ -324,7 +324,7 @@ function MonthGrid({
                       data-calendar-marker={e.kind}
                       className={
                         (e.kind === "academic" ? "bg-primary/20 text-primary" : "bg-tertiary/20 text-tertiary") +
-                        " block truncate rounded-sm px-1 py-px text-xs leading-tight font-medium"
+                        " block truncate rounded-md px-1 py-px text-xs leading-tight font-medium"
                       }
                     >
                       {e.label}
