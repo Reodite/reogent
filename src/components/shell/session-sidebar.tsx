@@ -136,6 +136,7 @@ function SessionItem({
     } catch {
       /* best effort */
     }
+    if (session.session_id === activeId) router.push("/chat");
   }
 
   // Editing: inline text input with checkmark/x

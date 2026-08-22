@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
+import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { useEffect, useRef, type ReactNode } from "react";
 
 /**
@@ -18,11 +19,13 @@ export function AnswerSheet({
   open,
   onClose,
   collapsed = false,
+  view,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   collapsed?: boolean;
+  view: CanvasView | null;
   children: ReactNode;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -40,7 +43,8 @@ export function AnswerSheet({
     return () => document.removeEventListener("keydown", onKey);
   }, [showDialog, onClose]);
 
-  const slotClass = `flex min-h-0 flex-col lg:h-full lg:flex-1 lg:min-w-88 ${collapsed ? "lg:hidden" : ""} ${
+  const hasView = view !== null;
+  const slotClass = `flex min-h-0 flex-col lg:h-full ${collapsed || !hasView ? "lg:hidden" : "lg:flex-1 lg:min-w-88"} ${
     open
       ? "max-lg:neu-panel max-lg:bg-surface max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:h-[80dvh] max-lg:flex-col max-lg:overflow-hidden max-lg:rounded-t-2xl max-lg:pb-[env(safe-area-inset-bottom)]"
       : "max-lg:hidden"

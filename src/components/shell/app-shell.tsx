@@ -237,6 +237,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     setUserDismissedPane(true);
                   }}
                   collapsed={rightPaneCollapsed}
+                  view={workspaceView}
                 >
                   <AnswerCanvas view={workspaceView} />
                 </AnswerSheet>
