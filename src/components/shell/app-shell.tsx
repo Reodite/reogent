@@ -101,7 +101,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     workspaceView,
     answerSheetOpen,
     setAnswerSheetOpen,
-    highlight,
     rightPaneCollapsed,
     setRightPaneCollapsed,
     setUserDismissedPane,
@@ -109,7 +108,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const wide = useIsWide();
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sessionsMenuRef = useRef<HTMLButtonElement>(null);
-  const mapEntryRef = useRef<HTMLButtonElement>(null);
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
 
@@ -121,12 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const sheetInert = mode === "ai" && answerSheetOpen && !wide;
 
-  // Restore focus to the triggering control when a sheet or drawer closes.
-  const prevSheetOpen = useRef(false);
-  useEffect(() => {
-    if (prevSheetOpen.current && !answerSheetOpen && !wide) mapEntryRef.current?.focus();
-    prevSheetOpen.current = answerSheetOpen;
-  }, [answerSheetOpen, wide]);
+  // Restore focus to the sidebar drawer trigger when it closes.
   const prevSidebarOpen = useRef(false);
   useEffect(() => {
     if (prevSidebarOpen.current && !sidebarOpen) sidebarOpenRef.current?.focus();
@@ -143,7 +136,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
   function collapseRightPane() {
     setRightPaneCollapsed(true);
-    requestAnimationFrame(() => mapEntryRef.current?.focus());
   }
 
   return (
@@ -186,23 +178,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           </div>
           <div className="flex items-center gap-2">
-            {mode === "ai" && (
-              <button
-                ref={mapEntryRef}
-                type="button"
-                onClick={() => {
-                  setUserDismissedPane(false);
-                  setAnswerSheetOpen(true);
-                }}
-                aria-label="Open answer canvas"
-                className="neu-button bg-surface text-on-surface-variant hover:text-primary relative flex size-11 items-center justify-center rounded-xl sm:size-9 lg:hidden"
-              >
-                <Icon name="map" size={19} />
-                {highlight && !answerSheetOpen && (
-                  <span className="bg-primary absolute top-1.5 right-1.5 size-2 rounded-full" aria-hidden="true" />
-                )}
-              </button>
-            )}
             <ThemeToggle className="hidden sm:grid" />
             <UserMenu />
           </div>

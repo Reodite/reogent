@@ -107,13 +107,10 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
 
-  it("below-wide AI opens the Answer Canvas as a sheet and inerts the chat", () => {
+  it("below-wide AI has no way to manually open the answer sheet — only show_widget can", () => {
     const { container } = renderShell(false);
-    fireEvent.click(container.querySelector('[aria-label="Open answer canvas"]') as HTMLElement);
-    expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("chat");
-    expect(container.querySelector('[data-answer-sheet="open"]')).not.toBeNull();
-    expect(container.querySelector("[data-answer-scrim]")).not.toBeNull();
-    expect(container.querySelector("#main-content")?.hasAttribute("inert")).toBe(true);
+    expect(container.querySelector('[data-answer-sheet="open"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Open answer canvas"]')).toBeNull();
   });
 
   it("wide Tools renders the Full-Bleed Tool with the skip target on the tool", () => {
@@ -147,16 +144,6 @@ describe("13.2 — ARIA landmarks (REQ-8.2)", () => {
 });
 
 describe("13.3 — focus move/return + inert (REQ-2.5, REQ-8.1, REQ-8.3)", () => {
-  it("closing the Answer sheet returns focus to the Map entry that opened it", () => {
-    const { container } = renderShell(false);
-    const mapEntry = container.querySelector('[aria-label="Open answer canvas"]') as HTMLButtonElement;
-    fireEvent.click(mapEntry);
-    expect(container.querySelector('[data-answer-sheet="open"]')).not.toBeNull();
-    fireEvent.click(container.querySelector("[data-answer-scrim]") as HTMLElement);
-    expect(container.querySelector('[data-answer-sheet="closed"]')).not.toBeNull();
-    expect(document.activeElement).toBe(mapEntry);
-  });
-
   it("closing the left drawer returns focus to the Open-sidebar button", () => {
     const { container } = renderShell(false);
     const opener = container.querySelector('[aria-label="Open sidebar"]') as HTMLButtonElement;
