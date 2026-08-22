@@ -141,7 +141,7 @@ function AccordionFallback({ graph }: { graph: PrereqGraph }) {
 }
 
 export function PrereqTreePane({
-  initialRoot = "CPSC 320",
+  initialRoot = "",
   onChangeRoot,
   onNavigateCourse,
 }: {
@@ -153,7 +153,7 @@ export function PrereqTreePane({
   const [root, setRoot] = useState(initialRoot);
   const [code, setCode] = useState(initialRoot);
   const [graph, setGraph] = useState<PrereqGraph | null>(null);
-  const [treeStatus, setTreeStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [treeStatus, setTreeStatus] = useState<"loading" | "ready" | "error">(initialRoot ? "loading" : "ready");
   const {
     list: acList,
     status: acStatus,

@@ -32,7 +32,7 @@ function iconGlyph(name: IconName) {
 }
 
 function PrereqTreeRegistryPane({ state, setState }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
-  const root = (state.root as string | undefined) || "CPSC 320";
+  const root = (state.root as string | undefined) || "";
   const onChangeRoot = useCallback((next: string) => setState({ root: next }), [setState]);
   return <PrereqTreePane initialRoot={root} onChangeRoot={onChangeRoot} />;
 }

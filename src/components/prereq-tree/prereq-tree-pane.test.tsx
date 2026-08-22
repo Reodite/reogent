@@ -30,7 +30,7 @@ describe("PrereqTreePane states", () => {
 
   it("renders the literal 'Loading course index…' text while the index loads (REQ-10.5)", () => {
     apiState.getPrereqTree.mockReturnValue(new Promise<PrereqGraph>(() => {}));
-    render(<PrereqTreePane />);
+    render(<PrereqTreePane initialRoot="CPSC 320" />);
     expect(screen.getByText(/Loading course index/)).toBeTruthy();
     expect(screen.getByLabelText("Root course code")).toBeTruthy();
   });
