@@ -75,7 +75,7 @@ function SidebarDrawer() {
         tabIndex={-1}
         aria-hidden="true"
         onClick={() => setSidebarOpen(false)}
-        className="bg-scrim fixed inset-0 z-40 transition-opacity duration-250 lg:hidden"
+        className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-250 lg:hidden ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
       />
       <div
         ref={dialogRef}
