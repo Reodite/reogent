@@ -44,7 +44,7 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
     if (record) setState({ session });
   }, [record, session, setState]);
 
-  const [exploreOpen, setExploreOpen] = useState(false);
+  const [exploreOpen, setExploreOpen] = useState(true);
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">

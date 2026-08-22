@@ -37,15 +37,23 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
   const fetchedSession = useRef<string>(session);
 
   const fetchExplorer = useCallback(async () => {
-    const res = await api.searchCourses({
-      q: query || undefined,
-      session,
-      sort: sort as unknown as string,
-      level: level !== undefined ? (`eq` as const) : undefined,
-      digit: level !== undefined ? level / 100 : undefined,
-      subject: faculty || undefined,
-    } as unknown as Record<string, unknown> as never);
-    let all = (res.courses ?? []) as ExplorerCourse[];
+    let res: { courses?: ExplorerCourse[]; subject_total?: number } | undefined;
+    try {
+      res = (await api.searchCourses({
+        q: query || undefined,
+        session,
+        sort: sort as unknown as string,
+        level: level !== undefined ? (`eq` as const) : undefined,
+        digit: level !== undefined ? level / 100 : undefined,
+        subject: faculty || undefined,
+      } as unknown as Record<string, unknown> as never)) as unknown as {
+        courses?: ExplorerCourse[];
+        subject_total?: number;
+      };
+    } catch {
+      return;
+    }
+    let all = (res?.courses ?? []) as ExplorerCourse[];
     // Client-side facet narrowing for bands not yet indexed server-side
     if (credits !== undefined)
       all = all.filter((c) => (c as unknown as { credits: number | null }).credits === credits);
@@ -77,7 +85,9 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
     }
     setCourses(all);
     setTotal(
-      res.subject_total != null && !avgBand && !studentBand && credits === undefined ? res.subject_total : all.length,
+      res?.subject_total != null && !avgBand && !studentBand && credits === undefined
+        ? res!.subject_total!
+        : all.length,
     );
     fetchedSession.current = session;
     setPage(1);
