@@ -624,81 +624,180 @@ describe("get_prereq_tree (agent-tool-redesign)", () => {
   });
 });
 
-describe("show_widget delegation (agent-tool-redesign)", () => {
-  const modules = [courses, costs, spaces, places, buildings, admissions, events, calendar, pages];
-  const widgets = createWidgetsModule(modules as never[] as Parameters<typeof createWidgetsModule>[0]);
+describe("show_widget (explicit entities)", () => {
+  const widgets = createWidgetsModule();
+  const tool = widgets.tools[0];
 
-  it("routes every card type to an existing data tool", () => {
-    const widgetNames = new Set(modules.flatMap((m) => m.tools.map((t) => t.spec.name)));
-    // Every enum value must resolve to a real tool name in the module set.
-    for (const type of [
-      "courses",
-      "course",
-      "tuition",
-      "route",
-      "building",
-      "places",
-      "event",
-      "study_spaces",
-      "grades",
-      "parking",
-      "program",
-      "key_dates",
-    ]) {
-      // Replicate the resolver table by executing; unknown types throw.
-      expect(type.length).toBeGreaterThan(0);
-    }
-    expect(widgetNames.has("find_courses")).toBe(true);
-    expect(widgetNames.has("get_course")).toBe(true);
-    expect(widgetNames.has("get_costs")).toBe(true);
-    expect(widgetNames.has("walking_distance")).toBe(true);
-    expect(widgetNames.has("find_building")).toBe(true);
-    expect(widgetNames.has("find_places")).toBe(true);
-    expect(widgetNames.has("find_events")).toBe(true);
-    expect(widgetNames.has("find_study_spaces")).toBe(true);
-    expect(widgetNames.has("find_programs")).toBe(true);
-    expect(widgetNames.has("get_key_dates")).toBe(true);
-  });
-
-  it("routes type courses to find_courses and returns the tagged result", async () => {
-    const tool = widgets.tools[0];
-    const search = fakeSearch(courseFixture);
-    const out = (await tool.execute({ type: "courses", query: "CPSC" }, search)) as {
+  it("renders courses by course code", async () => {
+    const search = fakeSearch({ courses: [course("MATH_V 101")] });
+    const out = (await tool.execute({ type: "courses", course_codes: ["MATH 101"] }, search)) as {
       type: string;
-      result: { courses: unknown[] };
+      result: { courses: { code: string }[] };
     };
     expect(out.type).toBe("courses");
-    expect(Array.isArray(out.result.courses)).toBe(true);
+    expect(out.result.courses.map((c) => c.code)).toEqual(["MATH_V 101"]);
   });
 
-  it("routes type grades to get_course with include_grades", async () => {
-    const tool = widgets.tools[0];
+  it("skips course codes that do not resolve", async () => {
+    const search = fakeSearch({ courses: [course("MATH_V 101")] });
+    const out = (await tool.execute({ type: "courses", course_codes: ["MATH 101", "NOPE 999"] }, search)) as {
+      result: { courses: unknown[] };
+    };
+    expect(out.result.courses).toHaveLength(1);
+  });
+
+  it("accepts an event id exactly as find_events returns it (sanitized)", async () => {
     const search = fakeSearch({
-      courses: [course("CPSC_V 110", { prerequisite: null })],
+      events: [{ id: "events_ubc_ca_id_38483", title: "Talk", text: "x" }],
+    });
+    const out = (await tool.execute({ type: "event", event_ids: ["events_ubc_ca_id_38483"] }, search)) as {
+      result: { events: unknown[] };
+    };
+    expect(out.result.events).toHaveLength(1);
+  });
+
+  it("requires course_codes for the courses type", async () => {
+    await expect(tool.execute({ type: "courses" }, fakeSearch(courseFixture))).rejects.toThrow(/requires course_codes/);
+  });
+
+  it("renders one course by code", async () => {
+    const search = fakeSearch({ courses: [course("CPSC_V 110")] });
+    const out = (await tool.execute({ type: "course", course: "CPSC 110" }, search)) as {
+      result: { code: string };
+    };
+    expect(out.result.code).toBe("CPSC_V 110");
+  });
+
+  it("renders grade distribution with include_grades", async () => {
+    const search = fakeSearch({
+      courses: [course("CPSC_V 110")],
       grades: [{ subject: "CPSC", course: "110", year: 2025, enrolled: 10, avg: 80, median: 82, distribution: {} }],
     });
-    const out = (await tool.execute({ type: "grades", query: "CPSC 110" }, search)) as {
-      type: string;
-      result: null | object;
+    const out = (await tool.execute({ type: "grades", course: "CPSC 110" }, search)) as {
+      result: { grade_summary?: unknown; grade_distribution?: unknown };
     };
-    // get_course with include_grades returns the doc + distribution
-    expect(out.type).toBe("grades");
-    expect(out.result).not.toBeNull();
+    expect(out.result.grade_summary).toBeDefined();
+    expect(out.result.grade_distribution).toBeDefined();
   });
 
-  it("routes type parking to find_places category parking", async () => {
-    const tool = widgets.tools[0];
-    const search = fakeSearch({ parking: [{ id: "1", name: "West Parkade", ev_charging: true, lat: 1, lon: 2 }] });
-    const out = (await tool.execute({ type: "parking", query: "West Parkade" }, search)) as {
-      type: string;
-      result: { parking?: unknown[] };
+  it("renders buildings by code", async () => {
+    const search = fakeSearch({
+      buildings: [{ id: "ICCS", code: "ICCS", name: "ICICS", aliases: [], lat: 1, lon: 2 }],
+    });
+    const out = (await tool.execute({ type: "building", buildings: ["ICCS"] }, search)) as {
+      result: { code: string };
     };
-    expect(out.type).toBe("parking");
-    expect(Array.isArray(out.result.parking)).toBe(true);
+    expect(out.result.code).toBe("ICCS");
+  });
+
+  it("renders a route for an explicit pair", async () => {
+    const search = fakeSearch({
+      buildings: [
+        { id: "ICCS", code: "ICCS", name: "ICICS", aliases: [], lat: 1, lon: 2 },
+        { id: "IKB", code: "IKB", name: "IKBLC", aliases: [], lat: 2, lon: 3 },
+      ],
+    });
+    // Same-building short-circuits to zero without touching the route graph.
+    const out = (await tool.execute({ type: "route", from_building: "ICCS", to_building: "ICCS" }, search)) as {
+      result: { meters: number };
+    };
+    expect(out.result.meters).toBe(0);
+  });
+
+  it("renders places and parking by id", async () => {
+    const search = fakeSearch({
+      poi: [{ id: "VPOI10040", name: "Great Dane", lat: 1, lon: 2 }],
+      parking: [{ id: "2126", name: "Agronomy Road", lat: 1, lon: 2 }],
+    });
+    const placesOut = (await tool.execute(
+      { type: "places", place_ids: ["VPOI10040"], near_building: "NEST" },
+      search,
+    )) as { result: { places: unknown[]; near_building?: string } };
+    expect(placesOut.result.places).toHaveLength(1);
+    expect(placesOut.result.near_building).toBe("NEST");
+
+    const parkingOut = (await tool.execute({ type: "parking", parking_ids: ["2126"] }, search)) as {
+      result: { parking: unknown[] };
+    };
+    expect(parkingOut.result.parking).toHaveLength(1);
+  });
+
+  it("renders events by numeric id", async () => {
+    const search = fakeSearch({
+      events: [{ id: "events_ubc_ca_id_38481", title: "Guest Lecture", text: "x".repeat(500) }],
+    });
+    const out = (await tool.execute({ type: "event", event_ids: ["38481"] }, search)) as {
+      result: { events: { text: string }[] };
+    };
+    expect(out.result.events).toHaveLength(1);
+    // text truncated to 400
+    expect(out.result.events[0].text.length).toBe(400);
+  });
+
+  it("renders study spaces by id and rooms by eid", async () => {
+    const search = fakeSearch({
+      study_spaces: [{ id: "s1", title: "AERL 120", building_code: "AERL", capacity: 30 }],
+      lib_rooms: [{ id: "461", eid: "461", title: "IKB 461", capacity: 10 }],
+    });
+    const spacesOut = (await tool.execute({ type: "study_spaces", study_space_ids: ["s1"] }, search)) as {
+      result: { kind: string; spaces: unknown[] };
+    };
+    expect(spacesOut.result.kind).toBe("informal");
+    expect(spacesOut.result.spaces).toHaveLength(1);
+
+    const roomsOut = (await tool.execute({ type: "study_spaces", room_eids: ["461"] }, search)) as {
+      result: { kind: string; rooms: unknown[] };
+    };
+    expect(roomsOut.result.kind).toBe("bookable");
+    expect(roomsOut.result.rooms).toHaveLength(1);
+  });
+
+  it("renders programs and key dates by id", async () => {
+    const search = fakeSearch({
+      admission_programs: [{ id: 621, name: "Computer Science", summary: "s", degrees: [], url: "" }],
+      key_dates: [{ id: "holiday_new-year-s-day_2026-01-01", kind: "holiday", name: "New Year", start: "2026-01-01" }],
+    });
+    const programsOut = (await tool.execute({ type: "program", program_ids: [621] }, search)) as {
+      result: { programs: unknown[] };
+    };
+    expect(programsOut.result.programs).toHaveLength(1);
+
+    const datesOut = (await tool.execute(
+      { type: "key_dates", key_date_ids: ["holiday_new-year-s-day_2026-01-01"] },
+      search,
+    )) as { result: { dates: unknown[] } };
+    expect(datesOut.result.dates).toHaveLength(1);
+  });
+
+  it("renders tuition only with explicit context params", async () => {
+    const search = fakeSearch({
+      tuition: [
+        {
+          program: "Bachelor of Science",
+          program_slug: "bachelor-of-science",
+          student_type: "domestic",
+          cohort_year: 2026,
+          cohort_rule: "exactly",
+          unit: "per_credit",
+          amount_cad: 150,
+        },
+      ],
+    });
+    const out = (await tool.execute(
+      { type: "tuition", program_slug: "bachelor-of-science", student_type: "domestic", cohort_year: 2026 },
+      search,
+    )) as { type: string; result: { amount_cad: number } };
+    expect(out.type).toBe("tuition");
+    expect(out.result.amount_cad).toBe(150);
+  });
+
+  it("throws when required entity fields are missing", async () => {
+    await expect(tool.execute({ type: "places" }, fakeSearch({}))).rejects.toThrow(/requires place_ids/);
+    await expect(tool.execute({ type: "event" }, fakeSearch({}))).rejects.toThrow(/requires event_ids/);
+    await expect(tool.execute({ type: "route" }, fakeSearch({}))).rejects.toThrow(/requires from_building/);
   });
 
   it("throws on an unknown widget type", async () => {
-    const tool = widgets.tools[0];
     await expect(tool.execute({ type: "nope", query: "x" }, fakeSearch({}))).rejects.toThrow(/Unknown widget type/);
   });
 });

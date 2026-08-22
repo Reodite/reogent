@@ -91,8 +91,46 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
     }
     case "get_admission_requirements":
       return `Searched for admission requirements for ${s("program")}`;
-    case "show_widget":
-      return has("query") ? `Searched for: ${s("query")}` : "Searched";
+    case "show_widget": {
+      const type = s("type");
+      if (type === "courses") {
+        const n = Array.isArray(input.course_codes) ? input.course_codes.length : 0;
+        return n > 0 ? `Showing ${n} courses` : "Showing course list";
+      }
+      if (type === "course") return `Showing course: ${s("course")}`;
+      if (type === "grades") return `Showing grade distribution: ${s("course")}`;
+      if (type === "building") {
+        const n = Array.isArray(input.buildings) ? input.buildings.length : 0;
+        return n > 0 ? `Showing building${n > 1 ? "s" : ""}` : "Showing building";
+      }
+      if (type === "route") return `Showing route ${s("from_building")} → ${s("to_building")}`;
+      if (type === "tuition") return `Showing tuition: ${s("program_slug")}`;
+      if (type === "places") {
+        const n = Array.isArray(input.place_ids) ? input.place_ids.length : 0;
+        return n > 0 ? `Showing ${n} places` : "Showing places";
+      }
+      if (type === "parking") {
+        const n = Array.isArray(input.parking_ids) ? input.parking_ids.length : 0;
+        return n > 0 ? `Showing ${n} parking facilities` : "Showing parking";
+      }
+      if (type === "event") {
+        const n = Array.isArray(input.event_ids) ? input.event_ids.length : 0;
+        return n > 0 ? `Showing ${n} events` : "Showing event";
+      }
+      if (type === "study_spaces") {
+        const n = Array.isArray(input.study_space_ids) ? input.study_space_ids.length : 0;
+        return n > 0 ? `Showing ${n} study spaces` : "Showing study spaces";
+      }
+      if (type === "program") {
+        const n = Array.isArray(input.program_ids) ? input.program_ids.length : 0;
+        return n > 0 ? `Showing ${n} programs` : "Showing programs";
+      }
+      if (type === "key_dates") {
+        const n = Array.isArray(input.key_date_ids) ? input.key_date_ids.length : 0;
+        return n > 0 ? `Showing ${n} key dates` : "Showing key dates";
+      }
+      return "Showing widget";
+    }
     default:
       return `Searched: ${name}`;
   }

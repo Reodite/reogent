@@ -4,7 +4,7 @@ import type { DatasetModule, DataWriter } from "./core/types";
 const BATCH_DOCS = 500;
 
 /** Meilisearch IDs must be alphanumeric, hyphens, or underscores only. */
-function sanitizeId(id: string): string {
+export function sanitizeMeiliId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
@@ -43,7 +43,11 @@ export async function runIngest(modules: DatasetModule[], search: Meilisearch, s
         for await (const raw of idx.read(store)) {
           const t = idx.transform(raw);
           if (!t) continue;
-          batch.push({ id: sanitizeId(t.id), ...t.doc });
+          // The sanitized id must win the spread: several docs carry their own
+          // `id` field (events use "events.ubc.ca?id=N") which would otherwise
+          // override the sanitized primary key and make Meilisearch reject the
+          // batch with an invalid-document-identifier error.
+          batch.push({ ...t.doc, id: sanitizeMeiliId(t.id) });
           count++;
           if (batch.length >= BATCH_DOCS) await flush();
         }

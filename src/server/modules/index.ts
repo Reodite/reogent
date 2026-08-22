@@ -34,4 +34,4 @@ const dataModules: DatasetModule[] = [
   prereqModule,
 ];
 
-export const modules: DatasetModule[] = [...dataModules, createWidgetsModule(dataModules)];
+export const modules: DatasetModule[] = [...dataModules, createWidgetsModule()];

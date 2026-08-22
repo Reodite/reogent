@@ -140,6 +140,23 @@ describe("course-lookup-pane — subject cap 200 + footer notice (13.8, REQ-3.2)
   });
 });
 
+describe("course-lookup-pane — external code drive (widget navigation)", () => {
+  it("updates the lookup when a new course code enters via state, and keeps user typing", async () => {
+    apiState.getCourse.mockResolvedValue(makeCourse("CPSC 110", "CPSC", "110"));
+    const setState = vi.fn();
+    const view = render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
+
+    // External drive: a widget opens the pane to CPSC 110.
+    view.rerender(<CourseLookupPane state={{ code: "CPSC 110" }} setState={setState} />);
+    await waitFor(() => expect(apiState.getCourse).toHaveBeenCalledWith("CPSC 110"));
+
+    // User typing after the drive is not clobbered back to the prop.
+    apiState.getCourse.mockClear();
+    fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CPSC 121" } });
+    expect((screen.getByLabelText("Course code") as HTMLInputElement).value).toBe("CPSC 121");
+  });
+});
+
 describe("course-lookup-pane — dead exact code narrows to same-number match (13.9, REQ-3.5)", () => {
   it("on a dead canonical code, subject search filters by exact number — no q-fuzzy spew", async () => {
     const subjectCourses = Array.from({ length: 12 }, (_, i) => makeCourse(`CPSC ${110 + i}`, "CPSC", String(110 + i)));
