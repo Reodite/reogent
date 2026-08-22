@@ -80,12 +80,17 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
         iterText += event.delta;
         if (!sawToolUse) {
           yield { type: "text", delta: event.delta };
+        } else {
+          // Text after a tool_use is the trailing explanation that belongs
+          // with the card in the same response — stream it, keep it.
+          yield { type: "text", delta: event.delta };
         }
       } else if (event.type === "tool_use") {
         if (!sawToolUse && iterText) {
           // Retract streamed text and reclassify as thinking
           yield { type: "text_clear" };
           yield { type: "thinking", delta: iterText };
+          iterText = "";
         }
         sawToolUse = true;
         toolUses.push(event);
@@ -94,7 +99,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
       }
     }
 
-    if (iterText && !sawToolUse) fullText = iterText;
+    if (iterText) fullText = iterText;
 
     // Build the assistant message for conversation history
     const assistantContent: ContentBlock[] = [];
@@ -172,6 +177,12 @@ Rules:
     const execResults = await Promise.all(
       toolUses.map(({ name, input }) => executeTool(deps.modules, name, input, deps.search)),
     );
+    // show_widget renders the answer card, so a successful call completes the
+    // turn — the loop must not run again and produce a redundant text answer
+    // after the card. Any same-turn explanation text already streamed is kept.
+    const widgetIdx = toolUses.findIndex((tu) => tu.name === "show_widget");
+    const widgetSucceeded = widgetIdx >= 0 && !isToolError(execResults[widgetIdx]);
+
     const results: ContentBlock[] = [];
     for (let i = 0; i < toolUses.length; i++) {
       const { toolUseId, name, input } = toolUses[i];
@@ -191,6 +202,15 @@ Rules:
         },
       });
     }
+
+    if (widgetSucceeded) {
+      convo.push({ role: "user", content: results });
+      const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
+      yield { type: "citations", citations: finalCitations };
+      yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations };
+      return;
+    }
+
     convo.push({ role: "user", content: results });
   }
 }
