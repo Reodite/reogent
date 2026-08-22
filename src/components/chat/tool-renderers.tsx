@@ -205,7 +205,7 @@ function formatEventTime(start: string | null | undefined, end: string | null | 
 /** The show_widget tool returns { type, result } where `result` mirrors the
  *  internal tool it delegated to. Each case renders the matching widget. */
 function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
-  const { setWorkspaceView, setActiveChannel } = useChatShell();
+  const { setWorkspaceView, setActiveChannel, setUserDismissedPane, setAnswerSheetOpen } = useChatShell();
   const outer = call.result as { type?: string; result?: unknown } | undefined;
   const data = outer?.result;
 
@@ -422,6 +422,8 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setUserDismissedPane(false);
+                    setAnswerSheetOpen(true);
                     setActiveChannel("map", {});
                   }}
                   className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
@@ -452,6 +454,8 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                setUserDismissedPane(false);
+                setAnswerSheetOpen(true);
                 setActiveChannel("map", {});
               }}
               className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
