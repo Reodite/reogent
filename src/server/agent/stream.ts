@@ -86,7 +86,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
           yield { type: "text", delta: event.delta };
         }
       } else if (event.type === "tool_use") {
-        if (!sawToolUse && iterText) {
+        if (!sawToolUse && iterText && event.name !== "show_widget") {
           // Retract streamed text and reclassify as thinking
           yield { type: "text_clear" };
           yield { type: "thinking", delta: iterText };
