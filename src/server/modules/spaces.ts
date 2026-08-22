@@ -136,7 +136,7 @@ export const spaces: DatasetModule = {
       index: "room_availability",
       settings: {
         searchableAttributes: ["room", "location"],
-        filterableAttributes: ["state", "minutes", "capacity", "date", "eid"],
+        filterableAttributes: ["state", "minutes", "capacity", "date", "eid", "building_code"],
         sortableAttributes: ["start", "capacity"],
       },
       async *read(store) {
@@ -150,7 +150,7 @@ export const spaces: DatasetModule = {
       spec: {
         name: "find_study_spaces",
         description:
-          "Find places to study at UBC: informal study spaces/classrooms (kind 'informal') or bookable library rooms that are free right now (kind 'bookable', from the latest snapshot — always tell the user the as_of time). Pass a specific bookable room name to get its full booking timeline. Filter by building, capacity, and minimum free stretch.",
+          "Find places to study at UBC: informal study spaces/classrooms (kind 'informal') or bookable library rooms that are free right now (kind 'bookable', from the latest snapshot — always tell the user the as_of time). Pass a specific bookable room name to get its full booking timeline. Filter by building (official code — use find_building to resolve first), capacity, and minimum free stretch. If filtering by building fails, retry with query instead of building.",
         inputSchema: {
           json: {
             type: "object",
