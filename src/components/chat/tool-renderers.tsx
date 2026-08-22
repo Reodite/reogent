@@ -3,6 +3,7 @@
 // Tool-call rendering: internal tool calls show a compact badge only; the
 // dedicated show_widget tool renders a rich data widget as the answer.
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
+import { GradeDistributionChart } from "@/src/components/course-lookup/grade-distribution-chart";
 import { Icon } from "@/src/components/icons";
 import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
@@ -466,9 +467,6 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       const dist = (data as { grade_distribution?: GradeDistributionShape } | undefined)?.grade_distribution;
       const summary = (data as { grade_summary?: GradeSummaryShape } | undefined)?.grade_summary;
       if (!dist || !summary) return null;
-      const buckets = dist.buckets;
-      const maxCount = Math.max(0, ...Object.values(buckets));
-      const bars = Object.entries(buckets).filter(([, v]) => v > 0);
       return (
         <div className="bg-surface-container-low flex flex-col gap-3 rounded-lg p-3">
           <div className="flex items-baseline justify-between gap-3">
@@ -479,20 +477,26 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
               {summary.sample_sections} section{summary.sample_sections === 1 ? "" : "s"} · {summary.avg} avg
             </span>
           </div>
-          {bars.length > 0 ? (
-            <div className="flex items-end gap-1" role="img" aria-label="Grade distribution histogram">
-              {bars.map(([label, count]) => (
-                <div key={label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                  <span className="text-muted font-mono text-[0.625rem]">{count}</span>
-                  <div
-                    className={`w-full rounded-t ${label.includes("-") ? "bg-primary/50" : "bg-primary"}`}
-                    style={{ height: `${maxCount > 0 ? Math.max(4, (count / maxCount) * 48) : 4}px` }}
-                  />
-                  <span className="text-muted font-mono text-[0.625rem]">{label.replace(/-/g, "–")}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          <GradeDistributionChart buckets={dist.buckets} />
+        </div>
+      );
+    }
+    case "grade_distribution": {
+      const buckets = (data as { buckets?: Record<string, number> } | undefined)?.buckets;
+      const bd = (data as { bucket_distribution?: { buckets?: Record<string, number> } } | undefined)
+        ?.bucket_distribution;
+      const resolved = buckets ?? bd?.buckets;
+      if (!resolved || Object.values(resolved).every((v) => v === 0)) return null;
+      const highlight = (data as { highlight_bucket?: string } | undefined)?.highlight_bucket;
+      const code = (data as Partial<{ code: string }>).code ?? "Grade distribution";
+      const session = (data as Partial<{ session: string }>).session;
+      return (
+        <div className="bg-surface-container-low flex flex-col gap-3 rounded-lg p-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-on-surface block text-sm font-medium">{code}</span>
+            {session && <span className="text-muted text-xs">{session}</span>}
+          </div>
+          <GradeDistributionChart buckets={resolved} highlightBucket={highlight} />
         </div>
       );
     }
@@ -632,6 +636,13 @@ export function widgetHasContent(call: ToolCall): boolean {
     case "grades": {
       const d = data as { grade_distribution?: { buckets?: Record<string, number> } } | undefined;
       return !!d?.grade_distribution && Object.values(d.grade_distribution.buckets ?? {}).some((v) => v > 0);
+    }
+    case "grade_distribution": {
+      const d = data as
+        | { buckets?: Record<string, number>; bucket_distribution?: { buckets?: Record<string, number> } }
+        | undefined;
+      const b = d?.buckets ?? d?.bucket_distribution?.buckets;
+      return !!b && Object.values(b).some((v) => v > 0);
     }
     case "parking": {
       const lots = (data as { parking?: unknown[] } | undefined)?.parking;

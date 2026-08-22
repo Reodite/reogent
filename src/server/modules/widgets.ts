@@ -1,4 +1,5 @@
 import type { DatasetModule, SearchClient } from "../core/types";
+import { BUCKET_KEYS, defaultSession, isSession, type BucketKey, type Session } from "../course-records";
 import { sanitizeMeiliId } from "../ingest";
 import { route } from "../routing";
 import { resolveBuilding } from "./buildings";
@@ -59,6 +60,7 @@ export function createWidgetsModule(): DatasetModule {
                     "courses",
                     "course",
                     "grades",
+                    "grade_distribution",
                     "building",
                     "route",
                     "tuition",
@@ -70,7 +72,7 @@ export function createWidgetsModule(): DatasetModule {
                     "key_dates",
                   ],
                   description:
-                    'The kind of card: "courses" (a list of courses), "course" (one course), "grades" (grade distribution for one course), "building" (one or more buildings), "route" (a walking route), "tuition" (a tuition rate), "places" (points of interest by id), "parking" (parking lots by id), "event" (events by id), "study_spaces" (study areas or library rooms), "program" (admission programs by id), "key_dates" (calendar dates by id)',
+                    'The kind of card: "courses" (a list of courses), "course" (one course), "grades" (grade distribution for one course), "grade_distribution" (per-session 11-bucket chart for one course, optionally highlighting one bucket), "building" (one or more buildings), "route" (a walking route), "tuition" (a tuition rate), "places" (points of interest by id), "parking" (parking lots by id), "event" (events by id), "study_spaces" (study areas or library rooms), "program" (admission programs by id), "key_dates" (calendar dates by id)',
                 },
                 course_codes: {
                   type: "array",
@@ -150,6 +152,15 @@ export function createWidgetsModule(): DatasetModule {
                   type: "array",
                   items: { type: "string" },
                   description: "key_dates only: key-date ids from a get_key_dates result",
+                },
+                session: {
+                  type: "string",
+                  description: "grade_distribution only: session, e.g. 2025W. Default: latest winter.",
+                },
+                highlight_bucket: {
+                  type: "string",
+                  description:
+                    "grade_distribution only: one of <50, 50-54, 55-59, 60-63, 64-67, 68-71, 72-75, 76-79, 80-84, 85-89, 90-100",
                 },
               },
               required: ["type"],
@@ -322,6 +333,40 @@ export function createWidgetsModule(): DatasetModule {
               const dates = await getDocs(search, "key_dates", ids);
               if (dates.length === 0) throw new Error("None of the given key-date ids resolved");
               return { type, result: { dates } };
+            }
+
+            case "grade_distribution": {
+              const code = String(input.course ?? "").trim();
+              if (!code) throw new Error("show_widget type 'grade_distribution' requires course");
+              const rawSession = typeof input.session === "string" ? input.session.trim() : "";
+              if (rawSession && !isSession(rawSession)) throw new Error(`Unknown session "${rawSession}"`);
+              const session = (rawSession || defaultSession()) as Session;
+              const hb = typeof input.highlight_bucket === "string" ? input.highlight_bucket.trim() : "";
+              if (hb && !(BUCKET_KEYS as readonly string[]).includes(hb)) {
+                throw new Error(`Unknown bucket "${hb}". Valid buckets: ${BUCKET_KEYS.join(", ")}`);
+              }
+              const sid = `${code.toUpperCase().replace(/\s+/g, "_")}__${session}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+              let rec: Record<string, unknown>;
+              try {
+                rec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
+              } catch {
+                throw new Error(`${code} was not offered in ${session}`);
+              }
+              const buckets = rec.buckets as Record<string, number>;
+              if (!buckets || Object.values(buckets).every((v) => v === 0)) {
+                throw new Error(`No distribution data for ${code} in ${session}`);
+              }
+              return {
+                type,
+                result: {
+                  code: rec.code,
+                  session,
+                  buckets,
+                  average: rec.average,
+                  reported: rec.reported,
+                  ...(hb ? { highlight_bucket: hb as BucketKey } : {}),
+                },
+              };
             }
 
             default:

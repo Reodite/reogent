@@ -45,18 +45,29 @@ export interface ChatApi {
   getRoute(from: string, to: string): Promise<RouteResponse>;
   /** GET /api/building/{code} — popup details: rooms, POIs, availability. */
   getBuildingDetails(code: string): Promise<BuildingDetails>;
-  /** GET /api/courses/{code} — exact course record; 404 on miss. */
-  getCourse(code: string): Promise<CourseDoc>;
-  /** GET /api/courses — prefix/subject/level-operator/partial-number search. */
+  /** GET /api/courses/{code}?session= — exact course record; 404 on miss. Defaults to latest winter. */
+  getCourse(
+    code: string,
+    session?: string,
+  ): Promise<CourseDoc & { session?: string; average?: number; reported?: number; buckets?: Record<string, number> }>;
+  /** GET /api/courses — prefix/subject/level-operator/partial-number search, plus session sort. */
   searchCourses(params: {
     q?: string;
     subject?: string;
     number?: string;
     level?: "eq" | "plus" | "minus";
     digit?: number;
+    session?: string;
+    sort?: string;
   }): Promise<{
-    courses: CourseDoc[];
+    courses: (CourseDoc & {
+      session?: string;
+      average?: number;
+      reported?: number;
+      buckets?: Record<string, number>;
+    })[];
     subject_total?: number;
+    session?: string;
   }>;
   /** GET /api/prereq-tree?root={code} — the React-Flow graph for the course's prerequisite chain. */
   getPrereqTree(root: string): Promise<PrereqGraph>;
@@ -225,7 +236,12 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     getRoute: (from, to) =>
       request<RouteResponse>(`/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
     getBuildingDetails: (code) => request<BuildingDetails>(`/building/${encodeURIComponent(code)}`),
-    getCourse: (code) => request<CourseDoc>(`/courses/${encodeURIComponent(code)}`),
+    getCourse: (code, session) => {
+      const sp = new URLSearchParams();
+      if (session) sp.set("session", session);
+      const qs = sp.toString();
+      return request<CourseDoc>(`/courses/${encodeURIComponent(code)}${qs ? `?${qs}` : ""}`);
+    },
     searchCourses: (params) => {
       const sp = new URLSearchParams();
       if (params.q) sp.set("q", params.q);
@@ -233,7 +249,9 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       if (params.number) sp.set("number", params.number);
       if (params.level) sp.set("level", params.level);
       if (params.digit !== undefined) sp.set("digit", String(params.digit));
-      return request<{ courses: CourseDoc[]; subject_total?: number }>(`/courses?${sp.toString()}`);
+      if (params.session) sp.set("session", params.session);
+      if (params.sort) sp.set("sort", params.sort);
+      return request<{ courses: CourseDoc[]; subject_total?: number; session?: string }>(`/courses?${sp.toString()}`);
     },
     getPrereqTree: (root) => request<PrereqGraph>(`/prereq-tree?root=${encodeURIComponent(root)}`),
   };

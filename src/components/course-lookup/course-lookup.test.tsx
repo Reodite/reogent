@@ -148,7 +148,7 @@ describe("course-lookup-pane — external code drive (widget navigation)", () =>
 
     // External drive: a widget opens the pane to CPSC 110.
     view.rerender(<CourseLookupPane state={{ code: "CPSC 110" }} setState={setState} />);
-    await waitFor(() => expect(apiState.getCourse).toHaveBeenCalledWith("CPSC 110"));
+    await waitFor(() => expect(apiState.getCourse).toHaveBeenCalledWith("CPSC 110", "2025W"));
 
     // User typing after the drive is not clobbered back to the prop.
     apiState.getCourse.mockClear();

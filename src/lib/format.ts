@@ -98,6 +98,7 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
         return n > 0 ? `Showing ${n} courses` : "Showing course list";
       }
       if (type === "course") return `Showing course: ${s("course")}`;
+      if (type === "grade_distribution") return `Showing grade distribution: ${s("course")}`;
       if (type === "grades") return `Showing grade distribution: ${s("course")}`;
       if (type === "building") {
         const n = Array.isArray(input.buildings) ? input.buildings.length : 0;
