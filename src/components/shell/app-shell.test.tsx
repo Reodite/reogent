@@ -92,8 +92,8 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("wide AI right pane collapses via the pane button and re-expands via the topbar button", () => {
     const { container } = renderShell(true);
 
-    // AI mode renders the collapse button inside the AnswerSheet header (wide-only).
-    const collapseBtn = container.querySelector('[aria-label="Collapse right pane"]');
+    // AI mode renders the close button inside the AnswerSheet header (wide-only).
+    const collapseBtn = container.querySelector('[aria-label="Close answer canvas"]');
     expect(collapseBtn).not.toBeNull();
     // No expand button yet — pane is visible, so none is needed.
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
@@ -117,7 +117,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("Tools mode renders no right pane collapse button", () => {
     const { container } = renderShell(true);
     fireEvent.click(container.querySelector("[data-mode-toggle]") as HTMLElement);
-    expect(container.querySelector('[aria-label="Collapse right pane"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Close answer canvas"]')).toBeNull();
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
 

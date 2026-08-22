@@ -259,14 +259,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <AnswerSheet
                   open={answerSheetOpen}
                   onClose={() => {
+                    collapseRightPane();
                     setAnswerSheetOpen(false);
                     setUserDismissedPane(true);
                   }}
                   collapsed={rightPaneCollapsed}
-                  onCollapse={() => {
-                    collapseRightPane();
-                    setUserDismissedPane(true);
-                  }}
+                  view={workspaceView}
                 >
                   <AnswerCanvas view={workspaceView} />
                 </AnswerSheet>
