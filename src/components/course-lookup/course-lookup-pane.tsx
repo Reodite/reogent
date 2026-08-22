@@ -4,14 +4,15 @@ import { CourseDetailCard } from "@/src/components/course-lookup/course-detail-c
 import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export function CourseLookupPane({ state, setState }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
   const api = useApi();
   const [code, setCode] = useState(((state.code as string | undefined) ?? "") as string);
-  const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(code, {
-    resolveSingle: (c) => api.getCourse(c),
-  });
+  // Stable identity: a fresh arrow each render would re-fire the hook's
+  // debounced lookup effect on every render, an infinite reload loop.
+  const resolveSingle = useCallback((c: string) => api.getCourse(c), [api]);
+  const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(code, { resolveSingle });
 
   useEffect(() => {
     const trimmed = code.trim();
