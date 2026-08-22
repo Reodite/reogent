@@ -67,13 +67,11 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   });
   const eventsByDate = useMemo(() => groupByDate(monthEvents), [monthEvents]);
 
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [clickPos, setClickPos] = useState<{ x: number; y: number } | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [mobileView, setMobileView] = useState<"calendar" | "list">("calendar");
-  const selectedRows = useMemo(() => {
-    const rows = eventsByDate[selectedDay ?? ""] ?? [];
-    return rows.map((event, i) => ({ key: `${event.label}-${event.date}`, row: i, event }));
-  }, [eventsByDate, selectedDay]);
+
+  const openEvent = (event: CalendarEvent) => setSelectedEvent(event);
+  const closeEvent = () => setSelectedEvent(null);
 
   const upcoming = (events ?? [])
     .filter((e) => e.date >= todayISO)
@@ -205,7 +203,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                         type="button"
                         data-upcoming-event
                         data-upcoming-date={e.date}
-                        onClick={() => openDay(e.date)}
+                        onClick={() => openEvent(e)}
                         className="focus-visible:ring-primary/40 hover:bg-surface-container flex items-start gap-2 rounded-lg p-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
                       >
                         <span
@@ -238,8 +236,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
             eventsByDate={eventsByDate}
             todayISO={todayISO}
             cursorDate={cursorDate}
-            onDayClick={(iso, clientX, clientY) => openDay(iso, clientX, clientY)}
-            selectedDay={selectedDay}
+            onEventClick={openEvent}
           />
         </section>
       </div>
@@ -250,14 +247,12 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
         </div>
       )}
 
-      {selectedDay && (
-        <EventDetailPanel
-          iso={selectedDay}
-          rows={selectedRows}
-          onClose={closeDay}
-          clickPos={clickPos}
+      {selectedEvent && (
+        <EventModal
+          event={selectedEvent}
+          onClose={closeEvent}
           formatDate={formatFullDate}
-          parseISODate={parseISODate}
+          parseISODateFn={parseISODate}
         />
       )}
     </div>
@@ -273,15 +268,13 @@ function MonthGrid({
   eventsByDate,
   todayISO,
   cursorDate,
-  onDayClick,
-  selectedDay,
+  onEventClick,
 }: {
   cells: { date: Date | null; iso: string | null; key: string }[];
   eventsByDate: Record<string, CalendarEvent[]>;
   todayISO: string;
   cursorDate: Date;
-  onDayClick: (iso: string, clientX: number, clientY: number) => void;
-  selectedDay: string | null;
+  onEventClick: (event: CalendarEvent) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -302,19 +295,15 @@ function MonthGrid({
           const isCurrentMonth = d.getUTCMonth() === cursorDate.getUTCMonth();
           const dayEvents = isCurrentMonth ? (eventsByDate[iso] ?? []) : [];
           const isToday = iso === todayISO;
-          const isSelected = iso === selectedDay;
           const hasEvents = dayEvents.length > 0;
           return (
-            <button
-              type="button"
+            <div
               key={cell.key}
               data-calendar-day={iso}
               {...(isToday ? { "data-calendar-today": iso } : {})}
-              className={`flex min-h-[3rem] cursor-pointer flex-col items-stretch gap-0.5 rounded-lg p-1.5 text-left transition-colors duration-150 ${
-                isSelected ? "bg-accent-subtle" : isCurrentMonth ? "bg-surface" : "bg-surface/70"
+              className={`flex min-h-[3rem] flex-col items-stretch gap-0.5 rounded-lg p-1.5 ${
+                isCurrentMonth ? "bg-surface" : "bg-surface/70"
               }`}
-              onClick={(e) => onDayClick(iso, e.clientX, e.clientY)}
-              aria-label={`${formatFullDate(d)}${hasEvents ? ` — ${dayEvents.length} events` : ""}`}
             >
               <span
                 className={`mx-0.5 text-xs ${isToday ? "bg-primary text-on-primary flex size-6 items-center justify-center rounded-full font-semibold" : isCurrentMonth ? "text-muted" : "text-muted/40"}`}
@@ -322,18 +311,19 @@ function MonthGrid({
                 {d.getUTCDate()}
               </span>
               {isCurrentMonth && hasEvents && (
-                <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden" aria-hidden>
+                <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
                   {dayEvents.slice(0, 3).map((e) => (
-                    <span
+                    <button
                       key={`${iso}-${e.label}`}
+                      type="button"
                       data-calendar-marker={e.kind}
-                      className={
-                        (e.kind === "academic" ? "bg-primary/20 text-primary" : "bg-tertiary/20 text-tertiary") +
-                        " block truncate rounded-md px-1 py-px text-xs leading-tight font-medium"
-                      }
+                      onClick={() => onEventClick(e)}
+                      className={`block w-full truncate rounded-md px-1 py-px text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${
+                        e.kind === "academic" ? "bg-primary/20 text-primary" : "bg-tertiary/20 text-tertiary"
+                      }`}
                     >
                       {e.label}
-                    </span>
+                    </button>
                   ))}
                   {dayEvents.length > 3 && (
                     <span data-calendar-count={String(dayEvents.length)} className="text-muted font-mono text-xs">
@@ -342,7 +332,7 @@ function MonthGrid({
                   )}
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -350,20 +340,16 @@ function MonthGrid({
   );
 }
 
-function EventDetailPanel({
-  iso,
-  rows,
+function EventModal({
+  event,
   onClose,
-  clickPos,
   formatDate,
-  parseISODate: pISO,
+  parseISODateFn,
 }: {
-  iso: string;
-  rows: { key: string; row: number; event: CalendarEvent }[];
+  event: CalendarEvent;
   onClose: () => void;
-  clickPos: { x: number; y: number } | null;
   formatDate: (d: Date) => string;
-  parseISODate: (s: string) => Date;
+  parseISODateFn: (s: string) => Date;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -384,104 +370,63 @@ function EventDetailPanel({
     };
   }, [onClose]);
 
-  const inWinX = typeof window !== "undefined" ? window.innerWidth : 1024;
-  const inWinY = typeof window !== "undefined" ? window.innerHeight : 768;
-  const popoverW = 320;
-  const left = clickPos ? Math.max(8, Math.min(clickPos.x, inWinX - popoverW - 8)) : 24;
-  const top = clickPos ? Math.max(8, Math.min(clickPos.y, inWinY - 240)) : 24;
-
-  const inner = (
-    <>
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
-          <p className="text-on-surface text-sm font-medium">{formatDate(pISO(iso))}</p>
-          <p className="text-muted text-xs">
-            {rows.length} event{rows.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <button
-          ref={closeRef}
-          type="button"
-          aria-label="Close"
-          onClick={onClose}
-          className="focus-visible:ring-primary/40 text-muted hover:text-on-surface rounded-md p-1 transition-colors focus-visible:ring-2"
-        >
-          <Icon name="close" size={16} />
-        </button>
-      </div>
-      <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto">
-        {rows.map(({ key, row, event: e }) => (
-          <li
-            key={key}
-            data-event-row={row}
-            className={
-              (e.kind === "academic" ? "bg-primary/10" : "bg-tertiary/10") +
-              " flex items-start gap-2.5 rounded-lg px-3 py-2.5"
-            }
-          >
+  return (
+    <div className="bg-scrim fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={event.label}
+        data-calendar-popover
+        className="neu-panel bg-surface-container w-full max-w-lg rounded-t-2xl p-4 sm:rounded-2xl"
+      >
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5">
             <span
               aria-hidden
-              className={`mt-0.5 h-4 w-1 shrink-0 rounded-full ${e.kind === "academic" ? "bg-primary" : "bg-tertiary"}`}
+              className={`h-8 w-1.5 shrink-0 rounded-full ${event.kind === "academic" ? "bg-primary" : "bg-tertiary"}`}
             />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span data-event-label={e.label} className="text-on-surface text-xs font-medium">
-                  {e.label}
-                </span>
-                <span className="text-muted font-mono text-xs tracking-wide uppercase opacity-70">{e.kind}</span>
-              </div>
-              {e.tags.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {e.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="bg-surface-container-high text-on-surface-variant rounded-full px-1.5 py-px text-xs font-medium"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {e.source_url && (
-                <a
-                  href={e.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary mt-1.5 inline-flex min-h-9 min-w-11 items-center gap-1 text-xs underline"
-                  title="Open source"
-                >
-                  <Icon name="externalLink" size={12} />
-                  Source
-                </a>
-              )}
+            <div>
+              <p className="text-on-surface text-sm font-medium">{event.label}</p>
+              <p className="text-muted text-xs">{formatDate(parseISODateFn(event.date))}</p>
             </div>
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-
-  return (
-    <>
-      <div className="bg-surface/60 fixed inset-0 z-40 sm:hidden" aria-hidden onClick={onClose} />
-      <div ref={panelRef}>
-        <div
-          data-calendar-popover
-          role="dialog"
-          aria-label={`Events on ${formatDate(pISO(iso))}`}
-          className="neu-panel bg-surface-container fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl p-4 sm:hidden"
-        >
-          {inner}
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="focus-visible:ring-primary/40 text-muted hover:text-on-surface rounded-md p-1 transition-colors focus-visible:ring-2"
+          >
+            <Icon name="close" size={16} />
+          </button>
         </div>
-        <div
-          role="dialog"
-          aria-label={`Events on ${formatDate(pISO(iso))}`}
-          className="neu-panel bg-surface-container fixed z-50 hidden w-80 rounded-xl p-4 sm:block"
-          style={{ left, top }}
-        >
-          {inner}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="bg-surface-container-high text-on-surface-variant rounded-full px-2 py-0.5 text-xs font-medium">
+            {event.kind === "academic" ? "Academic" : "Holiday"}
+          </span>
+          {event.tags.map((tag) => (
+            <span
+              key={tag}
+              className="bg-surface-container-high text-on-surface-variant rounded-full px-2 py-0.5 text-xs font-medium"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
+        {event.source_url && (
+          <a
+            href={event.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary mt-4 inline-flex min-h-9 min-w-11 items-center gap-1 text-xs underline"
+            title="Open source"
+          >
+            <Icon name="externalLink" size={12} />
+            View on UBC site
+          </a>
+        )}
       </div>
-    </>
+    </div>
   );
 }

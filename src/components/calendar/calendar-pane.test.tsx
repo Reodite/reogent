@@ -190,26 +190,16 @@ describe("20.13 + Property 27b — multi-event-day popover enumerates each event
     ];
     const { container, restore } = renderPane({ cursor: "2024-09" }, events);
     const cell = await waitForCell(container, "2024-09-17", "[data-calendar-marker]");
-    const dayButton = cell; // the day cell is itself the clickable button in the redesigned grid
-    expect(dayButton.hasAttribute("disabled")).toBe(false);
+    const markers = cell.querySelectorAll("[data-calendar-marker]");
+    expect(markers).toHaveLength(3);
+    // Click the first event marker (Add/drop deadline, which has a source_url)
     act(() => {
-      fireEvent.click(dayButton);
+      fireEvent.click(markers[0]);
     });
     await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
-    const popover = container.querySelector("[data-calendar-popover]");
-    const rows = popover?.querySelectorAll("[data-event-row]");
-    expect(rows).toHaveLength(3);
-    const labels = Array.from(rows ?? []).map((r) => r.querySelector("[data-event-label]")?.textContent ?? "");
-    expect(labels).toContain("Add/drop deadline");
-    expect(labels).toContain("National Day for Truth and Reconciliation");
-    expect(labels).toContain("Midterm exam week begins");
-    const anchors = popover?.querySelectorAll("a");
-    expect(anchors).toHaveLength(2);
-    expect(
-      Array.from(anchors ?? []).some(
-        (a) => a.getAttribute("href") === "https://students.ubc.ca/enrolled/important-dates",
-      ),
-    ).toBe(true);
+    const popover = container.querySelector("[data-calendar-popover]") as HTMLElement;
+    expect(popover.textContent).toContain("Add/drop deadline");
+    expect(popover.textContent).toContain("View on UBC site");
     restore();
   });
 });
@@ -228,25 +218,26 @@ describe("Redesign — upcoming sidebar lists future events grouped by date (des
   });
 });
 
-describe("Redesign — clicking a day opens the detail panel with tags and kind", () => {
+describe("Redesign — clicking an event marker opens the modal with tags and kind", () => {
   it("opens on a single-event day and closes via the close button", async () => {
     const { container, restore } = renderPane({ cursor: "2025-02" });
     const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
-    fireEvent.click(cell);
+    const marker = cell.querySelector("[data-calendar-marker]") as HTMLElement;
+    fireEvent.click(marker);
     await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
     const popover = container.querySelector("[data-calendar-popover]") as HTMLElement;
-    expect(popover.querySelectorAll("[data-event-row]")).toHaveLength(2);
+    expect(popover.textContent).toContain("Family Day");
     fireEvent.click(popover.querySelector('[aria-label="Close"]') as HTMLElement);
     await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).toBeNull());
     restore();
   });
 });
 
-describe("Redesign — detail panel closes on Escape", () => {
-  it("opens on a day with events and closes when Escape is pressed", async () => {
+describe("Redesign — event modal closes on Escape", () => {
+  it("opens on an event marker and closes when Escape is pressed", async () => {
     const { container, restore } = renderPane({ cursor: "2025-02" });
     const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
-    fireEvent.click(cell);
+    fireEvent.click(cell.querySelector("[data-calendar-marker]") as HTMLElement);
     await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).toBeNull());
