@@ -100,7 +100,7 @@ export const places: DatasetModule = {
       spec: {
         name: "find_places",
         description:
-          "Find points of interest on UBC Vancouver campus: cafes, restaurants, libraries, groceries, banks, medical services, child care, transit, campus services — or public parking lots (category 'parking') with rates, hours, EV charging, and accessibility. Optionally sorted by walking distance from a building. Hours are free text — quote them as-is.",
+          "Find points of interest on UBC Vancouver campus: cafes, restaurants, libraries, groceries, banks, medical services, child care, transit, campus services — or public parking lots (category 'parking') with rates, hours, EV charging, and accessibility. For parking questions (rates, EV charging, accessibility, whether permit required) ALWAYS set category=\"parking\". Optionally sorted by walking distance from a building. Hours are free text — quote them as-is.",
         inputSchema: {
           json: {
             type: "object",

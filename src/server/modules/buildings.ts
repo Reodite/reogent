@@ -140,7 +140,7 @@ export const buildings: DatasetModule = {
       spec: {
         name: "walking_distance",
         description:
-          "Walking distance and time between two UBC Vancouver buildings, by building code or name, routed over the campus pedestrian path network.",
+          'Walking distance and time between two UBC Vancouver buildings. Pass the building names or codes directly — no need to call find_building first. For example: from_building="ICCS" to_building="Buchanan". Route is computed over the campus pedestrian path network.',
         inputSchema: {
           json: {
             type: "object",
@@ -168,7 +168,7 @@ export const buildings: DatasetModule = {
       spec: {
         name: "find_building",
         description:
-          "Resolve a UBC Vancouver building by name or code to its official building code, full name, and coordinates. Use this to get the code other tools need.",
+          'Resolve a UBC Vancouver building by name or code to its official building code, full name, and coordinates. Only use this when you need the building\'s official code or lat/lon. Do NOT use this for walking routes (use walking_distance) or parking (use find_places with category="parking"). walking_distance and find_places accept building names directly.',
         inputSchema: {
           json: {
             type: "object",
