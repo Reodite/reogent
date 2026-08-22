@@ -14,7 +14,7 @@ import {
   toISODate,
 } from "@/src/shared/calendar/date-math";
 import type { CalendarEvent, CalendarEventKind } from "@/src/shared/calendar/event";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCalendarEvents } from "./use-calendar-events";
 
 const FUTURE_HORIZON_MONTHS = 24;
@@ -205,7 +205,6 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                     <span className="text-on-surface text-xs font-medium">
                       {isSameDay(parseISODate(date), today) ? "Today" : formatDayLabel(parseISODate(date))}
                     </span>
-                    <span className="text-muted text-xs">{date}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     {dayEvents.map((e) => (
@@ -380,7 +379,6 @@ function AgendaView({
           <div key={date}>
             <div className="mb-2 flex items-center gap-2">
               <span className="text-on-surface text-sm font-medium">{isToday ? "Today" : formatDayLabel(d)}</span>
-              <span className="text-muted font-mono text-xs">{date}</span>
             </div>
             <div className="flex flex-col gap-1.5">
               {dayEvents.map((e) => (
@@ -437,6 +435,19 @@ function EventDetailPanel({
   formatDate: (d: Date) => string;
   parseISODate: (s: string) => Date;
 }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  // Escape closes the dialog; focus moves to the close button on mount so
+  // keyboard users land inside the panel they opened.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    closeRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <>
       <div className="bg-surface/60 fixed inset-0 z-40 sm:hidden" aria-hidden onClick={onClose} />
@@ -454,6 +465,7 @@ function EventDetailPanel({
             </p>
           </div>
           <button
+            ref={closeRef}
             type="button"
             aria-label="Close"
             onClick={onClose}

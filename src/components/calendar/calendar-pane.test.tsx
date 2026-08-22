@@ -252,3 +252,15 @@ describe("Redesign — clicking a day opens the detail panel with tags and kind"
     restore();
   });
 });
+
+describe("Redesign — detail panel closes on Escape", () => {
+  it("opens on a day with events and closes when Escape is pressed", async () => {
+    const { container, restore } = renderPane({ cursor: "2025-02" });
+    const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
+    fireEvent.click(cell);
+    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).toBeNull());
+    restore();
+  });
+});
