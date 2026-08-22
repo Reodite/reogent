@@ -138,7 +138,7 @@ function ThinkingBlock({ content, compact = false }: { content: string; compact?
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
       className={`group bg-surface-container-low rounded-lg ${compact ? "" : "mb-2"}`}
     >
-      <summary className="text-muted flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium select-none">
+      <summary className="focus-visible:ring-primary/40 text-muted flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium select-none focus-visible:ring-2 focus-visible:ring-offset-1">
         <Icon name="bling" size={14} className="text-muted shrink-0" />
         <span className="truncate">Thinking…</span>
         <Icon name="down" size={12} className="ml-auto shrink-0 transition-transform group-open:rotate-180" />
