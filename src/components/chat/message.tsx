@@ -11,7 +11,7 @@ import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import type { Citation } from "@/src/lib/api-types";
 import type { ActivityBlock } from "@/src/shared/types";
 import { motion, useReducedMotion } from "motion/react";
-import { lazy, memo, Suspense, useMemo, useState } from "react";
+import { createElement, lazy, memo, Suspense, useMemo, useState } from "react";
 
 export type { ActivityBlock };
 
@@ -51,7 +51,14 @@ const LazyMarkdown = lazy(() =>
 
 const markdownComponents = (citations: Citation[] | null | undefined) => {
   const inject = (children: React.ReactNode) => injectChips(children, citations);
-  const leafOverride = ({ children }: { children?: React.ReactNode }) => inject(children);
+  // Renders the real tag with citation chips injected into its string leaves.
+  // Returning bare `inject(children)` would drop the wrapping element — for
+  // table cells that yields a text node directly under <tr>, an invalid-HTML
+  // hydration error. `style` carries GFM column alignment on th/td.
+  const leaf =
+    (tag: string) =>
+    ({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) =>
+      createElement(tag, style ? { style } : {}, inject(children));
   return {
     a: ({ href, title, children }: { href?: string; title?: string; children?: React.ReactNode }) => {
       const opensNewTab = typeof href === "string" && /^https?:\/\//i.test(href);
@@ -75,19 +82,19 @@ const markdownComponents = (citations: Citation[] | null | undefined) => {
         <table>{children}</table>
       </div>
     ),
-    p: leafOverride,
-    li: leafOverride,
-    strong: leafOverride,
-    em: leafOverride,
-    th: leafOverride,
-    td: leafOverride,
-    h1: leafOverride,
-    h2: leafOverride,
-    h3: leafOverride,
-    h4: leafOverride,
-    h5: leafOverride,
-    h6: leafOverride,
-    blockquote: leafOverride,
+    p: leaf("p"),
+    li: leaf("li"),
+    strong: leaf("strong"),
+    em: leaf("em"),
+    th: leaf("th"),
+    td: leaf("td"),
+    h1: leaf("h1"),
+    h2: leaf("h2"),
+    h3: leaf("h3"),
+    h4: leaf("h4"),
+    h5: leaf("h5"),
+    h6: leaf("h6"),
+    blockquote: leaf("blockquote"),
   };
 };
 
