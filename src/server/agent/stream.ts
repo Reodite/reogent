@@ -45,6 +45,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   const toolCalls: ToolCall[] = [];
   let fullText = "";
   const pendingCitations: CitationSeed[] = [];
+  let widgetNudged = false;
 
   for (let i = 0; ; i++) {
     if (i > 0) yield { type: "turn_start" as const };
@@ -204,7 +205,20 @@ Rules:
     }
 
     if (widgetSucceeded) {
+      widgetNudged = true;
       convo.push({ role: "user", content: results });
+      convo.push({
+        role: "user",
+        content: [
+          {
+            text: "The card is shown. If you have a brief written explanation to add, write it now. Otherwise write nothing — no extra tools.",
+          },
+        ],
+      });
+      continue;
+    }
+
+    if (widgetNudged) {
       const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
       yield { type: "citations", citations: finalCitations };
       yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations };
