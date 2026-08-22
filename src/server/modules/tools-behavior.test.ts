@@ -69,16 +69,19 @@ function fakeSearch(data: Record<string, unknown[]>): SearchClient & {
             );
           }
           const limit = Number(opts?.limit ?? hits.length);
-          const sliced = hits.slice(0, Number.isFinite(limit) ? limit : hits.length);
+          const offset = Number(opts?.offset ?? 0);
+          const sliced = hits.slice(offset, offset + (Number.isFinite(limit) ? limit : hits.length));
+          const base = { estimatedTotalHits: hits.length };
           if ((opts?.attributesToHighlight as string[] | undefined)?.includes("text")) {
             return {
+              ...base,
               hits: sliced.map((h) => ({
                 ...(h as object),
                 _formatted: { text: `...${String((h as Record<string, unknown>).text ?? "")}...` },
               })),
             };
           }
-          return { hits: sliced };
+          return { ...base, hits: sliced };
         },
       };
     },
@@ -183,9 +186,27 @@ describe("find_courses (agent-tool-redesign)", () => {
     expect(out.courses[0].grade_avg).toBe(80);
   });
 
-  it("rejects when no query, no filters, and no grade request", async () => {
+  it("ranks a high-average course far down code order (regression: pool truncation)", async () => {
+    // 210 candidates; the highest-average course is alphabetically LAST, so a
+    // code-ordered candidate pool truncated at 200 would silently drop it.
+    const coursesList: Record<string, unknown>[] = [];
+    const grades: Record<string, unknown>[] = [];
+    for (let i = 0; i < 210; i++) {
+      const number = String(100 + i);
+      coursesList.push(course(`CPSC_V ${number}`));
+      grades.push({ subject: "CPSC", course: number, year: 2025, enrolled: 10, avg: 50 });
+    }
+    // Alphabetically last code wins the ranking.
+    const number = "999";
+    coursesList.push(course(`CPSC_V ${number}`));
+    grades.push({ subject: "CPSC", course: number, year: 2025, enrolled: 10, avg: 99 });
+    const search = fakeSearch({ courses: coursesList, grades });
     const tool = courses.tools.find((t) => t.spec.name === "find_courses")!;
-    await expect(tool.execute({}, fakeSearch(courseFixture))).rejects.toThrow(/query or at least one filter/);
+    const out = (await tool.execute({ sort: "grade_avg_desc", limit: 5 }, search)) as {
+      courses: { code: string; grade_avg: number }[];
+    };
+    expect(out.courses[0].code).toBe("CPSC_V 999");
+    expect(out.courses[0].grade_avg).toBe(99);
   });
 
   it("returns available_terms when a term filter is present", async () => {

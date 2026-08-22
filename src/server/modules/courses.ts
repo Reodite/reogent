@@ -242,14 +242,33 @@ export const courses: DatasetModule = {
         }
 
         if (needsGradeJoin) {
-          // Pull a candidate pool, join grades, filter by bounds, then sort.
-          const catRes = await search.index("courses").search(query ? String(query) : "", {
-            filter: filters.length > 0 ? filters.join(" AND ") : undefined,
-            sort: query ? undefined : ["code:asc"],
-            limit: 200,
-          });
-          const candidates = catRes.hits as unknown as CourseDoc[];
-          if (candidates.length === 0) throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"}`);
+          // Pull the full candidate pool before ranking by grade: a top-N by
+          // average can sit anywhere in code order, so a truncated pool would
+          // silently drop eligible courses (e.g. NURS beyond the first 200).
+          // Paginate to exhaustion, up to a hard cap, and flag when capped.
+          const POOL_PAGE = 200;
+          const POOL_CAP = 2000;
+          const candidates: CourseDoc[] = [];
+          let offset = 0;
+          let estimated = Number.POSITIVE_INFINITY;
+          for (;;) {
+            const catRes = await search.index("courses").search(query ? String(query) : "", {
+              filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+              sort: query ? undefined : ["code:asc"],
+              limit: POOL_PAGE,
+              offset,
+              attributesToRetrieve: undefined,
+            });
+            estimated = catRes.estimatedTotalHits;
+            candidates.push(...(catRes.hits as unknown as CourseDoc[]));
+            offset += POOL_PAGE;
+            if (catRes.hits.length < POOL_PAGE) break;
+            if (candidates.length >= POOL_CAP) break;
+          }
+          if (candidates.length === 0) {
+            throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"}`);
+          }
+          const truncated = candidates.length < estimated;
           const withGrades = await Promise.all(
             candidates.map(async (c) => ({
               course: c,
@@ -272,6 +291,11 @@ export const courses: DatasetModule = {
               ...presentCourse(r.course, 10),
               grade_avg: r.avg_grade,
             })),
+            ...(truncated
+              ? {
+                  note: `Sorting was evaluated over the first ${POOL_CAP} matching courses; results may be incomplete.`,
+                }
+              : {}),
           };
         }
 
