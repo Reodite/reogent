@@ -61,6 +61,27 @@ describe("module registry consistency", () => {
     }
   });
 
+  it("exposes exactly the 14 redesigned tools with no legacy names", () => {
+    expect(new Set(modules.flatMap((m) => m.tools.map((t) => t.spec.name)))).toEqual(
+      new Set([
+        "find_courses",
+        "get_course",
+        "get_prereq_tree",
+        "find_building",
+        "walking_distance",
+        "find_places",
+        "find_study_spaces",
+        "get_costs",
+        "find_programs",
+        "get_admission_requirements",
+        "find_events",
+        "get_key_dates",
+        "search_ubc_pages",
+        "show_widget",
+      ]),
+    );
+  });
+
   it("every tool spec has typed, described properties and a required list", () => {
     for (const tool of modules.flatMap((m) => m.tools)) {
       expect(tool.spec.description.length).toBeGreaterThan(0);

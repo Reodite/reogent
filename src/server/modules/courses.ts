@@ -231,15 +231,15 @@ export const courses: DatasetModule = {
         if (credits !== undefined) filters.push(`credits = ${credits}`);
         if (has_no_prereqs) filters.push("prerequisite IS NULL");
         if (term) filters.push(`terms = '${String(term)}'`);
-        if (!query && filters.length === 0) {
-          throw new Error("Provide a query or at least one filter (subject, level, credits, term, or has_no_prereqs)");
-        }
         const sortBy = String(sort ?? "");
         const needsGradeJoin =
           sortBy === "grade_avg_desc" ||
           sortBy === "grade_avg_asc" ||
           min_grade_avg !== undefined ||
           max_grade_avg !== undefined;
+        if (!query && filters.length === 0 && !needsGradeJoin) {
+          throw new Error("Provide a query or at least one filter (subject, level, credits, term, or has_no_prereqs)");
+        }
 
         if (needsGradeJoin) {
           // Pull a candidate pool, join grades, filter by bounds, then sort.

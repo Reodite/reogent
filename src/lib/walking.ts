@@ -214,8 +214,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
       }
       case "parking": {
         const p = data as
-          | { near_building?: string; parking?: { name?: string; lat?: number; lon?: number }[] }
-          | undefined;
+          { near_building?: string; parking?: { name?: string; lat?: number; lon?: number }[] } | undefined;
         if (!Array.isArray(p?.parking)) return null;
         const places = p.parking
           .filter((pl) => typeof pl?.name === "string" && typeof pl.lat === "number" && typeof pl.lon === "number")
