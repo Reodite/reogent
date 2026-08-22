@@ -89,47 +89,47 @@ describe("formatters", () => {
 describe("describeToolCall", () => {
   it("describes walking_distance with from/to", () => {
     expect(describeToolCall("walking_distance", { from_building: "CHBE", to_building: "UBC Bus Exchange" })).toBe(
-      "Searched for walking distance from CHBE to UBC Bus Exchange",
+      "Searched for walking route from CHBE to UBC Bus Exchange",
     );
   });
 
   it("describes find_building", () => {
-    expect(describeToolCall("find_building", { query: "Walter Gage" })).toBe("Searched for building: Walter Gage");
+    expect(describeToolCall("find_building", { query: "Walter Gage" })).toBe("Searched for Walter Gage");
   });
 
   it("describes find_courses", () => {
     expect(describeToolCall("find_courses", { query: "machine learning" })).toBe(
-      "Searched for courses: machine learning",
+      "Searched courses related to machine learning",
     );
   });
 
   it("describes get_costs by kind", () => {
     expect(describeToolCall("get_costs", { kind: "tuition", program_slug: "bachelor-of-science" })).toBe(
-      "Searched for tuition: bachelor-of-science",
+      "Searched for bachelor-of-science tuition",
     );
     expect(describeToolCall("get_costs", { kind: "estimate", program: "Computer Science" })).toBe(
-      "Searched for cost estimate: Computer Science",
+      "Searched for Computer Science cost estimate",
     );
-    expect(describeToolCall("get_costs", { kind: "fees", query: "U-Pass" })).toBe("Searched for student fees: U-Pass");
+    expect(describeToolCall("get_costs", { kind: "fees", query: "U-Pass" })).toBe("Searched for U-Pass costs");
   });
 
   it("describes get_course", () => {
-    expect(describeToolCall("get_course", { course_code: "CPSC 110" })).toBe("Searched for course: CPSC 110");
+    expect(describeToolCall("get_course", { course_code: "CPSC 110" })).toBe("Searched for CPSC 110");
   });
 
   it("describes find_places with optional near_building", () => {
     expect(describeToolCall("find_places", { query: "coffee", near_building: "IKB" })).toBe(
-      "Searched for places: coffee near IKB",
+      "Searched for coffee near IKB",
     );
-    expect(describeToolCall("find_places", { query: "coffee" })).toBe("Searched for places: coffee");
+    expect(describeToolCall("find_places", { query: "coffee" })).toBe("Searched for coffee");
   });
 
   it("describes get_key_dates with and without query", () => {
-    expect(describeToolCall("get_key_dates", { query: "exam period" })).toBe("Searched for key dates: exam period");
+    expect(describeToolCall("get_key_dates", { query: "exam period" })).toBe("Searched for exam period");
     expect(describeToolCall("get_key_dates", {})).toBe("Searched for key dates");
   });
 
-  it("falls back for unknown tools", () => {
-    expect(describeToolCall("unknown_tool", { x: 1 })).toBe("Searched: unknown_tool");
+  it("falls back for unknown tools by converting the name", () => {
+    expect(describeToolCall("unknown_tool", { x: 1 })).toBe("Searched: Unknown Tool");
   });
 });

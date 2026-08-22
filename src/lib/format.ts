@@ -58,54 +58,71 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
 
   switch (name) {
     case "walking_distance":
-      return `Searched for walking distance from ${s("from_building")} to ${s("to_building")}`;
+      return `Searched for walking route from ${s("from_building")} to ${s("to_building")}`;
     case "find_building":
-      return `Searched for building: ${s("query")}`;
+      return `Searched for ${s("query")}`;
     case "find_courses":
-      return `Searched for courses: ${s("query")}`;
+      return `Searched courses related to ${s("query")}`;
     case "get_course":
-      return `Searched for course: ${s("course_code")}`;
+      return `Searched for ${s("course_code")}`;
     case "get_costs": {
       const kind = s("kind");
-      if (kind === "tuition") return `Searched for tuition: ${s("program_slug")}`;
-      if (kind === "estimate") return `Searched for cost estimate: ${s("program")}`;
-      if (kind === "fees") return `Searched for student fees: ${s("query")}`;
+      if (kind === "tuition") {
+        const slug = s("program_slug");
+        return slug ? `Searched for ${slug} tuition` : "Searched for tuition";
+      }
+      if (kind === "estimate") {
+        const prog = s("program");
+        return prog ? `Searched for ${prog} cost estimate` : "Searched for cost estimate";
+      }
+      if (kind === "fees") {
+        const q = s("query");
+        return q ? `Searched for ${q} costs` : "Searched for student fees";
+      }
       if (kind === "living") return "Searched for living costs";
       return "Searched for costs";
     }
     case "find_places":
-      return has("near_building")
-        ? `Searched for places: ${s("query")} near ${s("near_building")}`
-        : `Searched for places: ${s("query")}`;
+      if (has("near_building")) {
+        const q = s("query");
+        const near = s("near_building");
+        return q ? `Searched for ${q} near ${near}` : `Searched for places near ${near}`;
+      }
+      return `Searched for ${s("query")}`;
     case "get_key_dates":
-      return has("query") ? `Searched for key dates: ${s("query")}` : "Searched for key dates";
+      return has("query") ? `Searched for ${s("query")}` : "Searched for key dates";
     case "find_events":
-      return has("query") ? `Searched for events: ${s("query")}` : "Searched for events";
+      return has("query") ? `Searched for ${s("query")}` : "Searched for events";
     case "find_programs":
-      return `Searched for programs: ${s("query")}`;
+      return `Searched for ${s("query")}`;
     case "find_study_spaces": {
       const kind = s("kind");
-      if (kind === "bookable")
-        return has("query") ? `Searched for free rooms: ${s("query")}` : "Searched for free rooms";
-      return has("query") ? `Searched for study spaces: ${s("query")}` : "Searched for study spaces";
+      if (kind === "bookable") {
+        const q = s("query");
+        return q ? `Searched for free rooms in ${q}` : "Searched for free rooms";
+      }
+      const q = s("query");
+      return q ? `Searched for study spaces near ${q}` : "Searched for study spaces";
     }
     case "get_admission_requirements":
-      return `Searched for admission requirements for ${s("program")}`;
+      return `Searched for ${s("program")} admission requirements`;
+    case "search_ubc_pages":
+      return `Searched UBC pages for ${s("query")}`;
     case "show_widget": {
       const type = s("type");
       if (type === "courses") {
         const n = Array.isArray(input.course_codes) ? input.course_codes.length : 0;
         return n > 0 ? `Showing ${n} courses` : "Showing course list";
       }
-      if (type === "course") return `Showing course: ${s("course")}`;
-      if (type === "grade_distribution") return `Showing grade distribution: ${s("course")}`;
-      if (type === "grades") return `Showing grade distribution: ${s("course")}`;
+      if (type === "course") return `Showing ${s("course")}`;
+      if (type === "grade_distribution") return `Showing grades for ${s("course")}`;
+      if (type === "grades") return `Showing grades for ${s("course")}`;
       if (type === "building") {
         const n = Array.isArray(input.buildings) ? input.buildings.length : 0;
-        return n > 0 ? `Showing building${n > 1 ? "s" : ""}` : "Showing building";
+        return n > 0 ? `Showing ${n} building${n > 1 ? "s" : ""}` : "Showing building";
       }
-      if (type === "route") return `Showing route ${s("from_building")} → ${s("to_building")}`;
-      if (type === "tuition") return `Showing tuition: ${s("program_slug")}`;
+      if (type === "route") return `Showing route from ${s("from_building")} to ${s("to_building")}`;
+      if (type === "tuition") return `Showing tuition for ${s("program_slug")}`;
       if (type === "places") {
         const n = Array.isArray(input.place_ids) ? input.place_ids.length : 0;
         return n > 0 ? `Showing ${n} places` : "Showing places";
@@ -132,7 +149,9 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
       }
       return "Showing widget";
     }
-    default:
-      return `Searched: ${name}`;
+    default: {
+      const readable = name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+      return `Searched: ${readable}`;
+    }
   }
 }

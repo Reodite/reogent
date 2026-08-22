@@ -44,7 +44,7 @@ function ToolBadge({
   const failed = isToolError(call.result);
   const loading = call.result === undefined;
   const description = describeToolCall(call.name, call.input);
-  const label = failed ? description.replace(/^Searched for /, "Failed to find ") : description;
+  const label = failed ? description.replace(/^Searched( for)? /, "Failed to find ") : description;
   return (
     <motion.span
       initial={reduce ? false : { opacity: 0, y: 4 }}
