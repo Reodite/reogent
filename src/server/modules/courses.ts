@@ -1,5 +1,15 @@
 import { formatSeconds } from "../core/time";
 import type { DatasetModule, SearchClient } from "../core/types";
+import {
+  BUCKET_KEYS,
+  buildRecordsFromDistributions,
+  defaultSession,
+  isSession,
+  type BucketKey,
+  type CourseCalRow,
+  type Session,
+  type SubjectRow,
+} from "../course-records";
 import { courseAverage, courseGrades } from "./grades";
 
 export interface CourseSection {
@@ -190,6 +200,39 @@ export const courses: DatasetModule = {
       },
       transform(doc: CourseDoc) {
         return { id: doc.code, doc };
+      },
+    },
+    {
+      index: "course_sessions",
+      settings: {
+        searchableAttributes: ["title", "code", "subject", "faculty"],
+        filterableAttributes: [
+          "code",
+          "subject",
+          "level",
+          "session",
+          "credits",
+          "faculty",
+          "term",
+          "average",
+          "reported",
+        ],
+        sortableAttributes: ["code", "average", "reported"],
+      },
+      async *read(store) {
+        const [distRows, calCourses, calSubjects] = (await Promise.all([
+          store.getJson("grades/distributions.json"),
+          store.getJson("academic-calendar/vancouver/courses.json"),
+          store.getJson("academic-calendar/vancouver/subjects.json"),
+        ])) as [Record<string, unknown>[], Row[], Row[]];
+        yield* buildRecordsFromDistributions({
+          distRows: distRows as unknown as Parameters<typeof buildRecordsFromDistributions>[0]["distRows"],
+          calCourses: calCourses as unknown as CourseCalRow[],
+          calSubjects: calSubjects as unknown as { id: string; name: string }[],
+        });
+      },
+      transform(doc) {
+        return { id: (doc as { id: string }).id, doc: doc as unknown as Record<string, unknown> };
       },
     },
   ],
