@@ -8,6 +8,7 @@ import {
   formatFullDate,
   formatMonthBadge,
   formatMonthHeading,
+  isSameDay,
   parseISODate,
   startOfMonth,
   toISODate,
@@ -19,6 +20,7 @@ import { useCalendarEvents } from "./use-calendar-events";
 const FUTURE_HORIZON_MONTHS = 24;
 const WEEKDAY_HEADERS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+type ViewMode = "month" | "agenda";
 type State = { cursor: string; kinds: CalendarEventKind[] };
 
 function groupByDate(events: CalendarEvent[]): Record<string, CalendarEvent[]> {
@@ -30,12 +32,19 @@ function groupByDate(events: CalendarEvent[]): Record<string, CalendarEvent[]> {
   return out;
 }
 
+/** Today anchored to UTC midnight — matches the ISO dates the API projects,
+ * so "today" highlights identically regardless of the viewer's timezone. */
+function getToday(): Date {
+  const now = new Date();
+  return parseISODate(toISODate(now));
+}
+
 export function CalendarPane({ state, setState }: { state: Partial<State>; setState: (s: Partial<State>) => void }) {
   const cursor = state.cursor ?? formatMonthBadge(new Date());
   const kinds = state.kinds?.length ? state.kinds : ["academic", "holiday"];
   const { events, error } = useCalendarEvents(cursor, kinds);
 
-  const today = useMemo(() => new Date(), []);
+  const today = useMemo(() => getToday(), []);
   const todayISO = toISODate(today);
   const cursorDate = parseISODate(`${cursor}-01`);
   const horizon = addMonths(startOfMonth(today), FUTURE_HORIZON_MONTHS);
@@ -58,25 +67,55 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     return d >= monthStart && d < monthEnd;
   });
   const eventsByDate = useMemo(() => groupByDate(monthEvents), [monthEvents]);
-  const [popoverDay, setPopoverDay] = useState<string | null>(null);
-  const popoverRows = useMemo(() => {
-    const rows = eventsByDate[popoverDay ?? ""] ?? [];
+
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const selectedRows = useMemo(() => {
+    const rows = eventsByDate[selectedDay ?? ""] ?? [];
     return rows.map((event, i) => ({ key: `${event.label}-${event.date}`, row: i, event }));
-  }, [eventsByDate, popoverDay]);
+  }, [eventsByDate, selectedDay]);
+
+  const upcoming = (events ?? [])
+    .filter((e) => e.date >= todayISO)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .slice(0, 20);
+  const upcomingRows = useMemo(
+    () => upcoming.map((e, i) => ({ key: `u-${e.date}-${e.label}`, row: i, event: e })),
+    [upcoming],
+  );
+  const upcomingByDate = useMemo(() => groupByDate(upcoming), [upcoming]);
+
+  const openDay = (iso: string) => setSelectedDay(iso);
+  const closeDay = () => setSelectedDay(null);
+
+  const goPrev = () => {
+    const next = addMonths(cursorDate, -1);
+    setState({ cursor: formatMonthBadge(next) });
+    announce(`Moved to ${formatMonthHeading(next)}`);
+  };
+
+  const goNext = () => {
+    const next = addMonths(cursorDate, 1);
+    setState({ cursor: formatMonthBadge(next) });
+    announce(`Moved to ${formatMonthHeading(next)}`);
+  };
+
+  const goToday = () => {
+    const next = startOfMonth(today);
+    setState({ cursor: formatMonthBadge(next) });
+    announce(`Moved to ${formatMonthHeading(next)}`);
+  };
 
   return (
-    <div data-calendar-pane className="flex h-full w-full flex-col gap-3 overflow-y-auto p-3 lg:p-6">
-      <section aria-label="Month grid" className="flex min-h-0 flex-1 flex-col gap-3">
-        <nav className="flex items-center justify-between gap-2" aria-label="Calendar month navigation">
+    <div data-calendar-pane className="flex h-full w-full flex-col overflow-y-auto p-3 lg:p-6">
+      {/* Navigation & header */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             data-calendar-nav="prev"
             aria-label="Previous month"
-            onClick={() => {
-              const next = addMonths(cursorDate, -1);
-              setState({ cursor: formatMonthBadge(next) });
-              announce(`Moved to ${formatMonthHeading(next)}`);
-            }}
+            onClick={goPrev}
             className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
           >
             <Icon name="left" size={18} />
@@ -84,170 +123,395 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           <button
             type="button"
             data-calendar-nav="today"
-            onClick={() => {
-              const next = startOfMonth(today);
-              setState({ cursor: formatMonthBadge(next) });
-              announce(`Moved to ${formatMonthHeading(next)}`);
-            }}
+            onClick={goToday}
             className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container min-h-9 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2"
           >
-            This month
+            Today
           </button>
           <button
             type="button"
             data-calendar-nav="next"
             aria-label="Next month"
             disabled={beyondHorizon}
-            onClick={() => {
-              const next = addMonths(cursorDate, 1);
-              setState({ cursor: formatMonthBadge(next) });
-              announce(`Moved to ${formatMonthHeading(next)}`);
-            }}
+            onClick={goNext}
             className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
           >
             <Icon name="right" size={18} />
           </button>
-        </nav>
-
-        <h2 data-calendar-heading className="text-center text-base font-medium tracking-[-0.01em]">
+        </div>
+        <h2 data-calendar-heading className="text-base font-medium tracking-[-0.01em]">
           {formatMonthHeading(cursorDate)}
         </h2>
-
-        <div className="text-muted grid grid-cols-7 gap-1 text-center font-mono text-xs tracking-wide uppercase">
-          {WEEKDAY_HEADERS.map((d) => (
-            <div key={d} aria-hidden>
-              {d[0]}
-            </div>
-          ))}
+        <div
+          className="neu-inset bg-surface-container-low flex rounded-lg p-0.5"
+          role="tablist"
+          aria-label="Calendar view"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "month"}
+            onClick={() => setViewMode("month")}
+            className={`focus-visible:ring-primary/40 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-offset-1 ${
+              viewMode === "month"
+                ? "neu-raised bg-surface text-primary"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            Month
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "agenda"}
+            onClick={() => setViewMode("agenda")}
+            className={`focus-visible:ring-primary/40 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-offset-1 ${
+              viewMode === "agenda"
+                ? "neu-raised bg-surface text-primary"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            Agenda
+          </button>
         </div>
+      </div>
 
-        <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-1">
-          {cells.map((cell) => {
-            if (!cell.date || !cell.iso) {
-              return <div key={cell.key} className="neu-inset min-h-[2.5rem] rounded-sm opacity-40" aria-hidden />;
-            }
-            const iso = cell.iso;
-            const d = cell.date;
-            const dayEvents = eventsByDate[iso] ?? [];
-            const isToday = iso === todayISO;
-            const hasEvents = dayEvents.length > 0;
-            return (
-              <div
-                key={cell.key}
-                data-calendar-day={iso}
-                {...(isToday ? { "data-calendar-today": iso } : {})}
-                className="neu-inset flex min-h-[2.5rem] flex-col items-stretch gap-0.5 rounded-sm p-1"
+      {/* Main content: grid + sidebar */}
+      <div className="flex min-h-0 flex-1 gap-6">
+        <section aria-label="Calendar" data-calendar-view={viewMode} className="flex min-h-0 flex-1 flex-col">
+          {viewMode === "month" ? (
+            <MonthGrid
+              cells={cells}
+              eventsByDate={eventsByDate}
+              todayISO={todayISO}
+              onDayClick={openDay}
+              selectedDay={selectedDay}
+            />
+          ) : (
+            <AgendaView eventsByDate={eventsByDate} todayISO={todayISO} onDayClick={openDay} />
+          )}
+        </section>
+
+        {/* Desktop sidebar: upcoming events */}
+        <aside data-calendar-upcoming className="hidden w-72 shrink-0 flex-col gap-3 lg:flex">
+          <h3 className="text-muted text-xs tracking-wide uppercase">Upcoming</h3>
+          {upcomingRows.length === 0 ? (
+            <p className="text-muted text-xs">No events upcoming.</p>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+              {Object.entries(upcomingByDate).map(([date, dayEvents]) => (
+                <div key={date}>
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <span className="text-on-surface text-xs font-medium">
+                      {isSameDay(parseISODate(date), today) ? "Today" : formatDayLabel(parseISODate(date))}
+                    </span>
+                    <span className="text-muted text-xs">{date}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {dayEvents.map((e) => (
+                      <button
+                        key={`${e.date}-${e.label}`}
+                        type="button"
+                        data-upcoming-event
+                        data-upcoming-date={e.date}
+                        onClick={() => openDay(e.date)}
+                        className="focus-visible:ring-primary/40 hover:bg-surface-container flex items-start gap-2 rounded-lg p-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
+                      >
+                        <span
+                          className={`mt-0.5 block h-full min-h-[1.5rem] w-1 shrink-0 rounded-full ${
+                            e.kind === "academic" ? "bg-primary" : "bg-tertiary"
+                          }`}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-on-surface truncate text-xs font-medium">{e.label}</p>
+                          <p className="text-muted truncate text-xs">
+                            {e.kind === "academic" ? "Academic" : "Holiday"}
+                            {e.tags.length > 0 && ` · ${e.tags[0]}`}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
+      </div>
+
+      {error && (
+        <div className="text-error mt-3 text-xs" role="alert">
+          {error.message}
+        </div>
+      )}
+
+      {/* Event detail panel (desktop slide-in) / bottom sheet (mobile) */}
+      {selectedDay && (
+        <EventDetailPanel
+          iso={selectedDay}
+          rows={selectedRows}
+          onClose={closeDay}
+          formatDate={formatFullDate}
+          parseISODate={parseISODate}
+        />
+      )}
+    </div>
+  );
+}
+
+function formatDayLabel(d: Date): string {
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function MonthGrid({
+  cells,
+  eventsByDate,
+  todayISO,
+  onDayClick,
+  selectedDay,
+}: {
+  cells: { date: Date | null; iso: string | null; key: string }[];
+  eventsByDate: Record<string, CalendarEvent[]>;
+  todayISO: string;
+  onDayClick: (iso: string) => void;
+  selectedDay: string | null;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="text-muted mb-1 grid grid-cols-7 text-center font-mono text-xs tracking-wide uppercase">
+        {WEEKDAY_HEADERS.map((d) => (
+          <div key={d} className="py-1" aria-hidden>
+            {d[0]}
+          </div>
+        ))}
+      </div>
+      <div className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-px">
+        {cells.map((cell) => {
+          if (!cell.date || !cell.iso) {
+            return <div key={cell.key} className="bg-surface-container-low min-h-[3rem] rounded-sm" aria-hidden />;
+          }
+          const iso = cell.iso;
+          const d = cell.date;
+          const dayEvents = eventsByDate[iso] ?? [];
+          const isToday = iso === todayISO;
+          const isSelected = iso === selectedDay;
+          const hasEvents = dayEvents.length > 0;
+          return (
+            <button
+              type="button"
+              key={cell.key}
+              data-calendar-day={iso}
+              {...(isToday ? { "data-calendar-today": iso } : {})}
+              className={`hover:bg-surface-container flex min-h-[3rem] cursor-pointer flex-col items-stretch gap-0.5 rounded-sm p-1 text-left transition-colors ${
+                isSelected ? "bg-surface-container ring-primary/20 ring-2 ring-inset" : "bg-surface"
+              }`}
+              onClick={() => onDayClick(iso)}
+              aria-label={`${formatFullDate(d)} — ${dayEvents.length} events`}
+            >
+              <span
+                className={
+                  isToday
+                    ? "bg-primary text-on-primary mx-0.5 flex size-6 items-center justify-center rounded-full text-xs font-semibold"
+                    : "text-muted mx-0.5 text-xs"
+                }
               >
+                {d.getUTCDate()}
+              </span>
+              {hasEvents && (
+                <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden" aria-hidden>
+                  {dayEvents.slice(0, 3).map((e) => (
+                    <span
+                      key={`${iso}-${e.label}`}
+                      data-calendar-marker={e.kind}
+                      className={
+                        (e.kind === "academic" ? "bg-primary/20 text-primary" : "bg-tertiary/20 text-tertiary") +
+                        " block truncate rounded-sm px-1 py-px text-xs leading-tight font-medium"
+                      }
+                    >
+                      {e.label}
+                    </span>
+                  ))}
+                  {dayEvents.length > 3 && (
+                    <span data-calendar-count={String(dayEvents.length)} className="text-muted font-mono text-xs">
+                      +{dayEvents.length - 3} more
+                    </span>
+                  )}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AgendaView({
+  eventsByDate,
+  todayISO,
+  onDayClick,
+}: {
+  eventsByDate: Record<string, CalendarEvent[]>;
+  todayISO: string;
+  onDayClick: (iso: string) => void;
+}) {
+  const sortedDates = useMemo(
+    () =>
+      Object.entries(eventsByDate)
+        .filter(([_, events]) => events.length > 0)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    [eventsByDate],
+  );
+
+  if (sortedDates.length === 0) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-muted text-xs">No events this month.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
+      {sortedDates.map(([date, dayEvents]) => {
+        const d = parseISODate(date);
+        const isToday = date === todayISO;
+        return (
+          <div key={date}>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-on-surface text-sm font-medium">{isToday ? "Today" : formatDayLabel(d)}</span>
+              <span className="text-muted font-mono text-xs">{date}</span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {dayEvents.map((e) => (
                 <button
+                  key={`${e.date}-${e.label}`}
                   type="button"
-                  onClick={() => hasEvents && setPopoverDay(iso)}
-                  disabled={!hasEvents}
-                  aria-label={`${formatFullDate(d)} — ${dayEvents.length} events`}
-                  className="focus-visible:ring-primary/40 self-start rounded-full font-mono text-xs focus-visible:ring-2 focus-visible:ring-offset-1"
+                  onClick={() => onDayClick(e.date)}
+                  className="focus-visible:ring-primary/40 hover:bg-surface-container flex items-start gap-3 rounded-lg p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
                 >
                   <span
-                    className={
-                      isToday
-                        ? "text-on-surface ring-primary/40 rounded-full px-1.5 font-semibold ring-2"
-                        : "text-muted"
-                    }
-                  >
-                    {d.getUTCDate()}
-                  </span>
+                    className={`mt-1 block h-full min-h-[2rem] w-1 shrink-0 rounded-full ${
+                      e.kind === "academic" ? "bg-primary" : "bg-tertiary"
+                    }`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-on-surface text-sm font-medium">{e.label}</p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <span className="text-muted text-xs">{e.kind === "academic" ? "Academic" : "Holiday"}</span>
+                      {e.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="bg-surface-container-high text-on-surface-variant rounded-full px-2 py-px text-xs font-medium"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  {e.source_url && (
+                    <span className="text-muted mt-1 shrink-0">
+                      <Icon name="externalLink" size={12} />
+                    </span>
+                  )}
                 </button>
-                {hasEvents && (
-                  <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden" aria-hidden>
-                    {dayEvents.slice(0, 3).map((e) => (
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EventDetailPanel({
+  iso,
+  rows,
+  onClose,
+  formatDate,
+  parseISODate: pISO,
+}: {
+  iso: string;
+  rows: { key: string; row: number; event: CalendarEvent }[];
+  onClose: () => void;
+  formatDate: (d: Date) => string;
+  parseISODate: (s: string) => Date;
+}) {
+  return (
+    <>
+      <div className="bg-surface/60 fixed inset-0 z-40 sm:hidden" aria-hidden onClick={onClose} />
+      <div
+        data-calendar-popover
+        role="dialog"
+        aria-label={`Events on ${formatDate(pISO(iso))}`}
+        className="bg-surface-container neu-panel fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl p-4 sm:static sm:mt-3 sm:max-h-none sm:rounded-xl"
+      >
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div>
+            <p className="text-on-surface text-sm font-medium">{formatDate(pISO(iso))}</p>
+            <p className="text-muted text-xs">
+              {rows.length} event{rows.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="focus-visible:ring-primary/40 text-muted hover:text-on-surface rounded-md p-1 transition-colors focus-visible:ring-2"
+          >
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+        <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto">
+          {rows.map(({ key, row, event: e }) => (
+            <li
+              key={key}
+              data-event-row={row}
+              className={
+                (e.kind === "academic" ? "bg-primary/10" : "bg-tertiary/10") +
+                " flex items-start gap-2.5 rounded-lg px-3 py-2.5"
+              }
+            >
+              <span
+                aria-hidden
+                className={`mt-0.5 h-4 w-1 shrink-0 rounded-full ${e.kind === "academic" ? "bg-primary" : "bg-tertiary"}`}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span data-event-label={e.label} className="text-on-surface text-xs font-medium">
+                    {e.label}
+                  </span>
+                  <span className="text-muted font-mono text-xs tracking-wide uppercase opacity-70">{e.kind}</span>
+                </div>
+                {e.tags.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {e.tags.map((tag) => (
                       <span
-                        key={`${iso}-${e.label}`}
-                        data-calendar-marker={e.kind}
-                        className={
-                          (e.kind === "academic"
-                            ? "bg-event-academic-container text-on-event-academic-container "
-                            : "bg-event-holiday-container text-on-event-holiday-container ") +
-                          "block truncate rounded-sm px-1 py-px text-xs leading-tight"
-                        }
+                        key={tag}
+                        className="bg-surface-container-high text-on-surface-variant rounded-full px-1.5 py-px text-xs font-medium"
                       >
-                        {e.label}
+                        {tag}
                       </span>
                     ))}
-                    {dayEvents.length > 3 && (
-                      <span data-calendar-count={String(dayEvents.length)} className="text-muted font-mono text-xs">
-                        +{dayEvents.length - 3} more
-                      </span>
-                    )}
                   </div>
                 )}
-              </div>
-            );
-          })}
-        </div>
-
-        {popoverDay && (
-          <>
-            <div
-              className="bg-surface/60 fixed inset-0 z-40 sm:hidden"
-              aria-hidden
-              onClick={() => setPopoverDay(null)}
-            />
-            <div
-              data-calendar-popover
-              role="dialog"
-              aria-label={`Events on ${formatFullDate(parseISODate(popoverDay))}`}
-              className="bg-surface-container neu-panel fixed inset-x-0 bottom-0 z-50 rounded-t-2xl p-4 sm:static sm:mt-3 sm:rounded-xl"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="text-muted text-xs">{formatFullDate(parseISODate(popoverDay))}</div>
-                <button
-                  type="button"
-                  aria-label="Close popover"
-                  onClick={() => setPopoverDay(null)}
-                  className="focus-visible:ring-primary/40 text-muted hover:text-on-surface rounded-md p-1 transition-colors focus-visible:ring-2"
-                >
-                  <Icon name="close" size={16} />
-                </button>
-              </div>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {popoverRows.map(({ key, row, event: e }) => (
-                  <li
-                    key={key}
-                    data-event-row={row}
-                    className={
-                      e.kind === "academic"
-                        ? "bg-event-academic-container text-on-event-academic-container rounded-md px-2 py-1.5"
-                        : "bg-event-holiday-container text-on-event-holiday-container rounded-md px-2 py-1.5"
-                    }
+                {e.source_url && (
+                  <a
+                    href={e.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary mt-1.5 inline-flex min-h-9 min-w-11 items-center gap-1 text-xs underline"
+                    title="Open source"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium">{e.label}</span>
-                      <span aria-hidden className="font-mono text-xs tracking-wide uppercase opacity-70">
-                        {e.kind}
-                      </span>
-                    </div>
-                    {e.source_url && (
-                      <a
-                        href={e.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary mt-1 inline-flex min-h-9 min-w-11 items-center text-xs underline"
-                        title="Open source"
-                      >
-                        Source
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </>
-        )}
-
-        {error && (
-          <div className="text-error text-xs" role="alert">
-            {error.message}
-          </div>
-        )}
-      </section>
-    </div>
+                    <Icon name="externalLink" size={12} />
+                    Source
+                  </a>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </>
   );
 }

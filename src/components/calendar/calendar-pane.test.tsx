@@ -2,7 +2,7 @@
 import fixture from "@/__fixtures__/calendar-events.json";
 import { CalendarPane } from "@/src/components/calendar/calendar-pane";
 import type { CalendarEvent } from "@/src/shared/calendar/event";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fixtureEvents = fixture.output as CalendarEvent[];
@@ -114,13 +114,13 @@ describe("Property 27 — days with k > 3 events indicate the overflow count (RE
 });
 
 describe("Property 28 — today's cell receives the 'today' style independent of event markers (REQ-17.4)", () => {
-  it("a today cell with no events still carries data-calendar-today + the ring-2 class", async () => {
+  it("a today cell with no events still carries data-calendar-today + the filled primary date circle", async () => {
     const { container, restore } = renderPane({ cursor: "2024-04" });
     await waitFor(() => expect(container.querySelector('[data-calendar-today="2024-04-15"]')).not.toBeNull());
     const todayCell = container.querySelector('[data-calendar-today="2024-04-15"]') as HTMLElement;
-    const numSpan = todayCell.querySelector("button > span");
-    expect(numSpan?.className).toContain("ring-2");
-    expect(numSpan?.className).toContain("ring-primary/40");
+    const numSpan = todayCell.querySelector(":scope > span");
+    expect(numSpan?.className).toContain("bg-primary");
+    expect(numSpan?.className).toContain("rounded-full");
     expect(todayCell.querySelectorAll("[data-calendar-marker]")).toHaveLength(0);
     restore();
   });
@@ -190,7 +190,7 @@ describe("20.13 + Property 27b — multi-event-day popover enumerates each event
     ];
     const { container, restore } = renderPane({ cursor: "2024-09" }, events);
     const cell = await waitForCell(container, "2024-09-17", "[data-calendar-marker]");
-    const dayButton = cell.querySelector("button") as HTMLElement;
+    const dayButton = cell; // the day cell is itself the clickable button in the redesigned grid
     expect(dayButton.hasAttribute("disabled")).toBe(false);
     act(() => {
       fireEvent.click(dayButton);
@@ -199,7 +199,7 @@ describe("20.13 + Property 27b — multi-event-day popover enumerates each event
     const popover = container.querySelector("[data-calendar-popover]");
     const rows = popover?.querySelectorAll("[data-event-row]");
     expect(rows).toHaveLength(3);
-    const labels = Array.from(rows ?? []).map((r) => r.querySelector("span")?.textContent ?? "");
+    const labels = Array.from(rows ?? []).map((r) => r.querySelector("[data-event-label]")?.textContent ?? "");
     expect(labels).toContain("Add/drop deadline");
     expect(labels).toContain("National Day for Truth and Reconciliation");
     expect(labels).toContain("Midterm exam week begins");
@@ -210,6 +210,45 @@ describe("20.13 + Property 27b — multi-event-day popover enumerates each event
         (a) => a.getAttribute("href") === "https://students.ubc.ca/enrolled/important-dates",
       ),
     ).toBe(true);
+    restore();
+  });
+});
+
+describe("Redesign — view toggle switches between month grid and agenda list", () => {
+  it("defaults to the month grid and renders the agenda list when the Agenda tab is clicked", async () => {
+    const { container, restore } = renderPane({ cursor: "2024-09" });
+    await waitFor(() => expect(container.querySelector("[data-calendar-day]")).not.toBeNull());
+    expect(container.querySelector("[data-calendar-view='month']")).not.toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Agenda" }));
+    expect(container.querySelector("[data-calendar-view='agenda']")).not.toBeNull();
+    expect(container.querySelector("[data-calendar-day]")).toBeNull();
+    restore();
+  });
+});
+
+describe("Redesign — upcoming sidebar lists future events grouped by date (desktop)", () => {
+  it("shows the Upcoming heading and one entry per upcoming event, none from the past", async () => {
+    const { container, restore } = renderPane({ cursor: "2024-04" });
+    await waitFor(() => expect(container.querySelector("[data-calendar-upcoming]")).not.toBeNull());
+    const rows = container.querySelectorAll("[data-calendar-upcoming] [data-upcoming-event]");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      const date = row.getAttribute("data-upcoming-date") ?? "";
+      expect(date >= "2024-04-15").toBe(true);
+    }
+    restore();
+  });
+});
+
+describe("Redesign — clicking a day opens the detail panel with tags and kind", () => {
+  it("opens on a single-event day and closes via the close button", async () => {
+    const { container, restore } = renderPane({ cursor: "2025-02" });
+    const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
+    fireEvent.click(cell);
+    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
+    expect(container.querySelectorAll("[data-event-row]")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).toBeNull());
     restore();
   });
 });
