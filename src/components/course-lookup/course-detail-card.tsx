@@ -5,7 +5,6 @@ import { GradeDistributionChart } from "@/src/components/course-lookup/grade-dis
 import { SectionRow } from "@/src/components/course-lookup/section-row";
 import { Icon } from "@/src/components/icons";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
-import { getTermLabel } from "@/src/server/course-records";
 
 function FieldRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -37,18 +36,24 @@ function SectionTable({ sections }: { sections: CourseSection[] }) {
   );
 }
 
-function formatPct(v: unknown): string {
-  if (typeof v !== "number" || !Number.isFinite(v)) return "N/A";
+function formatPct(v: unknown): string | null {
+  if (typeof v !== "number" || !Number.isFinite(v)) return null;
   return `${Math.round(v)}%`;
 }
 
 function StatBox({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface-container flex flex-col items-center gap-0.5 rounded-lg px-2 py-2">
-      <span className="text-muted text-[10px] font-medium tracking-[0.05em] uppercase">{label}</span>
+    <div className="neu-inset bg-surface-container-low flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-2 py-2">
+      <span className="text-muted text-xs font-medium tracking-[0.05em] uppercase">{label}</span>
       <span className="text-sm font-medium">{children}</span>
     </div>
   );
+}
+
+/** Stat well that renders only when the value exists — dead "N/A" cells are omitted (REQ-2.2). */
+function DefinedStat({ label, value }: { label: string; value: string | null | undefined }) {
+  if (value == null) return null;
+  return <StatBox label={label}>{value}</StatBox>;
 }
 
 /** Course Record renderer. Null-or-empty fields are omitted rather than shown as placeholders (REQ-2.2). The Prereq Tree affordance opens the tree pane rooted at this course (REQ-4.1). */
@@ -81,7 +86,8 @@ export function CourseDetailCard({
   return (
     <article className="bg-surface-container-low flex flex-col gap-2.5 rounded-lg p-3">
       <header className="flex flex-wrap items-baseline gap-1.5">
-        <h3 className="font-mono text-base leading-tight font-medium">{record.code}</h3>
+        {/* Catalog codes carry a _V campus suffix after the subject; display strips it. */}
+        <h3 className="font-mono text-base leading-tight font-medium">{record.code.replace(/_V(?=\b|$)/, "")}</h3>
         {sess && (
           <span className="bg-surface-container text-on-surface-variant rounded-full px-2 py-0.5 text-xs">{sess}</span>
         )}
@@ -124,7 +130,6 @@ export function CourseDetailCard({
 function CourseStatsBand({ record, isRecent }: { record: Record<string, unknown>; isRecent: boolean }) {
   const avg = record.average as number | undefined;
   const reported = record.reported as number | undefined;
-  const term = record.term;
   const high = record.high as number | null | undefined;
   const low = record.low as number | null | undefined;
   const weightedMedian = record.weightedMedian as number | null | undefined;
@@ -133,36 +138,31 @@ function CourseStatsBand({ record, isRecent }: { record: Record<string, unknown>
   const p25 = record.p25 as number | null | undefined;
   const p75 = record.p75 as number | null | undefined;
 
-  if (!isRecent) {
-    return (
-      <div className="grid grid-cols-5 gap-1.5">
-        <StatBox label="Average">{avg != null ? `${avg.toFixed(1)}%` : "N/A"}</StatBox>
-        <StatBox label="Enrolled">{reported != null ? reported.toLocaleString() : "N/A"}</StatBox>
-        <StatBox label="Median">{weightedMedian != null ? `${weightedMedian.toFixed(1)}%` : "N/A"}</StatBox>
-        <StatBox label="High">{formatPct(high)}</StatBox>
-        <StatBox label="Low">{formatPct(low)}</StatBox>
-      </div>
-    );
-  }
+  // TERM is dropped: session already shows in the header chip and the field is
+  // absent from per-session records.
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="grid grid-cols-5 gap-1.5">
-        <StatBox label="Average">{avg != null ? `${avg.toFixed(1)}%` : "N/A"}</StatBox>
-        <StatBox label="Term">{getTermLabel(term)}</StatBox>
-        <StatBox label="Enrolled">{reported != null ? reported.toLocaleString() : "N/A"}</StatBox>
-        <StatBox label="High">{formatPct(high)}</StatBox>
-        <StatBox label="Low">{formatPct(low)}</StatBox>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        <DefinedStat label="Average" value={avg != null ? `${avg.toFixed(1)}%` : null} />
+        <DefinedStat label="Enrolled" value={reported != null ? reported.toLocaleString() : null} />
+        <DefinedStat label="High" value={formatPct(high)} />
+        <DefinedStat label="Low" value={formatPct(low)} />
       </div>
-      <details className="group">
-        <summary className="text-primary cursor-pointer list-none text-right text-xs underline">Advanced Stats</summary>
-        <div className="mt-1.5 grid grid-cols-5 gap-1.5">
-          <StatBox label="Median">{weightedMedian != null ? `${weightedMedian.toFixed(1)}%` : "N/A"}</StatBox>
-          <StatBox label="Mode">{mode ?? "N/A"}</StatBox>
-          <StatBox label="Std Dev">{stdDev != null && Number.isFinite(stdDev) ? stdDev.toFixed(1) : "N/A"}</StatBox>
-          <StatBox label="25th %ile">{formatPct(p25)}</StatBox>
-          <StatBox label="75th %ile">{formatPct(p75)}</StatBox>
-        </div>
-      </details>
+      {isRecent && (
+        <details className="group rounded-lg">
+          <summary className="text-on-surface-variant hover:text-on-surface flex min-h-[44px] cursor-pointer list-none items-center justify-end gap-1 text-xs font-medium [&::-webkit-details-marker]:hidden">
+            Advanced stats
+            <Icon name="down" size={14} className="transition-transform duration-150 group-open:rotate-180" />
+          </summary>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+            <DefinedStat label="Median" value={weightedMedian != null ? `${weightedMedian.toFixed(1)}%` : null} />
+            <DefinedStat label="Mode" value={mode ?? null} />
+            <DefinedStat label="Std Dev" value={stdDev != null && Number.isFinite(stdDev) ? stdDev.toFixed(1) : null} />
+            <DefinedStat label="25th %ile" value={formatPct(p25)} />
+            <DefinedStat label="75th %ile" value={formatPct(p75)} />
+          </div>
+        </details>
+      )}
     </div>
   );
 }

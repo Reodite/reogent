@@ -59,6 +59,7 @@ export interface ChatApi {
     digit?: number;
     session?: string;
     sort?: string;
+    faculty?: string;
   }): Promise<{
     courses: (CourseDoc & {
       session?: string;
@@ -251,6 +252,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       if (params.digit !== undefined) sp.set("digit", String(params.digit));
       if (params.session) sp.set("session", params.session);
       if (params.sort) sp.set("sort", params.sort);
+      if (params.faculty) sp.set("faculty", params.faculty);
       return request<{ courses: CourseDoc[]; subject_total?: number; session?: string }>(`/courses?${sp.toString()}`);
     },
     getPrereqTree: (root) => request<PrereqGraph>(`/prereq-tree?root=${encodeURIComponent(root)}`),
