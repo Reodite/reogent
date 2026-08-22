@@ -270,6 +270,7 @@ export const courses: DatasetModule = {
                 description:
                   "Sort order: relevance/code/grade_avg (pooled), students/average (session). Default: relevance when query present, code otherwise.",
               },
+              faculty: { type: "string", description: "Faculty, e.g. Faculty of Science" },
               limit: { type: "number", description: "Max results (default 20, cap 50)" },
             },
             required: [],
@@ -283,6 +284,7 @@ export const courses: DatasetModule = {
           subject,
           level,
           credits,
+          faculty,
           has_no_prereqs,
           term,
           min_grade_avg,
@@ -301,6 +303,7 @@ export const courses: DatasetModule = {
         if (subject) filters.push(`subject = '${upSubject(String(subject))}'`);
         if (level !== undefined) filters.push(`level = ${Number(level)}`);
         if (credits !== undefined) filters.push(`credits = ${credits}`);
+        if (faculty) filters.push(`faculty = '${String(faculty).replace(/'/g, "\\'")}'`);
         if (has_no_prereqs) filters.push("prerequisite IS NULL");
         if (term) filters.push(`terms = '${String(term)}'`);
         const sortBy = String(sort ?? "");

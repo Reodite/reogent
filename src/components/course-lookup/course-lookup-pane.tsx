@@ -1,6 +1,7 @@
 "use client";
 
 import { CourseDetailCard } from "@/src/components/course-lookup/course-detail-card";
+import { CourseExplorer } from "@/src/components/course-lookup/course-explorer";
 import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";
@@ -43,8 +44,18 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
     if (record) setState({ session });
   }, [record, session, setState]);
 
+  const [exploreOpen, setExploreOpen] = useState(false);
+
   return (
     <div className="flex h-full flex-col gap-3 p-3">
+      <button
+        type="button"
+        onClick={() => setExploreOpen((v) => !v)}
+        className="text-primary border-primary hover:bg-accent-subtle inline-flex min-h-[44px] items-center justify-center rounded-lg border px-3 text-xs font-medium"
+      >
+        {exploreOpen ? "Hide browse" : "Browse courses"}
+      </button>
+      {exploreOpen && <CourseExplorer onSelect={setCode} />}
       <div className="flex items-center gap-2">
         <label htmlFor="course-session" className="text-muted text-xs font-medium">
           Session

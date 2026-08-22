@@ -26,6 +26,7 @@ export async function GET(request: Request): Promise<Response> {
     const digit = digitRaw === null ? NaN : Number(digitRaw);
     const sessionRaw = (url.searchParams.get("session") ?? "").trim();
     const sort = (url.searchParams.get("sort") ?? "").trim();
+    const faculty = (url.searchParams.get("faculty") ?? "").trim();
     const session = sessionRaw ? sessionRaw : defaultSession();
     if (sessionRaw && !isSession(sessionRaw)) {
       return json({ error: `Unknown session "${sessionRaw}"` }, 400);
@@ -56,6 +57,7 @@ export async function GET(request: Request): Promise<Response> {
                 : (["code:asc"] as string[]);
       const filters: string[] = [`session = '${session}'`];
       if (subject) filters.push(`subject = '${upSubject(subject)}'`);
+      if (faculty) filters.push(`faculty = '${faculty.replace(/'/g, "\\'")}'`);
       if (level && Number.isInteger(digit)) {
         // level filtering is code-based; fetch then filter to keep Meilisearch simple.
       }
