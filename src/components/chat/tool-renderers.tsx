@@ -430,8 +430,10 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                   onClick={(e) => {
                     e.stopPropagation();
                     setUserDismissedPane(false);
-                    setAnswerSheetOpen(true);
-                    setRightPaneCollapsed(false);
+                    if (workspaceView !== null) {
+                      setAnswerSheetOpen(true);
+                      setRightPaneCollapsed(false);
+                    }
                   }}
                   className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
                 >
@@ -462,8 +464,10 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
               onClick={(e) => {
                 e.stopPropagation();
                 setUserDismissedPane(false);
-                setAnswerSheetOpen(true);
-                setRightPaneCollapsed(false);
+                if (workspaceView !== null) {
+                  setAnswerSheetOpen(true);
+                  setRightPaneCollapsed(false);
+                }
               }}
               className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
