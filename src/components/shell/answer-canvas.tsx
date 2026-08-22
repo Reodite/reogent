@@ -15,8 +15,26 @@ import { useCallback, useRef } from "react";
  * differ only in the surrounding context.
  */
 export function AnswerCanvas({ view }: { view: CanvasView | null }) {
-  if (view === null) return <AnswerCanvasIdle />;
-  return <ActiveCanvasView view={view} />;
+  const { setRightPaneCollapsed, setAnswerSheetOpen, setUserDismissedPane } = useChatShell();
+  const onClose = () => {
+    setRightPaneCollapsed(true);
+    setAnswerSheetOpen(false);
+    setUserDismissedPane(true);
+  };
+  const paneId = view && PANE_BY_ID[view.paneId] ? view.paneId : "map";
+  const label = view && PANE_BY_ID[view.paneId] ? PANE_BY_ID[view.paneId].label : "Campus map";
+  return (
+    <section
+      aria-label="Answer canvas"
+      data-pane={paneId}
+      className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl"
+    >
+      <AnswerCanvasTitlebar label={label} onClose={onClose} />
+      <div className="min-h-0 flex-1 overflow-auto">
+        {view === null ? <AnswerCanvasIdle /> : <ActiveCanvasView view={view} />}
+      </div>
+    </section>
+  );
 }
 
 /**
@@ -27,15 +45,30 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
  * intentionally does not, to keep its viewport edge-to-edge.
  */
 function AnswerCanvasIdle() {
+  return <MapArea />;
+}
+
+function AnswerCanvasTitlebar({ label, onClose }: { label: string; onClose: () => void }) {
   return (
-    <section aria-label="Answer canvas" data-pane="map" className="h-full w-full">
-      <MapArea />
-    </section>
+    <header className="flex shrink-0 items-center gap-2 px-4 py-3">
+      <span className="bg-surface-container-low text-primary grid size-7 shrink-0 place-items-center rounded-lg">
+        <Icon name="map" size={16} />
+      </span>
+      <h2 className="min-w-0 flex-1 truncate text-base font-medium tracking-[-0.01em]">{label}</h2>
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+      >
+        <Icon name="close" size={18} />
+      </button>
+    </header>
   );
 }
 
 function ActiveCanvasView({ view }: { view: CanvasView }) {
-  const { setWorkspaceView, setRightPaneCollapsed, setAnswerSheetOpen, setUserDismissedPane } = useChatShell();
+  const { setWorkspaceView } = useChatShell();
   const entry = PANE_BY_ID[view.paneId];
 
   // Real setState: merges the pane's partial state back into `workspaceView`,
@@ -59,40 +92,12 @@ function ActiveCanvasView({ view }: { view: CanvasView }) {
   if (!entry) return <AnswerCanvasIdle />;
 
   if (view.paneId === "map") {
-    return (
-      <section aria-label="Answer canvas" data-pane="map" className="h-full w-full">
-        <MapArea />
-      </section>
-    );
+    return <MapArea />;
   }
 
   return (
-    <section
-      aria-label="Answer canvas"
-      data-pane={view.paneId}
-      className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl"
-    >
-      <header className="flex shrink-0 items-center gap-2 px-4 py-3">
-        <span className="bg-surface-container-low text-primary grid size-7 shrink-0 place-items-center rounded-lg">
-          <entry.icon className="size-4" />
-        </span>
-        <h2 className="min-w-0 flex-1 text-base font-medium tracking-[-0.01em]">{entry.label}</h2>
-        <button
-          type="button"
-          aria-label="Close"
-          onClick={() => {
-            setRightPaneCollapsed(true);
-            setAnswerSheetOpen(false);
-            setUserDismissedPane(true);
-          }}
-          className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-        >
-          <Icon name="close" size={18} />
-        </button>
-      </header>
-      <div className="min-h-0 flex-1 overflow-auto">
-        <entry.Component state={view.state} setState={setState} />
-      </div>
-    </section>
+    <div className="h-full">
+      <entry.Component state={view.state} setState={setState} />
+    </div>
   );
 }
