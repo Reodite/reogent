@@ -2,7 +2,7 @@
 import fixture from "@/__fixtures__/calendar-events.json";
 import { CalendarPane } from "@/src/components/calendar/calendar-pane";
 import type { CalendarEvent } from "@/src/shared/calendar/event";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fixtureEvents = fixture.output as CalendarEvent[];
@@ -210,18 +210,6 @@ describe("20.13 + Property 27b — multi-event-day popover enumerates each event
         (a) => a.getAttribute("href") === "https://students.ubc.ca/enrolled/important-dates",
       ),
     ).toBe(true);
-    restore();
-  });
-});
-
-describe("Redesign — view toggle switches between month grid and agenda list", () => {
-  it("defaults to the month grid and renders the agenda list when the Agenda tab is clicked", async () => {
-    const { container, restore } = renderPane({ cursor: "2024-09" });
-    await waitFor(() => expect(container.querySelector("[data-calendar-day]")).not.toBeNull());
-    expect(container.querySelector("[data-calendar-view='month']")).not.toBeNull();
-    fireEvent.click(screen.getByRole("tab", { name: "Agenda" }));
-    expect(container.querySelector("[data-calendar-view='agenda']")).not.toBeNull();
-    expect(container.querySelector("[data-calendar-day]")).toBeNull();
     restore();
   });
 });

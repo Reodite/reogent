@@ -20,7 +20,6 @@ import { useCalendarEvents } from "./use-calendar-events";
 const FUTURE_HORIZON_MONTHS = 24;
 const WEEKDAY_HEADERS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-type ViewMode = "month" | "agenda";
 type State = { cursor: string; kinds: CalendarEventKind[] };
 
 function groupByDate(events: CalendarEvent[]): Record<string, CalendarEvent[]> {
@@ -68,7 +67,6 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   });
   const eventsByDate = useMemo(() => groupByDate(monthEvents), [monthEvents]);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [clickPos, setClickPos] = useState<{ x: number; y: number } | null>(null);
   const selectedRows = useMemo(() => {
@@ -149,55 +147,19 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
         <h2 data-calendar-heading className="text-base font-medium tracking-[-0.01em]">
           {formatMonthHeading(cursorDate)}
         </h2>
-        <div
-          className="neu-inset bg-surface-container-low flex rounded-lg p-0.5"
-          role="tablist"
-          aria-label="Calendar view"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === "month"}
-            onClick={() => setViewMode("month")}
-            className={`focus-visible:ring-primary/40 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-offset-1 ${
-              viewMode === "month"
-                ? "neu-raised bg-surface text-primary"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            Month
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={viewMode === "agenda"}
-            onClick={() => setViewMode("agenda")}
-            className={`focus-visible:ring-primary/40 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-offset-1 ${
-              viewMode === "agenda"
-                ? "neu-raised bg-surface text-primary"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            Agenda
-          </button>
-        </div>
       </div>
 
       {/* Main content: grid + sidebar */}
       <div className="flex min-h-0 flex-1 gap-6">
-        <section aria-label="Calendar" data-calendar-view={viewMode} className="flex min-h-0 flex-1 flex-col">
-          {viewMode === "month" ? (
-            <MonthGrid
-              cells={cells}
-              eventsByDate={eventsByDate}
-              todayISO={todayISO}
-              cursorDate={cursorDate}
-              onDayClick={(iso, clientX, clientY) => openDay(iso, clientX, clientY)}
-              selectedDay={selectedDay}
-            />
-          ) : (
-            <AgendaView eventsByDate={eventsByDate} todayISO={todayISO} onDayClick={openDay} />
-          )}
+        <section aria-label="Calendar" className="flex min-h-0 flex-1 flex-col">
+          <MonthGrid
+            cells={cells}
+            eventsByDate={eventsByDate}
+            todayISO={todayISO}
+            cursorDate={cursorDate}
+            onDayClick={(iso, clientX, clientY) => openDay(iso, clientX, clientY)}
+            selectedDay={selectedDay}
+          />
         </section>
 
         {/* Desktop sidebar: upcoming events */}
@@ -349,83 +311,6 @@ function MonthGrid({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function AgendaView({
-  eventsByDate,
-  todayISO,
-  onDayClick,
-}: {
-  eventsByDate: Record<string, CalendarEvent[]>;
-  todayISO: string;
-  onDayClick: (iso: string) => void;
-}) {
-  const sortedDates = useMemo(
-    () =>
-      Object.entries(eventsByDate)
-        .filter(([_, events]) => events.length > 0)
-        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
-    [eventsByDate],
-  );
-
-  if (sortedDates.length === 0) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <p className="text-muted text-xs">No events this month.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-      {sortedDates.map(([date, dayEvents]) => {
-        const d = parseISODate(date);
-        const isToday = date === todayISO;
-        return (
-          <div key={date}>
-            <div className="mb-2 flex items-center gap-2">
-              <span className="text-on-surface text-sm font-medium">{isToday ? "Today" : formatDayLabel(d)}</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {dayEvents.map((e) => (
-                <button
-                  key={`${e.date}-${e.label}`}
-                  type="button"
-                  onClick={() => onDayClick(e.date)}
-                  className="focus-visible:ring-primary/40 hover:bg-surface-container flex items-start gap-3 rounded-lg p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
-                >
-                  <span
-                    className={`mt-1 block h-full min-h-[2rem] w-1 shrink-0 rounded-full ${
-                      e.kind === "academic" ? "bg-primary" : "bg-tertiary"
-                    }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-on-surface text-sm font-medium">{e.label}</p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                      <span className="text-muted text-xs">{e.kind === "academic" ? "Academic" : "Holiday"}</span>
-                      {e.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="bg-surface-container-high text-on-surface-variant rounded-full px-2 py-px text-xs font-medium"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  {e.source_url && (
-                    <span className="text-muted mt-1 shrink-0">
-                      <Icon name="externalLink" size={12} />
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
