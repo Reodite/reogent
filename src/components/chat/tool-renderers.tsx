@@ -420,7 +420,10 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                 <button
                   key={room.eid ?? i}
                   type="button"
-                  onClick={() => setActiveChannel("map", {})}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveChannel("map", {});
+                  }}
                   className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
                 >
                   <div className="flex min-w-0 flex-col gap-0.5">
@@ -447,7 +450,10 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
             <button
               key={s.id}
               type="button"
-              onClick={() => setActiveChannel("map", {})}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveChannel("map", {});
+              }}
               className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
               <div className="flex min-w-0 flex-col gap-0.5">
