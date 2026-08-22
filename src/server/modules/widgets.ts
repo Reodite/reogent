@@ -7,8 +7,6 @@ function parseQuery(type: string, query: string): Record<string, unknown> {
       return { query, limit: 6 };
     case "course_detail":
       return { course_code: query };
-    case "prereq_tree":
-      return { course_code: query };
     case "tuition": {
       const parts = query.split(/\s+/);
       const programSlug = parts[0]?.toLowerCase() ?? "";
@@ -67,7 +65,6 @@ export function createWidgetsModule(modules: DatasetModule[]): DatasetModule {
                   enum: [
                     "courses",
                     "course",
-                    "prereq_tree",
                     "tuition",
                     "route",
                     "building",
@@ -80,12 +77,12 @@ export function createWidgetsModule(modules: DatasetModule[]): DatasetModule {
                     "key_dates",
                   ],
                   description:
-                    'What to show: "courses" (course search results), "course" (one course), "prereq_tree" (prerequisite graph), "tuition" (rates), "route" (walking distance), "building" (location), "places" (POIs), "event" (campus event), "study_spaces" (study areas and free library rooms), "grades" (grade distribution for a course), "parking" (parking lots), "program" (admission programs), "key_dates" (academic calendar dates)',
+                    'What to show: "courses" (course search results), "course" (one course), "tuition" (rates), "route" (walking distance), "building" (location), "places" (POIs), "event" (campus event), "study_spaces" (study areas and free library rooms), "grades" (grade distribution for a course), "parking" (parking lots), "program" (admission programs), "key_dates" (academic calendar dates)',
                 },
                 query: {
                   type: "string",
                   description:
-                    'What to display: for courses a keyword, for course/course_detail a code like "CPSC 110", for prereq_tree a course code, for tuition a program name + type, for route "from X to Y", for building a name/code, for places keywords + "near X", for event keywords + a date range, for study_spaces keywords or a building, for grades a course code, for parking keywords or "near X", for program a program keyword, for key_dates keywords like "withdrawal deadline"',
+                    'What to display: for courses a keyword, for course a code like "CPSC 110", for tuition a program name + type, for route "from X to Y", for building a name/code, for places keywords + "near X", for event keywords + a date range, for study_spaces keywords or a building, for grades a course code, for parking keywords or "near X", for program a program keyword, for key_dates keywords like "withdrawal deadline"',
                 },
               },
               required: ["type", "query"],
@@ -98,7 +95,6 @@ export function createWidgetsModule(modules: DatasetModule[]): DatasetModule {
           const toolName = {
             courses: "find_courses",
             course: "get_course",
-            prereq_tree: "get_prereq_tree",
             tuition: "get_costs",
             route: "walking_distance",
             building: "find_building",
