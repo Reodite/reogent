@@ -191,6 +191,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
               cells={cells}
               eventsByDate={eventsByDate}
               todayISO={todayISO}
+              cursorDate={cursorDate}
               onDayClick={(iso, clientX, clientY) => openDay(iso, clientX, clientY)}
               selectedDay={selectedDay}
             />
@@ -274,12 +275,14 @@ function MonthGrid({
   cells,
   eventsByDate,
   todayISO,
+  cursorDate,
   onDayClick,
   selectedDay,
 }: {
   cells: { date: Date | null; iso: string | null; key: string }[];
   eventsByDate: Record<string, CalendarEvent[]>;
   todayISO: string;
+  cursorDate: Date;
   onDayClick: (iso: string, clientX: number, clientY: number) => void;
   selectedDay: string | null;
 }) {
@@ -295,11 +298,12 @@ function MonthGrid({
       <div className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-px overflow-hidden rounded-xl">
         {cells.map((cell) => {
           if (!cell.date || !cell.iso) {
-            return <div key={cell.key} className="min-h-[3rem]" aria-hidden />;
+            return <div key={cell.key} className="bg-surface/70 min-h-[3rem] rounded-lg" aria-hidden />;
           }
           const iso = cell.iso;
           const d = cell.date;
-          const dayEvents = eventsByDate[iso] ?? [];
+          const isCurrentMonth = d.getUTCMonth() === cursorDate.getUTCMonth();
+          const dayEvents = isCurrentMonth ? (eventsByDate[iso] ?? []) : [];
           const isToday = iso === todayISO;
           const isSelected = iso === selectedDay;
           const hasEvents = dayEvents.length > 0;
@@ -309,22 +313,18 @@ function MonthGrid({
               key={cell.key}
               data-calendar-day={iso}
               {...(isToday ? { "data-calendar-today": iso } : {})}
-              className={`flex min-h-[3rem] cursor-pointer flex-col items-stretch gap-0.5 p-1.5 text-left transition-colors duration-150 ${
-                isSelected ? "bg-accent-subtle" : "bg-surface"
+              className={`flex min-h-[3rem] cursor-pointer flex-col items-stretch gap-0.5 rounded-lg p-1.5 text-left transition-colors duration-150 ${
+                isSelected ? "bg-accent-subtle" : isCurrentMonth ? "bg-surface" : "bg-surface/70"
               }`}
               onClick={(e) => onDayClick(iso, e.clientX, e.clientY)}
-              aria-label={`${formatFullDate(d)} — ${dayEvents.length} events`}
+              aria-label={`${formatFullDate(d)}${hasEvents ? ` — ${dayEvents.length} events` : ""}`}
             >
               <span
-                className={
-                  isToday
-                    ? "bg-primary text-on-primary mx-0.5 flex size-6 items-center justify-center rounded-full text-xs font-semibold"
-                    : "text-muted mx-0.5 text-xs"
-                }
+                className={`mx-0.5 text-xs ${isToday ? "bg-primary text-on-primary flex size-6 items-center justify-center rounded-full font-semibold" : isCurrentMonth ? "text-muted" : "text-muted/40"}`}
               >
                 {d.getUTCDate()}
               </span>
-              {hasEvents && (
+              {isCurrentMonth && hasEvents && (
                 <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden" aria-hidden>
                   {dayEvents.slice(0, 3).map((e) => (
                     <span
@@ -446,14 +446,22 @@ function EventDetailPanel({
   parseISODate: (s: string) => Date;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const onPointer = (e: PointerEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
+    };
     document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
     closeRef.current?.focus();
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
   }, [onClose]);
 
   const inWinX = typeof window !== "undefined" ? window.innerWidth : 1024;
@@ -536,21 +544,23 @@ function EventDetailPanel({
   return (
     <>
       <div className="bg-surface/60 fixed inset-0 z-40 sm:hidden" aria-hidden onClick={onClose} />
-      <div
-        data-calendar-popover
-        role="dialog"
-        aria-label={`Events on ${formatDate(pISO(iso))}`}
-        className="neu-panel bg-surface-container fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl p-4 sm:hidden"
-      >
-        {inner}
-      </div>
-      <div
-        role="dialog"
-        aria-label={`Events on ${formatDate(pISO(iso))}`}
-        className="neu-panel bg-surface-container fixed z-50 hidden w-80 rounded-xl p-4 sm:block"
-        style={{ left, top }}
-      >
-        {inner}
+      <div ref={panelRef}>
+        <div
+          data-calendar-popover
+          role="dialog"
+          aria-label={`Events on ${formatDate(pISO(iso))}`}
+          className="neu-panel bg-surface-container fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl p-4 sm:hidden"
+        >
+          {inner}
+        </div>
+        <div
+          role="dialog"
+          aria-label={`Events on ${formatDate(pISO(iso))}`}
+          className="neu-panel bg-surface-container fixed z-50 hidden w-80 rounded-xl p-4 sm:block"
+          style={{ left, top }}
+        >
+          {inner}
+        </div>
       </div>
     </>
   );
