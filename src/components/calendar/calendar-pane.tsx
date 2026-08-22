@@ -292,7 +292,7 @@ function MonthGrid({
           </div>
         ))}
       </div>
-      <div className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-px overflow-hidden rounded-xl">
+      <div className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-px overflow-hidden rounded-xl p-1">
         {cells.map((cell) => {
           if (!cell.date || !cell.iso) {
             return <div key={cell.key} className="bg-surface/70 min-h-[3rem] rounded-lg" aria-hidden />;
