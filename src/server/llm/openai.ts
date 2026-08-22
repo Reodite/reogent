@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
 import type { ContentBlock, ConverseMessage, ToolSpec } from "../core/types";
+import { createThinkTagSplitter, stripThinkTags } from "./think-tags";
 import type { ConverseStreamEvent, LlmAdapter } from "./types";
 
 function toOpenAIMessages(messages: ConverseMessage[], system: string): ChatCompletionMessageParam[] {
@@ -87,7 +88,8 @@ export function createOpenAIAdapter(): LlmAdapter {
     const content: ContentBlock[] = [];
 
     if (choice.message.content) {
-      content.push({ text: choice.message.content });
+      const text = stripThinkTags(choice.message.content);
+      if (text) content.push({ text });
     }
     if (choice.message.tool_calls) {
       for (const tc of choice.message.tool_calls) {
@@ -122,6 +124,9 @@ export function createOpenAIAdapter(): LlmAdapter {
     });
 
     const toolCalls = new Map<number, { id: string; name: string; args: string }>();
+    // Reclassifies inline <think>…</think> in content as thinking; buffers
+    // partial tags across chunk boundaries so a split tag never leaks.
+    const splitter = createThinkTagSplitter();
 
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta;
@@ -135,7 +140,7 @@ export function createOpenAIAdapter(): LlmAdapter {
       }
 
       if (delta.content) {
-        yield { type: "text", delta: delta.content };
+        yield* splitter.push(delta.content);
       }
 
       if (delta.tool_calls) {
@@ -154,6 +159,7 @@ export function createOpenAIAdapter(): LlmAdapter {
 
       const finishReason = chunk.choices[0]?.finish_reason;
       if (finishReason) {
+        yield* splitter.flush();
         for (const [, tc] of toolCalls) {
           let input: Record<string, unknown> = {};
           try {
