@@ -402,15 +402,53 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       );
     }
     case "study_spaces": {
+      const bookable = (data as { kind?: string; rooms?: unknown[] } | undefined)?.rooms;
+      if (Array.isArray(bookable) && bookable.length > 0) {
+        const shown = bookable.slice(0, 5);
+        return (
+          <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
+            {shown.map((r, i) => {
+              const room = r as {
+                room?: string;
+                title?: string;
+                location?: string;
+                capacity?: number;
+                eid?: number;
+                building_code?: string;
+              };
+              return (
+                <button
+                  key={room.eid ?? i}
+                  type="button"
+                  onClick={() => setActiveChannel("map", {})}
+                  className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
+                >
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-on-surface truncate text-sm font-medium">{room.room ?? room.title}</span>
+                    <span className="text-muted truncate text-xs">{room.location ?? "—"}</span>
+                  </div>
+                  {room.capacity != null && (
+                    <span className="bg-surface-container text-on-surface-variant shrink-0 rounded-full px-2 py-0.5 text-xs">
+                      {room.capacity} seats
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        );
+      }
       const spaces = (data as { spaces?: unknown[] } | undefined)?.spaces;
       if (!Array.isArray(spaces) || spaces.length === 0) return null;
       const shown = (spaces as StudySpace[]).slice(0, 5);
       return (
         <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
           {shown.map((s) => (
-            <div
+            <button
               key={s.id}
-              className="border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
+              type="button"
+              onClick={() => setActiveChannel("map", {})}
+              className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="text-on-surface truncate text-sm font-medium">{s.name ?? s.title}</span>
@@ -423,7 +461,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                   {s.capacity} seats
                 </span>
               )}
-            </div>
+            </button>
           ))}
           {spaces.length > shown.length && (
             <div className="text-muted px-3 py-2 text-xs">+{spaces.length - shown.length} more</div>
