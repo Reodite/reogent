@@ -639,8 +639,7 @@ export function widgetHasContent(call: ToolCall): boolean {
     }
     case "grade_distribution": {
       const d = data as
-        | { buckets?: Record<string, number>; bucket_distribution?: { buckets?: Record<string, number> } }
-        | undefined;
+        { buckets?: Record<string, number>; bucket_distribution?: { buckets?: Record<string, number> } } | undefined;
       const b = d?.buckets ?? d?.bucket_distribution?.buckets;
       return !!b && Object.values(b).some((v) => v > 0);
     }
