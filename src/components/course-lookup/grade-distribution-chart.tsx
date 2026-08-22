@@ -70,13 +70,16 @@ export function GradeDistributionChart({
                 const h = maxCount > 0 ? (count / maxCount) * 100 : 0;
                 const isHi = highlightBucket === k;
                 return (
-                  <div key={k} className="flex h-full min-w-0 flex-1 items-end">
+                  <div
+                    key={k}
+                    className="group relative flex h-full min-w-0 flex-1 items-end"
+                    title={`${k}: ${count} students`}
+                    role="img"
+                    aria-label={`${k}: ${count} students`}
+                  >
                     <div
-                      title={`${count} students`}
-                      role="img"
-                      aria-label={`${k}: ${count} students`}
                       className={`w-full rounded-t-sm transition-colors ${
-                        isHi ? "bg-primary" : "bg-primary/25 hover:bg-primary/40"
+                        isHi ? "bg-primary" : "bg-primary/25 group-hover:bg-primary/40"
                       }`}
                       style={{ height: `${h}%`, minHeight: count > 0 ? 4 : 0 }}
                     />
@@ -85,13 +88,13 @@ export function GradeDistributionChart({
               })}
             </div>
           </div>
-          <div className="mt-1.5 flex h-10 gap-1.5 pl-0.5">
+          <div className="mt-1.5 flex h-10 gap-1.5">
             {BUCKET_KEYS.map((k) => {
               const isHi = highlightBucket === k;
               return (
-                <span key={k} className="min-w-0 flex-1">
+                <span key={k} className="relative min-w-0 flex-1">
                   <span
-                    className={`inline-block origin-top-left rotate-45 text-xs leading-none whitespace-nowrap ${
+                    className={`absolute top-1 left-1/2 inline-block origin-top-left rotate-45 text-xs leading-none whitespace-nowrap ${
                       isHi ? "text-primary font-medium" : "text-muted"
                     }`}
                   >

@@ -38,7 +38,8 @@ describe("GradeDistributionChart — gridlines render beneath the bars", () => {
     const yLabels = [...container.querySelectorAll("span")].filter((s) => s.className.includes("-translate-y-1/2"));
     expect(yLabels.length).toBe(6);
     const highlighted = container.querySelector('[aria-label="85-89: 14 students"]');
-    expect(highlighted?.className).toContain("bg-primary");
+    expect(highlighted?.className).toContain("group");
+    expect(highlighted?.querySelector("div")?.className).toContain("bg-primary");
   });
 
   it("shows the empty state when no buckets have students", () => {

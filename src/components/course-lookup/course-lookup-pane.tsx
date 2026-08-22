@@ -83,7 +83,7 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
 
   if (toolsMode && !toolsDetail) {
     return (
-      <div className="flex h-full min-h-0 flex-col p-3">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col p-3">
         <CourseExplorer onSelect={openFromList} />
       </div>
     );
@@ -91,7 +91,7 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
 
   if (toolsDetail) {
     return (
-      <div className="flex h-full flex-col gap-3 p-3">
+      <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-3 p-3">
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"

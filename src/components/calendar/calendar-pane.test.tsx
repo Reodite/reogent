@@ -73,7 +73,7 @@ describe("Property 25 — empty month renders no markers (REQ-16.5)", () => {
     const { container, restore } = renderPane({ cursor: "2024-08" });
     await waitFor(() => expect(container.querySelectorAll("[data-calendar-marker]")).toHaveLength(0));
     expect(container.querySelector("[role='alert']")).toBeNull();
-    expect(container.querySelector("[data-calendar-upcoming]")).not.toBeNull();
+    expect(container.querySelector("[data-calendar-day]")).not.toBeNull();
     restore();
   });
 });
@@ -92,13 +92,23 @@ describe("Property 26 — two events on one day with different kinds render two 
   });
 });
 
-describe("Property 27 — days with k > 1 events indicate k (REQ-16.4)", () => {
-  it("2024-11-29 has two academic events and shows the count '2' next to the markers", async () => {
-    const { container, restore } = renderPane({ cursor: "2024-11" });
+describe("Property 27 — days with k > 3 events indicate the overflow count (REQ-16.4)", () => {
+  it("a day with four events shows the first three labels and a '+1 more' overflow count", async () => {
+    const events: CalendarEvent[] = (["Academic one", "Academic two", "Academic three", "Academic four"] as const).map(
+      (label) => ({
+        kind: "academic" as const,
+        date: "2024-11-29",
+        label,
+        source_url: null,
+        tags: [],
+      }),
+    );
+    const { container, restore } = renderPane({ cursor: "2024-11" }, events);
     const cell = await waitForCell(container, "2024-11-29", "[data-calendar-count]");
     const count = cell.querySelector("[data-calendar-count]");
-    expect(count?.getAttribute("data-calendar-count")).toBe("2");
-    expect(count?.textContent).toContain("2");
+    expect(count?.getAttribute("data-calendar-count")).toBe("4");
+    expect(count?.textContent).toContain("1 more");
+    expect(cell.querySelectorAll("[data-calendar-marker]")).toHaveLength(3);
     restore();
   });
 });

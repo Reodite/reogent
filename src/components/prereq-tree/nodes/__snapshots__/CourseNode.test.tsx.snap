@@ -56,7 +56,7 @@ exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label (b
     data-variant="root"
   >
     <div
-      class="text-[0.625rem] tracking-wide uppercase opacity-70"
+      class="text-xs tracking-wide uppercase opacity-70"
     >
       ROOT
     </div>
@@ -82,7 +82,7 @@ exports[`CourseNode variants (REQ-9.4) > renders unknown variant with the not-in
       CALC 12
     </div>
     <div
-      class="text-on-error-container text-[0.625rem]"
+      class="text-on-error-container text-xs"
       title="Not in UBC Vancouver catalog"
     >
       not in catalog

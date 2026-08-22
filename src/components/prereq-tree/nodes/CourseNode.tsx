@@ -43,7 +43,7 @@ export function CourseNode({ data }: NodeProps<CourseNodeData>) {
       className={`neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center ${VARIANT_CLASS[variant]}`}
     >
       <Handle type="target" position={Position.Left} style={HIDDEN_HANDLE} />
-      {variant === "root" && <div className="text-[0.625rem] tracking-wide uppercase opacity-70">ROOT</div>}
+      {variant === "root" && <div className="text-xs tracking-wide uppercase opacity-70">ROOT</div>}
       {data?.onNavigate && data?.code ? (
         <button
           type="button"
@@ -58,7 +58,7 @@ export function CourseNode({ data }: NodeProps<CourseNodeData>) {
         <div className="font-mono text-sm font-medium">{data?.code ?? data?.label}</div>
       )}
       {variant === "unknown" && (
-        <div className="text-on-error-container text-[0.625rem]" title="Not in UBC Vancouver catalog">
+        <div className="text-on-error-container text-xs" title="Not in UBC Vancouver catalog">
           not in catalog
         </div>
       )}

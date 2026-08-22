@@ -81,7 +81,7 @@ export function DropdownDisjunctionNode({ data }: NodeProps<DisjunctionNodeData>
       className="neu-raised bg-tertiary-container text-on-tertiary-container relative min-w-[140px] rounded-lg px-3 py-2"
     >
       <Handle type="target" position={Position.Left} style={HIDDEN_HANDLE} />
-      <div className="text-[0.625rem] tracking-wide uppercase opacity-70">one of</div>
+      <div className="text-xs tracking-wide uppercase opacity-70">one of</div>
       <button
         type="button"
         aria-haspopup="listbox"
@@ -140,7 +140,7 @@ export function StackedDisjunctionNode({ data }: NodeProps<DisjunctionNodeData>)
       className="neu-raised bg-tertiary-container text-on-tertiary-container min-w-[160px] rounded-lg px-3 py-2"
     >
       <Handle type="target" position={Position.Left} style={HIDDEN_HANDLE} />
-      <div className="text-[0.625rem] tracking-wide uppercase opacity-70">either</div>
+      <div className="text-xs tracking-wide uppercase opacity-70">either</div>
       <div role="radiogroup" className="mt-1 flex flex-col gap-1">
         {data.options.map((opt, i) => {
           const isSelected = i === selected;

@@ -7,7 +7,7 @@ exports[`DropdownDisjunctionNode (REQ-9.1) > matches the closed dropdown snapsho
   data-variant="dropdown"
 >
   <div
-    class="text-[0.625rem] tracking-wide uppercase opacity-70"
+    class="text-xs tracking-wide uppercase opacity-70"
   >
     one of
   </div>
@@ -29,7 +29,7 @@ exports[`StackedDisjunctionNode (REQ-9.2) > matches the stacked radiogroup snaps
   data-variant="stacked"
 >
   <div
-    class="text-[0.625rem] tracking-wide uppercase opacity-70"
+    class="text-xs tracking-wide uppercase opacity-70"
   >
     either
   </div>

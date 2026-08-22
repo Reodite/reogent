@@ -257,7 +257,7 @@ export function PrereqTreePane({
   const showTree = !!(transformed && graph?.found && (graph?.hasPrereqs || graph?.hasCoreqs));
 
   return (
-    <div data-pane="prereq-tree" className="flex h-full flex-col gap-3 p-3">
+    <div data-pane="prereq-tree" className="mx-auto flex h-full w-full max-w-4xl flex-col gap-3 p-3">
       <CourseSearchField
         value={code}
         onChange={setCode}
