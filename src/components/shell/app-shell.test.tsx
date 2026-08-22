@@ -89,28 +89,14 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[data-answer-sheet="closed"]')).not.toBeNull();
   });
 
-  it("wide AI right pane collapses via the pane button and re-expands via the topbar button", () => {
+  it("wide AI right pane closes via the close button and has no re-expand in topbar", () => {
     const { container } = renderShell(true);
-
-    // AI mode renders the close button inside the AnswerSheet header (wide-only).
-    const collapseBtn = container.querySelector('[aria-label="Close answer canvas"]');
-    expect(collapseBtn).not.toBeNull();
-    // No expand button yet — pane is visible, so none is needed.
-    expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
 
     // Pane is mounted without `lg:hidden` while expanded.
     const sheet = container.querySelector("[data-answer-sheet]");
     expect(sheet?.classList.contains("lg:hidden")).toBe(false);
 
-    // Collapse: pane hides, topbar shows the expand button.
-    fireEvent.click(collapseBtn as HTMLElement);
-    expect(container.querySelector("[data-answer-sheet]")?.classList.contains("lg:hidden")).toBe(true);
-    const expandBtn = container.querySelector('[aria-label="Expand right pane"]');
-    expect(expandBtn).not.toBeNull();
-
-    // Expand: pane comes back, topbar button disappears.
-    fireEvent.click(expandBtn as HTMLElement);
-    expect(container.querySelector("[data-answer-sheet]")?.classList.contains("lg:hidden")).toBe(false);
+    // There is no topbar expand button for the right pane.
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
 

@@ -1,25 +1,35 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
-import { PANE_BY_ID, type CanvasView } from "@/src/components/shell/pane-registry";
 import { useEffect, useRef, type ReactNode } from "react";
 
+/**
+ * The AI-mode Answer Canvas host. Renders its `children` (an `AnswerCanvas`)
+ * exactly once, never swapping the wrapper element. CSS `lg:`/`max-lg:` variants
+ * make the slot inline on wide viewports and a Bottom Sheet below wide, so the
+ * mounted `MapArea` survives wide ⇄ sheet ⇄ closed transitions (REQ-9.4: the
+ * map stays mounted; only its presentation changes). No JS media query, so
+ * server-rendered HTML matches first paint.
+ *
+ * `open` is only ever true below wide (the Top-Bar Map entry that sets it is
+ * `lg:hidden`); leftover `open` at wide harmlessly shows the inline canvas.
+ */
 export function AnswerSheet({
   open,
   onClose,
-  children,
-  view,
   collapsed = false,
+  children,
 }: {
   open: boolean;
   onClose: () => void;
-  children: ReactNode;
-  view: CanvasView | null;
   collapsed?: boolean;
+  children: ReactNode;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const showDialog = open;
 
+  // Escape closes the sheet; focus moves to the close control on open. Focus
+  // return to the opening control is handled by the shell (Task 13).
   useEffect(() => {
     if (!showDialog) return;
     closeRef.current?.focus();
@@ -29,9 +39,6 @@ export function AnswerSheet({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [showDialog, onClose]);
-
-  const entry = view ? PANE_BY_ID[view.paneId] : null;
-  const IconGlyph = entry?.icon;
 
   const slotClass = `flex min-h-0 flex-col lg:h-full lg:flex-1 lg:min-w-88 ${collapsed ? "lg:hidden" : ""} ${
     open
@@ -52,25 +59,20 @@ export function AnswerSheet({
         />
       )}
       <div data-answer-sheet={open ? "open" : "closed"} className={slotClass}>
-        <header className="flex shrink-0 items-center gap-2 px-4 py-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            {IconGlyph && (
-              <span className="bg-surface-container-low text-primary grid size-7 shrink-0 place-items-center rounded-lg">
-                <IconGlyph className="size-4" />
-              </span>
-            )}
-            <h2 className="truncate text-base font-medium tracking-[-0.01em]">{entry?.label ?? "Answer"}</h2>
+        {open && (
+          <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-3 pb-3 lg:hidden">
+            <span aria-hidden="true" className="bg-outline/40 mx-auto h-1.5 w-10 rounded-full" />
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={onClose}
+              aria-label="Close answer canvas"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+            >
+              <Icon name="close" size={18} />
+            </button>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            aria-label="Close answer canvas"
-            onClick={onClose}
-            className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-          >
-            <Icon name="close" size={18} />
-          </button>
-        </header>
+        )}
         {children}
       </div>
     </>

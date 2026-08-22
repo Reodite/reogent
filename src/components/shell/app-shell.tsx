@@ -192,12 +192,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={() => {
                   setUserDismissedPane(false);
-                  if (wide && rightPaneCollapsed) setRightPaneCollapsed(false);
-                  else setAnswerSheetOpen(true);
+                  setAnswerSheetOpen(true);
                 }}
-                aria-label={wide && rightPaneCollapsed ? "Expand right pane" : "Open answer canvas"}
-                aria-expanded={answerSheetOpen || !rightPaneCollapsed}
-                className={`neu-button bg-surface text-on-surface-variant hover:text-primary relative flex size-11 items-center justify-center rounded-xl sm:size-9 ${wide && rightPaneCollapsed ? "lg:flex" : "lg:hidden"}`}
+                aria-label="Open answer canvas"
+                className="neu-button bg-surface text-on-surface-variant hover:text-primary relative flex size-11 items-center justify-center rounded-xl sm:size-9 lg:hidden"
               >
                 <Icon name="map" size={19} />
                 {highlight && !answerSheetOpen && (
@@ -264,7 +262,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                     setUserDismissedPane(true);
                   }}
                   collapsed={rightPaneCollapsed}
-                  view={workspaceView}
                 >
                   <AnswerCanvas view={workspaceView} />
                 </AnswerSheet>
