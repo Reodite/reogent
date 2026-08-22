@@ -89,12 +89,12 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[data-answer-sheet="closed"]')).not.toBeNull();
   });
 
-  it("wide AI right pane closes via the close button and has no re-expand in topbar", () => {
+  it("wide AI right pane starts collapsed and has no re-expand in topbar", () => {
     const { container } = renderShell(true);
 
-    // Pane is mounted without `lg:hidden` while expanded.
+    // Pane is hidden with `lg:hidden` by default.
     const sheet = container.querySelector("[data-answer-sheet]");
-    expect(sheet?.classList.contains("lg:hidden")).toBe(false);
+    expect(sheet?.classList.contains("lg:hidden")).toBe(true);
 
     // There is no topbar expand button for the right pane.
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
@@ -142,7 +142,7 @@ describe("13.2 — ARIA landmarks (REQ-8.2)", () => {
     expect(main.length).toBe(1);
     expect(main[0]?.id).toBe("main-content");
     expect(main[0]?.getAttribute("data-pane")).toBe("chat");
-    expect(container.querySelector('[aria-label="Answer canvas"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Answer canvas"]')).toBeNull();
   });
 });
 

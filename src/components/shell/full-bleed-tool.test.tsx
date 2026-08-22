@@ -75,9 +75,9 @@ function renderTool(view: CanvasView | null) {
 }
 
 describe("7.2 — FullBleedTool (REQ-4.3, REQ-4.4)", () => {
-  it("defaults to the first registry entry (Campus Map) when view is null", () => {
+  it("renders nothing when view is null", () => {
     const { container } = renderTool(null);
-    expect(container.querySelector('[data-pane="map"]')).not.toBeNull();
+    expect(container.querySelector("[data-pane]")).toBeNull();
   });
 
   it("selecting another tool replaces the current one", () => {

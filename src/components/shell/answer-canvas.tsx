@@ -21,8 +21,9 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
     setAnswerSheetOpen(false);
     setUserDismissedPane(true);
   };
-  const paneId = view && PANE_BY_ID[view.paneId] ? view.paneId : "map";
-  const label = view && PANE_BY_ID[view.paneId] ? PANE_BY_ID[view.paneId].label : "Campus map";
+  if (view === null || !PANE_BY_ID[view.paneId]) return null;
+  const paneId = view.paneId;
+  const label = PANE_BY_ID[view.paneId].label;
   return (
     <section
       aria-label="Answer canvas"
@@ -31,21 +32,10 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
     >
       <AnswerCanvasTitlebar label={label} onClose={onClose} />
       <div className="min-h-0 flex-1 overflow-auto">
-        {view === null ? <AnswerCanvasIdle /> : <ActiveCanvasView view={view} />}
+        <ActiveCanvasView view={view} />
       </div>
     </section>
   );
-}
-
-/**
- * Map-first idle: highlight is null because `workspaceView` is null.  Renders
- * the same full-bleed `<MapArea>` shell as the active-map path — no `neu-panel`
- * frame, since the map is content (idle overview OR a focused highlight), not a
- * contained card. Non-map panes get the framed `.neu-panel` treatment; the map
- * intentionally does not, to keep its viewport edge-to-edge.
- */
-function AnswerCanvasIdle() {
-  return <MapArea />;
 }
 
 function AnswerCanvasTitlebar({ label, onClose }: { label: string; onClose: () => void }) {

@@ -113,17 +113,18 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(widget.getAttribute("data-active")).not.toBeNull();
   });
 
-  it("Enter and Space keys activate a mapped widget, and toggle it closed when active", () => {
+  it("Enter and Space keys activate a mapped widget, and clicking again keeps it active (no toggle-off)", () => {
     const { container } = renderWidget(keyDatesCall);
     const widget = container.querySelector('[data-widget="get_key_dates"]') as HTMLElement;
     act(() => {
       fireEvent.keyDown(widget, { key: "Enter" });
     });
     expect(shellRef.current?.workspaceView?.paneId).toBe("calendar");
+    // Clicking again does not close the pane — only the close button can.
     act(() => {
       fireEvent.keyDown(widget, { key: " " });
     });
-    expect(shellRef.current?.workspaceView).toBeNull();
+    expect(shellRef.current?.workspaceView?.paneId).toBe("calendar");
   });
 
   it("a loading call stays non-focusable when unmapped", () => {

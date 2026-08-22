@@ -94,7 +94,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
   // Collapses the wide AI-mode right pane: chat fills the row when true, and a
   // topbar button re-expands. Auto-expanded below when a tool activates.
-  const [rightPaneCollapsed, setRightPaneCollapsed] = useState(false);
+  const [rightPaneCollapsed, setRightPaneCollapsed] = useState(true);
   // Set when the user manually dismisses the pane. Auto-open at stream-end skips
   // while this is true; an explicit widget click-toggle and session start clear it.
   const [userDismissedPane, setUserDismissedPane] = useState(false);

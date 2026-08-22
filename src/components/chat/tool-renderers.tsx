@@ -665,8 +665,7 @@ export function widgetHasContent(call: ToolCall): boolean {
  */
 export function ResponseWidget({ call }: { call: ToolCall }) {
   const reduce = useReducedMotion();
-  const { workspaceView, setWorkspaceView, activateCanvasView, setUserDismissedPane, setAnswerSheetOpen } =
-    useChatShell();
+  const { workspaceView, activateCanvasView, setUserDismissedPane } = useChatShell();
   const view = useMemo(() => toolCallToCanvasView(call), [call]);
   const mapped = view !== null;
   const active = mapped && workspaceView !== null && canvasViewsEqual(view, workspaceView);
@@ -675,14 +674,8 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
   const loaded = !isToolError(call.result) && call.result !== undefined;
 
   const toggle = () => {
-    if (active) {
-      setUserDismissedPane(true);
-      setWorkspaceView(null);
-      setAnswerSheetOpen(false);
-    } else {
-      setUserDismissedPane(false);
-      activateCanvasView(call);
-    }
+    setUserDismissedPane(false);
+    activateCanvasView(call);
   };
 
   if (!widget) return <ToolBadge call={call} mapped={mapped} active={active} reduce={reduce} onToggle={toggle} />;
