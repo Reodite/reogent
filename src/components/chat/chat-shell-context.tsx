@@ -14,7 +14,7 @@ import type { CanvasView, PaneId, PaneState } from "@/src/components/shell/pane-
 import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useShellMode } from "@/src/components/shell/use-shell-mode";
 import type { SessionSummary, ToolCall } from "@/src/lib/api-types";
-import { parseToolSlug } from "@/src/lib/pane-route";
+import { courseSlugToCode, parseToolSlug } from "@/src/lib/pane-route";
 import type { ShellMode } from "@/src/lib/shell-mode";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { MapHighlight } from "@/src/lib/walking";
@@ -262,17 +262,24 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   );
 }
 
-/** When the URL is `/tools/<slug>`, push the pane for `<slug>` onto the
- * workspace canvas. Mounted in ChatShellProvider so it lives wherever the
- * shell is rendered and runs the URL effect independent of AppShell's
- * chat-vs-tool layout decision. */
+/** When the URL is `/tools/<slug>` (or `/tools/courses/<code>`), push the
+ * matching pane state onto the workspace canvas. Mounted in ChatShellProvider
+ * so it lives wherever the shell is rendered and runs the URL effect
+ * independent of AppShell's chat-vs-tool layout decision. */
 function ToolRouteActivator() {
   const pathname = usePathname();
   const { setActiveChannel } = useChatShell();
   useEffect(() => {
     if (!pathname?.startsWith("/tools/")) return;
-    const slug = pathname.slice("/tools/".length).split("/")[0];
-    const paneId = parseToolSlug(slug);
+    const segments = pathname.slice("/tools/".length).split("/");
+    if (segments[0] === "courses" && segments[1]) {
+      const code = courseSlugToCode(segments[1]);
+      if (code) {
+        setActiveChannel("course-lookup", { code });
+        return;
+      }
+    }
+    const paneId = parseToolSlug(segments[0]);
     if (paneId) setActiveChannel(paneId, PANE_BY_ID[paneId].defaultState);
   }, [pathname, setActiveChannel]);
   return null;

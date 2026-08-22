@@ -1,4 +1,5 @@
 import type { PaneId } from "@/src/components/shell/pane-registry";
+import { canonicalize } from "@/src/shared/course-code";
 
 /** URL slugs exposed under `/tools/<slug>`. Keys are the public path segments,
  *  values are the {@link PaneId} registered in {@link PANE_REGISTRY}. */
@@ -26,4 +27,21 @@ export function parseToolSlug(slug: string | undefined | null): PaneId | null {
  *  has no slug (e.g. registered externally without one). */
 export function paneIdToSlug(id: PaneId): string | null {
   return PANE_ID_TO_TOOL_SLUG[id] ?? null;
+}
+
+/** URL segment for a course detail page: "MATH 100" → "MATH100". */
+export function courseCodeToSlug(code: string): string {
+  return code.replace(/\s+/g, "").toUpperCase();
+}
+
+/** Canonical "SUBJ NUM" code from a detail-page segment ("MATH100", "math-100"), or null when the segment is not a full code. */
+export function courseSlugToCode(slug: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(slug);
+  } catch {
+    return null;
+  }
+  const r = canonicalize(decoded);
+  return r?.kind === "code" ? r.raw : null;
 }

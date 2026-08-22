@@ -7,9 +7,16 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const setActiveChannel = vi.hoisted(() => vi.fn());
+const shellState = vi.hoisted(() => ({ mode: "ai" as string | undefined }));
+const routerPush = vi.hoisted(() => vi.fn());
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: routerPush }),
+  usePathname: () => "/",
+}));
 
 vi.mock("@/src/components/chat/chat-shell-context", () => ({
-  useChatShell: () => ({ setActiveChannel }),
+  useChatShell: () => ({ setActiveChannel, mode: shellState.mode }),
 }));
 
 const apiState = vi.hoisted(() => ({
@@ -64,6 +71,8 @@ beforeEach(() => {
   setActiveChannel.mockReset();
   apiState.getCourse.mockReset();
   apiState.searchCourses.mockReset();
+  routerPush.mockReset();
+  shellState.mode = "ai";
 });
 
 afterEach(() => cleanup());
@@ -251,5 +260,56 @@ describe("course-lookup-pane — partial-subject fallback (CPS → CPSC/CPEN)", 
       n.textContent.trim(),
     );
     expect(listedCodes).toEqual(["CPSC 110", "CPSC 121"]);
+  });
+});
+
+describe("course-lookup-pane — tools-mode list/detail split", () => {
+  it("AI mode hides the browse list entirely", () => {
+    shellState.mode = "ai";
+    apiState.searchCourses.mockResolvedValue({ courses: [], subject_total: 0 });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByLabelText("Sort by")).toBeNull();
+  });
+
+  it("tools mode with no code shows the browse list and loads it without a query", async () => {
+    shellState.mode = "tools";
+    apiState.searchCourses.mockResolvedValue({
+      courses: [makeCourse("CPSC 110", "CPSC_V", "110")],
+      subject_total: 1,
+    });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("table")).not.toBeNull());
+    expect(apiState.searchCourses).toHaveBeenCalledWith(expect.objectContaining({ sort: "students_desc" }));
+  });
+
+  it("tools mode row click navigates to the course detail URL", async () => {
+    shellState.mode = "tools";
+    apiState.searchCourses.mockResolvedValue({
+      courses: [makeCourse("MATH 100", "MATH_V", "100")],
+      subject_total: 1,
+    });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    const codeButton = await screen.findByRole("button", { name: "MATH 100" });
+    fireEvent.click(codeButton);
+    expect(routerPush).toHaveBeenCalledWith("/tools/courses/MATH100");
+  });
+
+  it("tools mode with a code in state shows only the detail (no table) and fetches that course", async () => {
+    shellState.mode = "tools";
+    apiState.getCourse.mockResolvedValue(fullRecord);
+    render(<CourseLookupPane state={{ code: "MATH 100" }} setState={vi.fn()} />);
+    expect(screen.queryByRole("table")).toBeNull();
+    await waitFor(() => expect(document.querySelector("[data-action='open-prereq-tree']")).not.toBeNull());
+    expect(screen.getAllByText("CPSC 110").length).toBeGreaterThan(0);
+  });
+
+  it("back button returns to the list URL", async () => {
+    shellState.mode = "tools";
+    apiState.getCourse.mockResolvedValue(fullRecord);
+    render(<CourseLookupPane state={{ code: "MATH 100" }} setState={vi.fn()} />);
+    const back = await screen.findByText("All courses");
+    fireEvent.click(back);
+    expect(routerPush).toHaveBeenCalledWith("/tools/courses");
   });
 });

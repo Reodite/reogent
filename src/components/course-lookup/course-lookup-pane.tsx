@@ -1,15 +1,43 @@
 "use client";
 
+import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { CourseDetailCard } from "@/src/components/course-lookup/course-detail-card";
 import { CourseExplorer } from "@/src/components/course-lookup/course-explorer";
 import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
+import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";
+import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+function SessionPicker({ session, onChange }: { session: string; onChange: (s: string) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <label htmlFor="course-session" className="text-muted text-xs font-medium">
+        Session
+      </label>
+      <select
+        id="course-session"
+        value={session}
+        onChange={(e) => onChange(e.target.value)}
+        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-offset-1"
+      >
+        {SESSIONS.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 export function CourseLookupPane({ state, setState }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
   const api = useApi();
+  const { mode } = useChatShell();
+  const router = useRouter();
   const [code, setCode] = useState(((state.code as string | undefined) ?? "") as string);
   const [session, setSession] = useState<string>((state.session as string | undefined) ?? defaultSession());
   // Sync when a widget or the map drives the pane to a different course code.
@@ -44,35 +72,57 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
     if (record) setState({ session });
   }, [record, session, setState]);
 
-  const [exploreOpen, setExploreOpen] = useState(true);
+  // Tools mode splits the pane into two exclusive views driven by the URL:
+  // /tools/courses renders the browse list; /tools/courses/<code> renders only
+  // that course's details. AI mode keeps the search + detail flow.
+  const toolsMode = mode === "tools";
+  const propCode = typeof state.code === "string" ? state.code.trim() : "";
+  const toolsDetail = toolsMode && propCode !== "";
+
+  const openFromList = useCallback((c: string) => router.push(`/tools/courses/${courseCodeToSlug(c)}`), [router]);
+
+  if (toolsMode && !toolsDetail) {
+    return (
+      <div className="flex h-full min-h-0 flex-col p-3">
+        <CourseExplorer onSelect={openFromList} />
+      </div>
+    );
+  }
+
+  if (toolsDetail) {
+    return (
+      <div className="flex h-full flex-col gap-3 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setCode("");
+              router.push("/tools/courses");
+            }}
+            className="neu-button bg-surface text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
+          >
+            <Icon name="left" size={14} /> All courses
+          </button>
+          <SessionPicker session={session} onChange={setSession} />
+        </div>
+        {record ? (
+          <div className="min-h-0 flex-1">
+            <CourseDetailCard record={record} session={session} />
+          </div>
+        ) : (
+          <div role="status" aria-busy="true" className="bg-surface-container-low flex flex-col gap-2 rounded-lg p-3">
+            <span className="bg-surface-container h-5 w-32 animate-pulse rounded" />
+            <span className="bg-surface-container h-3 w-64 animate-pulse rounded" />
+            <span className="bg-surface-container h-24 w-full animate-pulse rounded" />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
-      <button
-        type="button"
-        onClick={() => setExploreOpen((v) => !v)}
-        className="text-primary border-primary hover:bg-accent-subtle inline-flex min-h-[44px] items-center justify-center rounded-lg border px-3 text-xs font-medium"
-      >
-        {exploreOpen ? "Hide browse" : "Browse courses"}
-      </button>
-      {exploreOpen && <CourseExplorer onSelect={setCode} />}
-      <div className="flex items-center gap-2">
-        <label htmlFor="course-session" className="text-muted text-xs font-medium">
-          Session
-        </label>
-        <select
-          id="course-session"
-          value={session}
-          onChange={(e) => setSession(e.target.value)}
-          className="bg-surface-container-low border-surface-container rounded-lg border px-2 py-1.5 text-xs"
-        >
-          {SESSIONS.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
+      <SessionPicker session={session} onChange={setSession} />
       <CourseSearchField
         value={code}
         onChange={setCode}
