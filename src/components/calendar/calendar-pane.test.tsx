@@ -246,8 +246,9 @@ describe("Redesign — clicking a day opens the detail panel with tags and kind"
     const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
     fireEvent.click(cell);
     await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
-    expect(container.querySelectorAll("[data-event-row]")).toHaveLength(2);
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    const popover = container.querySelector("[data-calendar-popover]") as HTMLElement;
+    expect(popover.querySelectorAll("[data-event-row]")).toHaveLength(2);
+    fireEvent.click(popover.querySelector('[aria-label="Close"]') as HTMLElement);
     await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).toBeNull());
     restore();
   });

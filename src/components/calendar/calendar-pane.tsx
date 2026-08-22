@@ -70,6 +70,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
 
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [clickPos, setClickPos] = useState<{ x: number; y: number } | null>(null);
   const selectedRows = useMemo(() => {
     const rows = eventsByDate[selectedDay ?? ""] ?? [];
     return rows.map((event, i) => ({ key: `${event.label}-${event.date}`, row: i, event }));
@@ -85,8 +86,14 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   );
   const upcomingByDate = useMemo(() => groupByDate(upcoming), [upcoming]);
 
-  const openDay = (iso: string) => setSelectedDay(iso);
-  const closeDay = () => setSelectedDay(null);
+  const openDay = (iso: string, clientX?: number, clientY?: number) => {
+    if (clientX !== undefined && clientY !== undefined) setClickPos({ x: clientX, y: clientY });
+    setSelectedDay(iso);
+  };
+  const closeDay = () => {
+    setSelectedDay(null);
+    setClickPos(null);
+  };
 
   const goPrev = () => {
     const next = addMonths(cursorDate, -1);
@@ -184,7 +191,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
               cells={cells}
               eventsByDate={eventsByDate}
               todayISO={todayISO}
-              onDayClick={openDay}
+              onDayClick={(iso, clientX, clientY) => openDay(iso, clientX, clientY)}
               selectedDay={selectedDay}
             />
           ) : (
@@ -250,6 +257,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           iso={selectedDay}
           rows={selectedRows}
           onClose={closeDay}
+          clickPos={clickPos}
           formatDate={formatFullDate}
           parseISODate={parseISODate}
         />
@@ -272,7 +280,7 @@ function MonthGrid({
   cells: { date: Date | null; iso: string | null; key: string }[];
   eventsByDate: Record<string, CalendarEvent[]>;
   todayISO: string;
-  onDayClick: (iso: string) => void;
+  onDayClick: (iso: string, clientX: number, clientY: number) => void;
   selectedDay: string | null;
 }) {
   return (
@@ -284,10 +292,10 @@ function MonthGrid({
           </div>
         ))}
       </div>
-      <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-1.5">
+      <div className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-px overflow-hidden rounded-xl">
         {cells.map((cell) => {
           if (!cell.date || !cell.iso) {
-            return <div key={cell.key} className="min-h-[3rem] rounded-xl" aria-hidden />;
+            return <div key={cell.key} className="min-h-[3rem]" aria-hidden />;
           }
           const iso = cell.iso;
           const d = cell.date;
@@ -301,10 +309,10 @@ function MonthGrid({
               key={cell.key}
               data-calendar-day={iso}
               {...(isToday ? { "data-calendar-today": iso } : {})}
-              className={`hover:bg-surface-container-high flex min-h-[3rem] cursor-pointer flex-col items-stretch gap-0.5 rounded-xl p-1.5 text-left transition-colors duration-150 ${
-                isSelected ? "bg-accent-subtle ring-primary/30 ring-2 ring-inset" : "bg-surface-container-low/50"
+              className={`flex min-h-[3rem] cursor-pointer flex-col items-stretch gap-0.5 p-1.5 text-left transition-colors duration-150 ${
+                isSelected ? "bg-accent-subtle" : "bg-surface"
               }`}
-              onClick={() => onDayClick(iso)}
+              onClick={(e) => onDayClick(iso, e.clientX, e.clientY)}
               aria-label={`${formatFullDate(d)} — ${dayEvents.length} events`}
             >
               <span
@@ -426,19 +434,19 @@ function EventDetailPanel({
   iso,
   rows,
   onClose,
+  clickPos,
   formatDate,
   parseISODate: pISO,
 }: {
   iso: string;
   rows: { key: string; row: number; event: CalendarEvent }[];
   onClose: () => void;
+  clickPos: { x: number; y: number } | null;
   formatDate: (d: Date) => string;
   parseISODate: (s: string) => Date;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  // Escape closes the dialog; focus moves to the close button on mount so
-  // keyboard users land inside the panel they opened.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -448,6 +456,83 @@ function EventDetailPanel({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const inWinX = typeof window !== "undefined" ? window.innerWidth : 1024;
+  const inWinY = typeof window !== "undefined" ? window.innerHeight : 768;
+  const popoverW = 320;
+  const left = clickPos ? Math.max(8, Math.min(clickPos.x, inWinX - popoverW - 8)) : 24;
+  const top = clickPos ? Math.max(8, Math.min(clickPos.y, inWinY - 240)) : 24;
+
+  const inner = (
+    <>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <p className="text-on-surface text-sm font-medium">{formatDate(pISO(iso))}</p>
+          <p className="text-muted text-xs">
+            {rows.length} event{rows.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <button
+          ref={closeRef}
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="focus-visible:ring-primary/40 text-muted hover:text-on-surface rounded-md p-1 transition-colors focus-visible:ring-2"
+        >
+          <Icon name="close" size={16} />
+        </button>
+      </div>
+      <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto">
+        {rows.map(({ key, row, event: e }) => (
+          <li
+            key={key}
+            data-event-row={row}
+            className={
+              (e.kind === "academic" ? "bg-primary/10" : "bg-tertiary/10") +
+              " flex items-start gap-2.5 rounded-lg px-3 py-2.5"
+            }
+          >
+            <span
+              aria-hidden
+              className={`mt-0.5 h-4 w-1 shrink-0 rounded-full ${e.kind === "academic" ? "bg-primary" : "bg-tertiary"}`}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <span data-event-label={e.label} className="text-on-surface text-xs font-medium">
+                  {e.label}
+                </span>
+                <span className="text-muted font-mono text-xs tracking-wide uppercase opacity-70">{e.kind}</span>
+              </div>
+              {e.tags.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {e.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="bg-surface-container-high text-on-surface-variant rounded-full px-1.5 py-px text-xs font-medium"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {e.source_url && (
+                <a
+                  href={e.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary mt-1.5 inline-flex min-h-9 min-w-11 items-center gap-1 text-xs underline"
+                  title="Open source"
+                >
+                  <Icon name="externalLink" size={12} />
+                  Source
+                </a>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+
   return (
     <>
       <div className="bg-surface/60 fixed inset-0 z-40 sm:hidden" aria-hidden onClick={onClose} />
@@ -455,74 +540,17 @@ function EventDetailPanel({
         data-calendar-popover
         role="dialog"
         aria-label={`Events on ${formatDate(pISO(iso))}`}
-        className="bg-surface-container neu-panel fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl p-4 sm:static sm:mt-3 sm:max-h-none sm:rounded-xl"
+        className="neu-panel bg-surface-container fixed inset-x-0 bottom-0 z-50 max-h-[70vh] rounded-t-2xl p-4 sm:hidden"
       >
-        <div className="mb-3 flex items-start justify-between gap-2">
-          <div>
-            <p className="text-on-surface text-sm font-medium">{formatDate(pISO(iso))}</p>
-            <p className="text-muted text-xs">
-              {rows.length} event{rows.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <button
-            ref={closeRef}
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            className="focus-visible:ring-primary/40 text-muted hover:text-on-surface rounded-md p-1 transition-colors focus-visible:ring-2"
-          >
-            <Icon name="close" size={16} />
-          </button>
-        </div>
-        <ul className="flex max-h-60 flex-col gap-2 overflow-y-auto">
-          {rows.map(({ key, row, event: e }) => (
-            <li
-              key={key}
-              data-event-row={row}
-              className={
-                (e.kind === "academic" ? "bg-primary/10" : "bg-tertiary/10") +
-                " flex items-start gap-2.5 rounded-lg px-3 py-2.5"
-              }
-            >
-              <span
-                aria-hidden
-                className={`mt-0.5 h-4 w-1 shrink-0 rounded-full ${e.kind === "academic" ? "bg-primary" : "bg-tertiary"}`}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span data-event-label={e.label} className="text-on-surface text-xs font-medium">
-                    {e.label}
-                  </span>
-                  <span className="text-muted font-mono text-xs tracking-wide uppercase opacity-70">{e.kind}</span>
-                </div>
-                {e.tags.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {e.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="bg-surface-container-high text-on-surface-variant rounded-full px-1.5 py-px text-xs font-medium"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {e.source_url && (
-                  <a
-                    href={e.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary mt-1.5 inline-flex min-h-9 min-w-11 items-center gap-1 text-xs underline"
-                    title="Open source"
-                  >
-                    <Icon name="externalLink" size={12} />
-                    Source
-                  </a>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        {inner}
+      </div>
+      <div
+        role="dialog"
+        aria-label={`Events on ${formatDate(pISO(iso))}`}
+        className="neu-panel bg-surface-container fixed z-50 hidden w-80 rounded-xl p-4 sm:block"
+        style={{ left, top }}
+      >
+        {inner}
       </div>
     </>
   );
