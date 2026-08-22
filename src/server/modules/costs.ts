@@ -1,5 +1,5 @@
 import type { DatasetModule } from "../core/types";
-import { slugify } from "./tuition";
+import { lookupTuition, slugify } from "./tuition";
 
 export interface CostEstimateDoc {
   program_id: number;
@@ -137,76 +137,100 @@ export const costs: DatasetModule = {
   tools: [
     {
       spec: {
-        name: "get_cost_estimate",
+        name: "get_costs",
         description:
-          "UBC's own first-year cost estimate for an undergraduate program: tuition (domestic and international), student fees, books and supplies, and totals, in CAD. The program-to-estimate link is name-based — report the match_confidence to the user.",
+          "One tool for money questions at UBC: tuition rates (kind 'tuition'), UBC's published first-year cost estimate (kind 'estimate'), living-cost figures (kind 'living'), and Board-approved student fees (kind 'fees'). All amounts in CAD.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
-              program: { type: "string", description: 'Program name, e.g. "Computer Science"' },
+              kind: {
+                type: "string",
+                enum: ["tuition", "estimate", "living", "fees"],
+                description: 'What to look up: "tuition", "estimate", "living", or "fees"',
+              },
+              program_slug: {
+                type: "string",
+                description: 'Tuition: slugified program name, e.g. "bachelor-of-science". Words also work.',
+              },
+              student_type: {
+                type: "string",
+                description: 'Tuition: "domestic" or "international"',
+              },
+              cohort_year: {
+                type: "number",
+                description: "Tuition: year the student starts the program, e.g. 2026",
+              },
+              program: {
+                type: "string",
+                description: 'Estimate: program name, e.g. "Computer Science"',
+              },
+              item: {
+                type: "string",
+                description: 'Living: optional filter, e.g. "housing" or "meal"',
+              },
+              query: { type: "string", description: "Fees: keywords to match fee names and sections" },
+              fees_student_type: {
+                type: "string",
+                description: 'Fees: optional filter, "domestic" or "international"',
+              },
             },
-            required: ["program"],
+            required: ["kind"],
           },
         },
       },
       async execute(input, search) {
-        const res = await search.index("program_cost_estimates").search(String(input.program), { limit: 1 });
-        const doc = res.hits[0] as unknown as CostEstimateDoc | undefined;
-        if (!doc) {
-          throw new Error(`No published cost estimate for "${input.program}" — UBC has no estimate for some programs`);
+        const kind = String(input.kind ?? "");
+        switch (kind) {
+          case "tuition": {
+            if (!input.program_slug || !input.student_type || input.cohort_year === undefined) {
+              throw new Error("kind 'tuition' requires program_slug, student_type, and cohort_year");
+            }
+            return {
+              kind: "tuition",
+              ...(await lookupTuition(
+                {
+                  program_slug: String(input.program_slug),
+                  student_type: String(input.student_type),
+                  cohort_year: Number(input.cohort_year),
+                },
+                search,
+              )),
+            };
+          }
+          case "estimate": {
+            if (!input.program) throw new Error("kind 'estimate' requires program");
+            const res = await search.index("program_cost_estimates").search(String(input.program), { limit: 1 });
+            const doc = res.hits[0] as unknown as CostEstimateDoc | undefined;
+            if (!doc) {
+              throw new Error(
+                `No published cost estimate for "${input.program}" — UBC has no estimate for some programs`,
+              );
+            }
+            const { matched_by, ...rest } = doc;
+            return { kind: "estimate", ...rest, match_confidence: matched_by };
+          }
+          case "living": {
+            const res = await search.index("living_costs").search(input.item ? String(input.item) : "", {
+              limit: 50,
+            });
+            const hits = res.hits;
+            if (hits.length === 0) throw new Error(`No living-cost figures matched "${input.item}"`);
+            return { kind: "living", living_costs: hits as unknown as LivingCostDoc[] };
+          }
+          case "fees": {
+            if (!input.query) throw new Error("kind 'fees' requires query");
+            const filter = input.fees_student_type
+              ? `student_type = '${String(input.fees_student_type).toLowerCase()}'`
+              : undefined;
+            const res = await search.index("student_fees").search(String(input.query), { filter, limit: 20 });
+            const hits = res.hits;
+            if (hits.length === 0) throw new Error(`No student fees matched "${input.query}"`);
+            return { kind: "fees", fees: hits as unknown as StudentFeeDoc[] };
+          }
+          default:
+            throw new Error(`Unknown kind "${kind}" — expected tuition, estimate, living, or fees`);
         }
-        const { matched_by, ...rest } = doc;
-        return { ...rest, match_confidence: matched_by };
-      },
-    },
-    {
-      spec: {
-        name: "get_living_costs",
-        description:
-          "UBC Vancouver's published living-cost figures in CAD: housing, meal plans, and groceries, with the basis (per month, per year) for each.",
-        inputSchema: {
-          json: {
-            type: "object",
-            properties: {
-              item: { type: "string", description: 'Optional filter, e.g. "housing" or "meal"' },
-            },
-            required: [],
-          },
-        },
-      },
-      async execute(input, search) {
-        const res = await search.index("living_costs").search(input.item ? String(input.item) : "", { limit: 50 });
-        const hits = res.hits;
-        if (hits.length === 0) throw new Error(`No living-cost figures matched "${input.item}"`);
-        return { living_costs: hits as unknown as LivingCostDoc[] };
-      },
-    },
-    {
-      spec: {
-        name: "search_student_fees",
-        description:
-          "Search UBC Vancouver's Board-approved student fees (athletics, health, U-Pass, society fees, ...) by keyword. Amounts are CAD.",
-        inputSchema: {
-          json: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: "Keywords to match fee names and sections" },
-              student_type: { type: "string", description: 'Optional filter: "domestic" or "international"' },
-            },
-            required: ["query"],
-          },
-        },
-      },
-      async execute(input, search) {
-        const filter = input.student_type ? `student_type = '${String(input.student_type).toLowerCase()}'` : undefined;
-        const res = await search.index("student_fees").search(String(input.query), {
-          filter,
-          limit: 20,
-        });
-        const hits = res.hits;
-        if (hits.length === 0) throw new Error(`No student fees matched "${input.query}"`);
-        return { fees: hits as unknown as StudentFeeDoc[] };
       },
     },
   ],

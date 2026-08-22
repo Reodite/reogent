@@ -1,5 +1,4 @@
 import type { DatasetModule } from "../core/types";
-import { searchNearable } from "./places";
 
 export interface ParkingDoc {
   id: string;
@@ -69,48 +68,5 @@ export const parking: DatasetModule = {
       transform: transformParking,
     },
   ],
-  tools: [
-    {
-      spec: {
-        name: "find_parking",
-        description:
-          "Find public parking on UBC Vancouver campus with rates, hours, EV charging, accessibility, and payment links. Optionally sorted by walking distance from a building.",
-        inputSchema: {
-          json: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: 'Optional name keywords, e.g. "Rose Garden"' },
-              near_building: {
-                type: "string",
-                description: "Optional building code or name to sort results by walking distance from",
-              },
-              ev_charging: { type: "boolean", description: "If true, only facilities with EV charging" },
-              limit: { type: "number", description: "Max results (default 5)" },
-            },
-            required: [],
-          },
-        },
-      },
-      async execute(input, search) {
-        const queryText = input.query ? String(input.query) : "";
-        const filters: string[] = [];
-        if (input.ev_charging) filters.push("ev_charging = true");
-        const limit = Math.min(Number(input.limit) || 5, 20);
-        const { results, near, truncated_before_sort } = await searchNearable<ParkingDoc>(
-          search,
-          "parking",
-          queryText,
-          filters.length > 0 ? filters.join(" AND ") : undefined,
-          input.near_building,
-          limit,
-        );
-        if (results.length === 0) throw new Error(`No parking facilities matched`);
-        return {
-          ...(near ? { near_building: near.code } : {}),
-          ...(truncated_before_sort ? { note: "Many matches exist; nearest results may be approximate." } : {}),
-          parking: results,
-        };
-      },
-    },
-  ],
+  tools: [],
 };

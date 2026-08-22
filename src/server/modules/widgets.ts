@@ -2,16 +2,24 @@ import type { DatasetModule } from "../core/types";
 
 function parseQuery(type: string, query: string): Record<string, unknown> {
   switch (type) {
+    case "courses":
     case "course":
       return { query, limit: 6 };
     case "course_detail":
+      return { course_code: query };
+    case "prereq_tree":
       return { course_code: query };
     case "tuition": {
       const parts = query.split(/\s+/);
       const programSlug = parts[0]?.toLowerCase() ?? "";
       const studentType = parts.includes("international") ? "international" : "domestic";
       const cohortYear = parts.find((p) => /^\d{4}$/.test(p)) ?? "2025";
-      return { program_slug: programSlug, student_type: studentType, cohort_year: Number(cohortYear) };
+      return {
+        kind: "tuition",
+        program_slug: programSlug,
+        student_type: studentType,
+        cohort_year: Number(cohortYear),
+      };
     }
     case "route": {
       const m = query.match(/(.+?)\s+(?:to|→|->)\s+(.+)/);
@@ -26,13 +34,11 @@ function parseQuery(type: string, query: string): Record<string, unknown> {
     case "event":
       return { query, limit: 5 };
     case "study_spaces":
-      return { query, limit: 10 };
-    case "free_rooms":
-      return { min_minutes: 60 };
+      return { kind: "informal", query, limit: 10 };
     case "grades":
-      return { course_code: query };
+      return { course_code: query, include_grades: true };
     case "parking":
-      return { query, limit: 6 };
+      return { category: "parking", query, limit: 6 };
     case "program":
       return { query, limit: 6 };
     case "key_dates":
@@ -59,27 +65,27 @@ export function createWidgetsModule(modules: DatasetModule[]): DatasetModule {
                 type: {
                   type: "string",
                   enum: [
+                    "courses",
                     "course",
-                    "course_detail",
+                    "prereq_tree",
                     "tuition",
                     "route",
                     "building",
                     "places",
                     "event",
                     "study_spaces",
-                    "free_rooms",
                     "grades",
                     "parking",
                     "program",
                     "key_dates",
                   ],
                   description:
-                    'What to show: "course" (search results), "course_detail" (one course), "tuition" (rates), "route" (walking distance), "building" (location), "places" (POIs), "event" (campus event), "study_spaces" (classrooms/informal study areas), "free_rooms" (bookable library rooms free now), "grades" (grade distribution for a course), "parking" (parking lots), "program" (admission programs), "key_dates" (academic calendar dates)',
+                    'What to show: "courses" (course search results), "course" (one course), "prereq_tree" (prerequisite graph), "tuition" (rates), "route" (walking distance), "building" (location), "places" (POIs), "event" (campus event), "study_spaces" (study areas and free library rooms), "grades" (grade distribution for a course), "parking" (parking lots), "program" (admission programs), "key_dates" (academic calendar dates)',
                 },
                 query: {
                   type: "string",
                   description:
-                    'What to display: for course/list a keyword, for course_detail a code like "CPSC 110", for tuition a program name + type, for route "from X to Y", for building a name/code, for places keywords + "near X", for event keywords + a date range, for study_spaces keywords or a building, for free_rooms leave blank or a library name, for grades a course code, for parking keywords or "near X", for program a program keyword, for key_dates keywords like "withdrawal deadline"',
+                    'What to display: for courses a keyword, for course/course_detail a code like "CPSC 110", for prereq_tree a course code, for tuition a program name + type, for route "from X to Y", for building a name/code, for places keywords + "near X", for event keywords + a date range, for study_spaces keywords or a building, for grades a course code, for parking keywords or "near X", for program a program keyword, for key_dates keywords like "withdrawal deadline"',
                 },
               },
               required: ["type", "query"],
@@ -90,18 +96,18 @@ export function createWidgetsModule(modules: DatasetModule[]): DatasetModule {
           const type = String(input.type ?? "");
           const query = String(input.query ?? "");
           const toolName = {
-            course: "search_courses",
-            course_detail: "get_course",
-            tuition: "get_tuition",
+            courses: "find_courses",
+            course: "get_course",
+            prereq_tree: "get_prereq_tree",
+            tuition: "get_costs",
             route: "walking_distance",
             building: "find_building",
             places: "find_places",
-            event: "search_events",
-            study_spaces: "search_study_spaces",
-            free_rooms: "find_free_rooms",
-            grades: "get_grades",
-            parking: "find_parking",
-            program: "search_programs",
+            event: "find_events",
+            study_spaces: "find_study_spaces",
+            grades: "get_course",
+            parking: "find_places",
+            program: "find_programs",
             key_dates: "get_key_dates",
           }[type];
           if (!toolName) throw new Error(`Unknown widget type: ${type}`);

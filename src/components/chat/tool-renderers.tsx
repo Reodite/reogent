@@ -157,14 +157,13 @@ interface FreeRoom {
   minutes: number | null;
   start: string;
 }
-interface GradeRecord {
-  subject?: string;
-  course?: string;
-  title?: string;
-  year?: number;
-  session?: string;
-  professor?: string;
-  avg?: number | null;
+interface GradeSummaryShape {
+  avg: number;
+  sample_sections: number;
+}
+interface GradeDistributionShape {
+  buckets: Record<string, number>;
+  total_enrolled: number;
 }
 interface ParkingLot {
   id: string;
@@ -210,7 +209,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
   const data = outer?.result;
 
   switch (outer?.type) {
-    case "course": {
+    case "courses": {
       const courses = Array.isArray((data as Partial<SearchCoursesResult>)?.courses)
         ? (data as SearchCoursesResult).courses.filter(isCourseDoc)
         : [];
@@ -257,9 +256,11 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
         </div>
       );
     }
-    case "course_detail":
+    case "course":
+    case "course_detail": {
       if (!isCourseDoc(data)) return null;
       return <CourseCard course={data} detailed />;
+    }
     case "tuition": {
       if (!isTuitionResult(data)) return null;
       const label = data.per_credit_cad != null ? "per credit" : data.unit || "flat";
@@ -462,24 +463,37 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       );
     }
     case "grades": {
-      const records = (data as { grades?: unknown[] } | undefined)?.grades;
-      if (!Array.isArray(records) || records.length === 0) return null;
-      const g = records[0] as GradeRecord;
+      const dist = (data as { grade_distribution?: GradeDistributionShape } | undefined)?.grade_distribution;
+      const summary = (data as { grade_summary?: GradeSummaryShape } | undefined)?.grade_summary;
+      if (!dist || !summary) return null;
+      const buckets = dist.buckets;
+      const maxCount = Math.max(0, ...Object.values(buckets));
+      const bars = Object.entries(buckets).filter(([, v]) => v > 0);
       return (
-        <ToolResultCard icon="school">
-          <span className="text-on-surface block text-base font-medium">
-            {typeof g.avg === "number" ? `${g.avg.toFixed(1)} avg` : "—"}
-            {g.subject && g.course ? (
-              <span className="text-body-sm text-on-surface-variant font-normal">
-                {" "}
-                {g.subject} {g.course}
-              </span>
-            ) : null}
-          </span>
-          <span className="text-muted block truncate text-xs">
-            {[g.title, g.year ? `${g.year}${g.session ?? ""}` : null, g.professor].filter(Boolean).join(" · ")}
-          </span>
-        </ToolResultCard>
+        <div className="bg-surface-container-low flex flex-col gap-3 rounded-lg p-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-on-surface block text-sm font-medium">
+              {(data as Partial<{ code: string }>).code ?? "Grade distribution"}
+            </span>
+            <span className="text-muted text-xs">
+              {summary.sample_sections} section{summary.sample_sections === 1 ? "" : "s"} · {summary.avg} avg
+            </span>
+          </div>
+          {bars.length > 0 ? (
+            <div className="flex items-end gap-1" role="img" aria-label="Grade distribution histogram">
+              {bars.map(([label, count]) => (
+                <div key={label} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                  <span className="text-muted font-mono text-[0.625rem]">{count}</span>
+                  <div
+                    className={`w-full rounded-t ${label.includes("-") ? "bg-primary/50" : "bg-primary"}`}
+                    style={{ height: `${maxCount > 0 ? Math.max(4, (count / maxCount) * 48) : 4}px` }}
+                  />
+                  <span className="text-muted font-mono text-[0.625rem]">{label.replace(/-/g, "–")}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
       );
     }
     case "parking": {
@@ -585,10 +599,11 @@ export function widgetHasContent(call: ToolCall): boolean {
   const outer = call.result as { type?: string; result?: unknown } | undefined;
   const data = outer?.result;
   switch (outer?.type) {
-    case "course": {
+    case "courses": {
       const list = (data as Partial<SearchCoursesResult> | undefined)?.courses;
       return Array.isArray(list) && list.length > 0;
     }
+    case "course":
     case "course_detail":
       return isCourseDoc(data);
     case "tuition":
@@ -610,16 +625,13 @@ export function widgetHasContent(call: ToolCall): boolean {
       return Array.isArray(events) && events.length > 0;
     }
     case "study_spaces": {
-      const spaces = (data as { spaces?: unknown[] } | undefined)?.spaces;
-      return Array.isArray(spaces) && spaces.length > 0;
-    }
-    case "free_rooms": {
-      const rooms = (data as { rooms?: unknown[] } | undefined)?.rooms;
-      return Array.isArray(rooms) && rooms.length > 0;
+      const d = data as { kind?: string; spaces?: unknown[]; rooms?: unknown[] } | undefined;
+      if (d?.kind === "bookable") return Array.isArray(d.rooms) && d.rooms.length > 0;
+      return Array.isArray(d?.spaces) && d.spaces.length > 0;
     }
     case "grades": {
-      const records = (data as { grades?: unknown[] } | undefined)?.grades;
-      return Array.isArray(records) && records.length > 0;
+      const d = data as { grade_distribution?: { buckets?: Record<string, number> } } | undefined;
+      return !!d?.grade_distribution && Object.values(d.grade_distribution.buckets ?? {}).some((v) => v > 0);
     }
     case "parking": {
       const lots = (data as { parking?: unknown[] } | undefined)?.parking;

@@ -61,26 +61,36 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
       return `Searched for walking distance from ${s("from_building")} to ${s("to_building")}`;
     case "find_building":
       return `Searched for building: ${s("query")}`;
-    case "search_courses":
+    case "find_courses":
       return `Searched for courses: ${s("query")}`;
     case "get_course":
       return `Searched for course: ${s("course_code")}`;
-    case "get_tuition":
-      return `Searched for tuition: ${s("program_slug")}`;
+    case "get_costs": {
+      const kind = s("kind");
+      if (kind === "tuition") return `Searched for tuition: ${s("program_slug")}`;
+      if (kind === "estimate") return `Searched for cost estimate: ${s("program")}`;
+      if (kind === "fees") return `Searched for student fees: ${s("query")}`;
+      if (kind === "living") return "Searched for living costs";
+      return "Searched for costs";
+    }
     case "find_places":
       return has("near_building")
         ? `Searched for places: ${s("query")} near ${s("near_building")}`
         : `Searched for places: ${s("query")}`;
     case "get_key_dates":
       return has("query") ? `Searched for key dates: ${s("query")}` : "Searched for key dates";
-    case "search_events":
+    case "find_events":
       return has("query") ? `Searched for events: ${s("query")}` : "Searched for events";
-    case "search_programs":
+    case "find_programs":
       return `Searched for programs: ${s("query")}`;
+    case "find_study_spaces": {
+      const kind = s("kind");
+      if (kind === "bookable")
+        return has("query") ? `Searched for free rooms: ${s("query")}` : "Searched for free rooms";
+      return has("query") ? `Searched for study spaces: ${s("query")}` : "Searched for study spaces";
+    }
     case "get_admission_requirements":
-      return has("query")
-        ? `Searched for admission requirements: ${s("query")}`
-        : "Searched for admission requirements";
+      return `Searched for admission requirements for ${s("program")}`;
     case "show_widget":
       return has("query") ? `Searched for: ${s("query")}` : "Searched";
     default:

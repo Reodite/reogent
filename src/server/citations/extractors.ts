@@ -20,29 +20,29 @@ const courseSeed = (c: CourseDoc, tool: string): CitationSeed => ({
 });
 
 export const CITATION_EXTRACTORS: Record<string, CitationExtractor> = {
-  search_courses: (result) => {
+  find_courses: (result) => {
     const { courses } = (result ?? {}) as { courses?: CourseDoc[] };
-    return (courses ?? []).map((c) => courseSeed(c, "search_courses"));
+    return (courses ?? []).map((c) => courseSeed(c, "find_courses"));
   },
   get_course: (result) => {
     const c = result as CourseDoc | undefined;
     return c && typeof c.code === "string" ? [courseSeed(c, "get_course")] : [];
   },
-  search_programs: (result) => {
+  find_programs: (result) => {
     const { programs } = (result ?? {}) as { programs?: AdmissionProgramDoc[] };
     return (programs ?? []).map((p) => ({
       label: p.name,
       kind: "program" as CitationKind,
-      tool: "search_programs",
+      tool: "find_programs",
       source_url: urlOrNull(p.url),
     }));
   },
-  search_events: (result) => {
+  find_events: (result) => {
     const { events } = (result ?? {}) as { events?: EventDoc[] };
     return (events ?? []).map((e) => ({
       label: e.title,
       kind: "event" as CitationKind,
-      tool: "search_events",
+      tool: "find_events",
       source_url: urlOrNull(e.url),
       detail: e.start_date ? { date: e.start_date } : undefined,
     }));

@@ -364,9 +364,9 @@ describe("toolCallToCanvasView", () => {
     expect(view?.state.code).toBe("CPSC 110");
   });
 
-  it("maps a search_courses call to the course-lookup pane using the first hit", () => {
+  it("maps a find_courses call to the course-lookup pane using the first hit", () => {
     const view = toolCallToCanvasView({
-      name: "search_courses",
+      name: "find_courses",
       input: { query: "machine learning", subject: "CPSC" },
       result: { courses: [{ code: "CPSC 340", title: "Machine Learning" }] },
     } as ToolCall);
@@ -410,11 +410,11 @@ describe("toolCallToCanvasView", () => {
     const err = { status: "error", message: "nope" };
     const names = [
       ["walking_distance", { from_building: "A", to_building: "B" }],
-      ["find_places", { service_type: "cafe" }],
+      ["find_places", { category: "cafe" }],
       ["find_building", { query: "x" }],
       ["find_parking", {}],
       ["get_course", { course_code: "X" }],
-      ["search_courses", { query: "X" }],
+      ["find_courses", { query: "X" }],
       ["get_prereq_tree", { course_code: "X" }],
       ["get_key_dates", { query: "X" }],
     ] as const;

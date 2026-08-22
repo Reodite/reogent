@@ -123,7 +123,7 @@ export const admissions: DatasetModule = {
   tools: [
     {
       spec: {
-        name: "search_programs",
+        name: "find_programs",
         description:
           "Search UBC Vancouver undergraduate programs (the you.ubc.ca program finder) by keyword. Returns program names, summaries, degrees, typical duration, and links.",
         inputSchema: {

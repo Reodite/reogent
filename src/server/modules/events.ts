@@ -59,7 +59,7 @@ export const events: DatasetModule = {
   tools: [
     {
       spec: {
-        name: "search_events",
+        name: "find_events",
         description:
           "Search UBC Vancouver events (events.ubc.ca) by keyword and date range. The archive goes back years — filter by date for current events. Venues have no map coordinates.",
         inputSchema: {

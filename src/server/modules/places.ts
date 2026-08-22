@@ -1,6 +1,7 @@
 import { ESTIMATE_DETOUR, haversineMetersObj, WALK_SPEED_M_PER_MIN } from "@/src/shared/types";
 import type { DatasetModule, SearchClient } from "../core/types";
 import { resolveBuilding, type BuildingDoc } from "./buildings";
+import type { ParkingDoc } from "./parking";
 
 export interface PoiDoc {
   id: string;
@@ -99,21 +100,34 @@ export const places: DatasetModule = {
       spec: {
         name: "find_places",
         description:
-          "Find points of interest on UBC Vancouver campus: cafes, restaurants, libraries, groceries, banks, medical services, child care, transit. Optionally sorted by walking distance from a building. Hours are free text — quote them as-is.",
+          "Find points of interest on UBC Vancouver campus: cafes, restaurants, libraries, groceries, banks, medical services, child care, transit, campus services — or public parking lots (category 'parking') with rates, hours, EV charging, and accessibility. Optionally sorted by walking distance from a building. Hours are free text — quote them as-is.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
               query: { type: "string", description: 'Optional name keywords, e.g. "Tim Hortons"' },
-              service_type: {
+              category: {
                 type: "string",
+                enum: [
+                  "cafe",
+                  "restaurant",
+                  "library",
+                  "grocery",
+                  "bank",
+                  "medical",
+                  "transit",
+                  "campus_services",
+                  "academic",
+                  "parking",
+                ],
                 description:
-                  'Optional type filter: "cafe", "restaurant", "library", "grocery", "bank", "medical", "child_care", "transit", "campus_services", "commercial_services", "academic"',
+                  'Optional type filter. Use "parking" to find parking lots with rates and EV charging; otherwise a place category',
               },
               near_building: {
                 type: "string",
                 description: "Optional building code or name to sort results by walking distance from",
               },
+              ev_charging: { type: "boolean", description: "Parking only: if true, only facilities with EV charging" },
               limit: { type: "number", description: "Max results (default 10)" },
             },
             required: [],
@@ -121,23 +135,30 @@ export const places: DatasetModule = {
         },
       },
       async execute(input, search) {
+        const category = input.category ? String(input.category) : "";
+        const isParking = category === "parking";
         const queryText = input.query ? String(input.query) : "";
         const filters: string[] = [];
-        if (input.service_type) filters.push(`service_type = '${String(input.service_type)}'`);
+        if (isParking) {
+          if (input.ev_charging) filters.push("ev_charging = true");
+        } else if (category) {
+          filters.push(`service_type = '${category}'`);
+        }
         const limit = Math.min(Number(input.limit) || 10, 30);
-        const { results, near, truncated_before_sort } = await searchNearable<PoiDoc>(
+        const { results, near, truncated_before_sort } = await searchNearable<PoiDoc | ParkingDoc>(
           search,
-          "poi",
+          isParking ? "parking" : "poi",
           queryText,
           filters.length > 0 ? filters.join(" AND ") : undefined,
           input.near_building,
           limit,
         );
-        if (results.length === 0) throw new Error(`No places matched "${input.query ?? input.service_type ?? ""}"`);
+        if (results.length === 0) throw new Error(`No ${isParking ? "parking facilities" : "places"} matched`);
+        const key = isParking ? "parking" : "places";
         return {
           ...(near ? { near_building: near.code } : {}),
           ...(truncated_before_sort ? { note: "Many matches exist; nearest results may be approximate." } : {}),
-          places: results,
+          [key]: results,
         };
       },
     },

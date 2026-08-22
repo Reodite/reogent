@@ -101,7 +101,7 @@ describe("extractors — Property 19, Source-url honesty", () => {
     );
   });
 
-  it("search_events never emits an empty source_url", () => {
+  it("find_events never emits an empty source_url", () => {
     fc.assert(
       fc.property(
         fc.array(
@@ -120,7 +120,7 @@ describe("extractors — Property 19, Source-url honesty", () => {
           { maxLength: 8 },
         ),
         (events) => {
-          const seeds = extract("search_events")({ events }, {});
+          const seeds = extract("find_events")({ events }, {});
           for (const s of seeds) expect(s.source_url).not.toBe("");
         },
       ),
@@ -151,7 +151,7 @@ describe("extractors — Property 19, Source-url honesty", () => {
     );
   });
 
-  it("search_programs never emits an empty source_url", () => {
+  it("find_programs never emits an empty source_url", () => {
     fc.assert(
       fc.property(
         fc.array(
@@ -169,7 +169,7 @@ describe("extractors — Property 19, Source-url honesty", () => {
           { maxLength: 8 },
         ),
         (programs) => {
-          const seeds = extract("search_programs")({ programs }, {});
+          const seeds = extract("find_programs")({ programs }, {});
           for (const s of seeds) expect(s.source_url).not.toBe("");
         },
       ),
@@ -190,10 +190,10 @@ describe("extractors — Property 19, Source-url honesty", () => {
       terms: [],
     };
     const courseSeeds = extract("get_course")(doc, {});
-    const searchSeeds = extract("search_courses")({ courses: [doc] }, {});
+    const searchSeeds = extract("find_courses")({ courses: [doc] }, {});
     for (const s of [...courseSeeds, ...searchSeeds]) {
       expect(s.kind).toBe("course");
-      expect(s.tool).toMatch(/get_course|search_courses/);
+      expect(s.tool).toMatch(/get_course|find_courses/);
       expect("source_url" in s).toBe(false);
       expect(s.detail?.subject).toBe("CPSC");
       expect(s.detail?.number).toBe("110");

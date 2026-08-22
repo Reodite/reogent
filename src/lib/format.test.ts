@@ -97,10 +97,20 @@ describe("describeToolCall", () => {
     expect(describeToolCall("find_building", { query: "Walter Gage" })).toBe("Searched for building: Walter Gage");
   });
 
-  it("describes search_courses", () => {
-    expect(describeToolCall("search_courses", { query: "machine learning" })).toBe(
+  it("describes find_courses", () => {
+    expect(describeToolCall("find_courses", { query: "machine learning" })).toBe(
       "Searched for courses: machine learning",
     );
+  });
+
+  it("describes get_costs by kind", () => {
+    expect(describeToolCall("get_costs", { kind: "tuition", program_slug: "bachelor-of-science" })).toBe(
+      "Searched for tuition: bachelor-of-science",
+    );
+    expect(describeToolCall("get_costs", { kind: "estimate", program: "Computer Science" })).toBe(
+      "Searched for cost estimate: Computer Science",
+    );
+    expect(describeToolCall("get_costs", { kind: "fees", query: "U-Pass" })).toBe("Searched for student fees: U-Pass");
   });
 
   it("describes get_course", () => {

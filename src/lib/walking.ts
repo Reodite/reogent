@@ -122,12 +122,13 @@ export function extractPlacesHighlight(call: ToolCall): PlacesHighlight | null {
 }
 
 /**
- * Parking pins from a healthy find_parking call: each lot with a name and
- * coordinates becomes a map marker (same `places` highlight shape the map
- * already renders, with `service_type` null since parking lots have none).
+ * Parking pins from a find_places call with category "parking" (or the legacy
+ * find_parking tool): each lot with a name and coordinates becomes a map marker.
  */
 export function extractParkingHighlight(call: ToolCall): PlacesHighlight | null {
-  if (call.name !== "find_parking" || isToolError(call.result)) return null;
+  if (isToolError(call.result)) return null;
+  const isParking = call.name === "find_parking" || (call.name === "find_places" && call.input.category === "parking");
+  if (!isParking) return null;
   const result = call.result as { near_building?: unknown; parking?: unknown } | undefined;
   if (!Array.isArray(result?.parking)) return null;
   const places: PlacePin[] = [];
@@ -213,7 +214,8 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
       }
       case "parking": {
         const p = data as
-          { near_building?: string; parking?: { name?: string; lat?: number; lon?: number }[] } | undefined;
+          | { near_building?: string; parking?: { name?: string; lat?: number; lon?: number }[] }
+          | undefined;
         if (!Array.isArray(p?.parking)) return null;
         const places = p.parking
           .filter((pl) => typeof pl?.name === "string" && typeof pl.lat === "number" && typeof pl.lon === "number")
@@ -227,16 +229,21 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
         const highlightParking: MapHighlight = { kind: "places", near: p.near_building ?? null, places };
         return { paneId: "map", state: { highlight: highlightParking } };
       }
-      case "course_detail": {
+      case "course": {
         const c = data as { code?: string } | undefined;
         if (!c?.code) return null;
         return { paneId: "course-lookup", state: { code: c.code } };
       }
-      case "course": {
+      case "courses": {
         const list = data as { courses?: { code?: string }[] } | undefined;
         const first = Array.isArray(list?.courses) ? list.courses[0] : undefined;
         if (!first?.code) return null;
         return { paneId: "course-lookup", state: { code: first.code } };
+      }
+      case "prereq_tree": {
+        const g = data as { rootCode?: string } | undefined;
+        if (!g?.rootCode) return null;
+        return { paneId: "prereq-tree", state: { root: g.rootCode, selections: {} } };
       }
       case "key_dates": {
         const list = data as { dates?: unknown[] } | undefined;
@@ -261,7 +268,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
       if (!code) return null;
       return { paneId: "course-lookup", state: { code } };
     }
-    case "search_courses": {
+    case "find_courses": {
       if (isToolError(call.result)) return null;
       const result = call.result as Partial<{ courses: { code?: string }[] }> | undefined;
       const first = Array.isArray(result?.courses) ? result.courses[0] : undefined;
