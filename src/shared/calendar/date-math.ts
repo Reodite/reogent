@@ -33,25 +33,32 @@ export function isSameDay(a: Date, b: Date): boolean {
 }
 
 /** A 6×7 grid of dated cells for the month containing `d`, with leading and
- * trailing nulls to pad to Sunday-start full weeks. */
+ * trailing dates from adjacent months so the grid always spans from Sunday to
+ * Saturday. */
 export function buildMonthGrid(d: Date): (Date | null)[][] {
-  const first = startOfMonth(d);
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  const first = new Date(Date.UTC(y, m, 1));
   const firstDow = first.getUTCDay();
-  const daysInMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
   const grid: (Date | null)[][] = [];
   let week: (Date | null)[] = [];
-  for (let i = 0; i < firstDow; i++) week.push(null);
+  for (let i = firstDow - 1; i >= 0; i--) {
+    week.push(new Date(Date.UTC(y, m, -i)));
+  }
   for (let day = 1; day <= daysInMonth; day++) {
-    week.push(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), day)));
+    week.push(new Date(Date.UTC(y, m, day)));
     if (week.length === 7) {
       grid.push(week);
       week = [];
     }
   }
-  if (week.length > 0) {
-    while (week.length < 7) week.push(null);
-    grid.push(week);
+  let next = 1;
+  while (week.length < 7) {
+    week.push(new Date(Date.UTC(y, m + 1, next)));
+    next++;
   }
+  grid.push(week);
   return grid;
 }
 
