@@ -353,9 +353,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
             </div>
             {startDate && (
               <div className="bg-surface-container flex size-11 shrink-0 flex-col items-center justify-center rounded-md">
-                <span className="text-on-surface-variant text-[0.6875rem] font-medium tracking-wider uppercase">
-                  {month}
-                </span>
+                <span className="text-on-surface-variant text-xs font-medium tracking-wider uppercase">{month}</span>
                 <span className="text-on-surface font-mono text-sm leading-none font-medium">{day}</span>
               </div>
             )}

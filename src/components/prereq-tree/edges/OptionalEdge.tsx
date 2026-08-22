@@ -44,7 +44,7 @@ export function OptionalEdge({
           aria-pressed={on}
           aria-label={on ? "Hide optional subtree" : "Show optional subtree"}
           onClick={() => data?.onToggle?.(data?.path ?? "")}
-          className="neu-raised bg-surface hover:bg-accent-subtle focus-visible:ring-primary/40 grid size-7 place-items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="neu-raised bg-surface hover:bg-accent-subtle focus-visible:ring-primary/40 grid size-8 place-items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
           style={{
             position: "absolute",
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,

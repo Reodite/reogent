@@ -88,7 +88,7 @@ describe("VersionBadge — sidebar footer version render (REQ-11.3)", () => {
     render(<VersionBadge />);
     const badge = screen.getByText("v0.1.0");
     expect(badge.className).toContain("font-mono");
-    expect(badge.className).toContain("text-[0.625rem]");
+    expect(badge.className).toContain("text-xs");
   });
 
   it("exposes an sr-only 'Reogent version' label for screen readers", () => {

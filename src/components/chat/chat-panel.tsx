@@ -700,7 +700,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                     type="button"
                     onClick={() => setSendError(null)}
                     aria-label="Dismiss error"
-                    className="text-on-surface-variant hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors"
+                    className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
                   >
                     <Icon name="close" size={16} />
                   </button>

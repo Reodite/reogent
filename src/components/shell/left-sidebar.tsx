@@ -29,7 +29,7 @@ export function LeftSidebar({ onCollapse, onClose }: { onCollapse?: () => void; 
             onClick={onCollapse}
             aria-label="Collapse tool list"
             title="Collapse tools"
-            className="neu-panel text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
+            className="focus-visible:ring-primary/40 neu-panel text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
           >
             <Icon name="left" size={18} />
           </button>
@@ -42,7 +42,7 @@ export function LeftSidebar({ onCollapse, onClose }: { onCollapse?: () => void; 
             type="button"
             onClick={onClose}
             aria-label="Close tools"
-            className="text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
+            className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
           >
             <Icon name="close" size={18} />
           </button>

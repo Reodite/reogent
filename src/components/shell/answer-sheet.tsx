@@ -72,7 +72,7 @@ export function AnswerSheet({
               onClick={onCollapse}
               aria-label="Collapse right pane"
               disabled={!onCollapse}
-              className="text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
               <Icon name="right" size={18} />
             </button>
@@ -86,7 +86,7 @@ export function AnswerSheet({
               type="button"
               onClick={onClose}
               aria-label="Close answer canvas"
-              className="text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
               <Icon name="close" size={18} />
             </button>

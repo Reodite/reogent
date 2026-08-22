@@ -143,7 +143,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                   onClick={() => hasEvents && setPopoverDay(iso)}
                   disabled={!hasEvents}
                   aria-label={`${formatFullDate(d)} — ${dayEvents.length} events`}
-                  className="focus-visible:ring-primary/40 self-start rounded-full font-mono text-[0.75rem] focus-visible:ring-2 focus-visible:ring-offset-1"
+                  className="focus-visible:ring-primary/40 self-start rounded-full font-mono text-xs focus-visible:ring-2 focus-visible:ring-offset-1"
                 >
                   <span
                     className={

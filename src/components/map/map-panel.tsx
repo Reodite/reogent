@@ -53,7 +53,7 @@ function GlassButton({
       aria-label={label}
       title={label}
       aria-pressed={pressed}
-      className={`neu-panel flex size-10 items-center justify-center rounded-2xl transition-colors duration-150 ${
+      className={`focus-visible:ring-primary/40 neu-panel flex size-10 items-center justify-center rounded-2xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
         pressed ? "text-primary" : "text-on-surface-variant hover:text-primary"
       }`}
     >
@@ -184,7 +184,7 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
               type="button"
               aria-label="Zoom in"
               onClick={() => controls.current?.zoomIn()}
-              className="text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
               <Icon name="add" size={20} />
             </button>
@@ -193,7 +193,7 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
               type="button"
               aria-label="Zoom out"
               onClick={() => controls.current?.zoomOut()}
-              className="text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
               <Icon name="minimize" size={20} />
             </button>

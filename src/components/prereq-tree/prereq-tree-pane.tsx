@@ -87,11 +87,19 @@ function NotFoundAlert({ code, onPick }: { code: string; onPick: (code: string) 
   return (
     <p role="alert" className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm">
       {code} isn't in the catalog. Try{" "}
-      <button type="button" className="text-primary underline" onClick={() => onPick("CPSC 110")}>
+      <button
+        type="button"
+        className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
+        onClick={() => onPick("CPSC 110")}
+      >
         CPSC 110
       </button>{" "}
       or{" "}
-      <button type="button" className="text-primary underline" onClick={() => onPick("MATH 200")}>
+      <button
+        type="button"
+        className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
+        onClick={() => onPick("MATH 200")}
+      >
         MATH 200
       </button>
       .
@@ -282,7 +290,11 @@ export function PrereqTreePane({
           className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
         >
           Couldn't load the tree.{" "}
-          <button type="button" className="text-primary underline" onClick={() => setRoot((r) => r)}>
+          <button
+            type="button"
+            className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
+            onClick={() => setRoot((r) => r)}
+          >
             Retry
           </button>
         </p>

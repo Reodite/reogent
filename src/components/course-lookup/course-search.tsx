@@ -241,7 +241,7 @@ export function CourseSearchField({
             type="button"
             onClick={() => onChange("")}
             aria-label="Clear search"
-            className="text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+            className="text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
           >
             <Icon name="close" className="size-4" />
           </button>
@@ -265,7 +265,11 @@ export function CourseSearchField({
         >
           {value} could not be reached.{" "}
           {onRetry && (
-            <button type="button" onClick={onRetry} className="text-primary underline">
+            <button
+              type="button"
+              onClick={onRetry}
+              className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
+            >
               Retry
             </button>
           )}

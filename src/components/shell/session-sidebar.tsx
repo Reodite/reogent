@@ -70,7 +70,7 @@ export function VersionBadge() {
   const version = process.env.NEXT_PUBLIC_REOGENT_VERSION;
   if (!version) return null;
   return (
-    <div className="text-on-surface-variant px-3 py-1.5 font-mono text-[0.625rem]">
+    <div className="text-on-surface-variant px-3 py-1.5 font-mono text-xs">
       <span className="sr-only">Reogent version </span>v{version}
     </div>
   );
@@ -158,7 +158,7 @@ function SessionItem({
           type="button"
           onClick={commitRename}
           aria-label="Confirm rename"
-          className="text-secondary hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-secondary hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="check" size={14} />
         </button>
@@ -166,7 +166,7 @@ function SessionItem({
           type="button"
           onClick={cancelAction}
           aria-label="Cancel"
-          className="text-on-surface-variant hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="close" size={12} />
         </button>
@@ -183,7 +183,7 @@ function SessionItem({
           type="button"
           onClick={confirmDelete}
           aria-label="Confirm delete"
-          className="text-error hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-error hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="check" size={14} />
         </button>
@@ -191,7 +191,7 @@ function SessionItem({
           type="button"
           onClick={cancelAction}
           aria-label="Cancel"
-          className="text-on-surface-variant hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="close" size={12} />
         </button>
@@ -229,7 +229,7 @@ function SessionItem({
           type="button"
           onClick={startRename}
           aria-label="Rename"
-          className="text-on-surface-variant hover:text-primary flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="pencil" size={12} />
         </button>
@@ -237,7 +237,7 @@ function SessionItem({
           type="button"
           onClick={() => setMode("confirming-delete")}
           aria-label="Delete"
-          className="text-on-surface-variant hover:text-error hover:bg-error-container/40 flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-error hover:bg-error-container/40 flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="close" size={12} />
         </button>
@@ -310,7 +310,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
             onClick={onCollapse}
             aria-label="Collapse session history"
             title="Collapse sessions"
-            className="neu-panel text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
+            className="focus-visible:ring-primary/40 neu-panel text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
           >
             <Icon name="left" size={18} />
           </button>
@@ -323,7 +323,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
             type="button"
             onClick={onClose}
             aria-label="Close sessions"
-            className="text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
+            className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
           >
             <Icon name="close" size={18} />
           </button>

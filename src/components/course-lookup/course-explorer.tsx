@@ -230,7 +230,11 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
           className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
         >
           Couldn&apos;t load courses.{" "}
-          <button type="button" onClick={() => fetchExplorer()} className="text-primary underline">
+          <button
+            type="button"
+            onClick={() => fetchExplorer()}
+            className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
+          >
             Retry
           </button>
         </p>
@@ -337,7 +341,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="neu-button bg-surface text-on-surface-variant h-8 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 hover:-translate-y-px active:translate-y-px active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
+              className="neu-button bg-surface text-on-surface-variant h-9 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 hover:-translate-y-px active:translate-y-px active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
             >
               Prev
             </button>
@@ -348,7 +352,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="neu-button bg-surface text-on-surface-variant h-8 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 hover:-translate-y-px active:translate-y-px active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
+              className="neu-button bg-surface text-on-surface-variant h-9 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 hover:-translate-y-px active:translate-y-px active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
             >
               Next
             </button>
