@@ -69,6 +69,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
 
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [clickPos, setClickPos] = useState<{ x: number; y: number } | null>(null);
+  const [mobileView, setMobileView] = useState<"calendar" | "list">("calendar");
   const selectedRows = useMemo(() => {
     const rows = eventsByDate[selectedDay ?? ""] ?? [];
     return rows.map((event, i) => ({ key: `${event.label}-${event.date}`, row: i, event }));
@@ -113,9 +114,8 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
 
   return (
     <div data-calendar-pane className="flex h-full w-full flex-col overflow-y-auto p-3 lg:p-6">
-      {/* Navigation & header */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
+      <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="flex items-center gap-1.5 justify-self-start">
           <button
             type="button"
             data-calendar-nav="prev"
@@ -144,26 +144,48 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
             <Icon name="right" size={18} />
           </button>
         </div>
-        <h2 data-calendar-heading className="text-base font-medium tracking-[-0.01em]">
+        <h2 data-calendar-heading className="justify-self-center text-base font-medium tracking-[-0.01em]">
           {formatMonthHeading(cursorDate)}
         </h2>
+        <div
+          className="neu-inset bg-surface-container-low justify-self-end rounded-lg p-0.5 lg:hidden"
+          role="tablist"
+          aria-label="View"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileView === "calendar"}
+            onClick={() => setMobileView("calendar")}
+            className={`focus-visible:ring-primary/40 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-offset-1 ${
+              mobileView === "calendar"
+                ? "neu-raised bg-surface text-primary"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            Calendar
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileView === "list"}
+            onClick={() => setMobileView("list")}
+            className={`focus-visible:ring-primary/40 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-offset-1 ${
+              mobileView === "list"
+                ? "neu-raised bg-surface text-primary"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            List
+          </button>
+        </div>
       </div>
 
-      {/* Main content: grid + sidebar */}
       <div className="flex min-h-0 flex-1 gap-6">
-        <section aria-label="Calendar" className="flex min-h-0 flex-1 flex-col">
-          <MonthGrid
-            cells={cells}
-            eventsByDate={eventsByDate}
-            todayISO={todayISO}
-            cursorDate={cursorDate}
-            onDayClick={(iso, clientX, clientY) => openDay(iso, clientX, clientY)}
-            selectedDay={selectedDay}
-          />
-        </section>
-
-        {/* Desktop sidebar: upcoming events */}
-        <aside data-calendar-upcoming className="hidden w-72 shrink-0 flex-col gap-3 lg:flex">
+        <aside
+          data-calendar-upcoming
+          className={`flex w-72 shrink-0 flex-col gap-3 ${mobileView === "list" ? "flex" : "hidden"} lg:flex`}
+        >
           <h3 className="text-muted text-xs tracking-wide uppercase">Upcoming</h3>
           {upcomingRows.length === 0 ? (
             <p className="text-muted text-xs">No events upcoming.</p>
@@ -206,6 +228,20 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
             </div>
           )}
         </aside>
+
+        <section
+          aria-label="Calendar"
+          className={`flex min-h-0 flex-1 flex-col ${mobileView === "list" ? "hidden" : "flex"} lg:flex`}
+        >
+          <MonthGrid
+            cells={cells}
+            eventsByDate={eventsByDate}
+            todayISO={todayISO}
+            cursorDate={cursorDate}
+            onDayClick={(iso, clientX, clientY) => openDay(iso, clientX, clientY)}
+            selectedDay={selectedDay}
+          />
+        </section>
       </div>
 
       {error && (
@@ -214,7 +250,6 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
         </div>
       )}
 
-      {/* Event detail panel (desktop slide-in) / bottom sheet (mobile) */}
       {selectedDay && (
         <EventDetailPanel
           iso={selectedDay}
