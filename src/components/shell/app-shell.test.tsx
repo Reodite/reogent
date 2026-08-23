@@ -116,7 +116,11 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     const { container } = renderShell(true);
     fireEvent.click(container.querySelector("[data-mode-toggle]") as HTMLElement);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
-    expect(container.querySelector('[data-testid="chat-children"]')).toBeNull();
+    // No view activated yet → children (not-found) renders instead of the tool.
+    // This matches the real app: navigating to an unknown /tools/<slug> shows the
+    // not-found page in the workspace, while a valid tool activates via the
+    // ToolRouteActivator effect.
+    expect(container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
   });
 

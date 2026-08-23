@@ -244,7 +244,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             ) : (
               <main id="main-content" data-pane="tool" className="flex min-h-0 min-w-0 flex-1">
-                <FullBleedTool view={workspaceView} />
+                {/* No active pane (e.g. an unknown /tools/&lt;slug&gt; that triggered
+                    notFound): show the routed children (not-found UI) instead of
+                    a blank workspace. */}
+                {workspaceView ? <FullBleedTool view={workspaceView} /> : children}
               </main>
             )}
           </div>

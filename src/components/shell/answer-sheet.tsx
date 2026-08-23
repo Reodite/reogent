@@ -28,14 +28,15 @@ export function AnswerSheet({
   view: CanvasView | null;
   children: ReactNode;
 }) {
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const showDialog = open;
 
-  // Escape closes the sheet; focus moves to the close control on open. Focus
-  // return to the opening control is handled by the shell (Task 13).
+  // Escape closes the sheet; focus moves to the sheet's first control (the
+  // canvas titlebar close) on open. Focus return to the opening control is
+  // handled by the shell (Task 13).
   useEffect(() => {
     if (!showDialog) return;
-    closeRef.current?.focus();
+    sheetRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -62,19 +63,10 @@ export function AnswerSheet({
           className="bg-scrim fixed inset-0 z-40 lg:hidden"
         />
       )}
-      <div data-answer-sheet={open ? "open" : "closed"} className={slotClass}>
+      <div ref={sheetRef} data-answer-sheet={open ? "open" : "closed"} className={slotClass}>
         {open && (
-          <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-3 pb-3 lg:hidden">
-            <span aria-hidden="true" className="bg-outline/40 mx-auto h-1.5 w-10 rounded-full" />
-            <button
-              ref={closeRef}
-              type="button"
-              onClick={onClose}
-              aria-label="Close answer canvas"
-              className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-            >
-              <Icon name="close" size={18} />
-            </button>
+          <div aria-hidden="true" className="flex shrink-0 items-center justify-center px-4 pt-3 pb-1 lg:hidden">
+            <span className="bg-outline/40 h-1.5 w-10 rounded-full" />
           </div>
         )}
         {children}
