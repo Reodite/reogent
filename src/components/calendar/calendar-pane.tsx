@@ -14,6 +14,7 @@ import {
   toISODate,
 } from "@/src/shared/calendar/date-math";
 import type { CalendarEvent, CalendarEventKind } from "@/src/shared/calendar/event";
+import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCalendarEvents } from "./use-calendar-events";
 
@@ -46,6 +47,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   const today = useMemo(() => getToday(), []);
   const todayISO = toISODate(today);
   const cursorDate = parseISODate(`${cursor}-01`);
+  const reduce = useReducedMotion() ?? false;
   const horizon = addMonths(startOfMonth(today), FUTURE_HORIZON_MONTHS);
   const beyondHorizon = addMonths(cursorDate, 1) > horizon;
 
@@ -227,6 +229,8 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
             eventsByDate={eventsByDate}
             todayISO={todayISO}
             cursorDate={cursorDate}
+            cursor={cursor}
+            reduce={reduce}
             onEventClick={openEvent}
           />
         </section>
@@ -259,12 +263,16 @@ function MonthGrid({
   eventsByDate,
   todayISO,
   cursorDate,
+  cursor,
+  reduce,
   onEventClick,
 }: {
   cells: { date: Date | null; iso: string | null; key: string }[];
   eventsByDate: Record<string, CalendarEvent[]>;
   todayISO: string;
   cursorDate: Date;
+  cursor: string;
+  reduce: boolean;
   onEventClick: (event: CalendarEvent) => void;
 }) {
   return (
@@ -276,7 +284,13 @@ function MonthGrid({
           </div>
         ))}
       </div>
-      <div className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-0.5 overflow-hidden rounded-[0.625rem] p-0.5">
+      <motion.div
+        key={cursor}
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-0.5 overflow-hidden rounded-[0.625rem] p-0.5"
+      >
         {cells.map((cell) => {
           if (!cell.date || !cell.iso) {
             return <div key={cell.key} className="bg-surface/70 min-h-[3rem] rounded-lg" aria-hidden />;
@@ -326,7 +340,7 @@ function MonthGrid({
             </div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }

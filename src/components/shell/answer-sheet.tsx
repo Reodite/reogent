@@ -45,24 +45,27 @@ export function AnswerSheet({
   }, [showDialog, onClose]);
 
   const hasView = view !== null;
-  const slotClass = `flex min-h-0 flex-col lg:h-full ${collapsed || !hasView ? "lg:hidden" : "lg:flex-1 lg:min-w-88"} ${
+  const slotClass = `flex min-h-0 flex-col transition-[transform,opacity,visibility] duration-300 [transition-timing-function:var(--neu-ease)] lg:h-full will-change-transform ${
+    collapsed || !hasView ? "lg:hidden" : "lg:flex-1 lg:min-w-88"
+  } ${
     open
-      ? "max-lg:neu-panel max-lg:bg-surface max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:h-[80dvh] max-lg:flex-col max-lg:overflow-hidden max-lg:rounded-t-2xl max-lg:pb-[env(safe-area-inset-bottom)]"
-      : "max-lg:hidden"
+      ? "max-lg:neu-panel max-lg:bg-surface max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:h-[80dvh] max-lg:flex-col max-lg:overflow-hidden max-lg:rounded-t-2xl max-lg:pb-[env(safe-area-inset-bottom)] max-lg:translate-y-0 max-lg:opacity-100 max-lg:visible"
+      : "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:translate-y-full max-lg:opacity-0 max-lg:invisible max-lg:pointer-events-none"
   }`;
 
   return (
     <>
-      {open && (
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label="Close answer canvas"
-          data-answer-scrim
-          onClick={onClose}
-          className="bg-scrim fixed inset-0 z-40 lg:hidden"
-        />
-      )}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        aria-label="Close answer canvas"
+        data-answer-scrim
+        onClick={onClose}
+        className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-300 lg:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
       <div ref={sheetRef} data-answer-sheet={open ? "open" : "closed"} className={slotClass}>
         {open && (
           <div aria-hidden="true" className="flex shrink-0 items-center justify-center px-4 pt-3 pb-1 lg:hidden">

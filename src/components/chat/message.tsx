@@ -144,9 +144,17 @@ function ThinkingBlock({ content, compact = false }: { content: string; compact?
         <Icon name="down" size={12} className="ml-auto shrink-0 transition-transform group-open:rotate-180" />
       </summary>
       {open && content && (
-        <div className="border-border-subtle border-t px-3 py-2">
-          <p className="text-muted max-h-40 overflow-auto text-xs leading-relaxed whitespace-pre-wrap">{content}</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="border-border-subtle overflow-hidden border-t"
+        >
+          <p className="text-muted max-h-40 overflow-auto px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap">
+            {content}
+          </p>
+        </motion.div>
       )}
     </details>
   );

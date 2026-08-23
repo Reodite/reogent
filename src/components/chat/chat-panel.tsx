@@ -119,20 +119,29 @@ function ComposerFallback() {
 
 // Renders LLM-generated follow-up suggestions after a response.
 function FollowUpChips({ onSend, followUps }: { onSend: (text: string) => void; followUps?: string[] }) {
+  const reduce = useReducedMotion();
   if (!followUps || followUps.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-2 pt-2">
-      {followUps.map((chip) => (
-        <button
+    <motion.div
+      initial={reduce ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-wrap gap-2 pt-2"
+    >
+      {followUps.map((chip, i) => (
+        <motion.button
           key={chip}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reduce ? { duration: 0 } : { delay: i * 0.06, duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
           type="button"
           onClick={() => onSend(chip)}
           className="focus-visible:ring-primary/40 border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] max-w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-medium break-words transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           {chip}
-        </button>
+        </motion.button>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
