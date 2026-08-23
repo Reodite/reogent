@@ -97,7 +97,7 @@ function sectionLine(course: CourseDoc): string | null {
 }
 
 function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?: boolean }) {
-  const { setWorkspaceView } = useChatShell();
+  const { setWorkspaceView, setUserDismissedPane, setAnswerSheetOpen } = useChatShell();
   const times = sectionLine(course);
   return (
     <article className="bg-surface-container-low rounded-lg p-3">
@@ -125,6 +125,8 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            setUserDismissedPane(false);
+            setAnswerSheetOpen(true);
             setWorkspaceView({ paneId: "prereq-tree", state: { root: course.code, selections: {} } });
           }}
           className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-95"
@@ -232,6 +234,8 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  setUserDismissedPane(false);
+                  setAnswerSheetOpen(true);
                   setWorkspaceView({ paneId: "course-lookup", state: { code: course.code } });
                 }}
                 className="hover:bg-surface-container-high focus-visible:ring-primary/40 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2"
