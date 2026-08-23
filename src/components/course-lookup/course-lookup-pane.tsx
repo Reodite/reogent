@@ -133,7 +133,15 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
         error={error}
         rejected={rejected}
       />
-      {record && <CourseDetailCard record={record} session={session} />}
+      {status === "loading" ? (
+        <div role="status" aria-busy="true" className="bg-surface-container-low flex flex-col gap-2 rounded-lg p-3">
+          <span className="bg-surface-container h-5 w-32 animate-pulse rounded" />
+          <span className="bg-surface-container h-3 w-64 animate-pulse rounded" />
+          <span className="bg-surface-container h-24 w-full animate-pulse rounded" />
+        </div>
+      ) : record ? (
+        <CourseDetailCard record={record} session={session} />
+      ) : null}
     </div>
   );
 }
