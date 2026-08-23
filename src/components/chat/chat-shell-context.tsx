@@ -159,6 +159,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       const view = toolCallToCanvasView(call);
       if (view) {
         setWorkspaceView(view);
+        setRightPaneCollapsed(false);
         // Bump the focus nonce so the map re-focuses on the new highlight.
         setFocusNonce((n) => n + 1);
         // Widget-driven pane opens as a bottom sheet on mobile unless the user

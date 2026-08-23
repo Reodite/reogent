@@ -97,7 +97,7 @@ function sectionLine(course: CourseDoc): string | null {
 }
 
 function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?: boolean }) {
-  const { setWorkspaceView, setUserDismissedPane, setAnswerSheetOpen } = useChatShell();
+  const { setWorkspaceView, setUserDismissedPane, setAnswerSheetOpen, setRightPaneCollapsed } = useChatShell();
   const times = sectionLine(course);
   return (
     <article className="bg-surface-container-low rounded-lg p-3">
@@ -127,6 +127,7 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
             e.stopPropagation();
             setUserDismissedPane(false);
             setAnswerSheetOpen(true);
+            setRightPaneCollapsed(false);
             setWorkspaceView({ paneId: "prereq-tree", state: { root: course.code, selections: {} } });
           }}
           className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-95"
@@ -236,6 +237,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                   e.stopPropagation();
                   setUserDismissedPane(false);
                   setAnswerSheetOpen(true);
+                  setRightPaneCollapsed(false);
                   setWorkspaceView({ paneId: "course-lookup", state: { code: course.code } });
                 }}
                 className="hover:bg-surface-container-high focus-visible:ring-primary/40 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2"
@@ -728,7 +730,7 @@ export function widgetHasContent(call: ToolCall): boolean {
  */
 export function ResponseWidget({ call }: { call: ToolCall }) {
   const reduce = useReducedMotion();
-  const { workspaceView, activateCanvasView, setUserDismissedPane } = useChatShell();
+  const { workspaceView, activateCanvasView, setUserDismissedPane, setRightPaneCollapsed } = useChatShell();
   const view = useMemo(() => toolCallToCanvasView(call), [call]);
   const mapped = view !== null;
   const active = mapped && workspaceView !== null && canvasViewsEqual(view, workspaceView);
@@ -738,6 +740,7 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
 
   const toggle = () => {
     setUserDismissedPane(false);
+    setRightPaneCollapsed(false);
     activateCanvasView(call);
   };
 
