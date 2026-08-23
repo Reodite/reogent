@@ -5,7 +5,7 @@
 // Interstitial blocks (thinking + tool calls) render inline before the final text.
 import { injectChips } from "@/src/components/chat/citations/chip-injector";
 import { SourcesPanel } from "@/src/components/chat/citations/sources-panel";
-import { ResponseWidget, widgetHasContent } from "@/src/components/chat/tool-renderers";
+import { ResponseWidget } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import type { Citation } from "@/src/lib/api-types";
@@ -161,11 +161,6 @@ export const AssistantMessage = memo(function AssistantMessage({
 }) {
   const reduce = useReducedMotion();
   const activity = message.activity ?? [];
-  // A widget block (show_widget) that renders non-empty content suppresses the
-  // markdown answer, since the widget itself is the answer.
-  const widgetsRendered = activity.some(
-    (b) => b.type === "tool_call" && widgetHasContent({ name: b.content, input: b.input ?? {}, result: b.result }),
-  );
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 6 }}
@@ -204,9 +199,7 @@ export const AssistantMessage = memo(function AssistantMessage({
             })}
           </div>
         )}
-        {!widgetsRendered && message.content && (
-          <AssistantMarkdown content={message.content} citations={message.citations} />
-        )}
+        {message.content && <AssistantMarkdown content={message.content} citations={message.citations} />}
         {message.stopped && (
           <p className="text-muted mt-2 flex items-center gap-1.5 text-xs">
             <Icon name="stop" size={12} className="shrink-0" />

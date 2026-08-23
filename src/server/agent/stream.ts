@@ -1,6 +1,3 @@
-// Streaming agent loop: yields NDJSON events as the model generates text
-// and executes tools. The non-streaming loop in loop.ts remains for property tests.
-
 import type { CitationSeed } from "@/src/server/citations/extractors";
 import type { Citation } from "@/src/shared/citations/citation";
 import { allocateCitations } from "../citations/allocator";
@@ -11,7 +8,6 @@ import { converse, converseStream } from "../llm";
 import { executeTool, isToolError } from "./executor";
 import { ITERATION_LIMIT, systemPrompt } from "./loop";
 
-// Stream event types sent as NDJSON lines to the client
 type StreamEvent =
   | { type: "thinking"; delta: string }
   | { type: "text"; delta: string }
@@ -35,7 +31,6 @@ interface StreamAgentDeps {
   search: SearchClient;
 }
 
-/** Runs the agent loop, yielding StreamEvents via an async generator. */
 export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDeps): AsyncGenerator<StreamEvent> {
   const toolSpecs = deps.modules.flatMap((m) => m.tools.map((t) => t.spec));
   const convo: ConverseMessage[] = messages.map((m) => ({
@@ -45,12 +40,10 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   const toolCalls: ToolCall[] = [];
   let fullText = "";
   const pendingCitations: CitationSeed[] = [];
-  let widgetNudged = false;
 
   for (let i = 0; ; i++) {
     if (i > 0) yield { type: "turn_start" as const };
 
-    // After soft limit, nudge model to wrap up but keep tools available
     if (i === ITERATION_LIMIT) {
       convo.push({
         role: "user",
@@ -67,9 +60,6 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
     let stopReason = "end_turn";
     let sawToolUse = false;
 
-    // Stream thinking immediately. Stream text optimistically as the answer.
-    // If a tool_use block appears after text, emit text_clear to retract it
-    // and re-emit the text as thinking.
     for await (const event of converseStream({
       messages: convo,
       system: systemPrompt(new Date(), allocateCitations(pendingCitations)),
@@ -79,16 +69,9 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
         yield { type: "thinking", delta: event.delta };
       } else if (event.type === "text") {
         iterText += event.delta;
-        if (!sawToolUse) {
-          yield { type: "text", delta: event.delta };
-        } else {
-          // Text after a tool_use is the trailing explanation that belongs
-          // with the card in the same response — stream it, keep it.
-          yield { type: "text", delta: event.delta };
-        }
+        yield { type: "text", delta: event.delta };
       } else if (event.type === "tool_use") {
         if (!sawToolUse && iterText && event.name !== "show_widget") {
-          // Retract streamed text and reclassify as thinking
           yield { type: "text_clear" };
           yield { type: "thinking", delta: iterText };
           iterText = "";
@@ -102,7 +85,6 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
 
     if (iterText) fullText = iterText;
 
-    // Build the assistant message for conversation history
     const assistantContent: ContentBlock[] = [];
     if (iterText) assistantContent.push({ text: iterText });
     for (const tu of toolUses) {
@@ -111,7 +93,6 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
     convo.push({ role: "assistant", content: assistantContent });
 
     if (stopReason !== "tool_use") {
-      // Generate context-aware follow-up suggestions
       let follow_ups: string[] | undefined;
       try {
         const FOLLOW_UP_SYSTEM = `You suggest follow-up questions for a UBC campus assistant. The assistant can ONLY:
@@ -163,7 +144,7 @@ Rules:
           }
         }
       } catch {
-        // Follow-up generation is best-effort
+        // Best-effort
       }
       const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
       yield { type: "citations", citations: finalCitations };
@@ -171,16 +152,12 @@ Rules:
       return;
     }
 
-    // Execute tools in parallel for faster responses
     for (const { name, input } of toolUses) {
       yield { type: "tool_start", name, input };
     }
     const execResults = await Promise.all(
       toolUses.map(({ name, input }) => executeTool(deps.modules, name, input, deps.search)),
     );
-    // show_widget renders the answer card, so a successful call completes the
-    // turn — the loop must not run again and produce a redundant text answer
-    // after the card. Any same-turn explanation text already streamed is kept.
     const widgetIdx = toolUses.findIndex((tu) => tu.name === "show_widget");
     const widgetSucceeded = widgetIdx >= 0 && !isToolError(execResults[widgetIdx]);
 
@@ -205,20 +182,8 @@ Rules:
     }
 
     if (widgetSucceeded) {
-      widgetNudged = true;
-      convo.push({ role: "user", content: results });
-      convo.push({
-        role: "user",
-        content: [
-          {
-            text: "The card is shown. If you have a brief written explanation to add, write it now. Otherwise write nothing — no extra tools.",
-          },
-        ],
-      });
-      continue;
-    }
-
-    if (widgetNudged) {
+      // show_widget rendered the card; any same-turn text is the answer.
+      // End the turn immediately — no extra nudge round-trip.
       const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
       yield { type: "citations", citations: finalCitations };
       yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations };
