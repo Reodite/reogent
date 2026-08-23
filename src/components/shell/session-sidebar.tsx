@@ -101,6 +101,7 @@ function SessionItem({
   onDelete: () => void;
 }) {
   const api = useApi();
+  const router = useRouter();
   type Mode = "idle" | "editing" | "confirming-delete";
   const [mode, setMode] = useState<Mode>("idle");
   const [editValue, setEditValue] = useState("");
@@ -136,7 +137,7 @@ function SessionItem({
     } catch {
       /* best effort */
     }
-    if (session.session_id === activeId) router.push("/chat");
+    if (active) router.push("/chat");
   }
 
   // Editing: inline text input with checkmark/x
