@@ -73,12 +73,9 @@ function renderCanvas(view: CanvasView | null) {
 }
 
 describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
-  it("idle (view null) renders the map-first canvas", () => {
+  it("idle (view null) renders nothing", () => {
     const { container } = renderCanvas(null);
-    const section = container.querySelector('[data-pane="map"]');
-    expect(section).not.toBeNull();
-    expect(section?.getAttribute("aria-label")).toBe("Answer canvas");
-    expect(container.querySelector('[data-pane="course-lookup"]')).toBeNull();
+    expect(container.querySelector("[data-pane]")).toBeNull();
   });
 
   it("an active non-map pane renders its header and component", () => {
@@ -97,13 +94,14 @@ describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
     expect(shellRef.current?.workspaceView?.state).toEqual({ code: "CPSC 110" });
   });
 
-  it("an unknown pane id falls back to the idle map (no-op transition, not an error)", () => {
+  it("an unknown pane id renders nothing (no-op transition, not an error)", () => {
     const { container } = renderCanvas({ paneId: "nonexistent", state: {} });
-    expect(container.querySelector('[data-pane="map"]')).not.toBeNull();
+    expect(container.querySelector("[data-pane]")).toBeNull();
   });
 
-  it("an active map view renders the map canvas", () => {
+  it("an active map view renders the map pane header", () => {
     const { container } = renderCanvas({ paneId: "map", state: {} });
     expect(container.querySelector('[data-pane="map"]')).not.toBeNull();
+    expect(container.querySelector("h2")?.textContent).toBe("Campus map");
   });
 });
