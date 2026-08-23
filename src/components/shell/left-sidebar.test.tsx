@@ -29,7 +29,6 @@ vi.mock("@/src/components/shell/session-sidebar", () => ({
       {footer}
     </div>
   ),
-  VersionBadge: () => null,
 }));
 
 const mem = new Map<string, string>();

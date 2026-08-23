@@ -77,9 +77,9 @@ function ActiveCanvasView({ view }: { view: CanvasView }) {
     [setWorkspaceView, view.paneId],
   );
 
-  // Unknown pane id (e.g. a future pane not yet registered): fall back to the
-  // idle map so the canvas never blanks. A no-op transition, not an error.
-  if (!entry) return <AnswerCanvasIdle />;
+  // Unknown pane id (e.g. a future pane not yet registered): render nothing.
+  // AnswerCanvas already guards this case before mounting the view.
+  if (!entry) return null;
 
   if (view.paneId === "map") {
     return <MapArea />;

@@ -83,15 +83,6 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   );
   const upcomingByDate = useMemo(() => groupByDate(upcoming), [upcoming]);
 
-  const openDay = (iso: string, clientX?: number, clientY?: number) => {
-    if (clientX !== undefined && clientY !== undefined) setClickPos({ x: clientX, y: clientY });
-    setSelectedDay(iso);
-  };
-  const closeDay = () => {
-    setSelectedDay(null);
-    setClickPos(null);
-  };
-
   const goPrev = () => {
     const next = addMonths(cursorDate, -1);
     setState({ cursor: formatMonthBadge(next) });

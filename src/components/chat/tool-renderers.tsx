@@ -38,7 +38,8 @@ function ToolBadge({
   call: ToolCall;
   mapped?: boolean;
   active?: boolean;
-  reduce?: boolean;
+  /** `useReducedMotion` returns null while the preference is unknown; treated as false. */
+  reduce?: boolean | null;
   onToggle?: () => void;
 }) {
   const failed = isToolError(call.result);

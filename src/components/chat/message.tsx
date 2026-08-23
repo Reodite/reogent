@@ -161,6 +161,20 @@ export const AssistantMessage = memo(function AssistantMessage({
 }) {
   const reduce = useReducedMotion();
   const activity = message.activity ?? [];
+  // Consecutive thinking blocks merge into one; interleaving with tool calls
+  // is preserved so the sequence of actions stays readable.
+  const condensed = useMemo(() => {
+    const out: ActivityBlock[] = [];
+    for (const block of activity) {
+      const last = out[out.length - 1];
+      if (block.type === "thinking" && last?.type === "thinking") {
+        last.content = `${last.content}\n\n${block.content}`;
+      } else {
+        out.push({ ...block });
+      }
+    }
+    return out;
+  }, [activity]);
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 6 }}
@@ -182,9 +196,9 @@ export const AssistantMessage = memo(function AssistantMessage({
             <span>{message.warning}</span>
           </div>
         )}
-        {activity.length > 0 && (
+        {condensed.length > 0 && (
           <div className="mb-3 flex flex-col gap-2">
-            {activity.map((block, idx) => {
+            {condensed.map((block, idx) => {
               if (block.type === "thinking") {
                 return (
                   // biome-ignore lint/suspicious/noArrayIndexKey: append-only list

@@ -82,7 +82,7 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
   });
 });
 
-describe("VersionBadge — sidebar footer version render (REQ-11.3)", () => {
+describe("VersionBadge — account menu version render", () => {
   it("renders the injected version in mono treatment", () => {
     vi.stubEnv("NEXT_PUBLIC_REOGENT_VERSION", "0.1.0");
     render(<VersionBadge />);
@@ -97,9 +97,10 @@ describe("VersionBadge — sidebar footer version render (REQ-11.3)", () => {
     expect(screen.getByText(/Reogent version/)).toBeTruthy();
   });
 
-  it("omits the badge when version is unset", () => {
+  it("renders a muted placeholder when version is unset", () => {
     render(<VersionBadge />);
     expect(screen.queryByText("v0.1.0")).toBeNull();
+    expect(screen.getByText("-")).toBeTruthy();
   });
 });
 

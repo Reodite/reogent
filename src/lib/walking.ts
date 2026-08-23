@@ -173,7 +173,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
     switch (outer?.type) {
       case "route": {
         const r = data as { from?: string; to?: string; meters?: number; minutes?: number } | undefined;
-        if (typeof r?.meters !== "number" || !r.from || !r.to) return null;
+        if (typeof r?.meters !== "number" || typeof r.minutes !== "number" || !r.from || !r.to) return null;
         const highlightRoute: MapHighlight = {
           kind: "route",
           from: r.from,

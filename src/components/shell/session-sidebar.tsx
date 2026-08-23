@@ -68,11 +68,11 @@ export function useSidebarCollapsed(): [boolean, (next: boolean) => void] {
 
 export function VersionBadge() {
   const version = process.env.NEXT_PUBLIC_REOGENT_VERSION;
-  if (!version) return null;
+  if (!version) return <span className="text-muted text-xs">-</span>;
   return (
-    <div className="text-on-surface-variant px-3 py-1.5 font-mono text-xs">
+    <span className="text-on-surface-variant font-mono text-xs">
       <span className="sr-only">Reogent version </span>v{version}
-    </div>
+    </span>
   );
 }
 
@@ -425,7 +425,6 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
       <output className="sr-only" aria-live="polite">
         {!sessionsLoading && sessions.length > 0 ? `${sessions.length} conversations` : ""}
       </output>
-      <VersionBadge />
       {footer}
     </div>
   );

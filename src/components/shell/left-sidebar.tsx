@@ -3,7 +3,7 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { ModeToggle } from "@/src/components/shell/mode-toggle";
-import { SessionSidebar, VersionBadge } from "@/src/components/shell/session-sidebar";
+import { SessionSidebar } from "@/src/components/shell/session-sidebar";
 import { ToolList } from "@/src/components/shell/tool-list";
 
 /**
@@ -49,7 +49,6 @@ export function LeftSidebar({ onCollapse, onClose }: { onCollapse?: () => void; 
         )}
       </div>
       <ToolList />
-      <VersionBadge />
       {footer}
     </div>
   );

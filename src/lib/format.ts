@@ -42,9 +42,9 @@ export function formatMeters(meters: number): string {
   return `${Math.round(meters)} m`;
 }
 
-export function formatMinutes(minutes: number): string {
+export function formatMinutes(minutes: number | undefined): string {
   if (!Number.isFinite(minutes)) return "—";
-  const rounded = Math.max(1, Math.round(minutes));
+  const rounded = Math.max(1, Math.round(minutes as number));
   return `${rounded} min`;
 }
 

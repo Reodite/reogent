@@ -618,29 +618,31 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="flex min-h-full flex-col items-center justify-center px-3 text-center sm:px-6"
+              className="flex min-h-full flex-col px-3 text-center sm:px-6"
             >
-              <span className="bg-surface text-primary flex size-16 items-center justify-center rounded-2xl">
-                <Icon name="school" size={30} />
-              </span>
-              <h2 className="text-on-surface mt-6 text-xl font-medium tracking-[-0.025em]">{greeting}</h2>
-              <p className="text-on-surface-variant mt-2 max-w-80 text-sm leading-relaxed">
-                Courses, tuition, walking routes, study spaces, grades, events, parking — all from real UBC data.
-              </p>
-              <nav aria-label="Suggested questions" className="mt-6 flex max-w-xl flex-wrap justify-center gap-3">
-                {randomSuggestions.map((suggestion, i) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => send(suggestion)}
-                    disabled={sending}
-                    style={{ animationDelay: `${i * 60}ms` }}
-                    className="animate-message-in border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] rounded-2xl border px-4 py-3 text-center text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </nav>
+              <div className="m-auto flex w-full max-w-xl flex-col items-center">
+                <span className="bg-surface text-primary flex size-16 items-center justify-center rounded-2xl">
+                  <Icon name="school" size={30} />
+                </span>
+                <h2 className="text-on-surface mt-6 text-xl font-medium tracking-[-0.025em]">{greeting}</h2>
+                <p className="text-on-surface-variant mt-2 max-w-80 text-sm leading-relaxed">
+                  Courses, tuition, walking routes, study spaces, grades, events, parking — all from real UBC data.
+                </p>
+                <nav aria-label="Suggested questions" className="mt-6 flex w-full flex-wrap justify-center gap-3">
+                  {randomSuggestions.map((suggestion, i) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => send(suggestion)}
+                      disabled={sending}
+                      style={{ animationDelay: `${i * 60}ms` }}
+                      className="animate-message-in border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] rounded-2xl border px-4 py-3 text-center text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </nav>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
