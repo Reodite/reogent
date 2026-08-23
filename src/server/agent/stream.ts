@@ -8,6 +8,8 @@ import { converse, converseStream } from "../llm";
 import { executeTool, isToolError } from "./executor";
 import { ITERATION_LIMIT, systemPrompt } from "./loop";
 
+const GENERATE_FOLLOW_UPS = false;
+
 type StreamEvent =
   | { type: "thinking"; delta: string }
   | { type: "text"; delta: string }
@@ -94,8 +96,9 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
 
     if (stopReason !== "tool_use") {
       let follow_ups: string[] | undefined;
-      try {
-        const FOLLOW_UP_SYSTEM = `You suggest follow-up questions for a UBC campus assistant. The assistant can ONLY:
+      if (GENERATE_FOLLOW_UPS) {
+        try {
+          const FOLLOW_UP_SYSTEM = `You suggest follow-up questions for a UBC campus assistant. The assistant can ONLY:
 - Search courses (by subject, credits, prerequisites, term)
 - Look up tuition and cost estimates
 - Calculate walking distances between buildings
@@ -114,37 +117,38 @@ Rules:
 - If the conversation hit a dead end, suggest a completely different topic
 - Return ONLY a JSON array of strings, nothing else`;
 
-        const summary = convo
-          .slice(-6)
-          .map(
-            (m) =>
-              `${m.role}: ${m.content
-                .map((b) => b.text)
-                .filter(Boolean)
-                .join("")
-                .slice(0, 200)}`,
-          )
-          .join("\n");
+          const summary = convo
+            .slice(-6)
+            .map(
+              (m) =>
+                `${m.role}: ${m.content
+                  .map((b) => b.text)
+                  .filter(Boolean)
+                  .join("")
+                  .slice(0, 200)}`,
+            )
+            .join("\n");
 
-        const followUpResult = await converse({
-          system: FOLLOW_UP_SYSTEM,
-          messages: [{ role: "user", content: [{ text: summary }] }],
-          toolSpecs: [],
-        });
-        const raw = (followUpResult.message.content ?? [])
-          .map((b) => b.text)
-          .filter(Boolean)
-          .join("")
-          .trim();
-        const jsonMatch = raw.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (Array.isArray(parsed)) {
-            follow_ups = parsed.filter((s): s is string => typeof s === "string" && s.length > 0).slice(0, 3);
+          const followUpResult = await converse({
+            system: FOLLOW_UP_SYSTEM,
+            messages: [{ role: "user", content: [{ text: summary }] }],
+            toolSpecs: [],
+          });
+          const raw = (followUpResult.message.content ?? [])
+            .map((b) => b.text)
+            .filter(Boolean)
+            .join("")
+            .trim();
+          const jsonMatch = raw.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(parsed)) {
+              follow_ups = parsed.filter((s): s is string => typeof s === "string" && s.length > 0).slice(0, 3);
+            }
           }
+        } catch {
+          // Best-effort
         }
-      } catch {
-        // Best-effort
       }
       const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
       yield { type: "citations", citations: finalCitations };
