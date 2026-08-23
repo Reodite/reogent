@@ -18,7 +18,7 @@ import {
 import { describeToolCall, formatCad, formatMeters, formatMinutes } from "@/src/lib/format";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import { motion, useReducedMotion } from "motion/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface ToolCallRendererProps {
   call: ToolCall;
@@ -217,6 +217,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
     setAnswerSheetOpen,
     setRightPaneCollapsed,
   } = useChatShell();
+  const [coursesExpanded, setCoursesExpanded] = useState(false);
   const outer = call.result as { type?: string; result?: unknown } | undefined;
   const data = outer?.result;
 
@@ -226,7 +227,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
         ? (data as SearchCoursesResult).courses.filter(isCourseDoc)
         : [];
       if (courses.length === 0) return null;
-      const shown = courses.slice(0, 4);
+      const shown = coursesExpanded ? courses : courses.slice(0, 4);
       return (
         <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
           <div className="flex flex-col">
@@ -258,14 +259,14 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
               </button>
             ))}
           </div>
-          {courses.length > shown.length && (
+          {courses.length > 4 && (
             <button
               type="button"
-              onClick={(e) => e.stopPropagation()}
+              onClick={() => setCoursesExpanded((expanded) => !expanded)}
               className="border-border text-primary hover:bg-surface-container-high flex min-h-[44px] items-center justify-center gap-1 border-t px-3 py-2 text-xs transition-colors"
             >
-              <Icon name="add" size={14} />
-              Show more related courses
+              <Icon name={coursesExpanded ? "down" : "add"} size={14} />
+              {coursesExpanded ? "Show fewer" : `Show all (${courses.length})`}
             </button>
           )}
         </div>
