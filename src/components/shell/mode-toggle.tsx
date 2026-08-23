@@ -65,7 +65,7 @@ export function ModeToggle() {
         }`}
       >
         <span
-          className={`bg-surface inline-block size-4 translate-y-px rounded-full transition-transform duration-150 ${
+          className={`bg-surface inline-block size-4 rounded-full transition-transform duration-150 ${
             on ? "translate-x-[1.125rem]" : "translate-x-0.5"
           }`}
         />
