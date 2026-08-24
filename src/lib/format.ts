@@ -48,7 +48,9 @@ export function formatMinutes(minutes: number | undefined): string {
   return `${rounded} min`;
 }
 
-/** Natural-language description of a tool call for the activity badge. */
+/** Natural-language description of a tool call for the activity badge.
+ *  Labels are built from whichever parameters are actually present so partial
+ *  inputs never render a dangling tail like "Searched for ". */
 export function describeToolCall(name: string, input: Record<string, unknown>): string {
   const s = (k: string) => {
     const v = input[k];
@@ -58,9 +60,11 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
 
   switch (name) {
     case "walking_distance":
-      return `Searched for walking route from ${s("from_building")} to ${s("to_building")}`;
+      return has("from_building") && has("to_building")
+        ? `Searched for walking route from ${s("from_building")} to ${s("to_building")}`
+        : "Searched for walking route";
     case "find_building":
-      return `Searched for ${s("query")}`;
+      return has("query") ? `Searched for ${s("query")}` : "Searched for a building";
     case "find_courses": {
       // Any filter combination is valid; describe what was actually passed
       // instead of relying on query alone (subject-only searches would render
@@ -80,7 +84,7 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
       return `Searched ${target}${suffix}`;
     }
     case "get_course":
-      return `Searched for ${s("course_code")}`;
+      return has("course_code") ? `Searched for ${s("course_code")}` : "Searched for a course";
     case "get_costs": {
       const kind = s("kind");
       if (kind === "tuition") {
@@ -95,50 +99,72 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
         const q = s("query");
         return q ? `Searched for ${q} costs` : "Searched for student fees";
       }
-      if (kind === "living") return "Searched for living costs";
+      if (kind === "living") {
+        const item = s("item");
+        return item ? `Searched for ${item} costs` : "Searched for living costs";
+      }
       return "Searched for costs";
     }
-    case "find_places":
-      if (has("near_building")) {
-        const q = s("query");
-        const near = s("near_building");
-        return q ? `Searched for ${q} near ${near}` : `Searched for places near ${near}`;
-      }
-      return `Searched for ${s("query")}`;
-    case "get_key_dates":
-      return has("query") ? `Searched for ${s("query")}` : "Searched for key dates";
-    case "find_events":
-      return has("query") ? `Searched for ${s("query")}` : "Searched for events";
-    case "find_programs":
-      return `Searched for ${s("query")}`;
-    case "find_study_spaces": {
-      const kind = s("kind");
-      if (kind === "bookable") {
-        const q = s("query");
-        return q ? `Searched for free rooms in ${q}` : "Searched for free rooms";
-      }
+    case "find_places": {
+      const isParking = s("category") === "parking";
+      const noun = isParking ? "parking" : s("category") || "places";
       const q = s("query");
-      return q ? `Searched for study spaces near ${q}` : "Searched for study spaces";
+      const target = isParking && q ? `${noun} matching "${q}"` : !isParking && q ? q : noun;
+      if (has("near_building")) return `Searched for ${target} near ${s("near_building")}`;
+      return `Searched for ${target}`;
+    }
+    case "get_key_dates":
+      return has("query") ? `Searched for ${s("query")} dates` : "Searched for key dates";
+    case "find_events": {
+      const q = s("query");
+      let label = q ? `events matching "${q}"` : "events";
+      if (has("from_date")) label += ` since ${s("from_date")}`;
+      return `Searched for ${label}`;
+    }
+    case "find_programs": {
+      const q = s("query");
+      const degree = s("degree");
+      if (q) return `Searched for programs matching "${q}"`;
+      if (degree) return `Searched for ${degree} programs`;
+      return "Searched for UBC programs";
+    }
+    case "find_study_spaces": {
+      const place = s("query") || s("building");
+      if (s("kind") === "bookable") {
+        return place ? `Searched for free rooms in ${place}` : "Searched for free rooms";
+      }
+      if (has("min_capacity")) return `Searched for study spaces seating ${s("min_capacity")}+`;
+      return place ? `Searched for study spaces near ${place}` : "Searched for study spaces";
     }
     case "get_admission_requirements":
-      return `Searched for ${s("program")} admission requirements`;
+      return has("program") ? `Searched admission requirements for ${s("program")}` : "Searched admission requirements";
     case "search_ubc_pages":
-      return `Searched UBC pages for ${s("query")}`;
+      return has("query") ? `Searched UBC pages for ${s("query")}` : "Searched UBC pages";
+    case "get_prereq_tree":
+      return has("course_code") ? `Searched prerequisite tree for ${s("course_code")}` : "Searched prerequisite tree";
     case "show_widget": {
       const type = s("type");
       if (type === "courses") {
         const n = Array.isArray(input.course_codes) ? input.course_codes.length : 0;
         return n > 0 ? `Showing ${n} courses` : "Showing course list";
       }
-      if (type === "course") return `Showing ${s("course")}`;
-      if (type === "grade_distribution") return `Showing grades for ${s("course")}`;
-      if (type === "grades") return `Showing grades for ${s("course")}`;
+      if (type === "course") return has("course") ? `Showing ${s("course")}` : "Showing course";
+      if (type === "grade_distribution") {
+        return has("course") ? `Showing grades for ${s("course")}` : "Showing grade distribution";
+      }
+      if (type === "grades") return has("course") ? `Showing grades for ${s("course")}` : "Showing grades";
       if (type === "building") {
         const n = Array.isArray(input.buildings) ? input.buildings.length : 0;
         return n > 0 ? `Showing ${n} building${n > 1 ? "s" : ""}` : "Showing building";
       }
-      if (type === "route") return `Showing route from ${s("from_building")} to ${s("to_building")}`;
-      if (type === "tuition") return `Showing tuition for ${s("program_slug")}`;
+      if (type === "route") {
+        return has("from_building") && has("to_building")
+          ? `Showing route from ${s("from_building")} to ${s("to_building")}`
+          : "Showing route";
+      }
+      if (type === "tuition") {
+        return has("program_slug") ? `Showing tuition for ${s("program_slug")}` : "Showing tuition";
+      }
       if (type === "places") {
         const n = Array.isArray(input.place_ids) ? input.place_ids.length : 0;
         return n > 0 ? `Showing ${n} places` : "Showing places";
