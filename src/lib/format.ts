@@ -61,8 +61,24 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
       return `Searched for walking route from ${s("from_building")} to ${s("to_building")}`;
     case "find_building":
       return `Searched for ${s("query")}`;
-    case "find_courses":
-      return `Searched courses related to ${s("query")}`;
+    case "find_courses": {
+      // Any filter combination is valid; describe what was actually passed
+      // instead of relying on query alone (subject-only searches would render
+      // a dangling tail).
+      const q = s("query");
+      const subject = s("subject");
+      let target = "courses";
+      if (q) target = `courses matching "${q}"`;
+      else if (subject) target = `${subject} courses`;
+      else if (has("level")) target = `${s("level")}-level courses`;
+      const suffix =
+        input.has_no_prereqs === true
+          ? " without prerequisites"
+          : has("min_grade_avg") || has("max_grade_avg")
+            ? " by average"
+            : "";
+      return `Searched ${target}${suffix}`;
+    }
     case "get_course":
       return `Searched for ${s("course_code")}`;
     case "get_costs": {

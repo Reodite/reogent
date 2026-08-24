@@ -97,10 +97,15 @@ describe("describeToolCall", () => {
     expect(describeToolCall("find_building", { query: "Walter Gage" })).toBe("Searched for Walter Gage");
   });
 
-  it("describes find_courses", () => {
+  it("describes find_courses from whichever filters are present", () => {
     expect(describeToolCall("find_courses", { query: "machine learning" })).toBe(
-      "Searched courses related to machine learning",
+      'Searched courses matching "machine learning"',
     );
+    expect(describeToolCall("find_courses", { subject: "COMM", has_no_prereqs: true })).toBe(
+      "Searched COMM courses without prerequisites",
+    );
+    expect(describeToolCall("find_courses", { level: 300, subject: "CPSC" })).toBe("Searched CPSC courses");
+    expect(describeToolCall("find_courses", {})).toBe("Searched courses");
   });
 
   it("describes get_costs by kind", () => {
