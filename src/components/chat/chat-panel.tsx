@@ -9,15 +9,15 @@ import {
   AssistantMessage,
   TypingIndicator,
   UserMessage,
+  type ActivityBlock,
   type DisplayMessage,
-  type InterstitialBlock,
 } from "@/src/components/chat/message";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { ApiError, type ChatMessage } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
-import { mergeMapHighlights } from "@/src/lib/walking";
+import { toolCallToCanvasView } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -119,20 +119,29 @@ function ComposerFallback() {
 
 // Renders LLM-generated follow-up suggestions after a response.
 function FollowUpChips({ onSend, followUps }: { onSend: (text: string) => void; followUps?: string[] }) {
+  const reduce = useReducedMotion();
   if (!followUps || followUps.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-2 pt-2">
-      {followUps.map((chip) => (
-        <button
+    <motion.div
+      initial={reduce ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-wrap gap-2 pt-2"
+    >
+      {followUps.map((chip, i) => (
+        <motion.button
           key={chip}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reduce ? { duration: 0 } : { delay: i * 0.06, duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
           type="button"
           onClick={() => onSend(chip)}
-          className="border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] max-w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-medium break-words transition-colors duration-150"
+          className="focus-visible:ring-primary/40 border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] max-w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-medium break-words transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           {chip}
-        </button>
+        </motion.button>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
@@ -147,7 +156,17 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   // Tracks whether the session ID was minted locally (skip history fetch)
   const mintedLocally = useRef(!initialSessionId);
   const prefersReducedMotion = useReducedMotion();
-  const { setHighlight, sessions, refreshSessions, addOptimisticSession, newChatNonce } = useChatShell();
+  const {
+    setActiveChannel,
+    activateCanvasView,
+    setWorkspaceView,
+    userDismissedPane,
+    setUserDismissedPane,
+    sessions,
+    refreshSessions,
+    addOptimisticSession,
+    newChatNonce,
+  } = useChatShell();
 
   const [historyState, setHistoryState] = useState<HistoryState>("loading");
   const [historyNonce, setHistoryNonce] = useState(0);
@@ -246,7 +265,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   // historyNonce re-runs the load for the failed-state "Try again" button.
   useEffect(() => {
     void historyNonce;
-    setHighlight(null);
+    setActiveChannel(null);
     pendingRetry.current = null;
     setSendError(null);
     // New chat (no session ID yet) — start empty, skip fetch
@@ -271,13 +290,21 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             id: nextId(),
             role: m.role,
             content: m.content,
-            toolCalls: m.toolCalls,
-            interstitial: m.interstitial,
+            activity: m.activity,
+            citations: m.citations ?? undefined,
           })),
         );
-        // Put this conversation's last map state back on the map.
-        const lastWithCalls = [...history].reverse().find((m) => m.toolCalls?.length);
-        if (lastWithCalls?.toolCalls) setHighlight(mergeMapHighlights(lastWithCalls.toolCalls));
+        // Restore this conversation's last mapped tool call, else reset to idle map.
+        const toCall = (b: ActivityBlock) => ({ name: b.content, input: b.input ?? {}, result: b.result });
+        const mapped = history
+          .flatMap((m) => (m.activity ?? []).filter((b) => b.type === "tool_call").map(toCall))
+          .reverse()
+          .find((c) => toolCallToCanvasView(c));
+        setUserDismissedPane(false);
+        if (mapped) {
+          const view = toolCallToCanvasView(mapped);
+          if (view) setWorkspaceView(view);
+        } else setWorkspaceView(null);
         setHistoryState("ready");
       })
       .catch((error: unknown) => {
@@ -293,7 +320,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     return () => {
       cancelled = true;
     };
-  }, [api, sessionId, setHighlight, historyNonce]);
+  }, [api, sessionId, setActiveChannel, setWorkspaceView, setUserDismissedPane, historyNonce]);
 
   // Stick-to-bottom: auto-scroll when new content arrives IF user is near the bottom.
   const isNearBottom = useRef(true);
@@ -319,20 +346,20 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     wasSendingRef.current = sending;
   }, [sending]);
 
-  // Scroll to bottom when messages change (new message, streaming content, interstitials, sending state).
+  // Scroll to bottom when messages change (new message, streaming content, activity, sending state).
   const messageCount = messages.length;
   const lastMessageContent = messages.length > 0 ? messages[messages.length - 1].content : "";
-  const lastInterstitialCount = messages.length > 0 ? (messages[messages.length - 1].interstitial?.length ?? 0) : 0;
+  const lastActivityCount = messages.length > 0 ? (messages[messages.length - 1].activity?.length ?? 0) : 0;
   useEffect(() => {
     void messageCount;
     void sending;
     void lastMessageContent;
-    void lastInterstitialCount;
+    void lastActivityCount;
     const node = scrollRef.current;
     if (!node || !isNearBottom.current) return;
     const behavior = sending || prefersReducedMotion ? "instant" : "smooth";
     node.scrollTo({ top: node.scrollHeight, behavior });
-  }, [messageCount, sending, lastMessageContent, lastInterstitialCount, prefersReducedMotion]);
+  }, [messageCount, sending, lastMessageContent, lastActivityCount, prefersReducedMotion]);
 
   // Focus the input when the conversation is ready and after each response.
   useEffect(() => {
@@ -360,10 +387,12 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
 
       // Add a placeholder assistant message for streaming text
       const streamId = nextId();
-      setMessages((current) => [...current, { id: streamId, role: "assistant", content: "", interstitial: [] }]);
+      setMessages((current) => [...current, { id: streamId, role: "assistant", content: "", activity: [] }]);
 
       let streamedText = "";
-      const interstitialBlocks: InterstitialBlock[] = [];
+      // Ordered thinking + tool-call blocks. Tool calls (widget and internal
+      // alike) live here, so history and canvas driving read one source.
+      const activity: ActivityBlock[] = [];
 
       const updateMessage = (updates: Partial<DisplayMessage>) => {
         setMessages((current) => current.map((m) => (m.id === streamId ? { ...m, ...updates } : m)));
@@ -377,33 +406,32 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             onThinking(delta) {
               if (!alive.current) return;
               // Append to the last thinking block only if it's immediately preceding (no tool calls in between)
-              const last = interstitialBlocks[interstitialBlocks.length - 1];
+              const last = activity[activity.length - 1];
               if (last?.type === "thinking") {
                 last.content += delta;
               } else {
-                interstitialBlocks.push({ type: "thinking", content: delta });
+                activity.push({ type: "thinking", content: delta });
               }
-              updateMessage({ interstitial: [...interstitialBlocks] });
+              updateMessage({ activity: [...activity] });
             },
             onToolStart(name, input) {
               if (!alive.current) return;
-              interstitialBlocks.push({ type: "tool_call", content: name, input, result: undefined });
-              updateMessage({ interstitial: [...interstitialBlocks] });
+              activity.push({ type: "tool_call", content: name, input, result: undefined });
+              updateMessage({ activity: [...activity] });
             },
             onToolEnd(name, result) {
               if (!alive.current) return;
-              // Find the last tool_call block with this name that has no result
-              for (let i = interstitialBlocks.length - 1; i >= 0; i--) {
+              for (let i = activity.length - 1; i >= 0; i--) {
                 if (
-                  interstitialBlocks[i].type === "tool_call" &&
-                  interstitialBlocks[i].content === name &&
-                  interstitialBlocks[i].result === undefined
+                  activity[i].type === "tool_call" &&
+                  activity[i].content === name &&
+                  activity[i].result === undefined
                 ) {
-                  interstitialBlocks[i] = { ...interstitialBlocks[i], result };
+                  activity[i] = { ...activity[i], result };
                   break;
                 }
               }
-              updateMessage({ interstitial: [...interstitialBlocks] });
+              updateMessage({ activity: [...activity] });
             },
             onTextClear() {
               if (!alive.current) return;
@@ -421,23 +449,39 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                 });
               }
             },
+            onCitations(citations) {
+              if (!alive.current) return;
+              updateMessage({ citations });
+            },
           },
           controller.signal,
         )
         .then((response) => {
           if (!alive.current) return;
           pendingRetry.current = null;
-          // Replace placeholder with final message including tool calls and warning
+          // Replace placeholder with final message including warning and follow-ups.
           updateMessage({
             content: response.message,
-            toolCalls: response.tool_calls,
             warning: response.warning,
             followUps: response.follow_ups,
-            interstitial: interstitialBlocks.length > 0 ? [...interstitialBlocks] : undefined,
+            citations: response.citations,
+            activity: activity.length > 0 ? [...activity] : undefined,
           });
-          // One merged highlight per response (route > places > all buildings);
-          // null clears a stale highlight when the answer has no map content.
-          setHighlight(mergeMapHighlights(response.tool_calls));
+          // Drive the canvas to the last mapped tool call; leave the canvas
+          // as-is when the answer has no mapped widget (REQ-3.6: no auto-close).
+          const mapped = activity
+            .filter((b) => b.type === "tool_call")
+            .map((b) => ({ name: b.content, input: b.input ?? {}, result: b.result }))
+            .reverse()
+            .find((c) => toolCallToCanvasView(c));
+          if (mapped) {
+            if (userDismissedPane) {
+              const view = toolCallToCanvasView(mapped);
+              if (view) setWorkspaceView(view);
+            } else {
+              activateCanvasView(mapped);
+            }
+          }
           announce("New response from assistant");
           refreshSessions();
         })
@@ -460,7 +504,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           }
           pendingRetry.current = { conversation };
           // Remove the empty placeholder on error — the error banner communicates the failure
-          if (!streamedText && !interstitialBlocks.length) {
+          if (!streamedText && !activity.length) {
             setMessages((current) => current.filter((m) => m.id !== streamId));
           } else {
             // Partial content exists — mark it as failed
@@ -480,7 +524,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           }
         });
     },
-    [api, sessionId, setHighlight, refreshSessions, announce],
+    [api, sessionId, activateCanvasView, setWorkspaceView, userDismissedPane, refreshSessions, announce],
   );
 
   const send = useCallback(
@@ -491,6 +535,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
       let activeSessionId = sessionId;
       if (!activeSessionId) {
         activeSessionId = uuid();
+        mintedLocally.current = true;
         setSessionId(activeSessionId);
         // Update URL without triggering a navigation/remount
         window.history.replaceState(null, "", `/chat/${activeSessionId}`);
@@ -582,29 +627,31 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="flex min-h-full flex-col items-center justify-center px-3 text-center sm:px-6"
+              className="flex min-h-full flex-col px-3 text-center sm:px-6"
             >
-              <span className="bg-surface text-primary flex size-16 items-center justify-center rounded-2xl">
-                <Icon name="school" size={30} />
-              </span>
-              <h2 className="text-on-surface mt-6 text-xl font-medium tracking-[-0.025em]">{greeting}</h2>
-              <p className="text-on-surface-variant mt-2 max-w-80 text-sm leading-relaxed">
-                Courses, tuition, walking routes, study spaces, grades, events, parking — all from real UBC data.
-              </p>
-              <nav aria-label="Suggested questions" className="mt-6 flex max-w-xl flex-wrap justify-center gap-3">
-                {randomSuggestions.map((suggestion, i) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => send(suggestion)}
-                    disabled={sending}
-                    style={{ animationDelay: `${i * 60}ms` }}
-                    className="animate-message-in border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] rounded-2xl border px-4 py-3 text-center text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </nav>
+              <div className="m-auto flex w-full max-w-xl flex-col items-center">
+                <span className="bg-surface text-primary flex size-12 items-center justify-center rounded-2xl">
+                  <Icon name="school" size={24} />
+                </span>
+                <h2 className="text-on-surface mt-4 text-xl font-medium tracking-[-0.025em]">{greeting}</h2>
+                <p className="text-on-surface-variant mt-2 max-w-80 text-sm leading-relaxed">
+                  Courses, tuition, walking routes, study spaces, grades, events, parking — all from real UBC data.
+                </p>
+                <nav aria-label="Suggested questions" className="mt-5 flex w-full flex-wrap justify-center gap-2">
+                  {randomSuggestions.map((suggestion, i) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => send(suggestion)}
+                      disabled={sending}
+                      style={{ animationDelay: `${i * 60}ms` }}
+                      className="animate-message-in border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] rounded-2xl border px-3.5 py-2.5 text-center text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </nav>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -614,7 +661,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             {messages.map((message, idx) =>
               message.role === "user" ? (
                 <UserMessage key={message.id} message={message} />
-              ) : message.content || message.toolCalls || (message.interstitial && message.interstitial.length > 0) ? (
+              ) : message.content || (message.activity && message.activity.length > 0) ? (
                 <AssistantMessage
                   key={message.id}
                   message={message}
@@ -626,8 +673,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
               {sending &&
                 (!messages.length ||
                   messages[messages.length - 1]?.role !== "assistant" ||
-                  (!messages[messages.length - 1]?.content &&
-                    !messages[messages.length - 1]?.interstitial?.length)) && (
+                  (!messages[messages.length - 1]?.content && !messages[messages.length - 1]?.activity?.length)) && (
                   <motion.div
                     key="typing-indicator"
                     initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
@@ -665,7 +711,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                     type="button"
                     onClick={() => setSendError(null)}
                     aria-label="Dismiss error"
-                    className="text-on-surface-variant hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors"
+                    className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
                   >
                     <Icon name="close" size={16} />
                   </button>

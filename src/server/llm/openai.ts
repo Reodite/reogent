@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
 import type { ContentBlock, ConverseMessage, ToolSpec } from "../core/types";
+import { createThinkTagSplitter, stripThinkTags } from "./think-tags";
 import type { ConverseStreamEvent, LlmAdapter } from "./types";
 
 function toOpenAIMessages(messages: ConverseMessage[], system: string): ChatCompletionMessageParam[] {
@@ -87,7 +88,8 @@ export function createOpenAIAdapter(): LlmAdapter {
     const content: ContentBlock[] = [];
 
     if (choice.message.content) {
-      content.push({ text: choice.message.content });
+      const text = stripThinkTags(choice.message.content);
+      if (text) content.push({ text });
     }
     if (choice.message.tool_calls) {
       for (const tc of choice.message.tool_calls) {
@@ -112,16 +114,24 @@ export function createOpenAIAdapter(): LlmAdapter {
     messages: ConverseMessage[];
     system: string;
     toolSpecs: ToolSpec[];
+    forceToolUse?: boolean;
   }): AsyncGenerator<ConverseStreamEvent> {
+    const tools = req.toolSpecs.length ? toOpenAITools(req.toolSpecs) : undefined;
     const stream = await getClient().chat.completions.create({
       model: getModel(),
       messages: toOpenAIMessages(req.messages, req.system),
-      tools: req.toolSpecs.length ? toOpenAITools(req.toolSpecs) : undefined,
-      parallel_tool_calls: req.toolSpecs.length > 0 ? true : undefined,
+      tools,
+      parallel_tool_calls: !!tools,
+      // Force the first turn to call a tool so the model can't answer from
+      // memory. Later turns revert to auto (called by loop.ts after a nudge).
+      ...(req.forceToolUse && tools ? { tool_choice: "required" as const } : {}),
       stream: true,
     });
 
     const toolCalls = new Map<number, { id: string; name: string; args: string }>();
+    // Reclassifies inline <think>…</think> in content as thinking; buffers
+    // partial tags across chunk boundaries so a split tag never leaks.
+    const splitter = createThinkTagSplitter();
 
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta;
@@ -135,7 +145,7 @@ export function createOpenAIAdapter(): LlmAdapter {
       }
 
       if (delta.content) {
-        yield { type: "text", delta: delta.content };
+        yield* splitter.push(delta.content);
       }
 
       if (delta.tool_calls) {
@@ -154,6 +164,7 @@ export function createOpenAIAdapter(): LlmAdapter {
 
       const finishReason = chunk.choices[0]?.finish_reason;
       if (finishReason) {
+        yield* splitter.flush();
         for (const [, tc] of toolCalls) {
           let input: Record<string, unknown> = {};
           try {

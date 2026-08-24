@@ -21,6 +21,14 @@ import { featureCentroid, featuresBounds, findBuilding, type BuildingFeature, ty
 import type { FeatureCollection } from "geojson";
 import { useEffect, useRef, useState } from "react";
 
+// MapLibre spawns its Web Worker via `new Worker(WORKER_URL)`. The default
+// worker URL resolves to the page route (/chat/{id}) in Turbopack builds, so
+// the spawn fails with a text/html MIME error and no basemap tiles render.
+// Synced to public/ by scripts/sync-maplibre-worker.mjs (predev/prebuild) and
+// loaded from a stable origin-relative path. The worker file's inner import
+// `./maplibre-gl-shared.mjs` resolves to `/maplibre-gl-shared.mjs`.
+const maplibreWorkerUrl = "/maplibre-gl-worker.mjs";
+
 export type MapStatus = "loading" | "ready" | "error";
 
 export interface MapControls {
@@ -136,7 +144,7 @@ const MAP_COLORS: Record<
     routeCasing: [250, 250, 250, 190],
     // Labels: on-surface-variant for legibility without heaviness
     label: [62, 67, 72, 255],
-    labelBg: [250, 250, 250, 215],
+    labelBg: [250, 250, 250, 255],
     // Walkways: primary accent at 25%
     walkway: [74, 78, 122, 64],
   },
@@ -152,7 +160,7 @@ const MAP_COLORS: Record<
     routeCasing: [18, 18, 20, 190],
     // Labels: on-surface-variant (dark) for clarity
     label: [194, 199, 204, 255],
-    labelBg: [14, 14, 16, 215],
+    labelBg: [14, 14, 16, 255],
     // Walkways: primary accent at 25%
     walkway: [176, 180, 216, 64],
   },
@@ -280,6 +288,8 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   /** Pedestrian-network polyline for the current route highlight. */
   const [routePath, setRoutePath] = useState<{ key: string; path: LngLat[] } | null>(null);
   const [drawProgress, setDrawProgress] = useState(1);
+  /** First basemap label layer — deck layers insert before it so labels stay on top. */
+  const [labelLayerId, setLabelLayerId] = useState<string | null>(null);
 
   const onStatusRef = useRef(onStatus);
   onStatusRef.current = onStatus;
@@ -307,6 +317,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
 
         const initialTheme: ResolvedTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
         appliedStyleRef.current = initialTheme;
+        maplibre.setWorkerUrl(maplibreWorkerUrl);
         const map = new maplibre.Map({
           container,
           style: STYLE_URLS[initialTheme],
@@ -321,12 +332,21 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         // Bottom-left keeps the required attribution clear of the zoom stack.
         map.addControl(new maplibre.AttributionControl({ compact: true }), "bottom-left");
 
+        // maplibre v6 removed the public `transform`, but deck.gl's interleaved
+        // overlay still reads it (height/nearZ/farZ) on every frame. Expose the
+        // internal transform under the old name; drop when deck supports v6.
+        Object.defineProperty(map, "transform", {
+          get: () => (map as unknown as { painter: { transform: unknown } }).painter.transform,
+          configurable: true,
+        });
+
         // Elastic circular boundary: custom drag with rubber-band physics.
         // MapLibre's dragPan is disabled to avoid setCenter fights.
         // All animation uses jumpTo + rAF to avoid MapLibre's internal ease system.
         map.dragPan.disable();
 
         const canvasEl = map.getCanvasContainer();
+        const mapCanvas = map.getCanvas();
         let dragging = false;
         let lastPt = { x: 0, y: 0 };
         let vel = { x: 0, y: 0 };
@@ -379,7 +399,10 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           lastPt = { x: e.clientX, y: e.clientY };
           lastT = performance.now();
           vel = { x: 0, y: 0 };
-          canvasEl.setPointerCapture(e.pointerId);
+          // Capture on the canvas (not the container) so pointerup stays
+          // targeted at the canvas — deck.gl's interleaved event manager
+          // listens there and needs the full gesture to register clicks.
+          mapCanvas.setPointerCapture(e.pointerId);
         });
 
         canvasEl.addEventListener("pointermove", (e) => {
@@ -410,7 +433,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         function endDrag(e: PointerEvent) {
           if (!dragging) return;
           dragging = false;
-          canvasEl.releasePointerCapture(e.pointerId);
+          mapCanvas.releasePointerCapture(e.pointerId);
 
           const c = map.getCenter();
           if (overshootFromBoundary(c.lng, c.lat) > 0) {
@@ -456,7 +479,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           if (!dragging && !animating) snapBack();
         });
 
-        const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
+        const overlay = new MapboxOverlay({ interleaved: true, layers: [] });
         map.addControl(overlay);
 
         if (process.env.NODE_ENV === "development") {
@@ -470,6 +493,18 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
             setStatus("error");
           }
           console.warn("Map error", event.error?.message);
+        });
+        // Mark ready as soon as the style object loads, before all tiles
+        // resolve. The `load` event fires only when every source/tile has
+        // loaded, which in some envs never happens (e.g. slow tile workers),
+        // leaving the parent's 15s fallback to flip the map to error even
+        // though the canvas paints fine. style.load is the earliest signal
+        // that the map is operational.
+        map.on("style.load", () => {
+          // Bottom-most symbol layer in the stack; deck layers insert before it.
+          const firstLabel = map.getStyle().layers?.find((l) => l.type === "symbol");
+          setLabelLayerId(firstLabel?.id ?? null);
+          setStatus("ready");
         });
         map.on("load", () => {
           if (!disposed) {
@@ -653,175 +688,205 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         ]
       : [];
 
+    /**
+     * deck reads `beforeId` at runtime (interleaved insertion point) but does
+     * not type it. Layers with a beforeId slot in below the basemap's label
+     * layers; the building tag skips it so it draws above every basemap layer,
+     * labels included.
+     */
+    const withBeforeId = <P extends object>(props: P): P & { beforeId?: string } => ({
+      ...props,
+      beforeId: (props as { id?: string }).id === "building-labels" ? undefined : (labelLayerId ?? undefined),
+    });
+
     const layers = [
       showRoutes && walkingRoutes
-        ? new GeoJsonLayer({
-            id: "walking-routes",
-            data: walkingRoutes,
-            stroked: true,
-            filled: false,
-            getLineColor: colors.walkway,
-            getLineWidth: 2,
-            lineWidthUnits: "pixels" as const,
-            lineCapRounded: true,
-            lineJointRounded: true,
-          })
+        ? new GeoJsonLayer(
+            withBeforeId({
+              id: "walking-routes",
+              data: walkingRoutes,
+              stroked: true,
+              filled: false,
+              getLineColor: colors.walkway,
+              getLineWidth: 2,
+              lineWidthUnits: "pixels" as const,
+              lineCapRounded: true,
+              lineJointRounded: true,
+            }),
+          )
         : null,
-      new GeoJsonLayer({
-        id: "buildings",
-        data: buildings,
-        extruded: true,
-        wireframe: false,
-        extensions: [handles.gradientExtension],
-        getElevation: (feature) => buildingHeight(feature as BuildingFeature),
-        getFillColor: (feature) => (isHighlighted(feature as BuildingFeature) ? colors.fillHighlight : colors.fill),
-        getLineColor: (feature) => (isHighlighted(feature as BuildingFeature) ? colors.lineHighlight : colors.line),
-        material: { ambient: 1, diffuse: 0.6, shininess: 1 },
-        stroked: true,
-        getLineWidth: 1,
-        lineWidthUnits: "pixels" as const,
-        pickable: true,
-        autoHighlight: true,
-        highlightColor: [124, 158, 178, 120],
-        transitions: { getFillColor: 300 },
-        // Hover for pointers, click/tap for touch (Requirement 7.3: selecting a
-        // building shows its name and code).
-        onHover: (info) => {
-          const properties = (info.object as BuildingFeature | undefined)?.properties;
-          if (properties?.NAME || properties?.BLDG_CODE) {
-            setPicked({
-              name: String(properties.NAME ?? ""),
-              code: String(properties.BLDG_CODE ?? ""),
-              x: info.x,
-              y: info.y,
-            });
-          } else {
+      new GeoJsonLayer(
+        withBeforeId({
+          id: "buildings",
+          data: buildings,
+          extruded: true,
+          wireframe: false,
+          extensions: [handles.gradientExtension],
+          getElevation: (feature) => buildingHeight(feature as BuildingFeature),
+          getFillColor: (feature) => (isHighlighted(feature as BuildingFeature) ? colors.fillHighlight : colors.fill),
+          getLineColor: (feature) => (isHighlighted(feature as BuildingFeature) ? colors.lineHighlight : colors.line),
+          material: { ambient: 1, diffuse: 0.6, shininess: 1 },
+          stroked: true,
+          getLineWidth: 1,
+          lineWidthUnits: "pixels" as const,
+          pickable: true,
+          autoHighlight: true,
+          highlightColor: [124, 158, 178, 120],
+          transitions: { getFillColor: 300 },
+          // Hover for pointers, click/tap for touch (Requirement 7.3: selecting a
+          // building shows its name and code).
+          onHover: (info) => {
+            const properties = (info.object as BuildingFeature | undefined)?.properties;
+            if (properties?.NAME || properties?.BLDG_CODE) {
+              setPicked({
+                name: String(properties.NAME ?? ""),
+                code: String(properties.BLDG_CODE ?? ""),
+                x: info.x,
+                y: info.y,
+              });
+            } else {
+              setPicked(null);
+            }
+          },
+          // Click/tap opens the details popup (rooms, study rooms, services).
+          onClick: (info) => {
+            if (didPanRef.current) return; // suppress click after drag
+            const properties = (info.object as BuildingFeature | undefined)?.properties;
+            if (!properties?.BLDG_CODE) {
+              setSelected(null);
+              return;
+            }
             setPicked(null);
-          }
-        },
-        // Click/tap opens the details popup (rooms, study rooms, services).
-        onClick: (info) => {
-          if (didPanRef.current) return; // suppress click after drag
-          const properties = (info.object as BuildingFeature | undefined)?.properties;
-          if (!properties?.BLDG_CODE) {
-            setSelected(null);
-            return;
-          }
-          setPicked(null);
-          setSelected({
-            code: String(properties.BLDG_CODE),
-            name: String(properties.NAME ?? properties.BLDG_CODE),
-            usage: properties.BLDG_USAGE != null ? String(properties.BLDG_USAGE) : null,
-            floors: properties.MAX_FLOORS != null ? String(properties.MAX_FLOORS) : null,
-            address: properties.PRIMARY_ADDRESS != null ? String(properties.PRIMARY_ADDRESS) : null,
-          });
-        },
-        updateTriggers: {
-          getFillColor: [theme, ...highlightedCodes],
-          getLineColor: [theme, ...highlightedCodes],
-        },
-      }),
+            setSelected({
+              code: String(properties.BLDG_CODE),
+              name: String(properties.NAME ?? properties.BLDG_CODE),
+              usage: properties.BLDG_USAGE != null ? String(properties.BLDG_USAGE) : null,
+              floors: properties.MAX_FLOORS != null ? String(properties.MAX_FLOORS) : null,
+              address: properties.PRIMARY_ADDRESS != null ? String(properties.PRIMARY_ADDRESS) : null,
+            });
+          },
+          updateTriggers: {
+            getFillColor: [theme, ...highlightedCodes],
+            getLineColor: [theme, ...highlightedCodes],
+          },
+        }),
+      ),
       routePath
-        ? new PathLayer({
-            id: "route-trace",
-            data: [{ path: partialPath(routePath.path, drawProgress) }],
-            getPath: (d: { path: LngLat[] }) => d.path,
-            getColor: colors.route,
-            getWidth: 5,
-            widthUnits: "pixels" as const,
-            capRounded: true,
-            jointRounded: true,
-            updateTriggers: { getPath: [routePath.key, drawProgress] },
-          })
+        ? new PathLayer(
+            withBeforeId({
+              id: "route-trace",
+              data: [{ path: partialPath(routePath.path, drawProgress) }],
+              getPath: (d: { path: LngLat[] }) => d.path,
+              getColor: colors.route,
+              getWidth: 5,
+              widthUnits: "pixels" as const,
+              capRounded: true,
+              jointRounded: true,
+              updateTriggers: { getPath: [routePath.key, drawProgress] },
+            }),
+          )
         : null,
       endpoints.length > 0
-        ? new ScatterplotLayer({
-            id: "route-endpoints",
-            // Dots mark where the walk starts/ends — the entrances the polyline
-            // connects, not the building centroids.
-            data: (routePath
-              ? [routePath.path[0], routePath.path[routePath.path.length - 1]].map((p) => ({ position: [...p, 2] }))
-              : endpoints.map((e) => ({ position: [...e.center, buildingHeight(e.feature) + 4] }))) as {
-              position: [number, number, number];
-            }[],
-            getPosition: (d: { position: [number, number, number] }) => d.position,
-            getRadius: 5,
-            radiusUnits: "pixels" as const,
-            getFillColor: colors.route,
-            stroked: true,
-            getLineColor: colors.routeCasing,
-            getLineWidth: 3,
-            lineWidthUnits: "pixels" as const,
-          })
+        ? new ScatterplotLayer(
+            withBeforeId({
+              id: "route-endpoints",
+              // Dots mark where the walk starts/ends — the entrances the polyline
+              // connects, not the building centroids.
+              data: (routePath
+                ? [routePath.path[0], routePath.path[routePath.path.length - 1]].map((p) => ({ position: [...p, 2] }))
+                : endpoints.map((e) => ({ position: [...e.center, buildingHeight(e.feature) + 4] }))) as {
+                position: [number, number, number];
+              }[],
+              getPosition: (d: { position: [number, number, number] }) => d.position,
+              getRadius: 5,
+              radiusUnits: "pixels" as const,
+              getFillColor: colors.route,
+              stroked: true,
+              getLineColor: colors.routeCasing,
+              getLineWidth: 3,
+              lineWidthUnits: "pixels" as const,
+            }),
+          )
         : null,
       endpoints.length > 0
-        ? new TextLayer({
-            id: "route-labels",
-            data: endpoints.map((e) => ({ position: [...e.center, buildingHeight(e.feature) + 10], text: e.text })),
-            getPosition: (d: { position: [number, number, number] }) => d.position,
-            getText: (d: { text: string }) => d.text,
-            getSize: 13,
-            getColor: colors.label,
-            background: true,
-            getBackgroundColor: colors.labelBg,
-            backgroundPadding: [6, 3],
-            fontFamily: "Aspekta, ui-sans-serif, sans-serif",
-            fontWeight: 600,
-            getPixelOffset: [0, -14],
-          })
+        ? new TextLayer(
+            withBeforeId({
+              id: "route-labels",
+              data: endpoints.map((e) => ({ position: [...e.center, buildingHeight(e.feature) + 10], text: e.text })),
+              getPosition: (d: { position: [number, number, number] }) => d.position,
+              getText: (d: { text: string }) => d.text,
+              getSize: 13,
+              getColor: colors.label,
+              background: true,
+              getBackgroundColor: colors.labelBg,
+              backgroundPadding: [6, 3],
+              fontFamily: "Aspekta, ui-sans-serif, sans-serif",
+              fontWeight: 600,
+              getPixelOffset: [0, -14],
+            }),
+          )
         : null,
       pins.length > 0
-        ? new ScatterplotLayer({
-            id: "place-pins",
-            data: pins.map((p) => ({ position: [p.lon, p.lat, 2] as [number, number, number] })),
-            getPosition: (d: { position: [number, number, number] }) => d.position,
-            getRadius: 6,
-            radiusUnits: "pixels" as const,
-            getFillColor: colors.route,
-            stroked: true,
-            getLineColor: colors.routeCasing,
-            getLineWidth: 2,
-            lineWidthUnits: "pixels" as const,
-          })
+        ? new ScatterplotLayer(
+            withBeforeId({
+              id: "place-pins",
+              data: pins.map((p) => ({ position: [p.lon, p.lat, 2] as [number, number, number] })),
+              getPosition: (d: { position: [number, number, number] }) => d.position,
+              getRadius: 6,
+              radiusUnits: "pixels" as const,
+              getFillColor: colors.route,
+              stroked: true,
+              getLineColor: colors.routeCasing,
+              getLineWidth: 2,
+              lineWidthUnits: "pixels" as const,
+            }),
+          )
         : null,
       pins.length > 0
-        ? new TextLayer({
-            id: "place-labels",
-            data: pins.map((p) => ({ position: [p.lon, p.lat, 2] as [number, number, number], text: p.name })),
-            getPosition: (d: { position: [number, number, number] }) => d.position,
-            getText: (d: { text: string }) => d.text,
-            getSize: 12,
-            getColor: colors.label,
-            background: true,
-            getBackgroundColor: colors.labelBg,
-            backgroundPadding: [5, 2],
-            fontFamily: "Aspekta, ui-sans-serif, sans-serif",
-            fontWeight: 600,
-            getPixelOffset: [0, -16],
-          })
+        ? new TextLayer(
+            withBeforeId({
+              id: "place-labels",
+              data: pins.map((p) => ({ position: [p.lon, p.lat, 2] as [number, number, number], text: p.name })),
+              getPosition: (d: { position: [number, number, number] }) => d.position,
+              getText: (d: { text: string }) => d.text,
+              getSize: 12,
+              getColor: colors.label,
+              background: true,
+              getBackgroundColor: colors.labelBg,
+              backgroundPadding: [5, 2],
+              fontFamily: "Aspekta, ui-sans-serif, sans-serif",
+              fontWeight: 600,
+              getPixelOffset: [0, -16],
+            }),
+          )
         : null,
       focusedBuildings.length > 0
-        ? new TextLayer({
-            id: "building-labels",
-            data: focusedBuildings.map((b) => {
-              const feature = findBuilding(buildings, b.code);
-              const center = (feature && featureCentroid(feature)) ?? [b.lon, b.lat];
-              return {
-                position: [...center, feature ? buildingHeight(feature) + 10 : 10] as [number, number, number],
-                text: b.name,
-              };
+        ? new TextLayer(
+            withBeforeId({
+              id: "building-labels",
+              data: focusedBuildings.map((b) => {
+                const feature = findBuilding(buildings, b.code);
+                const center = (feature && featureCentroid(feature)) ?? [b.lon, b.lat];
+                return {
+                  position: [...center, feature ? buildingHeight(feature) + 10 : 10] as [number, number, number],
+                  text: b.name,
+                };
+              }),
+              getPosition: (d: { position: [number, number, number] }) => d.position,
+              getText: (d: { text: string }) => d.text,
+              getSize: 13,
+              getColor: colors.label,
+              background: true,
+              getBackgroundColor: colors.labelBg,
+              backgroundPadding: [6, 3],
+              fontFamily: "Aspekta, ui-sans-serif, sans-serif",
+              fontWeight: 600,
+              getPixelOffset: [0, -14],
+              // Interleaved mode depth-tests against the buildings drawn in
+              // the earlier group; the focused tag must clear them at pitch.
+              parameters: { depthTest: false },
             }),
-            getPosition: (d: { position: [number, number, number] }) => d.position,
-            getText: (d: { text: string }) => d.text,
-            getSize: 13,
-            getColor: colors.label,
-            background: true,
-            getBackgroundColor: colors.labelBg,
-            backgroundPadding: [6, 3],
-            fontFamily: "Aspekta, ui-sans-serif, sans-serif",
-            fontWeight: 600,
-            getPixelOffset: [0, -14],
-          })
+          )
         : null,
     ].filter(Boolean);
 
@@ -831,7 +896,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
       console.warn("deck.gl layer error:", e);
       setStatus("error");
     }
-  }, [buildings, walkingRoutes, showRoutes, highlight, theme, status, routePath, drawProgress, selected]);
+  }, [buildings, walkingRoutes, showRoutes, highlight, theme, status, routePath, drawProgress, selected, labelLayerId]);
 
   // ---- Theme: swap basemap style ----
   useEffect(() => {

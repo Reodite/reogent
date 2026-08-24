@@ -35,6 +35,7 @@ export function converseStream(req: {
   messages: ConverseMessage[];
   system: string;
   toolSpecs: ToolSpec[];
+  forceToolUse?: boolean;
 }): AsyncGenerator<ConverseStreamEvent> {
   return getAdapter().converseStream(req);
 }

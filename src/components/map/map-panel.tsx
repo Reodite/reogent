@@ -35,20 +35,6 @@ function highlightFallback(h: MapHighlight): string {
   return h.places.map((p) => p.name).join(", ") + (h.near ? ` — near ${h.near}` : "");
 }
 
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-    const media = window.matchMedia(query);
-    setMatches(media.matches);
-    const onChange = (event: MediaQueryListEvent) => setMatches(event.matches);
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, [query]);
-  return mounted ? matches : false;
-}
-
 function GlassButton({
   label,
   icon,
@@ -67,7 +53,7 @@ function GlassButton({
       aria-label={label}
       title={label}
       aria-pressed={pressed}
-      className={`neu-panel flex size-10 items-center justify-center rounded-2xl transition-colors duration-150 ${
+      className={`focus-visible:ring-primary/40 neu-panel flex size-10 items-center justify-center rounded-2xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
         pressed ? "text-primary" : "text-on-surface-variant hover:text-primary"
       }`}
     >
@@ -137,7 +123,7 @@ function MapFallback({ onRetry }: { onRetry?: () => void }) {
   );
 }
 
-function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => void; hideOverlayControls?: boolean }) {
+function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) {
   const { highlight, focusNonce } = useChatShell();
   const [showRoutes, setShowRoutes] = useState(false);
   const [status, setStatus] = useState<MapStatus>("loading");
@@ -157,7 +143,7 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
   }
 
   return (
-    <div className="relative h-full w-full" aria-busy={status === "loading"}>
+    <div className="relative h-full w-full" aria-busy={status === "loading"} data-map-status={status}>
       {status === "error" ? (
         <MapFallback onRetry={retryMap} />
       ) : (
@@ -183,7 +169,6 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
 
           {/* Layer + view controls — floating top-right */}
           <div className="absolute top-3 right-3 z-10 flex flex-col gap-2">
-            {!hideOverlayControls && <GlassButton label="Collapse map" icon="right" onClick={onCollapse} />}
             <GlassButton
               label={showRoutes ? "Hide walking paths" : "Show walking paths"}
               icon="layer"
@@ -199,7 +184,7 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
               type="button"
               aria-label="Zoom in"
               onClick={() => controls.current?.zoomIn()}
-              className="text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
               <Icon name="add" size={20} />
             </button>
@@ -208,7 +193,7 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
               type="button"
               aria-label="Zoom out"
               onClick={() => controls.current?.zoomOut()}
-              className="text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
             >
               <Icon name="minimize" size={20} />
             </button>
@@ -219,185 +204,12 @@ function MapSurface({ onCollapse, hideOverlayControls }: { onCollapse: () => voi
   );
 }
 
-/** Desktop/tablet: a persistent tool slot that collapses into a passive rail. */
-export function MapPanel() {
-  const { mapOpen, setMapOpen, highlight } = useChatShell();
-  const isMobile = useMediaQuery("(max-width: 639px)");
-
-  // A fresh route is the moment the map earns attention — reopen the tab.
-  useEffect(() => {
-    if (highlight) setMapOpen(true);
-  }, [highlight, setMapOpen]);
-
-  if (isMobile) return null;
-
+/** Registry-facing map pane. Shutdown of the active widget routes through the
+ * shell's workspaceView + the Answer Canvas header collapse button. */
+export function MapArea() {
   return (
-    <div className="map-panel-root relative h-full min-h-0 w-full overflow-hidden">
-      <section
-        inert={!mapOpen}
-        aria-hidden={!mapOpen}
-        aria-label="Campus map"
-        className={`map-surface-layer neu-panel absolute inset-0 flex min-w-0 overflow-hidden rounded-2xl transition-opacity duration-200 ${mapOpen ? "opacity-100 delay-75" : "pointer-events-none opacity-0"}`}
-      >
-        <MapSurface onCollapse={() => setMapOpen(false)} />
-      </section>
-
-      <aside
-        inert={mapOpen}
-        aria-hidden={mapOpen}
-        aria-label="Collapsed campus map"
-        className={`map-tab-layer neu-panel text-on-surface-variant absolute inset-y-0 right-0 flex w-[3.75rem] cursor-default flex-col items-center rounded-2xl py-3 transition-opacity duration-200 ${mapOpen ? "pointer-events-none opacity-0" : "opacity-100 delay-100"}`}
-      >
-        <button
-          type="button"
-          onClick={() => setMapOpen(true)}
-          tabIndex={mapOpen ? -1 : 0}
-          aria-label="Expand campus map"
-          aria-expanded={mapOpen}
-          title="Expand campus map"
-          className="neu-panel text-primary hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors duration-150"
-        >
-          <Icon name="fullscreen" size={17} />
-        </button>
-        <span className="my-auto text-xs font-medium tracking-[0.06em] select-none [writing-mode:vertical-rl]">
-          Campus map
-        </span>
-      </aside>
-    </div>
-  );
-}
-
-/** Mobile: 80vh bottom sheet with drag-to-dismiss. */
-export function MapBottomSheet() {
-  const { mobileMapOpen, setMobileMapOpen, highlight } = useChatShell();
-  const isMobile = useMediaQuery("(max-width: 639px)");
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const drag = useRef<{ startY: number; delta: number } | null>(null);
-
-  useEffect(() => {
-    if (!mobileMapOpen) return;
-    closeRef.current?.focus();
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const sheet = sheetRef.current;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileMapOpen(false);
-      // Focus trap: cycle Tab within the sheet
-      if (event.key === "Tab" && sheet) {
-        const focusable = sheet.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = prev;
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [mobileMapOpen, setMobileMapOpen]);
-
-  if (!isMobile) return null;
-
-  function onPointerDown(event: React.PointerEvent) {
-    drag.current = { startY: event.clientY, delta: 0 };
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    // Suppress CSS transition during drag for responsive feel
-    if (sheetRef.current) sheetRef.current.style.transitionProperty = "none";
-  }
-
-  function onPointerMove(event: React.PointerEvent) {
-    if (!drag.current || !sheetRef.current) return;
-    drag.current.delta = Math.max(0, event.clientY - drag.current.startY);
-    sheetRef.current.style.transform = `translateY(${drag.current.delta}px)`;
-  }
-
-  function onPointerUp() {
-    const sheet = sheetRef.current;
-    const state = drag.current;
-    drag.current = null;
-    if (!sheet || !state) return;
-    sheet.style.transitionProperty = "";
-    sheet.style.transform = "";
-    if (state.delta > sheet.offsetHeight * 0.2) setMobileMapOpen(false);
-  }
-
-  function onPointerCancel() {
-    drag.current = null;
-    if (sheetRef.current) {
-      sheetRef.current.style.transitionProperty = "";
-      sheetRef.current.style.transform = "";
-    }
-  }
-
-  return (
-    <div inert={!mobileMapOpen} className={mobileMapOpen ? "" : "pointer-events-none"}>
-      <button
-        type="button"
-        tabIndex={-1}
-        aria-label="Close map"
-        onClick={() => setMobileMapOpen(false)}
-        className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-300 ${
-          mobileMapOpen ? "opacity-100" : "opacity-0"
-        }`}
-      />
-      <div
-        ref={sheetRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Campus map"
-        className={`neu-panel bg-surface fixed inset-x-0 bottom-0 z-50 flex h-[80dvh] flex-col overflow-hidden rounded-t-2xl pb-[env(safe-area-inset-bottom)] transition-transform duration-300 [transition-timing-function:var(--neu-ease)] ${
-          mobileMapOpen ? "translate-y-0" : "translate-y-full"
-        }`}
-      >
-        <div
-          className="flex shrink-0 cursor-grab touch-none flex-col items-center gap-2 px-4 pt-3 pb-3"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerCancel}
-        >
-          <span className="bg-outline/40 h-1.5 w-10 rounded-full" aria-hidden="true" />
-          <div className="flex w-full items-center justify-between">
-            <span className="min-w-0">
-              <span className="text-on-surface block truncate text-base font-medium">
-                {highlight
-                  ? highlight.kind === "route"
-                    ? `${highlight.from} → ${highlight.to}`
-                    : highlightTitle(highlight)
-                  : "Campus map"}
-              </span>
-              {highlight?.kind === "route" && (
-                <span className="text-on-surface-variant block text-sm">
-                  {formatMeters(highlight.meters)} · {formatMinutes(highlight.minutes)} walk
-                </span>
-              )}
-            </span>
-            <button
-              ref={closeRef}
-              type="button"
-              onClick={() => setMobileMapOpen(false)}
-              aria-label="Close map"
-              className="text-on-surface-variant hover:bg-surface-container-high flex size-11 shrink-0 items-center justify-center rounded-lg transition-colors duration-150"
-            >
-              <Icon name="close" size={18} />
-            </button>
-          </div>
-        </div>
-        <div className="min-h-0 flex-1">
-          {mobileMapOpen && <MapSurface onCollapse={() => setMobileMapOpen(false)} hideOverlayControls />}
-        </div>
-      </div>
+    <div className="relative h-full w-full">
+      <MapSurface />
     </div>
   );
 }

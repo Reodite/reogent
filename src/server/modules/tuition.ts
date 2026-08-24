@@ -1,4 +1,4 @@
-import type { DatasetModule } from "../core/types";
+import type { DatasetModule, SearchClient } from "../core/types";
 
 export interface TuitionDoc {
   program: string;
@@ -91,6 +91,74 @@ function pickCohortRow(rows: TuitionDoc[], cohortYear: number): TuitionDoc | nul
   return rows.find((r) => r.cohort_year === null) ?? null;
 }
 
+/** Resolves tuition for the given program slug, student type, and cohort year.
+ *  Replicates the per-tool logic but exported so get_costs can dispatch to it. */
+export async function lookupTuition(
+  input: { program_slug: string; student_type: string; cohort_year: number },
+  search: SearchClient,
+): Promise<Record<string, unknown>> {
+  const slug = slugify(String(input.program_slug ?? ""));
+  const studentType = String(input.student_type ?? "").toLowerCase();
+  const cohortYear = Number(input.cohort_year);
+  const bySlug = async (s: string) => {
+    const res = await search.index("tuition").search("", {
+      filter: `program_slug = '${s}' AND student_type = '${studentType}'`,
+      limit: 50,
+    });
+    return res.hits as unknown as TuitionDoc[];
+  };
+
+  let rows = await bySlug(slug);
+  if (rows.length === 0) {
+    const fuzzy = await search.index("tuition").search(slug.replace(/-/g, " "), {
+      filter: `student_type = '${studentType}'`,
+      limit: 1,
+    });
+    const best = fuzzy.hits[0] as unknown as TuitionDoc | undefined;
+    if (best) rows = await bySlug(best.program_slug);
+  }
+  const variants = new Map<string, TuitionDoc[]>();
+  for (const r of rows) {
+    const key = `${r.applies_to}#${r.rate_type}#${r.unit}`;
+    variants.set(key, [...(variants.get(key) ?? []), r]);
+  }
+  const resolved = [...variants.values()].map((group) => pickCohortRow(group, cohortYear)).filter((r) => r !== null);
+  if (resolved.length === 0) {
+    throw new Error(
+      `No tuition found for program "${input.program_slug}" (${studentType}, cohort ${cohortYear}). Try kind "estimate" for cost estimates, or a different program name (e.g. "Science" instead of "Computer Science").`,
+    );
+  }
+  const primary =
+    resolved.find((r) => r.unit === "per_credit" && r.applies_to === null && r.rate_type === null) ??
+    resolved.find((r) => r.unit === "per_credit") ??
+    resolved.find((r) => r.applies_to === null && r.rate_type === null) ??
+    resolved[0];
+  const others = resolved.filter((r) => r !== primary);
+  return {
+    program: primary.program,
+    program_slug: primary.program_slug,
+    student_type: primary.student_type,
+    cohort_year: cohortYear,
+    unit: primary.unit,
+    amount_cad: primary.amount_cad,
+    ...(primary.instalments ? { instalments: primary.instalments } : {}),
+    ...(primary.unit === "per_credit" ? { per_credit_cad: primary.amount_cad } : {}),
+    ...(primary.applies_to ? { applies_to: primary.applies_to } : {}),
+    ...(primary.rate_type ? { rate_type: primary.rate_type } : {}),
+    ...(others.length > 0
+      ? {
+          other_rates: others.map((r) => ({
+            applies_to: r.applies_to,
+            rate_type: r.rate_type,
+            unit: r.unit,
+            amount_cad: r.amount_cad,
+            ...(r.instalments ? { instalments: r.instalments } : {}),
+          })),
+        }
+      : {}),
+  };
+}
+
 export const tuition: DatasetModule = {
   name: "tuition",
   indices: [
@@ -108,96 +176,5 @@ export const tuition: DatasetModule = {
       },
     },
   ],
-  tools: [
-    {
-      spec: {
-        name: "get_tuition",
-        description:
-          "Get the tuition rate in CAD for a UBC Vancouver program, by program slug, student type, and cohort year. Credit-based programs bill per_credit; flat-fee programs bill per_instalment or per_year — always report the unit with the amount.",
-        inputSchema: {
-          json: {
-            type: "object",
-            properties: {
-              program_slug: {
-                type: "string",
-                description: 'Slugified program name, e.g. "bachelor-of-science". Program-name words also work.',
-              },
-              student_type: { type: "string", description: '"domestic" or "international"' },
-              cohort_year: {
-                type: "number",
-                description: "Year the student started (or starts) the program, e.g. 2026",
-              },
-            },
-            required: ["program_slug", "student_type", "cohort_year"],
-          },
-        },
-      },
-      async execute(input, search) {
-        const slug = slugify(String(input.program_slug ?? ""));
-        const studentType = String(input.student_type ?? "").toLowerCase();
-        const cohortYear = Number(input.cohort_year);
-        const bySlug = async (s: string) => {
-          const res = await search.index("tuition").search("", {
-            filter: `program_slug = '${s}' AND student_type = '${studentType}'`,
-            limit: 50,
-          });
-          return res.hits as unknown as TuitionDoc[];
-        };
-
-        let rows = await bySlug(slug);
-        if (rows.length === 0) {
-          // fall back to a fuzzy program-name match, then requery by that slug
-          const fuzzy = await search.index("tuition").search(slug.replace(/-/g, " "), {
-            filter: `student_type = '${studentType}'`,
-            limit: 1,
-          });
-          const best = fuzzy.hits[0] as unknown as TuitionDoc | undefined;
-          if (best) rows = await bySlug(best.program_slug);
-        }
-        // resolve the cohort within each rate variant (per-year / per-course-level / billing unit)
-        const variants = new Map<string, TuitionDoc[]>();
-        for (const r of rows) {
-          const key = `${r.applies_to}#${r.rate_type}#${r.unit}`;
-          variants.set(key, [...(variants.get(key) ?? []), r]);
-        }
-        const resolved = [...variants.values()]
-          .map((group) => pickCohortRow(group, cohortYear))
-          .filter((r) => r !== null);
-        if (resolved.length === 0) {
-          throw new Error(
-            `No tuition found for program "${input.program_slug}" (${studentType}, cohort ${cohortYear})`,
-          );
-        }
-        const primary =
-          resolved.find((r) => r.unit === "per_credit" && r.applies_to === null && r.rate_type === null) ??
-          resolved.find((r) => r.unit === "per_credit") ??
-          resolved.find((r) => r.applies_to === null && r.rate_type === null) ??
-          resolved[0];
-        const others = resolved.filter((r) => r !== primary);
-        return {
-          program: primary.program,
-          program_slug: primary.program_slug,
-          student_type: primary.student_type,
-          cohort_year: cohortYear,
-          unit: primary.unit,
-          amount_cad: primary.amount_cad,
-          ...(primary.instalments ? { instalments: primary.instalments } : {}),
-          ...(primary.unit === "per_credit" ? { per_credit_cad: primary.amount_cad } : {}),
-          ...(primary.applies_to ? { applies_to: primary.applies_to } : {}),
-          ...(primary.rate_type ? { rate_type: primary.rate_type } : {}),
-          ...(others.length > 0
-            ? {
-                other_rates: others.map((r) => ({
-                  applies_to: r.applies_to,
-                  rate_type: r.rate_type,
-                  unit: r.unit,
-                  amount_cad: r.amount_cad,
-                  ...(r.instalments ? { instalments: r.instalments } : {}),
-                })),
-              }
-            : {}),
-        };
-      },
-    },
-  ],
+  tools: [],
 };

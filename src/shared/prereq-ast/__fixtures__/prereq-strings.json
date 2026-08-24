@@ -1,0 +1,13 @@
+[
+  { "id": "cpsc-110", "input": "No prerequisite." },
+  { "id": "math-200", "input": "One of MATH 101, MATH 103, MATH 105, SCIE 001." },
+  { "id": "aanb-500", "input": "AANB_V 500." },
+  {
+    "id": "kin-320-mid-clause",
+    "input": "KIN_V 320 (MATH 100 is recommended) and one of BIOL 112, BIOL 121."
+  },
+  {
+    "id": "multi-recommended-tails",
+    "input": "MATH 100. MATH 101 is recommended. MATH 102 is strongly recommended."
+  }
+]

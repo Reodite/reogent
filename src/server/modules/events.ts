@@ -59,9 +59,9 @@ export const events: DatasetModule = {
   tools: [
     {
       spec: {
-        name: "search_events",
+        name: "find_events",
         description:
-          "Search UBC Vancouver events (events.ubc.ca) by keyword and date range. The archive goes back years — filter by date for current events. Venues have no map coordinates.",
+          "Search UBC Vancouver events (events.ubc.ca) by keyword and date range. The archive goes back years so you MUST filter by date for current events: use from_date and to_date (ISO format, e.g. 2026-08-01). Without a date range, the tool returns the most recent events (which may be years old). If you pass an empty query, the tool returns all events in the date range.",
         inputSchema: {
           json: {
             type: "object",

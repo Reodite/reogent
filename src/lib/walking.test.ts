@@ -7,9 +7,10 @@ import type { ToolCall } from "@/src/lib/api-types";
 import { featureCentroid, featuresBounds, findBuilding } from "@/src/lib/geo";
 import {
   extractBuildingHighlight,
+  extractParkingHighlight,
   extractPlacesHighlight,
   extractWalkingHighlight,
-  mergeMapHighlights,
+  toolCallToCanvasView,
 } from "@/src/lib/walking";
 import fc from "fast-check";
 import type { FeatureCollection } from "geojson";
@@ -135,38 +136,6 @@ describe("extractBuildingHighlight", () => {
     expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: 91, lon: -123 } })).toBeNull();
     expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: 49, lon: 181 } })).toBeNull();
     expect(extractBuildingHighlight({ ...healthy, result: { code: "X", name: "X", lat: NaN, lon: -123 } })).toBeNull();
-  });
-});
-
-describe("mergeMapHighlights", () => {
-  const building = (code: string): ToolCall => ({
-    name: "find_building",
-    input: { query: code },
-    result: { code, name: code, lat: 49.26, lon: -123.25 },
-  });
-  const walk: ToolCall = {
-    name: "walking_distance",
-    input: { from_building: "IBLC", to_building: "ICCS" },
-    result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11 },
-  };
-
-  it("merges every looked-up building into one highlight", () => {
-    const merged = mergeMapHighlights([building("NEST"), building("ICCS"), building("NEST")]);
-    expect(merged?.kind).toBe("buildings");
-    if (merged?.kind !== "buildings") throw new Error("expected buildings");
-    expect(merged.buildings.map((b) => b.code)).toEqual(["NEST", "ICCS"]); // deduped
-  });
-
-  it("prefers the route when one was computed (the A → B answer)", () => {
-    const merged = mergeMapHighlights([building("IBLC"), building("ICCS"), walk]);
-    expect(merged?.kind).toBe("route");
-  });
-
-  it("returns null when no call drives the map", () => {
-    expect(mergeMapHighlights([])).toBeNull();
-    expect(
-      mergeMapHighlights([{ name: "walking_distance", input: {}, result: { status: "error", message: "nope" } }]),
-    ).toBeNull();
   });
 });
 
@@ -302,5 +271,188 @@ describe("journey: highlight → geo resolution → camera bounds", () => {
       result: { courses: [] },
     };
     expect(extractWalkingHighlight(courseCall)).toBeNull();
+  });
+});
+
+describe("extractParkingHighlight", () => {
+  const healthy: ToolCall = {
+    name: "find_parking",
+    input: { near_building: "SWNG" },
+    result: {
+      near_building: "SWNG",
+      parking: [
+        { name: "Rose Garden Parkade", lat: 49.27, lon: -123.25, rate: "$4.50/hr" },
+        { name: "North Parkade", lat: 49.271, lon: -123.251 },
+      ],
+    },
+  };
+
+  it("extracts parking pins as a places highlight anchored to the building", () => {
+    const highlight = extractParkingHighlight(healthy);
+    expect(highlight?.kind).toBe("places");
+    expect(highlight?.near).toBe("SWNG");
+    expect(highlight?.places).toEqual([
+      { name: "Rose Garden Parkade", lat: 49.27, lon: -123.25, service_type: null },
+      { name: "North Parkade", lat: 49.271, lon: -123.251, service_type: null },
+    ]);
+  });
+
+  it("returns null for other tools, error results, and malformed payloads", () => {
+    expect(extractParkingHighlight({ ...healthy, name: "find_places" })).toBeNull();
+    expect(extractParkingHighlight({ ...healthy, result: { status: "error", message: "none" } })).toBeNull();
+    expect(extractParkingHighlight({ ...healthy, result: { parking: [] } })).toBeNull();
+    expect(extractParkingHighlight({ ...healthy, result: undefined })).toBeNull();
+  });
+});
+
+describe("toolCallToCanvasView", () => {
+  const month = new Date().toISOString().slice(0, 7);
+
+  function mapKind(view: { paneId: string; state: Record<string, unknown> } | null): string | undefined {
+    if (!view) return undefined;
+    const highlight = view.state.highlight as { kind?: string } | undefined;
+    return highlight?.kind;
+  }
+
+  it("maps a walking_distance call to the map pane with the route highlight", () => {
+    const view = toolCallToCanvasView({
+      name: "walking_distance",
+      input: { from_building: "IBLC", to_building: "ICCS" },
+      result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11 },
+    });
+    expect(view?.paneId).toBe("map");
+    expect(view?.state.highlight).toEqual({ kind: "route", from: "IBLC", to: "ICCS", meters: 830, minutes: 11 });
+  });
+
+  it("maps a find_places call to the map pane", () => {
+    const view = toolCallToCanvasView({
+      name: "find_places",
+      input: { service_type: "restaurant", near_building: "SWNG" },
+      result: { places: [{ name: "Mercante", lat: 49.2637, lon: -123.2551, service_type: "restaurant" }] },
+    });
+    expect(view?.paneId).toBe("map");
+    expect(mapKind(view)).toBe("places");
+  });
+
+  it("maps a find_building call to the map pane", () => {
+    const view = toolCallToCanvasView({
+      name: "find_building",
+      input: { query: "life sciences" },
+      result: { code: "LSC", name: "Life Sciences Centre", lat: 49.2626, lon: -123.2453 },
+    });
+    expect(view?.paneId).toBe("map");
+    expect(mapKind(view)).toBe("buildings");
+  });
+
+  it("maps a find_parking call to the map pane", () => {
+    const view = toolCallToCanvasView({
+      name: "find_parking",
+      input: { near_building: "SWNG" },
+      result: { parking: [{ name: "Rose Garden Parkade", lat: 49.27, lon: -123.25 }] },
+    });
+    expect(view?.paneId).toBe("map");
+    expect(mapKind(view)).toBe("places");
+  });
+
+  it("does not open panes for raw data tools (only show_widget does)", () => {
+    expect(
+      toolCallToCanvasView({
+        name: "get_course",
+        input: { course_code: "CPSC 110" },
+        result: { code: "CPSC 110", title: "Computation, Programs, and Programming" },
+      } as ToolCall),
+    ).toBeNull();
+    expect(
+      toolCallToCanvasView({
+        name: "find_courses",
+        input: { query: "machine learning", subject: "CPSC" },
+        result: { courses: [{ code: "CPSC 340", title: "Machine Learning" }] },
+      } as ToolCall),
+    ).toBeNull();
+    expect(
+      toolCallToCanvasView({
+        name: "get_prereq_tree",
+        input: { course_code: "CPSC 320" },
+        result: { rootCode: "CPSC 320", nodes: [], edges: [], selectionKeys: [] },
+      } as ToolCall),
+    ).toBeNull();
+    expect(
+      toolCallToCanvasView({
+        name: "get_key_dates",
+        input: { query: "withdrawal" },
+        result: { dates: [{ kind: "academic", name: "Withdrawal deadline", start: "2026-10-01", end: null }] },
+      } as ToolCall),
+    ).toBeNull();
+  });
+
+  it("maps show_widget course/courses/prereq_tree/key_dates to their panes", () => {
+    const course = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "course" },
+      result: { type: "course", result: { code: "CPSC 110" } },
+    } as unknown as ToolCall);
+    expect(course?.paneId).toBe("course-lookup");
+    expect(course?.state.code).toBe("CPSC 110");
+
+    const courses = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "courses" },
+      result: { type: "courses", result: { courses: [{ code: "CPSC 340" }] } },
+    } as unknown as ToolCall);
+    expect(courses?.paneId).toBe("course-lookup");
+    expect(courses?.state.code).toBe("CPSC 340");
+
+    const prereq = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "prereq_tree" },
+      result: { type: "prereq_tree", result: { rootCode: "CPSC 320" } },
+    } as unknown as ToolCall);
+    expect(prereq?.paneId).toBe("prereq-tree");
+    expect(prereq?.state.root).toBe("CPSC 320");
+
+    const dates = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "key_dates" },
+      result: {
+        type: "key_dates",
+        result: { dates: [{ kind: "academic", name: "W", start: "2026-10-01", end: null }] },
+      },
+    } as unknown as ToolCall);
+    expect(dates?.paneId).toBe("calendar");
+    expect(dates?.state.cursor).toBe(month);
+    expect(dates?.state.kinds).toEqual(["academic", "holiday"]);
+  });
+
+  it("returns null for an unmapped tool", () => {
+    expect(
+      toolCallToCanvasView({
+        name: "get_tuition",
+        input: { program: "BSc" },
+        result: { program: "BSc", amount_cad: 5000, student_type: "domestic", cohort_year: 2026 },
+      } as ToolCall),
+    ).toBeNull();
+  });
+
+  it("returns null for every mapped tool when its result is an error", () => {
+    const err = { status: "error", message: "nope" };
+    const names = [
+      ["walking_distance", { from_building: "A", to_building: "B" }],
+      ["find_places", { category: "cafe" }],
+      ["find_building", { query: "x" }],
+      ["find_parking", {}],
+      ["get_course", { course_code: "X" }],
+      ["find_courses", { query: "X" }],
+      ["get_prereq_tree", { course_code: "X" }],
+      ["get_key_dates", { query: "X" }],
+    ] as const;
+    for (const [name, input] of names) {
+      expect(toolCallToCanvasView({ name, input, result: err } as ToolCall)).toBeNull();
+    }
+  });
+
+  it("tolerates a null/undefined result without crashing", () => {
+    expect(toolCallToCanvasView({ name: "get_course", input: {}, result: undefined } as ToolCall)).toBeNull();
+    expect(toolCallToCanvasView({ name: "walking_distance", input: {}, result: undefined } as ToolCall)).toBeNull();
+    expect(toolCallToCanvasView({ name: "get_prereq_tree", input: {}, result: undefined } as ToolCall)).toBeNull();
   });
 });

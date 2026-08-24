@@ -7,7 +7,74 @@ import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { motion, useReducedMotion } from "motion/react";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+
+const SIDEBAR_KEY = "reogent.sidebar.collapsed";
+const EXPANDED = "0";
+const COLLAPSED = "1";
+
+const sidebarListeners = new Set<() => void>();
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === SIDEBAR_KEY) {
+      sidebarListeners.forEach((fn) => {
+        fn();
+      });
+    }
+  });
+}
+
+function subscribeSidebar(listener: () => void): () => void {
+  sidebarListeners.add(listener);
+  return () => {
+    sidebarListeners.delete(listener);
+  };
+}
+
+function getSidebarSnapshot(): string {
+  try {
+    return window.localStorage.getItem(SIDEBAR_KEY) ?? EXPANDED;
+  } catch {
+    return EXPANDED;
+  }
+}
+
+function getSidebarServerSnapshot(): string {
+  return EXPANDED;
+}
+
+function setSidebarCollapsed(next: boolean): void {
+  try {
+    window.localStorage.setItem(SIDEBAR_KEY, next ? COLLAPSED : EXPANDED);
+  } catch {
+    /* localStorage unavailable or over quota */
+  }
+  sidebarListeners.forEach((fn) => {
+    fn();
+  });
+}
+
+/**
+ * Persists the desktop sidebar's collapsed state in
+ * `localStorage["reogent.sidebar.collapsed"]` ("0" | "1"). SSR returns the
+ * expanded default so server HTML is stable; React's `useSyncExternalStore`
+ * re-renders with the stored value after hydration so the rail paints in its
+ * prior state on first paint.
+ */
+export function useSidebarCollapsed(): [boolean, (next: boolean) => void] {
+  const value = useSyncExternalStore(subscribeSidebar, getSidebarSnapshot, getSidebarServerSnapshot);
+  return [value === COLLAPSED, setSidebarCollapsed];
+}
+
+export function VersionBadge() {
+  const version = process.env.NEXT_PUBLIC_REOGENT_VERSION;
+  if (!version) return <span className="text-muted text-xs">-</span>;
+  return (
+    <span className="text-on-surface-variant font-mono text-xs">
+      <span className="sr-only">Reogent version </span>v{version}
+    </span>
+  );
+}
 
 function groupSessions(sessions: SessionSummary[]): Array<[SessionGroup, SessionSummary[]]> {
   const buckets = new Map<SessionGroup, SessionSummary[]>();
@@ -34,6 +101,7 @@ function SessionItem({
   onDelete: () => void;
 }) {
   const api = useApi();
+  const router = useRouter();
   type Mode = "idle" | "editing" | "confirming-delete";
   const [mode, setMode] = useState<Mode>("idle");
   const [editValue, setEditValue] = useState("");
@@ -69,6 +137,7 @@ function SessionItem({
     } catch {
       /* best effort */
     }
+    if (active) router.push("/chat");
   }
 
   // Editing: inline text input with checkmark/x
@@ -91,7 +160,7 @@ function SessionItem({
           type="button"
           onClick={commitRename}
           aria-label="Confirm rename"
-          className="text-secondary hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-secondary hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="check" size={14} />
         </button>
@@ -99,7 +168,7 @@ function SessionItem({
           type="button"
           onClick={cancelAction}
           aria-label="Cancel"
-          className="text-on-surface-variant hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="close" size={12} />
         </button>
@@ -116,7 +185,7 @@ function SessionItem({
           type="button"
           onClick={confirmDelete}
           aria-label="Confirm delete"
-          className="text-error hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-error hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="check" size={14} />
         </button>
@@ -124,7 +193,7 @@ function SessionItem({
           type="button"
           onClick={cancelAction}
           aria-label="Cancel"
-          className="text-on-surface-variant hover:text-on-surface flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="close" size={12} />
         </button>
@@ -162,7 +231,7 @@ function SessionItem({
           type="button"
           onClick={startRename}
           aria-label="Rename"
-          className="text-on-surface-variant hover:text-primary flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="pencil" size={12} />
         </button>
@@ -170,7 +239,7 @@ function SessionItem({
           type="button"
           onClick={() => setMode("confirming-delete")}
           aria-label="Delete"
-          className="text-on-surface-variant hover:text-error hover:bg-error-container/40 flex size-6 items-center justify-center rounded-md"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-error hover:bg-error-container/40 flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="close" size={12} />
         </button>
@@ -182,9 +251,11 @@ function SessionItem({
 interface SessionSidebarProps {
   onCollapse?: () => void;
   onClose?: () => void;
+  /** Optional footer pinned under the session list (e.g. the ModeToggle). */
+  footer?: ReactNode;
 }
 
-export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}) {
+export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarProps = {}) {
   const router = useRouter();
   const params = useParams<{ session_id?: string }>();
   const pathname = usePathname();
@@ -241,7 +312,7 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
             onClick={onCollapse}
             aria-label="Collapse session history"
             title="Collapse sessions"
-            className="neu-panel text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
+            className="focus-visible:ring-primary/40 neu-panel text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
           >
             <Icon name="left" size={18} />
           </button>
@@ -254,7 +325,7 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
             type="button"
             onClick={onClose}
             aria-label="Close sessions"
-            className="text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150"
+            className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
           >
             <Icon name="close" size={18} />
           </button>
@@ -354,6 +425,7 @@ export function SessionSidebar({ onCollapse, onClose }: SessionSidebarProps = {}
       <output className="sr-only" aria-live="polite">
         {!sessionsLoading && sessions.length > 0 ? `${sessions.length} conversations` : ""}
       </output>
+      {footer}
     </div>
   );
 }

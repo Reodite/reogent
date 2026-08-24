@@ -1,0 +1,487 @@
+{
+  "input": [
+    {
+      "kind": "academic",
+      "name": "Last day of classes, Winter Term 2",
+      "applies_to": "Winter Session",
+      "date_text": null,
+      "start": "2024-04-05",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Final examinations, Winter Term 2",
+      "applies_to": "Winter Session",
+      "date_text": null,
+      "start": "2024-04-10",
+      "end": "2024-04-26",
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Summer Term 1 begins",
+      "applies_to": "Summer Session",
+      "date_text": null,
+      "start": "2024-05-06",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Summer Term 1 final examinations",
+      "applies_to": "Summer Session",
+      "date_text": null,
+      "start": "2024-06-14",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Summer Term 2 begins",
+      "applies_to": "Summer Session",
+      "date_text": null,
+      "start": "2024-07-08",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Winter Term 1 classes begin",
+      "applies_to": "Winter Session",
+      "date_text": null,
+      "start": "2024-09-03",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "holiday",
+      "name": "Labour Day",
+      "applies_to": null,
+      "date_text": "Monday, September 2, 2024",
+      "start": "2024-09-02",
+      "end": null,
+      "ubc_specific": false,
+      "source_url": "https://www.statutoryholidays.com/"
+    },
+    {
+      "kind": "academic",
+      "name": "Add/drop deadline",
+      "applies_to": "Winter Term 1",
+      "date_text": null,
+      "start": "2024-09-17",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "holiday",
+      "name": "National Day for Truth and Reconciliation",
+      "applies_to": null,
+      "date_text": "Monday, September 30, 2024",
+      "start": "2024-09-30",
+      "end": null,
+      "ubc_specific": false,
+      "source_url": "https://www.statutoryholidays.com/"
+    },
+    {
+      "kind": "academic",
+      "name": "Reading week begins",
+      "applies_to": "Winter Term 1",
+      "date_text": null,
+      "start": "2024-10-28",
+      "end": "2024-11-01",
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Mid-term examinations + reading week concludes",
+      "applies_to": "Winter Term 1",
+      "date_text": null,
+      "start": "2024-11-04",
+      "end": "2024-11-08",
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Last day to withdraw from Winter Term 1 courses with a W on transcript",
+      "applies_to": "Winter Term 1",
+      "date_text": null,
+      "start": "2024-11-29",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Last day of classes, Winter Term 1",
+      "applies_to": "Winter Term 1",
+      "date_text": null,
+      "start": "2024-11-29",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Final examinations, Winter Term 1",
+      "applies_to": "Winter Term 1",
+      "date_text": null,
+      "start": "2024-12-04",
+      "end": "2024-12-19",
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "holiday",
+      "name": "Christmas Day",
+      "applies_to": null,
+      "date_text": "Wednesday, December 25, 2024",
+      "start": "2024-12-25",
+      "end": null,
+      "ubc_specific": false,
+      "source_url": "https://www.statutoryholidays.com/"
+    },
+    {
+      "kind": "holiday",
+      "name": "Boxing Day",
+      "applies_to": null,
+      "date_text": "Thursday, December 26, 2024",
+      "start": "2024-12-26",
+      "end": null,
+      "ubc_specific": false,
+      "source_url": "https://www.statutoryholidays.com/"
+    },
+    {
+      "kind": "academic",
+      "name": "Winter break (no classes)",
+      "applies_to": "Winter Session",
+      "date_text": null,
+      "start": "2024-12-21",
+      "end": "2025-01-06",
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Winter Term 2 classes begin",
+      "applies_to": "Winter Term 2",
+      "date_text": null,
+      "start": "2025-01-06",
+      "end": null,
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "holiday",
+      "name": "Family Day",
+      "applies_to": null,
+      "date_text": "Monday, February 17, 2025",
+      "start": "2025-02-17",
+      "end": null,
+      "ubc_specific": true,
+      "source_url": "https://www.statutoryholidays.com/"
+    },
+    {
+      "kind": "academic",
+      "name": "Reading week begins",
+      "applies_to": "Winter Term 2",
+      "date_text": null,
+      "start": "2025-02-17",
+      "end": "2025-02-21",
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "Final examinations, Winter Term 2",
+      "applies_to": "Winter Term 2",
+      "date_text": null,
+      "start": "2025-04-08",
+      "end": "2025-04-24",
+      "ubc_specific": null,
+      "source_url": "https://students.ubc.ca/enrolled/important-dates"
+    },
+    {
+      "kind": "academic",
+      "name": "To be confirmed by Senate",
+      "applies_to": "Winter Term 2",
+      "date_text": "Late in term",
+      "start": null,
+      "end": null,
+      "ubc_specific": null,
+      "source_url": null
+    }
+  ],
+  "output": [
+    {
+      "kind": "academic",
+      "date": "2024-04-05",
+      "label": "Last day of classes, Winter Term 2",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-04-10",
+      "label": "Final examinations, Winter Term 2",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["exam", "term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-05-06",
+      "label": "Summer Term 1 begins",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-06-14",
+      "label": "Summer Term 1 final examinations",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["exam", "term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-07-08",
+      "label": "Summer Term 2 begins",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "holiday",
+      "date": "2024-09-02",
+      "label": "Labour Day",
+      "source_url": "https://www.statutoryholidays.com/",
+      "tags": []
+    },
+    {
+      "kind": "academic",
+      "date": "2024-09-03",
+      "label": "Winter Term 1 classes begin",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-09-17",
+      "label": "Add/drop deadline",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["deadline"]
+    },
+    {
+      "kind": "holiday",
+      "date": "2024-09-30",
+      "label": "National Day for Truth and Reconciliation",
+      "source_url": "https://www.statutoryholidays.com/",
+      "tags": []
+    },
+    {
+      "kind": "academic",
+      "date": "2024-10-28",
+      "label": "Reading week begins",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["reading-week"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-11-04",
+      "label": "Mid-term examinations + reading week concludes",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["reading-week", "exam", "term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-11-29",
+      "label": "Last day to withdraw from Winter Term 1 courses with a W on transcript",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term", "deadline"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-11-29",
+      "label": "Last day of classes, Winter Term 1",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-12-04",
+      "label": "Final examinations, Winter Term 1",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["exam", "term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-12-21",
+      "label": "Winter break (no classes)",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": []
+    },
+    {
+      "kind": "holiday",
+      "date": "2024-12-25",
+      "label": "Christmas Day",
+      "source_url": "https://www.statutoryholidays.com/",
+      "tags": []
+    },
+    {
+      "kind": "holiday",
+      "date": "2024-12-26",
+      "label": "Boxing Day",
+      "source_url": "https://www.statutoryholidays.com/",
+      "tags": []
+    },
+    {
+      "kind": "academic",
+      "date": "2025-01-06",
+      "label": "Winter Term 2 classes begin",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "holiday",
+      "date": "2025-02-17",
+      "label": "Family Day",
+      "source_url": "https://www.statutoryholidays.com/",
+      "tags": []
+    },
+    {
+      "kind": "academic",
+      "date": "2025-02-17",
+      "label": "Reading week begins",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["reading-week"]
+    },
+    {
+      "kind": "academic",
+      "date": "2025-04-08",
+      "label": "Final examinations, Winter Term 2",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["exam", "term"]
+    }
+  ],
+  "academicOnly": [
+    {
+      "kind": "academic",
+      "date": "2024-04-05",
+      "label": "Last day of classes, Winter Term 2",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-04-10",
+      "label": "Final examinations, Winter Term 2",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["exam", "term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-05-06",
+      "label": "Summer Term 1 begins",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-06-14",
+      "label": "Summer Term 1 final examinations",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["exam", "term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-07-08",
+      "label": "Summer Term 2 begins",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-09-03",
+      "label": "Winter Term 1 classes begin",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-09-17",
+      "label": "Add/drop deadline",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["deadline"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-10-28",
+      "label": "Reading week begins",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["reading-week"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-11-04",
+      "label": "Mid-term examinations + reading week concludes",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["reading-week", "exam", "term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-11-29",
+      "label": "Last day to withdraw from Winter Term 1 courses with a W on transcript",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term", "deadline"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-11-29",
+      "label": "Last day of classes, Winter Term 1",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-12-04",
+      "label": "Final examinations, Winter Term 1",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["exam", "term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2024-12-21",
+      "label": "Winter break (no classes)",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": []
+    },
+    {
+      "kind": "academic",
+      "date": "2025-01-06",
+      "label": "Winter Term 2 classes begin",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["term"]
+    },
+    {
+      "kind": "academic",
+      "date": "2025-02-17",
+      "label": "Reading week begins",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["reading-week"]
+    },
+    {
+      "kind": "academic",
+      "date": "2025-04-08",
+      "label": "Final examinations, Winter Term 2",
+      "source_url": "https://students.ubc.ca/enrolled/important-dates",
+      "tags": ["exam", "term"]
+    }
+  ]
+}

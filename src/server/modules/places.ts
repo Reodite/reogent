@@ -1,6 +1,8 @@
 import { ESTIMATE_DETOUR, haversineMetersObj, WALK_SPEED_M_PER_MIN } from "@/src/shared/types";
 import type { DatasetModule, SearchClient } from "../core/types";
+import { getIndexFreshness } from "../freshness";
 import { resolveBuilding, type BuildingDoc } from "./buildings";
+import type { ParkingDoc } from "./parking";
 
 export interface PoiDoc {
   id: string;
@@ -99,20 +101,39 @@ export const places: DatasetModule = {
       spec: {
         name: "find_places",
         description:
-          "Find points of interest on UBC Vancouver campus: cafes, restaurants, libraries, groceries, banks, medical services, child care, transit. Optionally sorted by walking distance from a building. Hours are free text — quote them as-is.",
+          "Find points of interest on UBC Vancouver campus: cafes, restaurants, libraries, groceries, banks, medical services, child care, transit, campus services — or public parking lots (category 'parking') with rates, hours, EV charging, and accessibility. For parking questions (rates, EV charging, accessibility, whether permit required) ALWAYS set category=\"parking\". Optionally sorted by walking distance from a building. Hours are free text — quote them as-is.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
               query: { type: "string", description: 'Optional name keywords, e.g. "Tim Hortons"' },
-              service_type: {
+              category: {
                 type: "string",
+                enum: [
+                  "cafe",
+                  "restaurant",
+                  "library",
+                  "grocery",
+                  "bank",
+                  "medical",
+                  "transit",
+                  "campus_services",
+                  "academic",
+                  "parking",
+                ],
                 description:
-                  'Optional type filter: "cafe", "restaurant", "library", "grocery", "bank", "medical", "child_care", "transit", "campus_services", "commercial_services", "academic"',
+                  'Optional type filter. Use "parking" to find parking lots with rates and EV charging; otherwise a place category',
               },
               near_building: {
                 type: "string",
                 description: "Optional building code or name to sort results by walking distance from",
+              },
+              ev_charging: { type: "boolean", description: "Parking only: if true, only facilities with EV charging" },
+              motorcycle: { type: "boolean", description: "Parking only: if true, only lots with motorcycle parking" },
+              bike_cage: { type: "boolean", description: "Parking only: if true, only lots with secured bike cages" },
+              accessible_stalls: {
+                type: "boolean",
+                description: "Parking only: if true, only lots with accessible (disabled) stalls",
               },
               limit: { type: "number", description: "Max results (default 10)" },
             },
@@ -121,23 +142,54 @@ export const places: DatasetModule = {
         },
       },
       async execute(input, search) {
+        const category = input.category ? String(input.category) : "";
+        const isParking = category === "parking";
         const queryText = input.query ? String(input.query) : "";
         const filters: string[] = [];
-        if (input.service_type) filters.push(`service_type = '${String(input.service_type)}'`);
+        if (isParking) {
+          if (input.ev_charging) filters.push("ev_charging = true");
+          if (input.motorcycle) filters.push("motorcycle = true");
+          if (input.bike_cage) filters.push("bike_cage = true");
+          if (input.accessible_stalls) filters.push("accessible_stalls = true");
+        } else if (category) {
+          filters.push(`service_type = '${category}'`);
+        }
         const limit = Math.min(Number(input.limit) || 10, 30);
-        const { results, near, truncated_before_sort } = await searchNearable<PoiDoc>(
+        const filterStr = filters.length > 0 ? filters.join(" AND ") : undefined;
+        let { results, near, truncated_before_sort } = await searchNearable<PoiDoc | ParkingDoc>(
           search,
-          "poi",
+          isParking ? "parking" : "poi",
           queryText,
-          filters.length > 0 ? filters.join(" AND ") : undefined,
+          filterStr,
           input.near_building,
           limit,
         );
-        if (results.length === 0) throw new Error(`No places matched "${input.query ?? input.service_type ?? ""}"`);
+        // A keyword that matches nothing shouldn't kill the lookup — retry
+        // with the filters alone so e.g. "vegetarian near the Nest" still
+        // returns nearby food instead of an error.
+        let keywordDropped = false;
+        if (results.length === 0 && queryText) {
+          keywordDropped = true;
+          ({ results, near, truncated_before_sort } = await searchNearable<PoiDoc | ParkingDoc>(
+            search,
+            isParking ? "parking" : "poi",
+            "",
+            filterStr,
+            input.near_building,
+            limit,
+          ));
+        }
+        if (results.length === 0) throw new Error(`No ${isParking ? "parking facilities" : "places"} matched`);
+        const key = isParking ? "parking" : "places";
+        const asOf = isParking ? await getIndexFreshness("parking") : null;
         return {
           ...(near ? { near_building: near.code } : {}),
+          ...(asOf ? { rates_as_of: asOf } : {}),
+          ...(keywordDropped
+            ? { note: `No match for "${queryText}"; showing all matching places sorted by distance.` }
+            : {}),
           ...(truncated_before_sort ? { note: "Many matches exist; nearest results may be approximate." } : {}),
-          places: results,
+          [key]: results,
         };
       },
     },

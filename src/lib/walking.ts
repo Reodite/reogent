@@ -2,6 +2,7 @@
 // emit map highlight state) and the chat panel (which clears it when the
 // latest response has no map-driving call).
 
+import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { isToolError, type ToolCall, type WalkingDistanceResult } from "@/src/lib/api-types";
 
 interface WalkingHighlight {
@@ -121,20 +122,138 @@ export function extractPlacesHighlight(call: ToolCall): PlacesHighlight | null {
 }
 
 /**
- * The map state for a whole response: the route if one was computed (the
- * "going A → B" answer), else place pins, else ALL looked-up buildings
- * together — so "highlight the buildings" lights up every one, not just the
- * last call.
+ * Parking pins from a find_places call with category "parking" (or the legacy
+ * find_parking tool): each lot with a name and coordinates becomes a map marker.
  */
-export function mergeMapHighlights(calls: ToolCall[]): MapHighlight | null {
-  const routes = calls.map(extractWalkingHighlight).filter((h) => h !== null);
-  if (routes.length > 0) return routes[routes.length - 1];
-  const places = calls.map(extractPlacesHighlight).filter((h) => h !== null);
-  if (places.length > 0) return places[places.length - 1];
-  const byCode = new Map<string, BuildingRef>();
-  for (const call of calls) {
-    for (const b of extractBuildingHighlight(call)?.buildings ?? []) byCode.set(b.code, b);
+export function extractParkingHighlight(call: ToolCall): PlacesHighlight | null {
+  if (isToolError(call.result)) return null;
+  const isParking = call.name === "find_parking" || (call.name === "find_places" && call.input.category === "parking");
+  if (!isParking) return null;
+  const result = call.result as { near_building?: unknown; parking?: unknown } | undefined;
+  if (!Array.isArray(result?.parking)) return null;
+  const places: PlacePin[] = [];
+  for (const p of result.parking as Partial<{ name: string; lat: number; lon: number }>[]) {
+    if (typeof p?.name !== "string" || !p.name || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
+    if (p.lat < -90 || p.lat > 90 || p.lon < -180 || p.lon > 180) continue;
+    places.push({ name: p.name, lat: p.lat, lon: p.lon, service_type: null });
   }
-  if (byCode.size > 0) return { kind: "buildings", buildings: [...byCode.values()] };
+  if (places.length === 0) return null;
+  const near =
+    (typeof result.near_building === "string" && result.near_building) ||
+    (typeof call.input.near_building === "string" && call.input.near_building) ||
+    null;
+  return { kind: "places", near, places };
+}
+
+/** Tries every map-driving extractor; only one matches a given call name. */
+function extractMapHighlight(call: ToolCall): MapHighlight | null {
+  return (
+    extractWalkingHighlight(call) ??
+    extractPlacesHighlight(call) ??
+    extractBuildingHighlight(call) ??
+    extractParkingHighlight(call)
+  );
+}
+
+/**
+ * The canvas pane a tool call should load, or null when the call does not map
+ * to a pane. Only show_widget opens non-map panes: data tools fetch facts for
+ * the model's context and must never drive the canvas on their own, since
+ * auto-seeding from raw results displayed arbitrary items (e.g. courses[0])
+ * the model never chose to present. Map extractors stay available for data
+ * tools so spatial answers still light up the map. Error results yield null.
+ */
+export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
+  const highlight = extractMapHighlight(call);
+  if (highlight) return { paneId: "map", state: { highlight } };
+
+  if (call.name !== "show_widget") return null;
+
+  const outer = call.result as { type?: string; result?: unknown } | undefined;
+  const data = outer?.result as Record<string, unknown> | undefined;
+  switch (outer?.type) {
+    case "route": {
+      const r = data as { from?: string; to?: string; meters?: number; minutes?: number } | undefined;
+      if (typeof r?.meters !== "number" || typeof r.minutes !== "number" || !r.from || !r.to) return null;
+      const highlightRoute: MapHighlight = {
+        kind: "route",
+        from: r.from,
+        to: r.to,
+        meters: r.meters,
+        minutes: r.minutes,
+      };
+      return { paneId: "map", state: { highlight: highlightRoute } };
+    }
+    case "building": {
+      const b = data as { code?: string; name?: string; lat?: number; lon?: number } | undefined;
+      if (!b?.code || typeof b.lat !== "number" || typeof b.lon !== "number") return null;
+      const highlightBuildings: MapHighlight = {
+        kind: "buildings",
+        buildings: [{ code: b.code, name: b.name ?? b.code, lat: b.lat, lon: b.lon }],
+      };
+      return { paneId: "map", state: { highlight: highlightBuildings } };
+    }
+    case "places": {
+      const p = data as
+        | {
+            near_building?: string;
+            places?: { name?: string; lat?: number; lon?: number; service_type?: string | null }[];
+          }
+        | undefined;
+      if (!Array.isArray(p?.places)) return null;
+      const places = p.places
+        .filter((pl) => typeof pl?.name === "string" && typeof pl.lat === "number" && typeof pl.lon === "number")
+        .map((pl) => ({
+          name: pl.name as string,
+          lat: pl.lat as number,
+          lon: pl.lon as number,
+          service_type: pl.service_type ?? null,
+        }));
+      if (places.length === 0) return null;
+      const highlightPlaces: MapHighlight = { kind: "places", near: p.near_building ?? null, places };
+      return { paneId: "map", state: { highlight: highlightPlaces } };
+    }
+    case "parking": {
+      const p = data as
+        { near_building?: string; parking?: { name?: string; lat?: number; lon?: number }[] } | undefined;
+      if (!Array.isArray(p?.parking)) return null;
+      const places = p.parking
+        .filter((pl) => typeof pl?.name === "string" && typeof pl.lat === "number" && typeof pl.lon === "number")
+        .map((pl) => ({
+          name: pl.name as string,
+          lat: pl.lat as number,
+          lon: pl.lon as number,
+          service_type: null,
+        }));
+      if (places.length === 0) return null;
+      const highlightParking: MapHighlight = { kind: "places", near: p.near_building ?? null, places };
+      return { paneId: "map", state: { highlight: highlightParking } };
+    }
+    case "course": {
+      const c = data as { code?: string } | undefined;
+      if (!c?.code) return null;
+      return { paneId: "course-lookup", state: { code: c.code } };
+    }
+    case "courses": {
+      const list = data as { courses?: { code?: string }[] } | undefined;
+      const first = Array.isArray(list?.courses) ? list.courses[0] : undefined;
+      if (!first?.code) return null;
+      return { paneId: "course-lookup", state: { code: first.code } };
+    }
+    case "prereq_tree": {
+      const g = data as { rootCode?: string } | undefined;
+      if (!g?.rootCode) return null;
+      return { paneId: "prereq-tree", state: { root: g.rootCode, selections: {} } };
+    }
+    case "key_dates": {
+      const list = data as { dates?: unknown[] } | undefined;
+      if (!Array.isArray(list?.dates) || list.dates.length === 0) return null;
+      return {
+        paneId: "calendar",
+        state: { cursor: new Date().toISOString().slice(0, 7), kinds: ["academic", "holiday"] },
+      };
+    }
+  }
   return null;
 }

@@ -1,4 +1,5 @@
 import type { DatasetModule } from "../core/types";
+import { resolveBuilding } from "./buildings";
 
 export interface StudySpaceDoc {
   id: string;
@@ -136,7 +137,7 @@ export const spaces: DatasetModule = {
       index: "room_availability",
       settings: {
         searchableAttributes: ["room", "location"],
-        filterableAttributes: ["state", "minutes", "capacity", "date", "eid"],
+        filterableAttributes: ["state", "minutes", "capacity", "date", "eid", "building_code"],
         sortableAttributes: ["start", "capacity"],
       },
       async *read(store) {
@@ -148,17 +149,25 @@ export const spaces: DatasetModule = {
   tools: [
     {
       spec: {
-        name: "search_study_spaces",
+        name: "find_study_spaces",
         description:
-          "Search UBC Vancouver classrooms and informal study spaces by keyword, building, type, and capacity — furniture, layout, and seat counts from UBC's Find a Space.",
+          "Find places to study at UBC: informal study spaces/classrooms (kind 'informal') or bookable library rooms that are free right now (kind 'bookable', from the latest snapshot — always tell the user the as_of time). Pass a specific bookable room name to get its full booking timeline. Filter by building (official code — use find_building to resolve first), capacity, and minimum free stretch. If filtering by building fails, retry with query instead of building.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
               query: { type: "string", description: "Optional keywords for the room or building name" },
-              building: { type: "string", description: 'Optional building code or name filter, e.g. "IKB"' },
-              space_type: { type: "string", description: 'Optional filter: "classroom" or "study space"' },
+              kind: {
+                type: "string",
+                enum: ["informal", "bookable"],
+                description: 'What to find: "informal" study spaces (default) or "bookable" library rooms',
+              },
+              building: { type: "string", description: 'Optional building code or name filter, e.g. "IKB", "BUCH"' },
+              space_type: { type: "string", description: 'Informal only: "classroom" or "study space"' },
               min_capacity: { type: "number", description: "Minimum seat count" },
+              min_minutes: { type: "number", description: "Bookable only: minimum free stretch in minutes" },
+              room: { type: "string", description: 'A specific bookable room, e.g. "IKB 461"; returns its timeline' },
+              date: { type: "string", description: "Optional ISO date filter for a room timeline, e.g. 2026-08-06" },
               limit: { type: "number", description: "Max results (default 10)" },
             },
             required: [],
@@ -166,83 +175,84 @@ export const spaces: DatasetModule = {
         },
       },
       async execute(input, search) {
+        const room = input.room ? String(input.room) : "";
         const filters: string[] = [];
-        if (input.building) filters.push(`building_code = '${String(input.building).toUpperCase()}'`);
-        if (input.space_type) filters.push(`space_type = '${String(input.space_type)}'`);
-        if (input.min_capacity !== undefined) filters.push(`capacity >= ${Number(input.min_capacity)}`);
-        const res = await search.index("study_spaces").search(input.query ? String(input.query) : "", {
-          filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+        if (input.building) {
+          const building = await resolveBuilding(search, String(input.building)).catch(() => null);
+          filters.push(`building_code = '${building?.code ?? String(input.building).toUpperCase()}'`);
+        }
+
+        // Room timeline mode.
+        if (room) {
+          const tfilters: string[] = [...filters];
+          if (input.date) tfilters.push(`date = '${String(input.date)}'`);
+          const res = await search.index("room_availability").search(room, {
+            filter: tfilters.length > 0 ? tfilters.join(" AND ") : undefined,
+            sort: ["start:asc"],
+            limit: 100,
+          });
+          const rows = res.hits as unknown as AvailabilityDoc[];
+          if (rows.length === 0) throw new Error(`No library room matched "${room}" in the latest snapshot`);
+          return {
+            kind: "schedule",
+            room: rows[0].room,
+            location: rows[0].location,
+            as_of: asOf(rows),
+            intervals: rows.map(({ state, date, start, end, minutes }) => ({ state, date, start, end, minutes })),
+          };
+        }
+
+        const kind = String(input.kind ?? "informal");
+
+        // A building code that matches nothing (alias gaps in the rooms data)
+        // shouldn't kill the lookup — drop the building filter and retry once.
+        // Same for free-text keywords that match no room titles.
+        async function searchSpaces(
+          index: string,
+          extraFilters: string[],
+          text: string,
+          opts: Record<string, unknown>,
+        ) {
+          const attempt = async (f: string[], t: string) =>
+            search.index(index).search(t, {
+              filter: f.length > 0 ? f.join(" AND ") : undefined,
+              ...opts,
+            });
+          let res = await attempt([...extraFilters, ...filters], text);
+          if ((res.hits as unknown[]).length === 0 && filters.length > 0) {
+            res = await attempt(extraFilters, text);
+          }
+          if ((res.hits as unknown[]).length === 0 && text) {
+            res = await attempt([...extraFilters, ...filters], "");
+          }
+          return res;
+        }
+
+        // Informal study spaces / classrooms.
+        if (kind === "informal") {
+          const ifilters: string[] = [];
+          if (input.space_type) ifilters.push(`space_type = '${String(input.space_type)}'`);
+          if (input.min_capacity !== undefined) ifilters.push(`capacity >= ${Number(input.min_capacity)}`);
+          const res = await searchSpaces("study_spaces", ifilters, input.query ? String(input.query) : "", {
+            sort: ["capacity:desc"],
+            limit: Math.min(Number(input.limit) || 10, 30),
+          });
+          const hits = res.hits;
+          if (hits.length === 0) throw new Error("No study spaces matched those filters");
+          return { kind: "informal", spaces: hits as unknown as StudySpaceDoc[] };
+        }
+
+        // Bookable library rooms free now.
+        const bfilters: string[] = ["state = 'free'"];
+        if (input.min_minutes !== undefined) bfilters.push(`minutes >= ${Number(input.min_minutes)}`);
+        if (input.min_capacity !== undefined) bfilters.push(`capacity >= ${Number(input.min_capacity)}`);
+        const res = await searchSpaces("room_availability", bfilters, input.query ? String(input.query) : "", {
           sort: ["capacity:desc"],
-          limit: Math.min(Number(input.limit) || 10, 30),
-        });
-        const hits = res.hits;
-        if (hits.length === 0) throw new Error("No study spaces matched those filters");
-        return { spaces: hits as unknown as StudySpaceDoc[] };
-      },
-    },
-    {
-      spec: {
-        name: "find_free_rooms",
-        description:
-          "Find bookable UBC library rooms that are currently free, from the latest availability snapshot (covers library spaces only, not classrooms). Always tell the user the as_of time — availability changes.",
-        inputSchema: {
-          json: {
-            type: "object",
-            properties: {
-              min_minutes: { type: "number", description: "Minimum free stretch in minutes, e.g. 120" },
-              min_capacity: { type: "number", description: "Minimum seat count" },
-              location: { type: "string", description: 'Optional library filter, e.g. "Irving K. Barber"' },
-            },
-            required: [],
-          },
-        },
-      },
-      async execute(input, search) {
-        const filters: string[] = ["state = 'free'"];
-        if (input.min_minutes !== undefined) filters.push(`minutes >= ${Number(input.min_minutes)}`);
-        if (input.min_capacity !== undefined) filters.push(`capacity >= ${Number(input.min_capacity)}`);
-        const res = await search.index("room_availability").search(input.location ? String(input.location) : "", {
-          filter: filters.join(" AND "),
-          sort: ["capacity:desc"],
-          limit: 20,
+          limit: Math.min(Number(input.limit) || 20, 30),
         });
         const rows = res.hits as unknown as AvailabilityDoc[];
         if (rows.length === 0) throw new Error("No free library rooms matched those filters in the latest snapshot");
-        return { as_of: asOf(rows), rooms: rows };
-      },
-    },
-    {
-      spec: {
-        name: "get_room_schedule",
-        description:
-          "The full booking timeline for one bookable UBC library room — every free, booked, and unavailable interval in chronological order, from the latest snapshot. Always tell the user the as_of time.",
-        inputSchema: {
-          json: {
-            type: "object",
-            properties: {
-              room: { type: "string", description: 'Room name as listed by the library, e.g. "IKB 461"' },
-              date: { type: "string", description: "Optional ISO date filter, e.g. 2026-08-06" },
-            },
-            required: ["room"],
-          },
-        },
-      },
-      async execute(input, search) {
-        const filters: string[] = [];
-        if (input.date) filters.push(`date = '${String(input.date)}'`);
-        const res = await search.index("room_availability").search(String(input.room), {
-          filter: filters.length > 0 ? filters.join(" AND ") : undefined,
-          sort: ["start:asc"],
-          limit: 100,
-        });
-        const rows = res.hits as unknown as AvailabilityDoc[];
-        if (rows.length === 0) throw new Error(`No library room matched "${input.room}" in the latest snapshot`);
-        return {
-          room: rows[0].room,
-          location: rows[0].location,
-          as_of: asOf(rows),
-          intervals: rows.map(({ state, date, start, end, minutes }) => ({ state, date, start, end, minutes })),
-        };
+        return { kind: "bookable", as_of: asOf(rows), rooms: rows };
       },
     },
   ],

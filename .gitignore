@@ -40,3 +40,9 @@ next-env.d.ts
 
 # impeccable design tooling state (keep design.json only)
 .impeccable/critique/
+
+# opencode local runtime (ralph-loop state)
+.opencode/
+
+# maplibre worker modules synced from node_modules by prebuild/predev
+/public/maplibre-gl-*.mjs

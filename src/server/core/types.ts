@@ -1,9 +1,9 @@
 // Core types shared by the agent loop, dataset modules, and API handlers.
 
 import type { ChatMessage } from "@/src/shared/types";
-import type { MeiliSearch } from "meilisearch";
+import type { Meilisearch } from "meilisearch";
 
-export type { ChatMessage, InterstitialBlock, SessionSummary, ToolCall } from "@/src/shared/types";
+export type { ActivityBlock, ChatMessage, SessionSummary, ToolCall } from "@/src/shared/types";
 
 export interface ChatRequest {
   session_id?: string;
@@ -20,8 +20,14 @@ export interface ToolSpec {
 
 export interface ContentBlock {
   text?: string;
-  toolUse?: { toolUseId: string; name: string; input: Record<string, unknown> };
-  toolResult?: { toolUseId: string; content: { json: unknown }[]; status?: "error" };
+  toolUse?: {
+    toolUseId: string;
+    name: string;
+    input: Record<string, unknown>;
+    /** Gemini reasoning signature that must be echoed back with the call. */
+    thoughtSignature?: string;
+  };
+  toolResult?: { toolUseId: string; name?: string; content: { json: unknown }[]; status?: "error" };
 }
 
 export interface ConverseMessage {
@@ -46,7 +52,7 @@ export interface DataWriter extends DataReader {
 }
 
 /** Search client passed to tool execute functions. */
-export type SearchClient = MeiliSearch;
+export type SearchClient = Meilisearch;
 
 // biome-ignore lint/suspicious/noExplicitAny: raw rows are dataset-specific
 export interface IndexDef<TRaw = any> {

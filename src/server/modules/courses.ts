@@ -1,5 +1,17 @@
 import { formatSeconds } from "../core/time";
 import type { DatasetModule, SearchClient } from "../core/types";
+import {
+  BUCKET_KEYS,
+  buildRecordsFromDistributions,
+  defaultSession,
+  isSession,
+  type BucketKey,
+  type CourseCalRow,
+  type Session,
+  type SubjectRow,
+} from "../course-records";
+import { getIndexFreshness } from "../freshness";
+import { courseAverage, courseGrades } from "./grades";
 
 export interface CourseSection {
   section: string;
@@ -15,6 +27,8 @@ export interface CourseDoc {
   code: string; // "CPSC_V 110"
   subject: string; // "CPSC_V"
   number: string;
+  /** Hundred-level bucket parsed from `number` (110 → 100), for level filtering. Null when unparseable. */
+  level: number | null;
   title: string;
   description: string;
   credits: number | null;
@@ -36,6 +50,12 @@ const normalize = (s: unknown): string | null => {
 function parseCredits(credit: unknown): number | null {
   const m = typeof credit === "string" ? credit.match(/[\d.]+/) : null;
   return m ? Number(m[0]) : null;
+}
+
+/** Hundred-level bucket from a course number: "110" → 100, "4A" → 400. Null when no leading digit. */
+function parseLevel(number: string): number | null {
+  const m = number.match(/\d/);
+  return m ? Number(m[0]) * 100 : null;
 }
 
 const courseTerms = (sections: CourseSection[]): string[] => [
@@ -87,6 +107,7 @@ export function joinCourses(tables: {
       code,
       subject,
       number: String(number),
+      level: parseLevel(String(number)),
       title: row.field_course_title ?? String(row.title ?? "").replace(/^.*?:\s*/, ""),
       description: row.description_text ?? "",
       credits: parseCredits(row.field_course_credit),
@@ -114,6 +135,7 @@ export function joinCourses(tables: {
       code,
       subject,
       number,
+      level: parseLevel(number),
       title: String(row.title ?? code),
       description: row.description_text ?? "",
       credits: parseCredits(row.field_credits),
@@ -127,7 +149,7 @@ export function joinCourses(tables: {
 }
 
 /** Section times go to the model as human-readable HH:MM (Requirement 3.7). */
-function presentCourse(doc: CourseDoc, maxSections = Number.POSITIVE_INFINITY) {
+export function presentCourse(doc: CourseDoc, maxSections = Number.POSITIVE_INFINITY) {
   const sections = doc.sections.slice(0, maxSections).map(({ start_seconds, end_seconds, ...rest }) => ({
     ...rest,
     start_time: start_seconds === null ? null : formatSeconds(start_seconds),
@@ -141,7 +163,7 @@ const upSubject = (s: string) => {
   return up.includes("_") ? up : `${up}_V`;
 };
 
-async function findByCode(search: SearchClient, courseCode: string): Promise<CourseDoc | null> {
+export async function findByCode(search: SearchClient, courseCode: string): Promise<CourseDoc | null> {
   const norm = courseCode.trim().toUpperCase().replace(/\s+/g, " ");
   const [subject = "", number = ""] = norm.split(" ");
   const candidates = [...new Set([norm, `${upSubject(subject)} ${number}`])];
@@ -163,7 +185,7 @@ export const courses: DatasetModule = {
       index: "courses",
       settings: {
         searchableAttributes: ["title", "description", "code", "subject", "number"],
-        filterableAttributes: ["code", "subject", "credits", "prerequisite", "terms"],
+        filterableAttributes: ["code", "subject", "credits", "level", "prerequisite", "terms"],
         sortableAttributes: ["code"],
       },
       async *read(store) {
@@ -181,63 +203,345 @@ export const courses: DatasetModule = {
         return { id: doc.code, doc };
       },
     },
+    {
+      index: "course_sessions",
+      settings: {
+        searchableAttributes: ["title", "code", "subject", "faculty"],
+        filterableAttributes: [
+          "code",
+          "subject",
+          "level",
+          "session",
+          "credits",
+          "faculty",
+          "term",
+          "average",
+          "reported",
+        ],
+        sortableAttributes: ["code", "average", "reported"],
+      },
+      async *read(store) {
+        const [distRows, calCourses, calSubjects] = (await Promise.all([
+          store.getJson("grades/distributions.json"),
+          store.getJson("academic-calendar/vancouver/courses.json"),
+          store.getJson("academic-calendar/vancouver/subjects.json"),
+        ])) as [Record<string, unknown>[], Row[], Row[]];
+        yield* buildRecordsFromDistributions({
+          distRows: distRows as unknown as Parameters<typeof buildRecordsFromDistributions>[0]["distRows"],
+          calCourses: calCourses as unknown as CourseCalRow[],
+          calSubjects: calSubjects as unknown as { id: string; name: string }[],
+        });
+      },
+      transform(doc) {
+        return { id: (doc as { id: string }).id, doc: doc as unknown as Record<string, unknown> };
+      },
+    },
   ],
   tools: [
     {
       spec: {
-        name: "search_courses",
+        name: "find_courses",
         description:
-          "Search UBC Vancouver courses by keyword, with optional filters. Returns matching courses with their scheduled sections (times as 24h HH:MM).",
+          "Search or browse UBC Vancouver courses. By default returns the latest winter session; pass session to choose another (e.g. 2025S, 2024W). Without a query, filter by subject/level/credits/term/has_no_prereqs to browse. Results can be sorted by students, code, or averages. Results include each course's session average when signed-in.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
               query: { type: "string", description: "Keywords to match against course title, description, and code" },
+              session: { type: "string", description: "Session, e.g. 2025W, 2025S, 2024W. Default: latest winter." },
               subject: { type: "string", description: 'Subject code filter, e.g. "CPSC"' },
+              level: { type: "number", description: "Course level bucket, e.g. 100, 200, 300, 400" },
               credits: { type: "number", description: "Exact credit count filter, e.g. 3" },
-              term: { type: "string", description: 'Term filter, e.g. "2026-27 Winter Term 1"' },
+              term: { type: "string", description: 'Term filter, e.g. "1", "2", "1-2"' },
               has_no_prereqs: { type: "boolean", description: "If true, only courses with no prerequisites" },
-              limit: { type: "number", description: "Max results (default 20)" },
+              min_grade_avg: { type: "number", description: "Minimum average, e.g. 80" },
+              max_grade_avg: { type: "number", description: "Maximum average" },
+              sort: {
+                type: "string",
+                enum: [
+                  "relevance",
+                  "code",
+                  "grade_avg_desc",
+                  "grade_avg_asc",
+                  "students_desc",
+                  "students_asc",
+                  "average_desc",
+                  "average_asc",
+                ],
+                description:
+                  "Sort order: relevance/code/grade_avg (pooled), students/average (session). Default: relevance when query present, code otherwise.",
+              },
+              faculty: { type: "string", description: "Faculty, e.g. Faculty of Science" },
+              limit: { type: "number", description: "Max results (default 20, cap 50)" },
             },
-            required: ["query"],
+            required: [],
           },
         },
       },
       async execute(input, search) {
-        const { query, subject, credits, has_no_prereqs, term, limit } = input;
+        const {
+          query,
+          session: rawSession,
+          subject,
+          level,
+          credits,
+          faculty,
+          has_no_prereqs,
+          term,
+          min_grade_avg,
+          max_grade_avg,
+          sort,
+          limit,
+        } = input as Record<string, unknown>;
+        const requestedSession = typeof rawSession === "string" ? rawSession.trim() : "";
+        if (requestedSession && !isSession(requestedSession)) {
+          throw new Error(
+            `Unknown session "${requestedSession}". Valid sessions: ${["2021S", "2021W", "2022S", "2022W", "2023S", "2023W", "2024S", "2024W", "2025S", "2025W"].join(", ")}`,
+          );
+        }
+        const session: Session = (requestedSession || defaultSession()) as Session;
         const filters: string[] = [];
         if (subject) filters.push(`subject = '${upSubject(String(subject))}'`);
+        if (level !== undefined) filters.push(`level = ${Number(level)}`);
         if (credits !== undefined) filters.push(`credits = ${credits}`);
         if (has_no_prereqs) filters.push("prerequisite IS NULL");
         if (term) filters.push(`terms = '${String(term)}'`);
-        const res = await search.index("courses").search(String(query), {
+        const sortBy = String(sort ?? "");
+        const isSessionSort =
+          sortBy === "students_desc" ||
+          sortBy === "students_asc" ||
+          sortBy === "average_desc" ||
+          sortBy === "average_asc" ||
+          sortBy === "code";
+        const needsGradeJoin =
+          sortBy === "grade_avg_desc" ||
+          sortBy === "grade_avg_asc" ||
+          min_grade_avg !== undefined ||
+          max_grade_avg !== undefined;
+
+        // Faculty only exists in the session index, not the catalogue.
+        // Route to session index when faculty is specified.
+        const useSessionIndex = isSessionSort || (faculty && !needsGradeJoin);
+        if (useSessionIndex) {
+          if (faculty) filters.push(`faculty = '${String(faculty).replace(/'/g, "\\'")}'`);
+          const meiliSort =
+            sortBy === "students_desc"
+              ? ["reported:desc"]
+              : sortBy === "students_asc"
+                ? ["reported:asc"]
+                : sortBy === "average_desc"
+                  ? ["average:desc"]
+                  : (["average:asc"] as string[]);
+          const sessionFilter = `session = '${session}'`;
+          const filterStr = filters.length > 0 ? `${sessionFilter} AND ${filters.join(" AND ")}` : sessionFilter;
+          const res = await search.index("course_sessions").search(query ? String(query) : "", {
+            filter: filterStr,
+            sort: meiliSort,
+            limit: Math.min(Number(limit) || 20, 50),
+          });
+          const hits = res.hits as unknown as Record<string, unknown>[];
+          if (hits.length === 0)
+            throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"} in ${session}`);
+          // Normalize to the courses shape the renderers already consume.
+          const courses = hits.map((h) => ({
+            code: h.code as string,
+            subject: h.subject as string,
+            number: String(h.number ?? ""),
+            level: (h.level as number | null) ?? null,
+            title: (h.title as string) ?? "",
+            description: h.description as string | null,
+            credits: (h.credits as number | null) ?? null,
+            prerequisite: null,
+            corequisite: null,
+            sections: [] as unknown[],
+            terms: [] as string[],
+            // Session-enriched fields the table/chart use directly
+            session: h.session as string,
+            average: h.average as number,
+            reported: h.reported as number,
+            buckets: h.buckets as Record<string, number>,
+            grade_avg: h.average as number,
+          }));
+          return { courses, session };
+        }
+
+        // Exploratory browse: session sorts allow no query/filter (table renders on load).
+        const allowEmpty = useSessionIndex;
+        if (!query && filters.length === 0 && !needsGradeJoin && !allowEmpty) {
+          throw new Error("Provide a query or at least one filter (subject, level, credits, term, or has_no_prereqs)");
+        }
+
+        if (needsGradeJoin) {
+          // Pull the full candidate pool before ranking by grade: a top-N by
+          // average can sit anywhere in code order, so a truncated pool would
+          // silently drop eligible courses (e.g. NURS beyond the first 200).
+          // Paginate to exhaustion, up to a hard cap, and flag when capped.
+          const POOL_PAGE = 200;
+          const POOL_CAP = 2000;
+          const candidates: CourseDoc[] = [];
+          let offset = 0;
+          let estimated = Number.POSITIVE_INFINITY;
+          for (;;) {
+            const catRes = await search.index("courses").search(query ? String(query) : "", {
+              filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+              sort: query ? undefined : ["code:asc"],
+              limit: POOL_PAGE,
+              offset,
+              attributesToRetrieve: undefined,
+            });
+            estimated = catRes.estimatedTotalHits;
+            candidates.push(...(catRes.hits as unknown as CourseDoc[]));
+            offset += POOL_PAGE;
+            if (catRes.hits.length < POOL_PAGE) break;
+            if (candidates.length >= POOL_CAP) break;
+          }
+          if (candidates.length === 0) {
+            throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"}`);
+          }
+          const truncated = candidates.length < estimated;
+          const withGrades = await Promise.all(
+            candidates.map(async (c) => ({
+              course: c,
+              avg_grade: await courseAverage(search, c.subject, c.number),
+            })),
+          );
+          const min = min_grade_avg !== undefined ? Number(min_grade_avg) : Number.NEGATIVE_INFINITY;
+          const max = max_grade_avg !== undefined ? Number(max_grade_avg) : Number.POSITIVE_INFINITY;
+          const ranked = withGrades.filter(
+            (r): r is { course: CourseDoc; avg_grade: number } =>
+              r.avg_grade !== null && r.avg_grade >= min && r.avg_grade <= max,
+          );
+          if (sortBy === "grade_avg_asc") {
+            ranked.sort((a, b) => a.avg_grade - b.avg_grade);
+          } else {
+            ranked.sort((a, b) => b.avg_grade - a.avg_grade);
+          }
+          const asOf = await getIndexFreshness("courses");
+          return {
+            courses: ranked.slice(0, Math.min(Number(limit) || 20, 50)).map((r) => ({
+              ...presentCourse(r.course, 10),
+              grade_avg: r.avg_grade,
+            })),
+            ...(asOf ? { catalog_as_of: asOf } : {}),
+            ...(truncated
+              ? {
+                  note: `Sorting was evaluated over the first ${POOL_CAP} matching courses; results may be incomplete.`,
+                }
+              : {}),
+          };
+        }
+
+        const res = await search.index("courses").search(query ? String(query) : "", {
           filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+          sort: query ? undefined : ["code:asc"],
           limit: Math.min(Number(limit) || 20, 50),
         });
-        const hits = res.hits;
-        if (hits.length === 0) throw new Error(`No courses matched "${query}"`);
-        return { courses: hits.map((h) => presentCourse(h as unknown as CourseDoc, 10)) };
+        const hits = res.hits as unknown as CourseDoc[];
+        if (hits.length === 0) throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"}`);
+        const courses = hits.map((h) => presentCourse(h, 10));
+        // Collect available terms for agent self-correction of unmatched term.
+        const availableTerms = term ? [...new Set(hits.flatMap((h) => h.terms))].sort() : undefined;
+        // Seat statuses come from the catalog snapshot — label the vintage so
+        // stale Open/Closed flags are never quoted as live.
+        const asOf = await getIndexFreshness("courses");
+        return {
+          courses,
+          ...(availableTerms ? { available_terms: availableTerms } : {}),
+          ...(asOf ? { catalog_as_of: asOf } : {}),
+        };
       },
     },
     {
       spec: {
         name: "get_course",
         description:
-          "Get the full record for one UBC course by its course code, including description, prerequisites, corequisites, and all scheduled sections.",
+          "Get the full record for one UBC course by its course code. By default returns the latest winter session; pass session to choose another. Includes description, credits, prerequisites, sections, and a pooled grade summary. Set include_grades to also get the grade distribution histogram.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
               course_code: { type: "string", description: 'Course code, e.g. "CPSC 110" or "CPSC_V 110"' },
+              session: { type: "string", description: "Session, e.g. 2025W. Default: latest winter." },
+              include_grades: {
+                type: "boolean",
+                description: "If true, include the grade distribution histogram",
+              },
             },
             required: ["course_code"],
           },
         },
       },
       async execute(input, search) {
+        const rawSession = typeof input.session === "string" ? input.session.trim() : "";
+        if (rawSession && !isSession(rawSession)) {
+          throw new Error(`Unknown session "${rawSession}"`);
+        }
+        const session = (rawSession || defaultSession()) as Session;
         const doc = await findByCode(search, String(input.course_code ?? ""));
         if (!doc) throw new Error(`No course found with code "${input.course_code}"`);
-        return presentCourse(doc);
+        const base = presentCourse(doc);
+        // Session-enriched grade/distribution for the requested session
+        let sessRec: Record<string, unknown> | null = null;
+        try {
+          const codeNorm = String(input.course_code ?? "")
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, " ");
+          const id = `${codeNorm.replace(" ", "_")}__${session}`;
+          // sanitize as courseRecordId does (space -> _ already, session safe)
+          const sid = id.replace(/[^a-zA-Z0-9_-]/g, "_");
+          sessRec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
+        } catch {
+          // not offered in this session — fall through to pooled
+        }
+        const asOf = await getIndexFreshness("courses");
+        if (sessRec) {
+          const result: Record<string, unknown> = {
+            ...base,
+            session,
+            average: sessRec.average,
+            reported: sessRec.reported,
+            buckets: sessRec.buckets,
+            grade_avg: sessRec.average,
+            ...(asOf ? { catalog_as_of: asOf } : {}),
+          };
+          if (input.include_grades) {
+            result.grade_distribution = {
+              buckets: sessRec.buckets,
+              total_enrolled: sessRec.reported,
+              sample_sections: 1,
+            };
+            result.grade_summary = {
+              avg: sessRec.average,
+              median: sessRec.weightedMedian ?? null,
+              sample_sections: 1,
+              latest_year: Number(String(session).slice(0, 4)),
+            };
+          }
+          return result;
+        }
+        const grade = await courseAverage(search, doc.subject, doc.number);
+        if (grade === null)
+          return {
+            ...base,
+            session,
+            note: `Not offered in ${session}; showing pooled record.`,
+            ...(asOf ? { catalog_as_of: asOf } : {}),
+          };
+        const result: Record<string, unknown> = {
+          ...base,
+          session,
+          grade_avg: grade,
+          ...(asOf ? { catalog_as_of: asOf } : {}),
+        };
+        if (input.include_grades) {
+          const full = await courseGrades(search, doc.subject, doc.number);
+          if (full) {
+            result.grade_summary = full.summary;
+            result.grade_distribution = full.distribution;
+          }
+        }
+        return { ...result, note: `Not offered in ${session}; showing pooled record.` };
       },
     },
   ],

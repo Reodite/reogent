@@ -1,4 +1,5 @@
 import type { DatasetModule } from "../core/types";
+import { getIndexFreshness } from "../freshness";
 import { stripHtml } from "./html";
 import { slugify } from "./tuition";
 
@@ -123,7 +124,7 @@ export const admissions: DatasetModule = {
   tools: [
     {
       spec: {
-        name: "search_programs",
+        name: "find_programs",
         description:
           "Search UBC Vancouver undergraduate programs (the you.ubc.ca program finder) by keyword. Returns program names, summaries, degrees, typical duration, and links.",
         inputSchema: {
@@ -142,10 +143,18 @@ export const admissions: DatasetModule = {
         const query = String(input.query);
         const filters: string[] = [];
         if (input.degree) filters.push(`degrees = '${String(input.degree)}'`);
-        const res = await search.index("admission_programs").search(query, {
+        let res = await search.index("admission_programs").search(query, {
           filter: filters.length > 0 ? filters.join(" AND ") : undefined,
           limit: Math.min(Number(input.limit) || 10, 30),
         });
+        // A degree filter that matches nothing shouldn't kill the lookup —
+        // retry without it so e.g. degree="Engineering" (not a real degree
+        // name) still returns the engineering programs.
+        if (res.hits.length === 0 && input.degree) {
+          res = await search.index("admission_programs").search(query, {
+            limit: Math.min(Number(input.limit) || 10, 30),
+          });
+        }
         const hits = res.hits;
         if (hits.length === 0) throw new Error(`No UBC programs matched "${query}"`);
         return {
@@ -215,11 +224,15 @@ export const admissions: DatasetModule = {
         if (rows.length === 0) {
           throw new Error(`No requirement lines found for "${program.name}" from "${loc.location}"`);
         }
+        const asOf = await getIndexFreshness("admission_requirements");
         return {
           program: program.name,
           requirement_group: program.requirement_key,
           location: loc.location,
           curriculum: loc.curriculum,
+          // Requirements are per admission cycle; expose the snapshot date so
+          // the agent never quotes last cycle's lines as current.
+          ...(asOf ? { requirements_as_of: asOf } : {}),
           url: program.url,
           requirements: rows.map((r) => ({
             kind: r.kind,

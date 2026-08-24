@@ -2,6 +2,7 @@
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
+import { VersionBadge } from "@/src/components/shell/session-sidebar";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { useEffect, useRef, useState } from "react";
 
@@ -113,6 +114,13 @@ export function UserMenu() {
           Sign out
         </button>
         {signOutError && <p className="text-error mt-1 px-3 text-xs">Sign out failed. Try again.</p>}
+
+        <div className="bg-border-subtle my-1 h-px" />
+
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-muted text-xs font-medium">Version</span>
+          <VersionBadge />
+        </div>
       </div>
     </div>
   );

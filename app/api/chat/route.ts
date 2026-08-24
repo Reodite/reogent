@@ -1,7 +1,7 @@
 import { uuid } from "@/src/lib/uuid";
 import { streamAgent } from "@/src/server/agent/stream";
 import { requireUser } from "@/src/server/auth";
-import type { InterstitialBlock } from "@/src/server/core/types";
+import type { ActivityBlock } from "@/src/server/core/types";
 import { validateChatRequest } from "@/src/server/core/validate";
 import { modules } from "@/src/server/modules";
 import { rateLimitResponse } from "@/src/server/rate-limit";
@@ -49,29 +49,38 @@ export async function POST(request: Request): Promise<Response> {
           let doneEvent: {
             message: string;
             tool_calls: { name: string; input: Record<string, unknown>; result?: unknown }[];
+            citations: {
+              index: number;
+              label: string;
+              kind: string;
+              used: boolean;
+              source_url?: string;
+              tool: string;
+            }[];
             warning?: string;
+            follow_ups?: string[];
           } | null = null;
-          const interstitial: InterstitialBlock[] = [];
+          const activity: ActivityBlock[] = [];
 
           for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch() })) {
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
             if (event.type === "thinking") {
-              const last = interstitial[interstitial.length - 1];
+              const last = activity[activity.length - 1];
               if (last?.type === "thinking") {
                 last.content += event.delta;
               } else {
-                interstitial.push({ type: "thinking", content: event.delta });
+                activity.push({ type: "thinking", content: event.delta });
               }
             } else if (event.type === "tool_start") {
-              interstitial.push({ type: "tool_call", content: event.name, input: event.input });
+              activity.push({ type: "tool_call", content: event.name, input: event.input });
             } else if (event.type === "tool_end") {
-              for (let j = interstitial.length - 1; j >= 0; j--) {
+              for (let j = activity.length - 1; j >= 0; j--) {
                 if (
-                  interstitial[j].type === "tool_call" &&
-                  interstitial[j].content === event.name &&
-                  interstitial[j].result === undefined
+                  activity[j].type === "tool_call" &&
+                  activity[j].content === event.name &&
+                  activity[j].result === undefined
                 ) {
-                  interstitial[j].result = event.result;
+                  activity[j].result = event.result;
                   break;
                 }
               }
@@ -87,8 +96,8 @@ export async function POST(request: Request): Promise<Response> {
               sessionId,
               lastUser.content,
               doneEvent.message,
-              doneEvent.tool_calls,
-              interstitial.length > 0 ? interstitial : undefined,
+              activity.length > 0 ? activity : undefined,
+              doneEvent.citations,
             );
             // Generate a proper title on first exchange (fire-and-forget)
             const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;

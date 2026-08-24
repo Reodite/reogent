@@ -1,20 +1,31 @@
-// Streaming agent loop: yields NDJSON events as the model generates text
-// and executes tools. The non-streaming loop in loop.ts remains for property tests.
-
+import type { CitationSeed } from "@/src/server/citations/extractors";
+import type { Citation } from "@/src/shared/citations/citation";
+import { allocateCitations } from "../citations/allocator";
+import { CITATION_EXTRACTORS } from "../citations/extractors";
+import { stampUsed } from "../citations/stamp-used";
 import type { ChatMessage, ContentBlock, ConverseMessage, DatasetModule, SearchClient, ToolCall } from "../core/types";
 import { converse, converseStream } from "../llm";
 import { executeTool, isToolError } from "./executor";
 import { ITERATION_LIMIT, systemPrompt } from "./loop";
 
-// Stream event types sent as NDJSON lines to the client
+const GENERATE_FOLLOW_UPS = false;
+
 type StreamEvent =
   | { type: "thinking"; delta: string }
   | { type: "text"; delta: string }
   | { type: "text_clear" }
   | { type: "tool_start"; name: string; input: Record<string, unknown> }
   | { type: "tool_end"; name: string; result: unknown }
+  | { type: "citations"; citations: Citation[] }
   | { type: "turn_start" }
-  | { type: "done"; message: string; tool_calls: ToolCall[]; warning?: string; follow_ups?: string[] }
+  | {
+      type: "done";
+      message: string;
+      tool_calls: ToolCall[];
+      citations: Citation[];
+      warning?: string;
+      follow_ups?: string[];
+    }
   | { type: "error"; message: string };
 
 interface StreamAgentDeps {
@@ -22,7 +33,6 @@ interface StreamAgentDeps {
   search: SearchClient;
 }
 
-/** Runs the agent loop, yielding StreamEvents via an async generator. */
 export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDeps): AsyncGenerator<StreamEvent> {
   const toolSpecs = deps.modules.flatMap((m) => m.tools.map((t) => t.spec));
   const convo: ConverseMessage[] = messages.map((m) => ({
@@ -31,11 +41,20 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   }));
   const toolCalls: ToolCall[] = [];
   let fullText = "";
+  const pendingCitations: CitationSeed[] = [];
+  let toolNudges = 0;
+  // Identical repeat calls within one question return the cached successful
+  // result instead of re-executing — guards against models that re-issue the
+  // same lookup across turns.
+  const callCache = new Map<string, unknown>();
+  const TOOL_CALL_BUDGET = 6;
+  let budgetExceeded = false;
+  const lastUserMsg = (messages[messages.length - 1]?.content ?? "").trim().toLowerCase();
+  const isGreeting = lastUserMsg.length < 3 || /^(hi|hello|hey|greetings|sup|yo)\b/.test(lastUserMsg);
 
   for (let i = 0; ; i++) {
     if (i > 0) yield { type: "turn_start" as const };
 
-    // After soft limit, nudge model to wrap up but keep tools available
     if (i === ITERATION_LIMIT) {
       convo.push({
         role: "user",
@@ -47,54 +66,81 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
       });
     }
 
+    // Blocks accumulate in arrival order: Gemini interleaves text and
+    // functionCall parts, and history must reproduce that order or the model
+    // re-issues calls it already made.
+    const blocks: ContentBlock[] = [];
     let iterText = "";
-    const toolUses: { toolUseId: string; name: string; input: Record<string, unknown> }[] = [];
+    const toolUses: {
+      toolUseId: string;
+      name: string;
+      input: Record<string, unknown>;
+      thoughtSignature?: string;
+    }[] = [];
     let stopReason = "end_turn";
-    let sawToolUse = false;
 
-    // Stream thinking immediately. Stream text optimistically as the answer.
-    // If a tool_use block appears after text, emit text_clear to retract it
-    // and re-emit the text as thinking.
     for await (const event of converseStream({
       messages: convo,
-      system: systemPrompt(),
-      toolSpecs,
+      system: systemPrompt(new Date(), allocateCitations(pendingCitations)),
+      toolSpecs: budgetExceeded ? [] : toolSpecs,
+      forceToolUse: i === 0 && !isGreeting,
     })) {
       if (event.type === "thinking") {
         yield { type: "thinking", delta: event.delta };
       } else if (event.type === "text") {
         iterText += event.delta;
-        if (!sawToolUse) {
-          yield { type: "text", delta: event.delta };
-        }
+        yield { type: "text", delta: event.delta };
       } else if (event.type === "tool_use") {
-        if (!sawToolUse && iterText) {
-          // Retract streamed text and reclassify as thinking
-          yield { type: "text_clear" };
-          yield { type: "thinking", delta: iterText };
+        if (iterText.trim()) {
+          blocks.push({ text: iterText });
+          iterText = "";
         }
-        sawToolUse = true;
+        blocks.push({
+          toolUse: {
+            toolUseId: event.toolUseId,
+            name: event.name,
+            input: event.input,
+            ...(event.thoughtSignature ? { thoughtSignature: event.thoughtSignature } : {}),
+          },
+        });
         toolUses.push(event);
       } else if (event.type === "stop") {
         stopReason = event.reason;
       }
     }
+    if (iterText.trim()) blocks.push({ text: iterText });
 
-    if (iterText && !sawToolUse) fullText = iterText;
+    fullText = blocks
+      .map((b) => b.text ?? "")
+      .filter(Boolean)
+      .join("\n")
+      .trim();
 
-    // Build the assistant message for conversation history
-    const assistantContent: ContentBlock[] = [];
-    if (iterText) assistantContent.push({ text: iterText });
-    for (const tu of toolUses) {
-      assistantContent.push({ toolUse: { toolUseId: tu.toolUseId, name: tu.name, input: tu.input } });
-    }
-    convo.push({ role: "assistant", content: assistantContent });
+    convo.push({ role: "assistant", content: blocks });
 
     if (stopReason !== "tool_use") {
-      // Generate context-aware follow-up suggestions
+      // Detect hallucination: assistant answered with plain text before ANY
+      // tool has run this question. Nudge up to NUDGE_LIMIT times to fetch
+      // facts, then give up rather than loop on a model that refuses tools.
+      // Once a tool has run, a text-only turn is a legitimate answer — never
+      // nag then, or the model re-issues calls it already made.
+      const NUDGE_LIMIT = 2;
+      if (toolUses.length === 0 && iterText && toolCalls.length === 0 && toolNudges < NUDGE_LIMIT) {
+        toolNudges++;
+        convo.push({
+          role: "user",
+          content: [
+            {
+              text: "You answered without using any tools. UBC data (courses, tuition, buildings, routes, events, dates, admission requirements) changes yearly and your training data is not reliable for it. Call the appropriate data tool(s) to gather the facts, then give your answer. Do not answer from memory.",
+            },
+          ],
+        });
+        continue;
+      }
       let follow_ups: string[] | undefined;
-      try {
-        const FOLLOW_UP_SYSTEM = `You suggest follow-up questions for a UBC campus assistant. The assistant can ONLY:
+      if (GENERATE_FOLLOW_UPS) {
+        try {
+          const FOLLOW_UP_SYSTEM = `You suggest follow-up questions for a UBC campus assistant. The assistant can ONLY:
 - Search courses (by subject, credits, prerequisites, term)
 - Look up tuition and cost estimates
 - Calculate walking distances between buildings
@@ -113,63 +159,107 @@ Rules:
 - If the conversation hit a dead end, suggest a completely different topic
 - Return ONLY a JSON array of strings, nothing else`;
 
-        const summary = convo
-          .slice(-6)
-          .map(
-            (m) =>
-              `${m.role}: ${m.content
-                .map((b) => b.text)
-                .filter(Boolean)
-                .join("")
-                .slice(0, 200)}`,
-          )
-          .join("\n");
+          const summary = convo
+            .slice(-6)
+            .map(
+              (m) =>
+                `${m.role}: ${m.content
+                  .map((b) => b.text)
+                  .filter(Boolean)
+                  .join("")
+                  .slice(0, 200)}`,
+            )
+            .join("\n");
 
-        const followUpResult = await converse({
-          system: FOLLOW_UP_SYSTEM,
-          messages: [{ role: "user", content: [{ text: summary }] }],
-          toolSpecs: [],
-        });
-        const raw = (followUpResult.message.content ?? [])
-          .map((b) => b.text)
-          .filter(Boolean)
-          .join("")
-          .trim();
-        const jsonMatch = raw.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (Array.isArray(parsed)) {
-            follow_ups = parsed.filter((s): s is string => typeof s === "string" && s.length > 0).slice(0, 3);
+          const followUpResult = await converse({
+            system: FOLLOW_UP_SYSTEM,
+            messages: [{ role: "user", content: [{ text: summary }] }],
+            toolSpecs: [],
+          });
+          const raw = (followUpResult.message.content ?? [])
+            .map((b) => b.text)
+            .filter(Boolean)
+            .join("")
+            .trim();
+          const jsonMatch = raw.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(parsed)) {
+              follow_ups = parsed.filter((s): s is string => typeof s === "string" && s.length > 0).slice(0, 3);
+            }
           }
+        } catch {
+          // Best-effort
         }
-      } catch {
-        // Follow-up generation is best-effort
       }
-      yield { type: "done", message: fullText, tool_calls: toolCalls, follow_ups };
+      const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
+      yield { type: "citations", citations: finalCitations };
+      yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations, follow_ups };
       return;
     }
 
-    // Execute tools in parallel for faster responses
     for (const { name, input } of toolUses) {
       yield { type: "tool_start", name, input };
     }
     const execResults = await Promise.all(
-      toolUses.map(({ name, input }) => executeTool(deps.modules, name, input, deps.search)),
+      toolUses.map(async ({ name, input }) => {
+        const key = `${name}:${JSON.stringify(input)}`;
+        if (callCache.has(key)) return callCache.get(key);
+        const result = await executeTool(deps.modules, name, input, deps.search);
+        if (!isToolError(result)) callCache.set(key, result);
+        return result;
+      }),
     );
+    const widgetIdx = toolUses.findIndex((tu) => tu.name === "show_widget");
+    const widgetSucceeded = widgetIdx >= 0 && !isToolError(execResults[widgetIdx]);
+
     const results: ContentBlock[] = [];
     for (let i = 0; i < toolUses.length; i++) {
       const { toolUseId, name, input } = toolUses[i];
       const result = execResults[i];
       toolCalls.push({ name, input, result });
       yield { type: "tool_end", name, result };
+      const extractor = CITATION_EXTRACTORS[name];
+      if (extractor) {
+        pendingCitations.push(...extractor(result, input));
+        yield { type: "citations", citations: allocateCitations(pendingCitations) };
+      }
       results.push({
         toolResult: {
           toolUseId,
+          name,
           content: [{ json: result }],
           ...(isToolError(result) ? { status: "error" as const } : {}),
         },
       });
     }
+
+    if (widgetSucceeded) {
+      // show_widget rendered the card; any same-turn text is the answer.
+      // End the turn immediately — no extra nudge round-trip.
+      const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
+      yield { type: "citations", citations: finalCitations };
+      yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations };
+      return;
+    }
+
+    // Tool results must always land in history — Gemini rejects a
+    // functionCall without its matching functionResponse.
     convo.push({ role: "user", content: results });
+
+    // Halt runaway tool loops: once the budget is crossed, strip the tool
+    // specs from the next LLM call so the model can only answer with text.
+    if (toolCalls.length >= TOOL_CALL_BUDGET && !budgetExceeded) {
+      budgetExceeded = true;
+      convo.push({
+        role: "user",
+        content: [
+          {
+            text: "You have used many tool calls. Provide your final answer now based on the information you have gathered so far. Do not call more tools.",
+          },
+        ],
+      });
+      fullText = "";
+    }
   }
 }

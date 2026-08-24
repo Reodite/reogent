@@ -98,7 +98,7 @@ export const pages: DatasetModule = {
       spec: {
         name: "search_ubc_pages",
         description:
-          "Full-text search across official UBC Vancouver web pages: academic calendar (policies, regulations, degree requirements), admissions/you.ubc.ca (costs, financial assistance, how to apply), student services, campus facilities, recreation, food outlets, news, and published reports. Returns page titles, URLs, and matching text snippets — cite the URL in answers.",
+          "Full-text search across official UBC Vancouver web pages: academic calendar (policies, regulations, degree requirements), admissions/you.ubc.ca (how to apply, scholarships, general info), student services, campus facilities, recreation, food outlets, news, and published reports. For structured financial data (tuition, fees, cost estimates, living costs) use get_costs instead. Returns page titles, URLs, and matching text snippets — cite the URL in answers.",
         inputSchema: {
           json: {
             type: "object",

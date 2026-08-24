@@ -25,9 +25,7 @@ export async function executeTool(
     }
     return result;
   } catch (e) {
-    // Sanitize: expose only the tool name and a generic message, not internal paths/stacks
-    const raw = e instanceof Error && e.message ? e.message : "";
-    const safe = raw === "Tool timed out" ? `Tool ${name} timed out after 30s` : `Tool ${name} failed`;
-    return { status: "error", message: safe };
+    const message = e instanceof Error && e.message ? e.message : "";
+    return { status: "error", message: message || `Tool ${name} failed` };
   }
 }
