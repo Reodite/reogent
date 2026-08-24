@@ -62,10 +62,15 @@ function renderWidget(call: ToolCall) {
   );
 }
 
-// get_key_dates maps to the calendar pane unconditionally (no input/result
-// shape requirements), so it exercises the mapped+clickable path without a
-// renderer complicating the DOM.
-const keyDatesCall = { name: "get_key_dates", input: {}, result: { dates: [] }, status: "ok" } as unknown as ToolCall;
+// show_widget type key_dates maps to the calendar pane unconditionally (no
+// input/result shape requirements), so it exercises the mapped+clickable path
+// without a renderer complicating the DOM.
+const keyDatesCall = {
+  name: "show_widget",
+  input: { type: "key_dates" },
+  result: { type: "key_dates", result: { dates: [{ kind: "academic", name: "W", start: "2026-10-01", end: null }] } },
+  status: "ok",
+} as unknown as ToolCall;
 // get_tuition has no canvas mapping: static, non-focusable summary.
 const tuitionCall = {
   name: "get_tuition",
@@ -85,7 +90,7 @@ const walkingLoadingCall = {
 describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
   it("a mapped widget is focusable and loads its canvas view on click", () => {
     const { container } = renderWidget(keyDatesCall);
-    const widget = container.querySelector('[data-widget="get_key_dates"]') as HTMLElement;
+    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
     expect(widget).not.toBeNull();
     expect(widget.getAttribute("role")).toBe("button");
     expect(widget.getAttribute("tabindex")).toBe("0");
@@ -105,7 +110,7 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
 
   it("the active ring reflects the current workspace view", () => {
     const { container } = renderWidget(keyDatesCall);
-    const widget = container.querySelector('[data-widget="get_key_dates"]') as HTMLElement;
+    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
     expect(widget.getAttribute("data-active")).toBeNull();
     act(() => {
       fireEvent.click(widget);
@@ -115,7 +120,7 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
 
   it("Enter and Space keys activate a mapped widget, and clicking again keeps it active (no toggle-off)", () => {
     const { container } = renderWidget(keyDatesCall);
-    const widget = container.querySelector('[data-widget="get_key_dates"]') as HTMLElement;
+    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
     act(() => {
       fireEvent.keyDown(widget, { key: "Enter" });
     });

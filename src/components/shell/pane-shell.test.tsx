@@ -98,10 +98,10 @@ describe("setActiveChannel stability — pane stays open against consumer effect
 
 describe("workspaceView state contract (REQ-1.2, REQ-3.1)", () => {
   const courseCall: ToolCall = {
-    name: "get_course",
-    input: { course_code: "CPSC 110" },
-    result: { code: "CPSC 110", title: "Computation, Programs, and Programming" },
-  } as ToolCall;
+    name: "show_widget",
+    input: { type: "course" },
+    result: { type: "course", result: { code: "CPSC 110" } },
+  } as unknown as ToolCall;
   const tuitionCall: ToolCall = {
     name: "get_tuition",
     input: { program: "BSc" },

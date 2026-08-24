@@ -354,46 +354,73 @@ describe("toolCallToCanvasView", () => {
     expect(mapKind(view)).toBe("places");
   });
 
-  it("maps a get_course call to the course-lookup pane seeded with the code", () => {
-    const view = toolCallToCanvasView({
-      name: "get_course",
-      input: { course_code: "CPSC 110" },
-      result: { code: "CPSC 110", title: "Computation, Programs, and Programming" },
-    } as ToolCall);
-    expect(view?.paneId).toBe("course-lookup");
-    expect(view?.state.code).toBe("CPSC 110");
+  it("does not open panes for raw data tools (only show_widget does)", () => {
+    expect(
+      toolCallToCanvasView({
+        name: "get_course",
+        input: { course_code: "CPSC 110" },
+        result: { code: "CPSC 110", title: "Computation, Programs, and Programming" },
+      } as ToolCall),
+    ).toBeNull();
+    expect(
+      toolCallToCanvasView({
+        name: "find_courses",
+        input: { query: "machine learning", subject: "CPSC" },
+        result: { courses: [{ code: "CPSC 340", title: "Machine Learning" }] },
+      } as ToolCall),
+    ).toBeNull();
+    expect(
+      toolCallToCanvasView({
+        name: "get_prereq_tree",
+        input: { course_code: "CPSC 320" },
+        result: { rootCode: "CPSC 320", nodes: [], edges: [], selectionKeys: [] },
+      } as ToolCall),
+    ).toBeNull();
+    expect(
+      toolCallToCanvasView({
+        name: "get_key_dates",
+        input: { query: "withdrawal" },
+        result: { dates: [{ kind: "academic", name: "Withdrawal deadline", start: "2026-10-01", end: null }] },
+      } as ToolCall),
+    ).toBeNull();
   });
 
-  it("maps a find_courses call to the course-lookup pane using the first hit", () => {
-    const view = toolCallToCanvasView({
-      name: "find_courses",
-      input: { query: "machine learning", subject: "CPSC" },
-      result: { courses: [{ code: "CPSC 340", title: "Machine Learning" }] },
-    } as ToolCall);
-    expect(view?.paneId).toBe("course-lookup");
-    expect(view?.state.code).toBe("CPSC 340");
-  });
+  it("maps show_widget course/courses/prereq_tree/key_dates to their panes", () => {
+    const course = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "course" },
+      result: { type: "course", result: { code: "CPSC 110" } },
+    } as unknown as ToolCall);
+    expect(course?.paneId).toBe("course-lookup");
+    expect(course?.state.code).toBe("CPSC 110");
 
-  it("maps a get_prereq_tree call to the prereq-tree pane seeded with the root", () => {
-    const view = toolCallToCanvasView({
-      name: "get_prereq_tree",
-      input: { course_code: "CPSC 320" },
-      result: { rootCode: "CPSC 320", nodes: [], edges: [], selectionKeys: [] },
-    } as ToolCall);
-    expect(view?.paneId).toBe("prereq-tree");
-    expect(view?.state.root).toBe("CPSC 320");
-    expect(view?.state.selections).toEqual({});
-  });
+    const courses = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "courses" },
+      result: { type: "courses", result: { courses: [{ code: "CPSC 340" }] } },
+    } as unknown as ToolCall);
+    expect(courses?.paneId).toBe("course-lookup");
+    expect(courses?.state.code).toBe("CPSC 340");
 
-  it("maps a get_key_dates call to the calendar pane at the current month", () => {
-    const view = toolCallToCanvasView({
-      name: "get_key_dates",
-      input: { query: "withdrawal" },
-      result: { dates: [{ kind: "academic", name: "Withdrawal deadline", start: "2026-10-01", end: null }] },
-    } as ToolCall);
-    expect(view?.paneId).toBe("calendar");
-    expect(view?.state.cursor).toBe(month);
-    expect(view?.state.kinds).toEqual(["academic", "holiday"]);
+    const prereq = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "prereq_tree" },
+      result: { type: "prereq_tree", result: { rootCode: "CPSC 320" } },
+    } as unknown as ToolCall);
+    expect(prereq?.paneId).toBe("prereq-tree");
+    expect(prereq?.state.root).toBe("CPSC 320");
+
+    const dates = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "key_dates" },
+      result: {
+        type: "key_dates",
+        result: { dates: [{ kind: "academic", name: "W", start: "2026-10-01", end: null }] },
+      },
+    } as unknown as ToolCall);
+    expect(dates?.paneId).toBe("calendar");
+    expect(dates?.state.cursor).toBe(month);
+    expect(dates?.state.kinds).toEqual(["academic", "holiday"]);
   });
 
   it("returns null for an unmapped tool", () => {

@@ -107,20 +107,23 @@ function renderPanel(sessionId: string | null = null) {
 
 function courseCall(code: string): ToolCall {
   return {
-    name: "get_course",
-    input: { course_code: code },
+    name: "show_widget",
+    input: { type: "course" },
     result: {
-      code,
-      subject: code.slice(0, 4),
-      number: code.slice(4),
-      title: `${code} title`,
-      description: "",
-      credits: 3,
-      prerequisite: null,
-      corequisite: null,
-      sections: [],
-      terms: [],
-      total_sections: 0,
+      type: "course",
+      result: {
+        code,
+        subject: code.slice(0, 4),
+        number: code.slice(4),
+        title: `${code} title`,
+        description: "",
+        credits: 3,
+        prerequisite: null,
+        corequisite: null,
+        sections: [],
+        terms: [],
+        total_sections: 0,
+      },
     },
   };
 }
@@ -210,8 +213,8 @@ describe("14.3 — revisit an earlier widget + keyboard activation (REQ-3.4, REQ
     // Reload restores the last mapped tool (CPSC 320).
     await waitFor(() => expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 320"));
 
-    // Revisit the earlier CPSC 110 widget (first get_course widget in the log).
-    const widgets = container.querySelectorAll('[data-widget="get_course"]');
+    // Revisit the earlier CPSC 110 widget (first show_widget widget in the log).
+    const widgets = container.querySelectorAll('[data-widget="show_widget"]');
     expect(widgets.length).toBe(2);
     fireEvent.click(widgets[0] as HTMLElement);
     expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 110");
