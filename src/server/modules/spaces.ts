@@ -204,13 +204,36 @@ export const spaces: DatasetModule = {
 
         const kind = String(input.kind ?? "informal");
 
+        // A building code that matches nothing (alias gaps in the rooms data)
+        // shouldn't kill the lookup — drop the building filter and retry once.
+        // Same for free-text keywords that match no room titles.
+        async function searchSpaces(
+          index: string,
+          extraFilters: string[],
+          text: string,
+          opts: Record<string, unknown>,
+        ) {
+          const attempt = async (f: string[], t: string) =>
+            search.index(index).search(t, {
+              filter: f.length > 0 ? f.join(" AND ") : undefined,
+              ...opts,
+            });
+          let res = await attempt([...extraFilters, ...filters], text);
+          if ((res.hits as unknown[]).length === 0 && filters.length > 0) {
+            res = await attempt(extraFilters, text);
+          }
+          if ((res.hits as unknown[]).length === 0 && text) {
+            res = await attempt([...extraFilters, ...filters], "");
+          }
+          return res;
+        }
+
         // Informal study spaces / classrooms.
         if (kind === "informal") {
-          const ifilters: string[] = [...filters];
+          const ifilters: string[] = [];
           if (input.space_type) ifilters.push(`space_type = '${String(input.space_type)}'`);
           if (input.min_capacity !== undefined) ifilters.push(`capacity >= ${Number(input.min_capacity)}`);
-          const res = await search.index("study_spaces").search(input.query ? String(input.query) : "", {
-            filter: ifilters.length > 0 ? ifilters.join(" AND ") : undefined,
+          const res = await searchSpaces("study_spaces", ifilters, input.query ? String(input.query) : "", {
             sort: ["capacity:desc"],
             limit: Math.min(Number(input.limit) || 10, 30),
           });
@@ -220,11 +243,10 @@ export const spaces: DatasetModule = {
         }
 
         // Bookable library rooms free now.
-        const bfilters: string[] = ["state = 'free'", ...filters];
+        const bfilters: string[] = ["state = 'free'"];
         if (input.min_minutes !== undefined) bfilters.push(`minutes >= ${Number(input.min_minutes)}`);
         if (input.min_capacity !== undefined) bfilters.push(`capacity >= ${Number(input.min_capacity)}`);
-        const res = await search.index("room_availability").search(input.query ? String(input.query) : "", {
-          filter: bfilters.join(" AND "),
+        const res = await searchSpaces("room_availability", bfilters, input.query ? String(input.query) : "", {
           sort: ["capacity:desc"],
           limit: Math.min(Number(input.limit) || 20, 30),
         });

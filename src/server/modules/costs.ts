@@ -272,7 +272,12 @@ export const costs: DatasetModule = {
             const filter = input.fees_student_type
               ? `student_type = '${String(input.fees_student_type).toLowerCase()}'`
               : undefined;
-            const res = await search.index("student_fees").search(String(input.query), { filter, limit: 20 });
+            let res = await search.index("student_fees").search(String(input.query), { filter, limit: 20 });
+            // Fees that apply to everyone (e.g. U-Pass) carry no student_type,
+            // so a type filter can hide them — retry unfiltered on empty.
+            if (res.hits.length === 0 && filter) {
+              res = await search.index("student_fees").search(String(input.query), { limit: 20 });
+            }
             const hits = res.hits;
             if (hits.length === 0) throw new Error(`No student fees matched "${input.query}"`);
             return { kind: "fees", fees: hits as unknown as StudentFeeDoc[] };

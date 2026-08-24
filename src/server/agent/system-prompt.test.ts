@@ -52,22 +52,22 @@ vi.mock("openai", () => ({
   },
 }));
 
-vi.mock("@google/generative-ai", () => ({
-  GoogleGenerativeAI: class {
-    getGenerativeModel() {
-      return {
-        async generateContent(req: Record<string, unknown>) {
-          googleRec.calls.push(req);
-          return { response: { candidates: [{ content: { parts: [{ text: "ok" }] } }] } };
-        },
-      };
-    }
+vi.mock("@google/genai", () => ({
+  GoogleGenAI: class {
+    models = {
+      async generateContent(req: Record<string, unknown>) {
+        googleRec.calls.push(req);
+        return { candidates: [{ content: { parts: [{ text: "ok" }] } }] };
+      },
+    };
   },
 }));
 
 const { createAnthropicAdapter } = await import("../llm/anthropic");
 const { createOpenAIAdapter } = await import("../llm/openai");
 const { createGoogleAdapter } = await import("../llm/google");
+
+process.env.LLM_API_KEY ??= "test-key";
 
 const system = systemPrompt(new Date("2026-08-18T00:00:00Z"), CITATIONS);
 
@@ -104,15 +104,15 @@ describe("15.10 Per-provider system-prompt parity smoke", () => {
     const adapter = createGoogleAdapter();
     await adapter.converse({ messages: emptyMsgs, system, toolSpecs: [] });
     expect(googleRec.calls).toHaveLength(1);
-    const parts = (googleRec.calls[0].systemInstruction as { parts: Array<{ text: string }> }).parts;
-    expect(parts[0].text).toContain(CONTRACT_MARKER);
-    expect(parts[0].text).toContain("[1] CPSC 110 \u2014 Foundations");
-    expect(parts[0].text).toContain("[2] Withdrawal deadlines");
+    const sent = googleRec.calls[0].config.systemInstruction as string;
+    expect(sent).toContain(CONTRACT_MARKER);
+    expect(sent).toContain("[1] CPSC 110 \u2014 Foundations");
+    expect(sent).toContain("[2] Withdrawal deadlines");
   });
 
   it("all three provider outputs carry an identical contract marker payload", () => {
     expect(anthRec.calls[0].system).toBe(system);
     expect((oaiRec.calls[0].messages as Array<{ content: string }>)[0].content).toBe(system);
-    expect((googleRec.calls[0].systemInstruction as { parts: Array<{ text: string }> }).parts[0].text).toBe(system);
+    expect(googleRec.calls[0].config.systemInstruction).toBe(system);
   });
 });

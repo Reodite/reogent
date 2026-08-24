@@ -142,10 +142,18 @@ export const admissions: DatasetModule = {
         const query = String(input.query);
         const filters: string[] = [];
         if (input.degree) filters.push(`degrees = '${String(input.degree)}'`);
-        const res = await search.index("admission_programs").search(query, {
+        let res = await search.index("admission_programs").search(query, {
           filter: filters.length > 0 ? filters.join(" AND ") : undefined,
           limit: Math.min(Number(input.limit) || 10, 30),
         });
+        // A degree filter that matches nothing shouldn't kill the lookup —
+        // retry without it so e.g. degree="Engineering" (not a real degree
+        // name) still returns the engineering programs.
+        if (res.hits.length === 0 && input.degree) {
+          res = await search.index("admission_programs").search(query, {
+            limit: Math.min(Number(input.limit) || 10, 30),
+          });
+        }
         const hits = res.hits;
         if (hits.length === 0) throw new Error(`No UBC programs matched "${query}"`);
         return {

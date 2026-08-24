@@ -96,7 +96,14 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
     const assistantContent: ContentBlock[] = [];
     if (iterText) assistantContent.push({ text: iterText });
     for (const tu of toolUses) {
-      assistantContent.push({ toolUse: { toolUseId: tu.toolUseId, name: tu.name, input: tu.input } });
+      assistantContent.push({
+        toolUse: {
+          toolUseId: tu.toolUseId,
+          name: tu.name,
+          input: tu.input,
+          ...(tu.thoughtSignature ? { thoughtSignature: tu.thoughtSignature } : {}),
+        },
+      });
     }
     convo.push({ role: "assistant", content: assistantContent });
 
@@ -201,6 +208,7 @@ Rules:
       results.push({
         toolResult: {
           toolUseId,
+          name,
           content: [{ json: result }],
           ...(isToolError(result) ? { status: "error" as const } : {}),
         },
@@ -216,9 +224,12 @@ Rules:
       return;
     }
 
-    // Halt runaway tool loops: after the budget is exceeded, strip the tool
-    // specs from the LLM call so the model can't call more tools and must
-    // answer with text.
+    // Tool results must always land in history — Gemini rejects a
+    // functionCall without its matching functionResponse.
+    convo.push({ role: "user", content: results });
+
+    // Halt runaway tool loops: once the budget is crossed, strip the tool
+    // specs from the next LLM call so the model can only answer with text.
     if (toolCalls.length >= TOOL_CALL_BUDGET && !budgetExceeded) {
       budgetExceeded = true;
       convo.push({
@@ -230,9 +241,6 @@ Rules:
         ],
       });
       fullText = "";
-      continue;
     }
-
-    convo.push({ role: "user", content: results });
   }
 }

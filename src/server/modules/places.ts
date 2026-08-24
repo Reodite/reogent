@@ -128,6 +128,12 @@ export const places: DatasetModule = {
                 description: "Optional building code or name to sort results by walking distance from",
               },
               ev_charging: { type: "boolean", description: "Parking only: if true, only facilities with EV charging" },
+              motorcycle: { type: "boolean", description: "Parking only: if true, only lots with motorcycle parking" },
+              bike_cage: { type: "boolean", description: "Parking only: if true, only lots with secured bike cages" },
+              accessible_stalls: {
+                type: "boolean",
+                description: "Parking only: if true, only lots with accessible (disabled) stalls",
+              },
               limit: { type: "number", description: "Max results (default 10)" },
             },
             required: [],
@@ -141,22 +147,44 @@ export const places: DatasetModule = {
         const filters: string[] = [];
         if (isParking) {
           if (input.ev_charging) filters.push("ev_charging = true");
+          if (input.motorcycle) filters.push("motorcycle = true");
+          if (input.bike_cage) filters.push("bike_cage = true");
+          if (input.accessible_stalls) filters.push("accessible_stalls = true");
         } else if (category) {
           filters.push(`service_type = '${category}'`);
         }
         const limit = Math.min(Number(input.limit) || 10, 30);
-        const { results, near, truncated_before_sort } = await searchNearable<PoiDoc | ParkingDoc>(
+        const filterStr = filters.length > 0 ? filters.join(" AND ") : undefined;
+        let { results, near, truncated_before_sort } = await searchNearable<PoiDoc | ParkingDoc>(
           search,
           isParking ? "parking" : "poi",
           queryText,
-          filters.length > 0 ? filters.join(" AND ") : undefined,
+          filterStr,
           input.near_building,
           limit,
         );
+        // A keyword that matches nothing shouldn't kill the lookup — retry
+        // with the filters alone so e.g. "vegetarian near the Nest" still
+        // returns nearby food instead of an error.
+        let keywordDropped = false;
+        if (results.length === 0 && queryText) {
+          keywordDropped = true;
+          ({ results, near, truncated_before_sort } = await searchNearable<PoiDoc | ParkingDoc>(
+            search,
+            isParking ? "parking" : "poi",
+            "",
+            filterStr,
+            input.near_building,
+            limit,
+          ));
+        }
         if (results.length === 0) throw new Error(`No ${isParking ? "parking facilities" : "places"} matched`);
         const key = isParking ? "parking" : "places";
         return {
           ...(near ? { near_building: near.code } : {}),
+          ...(keywordDropped
+            ? { note: `No match for "${queryText}"; showing all matching places sorted by distance.` }
+            : {}),
           ...(truncated_before_sort ? { note: "Many matches exist; nearest results may be approximate." } : {}),
           [key]: results,
         };

@@ -318,13 +318,40 @@ export function createWidgetsModule(): DatasetModule {
                 throw new Error("show_widget type 'study_spaces' requires study_space_ids or room_eids");
               }
               if (roomEids.length > 0) {
-                const rooms = await getDocs(search, "lib_rooms", roomEids);
+                let rooms = await getDocs(search, "lib_rooms", roomEids);
+                if (rooms.length === 0) {
+                  // The model sometimes passes room names ("IKB 461") rather
+                  // than numeric eids — fall back to a search on those strings.
+                  const found = new Map<string, unknown>();
+                  for (const r of roomEids) {
+                    const res = await search.index("lib_rooms").search(r, { limit: 3 });
+                    for (const hit of res.hits as unknown as Record<string, unknown>[]) {
+                      const id = String(hit.eid ?? hit.id);
+                      if (!found.has(id)) found.set(id, hit);
+                    }
+                  }
+                  rooms = [...found.values()];
+                }
                 if (rooms.length === 0) throw new Error("None of the given room eids resolved");
                 return { type, result: { kind: "bookable", rooms } };
               }
               const spaces = await getDocs(search, "study_spaces", spaceIds);
-              if (spaces.length === 0) throw new Error("None of the given study space ids resolved");
-              return { type, result: { kind: "informal", spaces } };
+              let informal = spaces;
+              if (informal.length === 0) {
+                // The model sometimes passes room titles instead of ids —
+                // fall back to a search on those strings.
+                const found = new Map<string, unknown>();
+                for (const s of spaceIds) {
+                  const res = await search.index("study_spaces").search(s, { limit: 3 });
+                  for (const hit of res.hits as unknown as Record<string, unknown>[]) {
+                    const id = String(hit.id);
+                    if (!found.has(id)) found.set(id, hit);
+                  }
+                }
+                informal = [...found.values()];
+              }
+              if (informal.length === 0) throw new Error("None of the given study space ids resolved");
+              return { type, result: { kind: "informal", spaces: informal } };
             }
 
             case "program": {
@@ -362,24 +389,43 @@ export function createWidgetsModule(): DatasetModule {
                 throw new Error(`Unknown bucket "${hb}". Valid buckets: ${BUCKET_KEYS.join(", ")}`);
               }
               const sid = `${code.toUpperCase().replace(/\s+/g, "_")}__${session}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-              let rec: Record<string, unknown>;
+              let rec: Record<string, unknown> | null = null;
               try {
                 rec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
               } catch {
-                throw new Error(`${code} was not offered in ${session}`);
+                // not offered in this session
               }
-              const buckets = rec.buckets as Record<string, number>;
-              if (!buckets || Object.values(buckets).every((v) => v === 0)) {
-                throw new Error(`No distribution data for ${code} in ${session}`);
+              const buckets = rec?.buckets as Record<string, number> | undefined;
+              if (buckets && Object.values(buckets).some((v) => v > 0)) {
+                return {
+                  type,
+                  result: {
+                    code: rec!.code,
+                    session,
+                    buckets,
+                    average: rec!.average,
+                    reported: rec!.reported,
+                    ...(hb ? { highlight_bucket: hb as BucketKey } : {}),
+                  },
+                };
+              }
+              // No per-session record — fall back to the pooled distribution
+              // across all recorded sessions instead of erroring.
+              const doc = await findByCode(search, code);
+              if (!doc) throw new Error(`No course found with code "${code}"`);
+              const full = await courseGrades(search, doc.subject, doc.number);
+              if (!full || Object.values(full.distribution.buckets).every((v) => v === 0)) {
+                throw new Error(`No grade distribution data for ${code}`);
               }
               return {
                 type,
                 result: {
-                  code: rec.code,
+                  code: doc.code,
                   session,
-                  buckets,
-                  average: rec.average,
-                  reported: rec.reported,
+                  buckets: full.distribution.buckets,
+                  average: full.summary.avg,
+                  reported: full.distribution.total_enrolled,
+                  note: `No per-session record for ${session}; showing pooled grades.`,
                   ...(hb ? { highlight_bucket: hb as BucketKey } : {}),
                 },
               };

@@ -20,8 +20,14 @@ export interface ToolSpec {
 
 export interface ContentBlock {
   text?: string;
-  toolUse?: { toolUseId: string; name: string; input: Record<string, unknown> };
-  toolResult?: { toolUseId: string; content: { json: unknown }[]; status?: "error" };
+  toolUse?: {
+    toolUseId: string;
+    name: string;
+    input: Record<string, unknown>;
+    /** Gemini reasoning signature that must be echoed back with the call. */
+    thoughtSignature?: string;
+  };
+  toolResult?: { toolUseId: string; name?: string; content: { json: unknown }[]; status?: "error" };
 }
 
 export interface ConverseMessage {
