@@ -23,7 +23,10 @@ export interface GradeSummary {
   avg: number;
   median: number | null;
   sample_sections: number;
+  /** Most recent year with records. */
   latest_year: number;
+  /** Earliest year in the pooled record set. */
+  earliest_year: number;
 }
 
 export interface GradeDistribution {
@@ -81,6 +84,7 @@ export async function courseGrades(
   let sampleMedian = 0;
   let medianCount = 0;
   let latestYear = 0;
+  let earliestYear = Number.POSITIVE_INFINITY;
   const buckets: Record<string, number> = {};
   let bucketEnrolled = 0;
   for (const r of rows) {
@@ -93,6 +97,7 @@ export async function courseGrades(
       medianCount++;
     }
     if (r.year > latestYear) latestYear = r.year;
+    if (r.year < earliestYear) earliestYear = r.year;
     for (const [k, v] of Object.entries(r.distribution)) {
       buckets[k] = (buckets[k] ?? 0) + v;
       bucketEnrolled += v;
@@ -101,7 +106,13 @@ export async function courseGrades(
   const avg = totalEnrolled > 0 ? Math.round((weightedSum / totalEnrolled) * 10) / 10 : 0;
   const median = medianCount > 0 ? Math.round((sampleMedian / medianCount) * 10) / 10 : null;
   return {
-    summary: { avg, median, sample_sections: rows.length, latest_year: latestYear },
+    summary: {
+      avg,
+      median,
+      sample_sections: rows.length,
+      latest_year: latestYear,
+      earliest_year: Number.isFinite(earliestYear) ? earliestYear : latestYear,
+    },
     distribution: { buckets, total_enrolled: bucketEnrolled, sample_sections: rows.length },
   };
 }

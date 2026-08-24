@@ -89,7 +89,7 @@ near_building on places/parking is display-only: it labels the card "near <build
 → find_courses(sort: "grade_avg_desc", has_no_prereqs: true or filters). Read the codes, then show_widget(type: "courses", course_codes: ["<the codes>"]). Done. No prose.
 
 "Grade distribution / average for X"
-→ get_course("X", include_grades:true), then show_widget(type: "grades", course: "X"). Done. No prose.
+→ get_course("X", include_grades:true), then show_widget(type: "grades", course: "X"). Attribute every number: state the session ("averaged 84% in 2025W across 234 students"). When the result is pooled, label it as such ("pooled across 46 sections, 2019–2025") — never present an unlabeled average or mix session and pooled numbers as if they were one figure. Done. No prose beyond that attribution.
 
 "Tuition for <program>"
 → get_costs(kind: "tuition", program_slug, student_type, cohort_year), then show_widget(type: "tuition", program_slug, student_type, cohort_year). Done. No prose.

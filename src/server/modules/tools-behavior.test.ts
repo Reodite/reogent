@@ -713,16 +713,74 @@ describe("show_widget (explicit entities)", () => {
     expect(out.result.code).toBe("CPSC_V 110");
   });
 
-  it("renders grade distribution with include_grades", async () => {
+  it("prefers the most recent session record for grades and labels it", async () => {
     const search = fakeSearch({
       courses: [course("CPSC_V 110")],
-      grades: [{ subject: "CPSC", course: "110", year: 2025, enrolled: 10, avg: 80, median: 82, distribution: {} }],
+      course_sessions: [
+        {
+          id: "CPSC_110__2025W",
+          average: 83.9,
+          weightedMedian: 86.1,
+          reported: 234,
+          buckets: { "80-84": 38, "85-89": 69, "90-100": 73 },
+        },
+      ],
+      grades: [
+        {
+          subject: "CPSC",
+          course: "110",
+          year: 2019,
+          enrolled: 100,
+          avg: 70,
+          median: 71,
+          distribution: { "70-75": 100 },
+        },
+      ],
     });
     const out = (await tool.execute({ type: "grades", course: "CPSC 110" }, search)) as {
-      result: { grade_summary?: unknown; grade_distribution?: unknown };
+      result: { session?: string; average?: number; reported?: number; pooled?: boolean; note?: string };
     };
-    expect(out.result.grade_summary).toBeDefined();
-    expect(out.result.grade_distribution).toBeDefined();
+    expect(out.result.session).toBe("2025W");
+    expect(out.result.average).toBe(83.9);
+    expect(out.result.reported).toBe(234);
+    expect(out.result.pooled).toBeUndefined();
+  });
+
+  it("falls back to pooled grades with an explicit scope note when no session record exists", async () => {
+    const search = fakeSearch({
+      courses: [course("CPSC_V 110")],
+      grades: [
+        {
+          subject: "CPSC",
+          course: "110",
+          year: 2025,
+          enrolled: 10,
+          avg: 80,
+          median: 82,
+          distribution: { "80-84": 6, "90-100": 4 },
+        },
+      ],
+    });
+    const out = (await tool.execute({ type: "grades", course: "CPSC 110" }, search)) as {
+      result: {
+        session?: string;
+        pooled?: boolean;
+        note?: string;
+        grade_summary?: { earliest_year?: number; latest_year?: number };
+      };
+    };
+    expect(out.result.session).toBeUndefined();
+    expect(out.result.pooled).toBe(true);
+    expect(out.result.note).toMatch(/pooled across 1 section/i);
+    expect(out.result.grade_summary?.earliest_year).toBe(2025);
+    expect(out.result.grade_summary?.latest_year).toBe(2025);
+  });
+
+  it("errors when no grade records exist at all", async () => {
+    const search = fakeSearch({ courses: [course("CPSC_V 110")] });
+    await expect(tool.execute({ type: "grades", course: "CPSC 110" }, search)).rejects.toThrow(
+      /No grade records found/,
+    );
   });
 
   it("renders buildings by code", async () => {

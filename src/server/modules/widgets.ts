@@ -204,21 +204,63 @@ export function createWidgetsModule(): DatasetModule {
             }
 
             case "grades": {
+              // Session-first: report the most recent session's distribution
+              // (matching get_course) and fall back to pooled only with a
+              // clear note — the model must never present two unlabeled,
+              // conflicting averages.
               const code = String(input.course ?? "");
               if (!code) throw new Error("show_widget type 'grades' requires course");
               const doc = await findByCode(search, code);
               if (!doc) throw new Error(`No course found with code "${code}"`);
-              const grade = await courseAverage(search, doc.subject, doc.number);
-              const result: Record<string, unknown> = {
-                ...presentCourse(doc),
-                ...(grade !== null ? { grade_avg: grade } : {}),
-              };
-              const full = await courseGrades(search, doc.subject, doc.number);
-              if (full) {
-                result.grade_summary = full.summary;
-                result.grade_distribution = full.distribution;
+              const result: Record<string, unknown> = { ...presentCourse(doc) };
+
+              const rawSession = typeof input.session === "string" ? input.session.trim() : "";
+              if (rawSession && !isSession(rawSession)) throw new Error(`Unknown session "${rawSession}"`);
+              const session = (rawSession || defaultSession()) as Session;
+              // Session records are keyed by the user-facing code (no campus
+              // suffix): get_course stores "EOSC_111__2025W", not "EOSC_V_...".
+              const bareSubject = doc.subject.replace(/_[VKF]$/i, "").toUpperCase();
+              const sid = `${bareSubject}_${doc.number}__${session}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+              let rec: Record<string, unknown> | null = null;
+              try {
+                rec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
+              } catch {
+                // not offered in this session
               }
-              if (!result.grade_summary) throw new Error(`No grade records found for "${code}"`);
+              const buckets = rec?.buckets as Record<string, number> | undefined;
+              const hasBuckets = !!buckets && Object.values(buckets).some((v) => v > 0);
+              if (rec && hasBuckets) {
+                result.session = session;
+                result.average = rec.average;
+                result.reported = rec.reported;
+                result.grade_avg = rec.average;
+                result.grade_summary = {
+                  avg: rec.average,
+                  median: rec.weightedMedian ?? null,
+                  sample_sections: 1,
+                  latest_year: Number(String(session).slice(0, 4)),
+                  earliest_year: Number(String(session).slice(0, 4)),
+                };
+                result.grade_distribution = {
+                  buckets,
+                  total_enrolled: rec.reported,
+                  sample_sections: 1,
+                };
+                return { type, result };
+              }
+
+              const full = await courseGrades(search, doc.subject, doc.number);
+              if (!full || Object.values(full.distribution.buckets).every((v) => v === 0)) {
+                throw new Error(`No grade records found for "${code}"`);
+              }
+              result.grade_avg = full.summary.avg;
+              result.grade_summary = full.summary;
+              result.grade_distribution = full.distribution;
+              result.pooled = true;
+              result.note =
+                rec && !hasBuckets
+                  ? `No distribution data for ${session}; pooled across ${full.summary.sample_sections} sections (${full.summary.earliest_year}–${full.summary.latest_year}).`
+                  : `Not offered in ${session}; pooled across ${full.summary.sample_sections} sections (${full.summary.earliest_year}–${full.summary.latest_year}).`;
               return { type, result };
             }
 

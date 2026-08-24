@@ -539,6 +539,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
               {(data as Partial<{ code: string }>).code ?? "Grade distribution"}
             </span>
             <span className="text-muted text-xs">
+              {session ? `${session} · ` : "pooled · "}
               {summary.sample_sections} section{summary.sample_sections === 1 ? "" : "s"} · {summary.avg} avg
             </span>
           </div>
