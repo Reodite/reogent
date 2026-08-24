@@ -143,6 +143,8 @@ export const costs: DatasetModule = {
         inputSchema: {
           json: {
             type: "object",
+            description:
+              "Pick exactly one kind. Each kind takes a different set of parameters — you MUST include the required ones for the kind you choose.",
             properties: {
               kind: {
                 type: "string",
@@ -151,28 +153,35 @@ export const costs: DatasetModule = {
               },
               program_slug: {
                 type: "string",
-                description: 'Tuition: slugified program name, e.g. "bachelor-of-science". Words also work.',
+                description:
+                  'tuition kind: slugified program name, e.g. "bachelor-of-science". REQUIRED for kind "tuition". Words also work.',
               },
               student_type: {
                 type: "string",
-                description: 'Tuition: "domestic" or "international"',
+                enum: ["domestic", "international"],
+                description: 'tuition kind: REQUIRED for kind "tuition".',
               },
               cohort_year: {
                 type: "number",
-                description: "Tuition: year the student starts the program, e.g. 2026",
+                description:
+                  'tuition kind: year the student starts the program, e.g. 2026. REQUIRED for kind "tuition".',
               },
               program: {
                 type: "string",
-                description: 'Estimate: program name, e.g. "Computer Science"',
+                description: 'estimate kind: program name, e.g. "Computer Science". REQUIRED for kind "estimate".',
               },
               item: {
                 type: "string",
-                description: 'Living: optional filter, e.g. "housing" or "meal"',
+                description: 'living kind: optional filter, e.g. "housing" or "meal".',
               },
-              query: { type: "string", description: "Fees: keywords to match fee names and sections" },
+              query: {
+                type: "string",
+                description: 'fees kind: keywords to match fee names and sections. REQUIRED for kind "fees".',
+              },
               fees_student_type: {
                 type: "string",
-                description: 'Fees: optional filter, "domestic" or "international"',
+                enum: ["domestic", "international"],
+                description: "fees kind: optional filter.",
               },
             },
             required: ["kind"],
