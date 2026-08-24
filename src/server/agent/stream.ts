@@ -43,6 +43,8 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   let fullText = "";
   const pendingCitations: CitationSeed[] = [];
   let toolNudges = 0;
+  const TOOL_CALL_BUDGET = 6;
+  let budgetExceeded = false;
   const lastUserMsg = (messages[messages.length - 1]?.content ?? "").trim().toLowerCase();
   const isGreeting = lastUserMsg.length < 3 || /^(hi|hello|hey|greetings|sup|yo)\b/.test(lastUserMsg);
 
@@ -68,7 +70,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
     for await (const event of converseStream({
       messages: convo,
       system: systemPrompt(new Date(), allocateCitations(pendingCitations)),
-      toolSpecs,
+      toolSpecs: budgetExceeded ? [] : toolSpecs,
       forceToolUse: i === 0 && !isGreeting,
     })) {
       if (event.type === "thinking") {
@@ -212,6 +214,23 @@ Rules:
       yield { type: "citations", citations: finalCitations };
       yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations };
       return;
+    }
+
+    // Halt runaway tool loops: after the budget is exceeded, strip the tool
+    // specs from the LLM call so the model can't call more tools and must
+    // answer with text.
+    if (toolCalls.length > TOOL_CALL_BUDGET && !budgetExceeded) {
+      budgetExceeded = true;
+      convo.push({
+        role: "user",
+        content: [
+          {
+            text: "You have used many tool calls. Provide your final answer now based on the information you have gathered so far. Do not call more tools.",
+          },
+        ],
+      });
+      fullText = "";
+      continue;
     }
 
     convo.push({ role: "user", content: results });

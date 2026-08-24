@@ -1,5 +1,5 @@
 import type { DatasetModule } from "../core/types";
-import { lookupTuition, slugify } from "./tuition";
+import { lookupTuition, slugify, type TuitionDoc } from "./tuition";
 
 export interface CostEstimateDoc {
   program_id: number;
@@ -186,17 +186,47 @@ export const costs: DatasetModule = {
             if (!input.program_slug || !input.student_type || input.cohort_year === undefined) {
               throw new Error("kind 'tuition' requires program_slug, student_type, and cohort_year");
             }
-            return {
-              kind: "tuition",
-              ...(await lookupTuition(
-                {
-                  program_slug: String(input.program_slug),
-                  student_type: String(input.student_type),
-                  cohort_year: Number(input.cohort_year),
-                },
-                search,
-              )),
-            };
+            const studentType = String(input.student_type).toLowerCase();
+            const cohortYear = Number(input.cohort_year);
+            try {
+              return {
+                kind: "tuition",
+                ...(await lookupTuition(
+                  {
+                    program_slug: String(input.program_slug),
+                    student_type: String(input.student_type),
+                    cohort_year: Number(input.cohort_year),
+                  },
+                  search,
+                )),
+              };
+            } catch {
+              // No exact tuition row. Search for the closest program name
+              // and return its rate, so the model doesn't loop guessing.
+              const words = String(input.program_slug)
+                .replace(/-/g, " ")
+                .split(/\s+/)
+                .filter((w) => w.length >= 3);
+              const fuzzy = await search.index("tuition").search(words.length > 0 ? words.join(" ") : "", {
+                filter: `student_type = '${studentType}'`,
+                limit: 1,
+              });
+              const best = fuzzy.hits[0] as unknown as TuitionDoc | undefined;
+              if (best) {
+                const result = await lookupTuition(
+                  { program_slug: best.program_slug, student_type: studentType, cohort_year: cohortYear },
+                  search,
+                );
+                return { ...result, note: `Closest match for "${input.program_slug}"` };
+              }
+              // No programs at all for this student type.
+              return {
+                kind: "tuition",
+                found: false,
+                requested_program_slug: String(input.program_slug),
+                message: `No tuition data found for "${input.program_slug}" (${studentType}). Try kind="estimate" for a cost estimate instead.`,
+              };
+            }
           }
           case "estimate": {
             if (!input.program) throw new Error("kind 'estimate' requires program");

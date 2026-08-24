@@ -307,14 +307,38 @@ describe("get_costs (agent-tool-redesign)", () => {
     // fuzzy path still needs SOME hit from the search; verify it didn't throw "No tuition"
   });
 
-  it("errors when tuition has no matching record and no fuzzy hit", async () => {
+  it("returns found:false when tuition has no matching record and no fuzzy hit", async () => {
     const tool = costs.tools.find((t) => t.spec.name === "get_costs")!;
-    await expect(
-      tool.execute(
-        { kind: "tuition", program_slug: "bogus", student_type: "domestic", cohort_year: 2026 },
-        fakeSearch({ tuition: [] }),
-      ),
-    ).rejects.toThrow(/No tuition found/);
+    const out = (await tool.execute(
+      { kind: "tuition", program_slug: "bogus", student_type: "domestic", cohort_year: 2026 },
+      fakeSearch({ tuition: [] }),
+    )) as { kind: string; found: boolean; requested_program_slug: string };
+    expect(out.kind).toBe("tuition");
+    expect(out.found).toBe(false);
+    expect(out.requested_program_slug).toBe("bogus");
+  });
+
+  it("falls back to the closest program when tuition has no exact match", async () => {
+    const tool = costs.tools.find((t) => t.spec.name === "get_costs")!;
+    const out = (await tool.execute(
+      { kind: "tuition", program_slug: "computer-science", student_type: "domestic", cohort_year: 2026 },
+      fakeSearch({
+        tuition: [
+          {
+            program: "Science",
+            program_slug: "science",
+            student_type: "domestic",
+            cohort_year: 2026,
+            cohort_rule: "exactly",
+            unit: "per_credit",
+            amount_cad: 150,
+          },
+        ],
+      }),
+    )) as { kind: string; program: string; amount_cad: number };
+    expect(out.kind).toBe("tuition");
+    expect(out.program).toBe("Science");
+    expect(out.amount_cad).toBe(150);
   });
 
   it("routes kind estimate and returns match_confidence", async () => {
