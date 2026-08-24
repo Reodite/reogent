@@ -43,6 +43,10 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   let fullText = "";
   const pendingCitations: CitationSeed[] = [];
   let toolNudges = 0;
+  // Identical repeat calls within one question return the cached successful
+  // result instead of re-executing — guards against models that re-issue the
+  // same lookup across turns.
+  const callCache = new Map<string, unknown>();
   const TOOL_CALL_BUDGET = 6;
   let budgetExceeded = false;
   const lastUserMsg = (messages[messages.length - 1]?.content ?? "").trim().toLowerCase();
@@ -62,10 +66,18 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
       });
     }
 
+    // Blocks accumulate in arrival order: Gemini interleaves text and
+    // functionCall parts, and history must reproduce that order or the model
+    // re-issues calls it already made.
+    const blocks: ContentBlock[] = [];
     let iterText = "";
-    const toolUses: { toolUseId: string; name: string; input: Record<string, unknown> }[] = [];
+    const toolUses: {
+      toolUseId: string;
+      name: string;
+      input: Record<string, unknown>;
+      thoughtSignature?: string;
+    }[] = [];
     let stopReason = "end_turn";
-    let sawToolUse = false;
 
     for await (const event of converseStream({
       messages: convo,
@@ -79,40 +91,41 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
         iterText += event.delta;
         yield { type: "text", delta: event.delta };
       } else if (event.type === "tool_use") {
-        if (!sawToolUse && iterText && event.name !== "show_widget") {
-          yield { type: "text_clear" };
-          yield { type: "thinking", delta: iterText };
+        if (iterText.trim()) {
+          blocks.push({ text: iterText });
           iterText = "";
         }
-        sawToolUse = true;
+        blocks.push({
+          toolUse: {
+            toolUseId: event.toolUseId,
+            name: event.name,
+            input: event.input,
+            ...(event.thoughtSignature ? { thoughtSignature: event.thoughtSignature } : {}),
+          },
+        });
         toolUses.push(event);
       } else if (event.type === "stop") {
         stopReason = event.reason;
       }
     }
+    if (iterText.trim()) blocks.push({ text: iterText });
 
-    if (iterText) fullText = iterText;
+    fullText = blocks
+      .map((b) => b.text ?? "")
+      .filter(Boolean)
+      .join("\n")
+      .trim();
 
-    const assistantContent: ContentBlock[] = [];
-    if (iterText) assistantContent.push({ text: iterText });
-    for (const tu of toolUses) {
-      assistantContent.push({
-        toolUse: {
-          toolUseId: tu.toolUseId,
-          name: tu.name,
-          input: tu.input,
-          ...(tu.thoughtSignature ? { thoughtSignature: tu.thoughtSignature } : {}),
-        },
-      });
-    }
-    convo.push({ role: "assistant", content: assistantContent });
+    convo.push({ role: "assistant", content: blocks });
 
     if (stopReason !== "tool_use") {
-      // Detect hallucination: assistant answered with plain text and no tool
-      // calls. Nudge it up to NUDGE_LIMIT times to fetch facts before ending,
-      // then give up rather than loop forever on a model that refuses tools.
+      // Detect hallucination: assistant answered with plain text before ANY
+      // tool has run this question. Nudge up to NUDGE_LIMIT times to fetch
+      // facts, then give up rather than loop on a model that refuses tools.
+      // Once a tool has run, a text-only turn is a legitimate answer — never
+      // nag then, or the model re-issues calls it already made.
       const NUDGE_LIMIT = 2;
-      if (toolUses.length === 0 && iterText && toolNudges < NUDGE_LIMIT) {
+      if (toolUses.length === 0 && iterText && toolCalls.length === 0 && toolNudges < NUDGE_LIMIT) {
         toolNudges++;
         convo.push({
           role: "user",
@@ -189,7 +202,13 @@ Rules:
       yield { type: "tool_start", name, input };
     }
     const execResults = await Promise.all(
-      toolUses.map(({ name, input }) => executeTool(deps.modules, name, input, deps.search)),
+      toolUses.map(async ({ name, input }) => {
+        const key = `${name}:${JSON.stringify(input)}`;
+        if (callCache.has(key)) return callCache.get(key);
+        const result = await executeTool(deps.modules, name, input, deps.search);
+        if (!isToolError(result)) callCache.set(key, result);
+        return result;
+      }),
     );
     const widgetIdx = toolUses.findIndex((tu) => tu.name === "show_widget");
     const widgetSucceeded = widgetIdx >= 0 && !isToolError(execResults[widgetIdx]);
