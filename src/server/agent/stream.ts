@@ -219,7 +219,7 @@ Rules:
     // Halt runaway tool loops: after the budget is exceeded, strip the tool
     // specs from the LLM call so the model can't call more tools and must
     // answer with text.
-    if (toolCalls.length > TOOL_CALL_BUDGET && !budgetExceeded) {
+    if (toolCalls.length >= TOOL_CALL_BUDGET && !budgetExceeded) {
       budgetExceeded = true;
       convo.push({
         role: "user",

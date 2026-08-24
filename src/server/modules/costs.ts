@@ -183,8 +183,13 @@ export const costs: DatasetModule = {
         const kind = String(input.kind ?? "");
         switch (kind) {
           case "tuition": {
-            if (!input.program_slug || !input.student_type || input.cohort_year === undefined) {
-              throw new Error("kind 'tuition' requires program_slug, student_type, and cohort_year");
+            const slug = input.program_slug ? String(input.program_slug) : "";
+            const stype = input.student_type ? String(input.student_type) : "";
+            const cy = input.cohort_year;
+            if (!slug || !stype || cy === undefined) {
+              throw new Error(
+                `kind 'tuition' requires program_slug (got "${slug}"), student_type (got "${stype}"), and cohort_year (got ${cy})`,
+              );
             }
             const studentType = String(input.student_type).toLowerCase();
             const cohortYear = Number(input.cohort_year);
@@ -201,17 +206,22 @@ export const costs: DatasetModule = {
                 )),
               };
             } catch {
-              // No exact tuition row. Search for the closest program name
-              // and return its rate, so the model doesn't loop guessing.
+              // No exact tuition row. Search per-token: Meilisearch ANDs query
+              // terms, so "bachelor of arts" won't match "Arts" (no "bachelor"
+              // token). Fall back by trying each word individually.
               const words = String(input.program_slug)
                 .replace(/-/g, " ")
                 .split(/\s+/)
                 .filter((w) => w.length >= 3);
-              const fuzzy = await search.index("tuition").search(words.length > 0 ? words.join(" ") : "", {
-                filter: `student_type = '${studentType}'`,
-                limit: 1,
-              });
-              const best = fuzzy.hits[0] as unknown as TuitionDoc | undefined;
+              let best: TuitionDoc | undefined;
+              for (const word of words) {
+                const res = await search.index("tuition").search(word, {
+                  filter: `student_type = '${studentType}'`,
+                  limit: 1,
+                });
+                best = res.hits[0] as unknown as TuitionDoc | undefined;
+                if (best) break;
+              }
               if (best) {
                 const result = await lookupTuition(
                   { program_slug: best.program_slug, student_type: studentType, cohort_year: cohortYear },
