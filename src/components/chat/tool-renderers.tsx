@@ -281,6 +281,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       if (!isTuitionResult(data)) return null;
       const label = data.per_credit_cad != null ? "per credit" : data.unit || "flat";
       const amount = data.per_credit_cad ?? data.amount_cad ?? 0;
+      const asOf = (data as Partial<{ rates_as_of: string }>).rates_as_of;
       return (
         <ToolResultCard icon="currencyDollar">
           <span className="text-on-surface block text-base font-medium">
@@ -288,6 +289,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
           </span>
           <span className="text-muted block truncate text-xs">
             {data.program || "—"} · {data.student_type || "—"} · {data.cohort_year || "—"} cohort
+            {asOf ? ` · snapshot ${asOf.slice(0, 10)}` : ""}
           </span>
         </ToolResultCard>
       );
@@ -532,6 +534,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       const dist = (data as { grade_distribution?: GradeDistributionShape } | undefined)?.grade_distribution;
       const summary = (data as { grade_summary?: GradeSummaryShape } | undefined)?.grade_summary;
       if (!dist || !summary) return null;
+      const session = (data as Partial<{ session: string }>).session;
       return (
         <div className="bg-surface-container-low flex flex-col gap-3 rounded-lg p-3">
           <div className="flex items-baseline justify-between gap-3">

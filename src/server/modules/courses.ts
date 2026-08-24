@@ -10,6 +10,7 @@ import {
   type Session,
   type SubjectRow,
 } from "../course-records";
+import { getIndexFreshness } from "../freshness";
 import { courseAverage, courseGrades } from "./grades";
 
 export interface CourseSection {
@@ -415,11 +416,13 @@ export const courses: DatasetModule = {
           } else {
             ranked.sort((a, b) => b.avg_grade - a.avg_grade);
           }
+          const asOf = await getIndexFreshness("courses");
           return {
             courses: ranked.slice(0, Math.min(Number(limit) || 20, 50)).map((r) => ({
               ...presentCourse(r.course, 10),
               grade_avg: r.avg_grade,
             })),
+            ...(asOf ? { catalog_as_of: asOf } : {}),
             ...(truncated
               ? {
                   note: `Sorting was evaluated over the first ${POOL_CAP} matching courses; results may be incomplete.`,
@@ -438,9 +441,13 @@ export const courses: DatasetModule = {
         const courses = hits.map((h) => presentCourse(h, 10));
         // Collect available terms for agent self-correction of unmatched term.
         const availableTerms = term ? [...new Set(hits.flatMap((h) => h.terms))].sort() : undefined;
+        // Seat statuses come from the catalog snapshot — label the vintage so
+        // stale Open/Closed flags are never quoted as live.
+        const asOf = await getIndexFreshness("courses");
         return {
           courses,
           ...(availableTerms ? { available_terms: availableTerms } : {}),
+          ...(asOf ? { catalog_as_of: asOf } : {}),
         };
       },
     },
@@ -487,6 +494,7 @@ export const courses: DatasetModule = {
         } catch {
           // not offered in this session — fall through to pooled
         }
+        const asOf = await getIndexFreshness("courses");
         if (sessRec) {
           const result: Record<string, unknown> = {
             ...base,
@@ -495,6 +503,7 @@ export const courses: DatasetModule = {
             reported: sessRec.reported,
             buckets: sessRec.buckets,
             grade_avg: sessRec.average,
+            ...(asOf ? { catalog_as_of: asOf } : {}),
           };
           if (input.include_grades) {
             result.grade_distribution = {
@@ -512,8 +521,19 @@ export const courses: DatasetModule = {
           return result;
         }
         const grade = await courseAverage(search, doc.subject, doc.number);
-        if (grade === null) return { ...base, session, note: `Not offered in ${session}; showing pooled record.` };
-        const result: Record<string, unknown> = { ...base, session, grade_avg: grade };
+        if (grade === null)
+          return {
+            ...base,
+            session,
+            note: `Not offered in ${session}; showing pooled record.`,
+            ...(asOf ? { catalog_as_of: asOf } : {}),
+          };
+        const result: Record<string, unknown> = {
+          ...base,
+          session,
+          grade_avg: grade,
+          ...(asOf ? { catalog_as_of: asOf } : {}),
+        };
         if (input.include_grades) {
           const full = await courseGrades(search, doc.subject, doc.number);
           if (full) {

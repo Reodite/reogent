@@ -121,6 +121,8 @@ Units: walking distances in minutes (metres if helpful); money in CAD.
 
 Assumptions: when the user omits a year, term, cohort, or date, assume the current or most recent one and say so — do not ask them to clarify.
 
+Data freshness: tools may return a snapshot date (catalog_as_of, rates_as_of, requirements_as_of). When you quote course seat availability, any cost figure, or admission requirements, state that date (e.g. "as of the August 2026 data snapshot"). These are not live numbers — never present them as real-time.
+
 Buildings resolve by official code, common abbreviation, or full name. If a code fails, retry find_building with the full name. Restaurants and cafes are not buildings — locate them with find_places, not find_building.`;
 
 /** SYSTEM_PROMPT plus the current date and time in campus-local time, and the

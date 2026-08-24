@@ -1,5 +1,6 @@
 import type { Meilisearch } from "meilisearch";
 import type { DatasetModule, DataWriter } from "./core/types";
+import { recordIndexFreshness } from "./freshness";
 
 const BATCH_DOCS = 500;
 
@@ -58,6 +59,10 @@ export async function runIngest(modules: DatasetModule[], search: Meilisearch, s
           await idx.derive(store);
           console.log(`${idx.index}: derived artifacts written`);
         }
+
+        // Stamp the snapshot time only after the rebuild fully succeeded, so
+        // a failed ingest never advertises fresh data.
+        await recordIndexFreshness(idx.index);
       } catch (e) {
         console.error(`${idx.index}: failed — ${e instanceof Error ? e.message : e}`);
       }

@@ -372,7 +372,7 @@ export function createWidgetsModule(): DatasetModule {
                       if (!found.has(id)) found.set(id, hit);
                     }
                   }
-                  rooms = [...found.values()];
+                  rooms = [...found.values()] as Record<string, unknown>[];
                 }
                 if (rooms.length === 0) throw new Error("None of the given room eids resolved");
                 return { type, result: { kind: "bookable", rooms } };
@@ -390,7 +390,7 @@ export function createWidgetsModule(): DatasetModule {
                     if (!found.has(id)) found.set(id, hit);
                   }
                 }
-                informal = [...found.values()];
+                informal = [...found.values()] as Record<string, unknown>[];
               }
               if (informal.length === 0) throw new Error("None of the given study space ids resolved");
               return { type, result: { kind: "informal", spaces: informal } };

@@ -1,5 +1,6 @@
 import { ESTIMATE_DETOUR, haversineMetersObj, WALK_SPEED_M_PER_MIN } from "@/src/shared/types";
 import type { DatasetModule, SearchClient } from "../core/types";
+import { getIndexFreshness } from "../freshness";
 import { resolveBuilding, type BuildingDoc } from "./buildings";
 import type { ParkingDoc } from "./parking";
 
@@ -180,8 +181,10 @@ export const places: DatasetModule = {
         }
         if (results.length === 0) throw new Error(`No ${isParking ? "parking facilities" : "places"} matched`);
         const key = isParking ? "parking" : "places";
+        const asOf = isParking ? await getIndexFreshness("parking") : null;
         return {
           ...(near ? { near_building: near.code } : {}),
+          ...(asOf ? { rates_as_of: asOf } : {}),
           ...(keywordDropped
             ? { note: `No match for "${queryText}"; showing all matching places sorted by distance.` }
             : {}),

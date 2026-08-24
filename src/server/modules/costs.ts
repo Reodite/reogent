@@ -1,4 +1,5 @@
 import type { DatasetModule } from "../core/types";
+import { getIndexFreshness } from "../freshness";
 import { lookupTuition, slugify, type TuitionDoc } from "./tuition";
 
 export interface CostEstimateDoc {
@@ -202,9 +203,11 @@ export const costs: DatasetModule = {
             }
             const studentType = String(input.student_type).toLowerCase();
             const cohortYear = Number(input.cohort_year);
+            const ratesAsOf = await getIndexFreshness("tuition");
             try {
               return {
                 kind: "tuition",
+                ...(ratesAsOf ? { rates_as_of: ratesAsOf } : {}),
                 ...(await lookupTuition(
                   {
                     program_slug: String(input.program_slug),
@@ -236,12 +239,17 @@ export const costs: DatasetModule = {
                   { program_slug: best.program_slug, student_type: studentType, cohort_year: cohortYear },
                   search,
                 );
-                return { ...result, note: `Closest match for "${input.program_slug}"` };
+                return {
+                  ...result,
+                  note: `Closest match for "${input.program_slug}"`,
+                  ...(ratesAsOf ? { rates_as_of: ratesAsOf } : {}),
+                };
               }
               // No programs at all for this student type.
               return {
                 kind: "tuition",
                 found: false,
+                ...(ratesAsOf ? { rates_as_of: ratesAsOf } : {}),
                 requested_program_slug: String(input.program_slug),
                 message: `No tuition data found for "${input.program_slug}" (${studentType}). Try kind="estimate" for a cost estimate instead.`,
               };
@@ -257,7 +265,13 @@ export const costs: DatasetModule = {
               );
             }
             const { matched_by, ...rest } = doc;
-            return { kind: "estimate", ...rest, match_confidence: matched_by };
+            const asOf = await getIndexFreshness("program_cost_estimates");
+            return {
+              kind: "estimate",
+              ...rest,
+              match_confidence: matched_by,
+              ...(asOf ? { rates_as_of: asOf } : {}),
+            };
           }
           case "living": {
             const res = await search.index("living_costs").search(input.item ? String(input.item) : "", {
@@ -265,7 +279,12 @@ export const costs: DatasetModule = {
             });
             const hits = res.hits;
             if (hits.length === 0) throw new Error(`No living-cost figures matched "${input.item}"`);
-            return { kind: "living", living_costs: hits as unknown as LivingCostDoc[] };
+            const asOf = await getIndexFreshness("living_costs");
+            return {
+              kind: "living",
+              living_costs: hits as unknown as LivingCostDoc[],
+              ...(asOf ? { rates_as_of: asOf } : {}),
+            };
           }
           case "fees": {
             if (!input.query) throw new Error("kind 'fees' requires query");
@@ -280,7 +299,12 @@ export const costs: DatasetModule = {
             }
             const hits = res.hits;
             if (hits.length === 0) throw new Error(`No student fees matched "${input.query}"`);
-            return { kind: "fees", fees: hits as unknown as StudentFeeDoc[] };
+            const asOf = await getIndexFreshness("student_fees");
+            return {
+              kind: "fees",
+              fees: hits as unknown as StudentFeeDoc[],
+              ...(asOf ? { rates_as_of: asOf } : {}),
+            };
           }
           default:
             throw new Error(`Unknown kind "${kind}" — expected tuition, estimate, living, or fees`);

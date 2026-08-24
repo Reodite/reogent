@@ -1,4 +1,5 @@
 import type { DatasetModule } from "../core/types";
+import { getIndexFreshness } from "../freshness";
 import { stripHtml } from "./html";
 import { slugify } from "./tuition";
 
@@ -223,11 +224,15 @@ export const admissions: DatasetModule = {
         if (rows.length === 0) {
           throw new Error(`No requirement lines found for "${program.name}" from "${loc.location}"`);
         }
+        const asOf = await getIndexFreshness("admission_requirements");
         return {
           program: program.name,
           requirement_group: program.requirement_key,
           location: loc.location,
           curriculum: loc.curriculum,
+          // Requirements are per admission cycle; expose the snapshot date so
+          // the agent never quotes last cycle's lines as current.
+          ...(asOf ? { requirements_as_of: asOf } : {}),
           url: program.url,
           requirements: rows.map((r) => ({
             kind: r.kind,

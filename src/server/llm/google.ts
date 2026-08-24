@@ -1,4 +1,5 @@
 import {
+  FunctionCallingConfigMode,
   GoogleGenAI,
   type Content,
   type FunctionDeclaration,
@@ -136,7 +137,7 @@ export function createGoogleAdapter(): LlmAdapter {
     for (const part of response.candidates?.[0]?.content?.parts ?? []) {
       if (part.text) {
         content.push({ text: part.text });
-      } else if (part.functionCall) {
+      } else if (part.functionCall?.name) {
         hasToolUse = true;
         content.push({
           toolUse: {
@@ -170,7 +171,9 @@ export function createGoogleAdapter(): LlmAdapter {
           ...(tools ? { tools } : {}),
           // Force at least one tool call so data questions can't be answered
           // from memory. Mirrors OpenAI's tool_choice: "required".
-          ...(req.forceToolUse && tools ? { toolConfig: { functionCallingConfig: { mode: "ANY" as const } } } : {}),
+          ...(req.forceToolUse && tools
+            ? { toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } }
+            : {}),
         },
       }),
     );
@@ -193,7 +196,7 @@ export function createGoogleAdapter(): LlmAdapter {
       for (const part of next.value.candidates?.[0]?.content?.parts ?? []) {
         if (part.text) {
           yield { type: "text", delta: part.text };
-        } else if (part.functionCall) {
+        } else if (part.functionCall?.name) {
           hasToolUse = true;
           yield {
             type: "tool_use",
