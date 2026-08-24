@@ -124,7 +124,9 @@ export async function lookupTuition(
   }
   const resolved = [...variants.values()].map((group) => pickCohortRow(group, cohortYear)).filter((r) => r !== null);
   if (resolved.length === 0) {
-    throw new Error(`No tuition found for program "${input.program_slug}" (${studentType}, cohort ${cohortYear})`);
+    throw new Error(
+      `No tuition found for program "${input.program_slug}" (${studentType}, cohort ${cohortYear}). Try kind "estimate" for cost estimates, or a different program name (e.g. "Science" instead of "Computer Science").`,
+    );
   }
   const primary =
     resolved.find((r) => r.unit === "per_credit" && r.applies_to === null && r.rate_type === null) ??

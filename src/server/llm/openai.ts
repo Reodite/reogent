@@ -114,12 +114,17 @@ export function createOpenAIAdapter(): LlmAdapter {
     messages: ConverseMessage[];
     system: string;
     toolSpecs: ToolSpec[];
+    forceToolUse?: boolean;
   }): AsyncGenerator<ConverseStreamEvent> {
+    const tools = req.toolSpecs.length ? toOpenAITools(req.toolSpecs) : undefined;
     const stream = await getClient().chat.completions.create({
       model: getModel(),
       messages: toOpenAIMessages(req.messages, req.system),
-      tools: req.toolSpecs.length ? toOpenAITools(req.toolSpecs) : undefined,
-      parallel_tool_calls: req.toolSpecs.length > 0 ? true : undefined,
+      tools,
+      parallel_tool_calls: !!tools,
+      // Force the first turn to call a tool so the model can't answer from
+      // memory. Later turns revert to auto (called by loop.ts after a nudge).
+      ...(req.forceToolUse && tools ? { tool_choice: "required" as const } : {}),
       stream: true,
     });
 

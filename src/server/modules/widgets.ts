@@ -49,7 +49,7 @@ export function createWidgetsModule(): DatasetModule {
         spec: {
           name: "show_widget",
           description:
-            "Display a rich data widget as the answer card in chat. Data tools only fetch facts; they never render a card. Before calling show_widget you MUST already have the data to show: call the matching data tool, read its results, then call show_widget naming EXACTLY the entities the card should display (course codes, event ids, place ids, building codes, ...). show_widget only renders what you explicitly name — it does not search or guess.",
+            "Render an answer card. Call the matching data tool first, then call show_widget with the exact entity IDs from that result. Never search or guess — only pass IDs you already fetched.",
           inputSchema: {
             json: {
               type: "object",
@@ -72,7 +72,7 @@ export function createWidgetsModule(): DatasetModule {
                     "key_dates",
                   ],
                   description:
-                    'The kind of card: "courses" (a list of courses), "course" (one course), "grades" (grade distribution for one course), "grade_distribution" (per-session 11-bucket chart for one course, optionally highlighting one bucket), "building" (one or more buildings), "route" (a walking route), "tuition" (a tuition rate), "places" (points of interest by id), "parking" (parking lots by id), "event" (events by id), "study_spaces" (study areas or library rooms), "program" (admission programs by id), "key_dates" (calendar dates by id)',
+                    'Card type: "courses" (list), "course" (single), "grades" (grade), "grade_distribution" (per-session chart), "building" (map), "route" (route), "tuition" (rate), "places" (POIs), "parking" (lots), "event" (event), "study_spaces" (rooms), "program" (admission), "key_dates" (calendar)',
                 },
                 course_codes: {
                   type: "array",
@@ -168,7 +168,23 @@ export function createWidgetsModule(): DatasetModule {
           },
         },
         async execute(input, search) {
-          const type = String(input.type ?? "");
+          let type = String(input.type ?? "").trim();
+          // Models sometimes emit an empty type for the final card. Infer it
+          // from whichever entity param is present, before falling through.
+          if (!type) {
+            if (asStringArray(input.course_codes).length > 0) type = "courses";
+            else if (asStringArray(input.buildings).length > 0) type = "building";
+            else if (asStringArray(input.place_ids).length > 0) type = "places";
+            else if (asStringArray(input.parking_ids).length > 0) type = "parking";
+            else if (asStringArray(input.event_ids).length > 0) type = "event";
+            else if (asStringArray(input.study_space_ids).length > 0 || asStringArray(input.room_eids).length > 0)
+              type = "study_spaces";
+            else if (asStringArray(input.program_ids).length > 0) type = "program";
+            else if (asStringArray(input.key_date_ids).length > 0) type = "key_dates";
+            else if (input.course) type = input.include_grades ? "grades" : "course";
+            else if (input.from_building || input.to_building) type = "route";
+            else if (input.program_slug) type = "tuition";
+          }
 
           switch (type) {
             case "courses": {

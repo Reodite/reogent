@@ -139,7 +139,7 @@ export const costs: DatasetModule = {
       spec: {
         name: "get_costs",
         description:
-          "One tool for money questions at UBC: tuition rates (kind 'tuition'), UBC's published first-year cost estimate (kind 'estimate'), living-cost figures (kind 'living'), and Board-approved student fees (kind 'fees'). All amounts in CAD.",
+          "One tool for money questions at UBC: tuition rates (kind 'tuition'), UBC's published first-year cost estimate (kind 'estimate'), living-cost figures (kind 'living'), and Board-approved student fees (kind 'fees'). All amounts in CAD. If kind 'tuition' finds no rate for a program, try kind 'estimate' instead — it covers programs the tuition table doesn't.",
         inputSchema: {
           json: {
             type: "object",

@@ -42,6 +42,9 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   const toolCalls: ToolCall[] = [];
   let fullText = "";
   const pendingCitations: CitationSeed[] = [];
+  let toolNudges = 0;
+  const lastUserMsg = (messages[messages.length - 1]?.content ?? "").trim().toLowerCase();
+  const isGreeting = lastUserMsg.length < 3 || /^(hi|hello|hey|greetings|sup|yo)\b/.test(lastUserMsg);
 
   for (let i = 0; ; i++) {
     if (i > 0) yield { type: "turn_start" as const };
@@ -66,6 +69,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
       messages: convo,
       system: systemPrompt(new Date(), allocateCitations(pendingCitations)),
       toolSpecs,
+      forceToolUse: i === 0 && !isGreeting,
     })) {
       if (event.type === "thinking") {
         yield { type: "thinking", delta: event.delta };
@@ -95,6 +99,22 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
     convo.push({ role: "assistant", content: assistantContent });
 
     if (stopReason !== "tool_use") {
+      // Detect hallucination: assistant answered with plain text and no tool
+      // calls. Nudge it up to NUDGE_LIMIT times to fetch facts before ending,
+      // then give up rather than loop forever on a model that refuses tools.
+      const NUDGE_LIMIT = 2;
+      if (toolUses.length === 0 && iterText && toolNudges < NUDGE_LIMIT) {
+        toolNudges++;
+        convo.push({
+          role: "user",
+          content: [
+            {
+              text: "You answered without using any tools. UBC data (courses, tuition, buildings, routes, events, dates, admission requirements) changes yearly and your training data is not reliable for it. Call the appropriate data tool(s) to gather the facts, then give your answer. Do not answer from memory.",
+            },
+          ],
+        });
+        continue;
+      }
       let follow_ups: string[] | undefined;
       if (GENERATE_FOLLOW_UPS) {
         try {

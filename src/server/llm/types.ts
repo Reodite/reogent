@@ -12,5 +12,6 @@ export interface LlmAdapter {
     messages: ConverseMessage[];
     system: string;
     toolSpecs: ToolSpec[];
+    forceToolUse?: boolean;
   }): AsyncGenerator<ConverseStreamEvent>;
 }

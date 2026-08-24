@@ -1,4 +1,5 @@
 import type { DatasetModule } from "../core/types";
+import { resolveBuilding } from "./buildings";
 
 export interface StudySpaceDoc {
   id: string;
@@ -176,7 +177,10 @@ export const spaces: DatasetModule = {
       async execute(input, search) {
         const room = input.room ? String(input.room) : "";
         const filters: string[] = [];
-        if (input.building) filters.push(`building_code = '${String(input.building).toUpperCase()}'`);
+        if (input.building) {
+          const building = await resolveBuilding(search, String(input.building)).catch(() => null);
+          filters.push(`building_code = '${building?.code ?? String(input.building).toUpperCase()}'`);
+        }
 
         // Room timeline mode.
         if (room) {

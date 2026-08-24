@@ -303,7 +303,6 @@ export const courses: DatasetModule = {
         if (subject) filters.push(`subject = '${upSubject(String(subject))}'`);
         if (level !== undefined) filters.push(`level = ${Number(level)}`);
         if (credits !== undefined) filters.push(`credits = ${credits}`);
-        if (faculty) filters.push(`faculty = '${String(faculty).replace(/'/g, "\\'")}'`);
         if (has_no_prereqs) filters.push("prerequisite IS NULL");
         if (term) filters.push(`terms = '${String(term)}'`);
         const sortBy = String(sort ?? "");
@@ -319,8 +318,11 @@ export const courses: DatasetModule = {
           min_grade_avg !== undefined ||
           max_grade_avg !== undefined;
 
-        // Session-scoped sorts go through the per-session index; no grade join.
-        if (isSessionSort) {
+        // Faculty only exists in the session index, not the catalogue.
+        // Route to session index when faculty is specified.
+        const useSessionIndex = isSessionSort || (faculty && !needsGradeJoin);
+        if (useSessionIndex) {
+          if (faculty) filters.push(`faculty = '${String(faculty).replace(/'/g, "\\'")}'`);
           const meiliSort =
             sortBy === "students_desc"
               ? ["reported:desc"]
@@ -363,7 +365,7 @@ export const courses: DatasetModule = {
         }
 
         // Exploratory browse: session sorts allow no query/filter (table renders on load).
-        const allowEmpty = isSessionSort;
+        const allowEmpty = useSessionIndex;
         if (!query && filters.length === 0 && !needsGradeJoin && !allowEmpty) {
           throw new Error("Provide a query or at least one filter (subject, level, credits, term, or has_no_prereqs)");
         }

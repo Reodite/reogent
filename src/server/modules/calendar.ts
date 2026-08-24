@@ -81,7 +81,7 @@ export const calendar: DatasetModule = {
       spec: {
         name: "get_key_dates",
         description:
-          "UBC Vancouver key dates: term starts and ends, exam periods, add/drop and withdrawal deadlines, and statutory holidays (including UBC-specific ones). Returns dates sorted chronologically.",
+          "UBC Vancouver key dates: term starts and ends, exam periods, add/drop and withdrawal deadlines, and statutory holidays. To find holidays, use kind: 'holiday' with no query. For deadlines, use a keyword query like 'withdrawal'. Returns dates sorted chronologically.",
         inputSchema: {
           json: {
             type: "object",
@@ -102,14 +102,32 @@ export const calendar: DatasetModule = {
       },
       async execute(input, search) {
         const filter = input.kind ? `kind = '${String(input.kind)}'` : undefined;
-        const res = await search.index("key_dates").search(input.query ? String(input.query) : "", {
+        const queryText = input.query ? String(input.query) : "";
+        const res = await search.index("key_dates").search(queryText, {
           filter,
           sort: ["start:asc"],
           limit: Math.min(Number(input.limit) || 20, 66), // the whole index is 66 rows
         });
-        const hits = res.hits;
+        const hits = res.hits as unknown as KeyDateDoc[];
+        // Phrase queries like "exam period" over-match: Meilisearch ANDs every
+        // token, so "Exams Start" never matches "period". When the phrase hits
+        // nothing, fall back to per-token OR matches over the tiny index.
+        if (hits.length === 0 && queryText.trim()) {
+          const words = queryText.split(/\s+/).filter((w) => w.length >= 3);
+          for (const word of words) {
+            const per = await search.index("key_dates").search(word, {
+              filter,
+              sort: ["start:asc"],
+              limit: 66,
+            });
+            const seen = new Set(hits.map((h) => h.name));
+            for (const h of per.hits as unknown as KeyDateDoc[]) {
+              if (!seen.has(h.name)) hits.push(h);
+            }
+          }
+        }
         if (hits.length === 0) throw new Error(`No key dates matched "${input.query}"`);
-        return { dates: hits as unknown as KeyDateDoc[] };
+        return { dates: hits };
       },
     },
   ],
