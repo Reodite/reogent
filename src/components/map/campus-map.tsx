@@ -465,7 +465,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           if (!dragging && !animating) snapBack();
         });
 
-        const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
+        const overlay = new MapboxOverlay({ interleaved: true, layers: [] });
         map.addControl(overlay);
 
         if (process.env.NODE_ENV === "development") {
