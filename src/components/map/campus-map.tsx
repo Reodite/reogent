@@ -144,7 +144,7 @@ const MAP_COLORS: Record<
     routeCasing: [250, 250, 250, 190],
     // Labels: on-surface-variant for legibility without heaviness
     label: [62, 67, 72, 255],
-    labelBg: [250, 250, 250, 215],
+    labelBg: [250, 250, 250, 255],
     // Walkways: primary accent at 25%
     walkway: [74, 78, 122, 64],
   },
@@ -160,7 +160,7 @@ const MAP_COLORS: Record<
     routeCasing: [18, 18, 20, 190],
     // Labels: on-surface-variant (dark) for clarity
     label: [194, 199, 204, 255],
-    labelBg: [14, 14, 16, 215],
+    labelBg: [14, 14, 16, 255],
     // Walkways: primary accent at 25%
     walkway: [176, 180, 216, 64],
   },
@@ -882,6 +882,9 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
               fontFamily: "Aspekta, ui-sans-serif, sans-serif",
               fontWeight: 600,
               getPixelOffset: [0, -14],
+              // Interleaved mode depth-tests against the buildings drawn in
+              // the earlier group; the focused tag must clear them at pitch.
+              parameters: { depthTest: false },
             }),
           )
         : null,
