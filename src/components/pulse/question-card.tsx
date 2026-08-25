@@ -50,11 +50,16 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.9}
       style={reduce ? undefined : { x, rotate }}
+      whileHover={reduce ? undefined : { y: -3, scale: 1.01 }}
+      whileDrag={reduce ? undefined : { scale: 1.03 }}
       onDragEnd={handleDragEnd}
-      className="neu-panel relative touch-pan-y rounded-2xl p-4 select-none"
+      className={`bg-surface relative touch-pan-y rounded-2xl p-4 shadow-[6px_6px_18px_var(--neu-shadow),-4px_-4px_12px_var(--neu-highlight)] select-none ${
+        reduce ? "" : "cursor-grab active:cursor-grabbing"
+      }`}
     >
       {!reduce && (
         <>
+          <span aria-hidden="true" className="bg-outline/40 mx-auto mb-3 block h-1.5 w-10 rounded-full" />
           <motion.span
             style={{ opacity: disagreeHint }}
             aria-hidden="true"
@@ -71,13 +76,13 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
           </motion.span>
         </>
       )}
-      <p className="text-on-surface pt-6 text-base">{card.text}</p>
+      <p className="text-on-surface text-base">{card.text}</p>
       <div className="mt-4 flex items-center gap-3">
         <button
           type="button"
           onClick={() => onVote(false)}
           aria-label={`Disagree: ${card.text}`}
-          className="neu-button bg-surface text-on-surface flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-medium"
+          className="text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface focus-visible:ring-primary/40 flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           <Icon name="left" size={16} />
           Disagree
@@ -86,7 +91,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
           type="button"
           onClick={() => onVote(true)}
           aria-label={`Agree: ${card.text}`}
-          className="neu-button bg-surface text-on-surface flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-medium"
+          className="text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface focus-visible:ring-primary/40 flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
         >
           Agree
           <Icon name="right" size={16} />
