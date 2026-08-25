@@ -53,7 +53,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
       whileHover={reduce ? undefined : { y: -3, scale: 1.01 }}
       whileDrag={reduce ? undefined : { scale: 1.03 }}
       onDragEnd={handleDragEnd}
-      className={`bg-surface relative touch-pan-y rounded-2xl p-4 shadow-[6px_6px_18px_var(--neu-shadow),-4px_-4px_12px_var(--neu-highlight)] select-none ${
+      className={`bg-surface-container relative touch-pan-y rounded-2xl p-4 shadow-[0_4px_0_var(--outline-variant),0_10px_20px_var(--neu-shadow-deep)] select-none ${
         reduce ? "" : "cursor-grab active:cursor-grabbing"
       }`}
     >
@@ -122,7 +122,7 @@ function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: boolean }) 
       initial={reduce ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: reduce ? 0 : 0.18 }}
-      className="neu-inset rounded-2xl p-4"
+      className="bg-surface-container-high rounded-2xl p-4 shadow-[inset_0_4px_0_var(--surface-container-lowest),inset_1px_1px_3px_var(--neu-shadow),inset_-1px_-1px_3px_var(--neu-highlight)]"
     >
       <p className="text-on-surface-variant text-base">{card.text}</p>
       <div role="img" aria-label={label} className="mt-4 flex items-center gap-3">

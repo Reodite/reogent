@@ -92,9 +92,9 @@ export function PulseFeed() {
         <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
           {loading && (
             <>
-              <div className="neu-panel h-28 animate-pulse rounded-2xl" />
-              <div className="neu-panel h-28 animate-pulse rounded-2xl" />
-              <div className="neu-panel h-28 animate-pulse rounded-2xl" />
+              <div className="bg-surface-container h-28 animate-pulse rounded-2xl" />
+              <div className="bg-surface-container h-28 animate-pulse rounded-2xl" />
+              <div className="bg-surface-container h-28 animate-pulse rounded-2xl" />
             </>
           )}
           {error && (
