@@ -121,6 +121,29 @@ export interface BuildingDetails {
 
 export type GeoName = "buildings" | "walking-routes";
 
+// GET /api/pulse — active-round feed. Vote fields appear only after the caller votes.
+
+export interface PulseQuestion {
+  id: number;
+  text: string;
+  my_agree?: boolean;
+  agree_count?: number;
+  disagree_count?: number;
+}
+
+export interface PulseFeed {
+  round: { id: number; title: string | null; published_at: string } | null;
+  questions: PulseQuestion[];
+}
+
+/** POST /api/pulse/vote — `agree` is the stored vote (first write wins). */
+export interface PulseVoteResult {
+  question_id: number;
+  agree: boolean;
+  agree_count: number;
+  disagree_count: number;
+}
+
 /** Error shape of every non-2xx response: `{ "error": "..." }`. */
 export class ApiError extends Error {
   readonly status: number;

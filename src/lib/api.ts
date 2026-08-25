@@ -9,6 +9,8 @@ import {
   type Citation,
   type CourseDoc,
   type GeoName,
+  type PulseFeed,
+  type PulseVoteResult,
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
@@ -72,6 +74,10 @@ export interface ChatApi {
   }>;
   /** GET /api/prereq-tree?root={code} — the React-Flow graph for the course's prerequisite chain. */
   getPrereqTree(root: string): Promise<PrereqGraph>;
+  /** GET /api/pulse — active round feed; tallies included only for questions the caller voted on. */
+  getPulseFeed(): Promise<PulseFeed>;
+  /** POST /api/pulse/vote — records a first-write-wins vote; returns the stored vote with tallies. */
+  votePulse(questionId: number, agree: boolean): Promise<PulseVoteResult>;
 }
 
 interface ChatApiOptions {
@@ -256,6 +262,12 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       return request<{ courses: CourseDoc[]; subject_total?: number; session?: string }>(`/courses?${sp.toString()}`);
     },
     getPrereqTree: (root) => request<PrereqGraph>(`/prereq-tree?root=${encodeURIComponent(root)}`),
+    getPulseFeed: () => request<PulseFeed>("/pulse"),
+    votePulse: (questionId, agree) =>
+      request<PulseVoteResult>("/pulse/vote", {
+        method: "POST",
+        body: JSON.stringify({ question_id: questionId, agree }),
+      }),
   };
 }
 
