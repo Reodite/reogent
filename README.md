@@ -12,7 +12,7 @@ Built with Next.js 16 (App Router), React 19, and TypeScript.
 | Map      | MapLibre GL + deck.gl                                 |
 | Auth     | Username/password, JWT (HS256, 7-day expiry)          |
 | AI       | Anthropic, OpenAI-compatible, or Google, via adapters |
-| Database | Postgres (users, sessions, messages)                  |
+| Database | Postgres (users, sessions, messages, Pulse votes)     |
 | Search   | Meilisearch (campus datasets)                         |
 | Testing  | Vitest, fast-check (property tests)                   |
 | Lint     | Biome, Prettier                                       |
@@ -110,14 +110,15 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 
 ## Scripts
 
-| Command          | Action                          |
-| ---------------- | ------------------------------- |
-| `npm run dev`    | Start dev server                |
-| `npm run build`  | Production build                |
-| `npm run lint`   | Biome lint                      |
-| `npm test`       | Vitest (unit tests)             |
-| `npm run format` | Prettier format                 |
-| `npm run ingest` | Index datasets into Meilisearch |
+| Command                 | Action                                                         |
+| ----------------------- | -------------------------------------------------------------- |
+| `npm run dev`           | Start dev server                                               |
+| `npm run build`         | Production build                                               |
+| `npm run lint`          | Biome lint                                                     |
+| `npm test`              | Vitest (unit tests)                                            |
+| `npm run format`        | Prettier format                                                |
+| `npm run ingest`        | Index datasets into Meilisearch                                |
+| `npm run pulse:publish` | Publish a Pulse question round ([guide](data/pulse/README.md)) |
 
 ## API endpoints
 
@@ -131,6 +132,8 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | GET    | `/api/route?from=&to=` | Walking-route polyline                       |
 | GET    | `/api/building/:code`  | Building details (rooms, POIs, availability) |
 | GET    | `/api/geo/:name`       | GeoJSON layer                                |
+| GET    | `/api/pulse`           | Active Pulse round with the caller's votes   |
+| POST   | `/api/pulse/vote`      | Record an agree/disagree vote                |
 | POST   | `/api/auth/login`      | Sign in, returns JWT                         |
 | POST   | `/api/auth/register`   | Create account, returns JWT                  |
 | GET    | `/api/preview?url=`    | Resolve og:image for card links              |
