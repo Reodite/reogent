@@ -11,7 +11,11 @@ export function ToolList({ collapsed = false }: { collapsed?: boolean }) {
   const router = useRouter();
   const reduce = useReducedMotion();
   return (
-    <nav aria-label="Tools" data-tool-list className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${collapsed ? "px-0 py-2" : "p-2"}`}>
+    <nav
+      aria-label="Tools"
+      data-tool-list
+      className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${collapsed ? "px-0 py-2" : "p-2"}`}
+    >
       <ul className={`flex flex-col gap-1 ${collapsed ? "items-center" : ""}`}>
         {PANE_REGISTRY.map((entry, i) => {
           const active = workspaceView?.paneId === entry.id;
@@ -31,7 +35,8 @@ export function ToolList({ collapsed = false }: { collapsed?: boolean }) {
                 disabled={!slug}
                 onClick={() => {
                   if (!slug) return;
-                  setActiveChannel(entry.id, entry.defaultState);
+                  // No explicit state: restore whatever the user last had here.
+                  setActiveChannel(entry.id);
                   router.push(`/tools/${slug}`);
                 }}
                 className={`focus-visible:ring-primary/40 flex h-9 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
@@ -44,7 +49,7 @@ export function ToolList({ collapsed = false }: { collapsed?: boolean }) {
               >
                 <entry.icon className="size-4 shrink-0" />
                 <span
-                  className={`whitespace-nowrap text-sm font-medium transition-opacity duration-300 ${
+                  className={`text-sm font-medium whitespace-nowrap transition-opacity duration-300 ${
                     collapsed ? "w-0 overflow-hidden opacity-0" : "opacity-100"
                   }`}
                 >

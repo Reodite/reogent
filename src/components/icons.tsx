@@ -45,6 +45,17 @@ const ICON_MAP = {
   lock: "lock-line",
   zoomIn: "zoom-in-line",
   zoomOut: "zoom-out-line",
+  mortarboard: "mortarboard-line",
+  undo: "back-line",
+  redo: "forward-line",
+  trash: "delete-2-line",
+  eyeOff: "eye-close-line",
+  info: "information-line",
+  sparkles: "sparkles-line",
+  square: "square-line",
+  checkbox: "checkbox-line",
+  circle: "round-line",
+  file: "file-line",
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

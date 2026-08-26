@@ -1,6 +1,8 @@
 "use client";
 
 import "reactflow/dist/style.css";
+import { useAppAuth } from "@/src/components/auth/app-auth";
+import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { announce } from "@/src/components/ui/live-region";
@@ -18,23 +20,24 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
-import { useAppAuth } from "@/src/components/auth/app-auth";
-import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { createPortal } from "react-dom";
 import ReactFlow, {
   Background,
+  getNodesBounds,
+  getViewportForBounds,
   ReactFlowProvider,
+  useNodesInitialized,
   useReactFlow,
   useStoreApi,
   type Edge,
   type Node,
   type NodeChange,
+  type Rect,
 } from "reactflow";
 import {
   buildGraph,
   FIT_MAX_ZOOM,
   FIT_PADDING,
-  FIT_VERTICAL_FLOOR,
   isNoneOrEmpty,
   MIN_ZOOM,
   normalize,
@@ -55,36 +58,47 @@ const NODE_TYPES = {
 
 const EDGE_TYPES = { optional: OptionalEdge };
 
-/** Auto-fit on root-course change. ReactFlow's own fitBounds clamps to the
- *  instance min/maxZoom and offers no per-axis policy, so the transform is
- *  computed by hand from the layout bbox: horizontal fit always honored,
- *  vertical fit down to FIT_VERTICAL_FLOOR. `nodes` is deliberately not a dep
- *  — selection changes rebuild the array and must not re-fit the camera; the
- *  latest bbox is read through a ref. */
-function FitOnChange({ bbox, fitKey }: { bbox: Graph["bbox"]; fitKey: string }) {
-  const { setViewport } = useReactFlow();
+/** Frames `bounds` (defaulting to every node) and snaps the camera there — no
+ *  animation. The canvas bleeds left under the sidebar (`canvas-extend-sidebar`),
+ *  so that strip is measured off and the graph is fitted into what the card
+ *  actually shows; the offset is zero when the canvas isn't extended. */
+function useFitGraph() {
+  const { getNodes, setViewport } = useReactFlow();
   const store = useStoreApi();
+  return useCallback(
+    (bounds?: Rect) => {
+      const { width, height, minZoom, domNode } = store.getState();
+      if (!width || !height) return;
+      const rect = bounds ?? getNodesBounds(getNodes());
+      if (!rect.width || !rect.height) return;
+      const host = domNode?.closest(".canvas-extend-sidebar");
+      const hidden = host?.parentElement
+        ? host.parentElement.getBoundingClientRect().left - host.getBoundingClientRect().left
+        : 0;
+      const fit = getViewportForBounds(rect, width - hidden, height, minZoom, FIT_MAX_ZOOM, FIT_PADDING);
+      setViewport({ x: fit.x + hidden, y: fit.y, zoom: fit.zoom });
+    },
+    [getNodes, setViewport, store],
+  );
+}
+
+/** Auto-fit on root-course change, so every course is framed. Bounds come from
+ *  the layout's own bbox rather than ReactFlow's node rects, which lag a frame
+ *  behind the measured relayout and would fit a partial graph. `fitKey` re-fires
+ *  the fit on root change and once that relayout has settled; selection flips
+ *  must not re-fit, so `bbox` rides a ref instead of being a dep. */
+function FitOnChange({ bbox, fitKey }: { bbox: Graph["bbox"]; fitKey: string }) {
+  const fitGraph = useFitGraph();
+  // Readiness gate: nodes measured means the canvas has a size to fit into.
+  const nodesInitialized = useNodesInitialized();
   const bboxRef = useRef(bbox);
   bboxRef.current = bbox;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fitKey deliberately re-fires the fit on root change without depending on `bbox` (selection flips must not re-fit).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fitKey deliberately re-fires the fit without depending on `bbox` (selection flips must not re-fit).
   useEffect(() => {
-    // One rAF so ReactFlow's ResizeObserver lands the wrapper size first.
-    const id = requestAnimationFrame(() => {
-      const b = bboxRef.current;
-      if (!b) return;
-      const { width, height } = store.getState();
-      if (!width || !height) return;
-      const bw = Math.max(1, b.maxX - b.minX);
-      const bh = Math.max(1, b.maxY - b.minY);
-      const zoomX = width / (bw * (1 + FIT_PADDING));
-      const zoomY = height / (bh * (1 + FIT_PADDING));
-      const zoom = Math.min(zoomX, Math.max(zoomY, FIT_VERTICAL_FLOOR), FIT_MAX_ZOOM);
-      const cx = (b.minX + b.maxX) / 2;
-      const cy = (b.minY + b.maxY) / 2;
-      setViewport({ x: width / 2 - cx * zoom, y: height / 2 - cy * zoom, zoom }, { duration: 200 });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [fitKey, setViewport, store]);
+    const b = bboxRef.current;
+    if (!b || !nodesInitialized) return;
+    fitGraph({ x: b.minX, y: b.minY, width: b.maxX - b.minX, height: b.maxY - b.minY });
+  }, [fitKey, nodesInitialized, fitGraph]);
   return null;
 }
 
@@ -103,11 +117,13 @@ function TreeContextMenu({
   menu: CtxMenu;
   onClose: () => void;
   onOpenFinder: (code: string) => void;
-  onAskAi: (code: string) => void;
+  /** Sends the whole rendered tree to the AI as an attachment. */
+  onAskAi: () => void;
   /** AI chat is guest-locked; render the Ask AI item disabled with a lock. */
   aiLocked: boolean;
 }) {
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { zoomIn, zoomOut } = useReactFlow();
+  const fitGraph = useFitGraph();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -159,7 +175,7 @@ function TreeContextMenu({
               className="text-on-surface flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
             >
               <Icon name="chat1" size={16} className="text-on-surface-variant" />
-              Ask AI about {menu.code}
+              Ask AI about this tree
               <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
             </button>
           ) : (
@@ -168,12 +184,12 @@ function TreeContextMenu({
               role="menuitem"
               className={itemClass}
               onClick={() => {
-                onAskAi(menu.code as string);
+                onAskAi();
                 onClose();
               }}
             >
               <Icon name="chat1" size={16} className="text-on-surface-variant" />
-              Ask AI about {menu.code}
+              Ask AI about this tree
             </button>
           )}
           <button
@@ -220,7 +236,7 @@ function TreeContextMenu({
             role="menuitem"
             className={itemClass}
             onClick={() => {
-              fitView({ padding: 0.1, maxZoom: 1, duration: 200 });
+              fitGraph();
               onClose();
             }}
           >
@@ -306,17 +322,31 @@ function AccordionFallback({ graph, rootId }: { graph: { nodes: Node[]; edges: E
 
 export function PrereqTreePane({
   initialRoot = "",
+  initialQuery,
+  initialSelections,
+  initialSoftDisabled,
   onChangeRoot,
+  onUiState,
   onNavigateCourse,
 }: {
   initialRoot?: string;
+  initialQuery?: string;
+  initialSelections?: Record<string, number>;
+  initialSoftDisabled?: Record<string, boolean>;
   onChangeRoot?: (root: string) => void;
+  /** Reports the restorable UI state (typed query, disjunction selections,
+   *  soft toggles) so the host can cache it across unmounts. */
+  onUiState?: (patch: {
+    query: string;
+    selections: Record<string, number>;
+    softDisabled: Record<string, boolean>;
+  }) => void;
   onNavigateCourse?: (code: string) => void;
 }) {
   const api = useApi();
   const [index, setIndex] = useState<CourseIndex | null>(null);
   const [indexStatus, setIndexStatus] = useState<"loading" | "ready" | "error">("loading");
-  const [query, setQuery] = useState(initialRoot);
+  const [query, setQuery] = useState(initialQuery || initialRoot);
   const [activeCode, setActiveCode] = useState<string | null>(initialRoot ? normalize(initialRoot) : null);
   // Last submitted code that wasn't in the catalog (drives the not-found alert).
   const [missingCode, setMissingCode] = useState<string | null>(null);
@@ -328,11 +358,28 @@ export function PrereqTreePane({
   const suggestBoxRef = useRef<HTMLDivElement | null>(null);
   const suggestListRef = useRef<HTMLDivElement | null>(null);
   // Per-disjunction selections keyed `${ownerCode}::${path}` — stable across
-  // re-renders and root switches; absent key = option 0.
-  const [selections, setSelections] = useState<Map<string, number>>(() => new Map());
+  // re-renders and root switches; absent key = option 0. Hydrated from the
+  // cached pane state so a rebuilt tree keeps its chosen branches.
+  const [selections, setSelections] = useState<Map<string, number>>(
+    () => new Map(Object.entries(initialSelections ?? {})),
+  );
   // Per-soft-branch toggles keyed `${ownerCode}::${path}.soft`; absent =
   // expanded, true = block faded + upstream not loaded.
-  const [softDisabled, setSoftDisabled] = useState<Map<string, boolean>>(() => new Map());
+  const [softDisabled, setSoftDisabled] = useState<Map<string, boolean>>(
+    () => new Map(Object.entries(initialSoftDisabled ?? {})),
+  );
+
+  // Report restorable UI state upward whenever it changes. `onUiState` rides a
+  // ref so an unstable callback identity can't re-fire the effect.
+  const onUiStateRef = useRef(onUiState);
+  onUiStateRef.current = onUiState;
+  useEffect(() => {
+    onUiStateRef.current?.({
+      query,
+      selections: Object.fromEntries(selections),
+      softDisabled: Object.fromEntries(softDisabled),
+    });
+  }, [query, selections, softDisabled]);
 
   const [loadNonce, setLoadNonce] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: loadNonce re-triggers the fetch from the Retry button.
@@ -538,16 +585,19 @@ export function PrereqTreePane({
   // canvas (navigation basics). Coordinates are relative to the pane root.
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
-  const openCtxMenu = useCallback((e: { clientX: number; clientY: number; preventDefault: () => void }, code?: string) => {
-    e.preventDefault();
-    const r = rootRef.current?.getBoundingClientRect();
-    if (!r) return;
-    setCtxMenu({
-      x: Math.max(0, Math.min(e.clientX - r.left, r.width - 210)),
-      y: Math.max(0, Math.min(e.clientY - r.top, r.height - 150)),
-      code,
-    });
-  }, []);
+  const openCtxMenu = useCallback(
+    (e: { clientX: number; clientY: number; preventDefault: () => void }, code?: string) => {
+      e.preventDefault();
+      const r = rootRef.current?.getBoundingClientRect();
+      if (!r) return;
+      setCtxMenu({
+        x: Math.max(0, Math.min(e.clientX - r.left, r.width - 210)),
+        y: Math.max(0, Math.min(e.clientY - r.top, r.height - 150)),
+        code,
+      });
+    },
+    [],
+  );
   const onNodeContextMenu = useCallback(
     (e: MouseEvent, node: Node) => {
       const code = node.type === "course" ? (node.data as { code?: string }).code : undefined;
@@ -559,11 +609,48 @@ export function PrereqTreePane({
 
   const shell = useChatShellOptional();
   const { isGuest } = useAppAuth();
-  const openInFinder = useCallback(
-    (code: string) => shell?.setWorkspaceView({ paneId: "course-lookup", state: { code } }),
-    [shell],
-  );
-  const askAiAbout = useCallback((code: string) => shell?.askAi(`Tell me about ${code}`), [shell]);
+  // setActiveChannel (not setWorkspaceView) so only `code` is overridden and
+  // the finder's cached state (e.g. session pick) survives the jump.
+  const openInFinder = useCallback((code: string) => shell?.setActiveChannel("course-lookup", { code }), [shell]);
+  // Serialize the rendered tree for the agent: nodes keep their identifying
+  // fields (course code/title, disjunction options), edges keep direction and
+  // the co-req/optional markers. Sent as an Ask AI attachment so the chat
+  // shows a file bubble while the agent reads the JSON appended to the prompt.
+  const askAiAboutTree = useCallback(() => {
+    const nodes = graph.nodes.map((n) => {
+      const d = n.data as {
+        code?: string;
+        title?: string;
+        text?: string;
+        coreq?: boolean;
+        options?: { display: string }[];
+        selectedIdx?: number;
+      };
+      return {
+        id: n.id,
+        type: n.type,
+        ...(d.code ? { code: d.code } : {}),
+        ...(d.title ? { title: d.title } : {}),
+        ...(d.text ? { text: d.text } : {}),
+        ...(d.coreq ? { coreq: true } : {}),
+        ...(d.options ? { options: d.options.map((o) => o.display), selected: d.selectedIdx } : {}),
+      };
+    });
+    const edges = graph.edges.map((e) => ({
+      from: e.source,
+      to: e.target,
+      ...(e.label ? { label: String(e.label) } : {}),
+      ...(e.type === "optional" ? { optional: true } : {}),
+    }));
+    shell?.askAi("Take a look at this course tree:", {
+      title: "Course Prerequisite Tree",
+      content: JSON.stringify(
+        { root: activeCode, note: "Edges point from a prerequisite to the course that requires it.", nodes, edges },
+        null,
+        1,
+      ),
+    });
+  }, [shell, graph, activeCode]);
 
   // The lookup bar portals into the Answer Canvas titlebar slot when hosted
   // there, so the working area below keeps the full card height (same as the
@@ -578,69 +665,69 @@ export function PrereqTreePane({
 
   const searchForm = (
     <form onSubmit={submit} className="mx-auto flex w-full max-w-md gap-2">
-        <div ref={suggestBoxRef} className="relative flex-1">
-          <Icon
-            name="search"
-            className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value.toUpperCase());
-              setSuggestOpen(true);
-              setHighlightIdx(-1);
-            }}
-            onFocus={() => setSuggestOpen(true)}
-            onKeyDown={onQueryKeyDown}
-            placeholder="e.g. CPSC 320"
-            role="combobox"
-            aria-expanded={suggestVisible}
-            aria-autocomplete="list"
-            aria-controls="prereq-suggestions"
-            aria-label="Root course code"
-            aria-invalid={rejected ? "true" : undefined}
-            aria-errormessage={rejected ? "code-error" : undefined}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-9 w-full rounded-lg pr-3 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
-          />
-          {suggestVisible && (
-            <div
-              ref={suggestListRef}
-              id="prereq-suggestions"
-              role="listbox"
-              className="neu-raised bg-surface absolute top-[calc(100%+0.25rem)] right-0 left-0 z-20 max-h-72 overflow-y-auto rounded-lg p-1"
-            >
-              {shownSuggestions.map((s, i) => (
-                <button
-                  key={s.code}
-                  type="button"
-                  data-idx={i}
-                  role="option"
-                  aria-selected={i === highlightIdx}
-                  onClick={() => pickSuggestion(s.code)}
-                  onMouseEnter={() => setHighlightIdx(i)}
-                  className={`flex w-full items-baseline gap-2 rounded px-3 py-1.5 text-left text-sm ${
-                    i === highlightIdx ? "bg-surface-container-high" : ""
-                  }`}
-                >
-                  <span className="text-on-surface shrink-0 font-mono">{s.code}</span>
-                  <span className="text-on-surface-variant truncate text-xs">{s.title}</span>
-                </button>
-              ))}
-              {suggestions.length > SUGGESTION_CAP && (
-                <p className="text-muted border-border-subtle border-t px-3 py-1.5 text-xs">
-                  +{(suggestions.length - SUGGESTION_CAP).toLocaleString()} more — keep typing to narrow
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-        <button
-          type="submit"
-          className="neu-button bg-primary text-on-primary h-9 shrink-0 rounded-lg px-3 text-sm font-medium"
-        >
-          Show
-        </button>
+      <div ref={suggestBoxRef} className="relative flex-1">
+        <Icon
+          name="search"
+          className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+        />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value.toUpperCase());
+            setSuggestOpen(true);
+            setHighlightIdx(-1);
+          }}
+          onFocus={() => setSuggestOpen(true)}
+          onKeyDown={onQueryKeyDown}
+          placeholder="e.g. CPSC 320"
+          role="combobox"
+          aria-expanded={suggestVisible}
+          aria-autocomplete="list"
+          aria-controls="prereq-suggestions"
+          aria-label="Root course code"
+          aria-invalid={rejected ? "true" : undefined}
+          aria-errormessage={rejected ? "code-error" : undefined}
+          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-9 w-full rounded-lg pr-3 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+        />
+        {suggestVisible && (
+          <div
+            ref={suggestListRef}
+            id="prereq-suggestions"
+            role="listbox"
+            className="neu-raised bg-surface absolute top-[calc(100%+0.25rem)] right-0 left-0 z-20 max-h-72 overflow-y-auto rounded-lg p-1"
+          >
+            {shownSuggestions.map((s, i) => (
+              <button
+                key={s.code}
+                type="button"
+                data-idx={i}
+                role="option"
+                aria-selected={i === highlightIdx}
+                onClick={() => pickSuggestion(s.code)}
+                onMouseEnter={() => setHighlightIdx(i)}
+                className={`flex w-full items-baseline gap-2 rounded px-3 py-1.5 text-left text-sm ${
+                  i === highlightIdx ? "bg-surface-container-high" : ""
+                }`}
+              >
+                <span className="text-on-surface shrink-0 font-mono">{s.code}</span>
+                <span className="text-on-surface-variant truncate text-xs">{s.title}</span>
+              </button>
+            ))}
+            {suggestions.length > SUGGESTION_CAP && (
+              <p className="text-muted border-border-subtle border-t px-3 py-1.5 text-xs">
+                +{(suggestions.length - SUGGESTION_CAP).toLocaleString()} more — keep typing to narrow
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+      <button
+        type="submit"
+        className="neu-button bg-primary text-on-primary h-9 shrink-0 rounded-lg px-3 text-sm font-medium"
+      >
+        Show
+      </button>
     </form>
   );
 
@@ -688,7 +775,7 @@ export function PrereqTreePane({
             menu={ctxMenu}
             onClose={closeCtxMenu}
             onOpenFinder={openInFinder}
-            onAskAi={askAiAbout}
+            onAskAi={askAiAboutTree}
             aiLocked={isGuest}
           />
         )}

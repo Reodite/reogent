@@ -1,6 +1,7 @@
 // Typed client for the /api/* contract. GeoJSON responses are cached client-side after the
 // first fetch.
 
+import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import {
   ApiError,
   type BuildingDetails,
@@ -14,7 +15,6 @@ import {
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import type { FeatureCollection } from "geojson";
 
 export interface ChatApi {
@@ -78,6 +78,10 @@ export interface ChatApi {
   getPulseFeed(): Promise<PulseFeed>;
   /** POST /api/pulse/vote — records a first-write-wins vote; returns the stored vote with tallies. */
   votePulse(questionId: number, agree: boolean): Promise<PulseVoteResult>;
+  /** GET /api/plan — the caller's saved degree plan, or null. Opaque to this layer; the planner store owns the shape. */
+  getPlan(): Promise<{ plan: unknown | null }>;
+  /** PUT /api/plan — replaces the caller's saved degree plan. */
+  savePlan(plan: unknown): Promise<void>;
 }
 
 interface ChatApiOptions {
@@ -268,6 +272,8 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
         method: "POST",
         body: JSON.stringify({ question_id: questionId, agree }),
       }),
+    getPlan: () => request<{ plan: unknown | null }>("/plan"),
+    savePlan: (plan) => request<void>("/plan", { method: "PUT", body: JSON.stringify(plan) }),
   };
 }
 

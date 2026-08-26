@@ -4,7 +4,7 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PANE_BY_ID, type CanvasView, type PaneState } from "@/src/components/shell/pane-registry";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type ComponentType } from "react";
 
 /**
  * The AI Mode Answer Canvas: the idle map overview when no widget is active, or
@@ -23,7 +23,7 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
   };
   if (view === null || !PANE_BY_ID[view.paneId]) return null;
   const paneId = view.paneId;
-  const label = PANE_BY_ID[view.paneId].label;
+  const { label, icon: PaneGlyph } = PANE_BY_ID[view.paneId];
   const isCanvas = paneId === "map" || paneId === "prereq-tree";
   return (
     <section
@@ -31,7 +31,7 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
       data-pane={paneId}
       className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl"
     >
-      <AnswerCanvasTitlebar label={label} onClose={onClose} />
+      <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} />
       {isCanvas ? (
         <div className="relative min-h-0 flex-1">
           <div className="canvas-extend-sidebar absolute inset-0">
@@ -47,11 +47,19 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
   );
 }
 
-function AnswerCanvasTitlebar({ label, onClose }: { label: string; onClose: () => void }) {
+function AnswerCanvasTitlebar({
+  label,
+  Glyph,
+  onClose,
+}: {
+  label: string;
+  Glyph: ComponentType<{ className?: string }>;
+  onClose: () => void;
+}) {
   return (
     <header className="flex shrink-0 items-center gap-2 px-4 py-3">
       <span className="bg-surface-container-low text-primary grid size-7 shrink-0 place-items-center rounded-lg">
-        <Icon name="map" size={16} />
+        <Glyph className="size-4" />
       </span>
       <h2 className="min-w-0 shrink-0 truncate text-base font-medium tracking-[-0.01em]">{label}</h2>
       {/* Panes may portal toolbar content (e.g. the prereq tree's course lookup)

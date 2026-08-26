@@ -559,6 +559,25 @@ html.vt-active *::after {
   }
 }
 
+/* The canvas extends under the sidebar, so left-anchored overlays must be
+   pushed back to the visible card edge: our own overlays (building popup, route
+   card) keep their `left-3` inset, maplibre's attribution corner keeps the 10px
+   margin its own controls carry. */
+@media (min-width: 1024px) {
+  .sidebar-content-offset .canvas-extend-sidebar .canvas-left-inset {
+    left: calc(var(--sidebar-offset, 0px) + 0.75rem);
+  }
+  .sidebar-content-offset .canvas-extend-sidebar .maplibregl-ctrl-bottom-left {
+    left: var(--sidebar-offset, 0px);
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .sidebar-content-offset .canvas-extend-sidebar .canvas-left-inset,
+  .sidebar-content-offset .canvas-extend-sidebar .maplibregl-ctrl-bottom-left {
+    transition: left 0.3s var(--neu-ease);
+  }
+}
+
 .profile-menu-surface {
   transition:
     opacity 180ms ease-out,

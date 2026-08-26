@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppAuth } from "@/src/components/auth/app-auth";
+import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { announce } from "@/src/components/ui/live-region";
 import {
@@ -103,6 +105,21 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     announce(`Moved to ${formatMonthHeading(next)}`);
   };
 
+  const shell = useChatShellOptional();
+  const { isGuest } = useAppAuth();
+  // Sends the upcoming-events list to the AI as an attachment: shown in chat
+  // as a "Calendar" file bubble, read by the agent as text after the prompt.
+  const askAiAboutCalendar = () => {
+    const lines = upcoming.map(
+      (e) =>
+        `${e.date} — ${e.label} (${e.kind === "academic" ? "Academic" : "Holiday"}${e.tags.length ? `: ${e.tags.join(", ")}` : ""})`,
+    );
+    shell?.askAi("Give me an overview of upcoming events:", {
+      title: "Calendar",
+      content: lines.length > 0 ? lines.join("\n") : "No upcoming events.",
+    });
+  };
+
   return (
     <div data-calendar-pane className="flex h-full w-full flex-col overflow-y-auto p-3 lg:p-6">
       <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
@@ -134,6 +151,20 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           >
             <Icon name="right" size={18} />
           </button>
+          {shell && (
+            <button
+              type="button"
+              data-calendar-ask-ai
+              disabled={isGuest}
+              title={isGuest ? "Sign in to use AI chat" : "Ask AI about upcoming events"}
+              onClick={askAiAboutCalendar}
+              className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2 disabled:pointer-events-auto disabled:opacity-40"
+            >
+              <Icon name="chat1" size={14} />
+              Ask AI
+              {isGuest && <Icon name="lock" size={12} />}
+            </button>
+          )}
         </div>
         <h2 data-calendar-heading className="justify-self-center text-base font-medium tracking-[-0.01em]">
           {formatMonthHeading(cursorDate)}

@@ -121,7 +121,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     act(() => fireEvent.click(toolsTab));
     act(() => fireEvent.click(container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement));
     expect(shellRef.current?.workspaceView?.paneId).toBe("prereq-tree");
-    expect(shellRef.current?.workspaceView?.state).toEqual({ root: "", selections: {} });
+    expect(shellRef.current?.workspaceView?.state).toEqual({ root: "", query: "", selections: {}, softDisabled: {} });
   });
 
   it("the ModeToggle is reachable from both modes", () => {
