@@ -83,11 +83,11 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <Capture />
       </ChatShellProvider>,
     );
-    const toggle = container.querySelector("[data-mode-toggle]") as HTMLElement;
-    expect(toggle.getAttribute("aria-checked")).toBe("true");
-    act(() => fireEvent.click(toggle));
+    const toolsTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
+      (el) => el.getAttribute("aria-selected") === "false",
+    ) as HTMLElement;
+    act(() => fireEvent.click(toolsTab));
     expect(shellRef.current?.mode).toBe("tools");
-    expect(toggle.getAttribute("aria-checked")).toBe("false");
     expect(localStorage.getItem(SHELL_MODE_STORAGE_KEY)).toBe("tools");
   });
 
@@ -100,8 +100,10 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     );
     expect(container.querySelector('[data-testid="session-list"]')).not.toBeNull();
     expect(container.querySelector("[data-tool-list]")).toBeNull();
-    const toggle = container.querySelector("[data-mode-toggle]") as HTMLElement;
-    act(() => fireEvent.click(toggle));
+    const toolsTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
+      (el) => el.getAttribute("aria-selected") === "false",
+    ) as HTMLElement;
+    act(() => fireEvent.click(toolsTab));
     expect(container.querySelector('[data-testid="session-list"]')).toBeNull();
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
   });
@@ -113,7 +115,10 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <Capture />
       </ChatShellProvider>,
     );
-    act(() => fireEvent.click(container.querySelector("[data-mode-toggle]") as HTMLElement));
+    const toolsTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
+      (el) => el.getAttribute("aria-selected") === "false",
+    ) as HTMLElement;
+    act(() => fireEvent.click(toolsTab));
     act(() => fireEvent.click(container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement));
     expect(shellRef.current?.workspaceView?.paneId).toBe("prereq-tree");
     expect(shellRef.current?.workspaceView?.state).toEqual({ root: "", selections: {} });
@@ -125,8 +130,11 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <LeftSidebar />
       </ChatShellProvider>,
     );
-    expect(container.querySelector("[data-mode-toggle]")).not.toBeNull();
-    act(() => fireEvent.click(container.querySelector("[data-mode-toggle]") as HTMLElement));
-    expect(container.querySelector("[data-mode-toggle]")).not.toBeNull();
+    expect(container.querySelector('[role="tab"]')).not.toBeNull();
+    const toolsTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
+      (el) => el.getAttribute("aria-selected") === "false",
+    ) as HTMLElement;
+    act(() => fireEvent.click(toolsTab));
+    expect(container.querySelector('[role="tab"]')).not.toBeNull();
   });
 });

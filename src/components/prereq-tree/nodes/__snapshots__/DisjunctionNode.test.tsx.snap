@@ -2,7 +2,7 @@
 
 exports[`DropdownDisjunctionNode (REQ-9.1) > matches the closed dropdown snapshot (REQ-9.4) 1`] = `
 <section
-  class="neu-raised bg-tertiary-container text-on-tertiary-container relative min-w-[140px] rounded-lg px-3 py-2"
+  class="neu-raised bg-tertiary-container text-on-tertiary-container border-border relative min-w-[140px] rounded-lg border px-3 py-2"
   data-node-id="snap"
   data-variant="dropdown"
 >
@@ -11,20 +11,49 @@ exports[`DropdownDisjunctionNode (REQ-9.1) > matches the closed dropdown snapsho
   >
     one of
   </div>
-  <button
-    aria-expanded="false"
-    aria-haspopup="listbox"
-    class="neu-inset focus-visible:ring-primary/40 bg-surface text-on-surface mt-1 w-full rounded-md px-2 py-1 text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
-    type="button"
+  <div
+    class="relative"
   >
-    MATH 100
-  </button>
+    <button
+      aria-expanded="false"
+      aria-haspopup="listbox"
+      class="neu-inset focus-visible:ring-primary/40 bg-surface text-on-surface mt-1 flex w-full items-center gap-1 rounded-md px-2 py-1 text-left font-mono text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
+      type="button"
+    >
+      <span
+        class="min-w-0 flex-1 truncate"
+      >
+        MATH 100
+      </span>
+      <svg
+        aria-hidden="true"
+        class="text-on-surface-variant shrink-0 transition-transform duration-150 "
+        height="14"
+        viewBox="0 0 24 24"
+        width="14"
+      >
+        <path
+          d="M17.657 9.343L12 15L6.343 9.343"
+          fill="none"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+        />
+      </svg>
+    </button>
+  </div>
+  <div
+    class="border-border mt-1.5 border-t pt-1.5 text-xs leading-snug text-on-tertiary-container/80"
+  >
+    Differential Calculus with Applications
+  </div>
 </section>
 `;
 
-exports[`StackedDisjunctionNode (REQ-9.2) > matches the stacked radiogroup snapshot with the selected row checked (REQ-9.4) 1`] = `
+exports[`StackedDisjunctionNode (REQ-9.2) > matches the stacked snapshot with the selected row highlighted (REQ-9.4) 1`] = `
 <section
-  class="neu-raised bg-tertiary-container text-on-tertiary-container min-w-[160px] rounded-lg px-3 py-2"
+  class="neu-raised bg-tertiary-container text-on-tertiary-container border-border min-w-[160px] rounded-lg border px-3 py-2"
   data-node-id="snap"
   data-variant="stacked"
 >
@@ -35,51 +64,58 @@ exports[`StackedDisjunctionNode (REQ-9.2) > matches the stacked radiogroup snaps
   </div>
   <div
     class="mt-1 flex flex-col gap-1"
-    role="radiogroup"
   >
-    <label
+    <button
       class="flex items-start gap-2 rounded-md border px-2 py-1 text-left border-transparent opacity-45"
+      type="button"
     >
-      <input
-        class="accent-primary focus-visible:ring-primary/40 mt-0.5 size-3 shrink-0 focus-visible:ring-2 focus-visible:ring-offset-1"
-        name="CPSC 320::0"
-        type="radio"
-      />
       <span
-        class="font-mono text-sm leading-tight"
+        class="text-on-surface-variant shrink-0 text-xs font-medium"
+      >
+        (
+        a
+        )
+      </span>
+      <span
+        class="text-sm leading-tight"
       >
         MATH 100
       </span>
-    </label>
-    <label
+    </button>
+    <button
       class="flex items-start gap-2 rounded-md border px-2 py-1 text-left neu-raised border-border-subtle bg-surface text-on-surface"
+      type="button"
     >
-      <input
-        checked=""
-        class="accent-primary focus-visible:ring-primary/40 mt-0.5 size-3 shrink-0 focus-visible:ring-2 focus-visible:ring-offset-1"
-        name="CPSC 320::0"
-        type="radio"
-      />
       <span
-        class="font-mono text-sm leading-tight"
+        class="text-on-surface-variant shrink-0 text-xs font-medium"
+      >
+        (
+        b
+        )
+      </span>
+      <span
+        class="text-sm leading-tight"
       >
         MATH 102
       </span>
-    </label>
-    <label
+    </button>
+    <button
       class="flex items-start gap-2 rounded-md border px-2 py-1 text-left border-transparent opacity-45"
+      type="button"
     >
-      <input
-        class="accent-primary focus-visible:ring-primary/40 mt-0.5 size-3 shrink-0 focus-visible:ring-2 focus-visible:ring-offset-1"
-        name="CPSC 320::0"
-        type="radio"
-      />
       <span
-        class="font-mono text-sm leading-tight"
+        class="text-on-surface-variant shrink-0 text-xs font-medium"
+      >
+        (
+        c
+        )
+      </span>
+      <span
+        class="text-sm leading-tight"
       >
         MATH 104
       </span>
-    </label>
+    </button>
   </div>
 </section>
 `;

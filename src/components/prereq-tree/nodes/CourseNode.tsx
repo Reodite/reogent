@@ -2,29 +2,33 @@
 
 import { Handle, Position, type NodeProps } from "reactflow";
 
-/** Course-shaped Prereq Tree node variants (REQ-9.4). `note` carries literal
- *  prose in `label` (no `code`); the course variants carry `code`. */
-export type CourseNodeVariant = "root" | "known" | "unknown" | "note" | "coreq";
+/** Course-shaped Prereq Tree node variants. `note` carries literal prose in
+ *  `text` (no `code`); the course variants carry `code` + `title`. */
+export type CourseNodeVariant = "root" | "known" | "unknown" | "note";
 
 export interface CourseNodeData {
-  id: string;
+  variant: CourseNodeVariant;
   code?: string;
-  label?: string;
-  variant?: CourseNodeVariant;
+  title?: string;
+  text?: string;
+  /** True for blocks in the coreq column — tinted with the secondary container. */
+  coreq?: boolean;
   onNavigate?: (code: string) => void;
 }
 
-/** Whisper-Neumorphic surface tokens per `data-variant` (design.md §B). */
+/** Whisper-Neumorphic surface tokens per `data-variant` (design.md §B). Cards
+ *  carry a `border-border` border so they match the edge stroke (var(--border)). */
 const VARIANT_CLASS: Record<CourseNodeVariant, string> = {
   root: "bg-primary-container text-on-primary-container",
   known: "bg-surface text-on-surface",
   unknown: "bg-error-container text-on-error-container",
-  note: "bg-surface-container-low text-muted",
-  coreq: "bg-secondary-container text-on-secondary-container",
+  note: "bg-surface-container-low text-muted italic",
 };
 
-// Handles carry no visual weight; they exist so React Flow can attach edges on
-// either side of the left-to-right tree without per-node role reasoning.
+// Handles carry no visual weight; they exist on all four sides so a prereq
+// edge can attach left/right and a coreq chain edge top/bottom without
+// per-node role reasoning. left-target is rendered first so edges without an
+// explicit targetHandle fall through to it.
 const HIDDEN_HANDLE = {
   opacity: 0,
   width: 8,
@@ -34,35 +38,47 @@ const HIDDEN_HANDLE = {
   pointerEvents: "none",
 } as const;
 
-export function CourseNode({ data }: NodeProps<CourseNodeData>) {
+export function CourseNode({ id, data }: NodeProps<CourseNodeData>) {
   const variant = data?.variant ?? "known";
+  const isRoot = variant === "root";
+  const surface = variant === "known" && data?.coreq ? "bg-secondary-container text-on-secondary-container" : VARIANT_CLASS[variant];
   return (
     <section
-      data-node-id={data?.id}
+      data-node-id={id}
       data-variant={variant}
-      className={`neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center ${VARIANT_CLASS[variant]}`}
+      className={`neu-raised border-border min-w-[120px] rounded-lg border ${surface} ${isRoot ? "px-4 py-3 text-center" : "px-3 py-2 text-left"}`}
     >
-      <Handle type="target" position={Position.Left} style={HIDDEN_HANDLE} />
-      {variant === "root" && <div className="text-xs tracking-wide uppercase opacity-70">ROOT</div>}
-      {data?.onNavigate && data?.code ? (
-        <button
-          type="button"
-          data-nav="course"
-          className="font-mono text-sm font-medium hover:underline focus-visible:underline"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => data?.onNavigate?.(data.code as string)}
-        >
-          {data?.code ?? data?.label}
-        </button>
+      <Handle type="target" id="right-target" position={Position.Right} style={HIDDEN_HANDLE} />
+      <Handle type="target" id="top-target" position={Position.Top} style={HIDDEN_HANDLE} />
+      <Handle type="source" id="left-source" position={Position.Left} style={HIDDEN_HANDLE} />
+      <Handle type="source" id="bottom-source" position={Position.Bottom} style={HIDDEN_HANDLE} />
+      {variant === "note" ? (
+        <div className="text-xs leading-snug">{data?.text}</div>
       ) : (
-        <div className="font-mono text-sm font-medium">{data?.code ?? data?.label}</div>
+        <>
+          {isRoot && <div className="text-sm tracking-wide uppercase opacity-70">ROOT</div>}
+          {data?.onNavigate && data?.code ? (
+            <button
+              type="button"
+              data-nav="course"
+              className={`font-mono font-medium hover:underline focus-visible:underline ${isRoot ? "text-xl" : "text-sm"}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => data?.onNavigate?.(data.code as string)}
+            >
+              {data.code}
+            </button>
+          ) : (
+            <div className={`font-mono font-medium ${isRoot ? "text-xl" : "text-sm"}`}>{data?.code}</div>
+          )}
+          {data?.title && (
+            <div
+              className={`border-border border-t leading-snug ${isRoot ? "mt-2 pt-2 text-lg" : "mt-1.5 pt-1.5 text-xs"}`}
+            >
+              {data.title}
+            </div>
+          )}
+        </>
       )}
-      {variant === "unknown" && (
-        <div className="text-on-error-container text-xs" title="Not in UBC Vancouver catalog">
-          not in catalog
-        </div>
-      )}
-      <Handle type="source" position={Position.Right} style={HIDDEN_HANDLE} />
     </section>
   );
 }

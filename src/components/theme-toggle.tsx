@@ -61,7 +61,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       role="radiogroup"
       aria-label="Appearance"
       onKeyDown={handleKeyDown}
-      className={`neu-inset bg-surface-container-low grid grid-cols-3 gap-0.5 rounded-xl p-1 ${className}`}
+      className={`border-border-subtle neu-inset grid grid-cols-3 gap-0.5 rounded-xl border p-1 ${className}`}
     >
       {OPTIONS.map((option) => {
         const selected = mode === option.mode;

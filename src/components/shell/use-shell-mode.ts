@@ -17,7 +17,7 @@ export function useShellMode(initial: ShellMode = "ai"): [ShellMode, (mode: Shel
   const pathname = usePathname();
 
   useEffect(() => {
-    const next: ShellMode = pathname?.startsWith("/tools") ? "tools" : "ai";
+    const next: ShellMode = pathname?.startsWith("/tools") ? "tools" : pathname?.startsWith("/pulse") ? "unity" : "ai";
     setModeState(next);
     // Dataset mirrors the URL so pre-paint chrome matches the active route.
     // localStorage stays as the user preference (written only by `setMode`).

@@ -1,4 +1,3 @@
-import { requireUser } from "@/src/server/auth";
 import { buildPrereqGraph } from "@/src/server/prereq/build-graph";
 import { rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
@@ -15,8 +14,6 @@ export async function GET(request: Request): Promise<Response> {
     const limited = rateLimitResponse(`prereq-tree:${ip}`, PREREQ_LIMIT);
     if (limited) return limited;
 
-    const user = await requireUser(request);
-    if (user instanceof Response) return user;
     const root = (new URL(request.url).searchParams.get("root") ?? "").trim();
     if (!root) return json({ error: "root is required" }, 400);
     const result = canonicalize(root);

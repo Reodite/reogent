@@ -7,55 +7,53 @@ import { CourseNode, type CourseNodeData } from "./CourseNode";
 // renders standalone. Position is a runtime enum; NodeProps is type-only.
 vi.mock("reactflow", () => ({
   Handle: () => null,
-  Position: { Left: "left", Right: "right" },
+  Position: { Left: "left", Right: "right", Top: "top", Bottom: "bottom" },
 }));
 
-const renderNode = (data: CourseNodeData) => render(<CourseNode id="n1" data={data} />).container;
+const renderNode = (data: CourseNodeData, id = "n1") =>
+  render(<CourseNode id={id} data={data} />).container;
 
 describe("CourseNode variants (REQ-9.4)", () => {
-  it("renders root variant with ROOT label (bg-primary-container)", () => {
-    expect(renderNode({ id: "cpsc320", code: "CPSC 320", variant: "root" })).toMatchSnapshot();
+  it("renders root variant with ROOT label and title row (bg-primary-container)", () => {
+    expect(renderNode({ code: "CPSC 320", title: "Intermediate Algorithm Design and Analysis", variant: "root" })).toMatchSnapshot();
   });
 
-  it("renders known variant (bg-surface)", () => {
-    expect(renderNode({ id: "cpsc221", code: "CPSC 221", variant: "known" })).toMatchSnapshot();
+  it("renders known variant with a title row (bg-surface)", () => {
+    expect(renderNode({ code: "CPSC 221", title: "Basic Algorithms and Data Structures", variant: "known" })).toMatchSnapshot();
   });
 
-  it("renders unknown variant with the not-in-catalog note (bg-error-container)", () => {
-    expect(renderNode({ id: "calc12", code: "CALC 12", variant: "unknown" })).toMatchSnapshot();
+  it("renders unknown variant with the (not in calendar) title (bg-error-container)", () => {
+    expect(renderNode({ code: "CALC 12", title: "(not in calendar)", variant: "unknown" })).toMatchSnapshot();
   });
 
-  it("renders note variant with label prose (bg-surface-container-low text-muted)", () => {
-    expect(renderNode({ id: "lit1", label: "Third-year standing", variant: "note" })).toMatchSnapshot();
+  it("renders note variant with text prose (bg-surface-container-low text-muted)", () => {
+    expect(renderNode({ text: "Third-year standing", variant: "note" })).toMatchSnapshot();
   });
 
-  it("renders coreq variant (bg-secondary-container)", () => {
-    expect(renderNode({ id: "math200", code: "MATH 200", variant: "coreq" })).toMatchSnapshot();
+  it("renders coreq-column known nodes with the secondary-container tint", () => {
+    const el = renderNode({ code: "MATH 200", title: "Calculus III", variant: "known", coreq: true }).querySelector("section");
+    expect(el?.className).toContain("bg-secondary-container");
   });
 
-  it("carries data-node-id and data-variant attributes for the property oracles", () => {
-    const el = renderNode({ id: "cpsc110", code: "CPSC 110", variant: "known" }).querySelector("section");
-    expect(el?.getAttribute("data-node-id")).toBe("cpsc110");
+  it("carries data-node-id, data-variant, and a border matching the edge stroke", () => {
+    const el = renderNode({ code: "CPSC 110", title: "T", variant: "known" }, "CPSC 110").querySelector("section");
+    expect(el?.getAttribute("data-node-id")).toBe("CPSC 110");
     expect(el?.getAttribute("data-variant")).toBe("known");
+    expect(el?.className).toContain("border-border");
   });
 
   it("emits the code on click when onNavigate is wired (REQ-9.5); note variants are not navigable", () => {
     const onNavigate = vi.fn();
-    const known = renderNode({ id: "k", code: "CPSC 210", variant: "known", onNavigate });
+    const known = renderNode({ code: "CPSC 210", title: "T", variant: "known", onNavigate });
     fireEvent.click(known.querySelector('button[data-nav="course"]') as HTMLButtonElement);
     expect(onNavigate).toHaveBeenCalledWith("CPSC 210");
 
-    onNavigate.mockClear();
-    const root = renderNode({ id: "r", code: "CPSC 320", variant: "root", onNavigate });
-    fireEvent.click(root.querySelector('button[data-nav="course"]') as HTMLButtonElement);
-    expect(onNavigate).toHaveBeenCalledWith("CPSC 320");
-
-    const note = renderNode({ id: "n", label: "Third-year standing", variant: "note", onNavigate });
+    const note = renderNode({ text: "Third-year standing", variant: "note", onNavigate });
     expect(note.querySelector('button[data-nav="course"]')).toBeNull();
   });
 
   it("renders the code as a plain div when onNavigate is absent (no nav affordance)", () => {
-    const el = renderNode({ id: "k", code: "CPSC 210", variant: "known" });
+    const el = renderNode({ code: "CPSC 210", title: "T", variant: "known" });
     expect(el.querySelector('button[data-nav="course"]')).toBeNull();
     expect(el.querySelector(".font-mono")?.tagName).toBe("DIV");
   });

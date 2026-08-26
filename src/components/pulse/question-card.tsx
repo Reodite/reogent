@@ -1,8 +1,8 @@
 "use client";
 
-import { Icon } from "@/src/components/icons";
-import { motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import type { PanInfo } from "motion/react";
+import { useRef, useState } from "react";
 
 /** Client-side card state. Vote fields appear after voting; `pending` while the request is in flight. */
 export interface PulseCardData {
@@ -27,8 +27,8 @@ export function voteFromDrag(offsetX: number, velocityX: number): boolean | null
 
 /**
  * One question card. Unvoted: draggable left/right (buttons remain the
- * keyboard, screen-reader, and reduced-motion path). Voted: a dimmed shadow of
- * the same card with the tallies on each side.
+ * keyboard, screen-reader, and reduced-motion path). Voted: the card flies off
+ * screen, then the shadow result card fades in.
  */
 export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVote: (agree: boolean) => void }) {
   const reduce = useReducedMotion();
@@ -36,73 +36,102 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
   const rotate = useTransform(x, [-200, 200], [-6, 6]);
   const agreeHint = useTransform(x, [40, 140], [0, 1]);
   const disagreeHint = useTransform(x, [-140, -40], [1, 0]);
+  const [exited, setExited] = useState(false);
+  const exitDir = useRef<boolean>(true);
 
-  if (card.myAgree !== undefined) return <ShadowCard card={card} reduce={!!reduce} />;
+  const voted = card.myAgree !== undefined;
+  const showShadow = voted && (exited || !!reduce);
+
+  const castVote = (agree: boolean) => {
+    exitDir.current = agree;
+    onVote(agree);
+  };
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const vote = voteFromDrag(info.offset.x, info.velocity.x);
-    if (vote !== null) onVote(vote);
+    if (vote !== null) castVote(vote);
   };
 
   return (
-    <motion.article
-      drag={reduce ? false : "x"}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.9}
-      style={reduce ? undefined : { x, rotate }}
-      whileHover={reduce ? undefined : { y: -3, scale: 1.01 }}
-      whileDrag={reduce ? undefined : { scale: 1.03 }}
-      onDragEnd={handleDragEnd}
-      className={`bg-surface-container relative touch-pan-y rounded-2xl p-4 shadow-[0_4px_0_color-mix(in_srgb,var(--surface-container)_85%,black),0_10px_20px_var(--neu-shadow-deep)] select-none ${
-        reduce ? "" : "cursor-grab active:cursor-grabbing"
-      }`}
-    >
-      {!reduce && (
-        <>
-          <span aria-hidden="true" className="bg-outline/40 mx-auto mb-3 block h-1.5 w-10 rounded-full" />
-          <motion.span
-            style={{ opacity: disagreeHint }}
-            aria-hidden="true"
-            className="border-primary text-primary absolute top-3 left-3 rounded-full border px-3 py-1 text-xs font-medium"
+    <div className="relative">
+      <AnimatePresence custom={exitDir} onExitComplete={() => setExited(true)}>
+        {!voted && (
+          <motion.article
+            key="front"
+            drag={reduce ? false : "x"}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.9}
+            style={reduce ? undefined : { x, rotate }}
+            whileHover={reduce ? undefined : { y: -3, scale: 1.01 }}
+            whileDrag={reduce ? undefined : { scale: 1.03 }}
+            onDragEnd={handleDragEnd}
+            variants={{
+              exit: (dir: React.RefObject<boolean>) => {
+                if (reduce) return { opacity: 0 };
+                const right = dir?.current !== false;
+                return { x: right ? 600 : -600, opacity: 0, rotate: right ? 15 : -15 };
+              },
+            }}
+            exit="exit"
+            transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 28 }}
+            className={`bg-surface-container relative touch-pan-y rounded-2xl p-4 shadow-[0_4px_0_color-mix(in_srgb,var(--surface-container)_85%,black),0_10px_20px_var(--neu-shadow-deep)] select-none ${
+              reduce ? "" : "cursor-grab active:cursor-grabbing"
+            }`}
           >
-            Disagree
-          </motion.span>
-          <motion.span
-            style={{ opacity: agreeHint }}
-            aria-hidden="true"
-            className="border-primary text-primary absolute top-3 right-3 rounded-full border px-3 py-1 text-xs font-medium"
-          >
-            Agree
-          </motion.span>
-        </>
-      )}
-      <p className="text-on-surface text-base">{card.text}</p>
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => onVote(false)}
-          aria-label={`Disagree: ${card.text}`}
-          className="text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface focus-visible:ring-primary/40 flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
-        >
-          <Icon name="left" size={16} />
-          Disagree
-        </button>
-        <button
-          type="button"
-          onClick={() => onVote(true)}
-          aria-label={`Agree: ${card.text}`}
-          className="text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface focus-visible:ring-primary/40 flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-4 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
-        >
-          Agree
-          <Icon name="right" size={16} />
-        </button>
-      </div>
-      {card.error && (
-        <p role="alert" className="text-error mt-2 text-xs">
-          {card.error}
-        </p>
-      )}
-    </motion.article>
+            {!reduce && (
+              <>
+                <span aria-hidden="true" className="bg-outline/40 mx-auto mb-3 block h-1.5 w-10 rounded-full" />
+                <motion.span
+                  style={{ opacity: disagreeHint }}
+                  aria-hidden="true"
+                  className="border-primary text-primary absolute top-3 left-3 rounded-full border px-3 py-1 text-xs font-medium"
+                >
+                  Disagree
+                </motion.span>
+                <motion.span
+                  style={{ opacity: agreeHint }}
+                  aria-hidden="true"
+                  className="border-primary text-primary absolute top-3 right-3 rounded-full border px-3 py-1 text-xs font-medium"
+                >
+                  Agree
+                </motion.span>
+              </>
+            )}
+            <p className="text-on-surface text-base">{card.text}</p>
+            <div className="mt-3 flex items-center justify-between px-1">
+              <motion.span
+                role="button"
+                tabIndex={0}
+                onClick={() => castVote(false)}
+                onKeyDown={(e) => e.key === "Enter" && castVote(false)}
+                aria-label={`Disagree: ${card.text}`}
+                whileTap={reduce ? undefined : { x: -8, scale: 0.95 }}
+                className="text-muted hover:text-on-surface cursor-pointer text-sm transition-colors select-none"
+              >
+                disagree
+              </motion.span>
+              <motion.span
+                role="button"
+                tabIndex={0}
+                onClick={() => castVote(true)}
+                onKeyDown={(e) => e.key === "Enter" && castVote(true)}
+                aria-label={`Agree: ${card.text}`}
+                whileTap={reduce ? undefined : { x: 8, scale: 0.95 }}
+                className="text-muted hover:text-on-surface cursor-pointer text-sm transition-colors select-none"
+              >
+                agree
+              </motion.span>
+            </div>
+            {card.error && (
+              <p role="alert" className="text-error mt-2 text-xs">
+                {card.error}
+              </p>
+            )}
+          </motion.article>
+        )}
+      </AnimatePresence>
+      {showShadow && <ShadowCard card={card} reduce={!!reduce} />}
+    </div>
   );
 }
 
@@ -119,9 +148,9 @@ function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: boolean }) 
 
   return (
     <motion.article
-      initial={reduce ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: reduce ? 0 : 0.18 }}
+      initial={reduce ? false : { opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: reduce ? 0 : 0.3, ease: "easeOut" }}
       className="bg-surface-container-high rounded-2xl p-4 shadow-[inset_0_4px_0_color-mix(in_srgb,var(--surface-container-high)_75%,black),inset_1px_1px_3px_var(--neu-shadow),inset_-1px_-1px_3px_var(--neu-highlight)]"
     >
       <p className="text-on-surface-variant text-base">{card.text}</p>

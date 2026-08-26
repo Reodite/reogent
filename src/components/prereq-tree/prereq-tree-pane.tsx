@@ -1,74 +1,237 @@
 "use client";
 
 import "reactflow/dist/style.css";
-import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
+import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { announce } from "@/src/components/ui/live-region";
-import type { PrereqGraph, PrereqNode } from "@/src/server/prereq/build-graph";
-import { Component, useCallback, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
-import ReactFlow, { type Edge, type Node } from "reactflow";
-import { DisjunctionDetailStrip, type DisjunctionDetail } from "./DisjunctionDetailStrip";
-import { HardEdge } from "./edges/HardEdge";
+import { isOkanagan } from "@/src/shared/course-code";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ErrorInfo,
+  type FormEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
+import { useAppAuth } from "@/src/components/auth/app-auth";
+import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
+import { createPortal } from "react-dom";
+import ReactFlow, {
+  Background,
+  ReactFlowProvider,
+  useReactFlow,
+  useStoreApi,
+  type Edge,
+  type Node,
+  type NodeChange,
+} from "reactflow";
+import {
+  buildGraph,
+  FIT_MAX_ZOOM,
+  FIT_PADDING,
+  FIT_VERTICAL_FLOOR,
+  isNoneOrEmpty,
+  MIN_ZOOM,
+  normalize,
+  SUGGESTION_CAP,
+  suggestionPrefix,
+  type CourseIndex,
+  type Graph,
+} from "./build-graph";
 import { OptionalEdge } from "./edges/OptionalEdge";
 import { CourseNode } from "./nodes/CourseNode";
 import { DropdownDisjunctionNode, StackedDisjunctionNode } from "./nodes/DisjunctionNode";
-import type { SelectionKeyMap } from "./selection-key";
-import { visibleGraph } from "./soft-hide";
-
-// ponytail: naive BFS column layout (x = depth*240, y = per-column counter). dagre
-// would pack tighter but adds a dep; fitView zooms to fit. Revisit if columns look sparse.
-const COLUMN_W = 240;
-const ROW_H = 110;
-
-function layoutNodes(
-  nodes: PrereqNode[],
-  edges: PrereqGraph["edges"],
-  rootId: string,
-): Map<string, { x: number; y: number }> {
-  const adj = new Map<string, string[]>();
-  for (const e of edges) {
-    const list = adj.get(e.source);
-    if (list) list.push(e.target);
-    else adj.set(e.source, [e.target]);
-  }
-  const depth = new Map<string, number>([[rootId, 0]]);
-  const queue = [rootId];
-  while (queue.length > 0) {
-    const cur = queue.shift() as string;
-    const d = depth.get(cur) ?? 0;
-    for (const nb of adj.get(cur) ?? []) {
-      if (!depth.has(nb)) {
-        depth.set(nb, d + 1);
-        queue.push(nb);
-      }
-    }
-  }
-  const counter = new Map<number, number>();
-  const pos = new Map<string, { x: number; y: number }>();
-  for (const n of nodes) {
-    const d = depth.get(n.id) ?? 0;
-    const y = counter.get(d) ?? 0;
-    counter.set(d, y + 1);
-    pos.set(n.id, { x: d * COLUMN_W, y: y * ROW_H });
-  }
-  return pos;
-}
-
-function optionDisplay(n: PrereqNode): string {
-  if (n.variant === "unknown") return "(not in calendar)";
-  if (n.variant === "known" && n.title) return n.title;
-  return n.label;
-}
 
 const NODE_TYPES = {
   course: CourseNode,
-  coreq: CourseNode,
-  literal: CourseNode,
   dropdown: DropdownDisjunctionNode,
   radio: StackedDisjunctionNode,
 };
 
-const EDGE_TYPES = { optional: OptionalEdge, hard: HardEdge };
+const EDGE_TYPES = { optional: OptionalEdge };
+
+/** Auto-fit on root-course change. ReactFlow's own fitBounds clamps to the
+ *  instance min/maxZoom and offers no per-axis policy, so the transform is
+ *  computed by hand from the layout bbox: horizontal fit always honored,
+ *  vertical fit down to FIT_VERTICAL_FLOOR. `nodes` is deliberately not a dep
+ *  — selection changes rebuild the array and must not re-fit the camera; the
+ *  latest bbox is read through a ref. */
+function FitOnChange({ bbox, fitKey }: { bbox: Graph["bbox"]; fitKey: string }) {
+  const { setViewport } = useReactFlow();
+  const store = useStoreApi();
+  const bboxRef = useRef(bbox);
+  bboxRef.current = bbox;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fitKey deliberately re-fires the fit on root change without depending on `bbox` (selection flips must not re-fit).
+  useEffect(() => {
+    // One rAF so ReactFlow's ResizeObserver lands the wrapper size first.
+    const id = requestAnimationFrame(() => {
+      const b = bboxRef.current;
+      if (!b) return;
+      const { width, height } = store.getState();
+      if (!width || !height) return;
+      const bw = Math.max(1, b.maxX - b.minX);
+      const bh = Math.max(1, b.maxY - b.minY);
+      const zoomX = width / (bw * (1 + FIT_PADDING));
+      const zoomY = height / (bh * (1 + FIT_PADDING));
+      const zoom = Math.min(zoomX, Math.max(zoomY, FIT_VERTICAL_FLOOR), FIT_MAX_ZOOM);
+      const cx = (b.minX + b.maxX) / 2;
+      const cy = (b.minY + b.maxY) / 2;
+      setViewport({ x: width / 2 - cx * zoom, y: height / 2 - cy * zoom, zoom }, { duration: 200 });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [fitKey, setViewport, store]);
+  return null;
+}
+
+type CtxMenu = { x: number; y: number; code?: string };
+
+/** Right-click menu for the canvas. Card menus (a `code` present) offer course
+ *  actions; empty-canvas menus offer the navigation basics. Rendered inside the
+ *  ReactFlowProvider so the zoom/fit actions reach the canvas instance. */
+function TreeContextMenu({
+  menu,
+  onClose,
+  onOpenFinder,
+  onAskAi,
+  aiLocked,
+}: {
+  menu: CtxMenu;
+  onClose: () => void;
+  onOpenFinder: (code: string) => void;
+  onAskAi: (code: string) => void;
+  /** AI chat is guest-locked; render the Ask AI item disabled with a lock. */
+  aiLocked: boolean;
+}) {
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as globalThis.Node)) onClose();
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  const itemClass =
+    "hover:bg-surface-container-high focus-visible:ring-primary/40 flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm focus-visible:ring-2";
+  return (
+    <div
+      ref={menuRef}
+      role="menu"
+      data-tree-context-menu
+      style={{ left: menu.x, top: menu.y }}
+      className="neu-raised bg-surface text-on-surface absolute z-30 min-w-[200px] rounded-lg p-1"
+    >
+      {menu.code ? (
+        <>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => {
+              onOpenFinder(menu.code as string);
+              onClose();
+            }}
+          >
+            <Icon name="search" size={16} className="text-on-surface-variant" />
+            Open in Course Finder
+          </button>
+          {aiLocked ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled
+              aria-disabled="true"
+              title="Sign in to use AI chat"
+              className="text-on-surface flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
+            >
+              <Icon name="chat1" size={16} className="text-on-surface-variant" />
+              Ask AI about {menu.code}
+              <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                onAskAi(menu.code as string);
+                onClose();
+              }}
+            >
+              <Icon name="chat1" size={16} className="text-on-surface-variant" />
+              Ask AI about {menu.code}
+            </button>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            disabled
+            aria-disabled="true"
+            title="Schedule building is coming soon"
+            className="text-on-surface flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
+          >
+            <Icon name="calendar" size={16} className="text-on-surface-variant" />
+            Add to Schedule
+            <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => {
+              zoomIn({ duration: 150 });
+              onClose();
+            }}
+          >
+            <Icon name="zoomIn" size={16} className="text-on-surface-variant" />
+            Zoom in
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => {
+              zoomOut({ duration: 150 });
+              onClose();
+            }}
+          >
+            <Icon name="zoomOut" size={16} className="text-on-surface-variant" />
+            Zoom out
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className={itemClass}
+            onClick={() => {
+              fitView({ padding: 0.1, maxZoom: 1, duration: 200 });
+              onClose();
+            }}
+          >
+            <Icon name="fullscreen" size={16} className="text-on-surface-variant" />
+            Fit view
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 class PaneErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -85,7 +248,7 @@ class PaneErrorBoundary extends Component<{ children: ReactNode; fallback: React
 
 function NotFoundAlert({ code, onPick }: { code: string; onPick: (code: string) => void }) {
   return (
-    <p role="alert" className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm">
+    <p role="alert" className="border-error/30 bg-error-container text-error rounded-lg border px-3 py-2 text-sm">
       {code} isn't in the catalog. Try{" "}
       <button
         type="button"
@@ -107,37 +270,38 @@ function NotFoundAlert({ code, onPick }: { code: string; onPick: (code: string) 
   );
 }
 
-function AccordionFallback({ graph }: { graph: PrereqGraph }) {
+/** Keyboard-navigable accordion fallback when the canvas crashes. Children of
+ *  a block are the sources of edges targeting it (edges flow prereq → dependent). */
+function AccordionFallback({ graph, rootId }: { graph: { nodes: Node[]; edges: Edge[] }; rootId: string }) {
   const childrenOf = useMemo(() => {
     const adj = new Map<string, string[]>();
     for (const e of graph.edges) {
-      const list = adj.get(e.source);
-      if (list) list.push(e.target);
-      else adj.set(e.source, [e.target]);
+      const list = adj.get(e.target);
+      if (list) list.push(e.source);
+      else adj.set(e.target, [e.source]);
     }
     return adj;
   }, [graph]);
   const byId = useMemo(() => new Map(graph.nodes.map((n) => [n.id, n])), [graph]);
-  const root = graph.nodes.find((n) => n.variant === "root");
-  if (!root) return <p className="text-muted text-sm">Tree unavailable.</p>;
   const seen = new Set<string>();
   const renderNode = (id: string): ReactNode => {
     if (seen.has(id)) return null;
     seen.add(id);
     const node = byId.get(id);
     if (!node) return null;
+    const data = node.data as { code?: string; title?: string; text?: string };
     const kids = childrenOf.get(id) ?? [];
     return (
       <details key={id} className="ml-3 text-sm">
         <summary className="cursor-pointer font-mono">
-          {node.code ?? node.label}
-          {node.title ? ` — ${node.title}` : ""}
+          {data.code ?? data.text ?? id}
+          {data.title ? ` — ${data.title}` : ""}
         </summary>
         {kids.map(renderNode)}
       </details>
     );
   };
-  return <div className="text-on-surface overflow-auto">{renderNode(root.id)}</div>;
+  return <div className="text-on-surface overflow-auto">{renderNode(rootId)}</div>;
 }
 
 export function PrereqTreePane({
@@ -150,177 +314,444 @@ export function PrereqTreePane({
   onNavigateCourse?: (code: string) => void;
 }) {
   const api = useApi();
-  const [root, setRoot] = useState(initialRoot);
-  const [code, setCode] = useState(initialRoot);
-  const [graph, setGraph] = useState<PrereqGraph | null>(null);
-  const [treeStatus, setTreeStatus] = useState<"loading" | "ready" | "error">(initialRoot ? "loading" : "ready");
-  const {
-    list: acList,
-    status: acStatus,
-    error: acError,
-    rejected,
-    lookup,
-  } = useCourseAutocomplete(code, {
-    onCanonicalCode: setRoot,
-  });
-  const [selections, setSelections] = useState<SelectionKeyMap>({});
-  // Soft-toggle state (REQ-10.2): `softToggles[path]` flips the wrapped
-  // subtree's hard descendant edges on/off via `visibleGraph`. The soft's
-  // incoming edges + block stay (the pill re-enables).
-  const [softToggles, setSoftToggles] = useState<Record<string, 0 | 1>>({});
+  const [index, setIndex] = useState<CourseIndex | null>(null);
+  const [indexStatus, setIndexStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [query, setQuery] = useState(initialRoot);
+  const [activeCode, setActiveCode] = useState<string | null>(initialRoot ? normalize(initialRoot) : null);
+  // Last submitted code that wasn't in the catalog (drives the not-found alert).
+  const [missingCode, setMissingCode] = useState<string | null>(null);
+  // Type-ahead dropdown state: `suggestOpen` gates visibility (typing/focus
+  // opens; Escape / outside click / pick / submit closes); `highlightIdx` is
+  // the keyboard cursor (-1 = none, Enter falls through to submit).
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const suggestBoxRef = useRef<HTMLDivElement | null>(null);
+  const suggestListRef = useRef<HTMLDivElement | null>(null);
+  // Per-disjunction selections keyed `${ownerCode}::${path}` — stable across
+  // re-renders and root switches; absent key = option 0.
+  const [selections, setSelections] = useState<Map<string, number>>(() => new Map());
+  // Per-soft-branch toggles keyed `${ownerCode}::${path}.soft`; absent =
+  // expanded, true = block faded + upstream not loaded.
+  const [softDisabled, setSoftDisabled] = useState<Map<string, boolean>>(() => new Map());
 
+  const [loadNonce, setLoadNonce] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadNonce re-triggers the fetch from the Retry button.
   useEffect(() => {
-    if (!root) {
-      setGraph(null);
-      setTreeStatus("ready");
-      return;
-    }
     let cancelled = false;
-    setTreeStatus("loading");
-    setGraph(null);
+    setIndexStatus("loading");
     api
-      .getPrereqTree(root)
-      .then((g) => {
+      .getCourseIndex()
+      .then(({ courses }) => {
         if (cancelled) return;
-        setGraph(g);
-        setTreeStatus("ready");
-        onChangeRoot?.(root);
+        setIndex(new Map(courses.map((c) => [c.code, c])));
+        setIndexStatus("ready");
       })
       .catch(() => {
-        if (!cancelled) setTreeStatus("error");
+        if (!cancelled) setIndexStatus("error");
       });
     return () => {
       cancelled = true;
     };
-  }, [root, api, onChangeRoot]);
+  }, [api, loadNonce]);
 
-  const onSelect = useCallback((selectionKey: string, index: number) => {
-    setSelections((prev) => ({ ...prev, [selectionKey]: index }));
-    announce(`Prereq selection updated: option ${index + 1}`);
+  const setSelection = useCallback((key: string, idx: number) => {
+    setSelections((prev) => {
+      const next = new Map(prev);
+      next.set(key, idx);
+      return next;
+    });
+    announce(`Prereq selection updated: option ${idx + 1}`);
   }, []);
 
-  const onToggle = useCallback((path: string) => {
-    setSoftToggles((prev) => ({ ...prev, [path]: prev[path] === 0 ? 1 : 0 }));
+  const toggleSoft = useCallback((key: string) => {
+    setSoftDisabled((prev) => {
+      const next = new Map(prev);
+      next.set(key, !(prev.get(key) ?? false));
+      return next;
+    });
   }, []);
 
-  const transformed = useMemo(() => {
-    if (!graph?.found) return null;
-    const { nodes, edges } = visibleGraph(graph, softToggles);
-    const byId = new Map(nodes.map((n) => [n.id, n]));
-    const root = nodes.find((n) => n.variant === "root");
-    const positions = layoutNodes(nodes, edges, root?.id ?? nodes[0]?.id ?? "");
-    const rfNodes: Node[] = nodes.map((n) => {
-      const pos = positions.get(n.id) ?? { x: 0, y: 0 };
-      if (n.kind === "dropdown" || n.kind === "radio") {
-        const options = (n.children ?? []).map((cid) => {
-          const child = byId.get(cid);
-          return { childId: cid, label: child ? optionDisplay(child) : cid };
-        });
-        return {
-          id: n.id,
-          type: n.kind,
-          position: pos,
-          data: {
-            id: n.id,
-            selectionKey: n.selectionKey,
-            options,
-            selected: (n.selectionKey && selections[n.selectionKey]) ?? 0,
-            onSelect,
-          },
-        };
-      }
-      return {
-        id: n.id,
-        type: n.kind,
-        position: pos,
-        data: { id: n.id, code: n.code, label: n.label, variant: n.variant, onNavigate: onNavigateCourse },
-      };
-    });
-    const rfEdges: Edge[] = edges.map((e) => {
-      if (e.optional) {
-        const path = e.softPath ?? "";
-        return {
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          type: "optional",
-          data: { path, softToggled: softToggles[path] === 0, onToggle },
-        };
-      }
-      return { id: e.id, source: e.source, target: e.target, type: "hard" };
-    });
-    const disjunctions: DisjunctionDetail[] = nodes
-      .filter((n) => (n.kind === "dropdown" || n.kind === "radio") && n.selectionKey)
-      .map((n) => ({
-        selectionKey: n.selectionKey as string,
-        path: n.selectionKey as string,
-        options: (n.children ?? []).map((cid) => {
-          const child = byId.get(cid);
-          return child ? optionDisplay(child) : cid;
-        }),
-      }));
-    return { rfNodes, rfEdges, disjunctions };
-  }, [graph, selections, softToggles, onSelect, onToggle, onNavigateCourse]);
+  // Sorted codes for the type-ahead; lexicographic keeps numbers grouped
+  // under each subject.
+  const codes = useMemo(() => (index ? [...index.keys()].sort() : []), [index]);
 
-  const showTree = !!(transformed && graph?.found && (graph?.hasPrereqs || graph?.hasCoreqs));
+  const suggestions = useMemo(() => {
+    if (!index) return [];
+    const prefix = suggestionPrefix(query);
+    if (!prefix) return [];
+    const out: { code: string; title: string }[] = [];
+    for (const code of codes) {
+      if (!code.startsWith(prefix)) continue;
+      out.push({ code, title: index.get(code)?.title ?? "" });
+    }
+    return out;
+  }, [codes, index, query]);
+
+  const shownSuggestions = useMemo(() => suggestions.slice(0, SUGGESTION_CAP), [suggestions]);
+
+  // Hide the dropdown when its only row is the code already typed.
+  const suggestVisible =
+    suggestOpen &&
+    shownSuggestions.length > 0 &&
+    !(shownSuggestions.length === 1 && shownSuggestions[0].code === normalize(query));
+
+  // Outside click / Escape close the dropdown.
+  useEffect(() => {
+    if (!suggestOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      if (e.target instanceof globalThis.Node && suggestBoxRef.current?.contains(e.target)) return;
+      setSuggestOpen(false);
+      setHighlightIdx(-1);
+    }
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === "Escape") {
+        setSuggestOpen(false);
+        setHighlightIdx(-1);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [suggestOpen]);
+
+  // Keep the keyboard-highlighted row in view while arrowing through the list.
+  useEffect(() => {
+    if (highlightIdx < 0) return;
+    const el = suggestListRef.current?.querySelector(`[data-idx="${highlightIdx}"]`);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [highlightIdx]);
+
+  const activate = useCallback(
+    (code: string) => {
+      setActiveCode(code);
+      setMissingCode(null);
+      onChangeRoot?.(code);
+    },
+    [onChangeRoot],
+  );
+
+  const pickSuggestion = useCallback(
+    (code: string) => {
+      setQuery(code);
+      setSuggestOpen(false);
+      setHighlightIdx(-1);
+      activate(code);
+    },
+    [activate],
+  );
+
+  function onQueryKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (shownSuggestions.length === 0) return;
+      e.preventDefault();
+      setSuggestOpen(true);
+      setHighlightIdx((i) => {
+        const last = shownSuggestions.length - 1;
+        if (e.key === "ArrowDown") return i >= last ? 0 : i + 1;
+        return i <= 0 ? last : i - 1;
+      });
+      return;
+    }
+    if (e.key === "Enter") {
+      // With a highlighted row, Enter picks it; otherwise it falls through
+      // to the form's regular submit.
+      if (suggestVisible && highlightIdx >= 0 && highlightIdx < shownSuggestions.length) {
+        e.preventDefault();
+        pickSuggestion(shownSuggestions[highlightIdx].code);
+      }
+    }
+  }
+
+  const rejected = isOkanagan(query.trim());
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!index || rejected) return;
+    setSuggestOpen(false);
+    setHighlightIdx(-1);
+    const code = normalize(query);
+    if (index.has(code)) activate(code);
+    else {
+      setActiveCode(null);
+      setMissingCode(code);
+    }
+  }
+
+  // Real rendered node heights, reported by React Flow's measurement pass.
+  // Layout runs first on text-length estimates, then re-runs with the exact
+  // heights so vertical centering is precise (a plain chain sits perfectly
+  // level). Heights are keyed by node id and only updated on a real change,
+  // so the measure → relayout cycle settles after one pass.
+  const [measuredHeights, setMeasuredHeights] = useState<Map<string, number>>(() => new Map());
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    const dims = changes.filter((c) => c.type === "dimensions" && c.dimensions?.height);
+    if (dims.length === 0) return;
+    // Deferred out of React Flow's internal measurement dispatch: swapping the
+    // whole node array synchronously mid-cycle can glitch a frame on
+    // selection changes.
+    setTimeout(() => {
+      setMeasuredHeights((prev) => {
+        let next: Map<string, number> | null = null;
+        for (const c of dims) {
+          if (c.type !== "dimensions" || !c.dimensions?.height) continue;
+          if (Math.abs((prev.get(c.id) ?? 0) - c.dimensions.height) > 0.5) {
+            if (!next) next = new Map(prev);
+            next.set(c.id, c.dimensions.height);
+          }
+        }
+        return next ?? prev;
+      });
+    }, 0);
+  }, []);
+
+  const graph = useMemo(() => {
+    if (!index || !activeCode) return { nodes: [], edges: [], depthCount: 0, bbox: null } satisfies Graph;
+    return buildGraph(
+      activeCode,
+      index,
+      selections,
+      setSelection,
+      softDisabled,
+      toggleSoft,
+      onNavigateCourse,
+      measuredHeights,
+    );
+  }, [index, activeCode, selections, setSelection, softDisabled, toggleSoft, onNavigateCourse, measuredHeights]);
+
+  const rootEntry = index && activeCode ? (index.get(activeCode) ?? null) : null;
+  const noPrereqs = rootEntry && isNoneOrEmpty(rootEntry.prerequisite) && isNoneOrEmpty(rootEntry.corequisite);
+
+  // Re-fit the camera once per root after every node has a real measured
+  // height (the measured relayout can shift the graph). Latched per root so
+  // later selection flips — which add new, briefly-unmeasured nodes — don't
+  // yank the camera around.
+  const fullyMeasured = graph.nodes.length > 0 && graph.nodes.every((n) => measuredHeights.has(n.id));
+  const measuredLatchRef = useRef<{ root: string | null; latched: boolean }>({ root: null, latched: false });
+  if (measuredLatchRef.current.root !== activeCode) measuredLatchRef.current = { root: activeCode, latched: false };
+  if (fullyMeasured) measuredLatchRef.current.latched = true;
+  const fitKey = `${activeCode ?? ""}:${measuredLatchRef.current.latched}`;
+
+  // Right-click context menu: on a course card (course actions) or the empty
+  // canvas (navigation basics). Coordinates are relative to the pane root.
+  const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
+  const closeCtxMenu = useCallback(() => setCtxMenu(null), []);
+  const openCtxMenu = useCallback((e: { clientX: number; clientY: number; preventDefault: () => void }, code?: string) => {
+    e.preventDefault();
+    const r = rootRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setCtxMenu({
+      x: Math.max(0, Math.min(e.clientX - r.left, r.width - 210)),
+      y: Math.max(0, Math.min(e.clientY - r.top, r.height - 150)),
+      code,
+    });
+  }, []);
+  const onNodeContextMenu = useCallback(
+    (e: MouseEvent, node: Node) => {
+      const code = node.type === "course" ? (node.data as { code?: string }).code : undefined;
+      openCtxMenu(e, code);
+    },
+    [openCtxMenu],
+  );
+  const onPaneContextMenu = useCallback((e: MouseEvent) => openCtxMenu(e), [openCtxMenu]);
+
+  const shell = useChatShellOptional();
+  const { isGuest } = useAppAuth();
+  const openInFinder = useCallback(
+    (code: string) => shell?.setWorkspaceView({ paneId: "course-lookup", state: { code } }),
+    [shell],
+  );
+  const askAiAbout = useCallback((code: string) => shell?.askAi(`Tell me about ${code}`), [shell]);
+
+  // The lookup bar portals into the Answer Canvas titlebar slot when hosted
+  // there, so the working area below keeps the full card height (same as the
+  // campus map). Hosts without the slot get the bar floated over the canvas.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [slotEl, setSlotEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setSlotEl(
+      rootRef.current?.closest("section[data-pane]")?.querySelector<HTMLElement>("[data-pane-titlebar-slot]") ?? null,
+    );
+  }, []);
+
+  const searchForm = (
+    <form onSubmit={submit} className="mx-auto flex w-full max-w-md gap-2">
+        <div ref={suggestBoxRef} className="relative flex-1">
+          <Icon
+            name="search"
+            className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value.toUpperCase());
+              setSuggestOpen(true);
+              setHighlightIdx(-1);
+            }}
+            onFocus={() => setSuggestOpen(true)}
+            onKeyDown={onQueryKeyDown}
+            placeholder="e.g. CPSC 320"
+            role="combobox"
+            aria-expanded={suggestVisible}
+            aria-autocomplete="list"
+            aria-controls="prereq-suggestions"
+            aria-label="Root course code"
+            aria-invalid={rejected ? "true" : undefined}
+            aria-errormessage={rejected ? "code-error" : undefined}
+            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-9 w-full rounded-lg pr-3 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+          />
+          {suggestVisible && (
+            <div
+              ref={suggestListRef}
+              id="prereq-suggestions"
+              role="listbox"
+              className="neu-raised bg-surface absolute top-[calc(100%+0.25rem)] right-0 left-0 z-20 max-h-72 overflow-y-auto rounded-lg p-1"
+            >
+              {shownSuggestions.map((s, i) => (
+                <button
+                  key={s.code}
+                  type="button"
+                  data-idx={i}
+                  role="option"
+                  aria-selected={i === highlightIdx}
+                  onClick={() => pickSuggestion(s.code)}
+                  onMouseEnter={() => setHighlightIdx(i)}
+                  className={`flex w-full items-baseline gap-2 rounded px-3 py-1.5 text-left text-sm ${
+                    i === highlightIdx ? "bg-surface-container-high" : ""
+                  }`}
+                >
+                  <span className="text-on-surface shrink-0 font-mono">{s.code}</span>
+                  <span className="text-on-surface-variant truncate text-xs">{s.title}</span>
+                </button>
+              ))}
+              {suggestions.length > SUGGESTION_CAP && (
+                <p className="text-muted border-border-subtle border-t px-3 py-1.5 text-xs">
+                  +{(suggestions.length - SUGGESTION_CAP).toLocaleString()} more — keep typing to narrow
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+        <button
+          type="submit"
+          className="neu-button bg-primary text-on-primary h-9 shrink-0 rounded-lg px-3 text-sm font-medium"
+        >
+          Show
+        </button>
+    </form>
+  );
 
   return (
-    <div data-pane="prereq-tree" className="mx-auto flex h-full w-full max-w-4xl flex-col gap-3 p-3">
-      <CourseSearchField
-        value={code}
-        onChange={setCode}
-        onSelect={setCode}
-        onRetry={() => lookup(code)}
-        status={acStatus}
-        list={acList}
-        error={acError}
-        rejected={rejected}
-        ariaLabel="Root course code"
-        placeholder="Search a root course — CPSC 320, MATH 200"
-      />
-      {treeStatus === "loading" && (
-        <p className="text-muted inline-flex items-center gap-1.5 text-xs" aria-live="polite">
-          <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
-          Loading course index…
-        </p>
+    <div ref={rootRef} data-pane="prereq-tree" className="relative h-full w-full overflow-hidden">
+      {/* Working area covers the whole card (like the campus map), on a
+          surface distinct from the card background. */}
+      <ReactFlowProvider>
+        <div data-prereq-canvas className="bg-surface-container-low absolute inset-0">
+          {graph.nodes.length > 0 ? (
+            <PaneErrorBoundary fallback={<AccordionFallback graph={graph} rootId={activeCode ?? ""} />}>
+              <ReactFlow
+                nodes={graph.nodes}
+                edges={graph.edges}
+                nodeTypes={NODE_TYPES}
+                edgeTypes={EDGE_TYPES}
+                nodesDraggable={false}
+                nodesConnectable={false}
+                onNodesChange={onNodesChange}
+                onNodeContextMenu={onNodeContextMenu}
+                onPaneContextMenu={onPaneContextMenu}
+                onPaneClick={closeCtxMenu}
+                onMoveStart={closeCtxMenu}
+                minZoom={MIN_ZOOM}
+                nodesFocusable
+                elementsSelectable
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background color="var(--border)" gap={16} />
+                <FitOnChange bbox={graph.bbox} fitKey={fitKey} />
+              </ReactFlow>
+            </PaneErrorBoundary>
+          ) : (
+            indexStatus === "ready" &&
+            !missingCode &&
+            !activeCode && (
+              <div className="text-muted grid h-full place-items-center text-sm">
+                Enter a course code to render its prerequisite graph.
+              </div>
+            )
+          )}
+        </div>
+        {ctxMenu && (
+          <TreeContextMenu
+            menu={ctxMenu}
+            onClose={closeCtxMenu}
+            onOpenFinder={openInFinder}
+            onAskAi={askAiAbout}
+            aiLocked={isGuest}
+          />
+        )}
+      </ReactFlowProvider>
+
+      {slotEl ? (
+        createPortal(searchForm, slotEl)
+      ) : (
+        <div className="absolute top-3 right-3 left-3 z-20">{searchForm}</div>
       )}
-      {treeStatus === "error" && (
-        <p
-          role="alert"
-          className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
-        >
-          Couldn't load the tree.{" "}
-          <button
-            type="button"
-            className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-            onClick={() => setRoot((r) => r)}
+
+      <div
+        className={`pointer-events-none absolute right-3 left-3 z-10 mx-auto flex max-w-md flex-col gap-2 ${slotEl ? "top-3" : "top-16"}`}
+      >
+        {rejected && (
+          <p
+            id="code-error"
+            role="alert"
+            className="border-error/30 bg-error-container text-error pointer-events-auto rounded-lg border px-3 py-2 text-xs"
           >
-            Retry
-          </button>
-        </p>
-      )}
-      {treeStatus === "ready" && graph && !graph.found && <NotFoundAlert code={root} onPick={setCode} />}
-      {treeStatus === "ready" && graph && graph.found && !graph.hasPrereqs && !graph.hasCoreqs && (
-        <p className="text-muted text-sm">{root} has no prerequisites or corequisites listed in the calendar.</p>
-      )}
-      {showTree && transformed && graph && (
-        <PaneErrorBoundary fallback={<AccordionFallback graph={graph} />}>
-          <div data-prereq-canvas className="relative min-h-0 flex-1">
-            <ReactFlow
-              nodes={transformed.rfNodes}
-              edges={transformed.rfEdges}
-              nodeTypes={NODE_TYPES}
-              edgeTypes={EDGE_TYPES}
-              fitView
-              fitViewOptions={{ padding: 0.2 }}
-              nodesFocusable
-              elementsSelectable
-              proOptions={{ hideAttribution: true }}
-            />
-            <DisjunctionDetailStrip disjunctions={transformed.disjunctions} selections={selections} />
+            Okanagan campus codes aren't in this catalog. Try a Vancouver course.
+          </p>
+        )}
+        {indexStatus === "loading" && (
+          <p
+            className="text-muted bg-surface pointer-events-auto inline-flex items-center gap-1.5 self-center rounded-lg px-3 py-1.5 text-xs"
+            aria-live="polite"
+          >
+            <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
+            Loading course index…
+          </p>
+        )}
+        {indexStatus === "error" && (
+          <p
+            role="alert"
+            className="border-error/30 bg-error-container text-error pointer-events-auto rounded-lg border px-3 py-2 text-sm"
+          >
+            Couldn't load the tree.{" "}
+            <button
+              type="button"
+              className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
+              onClick={() => setLoadNonce((n) => n + 1)}
+            >
+              Retry
+            </button>
+          </p>
+        )}
+        {indexStatus === "ready" && missingCode && (
+          <div className="pointer-events-auto">
+            <NotFoundAlert code={missingCode} onPick={pickSuggestion} />
           </div>
-        </PaneErrorBoundary>
-      )}
+        )}
+        {indexStatus === "ready" && activeCode && !rootEntry && (
+          <div className="pointer-events-auto">
+            <NotFoundAlert code={activeCode} onPick={pickSuggestion} />
+          </div>
+        )}
+        {noPrereqs && (
+          <p className="text-muted bg-surface pointer-events-auto self-center rounded-lg px-3 py-1.5 text-sm">
+            {activeCode} has no prerequisites or corequisites listed in the calendar.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -101,7 +101,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
   it("Tools mode renders no right pane collapse button", () => {
     const { container } = renderShell(true);
-    fireEvent.click(container.querySelector("[data-mode-toggle]") as HTMLElement);
+    fireEvent.click(container.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement);
     expect(container.querySelector('[aria-label="Close answer canvas"]')).toBeNull();
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
@@ -114,7 +114,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
   it("wide Tools renders the Full-Bleed Tool with the skip target on the tool", () => {
     const { container } = renderShell(true);
-    fireEvent.click(container.querySelector("[data-mode-toggle]") as HTMLElement);
+    fireEvent.click(container.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
     // No view activated yet → children (not-found) renders instead of the tool.
     // This matches the real app: navigating to an unknown /tools/<slug> shows the
@@ -126,7 +126,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
   it("below-wide Tools lives in the left drawer, Full-Bleed Tool stays full-bleed", () => {
     const { container } = renderShell(false);
-    fireEvent.click(container.querySelector("[data-mode-toggle]") as HTMLElement);
+    fireEvent.click(container.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement);
     fireEvent.click(container.querySelector('[aria-label="Open sidebar"]') as HTMLElement);
     const drawer = container.querySelector('[role="dialog"][aria-label="Tools"]');
     expect(drawer).not.toBeNull();

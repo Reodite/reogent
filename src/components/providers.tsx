@@ -92,7 +92,7 @@ function ApiProvider({ children }: { children: ReactNode }) {
       return createChatApi({
         getToken: () => authRef.current.getToken(),
         onUnauthorized: () => {
-          authRef.current.signOut();
+          if (authRef.current.user?.userId !== "guest") authRef.current.signOut();
         },
       });
     } catch (e) {

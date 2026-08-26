@@ -15,10 +15,10 @@ import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useShellMode } from "@/src/components/shell/use-shell-mode";
 import type { SessionSummary, ToolCall } from "@/src/lib/api-types";
 import { courseSlugToCode, parseToolSlug } from "@/src/lib/pane-route";
-import type { ShellMode } from "@/src/lib/shell-mode";
+import { LAST_CHAT_PATH_KEY, type ShellMode } from "@/src/lib/shell-mode";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { MapHighlight } from "@/src/lib/walking";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export type { CanvasView, MapHighlight };
@@ -64,6 +64,12 @@ export interface ChatShellState {
   addOptimisticSession: (sessionId: string, title: string) => void;
   renameSessionLocally: (sessionId: string, title: string) => void;
   removeSessionLocally: (sessionId: string) => void;
+
+  /** Pending "ask the AI this" request (e.g. from a pane's context menu).
+   *  ChatPanel consumes it by nonce and sends it as a user message. */
+  askAiRequest: { text: string; nonce: number } | null;
+  /** Switches to AI mode and queues `text` to be sent as a chat message. */
+  askAi: (text: string) => void;
 }
 
 const ChatShellContext = createContext<ChatShellState | null>(null);
@@ -74,9 +80,28 @@ export function useChatShell(): ChatShellState {
   return value;
 }
 
+/** Null-safe variant for components that also render outside the shell (tests,
+ *  embedded widgets) — shell-dependent affordances no-op when absent. */
+export function useChatShellOptional(): ChatShellState | null {
+  return useContext(ChatShellContext);
+}
+
+/** `useRouter` that tolerates hosts without a mounted app router (tests render
+ *  the provider standalone). The hook is still called unconditionally — only
+ *  Next's mount invariant is caught. */
+function useRouterSafe(): ReturnType<typeof useRouter> | null {
+  try {
+    // biome-ignore lint/correctness/useHookAtTopLevel: called unconditionally on every render — the try only catches Next's router-mount invariant.
+    return useRouter();
+  } catch {
+    return null;
+  }
+}
+
 export function ChatShellProvider({ initialMode = "ai", children }: { initialMode?: ShellMode; children: ReactNode }) {
   const api = useApi();
   const auth = useAppAuth();
+  const router = useRouterSafe();
 
   const [workspaceView, setWorkspaceViewState] = useState<CanvasView | null>(null);
   // Latest-value ref so setActiveChannel reads the current view without depending
@@ -193,6 +218,29 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
     setNewChatNonce((n) => n + 1);
   }, []);
 
+  const [askAiRequest, setAskAiRequest] = useState<{ text: string; nonce: number } | null>(null);
+  const isGuestRef = useRef(auth.isGuest);
+  isGuestRef.current = auth.isGuest;
+  const askAi = useCallback(
+    (text: string) => {
+      // AI mode is guest-locked (same gate as the mode toggle).
+      if (isGuestRef.current) return;
+      setMode("ai");
+      setAskAiRequest((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
+      // Mode derives from the URL, so switching to AI means navigating to the
+      // chat route — restore the last-visited chat like the mode toggle does.
+      let target = "/chat";
+      try {
+        const last = sessionStorage.getItem(LAST_CHAT_PATH_KEY);
+        if (last?.startsWith("/chat")) target = last;
+      } catch {
+        /* sessionStorage unavailable */
+      }
+      router?.push(target);
+    },
+    [setMode, router],
+  );
+
   const activeChannel = useMemo<ActiveChannel>(
     () => (workspaceView ? { id: workspaceView.paneId, state: workspaceView.state } : null),
     [workspaceView],
@@ -228,6 +276,8 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       addOptimisticSession,
       renameSessionLocally,
       removeSessionLocally,
+      askAiRequest,
+      askAi,
     }),
     [
       workspaceView,
@@ -252,6 +302,8 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       addOptimisticSession,
       renameSessionLocally,
       removeSessionLocally,
+      askAiRequest,
+      askAi,
     ],
   );
 

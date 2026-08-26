@@ -17,19 +17,23 @@ interface AppAuthUser {
 interface AppAuth {
   status: AppAuthStatus;
   user: AppAuthUser | null;
+  isGuest: boolean;
   signIn: (username: string, password: string) => Promise<{ error?: string }>;
   register: (username: string, password: string) => Promise<{ error?: string }>;
   signOut: () => void;
   getToken: () => Promise<string | null>;
+  continueAsGuest: () => void;
 }
 
 const INITIALIZING: AppAuth = {
   status: "initializing",
   user: null,
+  isGuest: false,
   signIn: async () => ({}),
   register: async () => ({}),
   signOut: () => {},
   getToken: async () => null,
+  continueAsGuest: () => {},
 };
 
 const AppAuthContext = createContext<AppAuth>(INITIALIZING);
@@ -121,6 +125,15 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
     return {};
   }, []);
 
+  const continueAsGuest = useCallback(() => {
+    const guest: AppAuthUser = { username: "Guest", userId: "guest" };
+    try {
+      localStorage.setItem(TOKEN_KEY, "guest");
+      localStorage.setItem(USER_KEY, JSON.stringify(guest));
+    } catch {}
+    setUser(guest);
+  }, []);
+
   const signOut = useCallback(() => {
     try {
       localStorage.removeItem(TOKEN_KEY);
@@ -157,12 +170,14 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
     () => ({
       status: user === undefined ? "initializing" : user ? "signedIn" : "signedOut",
       user: user ?? null,
+      isGuest: user?.userId === "guest",
       signIn,
       register,
       signOut,
       getToken,
+      continueAsGuest,
     }),
-    [user, signIn, register, signOut, getToken],
+    [user, signIn, register, signOut, getToken, continueAsGuest],
   );
 
   return <AppAuthContext.Provider value={value}>{children}</AppAuthContext.Provider>;

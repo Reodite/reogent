@@ -15,8 +15,8 @@ function LoginContent() {
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (auth.status === "signedIn") router.replace("/chat");
-  }, [auth.status, router]);
+    if (auth.status === "signedIn") router.replace(auth.isGuest ? "/tools" : "/chat");
+  }, [auth.status, auth.isGuest, router]);
 
   if (auth.status === "initializing" || auth.status === "signedIn") {
     return null;

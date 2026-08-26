@@ -4,17 +4,18 @@ import { Icon } from "@/src/components/icons";
 import { EdgeLabelRenderer, getBezierPath, type EdgeProps } from "reactflow";
 
 export interface OptionalEdgeData {
-  /** Soft-path keying the per-subtree toggle (root soft = ""). */
-  path: string;
-  softToggled?: boolean;
-  onToggle?: (path: string) => void;
+  /** Soft branch key (`${ownerCode}::${path}.soft`) the toggle flips. */
+  softKey: string;
+  /** True when the user has opted out of loading this optional path — the
+   *  source block renders faded and its upstream prereqs aren't loaded. */
+  disabled: boolean;
+  onToggle: (key: string) => void;
 }
 
-/** Dashed-bezier edge for an optional (Soft-wrapped) subtree, with a soft-toggle
- *  pill at the bezier midpoint (REQ-10.1). The pill flips the pane's
- *  `softToggles[path]`; the pane filters the wrapped subtree's edges when the
- *  toggle is off (REQ-10.2). The node label is invariant under the toggle
- *  (Property 10). */
+/** Dashed-bezier edge for an optional (Soft-wrapped) subtree, with a toggle
+ *  pill at the bezier midpoint (REQ-10.1). The pill flips the soft branch:
+ *  when disabled, the graph rebuild fades the source block and suppresses its
+ *  upstream walk (REQ-10.2). */
 export function OptionalEdge({
   sourceX,
   sourceY,
@@ -32,7 +33,7 @@ export function OptionalEdge({
     targetY,
     targetPosition,
   });
-  const on = data?.softToggled === true;
+  const disabled = data?.disabled === true;
   return (
     <>
       <path d={edgePath} fill="none" data-edge-variant="optional" className="react-flow__edge-path" />
@@ -40,10 +41,10 @@ export function OptionalEdge({
         <button
           type="button"
           data-toggle="soft-toggle"
-          data-path={data?.path}
-          aria-pressed={on}
-          aria-label={on ? "Hide optional subtree" : "Show optional subtree"}
-          onClick={() => data?.onToggle?.(data?.path ?? "")}
+          data-path={data?.softKey}
+          aria-pressed={!disabled}
+          aria-label={disabled ? "Show optional subtree" : "Hide optional subtree"}
+          onClick={() => data?.onToggle?.(data?.softKey ?? "")}
           className="neu-raised bg-surface hover:bg-accent-subtle focus-visible:ring-primary/40 grid size-8 place-items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
           style={{
             position: "absolute",
@@ -51,7 +52,7 @@ export function OptionalEdge({
             pointerEvents: "all",
           }}
         >
-          <Icon name={on ? "minimize" : "add"} size={14} />
+          <Icon name={disabled ? "add" : "minimize"} size={14} />
         </button>
       </EdgeLabelRenderer>
     </>

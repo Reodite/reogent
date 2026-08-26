@@ -1,46 +1,35 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`CourseNode variants (REQ-9.4) > renders coreq variant (bg-secondary-container) 1`] = `
+exports[`CourseNode variants (REQ-9.4) > renders known variant with a title row (bg-surface) 1`] = `
 <div>
   <section
-    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-secondary-container text-on-secondary-container"
-    data-node-id="math200"
-    data-variant="coreq"
-  >
-    <div
-      class="font-mono text-sm font-medium"
-    >
-      MATH 200
-    </div>
-  </section>
-</div>
-`;
-
-exports[`CourseNode variants (REQ-9.4) > renders known variant (bg-surface) 1`] = `
-<div>
-  <section
-    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-surface text-on-surface"
-    data-node-id="cpsc221"
+    class="neu-raised border-border min-w-[120px] rounded-lg border bg-surface text-on-surface px-3 py-2 text-left"
+    data-node-id="n1"
     data-variant="known"
   >
     <div
-      class="font-mono text-sm font-medium"
+      class="font-mono font-medium text-sm"
     >
       CPSC 221
+    </div>
+    <div
+      class="border-border border-t leading-snug mt-1.5 pt-1.5 text-xs"
+    >
+      Basic Algorithms and Data Structures
     </div>
   </section>
 </div>
 `;
 
-exports[`CourseNode variants (REQ-9.4) > renders note variant with label prose (bg-surface-container-low text-muted) 1`] = `
+exports[`CourseNode variants (REQ-9.4) > renders note variant with text prose (bg-surface-container-low text-muted) 1`] = `
 <div>
   <section
-    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-surface-container-low text-muted"
-    data-node-id="lit1"
+    class="neu-raised border-border min-w-[120px] rounded-lg border bg-surface-container-low text-muted italic px-3 py-2 text-left"
+    data-node-id="n1"
     data-variant="note"
   >
     <div
-      class="font-mono text-sm font-medium"
+      class="text-xs leading-snug"
     >
       Third-year standing
     </div>
@@ -48,44 +37,48 @@ exports[`CourseNode variants (REQ-9.4) > renders note variant with label prose (
 </div>
 `;
 
-exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label (bg-primary-container) 1`] = `
+exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label and title row (bg-primary-container) 1`] = `
 <div>
   <section
-    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-primary-container text-on-primary-container"
-    data-node-id="cpsc320"
+    class="neu-raised border-border min-w-[120px] rounded-lg border bg-primary-container text-on-primary-container px-4 py-3 text-center"
+    data-node-id="n1"
     data-variant="root"
   >
     <div
-      class="text-xs tracking-wide uppercase opacity-70"
+      class="text-sm tracking-wide uppercase opacity-70"
     >
       ROOT
     </div>
     <div
-      class="font-mono text-sm font-medium"
+      class="font-mono font-medium text-xl"
     >
       CPSC 320
+    </div>
+    <div
+      class="border-border border-t leading-snug mt-2 pt-2 text-lg"
+    >
+      Intermediate Algorithm Design and Analysis
     </div>
   </section>
 </div>
 `;
 
-exports[`CourseNode variants (REQ-9.4) > renders unknown variant with the not-in-catalog note (bg-error-container) 1`] = `
+exports[`CourseNode variants (REQ-9.4) > renders unknown variant with the (not in calendar) title (bg-error-container) 1`] = `
 <div>
   <section
-    class="neu-raised min-w-[120px] rounded-lg px-3 py-2 text-center bg-error-container text-on-error-container"
-    data-node-id="calc12"
+    class="neu-raised border-border min-w-[120px] rounded-lg border bg-error-container text-on-error-container px-3 py-2 text-left"
+    data-node-id="n1"
     data-variant="unknown"
   >
     <div
-      class="font-mono text-sm font-medium"
+      class="font-mono font-medium text-sm"
     >
       CALC 12
     </div>
     <div
-      class="text-on-error-container text-xs"
-      title="Not in UBC Vancouver catalog"
+      class="border-border border-t leading-snug mt-1.5 pt-1.5 text-xs"
     >
-      not in catalog
+      (not in calendar)
     </div>
   </section>
 </div>

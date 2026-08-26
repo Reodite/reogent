@@ -8,7 +8,7 @@ const zoomRef = vi.hoisted(() => ({ value: 1 }));
 // render standalone. Position is a runtime enum; NodeProps is type-only.
 vi.mock("reactflow", () => ({
   Handle: () => null,
-  Position: { Left: "left", Right: "right" },
+  Position: { Left: "left", Right: "right", Top: "top", Bottom: "bottom" },
   useStore: () => zoomRef.value,
 }));
 
@@ -20,19 +20,16 @@ afterEach(() => {
 const { DropdownDisjunctionNode, StackedDisjunctionNode } = await import("./DisjunctionNode");
 
 const options = [
-  { childId: "a", label: "MATH 100" },
-  { childId: "b", label: "MATH 102" },
-  { childId: "c", label: "MATH 104" },
+  { display: "MATH 100", isCode: true },
+  { display: "MATH 102", isCode: true },
+  { display: "MATH 104", isCode: true },
 ];
+
+const detail = { kind: "course", code: "MATH 100", title: "Differential Calculus with Applications" } as const;
 
 describe("DropdownDisjunctionNode (REQ-9.1)", () => {
   it("renders closed by default, opens on trigger click, closes on Escape", () => {
-    render(
-      <DropdownDisjunctionNode
-        id="d1"
-        data={{ id: "d1", selectionKey: "CPSC_V 320::0", options, selected: 0, onSelect: vi.fn() }}
-      />,
-    );
+    render(<DropdownDisjunctionNode id="d1" data={{ options, selectedIdx: 0, onChange: vi.fn(), detail }} />);
     expect(screen.queryByRole("listbox")).toBeNull();
     fireEvent.click(screen.getByRole("button"));
     expect(screen.getByRole("listbox")).toBeTruthy();
@@ -41,22 +38,22 @@ describe("DropdownDisjunctionNode (REQ-9.1)", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("selects an option via click → fires onSelect(selectionKey, index) and closes", () => {
-    const onSelect = vi.fn();
-    render(<DropdownDisjunctionNode id="d1" data={{ id: "d1", selectionKey: "k", options, selected: 0, onSelect }} />);
+  it("shows the selected course's title as the detail row (dropdown absorption)", () => {
+    render(<DropdownDisjunctionNode id="d1" data={{ options, selectedIdx: 0, onChange: vi.fn(), detail }} />);
+    expect(screen.getByText("Differential Calculus with Applications")).toBeTruthy();
+  });
+
+  it("selects an option via click → fires onChange(index) and closes", () => {
+    const onChange = vi.fn();
+    render(<DropdownDisjunctionNode id="d1" data={{ options, selectedIdx: 0, onChange, detail }} />);
     fireEvent.click(screen.getByRole("button"));
     fireEvent.click(screen.getAllByRole("option")[1]);
-    expect(onSelect).toHaveBeenCalledWith("k", 1);
+    expect(onChange).toHaveBeenCalledWith(1);
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
   it("closes when a pointerdown fires outside the menu", () => {
-    render(
-      <DropdownDisjunctionNode
-        id="d1"
-        data={{ id: "d1", selectionKey: "k", options, selected: 0, onSelect: vi.fn() }}
-      />,
-    );
+    render(<DropdownDisjunctionNode id="d1" data={{ options, selectedIdx: 0, onChange: vi.fn(), detail }} />);
     fireEvent.click(screen.getByRole("button"));
     expect(screen.getByRole("listbox")).toBeTruthy();
     fireEvent.pointerDown(document.body);
@@ -65,48 +62,43 @@ describe("DropdownDisjunctionNode (REQ-9.1)", () => {
 
   it("keeps wheel events inside the open menu and closes it when the canvas zoom changes (REQ-9.1)", async () => {
     zoomRef.value = 1;
-    const { rerender } = render(
-      <DropdownDisjunctionNode id="z" data={{ id: "z", selectionKey: "k", options, selected: 0, onSelect: vi.fn() }} />,
-    );
+    const data = { options, selectedIdx: 0, onChange: vi.fn(), detail };
+    const { rerender } = render(<DropdownDisjunctionNode id="z" data={data} />);
     fireEvent.click(screen.getByRole("button"));
     const menu = screen.getByRole("listbox");
     expect(menu.className).toContain("nowheel");
     zoomRef.value = 2;
-    rerender(
-      <DropdownDisjunctionNode id="z" data={{ id: "z", selectionKey: "k", options, selected: 0, onSelect: vi.fn() }} />,
-    );
+    rerender(<DropdownDisjunctionNode id="z" data={data} />);
     await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   });
 
   it("matches the closed dropdown snapshot (REQ-9.4)", () => {
     const { container } = render(
-      <DropdownDisjunctionNode
-        id="snap"
-        data={{ id: "snap", selectionKey: "CPSC 320::0", options, selected: 0, onSelect: vi.fn() }}
-      />,
+      <DropdownDisjunctionNode id="snap" data={{ options, selectedIdx: 0, onChange: vi.fn(), detail }} />,
     );
     expect(container.firstChild).toMatchSnapshot();
   });
 });
 
 describe("StackedDisjunctionNode (REQ-9.2)", () => {
-  it("renders a radiogroup; clicking an unselected row fires onSelect", () => {
-    const onSelect = vi.fn();
-    render(<StackedDisjunctionNode id="d2" data={{ id: "d2", selectionKey: "k", options, selected: 0, onSelect }} />);
-    const radios = screen.getAllByRole("radio") as HTMLInputElement[];
-    expect(radios).toHaveLength(3);
-    expect(radios[0].checked).toBe(true);
-    expect(radios[1].checked).toBe(false);
-    fireEvent.click(radios[1]);
-    expect(onSelect).toHaveBeenCalledWith("k", 1);
+  const stackedOptions = [
+    { label: "a", display: "MATH 100" },
+    { label: "b", display: "MATH 102" },
+    { label: "c", display: "MATH 104" },
+  ];
+
+  it("renders (a)/(b)/(c) buttons; clicking an unselected row fires onChange", () => {
+    const onChange = vi.fn();
+    render(<StackedDisjunctionNode id="d2" data={{ options: stackedOptions, selectedIdx: 0, onChange }} />);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(3);
+    fireEvent.click(buttons[1]);
+    expect(onChange).toHaveBeenCalledWith(1);
   });
 
-  it("matches the stacked radiogroup snapshot with the selected row checked (REQ-9.4)", () => {
+  it("matches the stacked snapshot with the selected row highlighted (REQ-9.4)", () => {
     const { container } = render(
-      <StackedDisjunctionNode
-        id="snap"
-        data={{ id: "snap", selectionKey: "CPSC 320::0", options, selected: 1, onSelect: vi.fn() }}
-      />,
+      <StackedDisjunctionNode id="snap" data={{ options: stackedOptions, selectedIdx: 1, onChange: vi.fn() }} />,
     );
     expect(container.firstChild).toMatchSnapshot();
   });

@@ -128,7 +128,8 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
   const totalPages = Math.max(1, Math.ceil(courses.length / effectivePageSize));
 
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 flex-col gap-2.5 pb-2.5">
       <div className="relative">
         <Icon
           name="search"
@@ -223,7 +224,9 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
           className={`${controlCls} min-w-[10rem] flex-1`}
         />
       </div>
+      </div>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
       {error && (
         <p
           role="alert"
@@ -280,7 +283,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
         <div className="border-border-subtle overflow-hidden rounded-lg border">
           <table className="w-full text-sm">
             <caption className="sr-only">Course list for {session}</caption>
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr>
                 <th scope="col" className="bg-surface-container text-muted px-3 py-2 text-left text-xs font-semibold">
                   Code
@@ -331,7 +334,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-2">
         <span className="text-muted text-xs">
           {total.toLocaleString()} course{total === 1 ? "" : "s"} · {session}
         </span>
@@ -358,6 +361,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
             </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

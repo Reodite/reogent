@@ -14,7 +14,7 @@ import {
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
-import type { PrereqGraph } from "@/src/server/prereq/build-graph";
+import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import type { FeatureCollection } from "geojson";
 
 export interface ChatApi {
@@ -72,8 +72,8 @@ export interface ChatApi {
     subject_total?: number;
     session?: string;
   }>;
-  /** GET /api/prereq-tree?root={code} — the React-Flow graph for the course's prerequisite chain. */
-  getPrereqTree(root: string): Promise<PrereqGraph>;
+  /** GET /api/course-index — every course's code/title/prereq/coreq strings; the Prereq Tree builds graphs client-side from this. */
+  getCourseIndex(): Promise<{ courses: CourseIndexEntry[] }>;
   /** GET /api/pulse — active round feed; tallies included only for questions the caller voted on. */
   getPulseFeed(): Promise<PulseFeed>;
   /** POST /api/pulse/vote — records a first-write-wins vote; returns the stored vote with tallies. */
@@ -261,7 +261,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       if (params.faculty) sp.set("faculty", params.faculty);
       return request<{ courses: CourseDoc[]; subject_total?: number; session?: string }>(`/courses?${sp.toString()}`);
     },
-    getPrereqTree: (root) => request<PrereqGraph>(`/prereq-tree?root=${encodeURIComponent(root)}`),
+    getCourseIndex: () => request<{ courses: CourseIndexEntry[] }>("/course-index"),
     getPulseFeed: () => request<PulseFeed>("/pulse"),
     votePulse: (questionId, agree) =>
       request<PulseVoteResult>("/pulse/vote", {

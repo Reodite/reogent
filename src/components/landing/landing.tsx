@@ -35,12 +35,12 @@ const featureItemVariant = {
 // --- Entry point: handles auth state, renders content only when signed out ---
 
 export function Landing() {
-  const { status } = useAppAuth();
+  const { status, isGuest } = useAppAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "signedIn") router.replace("/chat");
-  }, [status, router]);
+    if (status === "signedIn") router.replace(isGuest ? "/tools" : "/chat");
+  }, [status, isGuest, router]);
 
   useEffect(() => {
     if (status === "signedOut") delete document.documentElement.dataset.authPending;
@@ -60,6 +60,19 @@ export function Landing() {
   }
 
   return <LandingContent />;
+}
+
+function GuestLink({ className }: { className?: string }) {
+  const { continueAsGuest } = useAppAuth();
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={() => continueAsGuest()}
+    >
+      Continue as guest
+    </button>
+  );
 }
 
 // --- Animated landing content (only mounts when signed out, refs are safe) ---
@@ -227,6 +240,14 @@ function LandingContent() {
                   </Link>
                 </motion.div>
               </motion.div>
+              <motion.div
+                initial={skipAnim ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="mt-3"
+              >
+                <GuestLink className="text-muted hover:text-on-surface text-sm underline underline-offset-4 transition-colors" />
+              </motion.div>
             </div>
           </div>
         </section>
@@ -344,6 +365,14 @@ function LandingContent() {
             >
               Sign in
             </Link>
+          </motion.div>
+          <motion.div
+            initial={skipAnim ? false : featureItemVariant.hidden}
+            animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
+            transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-3"
+          >
+            <GuestLink className="text-muted hover:text-on-surface text-sm underline underline-offset-4 transition-colors" />
           </motion.div>
         </motion.section>
       </main>

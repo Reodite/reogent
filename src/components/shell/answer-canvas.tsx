@@ -24,6 +24,7 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
   if (view === null || !PANE_BY_ID[view.paneId]) return null;
   const paneId = view.paneId;
   const label = PANE_BY_ID[view.paneId].label;
+  const isCanvas = paneId === "map" || paneId === "prereq-tree";
   return (
     <section
       aria-label="Answer canvas"
@@ -31,9 +32,17 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
       className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl"
     >
       <AnswerCanvasTitlebar label={label} onClose={onClose} />
-      <div className="min-h-0 flex-1 overflow-auto">
-        <ActiveCanvasView view={view} />
-      </div>
+      {isCanvas ? (
+        <div className="relative min-h-0 flex-1">
+          <div className="canvas-extend-sidebar absolute inset-0">
+            <ActiveCanvasView view={view} />
+          </div>
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-auto">
+          <ActiveCanvasView view={view} />
+        </div>
+      )}
     </section>
   );
 }
@@ -44,7 +53,10 @@ function AnswerCanvasTitlebar({ label, onClose }: { label: string; onClose: () =
       <span className="bg-surface-container-low text-primary grid size-7 shrink-0 place-items-center rounded-lg">
         <Icon name="map" size={16} />
       </span>
-      <h2 className="min-w-0 flex-1 truncate text-base font-medium tracking-[-0.01em]">{label}</h2>
+      <h2 className="min-w-0 shrink-0 truncate text-base font-medium tracking-[-0.01em]">{label}</h2>
+      {/* Panes may portal toolbar content (e.g. the prereq tree's course lookup)
+          into this slot so the working area below keeps the full card height. */}
+      <div data-pane-titlebar-slot className="relative z-30 min-w-0 flex-1" />
       <button
         type="button"
         aria-label="Close"

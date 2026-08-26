@@ -240,6 +240,54 @@ body {
   color: var(--on-primary-container);
 }
 
+/* ---- Custom scrollbars ---- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline-variant) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--outline-variant);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--outline);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ---- Custom select ---- */
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e747a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  padding-right: 1.75rem !important;
+}
+
+[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238c9297' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+select option {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
 /* Prevent long unbroken strings from overflowing containers globally */
 body {
   overflow-wrap: anywhere;
@@ -487,6 +535,28 @@ html.vt-active *::after {
 
 .chat-workspace {
   display: flex;
+}
+
+@media (min-width: 1024px) {
+  .sidebar-content-offset {
+    padding-left: var(--sidebar-offset, 0px);
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .sidebar-content-offset {
+    transition: padding-left 0.3s var(--neu-ease);
+  }
+}
+
+@media (min-width: 1024px) {
+  .sidebar-content-offset .canvas-extend-sidebar {
+    left: calc(-1 * var(--sidebar-offset, 0px));
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  .sidebar-content-offset .canvas-extend-sidebar {
+    transition: left 0.3s var(--neu-ease);
+  }
 }
 
 .profile-menu-surface {
@@ -840,14 +910,19 @@ html.vt-active *::after {
   box-shadow: none;
   background: transparent;
 }
+/* Card outline matches the edge stroke (--outline-variant) and carries a
+   primary-tinted glow so blocks lift off the dotted canvas in both themes. */
+[data-pane="prereq-tree"] .react-flow__node > section {
+  border-color: var(--outline-variant);
+  border-width: 1.5px; /* match the edge stroke weight */
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--primary) 24%, transparent),
+    var(--neu-surface-shadow);
+}
 [data-pane="prereq-tree"] .react-flow__edge-path {
-  stroke: var(--border);
-  stroke-width: 1.25;
+  stroke: var(--outline-variant);
+  stroke-width: 1.5;
 }
 [data-pane="prereq-tree"] .react-flow__edge-path[data-edge-variant="optional"] {
-  stroke: var(--outline-variant);
   stroke-dasharray: 4 3;
-}
-[data-theme="dark"] [data-pane="prereq-tree"] .react-flow__edge-path {
-  stroke: var(--border);
 }

@@ -1,10 +1,13 @@
 /** localStorage key for the AI/Tools shell-mode preference. */
 export const SHELL_MODE_STORAGE_KEY = "reogent.shell.mode";
 
-export type ShellMode = "ai" | "tools";
+/** sessionStorage key for the last-visited /chat path (mode toggle + Ask AI restore it). */
+export const LAST_CHAT_PATH_KEY = "reogent.lastChatPath";
 
-/** Parses a stored shell-mode value tolerantly. Only "tools" is non-default;
- *  absent, invalid, or any other value resolves to "ai". */
+export type ShellMode = "ai" | "tools" | "unity";
+
+/** Parses a stored shell-mode value tolerantly. */
 export function parseShellMode(value: string | null): ShellMode {
-  return value === "tools" ? "tools" : "ai";
+  if (value === "tools" || value === "unity") return value;
+  return "ai";
 }

@@ -166,6 +166,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     refreshSessions,
     addOptimisticSession,
     newChatNonce,
+    askAiRequest,
   } = useChatShell();
 
   const [historyState, setHistoryState] = useState<HistoryState>("loading");
@@ -551,6 +552,16 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     },
     [sending, runExchange, announce, addOptimisticSession, sessionId],
   );
+
+  // Consume a queued "Ask AI" request (e.g. a course card's context menu) —
+  // once per nonce, deferred until history is loaded and no send is in flight.
+  const consumedAskNonce = useRef(0);
+  useEffect(() => {
+    if (!askAiRequest || askAiRequest.nonce <= consumedAskNonce.current) return;
+    if (historyState !== "ready" || sending) return;
+    consumedAskNonce.current = askAiRequest.nonce;
+    send(askAiRequest.text);
+  }, [askAiRequest, historyState, sending, send]);
 
   const retry = useCallback(() => {
     const pending = pendingRetry.current;

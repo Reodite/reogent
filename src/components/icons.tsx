@@ -40,6 +40,11 @@ const ICON_MAP = {
   tree: "tree-line",
   pencil: "pencil-line",
   externalLink: "external-link-line",
+  group: "group-line",
+  teacup: "teacup-line",
+  lock: "lock-line",
+  zoomIn: "zoom-in-line",
+  zoomOut: "zoom-out-line",
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

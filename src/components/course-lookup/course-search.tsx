@@ -26,9 +26,6 @@ export type UseCourseAutocompleteOptions = {
   // Fetches the single record when the input canonicalizes to a full code. On 404,
   // the hook falls back to a subject+number-equals list.
   resolveSingle?: (code: string) => Promise<CourseDoc>;
-  // Notified when the input canonicalizes to a full code and `resolveSingle` is
-  // omitted. Lets the caller trigger its own load (e.g. fetch a prereq graph).
-  onCanonicalCode?: (code: string) => void;
 };
 
 export function useCourseAutocomplete(value: string, opts: UseCourseAutocompleteOptions = {}) {
@@ -93,12 +90,10 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
             throw e;
           }
         }
-        // No resolver (prereq pane): clear the list so the scrollback graph
-        // has room, then signal the caller to load the canonical code.
+        // No resolver: clear the list and settle idle.
         setRecord(null);
         setList(null);
         setStatus("idle");
-        opts.onCanonicalCode?.(`${canonical.subject} ${canonical.number}`);
         return;
       }
 
@@ -181,7 +176,7 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
         setStatus("idle");
       }
     },
-    [api, opts.resolveSingle, opts.onCanonicalCode],
+    [api, opts.resolveSingle],
   );
 
   // Live debounced search on `value`.

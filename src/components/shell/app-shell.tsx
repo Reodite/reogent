@@ -81,7 +81,7 @@ function SidebarDrawer() {
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={mode === "ai" ? "Chat sessions" : "Tools"}
+        aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
         className="fixed inset-y-0 left-0 z-50 w-[min(18.5rem,calc(100vw-3rem))] p-3 transition-transform duration-250 [transition-timing-function:var(--neu-ease)] lg:hidden"
         style={{ transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)" }}
       >
@@ -92,6 +92,7 @@ function SidebarDrawer() {
     </div>
   );
 }
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const {
@@ -107,7 +108,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   } = useChatShell();
   const wide = useIsWide();
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
-  const sessionsMenuRef = useRef<HTMLButtonElement>(null);
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
 
@@ -128,7 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   function collapseSessions() {
     setSessionsCollapsed(true);
-    requestAnimationFrame(() => sessionsMenuRef.current?.focus());
+    requestAnimationFrame(() => document.getElementById("desktop-session-collapse")?.focus());
   }
   function expandSessions() {
     setSessionsCollapsed(false);
@@ -186,45 +186,29 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SidebarDrawer />
 
         <div inert={sidebarOpen || undefined} className="shell-body min-h-0 flex-1">
-          <div className="chat-workspace min-h-0 min-w-0 flex-1 gap-3 p-3">
-            <motion.aside
-              aria-label={mode === "ai" ? "Chat sessions" : "Tools"}
-              animate={{ width: sessionsCollapsed ? "3.75rem" : "17rem" }}
-              transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
-              className="sessions-aside relative hidden min-h-0 min-w-0 overflow-hidden lg:block"
+          <div
+            className="chat-workspace relative min-h-0 min-w-0 flex-1 p-3"
+            style={{ "--sidebar-offset": sessionsCollapsed ? "3.75rem" : "17.75rem" } as React.CSSProperties}
+          >
+            <aside
+              aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
+              style={{ width: sessionsCollapsed ? "3rem" : "17rem" }}
+              className={`sessions-aside absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 overflow-hidden lg:block ${reduce ? "" : "transition-[width] duration-300 ease-[var(--neu-ease)]"}`}
             >
-              <div
-                className={`sessions-panel-layer h-full w-[17rem] transition-opacity duration-200 ${sessionsCollapsed ? "pointer-events-none opacity-0" : "opacity-100 delay-75"}`}
-              >
-                <LeftSidebar onCollapse={collapseSessions} />
+              <div className="h-full">
+                <LeftSidebar
+                  collapsed={sessionsCollapsed}
+                  onCollapse={collapseSessions}
+                  onExpand={expandSessions}
+                />
               </div>
-              <div
-                className={`neu-panel text-on-surface-variant absolute inset-y-0 left-0 flex w-[3.75rem] flex-col items-center rounded-2xl py-3 transition-opacity duration-200 ${sessionsCollapsed ? "opacity-100" : "pointer-events-none opacity-0"}`}
-              >
-                <button
-                  ref={sessionsMenuRef}
-                  type="button"
-                  onClick={expandSessions}
-                  tabIndex={sessionsCollapsed ? 0 : -1}
-                  aria-label="Expand sidebar"
-                  aria-controls="desktop-session-panel"
-                  aria-expanded={!sessionsCollapsed}
-                  title="Expand sidebar"
-                  className="neu-panel text-primary hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors duration-150"
-                >
-                  <Icon name="menu" size={20} />
-                </button>
-                <span className="mt-4 text-xs font-medium tracking-[0.06em] select-none [writing-mode:vertical-rl]">
-                  Sidebar
-                </span>
-              </div>
-            </motion.aside>
+            </aside>
             {mode === "ai" ? (
               <div className="chat-map-area flex min-h-0 min-w-0 flex-1 gap-3">
                 <main
                   id="main-content"
                   data-pane="chat"
-                  className="flex min-h-0 min-w-0 flex-1 lg:min-w-88"
+                  className="sidebar-content-offset flex min-h-0 min-w-0 flex-1 lg:min-w-88"
                   inert={sheetInert || undefined}
                 >
                   {children}
@@ -242,11 +226,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <AnswerCanvas view={workspaceView} />
                 </AnswerSheet>
               </div>
+            ) : mode === "unity" ? (
+              <main id="main-content" data-pane="unity" className="sidebar-content-offset flex min-h-0 min-w-0 flex-1">
+                {children}
+              </main>
             ) : (
-              <main id="main-content" data-pane="tool" className="flex min-h-0 min-w-0 flex-1">
-                {/* No active pane (e.g. an unknown /tools/&lt;slug&gt; that triggered
-                    notFound): show the routed children (not-found UI) instead of
-                    a blank workspace. */}
+              <main
+                id="main-content"
+                data-pane="tool"
+                className="sidebar-content-offset flex min-h-0 min-w-0 flex-1"
+              >
                 {workspaceView ? <FullBleedTool view={workspaceView} /> : children}
               </main>
             )}
