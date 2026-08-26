@@ -1,18 +1,19 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { PulseQuestionCard, voteFromDrag } from "./question-card";
 
+// motion reads the reduced-motion media query once at module init, so the hook
+// is mocked instead of window.matchMedia (which happy-dom lacks anyway).
+let reduceMotion = false;
+vi.mock("motion/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("motion/react")>()),
+  useReducedMotion: () => reduceMotion,
+}));
+
 beforeAll(() => {
-  // happy-dom lacks matchMedia; motion's useReducedMotion queries it.
   Object.defineProperty(window, "matchMedia", {
-    value: () => ({
-      matches: false,
-      addListener() {},
-      removeListener() {},
-      addEventListener() {},
-      removeEventListener() {},
-    }),
+    value: () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }),
     configurable: true,
   });
 });
@@ -64,6 +65,16 @@ describe("PulseQuestionCard — unvoted", () => {
 });
 
 describe("PulseQuestionCard — voted shadow", () => {
+  // The result card waits for the front card's exit animation, which never
+  // completes under the test renderer. Reduced motion skips that flight and
+  // renders the result straight away — the same path a reduced-motion user gets.
+  beforeAll(() => {
+    reduceMotion = true;
+  });
+  afterAll(() => {
+    reduceMotion = false;
+  });
+
   it("hides the buttons and describes the split with disagree left, agree right", () => {
     const { queryByRole, getByRole, getByText } = render(
       <PulseQuestionCard

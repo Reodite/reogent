@@ -106,7 +106,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
                 onKeyDown={(e) => e.key === "Enter" && castVote(false)}
                 aria-label={`Disagree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: -8, scale: 0.95 }}
-                className="text-muted hover:text-on-surface cursor-pointer text-sm transition-colors select-none"
+                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 cursor-pointer items-center px-2 py-3 text-sm transition-colors select-none"
               >
                 disagree
               </motion.span>
@@ -117,7 +117,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
                 onKeyDown={(e) => e.key === "Enter" && castVote(true)}
                 aria-label={`Agree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: 8, scale: 0.95 }}
-                className="text-muted hover:text-on-surface cursor-pointer text-sm transition-colors select-none"
+                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 cursor-pointer items-center px-2 py-3 text-sm transition-colors select-none"
               >
                 agree
               </motion.span>
