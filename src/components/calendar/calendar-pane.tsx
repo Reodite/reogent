@@ -144,56 +144,60 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     );
   }, []);
 
+  // Three columns with equal flexible sides so the month nav stays centered
+  // regardless of how wide Ask AI or the legend are.
   const toolbar = (
-    <div className="flex w-full items-center gap-1.5">
-      <button
-        type="button"
-        data-calendar-nav="prev"
-        aria-label="Previous month"
-        onClick={goPrev}
-        className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
-      >
-        <Icon name="left" size={18} />
-      </button>
-      <MonthYearPicker cursorDate={cursorDate} horizon={horizon} onPick={goMonth} />
-      <button
-        type="button"
-        data-calendar-nav="next"
-        aria-label="Next month"
-        disabled={beyondHorizon}
-        onClick={goNext}
-        className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
-      >
-        <Icon name="right" size={18} />
-      </button>
-      <div className="flex min-w-0 flex-1 justify-center">
-        <ul aria-label="Legend" className="hidden items-center gap-3 md:flex">
-          {Object.entries(STYLES).map(([key, style]) => (
-            <li
-              key={key}
-              data-calendar-legend={key}
-              className="text-on-surface-variant flex items-center gap-1.5 text-xs"
-            >
-              <span aria-hidden className={`size-2 shrink-0 rounded-full ${style.bar}`} />
-              {style.label}
-            </li>
-          ))}
-        </ul>
+    <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+      <div className="flex justify-start">
+        {shell && (
+          <button
+            type="button"
+            data-calendar-ask-ai
+            disabled={isGuest}
+            title={isGuest ? "Sign in to use AI chat" : "Ask AI about upcoming events"}
+            onClick={askAiAboutCalendar}
+            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2 disabled:pointer-events-auto disabled:opacity-40"
+          >
+            <Icon name="chat1" size={14} />
+            Ask AI
+            {isGuest && <Icon name="lock" size={12} />}
+          </button>
+        )}
       </div>
-      {shell && (
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
-          data-calendar-ask-ai
-          disabled={isGuest}
-          title={isGuest ? "Sign in to use AI chat" : "Ask AI about upcoming events"}
-          onClick={askAiAboutCalendar}
-          className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2 disabled:pointer-events-auto disabled:opacity-40"
+          data-calendar-nav="prev"
+          aria-label="Previous month"
+          onClick={goPrev}
+          className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
         >
-          <Icon name="chat1" size={14} />
-          Ask AI
-          {isGuest && <Icon name="lock" size={12} />}
+          <Icon name="left" size={18} />
         </button>
-      )}
+        <MonthYearPicker cursorDate={cursorDate} horizon={horizon} onPick={goMonth} />
+        <button
+          type="button"
+          data-calendar-nav="next"
+          aria-label="Next month"
+          disabled={beyondHorizon}
+          onClick={goNext}
+          className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
+        >
+          <Icon name="right" size={18} />
+        </button>
+      </div>
+      <ul aria-label="Legend" className="hidden min-w-0 items-center justify-end gap-3 md:flex">
+        {Object.entries(STYLES).map(([key, style]) => (
+          <li
+            key={key}
+            data-calendar-legend={key}
+            className="text-on-surface-variant flex items-center gap-1.5 text-xs"
+          >
+            <span aria-hidden className={`size-2 shrink-0 rounded-full ${style.bar}`} />
+            {style.label}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 
