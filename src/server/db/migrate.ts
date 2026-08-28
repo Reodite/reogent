@@ -35,6 +35,12 @@ CREATE TABLE IF NOT EXISTS degree_plans (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id UUID PRIMARY KEY REFERENCES users(id),
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS pulse_rounds (
   id SERIAL PRIMARY KEY,
   title TEXT,

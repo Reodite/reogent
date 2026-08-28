@@ -144,6 +144,16 @@ export interface PulseVoteResult {
   disagree_count: number;
 }
 
+/** GET /api/pulse/history — locked rounds newest first with final tallies; `my_agree` is null when the caller didn't vote. */
+export interface PulseHistory {
+  rounds: {
+    id: number;
+    title: string | null;
+    published_at: string;
+    questions: { id: number; text: string; my_agree: boolean | null; agree_count: number; disagree_count: number }[];
+  }[];
+}
+
 /** Error shape of every non-2xx response: `{ "error": "..." }`. */
 export class ApiError extends Error {
   readonly status: number;

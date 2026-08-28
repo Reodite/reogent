@@ -11,10 +11,12 @@ import {
   type CourseDoc,
   type GeoName,
   type PulseFeed,
+  type PulseHistory,
   type PulseVoteResult,
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
+import type { StudentProfile } from "@/src/shared/profile";
 import type { FeatureCollection } from "geojson";
 
 export interface ChatApi {
@@ -78,10 +80,16 @@ export interface ChatApi {
   getPulseFeed(): Promise<PulseFeed>;
   /** POST /api/pulse/vote — records a first-write-wins vote; returns the stored vote with tallies. */
   votePulse(questionId: number, agree: boolean): Promise<PulseVoteResult>;
+  /** GET /api/pulse/history — locked rounds with final tallies, newest first. */
+  getPulseHistory(): Promise<PulseHistory>;
   /** GET /api/plan — the caller's saved degree plan, or null. Opaque to this layer; the planner store owns the shape. */
   getPlan(): Promise<{ plan: unknown | null }>;
   /** PUT /api/plan — replaces the caller's saved degree plan. */
   savePlan(plan: unknown): Promise<void>;
+  /** GET /api/profile — the caller's student profile, or null. */
+  getProfile(): Promise<{ profile: StudentProfile | null }>;
+  /** PUT /api/profile — replaces the caller's student profile. */
+  saveProfile(profile: StudentProfile): Promise<void>;
 }
 
 interface ChatApiOptions {
@@ -272,8 +280,11 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
         method: "POST",
         body: JSON.stringify({ question_id: questionId, agree }),
       }),
+    getPulseHistory: () => request<PulseHistory>("/pulse/history"),
     getPlan: () => request<{ plan: unknown | null }>("/plan"),
     savePlan: (plan) => request<void>("/plan", { method: "PUT", body: JSON.stringify(plan) }),
+    getProfile: () => request<{ profile: StudentProfile | null }>("/profile"),
+    saveProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
   };
 }
 

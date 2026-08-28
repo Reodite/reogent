@@ -71,6 +71,23 @@ process.env.LLM_API_KEY ??= "test-key";
 
 const system = systemPrompt(new Date("2026-08-18T00:00:00Z"), CITATIONS);
 
+describe("student profile paragraph", () => {
+  const MARKER = "The student's profile:";
+
+  it("lists only the fields that are set", () => {
+    expect(
+      systemPrompt(new Date(), [], { program: "Computer Science", year: 3, student_type: "international" }),
+    ).toContain(`${MARKER} program Computer Science, year 3, international student.`);
+    expect(systemPrompt(new Date(), [], { student_type: "domestic" })).toContain(`${MARKER} domestic student.`);
+  });
+
+  it("is omitted for an empty or missing profile", () => {
+    expect(systemPrompt(new Date(), [], {})).not.toContain(MARKER);
+    expect(systemPrompt(new Date(), [], null)).not.toContain(MARKER);
+    expect(system).not.toContain(MARKER);
+  });
+});
+
 describe("15.12 SYSTEM_PROMPT contract paragraph verbatim", () => {
   it("includes the [N] attribution sentence verbatim", () => {
     expect(SYSTEM_PROMPT).toContain("attribute every tool result you relied on with a bracketed index like [1], [2]");

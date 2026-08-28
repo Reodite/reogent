@@ -1,13 +1,130 @@
 "use client";
 
-// Standalone settings page (outside the shell, like /login): account details
-// and preferences. Signed-out visitors are sent to /login.
+// Standalone settings page (outside the shell, like /login): account details,
+// student profile, and preferences. Signed-out visitors are sent to /login.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
+import { useApi } from "@/src/components/providers";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import type { StudentProfile } from "@/src/shared/profile";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+
+const FIELD_CLASS =
+  "neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1";
+const LABEL_CLASS = "text-on-surface-variant flex flex-col gap-1 text-xs font-medium";
+
+type ProfileStatus = "loading" | "load-error" | "idle" | "saving" | "saved" | "error";
+const STATUS_TEXT: Partial<Record<ProfileStatus, string>> = {
+  loading: "Loading…",
+  "load-error": "Couldn't load your profile.",
+  saved: "Saved",
+  error: "Couldn't save. Try again.",
+};
+
+/** Program, year, and student type: the assistant's defaults for tuition,
+ * cost, and program questions. Loads on mount; saves on submit. */
+function ProfileForm() {
+  const api = useApi();
+  const [profile, setProfile] = useState<StudentProfile>({});
+  const [status, setStatus] = useState<ProfileStatus>("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getProfile().then(
+      ({ profile }) => {
+        if (cancelled) return;
+        setProfile(profile ?? {});
+        setStatus("idle");
+      },
+      () => {
+        if (!cancelled) setStatus("load-error");
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus("saving");
+    try {
+      await api.saveProfile(profile);
+      setStatus("saved");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  const busy = status === "loading" || status === "saving";
+  return (
+    <form onSubmit={handleSubmit} aria-busy={busy} className="mt-4 flex flex-col gap-3">
+      <label className={LABEL_CLASS}>
+        Program
+        <input
+          type="text"
+          maxLength={120}
+          placeholder="e.g. Computer Science"
+          value={profile.program ?? ""}
+          onChange={(e) => setProfile({ ...profile, program: e.target.value || undefined })}
+          className={FIELD_CLASS}
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className={LABEL_CLASS}>
+          Year
+          <select
+            value={profile.year ?? ""}
+            onChange={(e) => setProfile({ ...profile, year: e.target.value ? Number(e.target.value) : undefined })}
+            className={FIELD_CLASS}
+          >
+            <option value="">Not set</option>
+            {[1, 2, 3, 4, 5, 6, 7].map((year) => (
+              <option key={year} value={year}>
+                Year {year}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={LABEL_CLASS}>
+          Student type
+          <select
+            value={profile.student_type ?? ""}
+            onChange={(e) =>
+              setProfile({ ...profile, student_type: (e.target.value || undefined) as StudentProfile["student_type"] })
+            }
+            className={FIELD_CLASS}
+          >
+            <option value="">Not set</option>
+            <option value="domestic">Domestic</option>
+            <option value="international">International</option>
+          </select>
+        </label>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={busy}
+          className="neu-button bg-surface text-on-surface hover:text-primary flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Icon name="check" size={16} />
+          Save
+        </button>
+        <p
+          role="status"
+          className={`text-xs ${status === "error" || status === "load-error" ? "text-error" : "text-muted"}`}
+        >
+          {STATUS_TEXT[status] ?? ""}
+        </p>
+      </div>
+      <p className="text-muted text-xs">
+        The assistant uses these as defaults for tuition, cost, and program questions.
+      </p>
+    </form>
+  );
+}
 
 export default function SettingsPage() {
   const auth = useAppAuth();
@@ -52,6 +169,7 @@ export default function SettingsPage() {
               <p className="text-muted text-xs">{auth.isGuest ? "Guest session" : "Signed in"}</p>
             </div>
           </div>
+          {!auth.isGuest && <ProfileForm />}
           <button
             type="button"
             onClick={auth.signOut}

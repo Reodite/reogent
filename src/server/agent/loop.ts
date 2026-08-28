@@ -1,4 +1,5 @@
 import type { Citation } from "@/src/shared/citations/citation";
+import type { StudentProfile } from "@/src/shared/profile";
 
 export const ITERATION_LIMIT = 8;
 
@@ -125,10 +126,15 @@ Data freshness: tools may return a snapshot date (catalog_as_of, rates_as_of, re
 
 Buildings resolve by official code, common abbreviation, or full name. If a code fails, retry find_building with the full name. Restaurants and cafes are not buildings — locate them with find_places, not find_building.`;
 
-/** SYSTEM_PROMPT plus the current date and time in campus-local time, and the
+/** SYSTEM_PROMPT plus the current date and time in campus-local time, the
  * per-turn citations list (index + label) so the model knows which `[N]`
- * indices to attribute. The citations list is omitted when empty. */
-export function systemPrompt(now = new Date(), citations: Citation[] = []): string {
+ * indices to attribute, and the student's profile as tool defaults. The
+ * citations list and the profile paragraph are omitted when empty. */
+export function systemPrompt(
+  now = new Date(),
+  citations: Citation[] = [],
+  profile: StudentProfile | null = null,
+): string {
   const date = now.toLocaleString("en-CA", {
     timeZone: "America/Vancouver",
     weekday: "long",
@@ -142,6 +148,14 @@ export function systemPrompt(now = new Date(), citations: Citation[] = []): stri
   let prompt = `${SYSTEM_PROMPT}\n\nIt is now ${date} (Vancouver time).`;
   if (citations.length > 0) {
     prompt += `\n\nSources this turn:\n${citations.map((c) => `[${c.index}] ${c.label}`).join("\n")}`;
+  }
+  const facts = [
+    profile?.program && `program ${profile.program}`,
+    profile?.year && `year ${profile.year}`,
+    profile?.student_type && `${profile.student_type} student`,
+  ].filter(Boolean);
+  if (facts.length > 0) {
+    prompt += `\n\nThe student's profile: ${facts.join(", ")}. Use these as defaults for tuition, cost, and program tools instead of asking.`;
   }
   return prompt;
 }
