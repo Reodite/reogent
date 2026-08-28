@@ -138,8 +138,9 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
   );
 }
 
-/** The voted card: same layout, recessed and dimmed, with disagree% left and agree% right. */
-function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: boolean }) {
+/** The voted card: same layout, recessed and dimmed, with disagree% left and
+ *  agree% right. Also renders locked-round results in the history list. */
+export function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: boolean }) {
   const known = card.agreeCount !== undefined && card.disagreeCount !== undefined;
   const agreeCount = card.agreeCount ?? 0;
   const total = agreeCount + (card.disagreeCount ?? 0);

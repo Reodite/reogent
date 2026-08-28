@@ -4,6 +4,7 @@ import { useApi } from "@/src/components/providers";
 import { announce } from "@/src/components/ui/live-region";
 import { ApiError } from "@/src/lib/api-types";
 import { useCallback, useEffect, useState } from "react";
+import { PulseHistory } from "./pulse-history";
 import { PulseQuestionCard, type PulseCardData } from "./question-card";
 
 interface FeedData {
@@ -114,6 +115,7 @@ export function PulseFeed() {
               ))}
             </>
           )}
+          <PulseHistory />
         </div>
       </div>
     </section>
