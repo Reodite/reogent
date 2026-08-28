@@ -39,7 +39,10 @@ const STYLES = {
 };
 const styleOf = (e: CalendarEvent) => STYLES[e.kind as keyof typeof STYLES] ?? STYLES.academic;
 
-type State = { cursor: string };
+/** `hidden` lists kinds the legend has switched off; all kinds are fetched
+ * and filtered client-side so toggling never refetches. */
+type State = { cursor: string; hidden: string[] };
+const NONE: string[] = [];
 
 function groupByDate(events: CalendarEvent[]): Record<string, CalendarEvent[]> {
   const out: Record<string, CalendarEvent[]> = {};
@@ -59,7 +62,14 @@ function getToday(): Date {
 
 export function CalendarPane({ state, setState }: { state: Partial<State>; setState: (s: Partial<State>) => void }) {
   const cursor = state.cursor ?? formatMonthBadge(new Date());
+  const hidden = state.hidden ?? NONE;
   const { events, error } = useCalendarEvents(cursor, KINDS);
+  const visible = useMemo(() => (events ?? []).filter((e) => !hidden.includes(e.kind)), [events, hidden]);
+  const toggleKind = (kind: string) => {
+    const nowHidden = !hidden.includes(kind);
+    setState({ hidden: nowHidden ? [...hidden, kind] : hidden.filter((k) => k !== kind) });
+    announce(`${STYLES[kind as keyof typeof STYLES].label} ${nowHidden ? "hidden" : "shown"}`);
+  };
 
   const today = useMemo(() => getToday(), []);
   const todayISO = toISODate(today);
@@ -80,7 +90,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
       })),
     [grid],
   );
-  const monthEvents = (events ?? []).filter((e) => {
+  const monthEvents = visible.filter((e) => {
     const d = parseISODate(e.date);
     return d >= monthStart && d < monthEnd;
   });
@@ -92,7 +102,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   const openEvent = (event: CalendarEvent) => setSelectedEvent(event);
   const closeEvent = () => setSelectedEvent(null);
 
-  const upcoming = (events ?? [])
+  const upcoming = visible
     .filter((e) => e.date >= todayISO)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .slice(0, 20);
@@ -186,17 +196,30 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           <Icon name="right" size={18} />
         </button>
       </div>
-      <ul aria-label="Legend" className="hidden min-w-0 items-center justify-end gap-3 md:flex">
-        {Object.entries(STYLES).map(([key, style]) => (
-          <li
-            key={key}
-            data-calendar-legend={key}
-            className="text-on-surface-variant flex items-center gap-1.5 text-xs"
-          >
-            <span aria-hidden className={`size-2 shrink-0 rounded-full ${style.bar}`} />
-            {style.label}
-          </li>
-        ))}
+      <ul
+        aria-label="Legend"
+        className="col-span-3 flex flex-wrap items-center justify-center gap-1 lg:col-span-1 lg:justify-end"
+      >
+        {Object.entries(STYLES).map(([key, style]) => {
+          const shown = !hidden.includes(key);
+          return (
+            <li key={key}>
+              <button
+                type="button"
+                data-calendar-legend={key}
+                aria-pressed={shown}
+                onClick={() => toggleKind(key)}
+                className={`focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs transition-colors focus-visible:ring-2 ${shown ? "text-on-surface-variant" : "text-muted/60"}`}
+              >
+                <span
+                  aria-hidden
+                  className={`size-2 shrink-0 rounded-full ${shown ? style.bar : "ring-1 ring-current ring-inset"}`}
+                />
+                {style.label}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

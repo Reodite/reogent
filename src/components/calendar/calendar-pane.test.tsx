@@ -37,6 +37,7 @@ afterAll(() => {
 
 interface State {
   cursor: string;
+  hidden: string[];
 }
 
 function renderPane(state: Partial<State> = {}, events: CalendarEvent[] = fixtureEvents) {
@@ -47,7 +48,9 @@ function renderPane(state: Partial<State> = {}, events: CalendarEvent[] = fixtur
       status: 200,
       headers: { "content-type": "application/json" },
     })) as unknown as typeof globalThis.fetch;
-  const result = render(<CalendarPane state={{ cursor: state.cursor ?? "2024-04" }} setState={setState} />);
+  const result = render(
+    <CalendarPane state={{ cursor: state.cursor ?? "2024-04", hidden: state.hidden }} setState={setState} />,
+  );
   const restore = () => {
     globalThis.fetch = original;
   };
@@ -164,11 +167,25 @@ describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17
     expect(container.querySelector('[data-calendar-month="2026-05"]')?.hasAttribute("disabled")).toBe(true);
     restore();
   });
-  it("header legend lists one entry per kind", async () => {
-    const { container, restore } = renderPane({ cursor: "2024-04" });
-    const legend = Array.from(container.querySelectorAll("[data-calendar-legend]")).map((el) => el.textContent);
+  it("legend buttons toggle a kind via setState and hidden kinds drop out of the grid", async () => {
+    const on = renderPane({ cursor: "2025-02" });
+    const legend = Array.from(on.container.querySelectorAll("[data-calendar-legend]")).map((el) => el.textContent);
     expect(legend).toEqual(["Academic", "Holiday", "Campus event"]);
-    restore();
+    const holiday = on.container.querySelector('[data-calendar-legend="holiday"]') as HTMLElement;
+    expect(holiday.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(holiday);
+    expect(on.setState).toHaveBeenCalledWith({ hidden: ["holiday"] });
+    on.restore();
+    cleanup();
+    const off = renderPane({ cursor: "2025-02", hidden: ["holiday"] });
+    const cell = await waitForCell(off.container, "2025-02-17", "[data-calendar-marker]");
+    const kinds = Array.from(cell.querySelectorAll("[data-calendar-marker]")).map((el) =>
+      el.getAttribute("data-calendar-marker"),
+    );
+    expect(kinds).toEqual(["academic"]);
+    const offButton = off.container.querySelector('[data-calendar-legend="holiday"]') as HTMLElement;
+    expect(offButton.getAttribute("aria-pressed")).toBe("false");
+    off.restore();
   });
 });
 
