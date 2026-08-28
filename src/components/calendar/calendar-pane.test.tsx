@@ -164,15 +164,10 @@ describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17
     expect(container.querySelector('[data-calendar-month="2026-05"]')?.hasAttribute("disabled")).toBe(true);
     restore();
   });
-  it("header legend lists every style and deadline markers use the deadline style", async () => {
-    const { container, restore } = renderPane({ cursor: "2024-09" });
+  it("header legend lists one entry per kind", async () => {
+    const { container, restore } = renderPane({ cursor: "2024-04" });
     const legend = Array.from(container.querySelectorAll("[data-calendar-legend]")).map((el) => el.textContent);
-    expect(legend).toEqual(["Academic", "Deadline", "Holiday", "Campus event"]);
-    const cell = await waitForCell(container, "2024-09-17", "[data-calendar-marker]");
-    const marker = Array.from(cell.querySelectorAll("[data-calendar-marker]")).find(
-      (el) => el.textContent === "Add/drop deadline",
-    );
-    expect(marker?.className).toContain("bg-error/20");
+    expect(legend).toEqual(["Academic", "Holiday", "Campus event"]);
     restore();
   });
 });

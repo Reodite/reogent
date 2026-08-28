@@ -30,18 +30,14 @@ const MONTH_LABELS = Array.from({ length: 12 }, (_, m) =>
 /** Every kind the route serves; the pane always shows all of them. */
 const KINDS = ["academic", "holiday", "event"];
 
-/** Label and palette per legend entry, in legend order. Deadlines are academic
- * key dates tagged "deadline"; unknown kinds fall back to the academic style. */
+/** Label and palette per kind, in legend order. Unknown kinds fall back to
+ * the academic style. */
 const STYLES = {
   academic: { label: "Academic", bar: "bg-primary", chip: "bg-primary/20 text-primary" },
-  deadline: { label: "Deadline", bar: "bg-error", chip: "bg-error/20 text-error" },
   holiday: { label: "Holiday", bar: "bg-tertiary", chip: "bg-tertiary/20 text-tertiary" },
   event: { label: "Campus event", bar: "bg-secondary", chip: "bg-secondary/20 text-secondary" },
 };
-function styleOf(e: CalendarEvent) {
-  if (e.kind === "academic" && e.tags.includes("deadline")) return STYLES.deadline;
-  return STYLES[e.kind as keyof typeof STYLES] ?? STYLES.academic;
-}
+const styleOf = (e: CalendarEvent) => STYLES[e.kind as keyof typeof STYLES] ?? STYLES.academic;
 
 type State = { cursor: string };
 

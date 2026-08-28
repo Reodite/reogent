@@ -100,7 +100,7 @@ The app has three zones, left to right:
 | people     | `find_person`                                                  | Faculty/staff directory entries, office building location   |
 | food       | `find_food`                                                    | UBC Food Services outlets, meal-plan acceptance             |
 
-The Calendar tool pane shows key dates, holidays, and campus events (the same `events` index `search_events` queries) for the visible month and the two after it, one entry per day an event runs. A header legend distinguishes academic dates, deadlines, holidays, and campus events.
+The Calendar tool pane shows key dates, holidays, and campus events (the same `events` index `search_events` queries) for the visible month and the two after it, one entry per day an event runs. A header legend distinguishes academic dates, holidays, and campus events.
 
 ### Map Capabilities
 
