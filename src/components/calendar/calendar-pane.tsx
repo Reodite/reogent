@@ -27,6 +27,15 @@ const MONTH_LABELS = Array.from({ length: 12 }, (_, m) =>
   new Date(Date.UTC(2000, m, 1)).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }),
 );
 
+/** Per-kind label and palette for markers, bars and chips. Unknown kinds fall
+ * back to the academic style. */
+const KIND_STYLE: Record<string, { label: string; bar: string; chip: string }> = {
+  academic: { label: "Academic", bar: "bg-primary", chip: "bg-primary/20 text-primary" },
+  holiday: { label: "Holiday", bar: "bg-tertiary", chip: "bg-tertiary/20 text-tertiary" },
+  event: { label: "Campus event", bar: "bg-secondary", chip: "bg-secondary/20 text-secondary" },
+};
+const kindStyle = (kind: string) => KIND_STYLE[kind] ?? KIND_STYLE.academic;
+
 type State = { cursor: string; kinds: CalendarEventKind[] };
 
 function groupByDate(events: CalendarEvent[]): Record<string, CalendarEvent[]> {
@@ -108,14 +117,21 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     announce(`Moved to ${formatMonthHeading(next)}`);
   };
 
+  // Campus events ride on the persisted `kinds` pane state: "event" present
+  // means the route also returns events.ubc.ca entries for the visible window.
+  const showEvents = kinds.includes("event");
+  const toggleEvents = () => {
+    setState({ kinds: showEvents ? kinds.filter((k) => k !== "event") : [...kinds, "event"] });
+    announce(showEvents ? "Campus events hidden" : "Campus events shown");
+  };
+
   const shell = useChatShellOptional();
   const { isGuest } = useAppAuth();
   // Sends the upcoming-events list to the AI as an attachment: shown in chat
   // as a "Calendar" file bubble, read by the agent as text after the prompt.
   const askAiAboutCalendar = () => {
     const lines = upcoming.map(
-      (e) =>
-        `${e.date} — ${e.label} (${e.kind === "academic" ? "Academic" : "Holiday"}${e.tags.length ? `: ${e.tags.join(", ")}` : ""})`,
+      (e) => `${e.date} — ${e.label} (${kindStyle(e.kind).label}${e.tags.length ? `: ${e.tags.join(", ")}` : ""})`,
     );
     shell?.askAi("Give me an overview of upcoming events:", {
       title: "Calendar",
@@ -157,6 +173,16 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
         <Icon name="right" size={18} />
       </button>
       <div className="flex-1" />
+      <button
+        type="button"
+        data-calendar-events-toggle
+        aria-pressed={showEvents}
+        title={showEvents ? "Hide campus events" : "Show campus events"}
+        onClick={toggleEvents}
+        className={`neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2 ${showEvents ? "text-primary" : ""}`}
+      >
+        Events
+      </button>
       {shell && (
         <button
           type="button"
@@ -237,14 +263,12 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                         className="focus-visible:ring-primary/40 hover:bg-surface-container flex items-start gap-2 rounded-lg p-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
                       >
                         <span
-                          className={`mt-0.5 block h-full min-h-[1.5rem] w-1 shrink-0 rounded-full ${
-                            e.kind === "academic" ? "bg-primary" : "bg-tertiary"
-                          }`}
+                          className={`mt-0.5 block h-full min-h-[1.5rem] w-1 shrink-0 rounded-full ${kindStyle(e.kind).bar}`}
                         />
                         <div className="min-w-0">
                           <p className="text-on-surface truncate text-xs font-medium">{e.label}</p>
                           <p className="text-muted truncate text-xs">
-                            {e.kind === "academic" ? "Academic" : "Holiday"}
+                            {kindStyle(e.kind).label}
                             {e.tags.length > 0 && ` · ${e.tags[0]}`}
                           </p>
                         </div>
@@ -477,9 +501,7 @@ function MonthGrid({
                       type="button"
                       data-calendar-marker={e.kind}
                       onClick={() => onEventClick(e)}
-                      className={`block w-full truncate rounded-md px-1 py-px text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${
-                        e.kind === "academic" ? "bg-primary/20 text-primary" : "bg-tertiary/20 text-tertiary"
-                      }`}
+                      className={`block w-full truncate rounded-md px-1 py-px text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${kindStyle(e.kind).chip}`}
                     >
                       {e.label}
                     </button>
@@ -541,10 +563,7 @@ function EventModal({
       >
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <span
-              aria-hidden
-              className={`h-8 w-1.5 shrink-0 rounded-full ${event.kind === "academic" ? "bg-primary" : "bg-tertiary"}`}
-            />
+            <span aria-hidden className={`h-8 w-1.5 shrink-0 rounded-full ${kindStyle(event.kind).bar}`} />
             <div>
               <p className="text-on-surface text-sm font-medium">{event.label}</p>
               <p className="text-muted text-xs">{formatDate(parseISODateFn(event.date))}</p>
@@ -562,7 +581,7 @@ function EventModal({
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="bg-surface-container-high text-on-surface-variant rounded-full px-2 py-0.5 text-xs font-medium">
-            {event.kind === "academic" ? "Academic" : "Holiday"}
+            {kindStyle(event.kind).label}
           </span>
           {event.tags.map((tag) => (
             <span

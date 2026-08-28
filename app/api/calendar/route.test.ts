@@ -1,6 +1,7 @@
 import fixture from "@/__fixtures__/calendar-events.json";
-import { GET, projectCalendarEvents } from "@/app/api/calendar/route";
+import { GET, projectCalendarEvents, projectCampusEvents } from "@/app/api/calendar/route";
 import type { KeyDateDoc } from "@/src/server/modules/calendar";
+import type { EventDoc } from "@/src/server/modules/events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const input = fixture.input as KeyDateDoc[];
@@ -90,6 +91,34 @@ describe("projectCalendarEvents — calendar server projection (REQ-16.1)", () =
 function out(docs: KeyDateDoc[]) {
   return projectCalendarEvents(docs);
 }
+
+describe("projectCampusEvents — campus events as per-day event-kind entries", () => {
+  const base: EventDoc = {
+    id: "1",
+    title: "Talk",
+    text: "",
+    url: "https://events.ubc.ca/event/talk",
+    start_date: "2026-09-03 18:00:00",
+    end_date: "2026-09-03 19:00:00",
+    all_day: false,
+    venue: null,
+    venue_address: null,
+    categories: ["Lectures & Talks"],
+  };
+
+  it("emits one entry per day, clipped to the window, capped at 14 days, skipping rows without a start", () => {
+    expect(projectCampusEvents([base])).toEqual([
+      { kind: "event", date: "2026-09-03", label: "Talk", source_url: base.url, tags: ["Lectures & Talks"] },
+    ]);
+    const long = projectCampusEvents([{ ...base, end_date: "2026-12-01 00:00:00" }]);
+    expect(long).toHaveLength(14);
+    expect(long[13].date).toBe("2026-09-16");
+    const clipped = projectCampusEvents([{ ...base, end_date: "2026-09-05 00:00:00" }], "2026-09-04", "2026-09-04");
+    expect(clipped.map((e) => e.date)).toEqual(["2026-09-04"]);
+    expect(projectCampusEvents([{ ...base, end_date: "2026-09-01 00:00:00" }])).toHaveLength(1);
+    expect(projectCampusEvents([{ ...base, start_date: null }])).toEqual([]);
+  });
+});
 
 describe("GET /api/calendar route — projected CalendarEvent[] shape and caching (REQ-16.1)", () => {
   it("returns the projected array with a 5-minute public cache header", async () => {
