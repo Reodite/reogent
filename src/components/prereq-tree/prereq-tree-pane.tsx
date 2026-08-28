@@ -87,7 +87,7 @@ function useFitGraph() {
  *  behind the measured relayout and would fit a partial graph. `fitKey` re-fires
  *  the fit on root change and once that relayout has settled; selection flips
  *  must not re-fit, so `bbox` rides a ref instead of being a dep. */
-function FitOnChange({ bbox, fitKey }: { bbox: Graph["bbox"]; fitKey: string }) {
+function FitOnChange({ bbox, fitKey, onFitted }: { bbox: Graph["bbox"]; fitKey: string; onFitted: () => void }) {
   const fitGraph = useFitGraph();
   // Readiness gate: nodes measured means the canvas has a size to fit into.
   const nodesInitialized = useNodesInitialized();
@@ -98,7 +98,11 @@ function FitOnChange({ bbox, fitKey }: { bbox: Graph["bbox"]; fitKey: string }) 
     const b = bboxRef.current;
     if (!b || !nodesInitialized) return;
     fitGraph({ x: b.minX, y: b.minY, width: b.maxX - b.minX, height: b.maxY - b.minY });
-  }, [fitKey, nodesInitialized, fitGraph]);
+    // Reveal a frame later: setViewport lands in React Flow's own render pass,
+    // so flipping `awaitingFit` in this one can paint the graph before the
+    // camera moves — the flash this gate exists to prevent.
+    requestAnimationFrame(() => onFitted());
+  }, [fitKey, nodesInitialized, fitGraph, onFitted]);
   return null;
 }
 
@@ -581,6 +585,13 @@ export function PrereqTreePane({
   if (fullyMeasured) measuredLatchRef.current.latched = true;
   const fitKey = `${activeCode ?? ""}:${measuredLatchRef.current.latched}`;
 
+  // React Flow paints a frame at its default zoom-1 viewport before the fit
+  // effect can snap the camera, which reads as a zoomed-in, off-centre flash.
+  // Hold the graph invisible until the first fit for this root lands.
+  const [fittedRoot, setFittedRoot] = useState<string | null>(null);
+  const onFitted = useCallback(() => setFittedRoot(activeCode), [activeCode]);
+  const awaitingFit = graph.nodes.length > 0 && fittedRoot !== activeCode;
+
   // Right-click context menu: on a course card (course actions) or the empty
   // canvas (navigation basics). Coordinates are relative to the pane root.
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
@@ -755,9 +766,10 @@ export function PrereqTreePane({
                 nodesFocusable
                 elementsSelectable
                 proOptions={{ hideAttribution: true }}
+                className={awaitingFit ? "opacity-0" : undefined}
               >
                 <Background color="var(--border)" gap={16} />
-                <FitOnChange bbox={graph.bbox} fitKey={fitKey} />
+                <FitOnChange bbox={graph.bbox} fitKey={fitKey} onFitted={onFitted} />
               </ReactFlow>
             </PaneErrorBoundary>
           ) : (

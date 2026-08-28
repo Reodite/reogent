@@ -18,10 +18,14 @@ import {
 import type { CalendarEvent, CalendarEventKind } from "@/src/shared/calendar/event";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useCalendarEvents } from "./use-calendar-events";
 
 const FUTURE_HORIZON_MONTHS = 24;
 const WEEKDAY_HEADERS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTH_LABELS = Array.from({ length: 12 }, (_, m) =>
+  new Date(Date.UTC(2000, m, 1)).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }),
+);
 
 type State = { cursor: string; kinds: CalendarEventKind[] };
 
@@ -99,8 +103,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     announce(`Moved to ${formatMonthHeading(next)}`);
   };
 
-  const goToday = () => {
-    const next = startOfMonth(today);
+  const goMonth = (next: Date) => {
     setState({ cursor: formatMonthBadge(next) });
     announce(`Moved to ${formatMonthHeading(next)}`);
   };
@@ -120,60 +123,63 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     });
   };
 
-  return (
-    <div data-calendar-pane className="flex h-full w-full flex-col overflow-y-auto p-3 lg:p-6">
-      <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className="flex items-center gap-1.5 justify-self-start">
-          <button
-            type="button"
-            data-calendar-nav="prev"
-            aria-label="Previous month"
-            onClick={goPrev}
-            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
-          >
-            <Icon name="left" size={18} />
-          </button>
-          <button
-            type="button"
-            data-calendar-nav="today"
-            onClick={goToday}
-            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container min-h-9 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2"
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            data-calendar-nav="next"
-            aria-label="Next month"
-            disabled={beyondHorizon}
-            onClick={goNext}
-            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
-          >
-            <Icon name="right" size={18} />
-          </button>
-          {shell && (
-            <button
-              type="button"
-              data-calendar-ask-ai
-              disabled={isGuest}
-              title={isGuest ? "Sign in to use AI chat" : "Ask AI about upcoming events"}
-              onClick={askAiAboutCalendar}
-              className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2 disabled:pointer-events-auto disabled:opacity-40"
-            >
-              <Icon name="chat1" size={14} />
-              Ask AI
-              {isGuest && <Icon name="lock" size={12} />}
-            </button>
-          )}
-        </div>
-        <h2 data-calendar-heading className="justify-self-center text-base font-medium tracking-[-0.01em]">
-          {formatMonthHeading(cursorDate)}
-        </h2>
-        <div
-          className="neu-inset bg-surface-container-low justify-self-end rounded-lg p-0.5 lg:hidden"
-          role="tablist"
-          aria-label="View"
+  // The toolbar portals into the Answer Canvas titlebar slot when hosted there
+  // so nav, month picker and Ask AI share the header line; hosts without the
+  // slot get it inline above the grid.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [slotEl, setSlotEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setSlotEl(
+      rootRef.current?.closest("section[data-pane]")?.querySelector<HTMLElement>("[data-pane-titlebar-slot]") ?? null,
+    );
+  }, []);
+
+  const toolbar = (
+    <div className="flex w-full items-center gap-1.5">
+      <button
+        type="button"
+        data-calendar-nav="prev"
+        aria-label="Previous month"
+        onClick={goPrev}
+        className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
+      >
+        <Icon name="left" size={18} />
+      </button>
+      <MonthYearPicker cursorDate={cursorDate} horizon={horizon} onPick={goMonth} />
+      <button
+        type="button"
+        data-calendar-nav="next"
+        aria-label="Next month"
+        disabled={beyondHorizon}
+        onClick={goNext}
+        className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
+      >
+        <Icon name="right" size={18} />
+      </button>
+      <div className="flex-1" />
+      {shell && (
+        <button
+          type="button"
+          data-calendar-ask-ai
+          disabled={isGuest}
+          title={isGuest ? "Sign in to use AI chat" : "Ask AI about upcoming events"}
+          onClick={askAiAboutCalendar}
+          className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2 disabled:pointer-events-auto disabled:opacity-40"
         >
+          <Icon name="chat1" size={14} />
+          Ask AI
+          {isGuest && <Icon name="lock" size={12} />}
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <div ref={rootRef} data-calendar-pane className="flex h-full w-full flex-col overflow-y-auto p-3 lg:p-6">
+      {slotEl ? createPortal(toolbar, slotEl) : <div className="mb-4">{toolbar}</div>}
+
+      <div className="mb-4 flex justify-end lg:hidden">
+        <div className="neu-inset bg-surface-container-low rounded-lg p-0.5" role="tablist" aria-label="View">
           <button
             type="button"
             role="tab"
@@ -287,6 +293,123 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
 
 function formatDayLabel(d: Date): string {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/** Month+year trigger that doubles as the header's month heading; opens a
+ * year-stepped grid of months. Months past `horizon` are unreachable, matching
+ * the next-month button's cap. */
+function MonthYearPicker({
+  cursorDate,
+  horizon,
+  onPick,
+}: {
+  cursorDate: Date;
+  horizon: Date;
+  onPick: (d: Date) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const cursorYear = cursorDate.getUTCFullYear();
+  const [year, setYear] = useState(cursorYear);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Reopening lands on the month in view, not wherever the year arrows stopped.
+  useEffect(() => {
+    if (open) setYear(cursorYear);
+  }, [open, cursorYear]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const nextYearBlocked = new Date(Date.UTC(year + 1, 0, 1)) > horizon;
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        data-calendar-heading
+        data-calendar-month-picker
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium tracking-[-0.01em] focus-visible:ring-2"
+      >
+        {formatMonthHeading(cursorDate)}
+        <Icon name="down" size={14} />
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Pick month and year"
+          data-calendar-month-menu
+          className="neu-raised bg-surface absolute top-[calc(100%+0.25rem)] left-0 z-50 w-60 rounded-xl p-2"
+        >
+          <div className="mb-1 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label="Previous year"
+              onClick={() => setYear((y) => y - 1)}
+              className="hover:bg-surface-container focus-visible:ring-primary/40 flex size-8 items-center justify-center rounded-lg focus-visible:ring-2"
+            >
+              <Icon name="left" size={16} />
+            </button>
+            <span className="text-on-surface font-mono text-sm font-medium">{year}</span>
+            <button
+              type="button"
+              aria-label="Next year"
+              disabled={nextYearBlocked}
+              onClick={() => setYear((y) => y + 1)}
+              className="hover:bg-surface-container focus-visible:ring-primary/40 flex size-8 items-center justify-center rounded-lg focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Icon name="right" size={16} />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {MONTH_LABELS.map((label, m) => {
+              const d = new Date(Date.UTC(year, m, 1));
+              const selected = year === cursorYear && m === cursorDate.getUTCMonth();
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  data-calendar-month={formatMonthBadge(d)}
+                  aria-current={selected ? "true" : undefined}
+                  disabled={d > horizon}
+                  onClick={() => {
+                    onPick(d);
+                    setOpen(false);
+                  }}
+                  className={`focus-visible:ring-primary/40 rounded-lg py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-30 ${
+                    selected ? "bg-primary text-on-primary" : "text-on-surface hover:bg-surface-container"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MonthGrid({

@@ -36,7 +36,10 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
   const rotate = useTransform(x, [-200, 200], [-6, 6]);
   const agreeHint = useTransform(x, [40, 140], [0, 1]);
   const disagreeHint = useTransform(x, [-140, -40], [1, 0]);
-  const [exited, setExited] = useState(false);
+  // Already voted at mount (a reload, or a round you came back to): there is no
+  // front card to fly off, so nothing would ever set this and the slot renders
+  // empty. Start exited so the result card shows straight away.
+  const [exited, setExited] = useState(card.myAgree !== undefined);
   const exitDir = useRef<boolean>(true);
 
   const voted = card.myAgree !== undefined;
