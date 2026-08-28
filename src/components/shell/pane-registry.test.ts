@@ -38,9 +38,8 @@ describe("PANE_REGISTRY — composition (REQ-19.5, design.md §G)", () => {
     expect(PANE_BY_ID["prereq-tree"].defaultState).toEqual({ root: "", query: "", selections: {}, softDisabled: {} });
   });
 
-  it("calendar default state carries academic + holiday kinds and a current-month cursor", () => {
-    const { cursor, kinds } = PANE_BY_ID.calendar.defaultState as { cursor: string; kinds: string[] };
-    expect(kinds).toEqual(["academic", "holiday"]);
+  it("calendar default state carries a current-month cursor", () => {
+    const { cursor } = PANE_BY_ID.calendar.defaultState as { cursor: string };
     expect(cursor).toMatch(/^\d{4}-\d{2}$/);
   });
 

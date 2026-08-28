@@ -88,7 +88,7 @@ export const PANE_REGISTRY: PaneEntry[] = [
     label: "Calendar",
     icon: iconGlyph("calendar"),
     Component: CalendarPane as PaneEntry["Component"],
-    defaultState: { cursor: thisMonth(), kinds: ["academic", "holiday"] },
+    defaultState: { cursor: thisMonth() },
   },
 ];
 

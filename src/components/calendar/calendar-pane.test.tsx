@@ -37,7 +37,6 @@ afterAll(() => {
 
 interface State {
   cursor: string;
-  kinds: string[];
 }
 
 function renderPane(state: Partial<State> = {}, events: CalendarEvent[] = fixtureEvents) {
@@ -48,12 +47,7 @@ function renderPane(state: Partial<State> = {}, events: CalendarEvent[] = fixtur
       status: 200,
       headers: { "content-type": "application/json" },
     })) as unknown as typeof globalThis.fetch;
-  const result = render(
-    <CalendarPane
-      state={{ cursor: state.cursor ?? "2024-04", kinds: state.kinds ?? ["academic", "holiday"] }}
-      setState={setState}
-    />,
-  );
+  const result = render(<CalendarPane state={{ cursor: state.cursor ?? "2024-04" }} setState={setState} />);
   const restore = () => {
     globalThis.fetch = original;
   };
@@ -170,19 +164,16 @@ describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17
     expect(container.querySelector('[data-calendar-month="2026-05"]')?.hasAttribute("disabled")).toBe(true);
     restore();
   });
-  it("events toggle adds or removes the event kind via setState", async () => {
-    const off = renderPane({ cursor: "2024-04" });
-    await waitFor(() => expect(off.container.querySelector("[data-calendar-events-toggle]")).not.toBeNull());
-    fireEvent.click(off.container.querySelector("[data-calendar-events-toggle]") as HTMLElement);
-    expect(off.setState).toHaveBeenCalledWith({ kinds: ["academic", "holiday", "event"] });
-    off.restore();
-    cleanup();
-    const on = renderPane({ cursor: "2024-04", kinds: ["academic", "holiday", "event"] });
-    const toggle = on.container.querySelector("[data-calendar-events-toggle]") as HTMLElement;
-    expect(toggle.getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(toggle);
-    expect(on.setState).toHaveBeenCalledWith({ kinds: ["academic", "holiday"] });
-    on.restore();
+  it("header legend lists every style and deadline markers use the deadline style", async () => {
+    const { container, restore } = renderPane({ cursor: "2024-09" });
+    const legend = Array.from(container.querySelectorAll("[data-calendar-legend]")).map((el) => el.textContent);
+    expect(legend).toEqual(["Academic", "Deadline", "Holiday", "Campus event"]);
+    const cell = await waitForCell(container, "2024-09-17", "[data-calendar-marker]");
+    const marker = Array.from(cell.querySelectorAll("[data-calendar-marker]")).find(
+      (el) => el.textContent === "Add/drop deadline",
+    );
+    expect(marker?.className).toContain("bg-error/20");
+    restore();
   });
 });
 
