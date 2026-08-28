@@ -1,0 +1,38 @@
+[
+  {
+    "id": 22339,
+    "slug": "kyros-kitchen",
+    "status": "publish",
+    "link": "https://food.ubc.ca/places/kyros-kitchen/",
+    "title": {
+      "rendered": "Kyros Kitchen"
+    },
+    "excerpt": {
+      "rendered": "<p>Feed Me / Campus Partners / Kyros Kitchen Kyros Kitchen Born from a passion for authentic flavors and years of hospitality expertise, we&#8217;re bringing fresh Mediterranean magic to UBC. At Kyros Kitchen, we believe great food shouldn&#8217;t keep you waiting. Residence Meal Plans (Flex Dollars), UBCcard&nbsp;plans and Guest Cards&nbsp;are accepted here without discounts.&nbsp; Menu Location &#8230; <a title=\"Kyros Kitchen\" class=\"read-more\" href=\"https://food.ubc.ca/places/kyros-kitchen/\" aria-label=\"Read more about Kyros Kitchen\">Read more</a></p>\n",
+      "protected": false
+    },
+    "group": [184],
+    "label": [121, 125],
+    "flag": [186],
+    "discount": [],
+    "acf": []
+  },
+  {
+    "id": 20045,
+    "slug": "browns-craft-house-kitchen-and-bar",
+    "status": "publish",
+    "link": "https://food.ubc.ca/places/browns-craft-house-kitchen-and-bar/",
+    "title": {
+      "rendered": "Browns Craft House Kitchen and Bar"
+    },
+    "excerpt": {
+      "rendered": "<p>Feed Me / Campus Partners / Browns Crafthouse Browns Crafthouse Our UBC crafthouse location is on University blvd, right across the street from the Alumni Centre. The friendly service and delicious food will have you coming back time and time again. Enjoy a a drink on our heated patio or come in and watch all &#8230; <a title=\"Browns Craft House Kitchen and Bar\" class=\"read-more\" href=\"https://food.ubc.ca/places/browns-craft-house-kitchen-and-bar/\" aria-label=\"Read more about Browns Craft House Kitchen and Bar\">Read more</a></p>\n",
+      "protected": false
+    },
+    "group": [32],
+    "label": [121, 125],
+    "flag": [186],
+    "discount": [],
+    "acf": []
+  }
+]
