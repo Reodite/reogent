@@ -21,7 +21,7 @@ Built with Next.js 16 (App Router), React 19, and TypeScript.
 
 The agent runs a streaming tool-calling loop. Each user message can trigger up to 8 model turns. The model calls tools, receives results, and continues until it can respond. The client receives NDJSON events (`thinking`, `text`, `tool_start`, `tool_end`, `done`).
 
-20 tools across 12 modules:
+22 tools across 14 modules:
 
 | Module     | Tools                                                          | Data source                                           |
 | ---------- | -------------------------------------------------------------- | ----------------------------------------------------- |
@@ -37,6 +37,8 @@ The agent runs a streaming tool-calling loop. Each user message can trigger up t
 | events     | `search_events`                                                | events.ubc.ca                                         |
 | pages      | `search_ubc_pages`                                             | UBC web pages                                         |
 | grades     | `search_grades`, `get_grades`                                  | UBC pair grade distributions                          |
+| people     | `find_person`                                                  | Faculty/staff profiles from unit directory sites      |
+| food       | `find_food`                                                    | food.ubc.ca outlets                                   |
 
 Walking routes use Dijkstra shortest-path on a pedestrian network derived from GeoJSON.
 
@@ -134,6 +136,7 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | GET    | `/api/geo/:name`       | GeoJSON layer                                |
 | GET    | `/api/pulse`           | Active Pulse round with the caller's votes   |
 | POST   | `/api/pulse/vote`      | Record an agree/disagree vote                |
+| GET    | `/api/pulse/history`   | Locked Pulse rounds with final tallies       |
 | POST   | `/api/auth/login`      | Sign in, returns JWT                         |
 | POST   | `/api/auth/register`   | Create account, returns JWT                  |
 | GET    | `/api/preview?url=`    | Resolve og:image for card links              |
