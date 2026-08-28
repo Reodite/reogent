@@ -4,6 +4,7 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { VersionBadge } from "@/src/components/shell/session-sidebar";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 export function UserMenu() {
@@ -12,7 +13,6 @@ export function UserMenu() {
   const [signOutError, setSignOutError] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const signOutRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -24,10 +24,15 @@ export function UserMenu() {
         setOpen(false);
         triggerRef.current?.focus();
       }
-      // Arrow key navigation within the menu
+      // Arrow keys cycle through menu items; from the trigger, Down lands on
+      // the first item and Up on the last.
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
-        signOutRef.current?.focus();
+        const items = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+        if (items.length === 0) return;
+        const index = items.indexOf(document.activeElement as HTMLElement);
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        items[(index + step + items.length) % items.length].focus();
       }
     };
     document.addEventListener("pointerdown", onPointerDown);
@@ -103,8 +108,17 @@ export function UserMenu() {
 
         <div className="bg-border-subtle my-1 h-px sm:hidden" />
 
+        <Link
+          href="/settings"
+          role="menuitem"
+          onClick={() => setOpen(false)}
+          className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
+        >
+          <Icon name="settings" size={16} className="text-on-surface-variant" />
+          Settings
+        </Link>
+
         <button
-          ref={signOutRef}
           type="button"
           role="menuitem"
           onClick={handleSignOut}

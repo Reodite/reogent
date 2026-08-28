@@ -29,6 +29,7 @@ const ICON_MAP = {
   fullscreen: "fullscreen-2-line",
   route: "route-line",
   exit: "exit-line",
+  settings: "settings-3-line",
   wifiOff: "wifi-off-line",
   moon: "moon-line",
   sun: "sun-line",
