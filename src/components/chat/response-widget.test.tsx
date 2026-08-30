@@ -127,6 +127,19 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(widget.getAttribute("data-active")).toBeNull();
   });
 
+  it("closing the pane clears the chip highlight", () => {
+    const { container } = renderWidget(keyDatesCall, "m1:tc-0");
+    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
+    act(() => {
+      fireEvent.click(widget);
+    });
+    expect(widget.getAttribute("data-active")).not.toBeNull();
+    act(() => {
+      shellRef.current?.setRightPaneCollapsed(true);
+    });
+    expect(widget.getAttribute("data-active")).toBeNull();
+  });
+
   it("Enter and Space keys activate a mapped widget, and clicking again keeps it active (no toggle-off)", () => {
     const { container } = renderWidget(keyDatesCall);
     const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
