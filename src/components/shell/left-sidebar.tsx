@@ -102,7 +102,7 @@ export function LeftSidebar({
   if (mode === "ai") {
     if (collapsed) {
       return (
-        <div className="neu-panel flex h-full w-full flex-col items-center justify-between overflow-hidden rounded-2xl py-3">
+        <div className="neu-panel flex h-full w-full flex-col items-center justify-between overflow-hidden rounded-2xl pt-3 pb-2">
           <CollapseExpandButton collapsed onExpand={onExpand} label="Sessions" />
           {footer}
         </div>
@@ -114,7 +114,7 @@ export function LeftSidebar({
   const label = mode === "tools" ? "Tools" : "Unity";
 
   return (
-    <div className={`neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl py-3 ${collapsed ? "items-center px-0" : "px-2"}`}>
+    <div className={`neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl pt-3 pb-2 ${collapsed ? "items-center px-0" : "px-2"}`}>
       <div className={`flex h-9 items-center pb-2 ${collapsed ? "justify-center px-0" : "gap-3 px-2"}`}>
         <CollapseExpandButton
           collapsed={collapsed}
