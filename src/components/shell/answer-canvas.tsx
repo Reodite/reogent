@@ -36,7 +36,7 @@ export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | nul
       {titlebar && <AnswerCanvasTitlebar label={label} onClose={onClose} />}
       {isCanvas ? (
         <div className="relative min-h-0 flex-1">
-          <div className="canvas-extend-sidebar absolute inset-0">
+          <div className="absolute inset-0">
             <ActiveCanvasView view={view} />
           </div>
         </div>

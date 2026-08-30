@@ -546,17 +546,6 @@ html.vt-active *::after {
   }
 }
 
-@media (min-width: 1024px) {
-  .sidebar-content-offset .canvas-extend-sidebar {
-    left: calc(-1 * var(--sidebar-offset, 0px));
-  }
-}
-@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-  .sidebar-content-offset .canvas-extend-sidebar {
-    transition: left 0.3s var(--neu-ease);
-  }
-}
-
 .profile-menu-surface {
   transition:
     opacity 180ms ease-out,
