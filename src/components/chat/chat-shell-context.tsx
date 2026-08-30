@@ -184,7 +184,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const userDismissedPaneRef = useRef(false);
   userDismissedPaneRef.current = userDismissedPane;
   useEffect(() => {
-    if (workspaceView !== null && !userDismissedPaneRef.current) setRightPaneCollapsed(false);
+    if (workspaceView !== null && !userDismissedPaneRef.current) setRightPaneCollapsedState(false);
   }, [workspaceView]);
 
   const setWorkspaceView = useCallback((view: CanvasView | null) => {
@@ -305,6 +305,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       setMode,
       answerSheetOpen,
       rightPaneCollapsed,
+      setRightPaneCollapsed,
       activeChannel,
       setActiveChannel,
       highlight,
