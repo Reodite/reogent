@@ -29,6 +29,18 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id);
 
+CREATE TABLE IF NOT EXISTS degree_plans (
+  user_id UUID PRIMARY KEY REFERENCES users(id),
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id UUID PRIMARY KEY REFERENCES users(id),
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS pulse_rounds (
   id SERIAL PRIMARY KEY,
   title TEXT,

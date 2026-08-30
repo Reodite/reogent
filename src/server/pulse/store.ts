@@ -47,14 +47,54 @@ export async function getActiveFeed(
   );
   return {
     round: { id: round.id, title: round.title, publishedAt: round.published_at.toISOString() },
-    questions: rows.map((r) => ({
-      id: r.id,
-      text: r.text,
-      myAgree: r.my_agree ?? null,
-      agreeCount: r.agree_count,
-      disagreeCount: r.disagree_count,
-    })),
+    questions: rows.map(toQuestion),
   };
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: raw pg row
+function toQuestion(r: any): PulseFeedQuestion {
+  return {
+    id: r.id,
+    text: r.text,
+    myAgree: r.my_agree ?? null,
+    agreeCount: r.agree_count,
+    disagreeCount: r.disagree_count,
+  };
+}
+
+/**
+ * Locked rounds newest first (at most `limit`), each with its questions in
+ * seed order, final tallies, and the caller's vote. Tallies are frozen once a
+ * round locks, so nothing here changes after publish.
+ */
+export async function getRoundHistory(
+  userId: string,
+  limit = 10,
+): Promise<{ round: PulseRound; questions: PulseFeedQuestion[] }[]> {
+  const pool = getPool();
+  const roundResult = await pool.query(
+    `SELECT id, title, published_at FROM pulse_rounds WHERE status = 'locked' ORDER BY published_at DESC LIMIT $1`,
+    [limit],
+  );
+  if (roundResult.rows.length === 0) return [];
+
+  const { rows } = await pool.query(
+    `SELECT q.round_id, q.id, q.text,
+            v.agree AS my_agree,
+            COUNT(av.*) FILTER (WHERE av.agree)::int AS agree_count,
+            COUNT(av.*) FILTER (WHERE NOT av.agree)::int AS disagree_count
+     FROM pulse_questions q
+     LEFT JOIN pulse_votes v ON v.question_id = q.id AND v.user_id = $2
+     LEFT JOIN pulse_votes av ON av.question_id = q.id
+     WHERE q.round_id = ANY($1::int[])
+     GROUP BY q.round_id, q.id, q.text, q.position, v.agree
+     ORDER BY q.position`,
+    [roundResult.rows.map((r) => r.id), userId],
+  );
+  return roundResult.rows.map((round) => ({
+    round: { id: round.id, title: round.title, publishedAt: round.published_at.toISOString() },
+    questions: rows.filter((r) => r.round_id === round.id).map(toQuestion),
+  }));
 }
 
 /**

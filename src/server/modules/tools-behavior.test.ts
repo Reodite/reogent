@@ -7,7 +7,9 @@ import { calendar } from "./calendar";
 import { costs } from "./costs";
 import { courses } from "./courses";
 import { events } from "./events";
+import { food } from "./food";
 import { pages } from "./pages";
+import { people } from "./people";
 import { places } from "./places";
 import { spaces } from "./spaces";
 import { createWidgetsModule } from "./widgets";
@@ -902,5 +904,66 @@ describe("show_widget (explicit entities)", () => {
 
   it("throws on an unknown widget type", async () => {
     await expect(tool.execute({ type: "nope", query: "x" }, fakeSearch({}))).rejects.toThrow(/Unknown widget type/);
+  });
+});
+
+describe("find_person", () => {
+  const tool = people.tools.find((t) => t.spec.name === "find_person")!;
+  const ceme = { id: "CEME", code: "CEME", name: "Civil and Mechanical Engineering", lat: 49.2624, lon: -123.2489 };
+
+  it("attaches the office building when the office's first token resolves, and leaves others text-only", async () => {
+    const search = fakeSearch({
+      people: [
+        { id: "1", name: "Steven Louie", office: "CEME 1214", unit: "apsc.ubc.ca" },
+        { id: "2", name: "Susan Louie", office: null, unit: "science.ubc.ca" },
+      ],
+      buildings: [ceme],
+    });
+    const out = (await tool.execute({ query: "Louie" }, search)) as { people: { building?: { code: string } }[] };
+    expect(out.people.map((p) => p.building?.code)).toEqual(["CEME", undefined]);
+  });
+
+  it("throws on a blank query or no match", async () => {
+    await expect(tool.execute({ query: " " }, fakeSearch({ people: [] }))).rejects.toThrow(/requires a query/);
+    await expect(tool.execute({ query: "Nobody" }, fakeSearch({ people: [] }))).rejects.toThrow(/No people matched/);
+  });
+});
+
+describe("find_food", () => {
+  const tool = food.tools.find((t) => t.spec.name === "find_food")!;
+  const fixture = {
+    food: [
+      { id: "1", name: "Kyros Kitchen", text: "Mediterranean", url: null },
+      { id: "2", name: "Mercante", text: "Pizza", url: null },
+      { id: "3", name: "Gather", text: "Dining hall", url: null },
+    ],
+    // No POI shares Gather's name, so it stays unlocated.
+    poi: [
+      { id: "p1", name: "Kyros Kitchen", service_type: "restaurant", hours: "9-5", lat: 49.27, lon: -123.25 },
+      { id: "p2", name: "Mercante", service_type: "restaurant", hours: null, lat: 49.26, lon: -123.25 },
+      { id: "p3", name: "Great Dane Coffee", service_type: "cafe", hours: null, lat: 49.2, lon: -123.2 },
+    ],
+    buildings: [{ id: "SWNG", code: "SWNG", name: "West Mall Swing Space", lat: 49.26, lon: -123.25 }],
+  };
+
+  it("borrows coordinates and hours from the POI that shares the outlet's name", async () => {
+    const out = (await tool.execute({}, fakeSearch(fixture))) as {
+      places: { name: string; lat?: number; hours?: string | null }[];
+    };
+    expect(out.places.map((p) => [p.name, p.lat != null])).toEqual([
+      ["Kyros Kitchen", true],
+      ["Mercante", true],
+      ["Gather", false],
+    ]);
+    expect(out.places[0].hours).toBe("9-5");
+  });
+
+  it("sorts located outlets nearest the anchor building first and keeps unlocated ones after", async () => {
+    const out = (await tool.execute({ near_building: "SWNG", limit: 2 }, fakeSearch(fixture))) as {
+      near_building: string;
+      places: { name: string }[];
+    };
+    expect(out.near_building).toBe("SWNG");
+    expect(out.places.map((p) => p.name)).toEqual(["Mercante", "Kyros Kitchen"]);
   });
 });

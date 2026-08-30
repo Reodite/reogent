@@ -4,6 +4,7 @@ import { useApi } from "@/src/components/providers";
 import { announce } from "@/src/components/ui/live-region";
 import { ApiError } from "@/src/lib/api-types";
 import { useCallback, useEffect, useState } from "react";
+import { PulseHistory } from "./pulse-history";
 import { PulseQuestionCard, type PulseCardData } from "./question-card";
 
 interface FeedData {
@@ -90,13 +91,9 @@ export function PulseFeed() {
       </div>
       <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
-          {loading && (
-            <>
-              <div className="bg-surface-container h-28 animate-pulse rounded-2xl" />
-              <div className="bg-surface-container h-28 animate-pulse rounded-2xl" />
-              <div className="bg-surface-container h-28 animate-pulse rounded-2xl" />
-            </>
-          )}
+          {/* Same box as the empty state, so a round with no questions is a
+              text swap instead of three ghost cards appearing and vanishing. */}
+          {loading && <p className="text-muted py-8 text-center text-sm">Loading questions…</p>}
           {error && (
             <div className="flex flex-col items-center gap-3 py-8">
               <p className="text-on-surface-variant text-sm">{error}</p>
@@ -118,6 +115,7 @@ export function PulseFeed() {
               ))}
             </>
           )}
+          <PulseHistory />
         </div>
       </div>
     </section>

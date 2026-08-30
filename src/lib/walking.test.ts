@@ -8,6 +8,7 @@ import { featureCentroid, featuresBounds, findBuilding } from "@/src/lib/geo";
 import {
   extractBuildingHighlight,
   extractParkingHighlight,
+  extractPeopleHighlight,
   extractPlacesHighlight,
   extractWalkingHighlight,
   toolCallToCanvasView,
@@ -454,5 +455,45 @@ describe("toolCallToCanvasView", () => {
     expect(toolCallToCanvasView({ name: "get_course", input: {}, result: undefined } as ToolCall)).toBeNull();
     expect(toolCallToCanvasView({ name: "walking_distance", input: {}, result: undefined } as ToolCall)).toBeNull();
     expect(toolCallToCanvasView({ name: "get_prereq_tree", input: {}, result: undefined } as ToolCall)).toBeNull();
+  });
+});
+
+describe("find_food and find_person map highlights", () => {
+  it("find_food pins render through the places extractor; unlocated outlets are skipped", () => {
+    const call: ToolCall = {
+      name: "find_food",
+      input: { near_building: "SWNG" },
+      result: {
+        near_building: "SWNG",
+        places: [
+          { name: "Kyros Kitchen", service_type: "food", lat: 49.2637, lon: -123.2551 },
+          { name: "Mercante", service_type: "food" },
+        ],
+      },
+    };
+    expect(extractPlacesHighlight(call)).toEqual({
+      kind: "places",
+      near: "SWNG",
+      places: [{ name: "Kyros Kitchen", lat: 49.2637, lon: -123.2551, service_type: "food" }],
+    });
+  });
+
+  it("find_person highlights each distinct office building once", () => {
+    const building = { code: "CEME", name: "Civil and Mechanical Engineering", lat: 49.2624, lon: -123.2489 };
+    const call: ToolCall = {
+      name: "find_person",
+      input: { query: "Louie" },
+      result: {
+        people: [
+          { name: "A", office: "CEME 1214", building },
+          { name: "B", office: "CEME 2020", building },
+          { name: "C", office: "PPC" },
+        ],
+      },
+    };
+    expect(extractPeopleHighlight(call)).toEqual({ kind: "buildings", buildings: [building] });
+    expect(toolCallToCanvasView(call)?.paneId).toBe("map");
+    expect(extractPeopleHighlight({ ...call, result: { people: [{ name: "C" }] } })).toBeNull();
+    expect(extractPeopleHighlight({ ...call, result: { status: "error", message: "none" } })).toBeNull();
   });
 });

@@ -34,6 +34,8 @@ Users sign in with username and password. The system issues a JWT (HS256, 7-day 
 
 When `AUTH_ENABLED=false` (development), all requests bypass auth with a default user.
 
+Each signed-in user can save a student profile (program, year, domestic/international) from Settings. It is stored in `user_profiles` and appended to the agent's system prompt as defaults for tuition, cost, and program tools, so the agent stops asking for them.
+
 ### Session Model
 
 - Each conversation is a "session" with a UUID identifier
@@ -79,7 +81,7 @@ The app has three zones, left to right:
 
 ## Capabilities and Constraints
 
-### Agent Tools (20 tools across 12 modules)
+### Agent Tools (22 tools across 14 modules)
 
 | Module     | Tools                                                          | Output                                                      |
 | ---------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -95,6 +97,10 @@ The app has three zones, left to right:
 | parking    | `find_parking`                                                 | Parking lot availability                                    |
 | pages      | `search_ubc_pages`                                             | UBC website content search                                  |
 | grades     | `get_grades`, `search_grades`                                  | Grade distributions by course/instructor                    |
+| people     | `find_person`                                                  | Faculty/staff directory entries, office building location   |
+| food       | `find_food`                                                    | UBC Food Services outlets, meal-plan acceptance             |
+
+The Calendar tool pane shows key dates, holidays, and campus events (the same `events` index `search_events` queries) for the visible month and the two after it, one entry per day an event runs. A header legend distinguishes academic dates, holidays, and campus events.
 
 ### Map Capabilities
 

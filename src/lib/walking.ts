@@ -93,11 +93,11 @@ export function extractBuildingHighlight(call: ToolCall): BuildingsHighlight | n
 }
 
 /**
- * POI pins from a healthy find_places call: every result with a name and
+ * POI pins from a healthy find_places or find_food call: every result with a name and
  * coordinates becomes a map marker.
  */
 export function extractPlacesHighlight(call: ToolCall): PlacesHighlight | null {
-  if (call.name !== "find_places" || isToolError(call.result)) return null;
+  if ((call.name !== "find_places" && call.name !== "find_food") || isToolError(call.result)) return null;
   const result = call.result as { near_building?: unknown; places?: unknown } | undefined;
   if (!Array.isArray(result?.places)) return null;
   const places: PlacePin[] = [];
@@ -146,13 +146,35 @@ export function extractParkingHighlight(call: ToolCall): PlacesHighlight | null 
   return { kind: "places", near, places };
 }
 
+/**
+ * Office buildings from a healthy find_person call: each distinct resolved
+ * office building becomes a highlighted footprint. People without a resolved
+ * building contribute nothing.
+ */
+export function extractPeopleHighlight(call: ToolCall): BuildingsHighlight | null {
+  if (call.name !== "find_person" || isToolError(call.result)) return null;
+  const result = call.result as { people?: unknown } | undefined;
+  if (!Array.isArray(result?.people)) return null;
+  const byCode = new Map<string, BuildingRef>();
+  for (const person of result.people as { building?: Partial<BuildingRef> }[]) {
+    const b = person?.building;
+    if (!b || typeof b.code !== "string" || !b.code || typeof b.lat !== "number" || typeof b.lon !== "number") continue;
+    if (!Number.isFinite(b.lat) || !Number.isFinite(b.lon)) continue;
+    if (b.lat < -90 || b.lat > 90 || b.lon < -180 || b.lon > 180) continue;
+    if (!byCode.has(b.code)) byCode.set(b.code, { code: b.code, name: b.name || b.code, lat: b.lat, lon: b.lon });
+  }
+  if (byCode.size === 0) return null;
+  return { kind: "buildings", buildings: [...byCode.values()] };
+}
+
 /** Tries every map-driving extractor; only one matches a given call name. */
 function extractMapHighlight(call: ToolCall): MapHighlight | null {
   return (
     extractWalkingHighlight(call) ??
     extractPlacesHighlight(call) ??
     extractBuildingHighlight(call) ??
-    extractParkingHighlight(call)
+    extractParkingHighlight(call) ??
+    extractPeopleHighlight(call)
   );
 }
 

@@ -29,6 +29,7 @@ const ICON_MAP = {
   fullscreen: "fullscreen-2-line",
   route: "route-line",
   exit: "exit-line",
+  settings: "settings-3-line",
   wifiOff: "wifi-off-line",
   moon: "moon-line",
   sun: "sun-line",
@@ -45,6 +46,17 @@ const ICON_MAP = {
   lock: "lock-line",
   zoomIn: "zoom-in-line",
   zoomOut: "zoom-out-line",
+  mortarboard: "mortarboard-line",
+  undo: "back-line",
+  redo: "forward-line",
+  trash: "delete-2-line",
+  eyeOff: "eye-close-line",
+  info: "information-line",
+  sparkles: "sparkles-line",
+  square: "square-line",
+  checkbox: "checkbox-line",
+  circle: "round-line",
+  file: "file-line",
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

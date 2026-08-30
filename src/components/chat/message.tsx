@@ -114,18 +114,53 @@ function AssistantMarkdown({ content, citations }: { content: string; citations?
 
 const messageSpring = { type: "spring" as const, stiffness: 400, damping: 25 };
 
+// ---- Ask-AI attachments ----
+//
+// A pane's Ask AI action can attach data (the degree plan, a prereq tree, the
+// calendar). The agent just sees appended text, so the attachment lives INSIDE
+// the message content wrapped in an <attachment> tag — one string end to end,
+// no schema or server changes, and history reloads reproduce the same bubbles.
+// The UI splits the content back apart: prompt as the speech bubble, the
+// attachment as a file chip below it.
+
+const ATTACHMENT_RE = /\n*<attachment title="([^"\n]*)">\n([\s\S]*)\n<\/attachment>\s*$/;
+
+/** Prompt + wrapped attachment → the single content string sent to the agent. */
+export function buildUserContent(text: string, attachment?: { title: string; content: string }): string {
+  if (!attachment) return text;
+  const title = attachment.title.replace(/["\n]/g, "'");
+  return `${text}\n\n<attachment title="${title}">\n${attachment.content}\n</attachment>`;
+}
+
+/** Inverse of {@link buildUserContent} for display: the spoken prompt and the
+ *  attachment's title (null when the message has no attachment). */
+export function splitUserContent(content: string): { text: string; attachmentTitle: string | null } {
+  const m = content.match(ATTACHMENT_RE);
+  if (!m || m.index === undefined) return { text: content, attachmentTitle: null };
+  return { text: content.slice(0, m.index).trimEnd(), attachmentTitle: m[1] };
+}
+
 export const UserMessage = memo(function UserMessage({ message }: { message: DisplayMessage }) {
   const reduce = useReducedMotion();
+  const { text, attachmentTitle } = splitUserContent(message.content);
   return (
     <motion.div
-      className="flex justify-end"
+      className="flex flex-col items-end gap-1.5"
       initial={reduce ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : messageSpring}
     >
       <div className="bg-accent-subtle text-on-surface max-w-[85%] min-w-0 rounded-[16px_16px_5px_16px] px-4 py-3 text-sm leading-relaxed break-words whitespace-pre-wrap">
-        {message.content}
+        {text}
       </div>
+      {attachmentTitle && (
+        <div className="border-border bg-surface flex max-w-[85%] items-center gap-2.5 rounded-[16px_5px_16px_16px] border px-3 py-2">
+          <span className="bg-accent-subtle text-primary grid size-8 shrink-0 place-items-center rounded-lg">
+            <Icon name="file" size={16} />
+          </span>
+          <span className="text-on-surface min-w-0 truncate text-sm font-medium">{attachmentTitle}</span>
+        </div>
+      )}
     </motion.div>
   );
 });

@@ -8,6 +8,7 @@ import { serverError } from "../http";
 export type CourseIndexEntry = {
   code: string;
   title: string;
+  credits: number | null;
   prerequisite: string | null;
   corequisite: string | null;
 };
@@ -25,13 +26,15 @@ async function loadIndex(): Promise<CourseIndexEntry[]> {
     const res = await index.getDocuments<{
       code: string;
       title: string;
+      credits: number | null;
       prerequisite: string | null;
       corequisite: string | null;
-    }>({ fields: ["code", "title", "prerequisite", "corequisite"], limit: PAGE, offset });
+    }>({ fields: ["code", "title", "credits", "prerequisite", "corequisite"], limit: PAGE, offset });
     for (const doc of res.results) {
       out.push({
         code: doc.code.replace(/_V(?=\s)/, ""),
         title: doc.title,
+        credits: doc.credits ?? null,
         prerequisite: doc.prerequisite ?? null,
         corequisite: doc.corequisite ?? null,
       });

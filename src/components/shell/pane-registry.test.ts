@@ -14,8 +14,14 @@ vi.mock("@/src/components/map/map-panel", () => ({
 const { PANE_REGISTRY, PANE_BY_ID } = await import("./pane-registry");
 
 describe("PANE_REGISTRY — composition (REQ-19.5, design.md §G)", () => {
-  it("registers the four panes in canonical order: map, course-lookup, prereq-tree, calendar", () => {
-    expect(PANE_REGISTRY.map((e) => e.id)).toEqual(["map", "course-lookup", "prereq-tree", "calendar"]);
+  it("registers the panes in canonical order: map, course-lookup, prereq-tree, degree-planner, calendar", () => {
+    expect(PANE_REGISTRY.map((e) => e.id)).toEqual([
+      "map",
+      "course-lookup",
+      "prereq-tree",
+      "degree-planner",
+      "calendar",
+    ]);
   });
 
   it("every entry carries an id, label, icon, Component, and defaultState", () => {
@@ -29,12 +35,11 @@ describe("PANE_REGISTRY — composition (REQ-19.5, design.md §G)", () => {
   });
 
   it("prereq-tree default state starts with an empty root and empty selections", () => {
-    expect(PANE_BY_ID["prereq-tree"].defaultState).toEqual({ root: "", selections: {} });
+    expect(PANE_BY_ID["prereq-tree"].defaultState).toEqual({ root: "", query: "", selections: {}, softDisabled: {} });
   });
 
-  it("calendar default state carries academic + holiday kinds and a current-month cursor", () => {
-    const { cursor, kinds } = PANE_BY_ID.calendar.defaultState as { cursor: string; kinds: string[] };
-    expect(kinds).toEqual(["academic", "holiday"]);
+  it("calendar default state carries a current-month cursor", () => {
+    const { cursor } = PANE_BY_ID.calendar.defaultState as { cursor: string };
     expect(cursor).toMatch(/^\d{4}-\d{2}$/);
   });
 

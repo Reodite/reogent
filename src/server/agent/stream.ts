@@ -1,5 +1,6 @@
 import type { CitationSeed } from "@/src/server/citations/extractors";
 import type { Citation } from "@/src/shared/citations/citation";
+import type { StudentProfile } from "@/src/shared/profile";
 import { allocateCitations } from "../citations/allocator";
 import { CITATION_EXTRACTORS } from "../citations/extractors";
 import { stampUsed } from "../citations/stamp-used";
@@ -31,6 +32,8 @@ type StreamEvent =
 interface StreamAgentDeps {
   modules: DatasetModule[];
   search: SearchClient;
+  /** The caller's saved profile; null or absent means no defaults in the prompt. */
+  profile?: StudentProfile | null;
 }
 
 export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDeps): AsyncGenerator<StreamEvent> {
@@ -81,7 +84,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
 
     for await (const event of converseStream({
       messages: convo,
-      system: systemPrompt(new Date(), allocateCitations(pendingCitations)),
+      system: systemPrompt(new Date(), allocateCitations(pendingCitations), deps.profile ?? null),
       toolSpecs: budgetExceeded ? [] : toolSpecs,
       forceToolUse: i === 0 && !isGreeting,
     })) {

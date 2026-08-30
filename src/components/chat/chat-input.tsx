@@ -3,9 +3,13 @@
 // The recessed chat composer. Enter sends; Shift+Enter adds a line;
 // Cmd/Ctrl+Enter always sends. Submit locks while a request is in flight.
 import { Icon } from "@/src/components/icons";
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 
 const PLACEHOLDER = "Ask about courses, routes, tuition...";
+// Unsent composer text survives tab swaps and reloads; cleared on send.
+// ponytail: one global draft, not per-conversation — split the key by session
+// id if per-chat drafts ever matter.
+const DRAFT_KEY = "reodite.chat-draft";
 
 export interface ChatInputHandle {
   focus: () => void;
@@ -35,6 +39,33 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     node.style.height = "auto";
     node.style.height = `${Math.min(node.scrollHeight, 96)}px`;
   }, []);
+
+  // Restore the draft after mount (effect, not initializer, so SSR markup
+  // matches); saves skip the mount commit so the pre-restore "" doesn't wipe it.
+  useEffect(() => {
+    try {
+      const draft = window.localStorage.getItem(DRAFT_KEY);
+      if (draft) {
+        setValue(draft);
+        requestAnimationFrame(autosize);
+      }
+    } catch {
+      // Storage unavailable — start empty.
+    }
+  }, [autosize]);
+  const skipDraftSave = useRef(true);
+  useEffect(() => {
+    if (skipDraftSave.current) {
+      skipDraftSave.current = false;
+      return;
+    }
+    try {
+      if (value) window.localStorage.setItem(DRAFT_KEY, value);
+      else window.localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // Storage unavailable — draft just won't persist.
+    }
+  }, [value]);
 
   const canSend = !disabled && value.trim().length > 0;
 

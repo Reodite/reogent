@@ -33,6 +33,9 @@ vi.mock("reactflow", () => ({
   ReactFlowProvider: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   useReactFlow: () => ({ setViewport: vi.fn(), zoomIn: vi.fn(), zoomOut: vi.fn(), fitView: vi.fn() }),
   useStoreApi: () => ({ getState: () => ({ width: 0, height: 0 }) }),
+  useNodesInitialized: () => true,
+  getViewportForBounds: () => ({ x: 0, y: 0, zoom: 1 }),
+  getNodesBounds: () => ({ x: 0, y: 0, width: 0, height: 0 }),
   Handle: () => null,
   Position: { Left: "left", Right: "right", Top: "top", Bottom: "bottom" },
   useStore: () => 1,
@@ -107,7 +110,7 @@ describe("PrereqTreePane", () => {
     fireEvent.contextMenu(screen.getByTestId("rf-canvas"));
     const menu = await screen.findByRole("menu");
     expect(menu.textContent).toContain("Open in Course Finder");
-    expect(menu.textContent).toContain("Ask AI about CPSC 110");
+    expect(menu.textContent).toContain("Ask AI about this tree");
     const schedule = screen.getByText("Add to Schedule").closest("button");
     expect(schedule?.disabled).toBe(true);
     fireEvent.keyDown(document, { key: "Escape" });
