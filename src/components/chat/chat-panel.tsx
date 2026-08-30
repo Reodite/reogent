@@ -593,7 +593,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
 
   return (
     <section aria-label="Conversation" className="neu-panel flex min-h-0 w-full flex-col overflow-hidden rounded-2xl">
-      <div className="flex shrink-0 items-center justify-between bg-transparent px-4 py-3">
+      <div className="flex h-15 shrink-0 items-center justify-between bg-transparent px-4">
         <h1 className="text-on-surface min-w-0 truncate text-base font-medium tracking-[-0.01em]">{sessionTitle}</h1>
       </div>
 

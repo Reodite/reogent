@@ -51,7 +51,7 @@ export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | nul
 
 function AnswerCanvasTitlebar({ label, onClose }: { label: string; onClose: () => void }) {
   return (
-    <header className="flex shrink-0 items-center gap-2 px-4 py-3">
+    <header className="flex h-15 shrink-0 items-center gap-2 px-4">
       <span className="bg-surface-container-low text-primary grid size-7 shrink-0 place-items-center rounded-lg">
         <Icon name="map" size={16} />
       </span>

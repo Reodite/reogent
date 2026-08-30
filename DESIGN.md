@@ -268,7 +268,7 @@ Flexbox with spring-driven width animations:
 
 **Mobile (<640px):** Single column. Chat full-width. Sidebar is a slide-over drawer with `bg-scrim` backdrop at z-40/z-50. Map becomes an 80vh bottom sheet (`fixed inset-x-0 bottom-0`) with touch drag-to-dismiss (20% of height threshold). Safe-area inset padding via `env(safe-area-inset-bottom)`.
 
-**Spacing rhythm:** 8px grid with 6px sub-grid for tight icon gaps. Common values: `gap-1.5` (6px icon-to-label), `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px inter-panel), `gap-6` (24px message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) workspace gaps around all panels, `px-4 py-3` (16/12px) header sections, `p-4 sm:p-6` (16/24px) chat message well. Header height (toast/header sections): `px-4 py-3`. Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
+**Spacing rhythm:** 8px grid with 6px sub-grid for tight icon gaps. Common values: `gap-1.5` (6px icon-to-label), `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px inter-panel), `gap-6` (24px message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) workspace gaps around all panels, `px-4 py-3` (16/12px) header sections, `p-4 sm:p-6` (16/24px) chat message well. Panel and section headers (chat title, answer-canvas titlebar, sidebar section rows) share one height: `h-15` (60px), `items-center px-4` on panels, `px-2` inside the sidebar. Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
 
 **Canvas treatment:** `app-shell-canvas` sets flat `var(--background)` color. No gradients in the production app shell.
 

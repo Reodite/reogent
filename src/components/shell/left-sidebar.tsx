@@ -130,7 +130,7 @@ export function LeftSidebar({
       className={`neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl pt-3 pb-2 ${collapsed ? "items-center px-0" : "px-2"}`}
     >
       <BrandHeader collapsed={collapsed} />
-      <div className={`flex h-9 items-center pb-2 ${collapsed ? "justify-center px-0" : "gap-3 px-2"}`}>
+      <div className={`flex h-15 items-center ${collapsed ? "justify-center px-0" : "gap-3 px-2"}`}>
         <CollapseExpandButton collapsed={collapsed} onCollapse={onCollapse} onExpand={onExpand} label={label} />
         <span
           className={`text-on-surface text-base leading-tight font-medium tracking-[-0.02em] whitespace-nowrap transition-opacity duration-300 ${

@@ -330,7 +330,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
   return (
     <div className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl p-2">
       <BrandHeader />
-      <div className="flex items-center gap-3 px-2 pt-1 pb-2">
+      <div className="flex h-15 items-center gap-3 px-2">
         {onCollapse && (
           <button
             id="desktop-session-collapse"
