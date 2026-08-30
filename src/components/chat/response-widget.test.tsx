@@ -52,11 +52,11 @@ function Capture() {
   return null;
 }
 
-function renderWidget(call: ToolCall) {
+function renderWidget(call: ToolCall, callKey?: string) {
   shellRef.current = null;
   return render(
     <ChatShellProvider>
-      <ResponseWidget call={call} />
+      <ResponseWidget call={call} callKey={callKey} />
       <Capture />
     </ChatShellProvider>,
   );
@@ -108,14 +108,23 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(widget.getAttribute("tabindex")).toBeNull();
   });
 
-  it("the active ring reflects the current workspace view", () => {
-    const { container } = renderWidget(keyDatesCall);
+  it("the active ring follows the clicked chip only", () => {
+    const { container } = renderWidget(keyDatesCall, "m1:tc-0");
     const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
     expect(widget.getAttribute("data-active")).toBeNull();
     act(() => {
       fireEvent.click(widget);
     });
     expect(widget.getAttribute("data-active")).not.toBeNull();
+  });
+
+  it("a chip with the same canvas data stays unhighlighted when another chip activated", () => {
+    const { container } = renderWidget(keyDatesCall, "m1:tc-2");
+    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
+    act(() => {
+      shellRef.current?.activateCanvasView(keyDatesCall, "m1:tc-0");
+    });
+    expect(widget.getAttribute("data-active")).toBeNull();
   });
 
   it("Enter and Space keys activate a mapped widget, and clicking again keeps it active (no toggle-off)", () => {

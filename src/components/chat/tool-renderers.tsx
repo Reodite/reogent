@@ -5,7 +5,6 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { GradeDistributionChart } from "@/src/components/course-lookup/grade-distribution-chart";
 import { Icon } from "@/src/components/icons";
-import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { ToolResultCard } from "@/src/components/ui/tool-result-card";
 import {
@@ -656,25 +655,20 @@ export const renderers: Record<string, ToolCallRenderer> = {
   show_widget: ShowWidgetRenderer,
 };
 
-/** True when a tool call's canvas view matches the current workspace view. The
- *  mapped states are small serializable objects, so structural stringify is the
- *  cheap correct equality for flat {highlight}/{code}/{root,selections}/{cursor,kinds}. */
-function canvasViewsEqual(a: CanvasView, b: CanvasView): boolean {
-  if (a.paneId !== b.paneId) return false;
-  return JSON.stringify(a.state) === JSON.stringify(b.state);
-}
-
 /**
  * One tool call in the activity stack. Internal tools render their compact
  * badge only; the show_widget tool renders its data widget as the answer. A
  * mapped widget is clickable and loads its canvas view on click/Enter.
+ * `callKey` (message id + condensed block index) identifies this chip to the
+ * shell so the active highlight follows the clicked chip, not every chip
+ * showing the same data.
  */
-export function ResponseWidget({ call }: { call: ToolCall }) {
+export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: string }) {
   const reduce = useReducedMotion();
-  const { workspaceView, activateCanvasView, setUserDismissedPane, setRightPaneCollapsed } = useChatShell();
+  const { activeCallKey, activateCanvasView, setUserDismissedPane, setRightPaneCollapsed } = useChatShell();
   const view = useMemo(() => toolCallToCanvasView(call), [call]);
   const mapped = view !== null;
-  const active = mapped && workspaceView !== null && canvasViewsEqual(view, workspaceView);
+  const active = mapped && callKey !== undefined && activeCallKey === callKey;
   const Renderer = renderers[call.name];
   const widget = Renderer !== undefined;
   const loaded = !isToolError(call.result) && call.result !== undefined;
@@ -682,7 +676,7 @@ export function ResponseWidget({ call }: { call: ToolCall }) {
   const toggle = () => {
     setUserDismissedPane(false);
     setRightPaneCollapsed(false);
-    activateCanvasView(call);
+    activateCanvasView(call, callKey);
   };
 
   if (!widget) return <ToolBadge call={call} mapped={mapped} active={active} reduce={reduce} onToggle={toggle} />;

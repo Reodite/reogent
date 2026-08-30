@@ -7,6 +7,7 @@ import { ChatInput, type ChatInputHandle } from "@/src/components/chat/chat-inpu
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import {
   AssistantMessage,
+  condenseActivity,
   TypingIndicator,
   UserMessage,
   type ActivityBlock,
@@ -15,7 +16,7 @@ import {
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
-import { ApiError, type ChatMessage } from "@/src/lib/api-types";
+import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -470,17 +471,28 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           });
           // Drive the canvas to the last mapped tool call; leave the canvas
           // as-is when the answer has no mapped widget (REQ-3.6: no auto-close).
-          const mapped = activity
-            .filter((b) => b.type === "tool_call")
-            .map((b) => ({ name: b.content, input: b.input ?? {}, result: b.result }))
-            .reverse()
-            .find((c) => toolCallToCanvasView(c));
-          if (mapped) {
+          // The chip key (`${streamId}:tc-${condensedIdx}`) marks exactly that
+          // chip as active in the message list.
+          const condensedBlocks = condenseActivity(activity);
+          const toCall = (b: ActivityBlock) => ({ name: b.content, input: b.input ?? {}, result: b.result });
+          let mappedCall: ToolCall | null = null;
+          let mappedKey: string | undefined;
+          for (let i = condensedBlocks.length - 1; i >= 0; i--) {
+            const b = condensedBlocks[i];
+            if (b.type !== "tool_call") continue;
+            const c = toCall(b);
+            if (toolCallToCanvasView(c)) {
+              mappedCall = c;
+              mappedKey = `${streamId}:tc-${i}`;
+              break;
+            }
+          }
+          if (mappedCall) {
             if (userDismissedPane) {
-              const view = toolCallToCanvasView(mapped);
+              const view = toolCallToCanvasView(mappedCall);
               if (view) setWorkspaceView(view);
             } else {
-              activateCanvasView(mapped);
+              activateCanvasView(mappedCall, mappedKey);
             }
           }
           announce("New response from assistant");
