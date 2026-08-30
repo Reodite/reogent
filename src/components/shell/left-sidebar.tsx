@@ -77,7 +77,7 @@ function CollapseExpandButton({
       onClick={toggle}
       aria-label={collapsed ? "Expand sidebar" : `Collapse ${label.toLowerCase()}`}
       title={collapsed ? "Expand sidebar" : `Collapse ${label.toLowerCase()}`}
-      className="focus-visible:ring-primary/40 neu-panel text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+      className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
     >
       <span
         className="inline-flex transition-transform duration-300 ease-[var(--neu-ease)]"
@@ -111,7 +111,7 @@ export function LeftSidebar({
   if (mode === "ai") {
     if (collapsed) {
       return (
-        <div className="neu-panel flex h-full w-full flex-col items-center overflow-hidden rounded-2xl pt-3 pb-2">
+        <div className="neu-panel flex h-full w-full flex-col items-center overflow-hidden rounded-2xl pt-0 pb-2">
           <BrandHeader collapsed />
           <div className="flex min-h-0 flex-1 flex-col items-center justify-between">
             <CollapseExpandButton collapsed onExpand={onExpand} label="Sessions" />
@@ -127,29 +127,29 @@ export function LeftSidebar({
 
   return (
     <div
-      className={`neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl pt-3 pb-2 ${collapsed ? "items-center px-0" : "px-2"}`}
+      className={`neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl pt-0 pb-2 ${collapsed ? "items-center px-0" : "px-2"}`}
     >
-      <BrandHeader collapsed={collapsed} />
-      <div className={`flex h-15 items-center ${collapsed ? "justify-center px-0" : "gap-3 px-2"}`}>
-        <CollapseExpandButton collapsed={collapsed} onCollapse={onCollapse} onExpand={onExpand} label={label} />
-        <span
-          className={`text-on-surface text-base leading-tight font-medium tracking-[-0.02em] whitespace-nowrap transition-opacity duration-300 ${
-            collapsed ? "w-0 overflow-hidden opacity-0" : "flex-1 opacity-100"
-          }`}
-        >
-          {label}
-        </span>
-        {!collapsed && onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={`Close ${label.toLowerCase()}`}
-            className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-          >
-            <Icon name="close" size={18} />
-          </button>
-        )}
-      </div>
+      <BrandHeader
+        collapsed={collapsed}
+        trailing={
+          !collapsed ? (
+            <>
+              <CollapseExpandButton collapsed={false} onCollapse={onCollapse} label={label} />
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label={`Close ${label.toLowerCase()}`}
+                  className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+                >
+                  <Icon name="close" size={18} />
+                </button>
+              )}
+            </>
+          ) : undefined
+        }
+      />
+      {collapsed && <CollapseExpandButton collapsed onExpand={onExpand} label="Sidebar" />}
       {mode === "tools" ? <ToolList collapsed={collapsed} /> : <UnitySidebar collapsed={collapsed} />}
       {footer}
     </div>

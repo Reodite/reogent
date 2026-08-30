@@ -256,10 +256,12 @@ interface SessionSidebarProps {
   footer?: ReactNode;
 }
 
-/** Reodite brand at the top of the sidebar. The collapsed rail shows only the logo tile. */
-export function BrandHeader({ collapsed = false }: { collapsed?: boolean }) {
+/** Reodite brand header: the sidebar's 60px top row, aligned with the chat and
+ *  data-panel header band. Collapsed rail shows only the logo tile. `trailing`
+ *  carries row actions (collapse chevron on desktop, close in the mobile drawer). */
+export function BrandHeader({ collapsed = false, trailing }: { collapsed?: boolean; trailing?: ReactNode }) {
   return (
-    <div className={`flex items-center pb-2 ${collapsed ? "justify-center" : "px-2"}`}>
+    <div className={`flex h-15 items-center gap-2 ${collapsed ? "justify-center" : "justify-between px-2"}`}>
       <Link
         href="/"
         aria-label="Go to Reodite homepage"
@@ -276,6 +278,7 @@ export function BrandHeader({ collapsed = false }: { collapsed?: boolean }) {
           Reodite
         </span>
       </Link>
+      {trailing && <div className="flex items-center gap-1">{trailing}</div>}
     </div>
   );
 }
@@ -328,35 +331,35 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
   }
 
   return (
-    <div className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl p-2">
-      <BrandHeader />
-      <div className="flex h-15 items-center gap-3 px-2">
-        {onCollapse && (
-          <button
-            id="desktop-session-collapse"
-            type="button"
-            onClick={onCollapse}
-            aria-label="Collapse session history"
-            title="Collapse sessions"
-            className="focus-visible:ring-primary/40 neu-panel text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-          >
-            <Icon name="left" size={18} />
-          </button>
-        )}
-        <span className="text-on-surface min-w-0 flex-1 text-base leading-tight font-medium tracking-[-0.02em]">
-          Sessions
-        </span>
-        {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close sessions"
-            className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-          >
-            <Icon name="close" size={18} />
-          </button>
-        )}
-      </div>
+    <div className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl p-2 pt-0">
+      <BrandHeader
+        trailing={
+          <>
+            {onCollapse && (
+              <button
+                id="desktop-session-collapse"
+                type="button"
+                onClick={onCollapse}
+                aria-label="Collapse session history"
+                title="Collapse sessions"
+                className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+              >
+                <Icon name="left" size={18} />
+              </button>
+            )}
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close sessions"
+                className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+              >
+                <Icon name="close" size={18} />
+              </button>
+            )}
+          </>
+        }
+      />
 
       <div className="pb-3">
         <button
