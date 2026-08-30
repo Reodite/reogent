@@ -361,12 +361,12 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 ### Buttons
 
-State changes through shadow transformation + micro-translate.
+State changes through shadow transformation + press scale. Buttons never translate on hover or active; the surface stays put and only the shadow, filter, or scale changes.
 
-- **Primary** (`.neu-primary-button`): `bg-primary text-on-primary rounded-xl h-9 px-4 text-sm font-medium`. Shadow: colored glow underneath (primary at 10%) + highlight behind. Hover: brightness(1.03), translateY(-1px), slightly expanded glow. Active: inset shadow (dark + light), translateY(1px), scale(0.985).
+- **Primary** (`.neu-primary-button`): `bg-primary text-on-primary rounded-xl h-9 px-4 text-sm font-medium`. Shadow: colored glow underneath (primary at 10%) + highlight behind. Hover: brightness(1.03), slightly expanded glow. Active: inset shadow (dark + light), scale(0.985).
 - **Primary Large**: Same as primary but `h-12 px-8 text-base`. Used on landing CTAs and auth submit.
 - **Primary Prominent**: `h-10 px-4` — slightly taller than standard for emphasis in error recovery states. Same shadow recipe.
-- **Secondary** (`.neu-button`): `bg-surface text-on-surface rounded-xl h-9 px-4 border-subtle text-sm font-medium`. Shadow: surface shadow. Hover: expanded shadow, translateY(-1px). Active: inset shadow, translateY(1px), scale(0.98).
+- **Secondary** (`.neu-button`): `bg-surface text-on-surface rounded-xl h-9 px-4 border-subtle text-sm font-medium`. Shadow: surface shadow. Hover: expanded shadow. Active: inset shadow, scale(0.98).
 - **Secondary Compact**: `h-9 px-3` — reduced horizontal padding for tight layouts (retry buttons, inline actions).
 - **Ghost**: `bg-transparent text-on-surface-variant rounded-xl`. No shadow at rest (the one exception to whisper dimension). Hover: subtle surface background appears. Landing sign-in link uses `text-on-surface-variant hover:text-on-surface` for a softer secondary feel.
 - **Icon Button**: `size-9` (36px) standard. Uses `neu-button` or `neu-panel` shadow. Contains centered icon.
@@ -469,7 +469,7 @@ Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + op
 - **Tool badge stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.05`. Snappy, minimal overshoot.
 - **Session list stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.03` capped at 0.3s total.
 - **Suggestion pills / error banners**: CSS `animate-message-in` (200ms ease-out, opacity + translateY) with `animationDelay` for stagger. CSS rather than spring because staggered delay is cleaner for static lists.
-- **Button states**: translateY(-1px) on hover, translateY(1px) + scale(0.98) on press. 150ms ease-out.
+- **Button states**: shadow change on hover, inset shadow + scale(0.98) on press. No translate — buttons never shift position on hover or active. 150ms ease-out.
 - **Menu entrance**: scale(0.97) + opacity(0) + blur(2px) + translateY(-6px) → scale(1) + opacity(1) + blur(0) + translateY(0). Opacity/filter: 180ms ease-out. Transform: 240ms `--neu-ease`.
 - **Details expand**: opacity 0→1, translateY(-4px→0), 200ms `--neu-ease`.
 - **Sidebar/map content crossfade**: CSS opacity transitions (200ms) with 75ms delay on reveal, immediate on hide. Coordinates with the spring settle.

@@ -470,13 +470,12 @@ html.vt-active *::after {
   box-shadow:
     4px 4px 10px var(--neu-shadow),
     -2px -2px 7px var(--neu-highlight);
-  transform: translateY(-1px);
 }
 
 .neu-button:active,
 .neu-button[aria-pressed="true"] {
   box-shadow: var(--neu-inset-shadow);
-  transform: translateY(1px) scale(0.98);
+  transform: scale(0.98);
 }
 
 .neu-primary-button {
@@ -494,14 +493,13 @@ html.vt-active *::after {
     0 4px 10px rgba(74, 78, 122, 0.12),
     -2px -2px 7px var(--neu-highlight);
   filter: brightness(1.03);
-  transform: translateY(-1px);
 }
 
 .neu-primary-button:active {
   box-shadow:
     inset 2px 2px 5px rgba(0, 0, 0, 0.1),
     inset -1px -1px 4px rgba(255, 255, 255, 0.08);
-  transform: translateY(1px) scale(0.985);
+  transform: scale(0.985);
 }
 
 .neu-button:focus-visible,
