@@ -704,8 +704,8 @@ export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: st
       }
       className={
         mapped
-          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 min-h-[44px] cursor-pointer rounded-lg transition-colors duration-150 outline-none focus-visible:ring-2 ${
-              active ? "bg-accent-subtle ring-primary ring-2" : ""
+          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 min-h-[44px] cursor-pointer rounded-lg transition-[background-color,box-shadow] duration-150 outline-none focus-visible:ring-2 ${
+              active ? "bg-accent-subtle ring-primary ring-2" : "hover:ring-primary/40 hover:ring-1"
             }`
           : "rounded-lg"
       }
