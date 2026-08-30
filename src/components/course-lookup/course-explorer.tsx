@@ -4,6 +4,7 @@ import { averageColorClass } from "@/src/components/course-lookup/grade-distribu
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { CourseDoc } from "@/src/lib/api-types";
+import { usePersistentState } from "@/src/lib/use-persistent-state";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
 import { useCallback, useEffect, useState } from "react";
 
@@ -46,15 +47,17 @@ const controlCls =
 
 export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void }) {
   const api = useApi();
-  const [session, setSession] = useState<string>(defaultSession());
-  const [sort, setSort] = useState<string>("students_desc");
-  const [queryInput, setQueryInput] = useState("");
+  // Filters persist in the browser so swapping tabs/pages (or reloading)
+  // brings the browse view back exactly as the user left it.
+  const [session, setSession] = usePersistentState<string>("reodite.explorer.session", defaultSession());
+  const [sort, setSort] = usePersistentState<string>("reodite.explorer.sort", "students_desc");
+  const [queryInput, setQueryInput] = usePersistentState("reodite.explorer.query", "");
   const [query, setQuery] = useState("");
-  const [level, setLevel] = useState<number | undefined>(undefined);
-  const [faculty, setFaculty] = useState("");
-  const [credits, setCredits] = useState<number | undefined>(undefined);
-  const [avgBand, setAvgBand] = useState<string>("");
-  const [studentBand, setStudentBand] = useState<string>("");
+  const [level, setLevel] = usePersistentState<number | undefined>("reodite.explorer.level", undefined);
+  const [faculty, setFaculty] = usePersistentState("reodite.explorer.faculty", "");
+  const [credits, setCredits] = usePersistentState<number | undefined>("reodite.explorer.credits", undefined);
+  const [avgBand, setAvgBand] = usePersistentState<string>("reodite.explorer.avgBand", "");
+  const [studentBand, setStudentBand] = usePersistentState<string>("reodite.explorer.studentBand", "");
   const [courses, setCourses] = useState<ExplorerCourse[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

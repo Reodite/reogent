@@ -18,6 +18,7 @@ import { BuildingPopup, type SelectedBuilding } from "@/src/components/map/build
 import { useApi, useTheme, type ResolvedTheme } from "@/src/components/providers";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
 import { featureCentroid, featuresBounds, findBuilding, type BuildingFeature, type LngLat } from "@/src/lib/geo";
+import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import type { FeatureCollection } from "geojson";
 import { useEffect, useRef, useState } from "react";
 
@@ -285,6 +286,23 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   const [picked, setPicked] = useState<PickedBuilding | null>(null);
   /** Building whose details popup is open (click/tap on a footprint). */
   const [selected, setSelected] = useState<SelectedBuilding | null>(null);
+
+  // Restore the last-selected building (its popup carries the rooms/POIs the
+  // user was reading) after mount — effect, not initializer, so SSR markup
+  // matches the first client render. Saves skip the mount commit so the
+  // pre-restore `null` never wipes the cached value.
+  useEffect(() => {
+    const cached = getCachedPaneState("map")?.selected as SelectedBuilding | null | undefined;
+    if (cached && typeof cached === "object" && typeof cached.code === "string") setSelected(cached);
+  }, []);
+  const skipSelectedSave = useRef(true);
+  useEffect(() => {
+    if (skipSelectedSave.current) {
+      skipSelectedSave.current = false;
+      return;
+    }
+    cachePaneState("map", { selected });
+  }, [selected]);
   /** Pedestrian-network polyline for the current route highlight. */
   const [routePath, setRoutePath] = useState<{ key: string; path: LngLat[] } | null>(null);
   const [drawProgress, setDrawProgress] = useState(1);
@@ -318,13 +336,17 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         const initialTheme: ResolvedTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
         appliedStyleRef.current = initialTheme;
         maplibre.setWorkerUrl(maplibreWorkerUrl);
+        // Reopen at the camera the user left; falls back to the campus default.
+        // A highlight fit (route/buildings) still overrides after load.
+        const cachedCamera = getCachedPaneState("map")?.camera as
+          { center: [number, number]; zoom: number; pitch: number; bearing: number } | undefined;
         const map = new maplibre.Map({
           container,
           style: STYLE_URLS[initialTheme],
-          center: INITIAL_VIEW.center,
-          zoom: INITIAL_VIEW.zoom,
-          pitch: INITIAL_VIEW.pitch,
-          bearing: INITIAL_VIEW.bearing,
+          center: cachedCamera?.center ?? INITIAL_VIEW.center,
+          zoom: cachedCamera?.zoom ?? INITIAL_VIEW.zoom,
+          pitch: cachedCamera?.pitch ?? INITIAL_VIEW.pitch,
+          bearing: cachedCamera?.bearing ?? INITIAL_VIEW.bearing,
           minZoom: 13,
           maxZoom: 18,
           attributionControl: false,
@@ -477,6 +499,20 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         // Constrain zoom/keyboard-induced pan
         map.on("moveend", () => {
           if (!dragging && !animating) snapBack();
+        });
+
+        // Persist the camera so the map reopens where the user left it.
+        // Debounced: the rubber-band drag emits moveend per jumpTo frame.
+        let cameraSaveTimer: ReturnType<typeof setTimeout> | null = null;
+        map.on("moveend", () => {
+          if (cameraSaveTimer) clearTimeout(cameraSaveTimer);
+          cameraSaveTimer = setTimeout(() => {
+            if (disposed) return; // map may already be removed
+            const c = map.getCenter();
+            cachePaneState("map", {
+              camera: { center: [c.lng, c.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() },
+            });
+          }, 400);
         });
 
         const overlay = new MapboxOverlay({ interleaved: true, layers: [] });

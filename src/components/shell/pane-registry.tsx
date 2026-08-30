@@ -2,13 +2,14 @@
 
 import { CalendarPane } from "@/src/components/calendar/calendar-pane";
 import { CourseLookupPane } from "@/src/components/course-lookup/course-lookup-pane";
+import { DegreePlannerPane } from "@/src/components/degree-planner/degree-planner-pane";
 import { Icon, type IconName } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PrereqTreePane } from "@/src/components/prereq-tree/prereq-tree-pane";
 import { useCallback, type ComponentType } from "react";
 
 /** Identifies a pane surface registered in {@link PANE_REGISTRY}. The `(string & {})` tail permits entries defined outside this module. */
-export type PaneId = "map" | "course-lookup" | "prereq-tree" | "calendar" | (string & {});
+export type PaneId = "map" | "course-lookup" | "prereq-tree" | "degree-planner" | "calendar" | (string & {});
 
 /** Per-pane runtime state carried in `activeChannel.state`. Values are whatever the pane needs. */
 export type PaneState = Record<string, unknown>;
@@ -34,7 +35,19 @@ function iconGlyph(name: IconName) {
 function PrereqTreeRegistryPane({ state, setState }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
   const root = (state.root as string | undefined) || "";
   const onChangeRoot = useCallback((next: string) => setState({ root: next }), [setState]);
-  return <PrereqTreePane initialRoot={root} onChangeRoot={onChangeRoot} />;
+  // UI state (typed query, disjunction selections, soft toggles) writes through
+  // to the pane state so the tree the user built survives tab swaps + reloads.
+  const onUiState = useCallback((patch: Partial<PaneState>) => setState(patch), [setState]);
+  return (
+    <PrereqTreePane
+      initialRoot={root}
+      initialQuery={state.query as string | undefined}
+      initialSelections={state.selections as Record<string, number> | undefined}
+      initialSoftDisabled={state.softDisabled as Record<string, boolean> | undefined}
+      onChangeRoot={onChangeRoot}
+      onUiState={onUiState}
+    />
+  );
 }
 
 function thisMonth(): string {
@@ -61,14 +74,21 @@ export const PANE_REGISTRY: PaneEntry[] = [
     label: "Prereq tree",
     icon: iconGlyph("tree"),
     Component: PrereqTreeRegistryPane,
-    defaultState: { root: "", selections: {} },
+    defaultState: { root: "", query: "", selections: {}, softDisabled: {} },
+  },
+  {
+    id: "degree-planner",
+    label: "Degree planner",
+    icon: iconGlyph("mortarboard"),
+    Component: DegreePlannerPane as PaneEntry["Component"],
+    defaultState: {},
   },
   {
     id: "calendar",
     label: "Calendar",
     icon: iconGlyph("calendar"),
     Component: CalendarPane as PaneEntry["Component"],
-    defaultState: { cursor: thisMonth(), kinds: ["academic", "holiday"] },
+    defaultState: { cursor: thisMonth() },
   },
 ];
 

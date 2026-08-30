@@ -1,5 +1,7 @@
 "use client";
 
+import { useAppAuth } from "@/src/components/auth/app-auth";
+import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { announce } from "@/src/components/ui/live-region";
 import {
@@ -13,15 +15,34 @@ import {
   startOfMonth,
   toISODate,
 } from "@/src/shared/calendar/date-math";
-import type { CalendarEvent, CalendarEventKind } from "@/src/shared/calendar/event";
+import type { CalendarEvent } from "@/src/shared/calendar/event";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useCalendarEvents } from "./use-calendar-events";
 
 const FUTURE_HORIZON_MONTHS = 24;
 const WEEKDAY_HEADERS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTH_LABELS = Array.from({ length: 12 }, (_, m) =>
+  new Date(Date.UTC(2000, m, 1)).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" }),
+);
 
-type State = { cursor: string; kinds: CalendarEventKind[] };
+/** Every kind the route serves; the pane always shows all of them. */
+const KINDS = ["academic", "holiday", "event"];
+
+/** Label and palette per kind, in legend order. Unknown kinds fall back to
+ * the academic style. */
+const STYLES = {
+  academic: { label: "Academic", bar: "bg-primary", chip: "bg-primary/20 text-primary" },
+  holiday: { label: "Holiday", bar: "bg-tertiary", chip: "bg-tertiary/20 text-tertiary" },
+  event: { label: "Campus event", bar: "bg-secondary", chip: "bg-secondary/20 text-secondary" },
+};
+const styleOf = (e: CalendarEvent) => STYLES[e.kind as keyof typeof STYLES] ?? STYLES.academic;
+
+/** `hidden` lists kinds the legend has switched off; all kinds are fetched
+ * and filtered client-side so toggling never refetches. */
+type State = { cursor: string; hidden: string[] };
+const NONE: string[] = [];
 
 function groupByDate(events: CalendarEvent[]): Record<string, CalendarEvent[]> {
   const out: Record<string, CalendarEvent[]> = {};
@@ -41,8 +62,14 @@ function getToday(): Date {
 
 export function CalendarPane({ state, setState }: { state: Partial<State>; setState: (s: Partial<State>) => void }) {
   const cursor = state.cursor ?? formatMonthBadge(new Date());
-  const kinds = state.kinds?.length ? state.kinds : ["academic", "holiday"];
-  const { events, error } = useCalendarEvents(cursor, kinds);
+  const hidden = state.hidden ?? NONE;
+  const { events, error } = useCalendarEvents(cursor, KINDS);
+  const visible = useMemo(() => (events ?? []).filter((e) => !hidden.includes(e.kind)), [events, hidden]);
+  const toggleKind = (kind: string) => {
+    const nowHidden = !hidden.includes(kind);
+    setState({ hidden: nowHidden ? [...hidden, kind] : hidden.filter((k) => k !== kind) });
+    announce(`${STYLES[kind as keyof typeof STYLES].label} ${nowHidden ? "hidden" : "shown"}`);
+  };
 
   const today = useMemo(() => getToday(), []);
   const todayISO = toISODate(today);
@@ -63,7 +90,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
       })),
     [grid],
   );
-  const monthEvents = (events ?? []).filter((e) => {
+  const monthEvents = visible.filter((e) => {
     const d = parseISODate(e.date);
     return d >= monthStart && d < monthEnd;
   });
@@ -75,7 +102,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   const openEvent = (event: CalendarEvent) => setSelectedEvent(event);
   const closeEvent = () => setSelectedEvent(null);
 
-  const upcoming = (events ?? [])
+  const upcoming = visible
     .filter((e) => e.date >= todayISO)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .slice(0, 20);
@@ -97,52 +124,112 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     announce(`Moved to ${formatMonthHeading(next)}`);
   };
 
-  const goToday = () => {
-    const next = startOfMonth(today);
+  const goMonth = (next: Date) => {
     setState({ cursor: formatMonthBadge(next) });
     announce(`Moved to ${formatMonthHeading(next)}`);
   };
 
-  return (
-    <div data-calendar-pane className="flex h-full w-full flex-col overflow-y-auto p-3 lg:p-6">
-      <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <div className="flex items-center gap-1.5 justify-self-start">
+  const shell = useChatShellOptional();
+  const { isGuest } = useAppAuth();
+  // Sends the upcoming-events list to the AI as an attachment: shown in chat
+  // as a "Calendar" file bubble, read by the agent as text after the prompt.
+  const askAiAboutCalendar = () => {
+    const lines = upcoming.map(
+      (e) => `${e.date} — ${e.label} (${styleOf(e).label}${e.tags.length ? `: ${e.tags.join(", ")}` : ""})`,
+    );
+    shell?.askAi("Give me an overview of upcoming events:", {
+      title: "Calendar",
+      content: lines.length > 0 ? lines.join("\n") : "No upcoming events.",
+    });
+  };
+
+  // The toolbar portals into the Answer Canvas titlebar slot when hosted there
+  // so nav, month picker and Ask AI share the header line; hosts without the
+  // slot get it inline above the grid.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [slotEl, setSlotEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setSlotEl(
+      rootRef.current?.closest("section[data-pane]")?.querySelector<HTMLElement>("[data-pane-titlebar-slot]") ?? null,
+    );
+  }, []);
+
+  // Three columns with equal flexible sides so the month nav stays centered
+  // regardless of how wide Ask AI or the legend are.
+  const toolbar = (
+    <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+      <div className="flex justify-start">
+        {shell && (
           <button
             type="button"
-            data-calendar-nav="prev"
-            aria-label="Previous month"
-            onClick={goPrev}
-            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
+            data-calendar-ask-ai
+            disabled={isGuest}
+            title={isGuest ? "Sign in to use AI chat" : "Ask AI about upcoming events"}
+            onClick={askAiAboutCalendar}
+            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2 disabled:pointer-events-auto disabled:opacity-40"
           >
-            <Icon name="left" size={18} />
+            <Icon name="chat1" size={14} />
+            Ask AI
+            {isGuest && <Icon name="lock" size={12} />}
           </button>
-          <button
-            type="button"
-            data-calendar-nav="today"
-            onClick={goToday}
-            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container min-h-9 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2"
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            data-calendar-nav="next"
-            aria-label="Next month"
-            disabled={beyondHorizon}
-            onClick={goNext}
-            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
-          >
-            <Icon name="right" size={18} />
-          </button>
-        </div>
-        <h2 data-calendar-heading className="justify-self-center text-base font-medium tracking-[-0.01em]">
-          {formatMonthHeading(cursorDate)}
-        </h2>
-        <div
-          className="neu-inset bg-surface-container-low justify-self-end rounded-lg p-0.5 lg:hidden"
-          role="tablist"
-          aria-label="View"
+        )}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          data-calendar-nav="prev"
+          aria-label="Previous month"
+          onClick={goPrev}
+          className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
         >
+          <Icon name="left" size={18} />
+        </button>
+        <MonthYearPicker cursorDate={cursorDate} horizon={horizon} onPick={goMonth} />
+        <button
+          type="button"
+          data-calendar-nav="next"
+          aria-label="Next month"
+          disabled={beyondHorizon}
+          onClick={goNext}
+          className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
+        >
+          <Icon name="right" size={18} />
+        </button>
+      </div>
+      <ul
+        aria-label="Legend"
+        className="col-span-3 flex flex-wrap items-center justify-center gap-1 lg:col-span-1 lg:justify-end"
+      >
+        {Object.entries(STYLES).map(([key, style]) => {
+          const shown = !hidden.includes(key);
+          return (
+            <li key={key}>
+              <button
+                type="button"
+                data-calendar-legend={key}
+                aria-pressed={shown}
+                onClick={() => toggleKind(key)}
+                className={`focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs transition-colors focus-visible:ring-2 ${shown ? "text-on-surface-variant" : "text-muted/60"}`}
+              >
+                <span
+                  aria-hidden
+                  className={`size-2 shrink-0 rounded-full ${shown ? style.bar : "ring-1 ring-current ring-inset"}`}
+                />
+                {style.label}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+
+  return (
+    <div ref={rootRef} data-calendar-pane className="flex h-full w-full flex-col overflow-y-auto p-3 lg:p-6">
+      {slotEl ? createPortal(toolbar, slotEl) : <div className="mb-4">{toolbar}</div>}
+
+      <div className="mb-4 flex justify-end lg:hidden">
+        <div className="neu-inset bg-surface-container-low rounded-lg p-0.5" role="tablist" aria-label="View">
           <button
             type="button"
             role="tab"
@@ -200,14 +287,12 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                         className="focus-visible:ring-primary/40 hover:bg-surface-container flex items-start gap-2 rounded-lg p-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
                       >
                         <span
-                          className={`mt-0.5 block h-full min-h-[1.5rem] w-1 shrink-0 rounded-full ${
-                            e.kind === "academic" ? "bg-primary" : "bg-tertiary"
-                          }`}
+                          className={`mt-0.5 block h-full min-h-[1.5rem] w-1 shrink-0 rounded-full ${styleOf(e).bar}`}
                         />
                         <div className="min-w-0">
                           <p className="text-on-surface truncate text-xs font-medium">{e.label}</p>
                           <p className="text-muted truncate text-xs">
-                            {e.kind === "academic" ? "Academic" : "Holiday"}
+                            {styleOf(e).label}
                             {e.tags.length > 0 && ` · ${e.tags[0]}`}
                           </p>
                         </div>
@@ -256,6 +341,123 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
 
 function formatDayLabel(d: Date): string {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/** Month+year trigger that doubles as the header's month heading; opens a
+ * year-stepped grid of months. Months past `horizon` are unreachable, matching
+ * the next-month button's cap. */
+function MonthYearPicker({
+  cursorDate,
+  horizon,
+  onPick,
+}: {
+  cursorDate: Date;
+  horizon: Date;
+  onPick: (d: Date) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const cursorYear = cursorDate.getUTCFullYear();
+  const [year, setYear] = useState(cursorYear);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Reopening lands on the month in view, not wherever the year arrows stopped.
+  useEffect(() => {
+    if (open) setYear(cursorYear);
+  }, [open, cursorYear]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const nextYearBlocked = new Date(Date.UTC(year + 1, 0, 1)) > horizon;
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        data-calendar-heading
+        data-calendar-month-picker
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 w-40 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-medium tracking-[-0.01em] focus-visible:ring-2"
+      >
+        {formatMonthHeading(cursorDate)}
+        <Icon name="down" size={14} />
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Pick month and year"
+          data-calendar-month-menu
+          className="neu-raised bg-surface absolute top-[calc(100%+0.25rem)] left-1/2 z-50 w-60 -translate-x-1/2 rounded-xl p-2"
+        >
+          <div className="mb-1 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label="Previous year"
+              onClick={() => setYear((y) => y - 1)}
+              className="hover:bg-surface-container focus-visible:ring-primary/40 flex size-8 items-center justify-center rounded-lg focus-visible:ring-2"
+            >
+              <Icon name="left" size={16} />
+            </button>
+            <span className="text-on-surface font-mono text-sm font-medium">{year}</span>
+            <button
+              type="button"
+              aria-label="Next year"
+              disabled={nextYearBlocked}
+              onClick={() => setYear((y) => y + 1)}
+              className="hover:bg-surface-container focus-visible:ring-primary/40 flex size-8 items-center justify-center rounded-lg focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Icon name="right" size={16} />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {MONTH_LABELS.map((label, m) => {
+              const d = new Date(Date.UTC(year, m, 1));
+              const selected = year === cursorYear && m === cursorDate.getUTCMonth();
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  data-calendar-month={formatMonthBadge(d)}
+                  aria-current={selected ? "true" : undefined}
+                  disabled={d > horizon}
+                  onClick={() => {
+                    onPick(d);
+                    setOpen(false);
+                  }}
+                  className={`focus-visible:ring-primary/40 rounded-lg py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-30 ${
+                    selected ? "bg-primary text-on-primary" : "text-on-surface hover:bg-surface-container"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function MonthGrid({
@@ -323,9 +525,7 @@ function MonthGrid({
                       type="button"
                       data-calendar-marker={e.kind}
                       onClick={() => onEventClick(e)}
-                      className={`block w-full truncate rounded-md px-1 py-px text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${
-                        e.kind === "academic" ? "bg-primary/20 text-primary" : "bg-tertiary/20 text-tertiary"
-                      }`}
+                      className={`block w-full truncate rounded-md px-1 py-px text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${styleOf(e).chip}`}
                     >
                       {e.label}
                     </button>
@@ -387,10 +587,7 @@ function EventModal({
       >
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <span
-              aria-hidden
-              className={`h-8 w-1.5 shrink-0 rounded-full ${event.kind === "academic" ? "bg-primary" : "bg-tertiary"}`}
-            />
+            <span aria-hidden className={`h-8 w-1.5 shrink-0 rounded-full ${styleOf(event).bar}`} />
             <div>
               <p className="text-on-surface text-sm font-medium">{event.label}</p>
               <p className="text-muted text-xs">{formatDate(parseISODateFn(event.date))}</p>
@@ -408,7 +605,7 @@ function EventModal({
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="bg-surface-container-high text-on-surface-variant rounded-full px-2 py-0.5 text-xs font-medium">
-            {event.kind === "academic" ? "Academic" : "Holiday"}
+            {styleOf(event).label}
           </span>
           {event.tags.map((tag) => (
             <span

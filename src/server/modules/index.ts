@@ -6,9 +6,11 @@ import { calendar } from "./calendar";
 import { costs } from "./costs";
 import { courses } from "./courses";
 import { events } from "./events";
+import { food } from "./food";
 import { grades } from "./grades";
 import { pages } from "./pages";
 import { parking } from "./parking";
+import { people } from "./people";
 import { places } from "./places";
 import { spaces } from "./spaces";
 import { tuition } from "./tuition";
@@ -31,6 +33,8 @@ const dataModules: DatasetModule[] = [
   events,
   pages,
   grades,
+  people,
+  food,
   prereqModule,
 ];
 

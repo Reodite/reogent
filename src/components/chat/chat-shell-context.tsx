@@ -15,6 +15,7 @@ import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useShellMode } from "@/src/components/shell/use-shell-mode";
 import type { SessionSummary, ToolCall } from "@/src/lib/api-types";
 import { courseSlugToCode, parseToolSlug } from "@/src/lib/pane-route";
+import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import { LAST_CHAT_PATH_KEY, type ShellMode } from "@/src/lib/shell-mode";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { MapHighlight } from "@/src/lib/walking";
@@ -72,12 +73,36 @@ export interface ChatShellState {
 
   /** Pending "ask the AI this" request (e.g. from a pane's context menu).
    *  ChatPanel consumes it by nonce and sends it as a user message. */
-  askAiRequest: { text: string; nonce: number } | null;
-  /** Switches to AI mode and queues `text` to be sent as a chat message. */
-  askAi: (text: string) => void;
+  askAiRequest: { text: string; attachment?: AskAiAttachment; nonce: number } | null;
+  /** Switches to AI mode and queues `text` (plus an optional data attachment)
+   *  to be sent as a chat message. */
+  askAi: (text: string, attachment?: AskAiAttachment) => void;
+  /** Clears the pending request once ChatPanel has sent it. Without this a
+   *  remounted panel (mode switch, navigation) would re-consume the same
+   *  request and send it again — the "infinite conversations" bug. */
+  consumeAskAi: () => void;
+}
+
+/** Data a pane attaches to an Ask AI prompt: shown as a file bubble in the
+ *  chat, appended as text after the prompt for the agent. */
+export interface AskAiAttachment {
+  title: string;
+  content: string;
 }
 
 const ChatShellContext = createContext<ChatShellState | null>(null);
+
+// Activation state resolution: explicit overrides win over the cached
+// last-known state, which wins over the registry default. Callers pass only
+// the fields they mean to force (a tool call's highlight, a course code from
+// the URL) and everything else the user had comes back.
+function resolveActivationState(id: PaneId, overrides: PaneState): PaneState {
+  return {
+    ...PANE_BY_ID[id]?.defaultState,
+    ...getCachedPaneState(id),
+    ...overrides,
+  };
+}
 
 export function useChatShell(): ChatShellState {
   const value = useContext(ChatShellContext);
@@ -188,6 +213,9 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   }, [workspaceView]);
 
   const setWorkspaceView = useCallback((view: CanvasView | null) => {
+    // Every pane-state write also lands in the browser cache, so what the user
+    // typed/selected survives tab swaps and reloads (restored below).
+    if (view) cachePaneState(view.paneId, view.state);
     setWorkspaceViewState(view);
     if (view === null) setActiveCallKey(null);
   }, []);
@@ -196,9 +224,9 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
     (call: ToolCall, callKey?: string) => {
       const view = toolCallToCanvasView(call);
       if (view) {
-        setWorkspaceView(view);
+        setWorkspaceView({ paneId: view.paneId, state: resolveActivationState(view.paneId, view.state) });
         setActiveCallKey(callKey ?? null);
-        setRightPaneCollapsedState(false);
+        setRightPaneCollapsed(false);
         // Bump the focus nonce so the map re-focuses on the new highlight.
         setFocusNonce((n) => n + 1);
         // Widget-driven pane opens as a bottom sheet on mobile unless the user
@@ -209,10 +237,17 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
     [setWorkspaceView],
   );
 
-  const setActiveChannel = useCallback((id: PaneId | null, state: PaneState = {}) => {
-    setWorkspaceViewState(id ? { paneId: id, state } : null);
-    setActiveCallKey(null);
-  }, []);
+  const setActiveChannel = useCallback(
+    (id: PaneId | null, state: PaneState = {}) => {
+      if (!id) {
+        setWorkspaceView(null);
+        return;
+      }
+      setWorkspaceView({ paneId: id, state: resolveActivationState(id, state) });
+      setActiveCallKey(null);
+    },
+    [setWorkspaceView],
+  );
 
   const addOptimisticSession = useCallback((sessionId: string, title: string) => {
     setSessions((prev) => {
@@ -233,15 +268,26 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
     setNewChatNonce((n) => n + 1);
   }, []);
 
-  const [askAiRequest, setAskAiRequest] = useState<{ text: string; nonce: number } | null>(null);
+  const [askAiRequest, setAskAiRequest] = useState<{
+    text: string;
+    attachment?: AskAiAttachment;
+    nonce: number;
+  } | null>(null);
+  // Monotonic across consumes — a cleared request must not reset the counter,
+  // or a second ask in the same panel lifetime would reuse a consumed nonce.
+  const askAiNonceRef = useRef(0);
   const isGuestRef = useRef(auth.isGuest);
   isGuestRef.current = auth.isGuest;
+  const consumeAskAi = useCallback(() => {
+    setAskAiRequest(null);
+  }, []);
   const askAi = useCallback(
-    (text: string) => {
+    (text: string, attachment?: AskAiAttachment) => {
       // AI mode is guest-locked (same gate as the mode toggle).
       if (isGuestRef.current) return;
       setMode("ai");
-      setAskAiRequest((prev) => ({ text, nonce: (prev?.nonce ?? 0) + 1 }));
+      askAiNonceRef.current += 1;
+      setAskAiRequest({ text, attachment, nonce: askAiNonceRef.current });
       // Mode derives from the URL, so switching to AI means navigating to the
       // chat route — restore the last-visited chat like the mode toggle does.
       let target = "/chat";
@@ -294,6 +340,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       removeSessionLocally,
       askAiRequest,
       askAi,
+      consumeAskAi,
     }),
     [
       workspaceView,
@@ -322,6 +369,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       removeSessionLocally,
       askAiRequest,
       askAi,
+      consumeAskAi,
     ],
   );
 
@@ -351,7 +399,8 @@ function ToolRouteActivator() {
       }
     }
     const paneId = parseToolSlug(segments[0]);
-    if (paneId) setActiveChannel(paneId, PANE_BY_ID[paneId].defaultState);
+    // No explicit overrides: the pane comes back with its cached state.
+    if (paneId) setActiveChannel(paneId);
   }, [pathname, setActiveChannel]);
   return null;
 }

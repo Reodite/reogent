@@ -47,7 +47,7 @@ export function transformPoi(f: Feature): { id: string; doc: PoiDoc } | null {
  *  stays on haversine deliberately; only walking_distance/api-route use the
  *  path network. */
 // ponytail: haversine over ≤500 docs sorted in JS, no geo_point mapping; move to geo queries if datasets grow
-function nearestFirst<T extends { lat: number; lon: number }>(
+export function nearestFirst<T extends { lat: number; lon: number }>(
   items: T[],
   from: BuildingDoc,
 ): (T & { walk_meters: number; walk_minutes: number })[] {

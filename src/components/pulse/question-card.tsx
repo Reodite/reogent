@@ -36,7 +36,10 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
   const rotate = useTransform(x, [-200, 200], [-6, 6]);
   const agreeHint = useTransform(x, [40, 140], [0, 1]);
   const disagreeHint = useTransform(x, [-140, -40], [1, 0]);
-  const [exited, setExited] = useState(false);
+  // Already voted at mount (a reload, or a round you came back to): there is no
+  // front card to fly off, so nothing would ever set this and the slot renders
+  // empty. Start exited so the result card shows straight away.
+  const [exited, setExited] = useState(card.myAgree !== undefined);
   const exitDir = useRef<boolean>(true);
 
   const voted = card.myAgree !== undefined;
@@ -106,7 +109,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
                 onKeyDown={(e) => e.key === "Enter" && castVote(false)}
                 aria-label={`Disagree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: -8, scale: 0.95 }}
-                className="text-muted hover:text-on-surface cursor-pointer text-sm transition-colors select-none"
+                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 cursor-pointer items-center px-2 py-3 text-sm transition-colors select-none"
               >
                 disagree
               </motion.span>
@@ -117,7 +120,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
                 onKeyDown={(e) => e.key === "Enter" && castVote(true)}
                 aria-label={`Agree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: 8, scale: 0.95 }}
-                className="text-muted hover:text-on-surface cursor-pointer text-sm transition-colors select-none"
+                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 cursor-pointer items-center px-2 py-3 text-sm transition-colors select-none"
               >
                 agree
               </motion.span>
@@ -135,8 +138,9 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
   );
 }
 
-/** The voted card: same layout, recessed and dimmed, with disagree% left and agree% right. */
-function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: boolean }) {
+/** The voted card: same layout, recessed and dimmed, with disagree% left and
+ *  agree% right. Also renders locked-round results in the history list. */
+export function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: boolean }) {
   const known = card.agreeCount !== undefined && card.disagreeCount !== undefined;
   const agreeCount = card.agreeCount ?? 0;
   const total = agreeCount + (card.disagreeCount ?? 0);

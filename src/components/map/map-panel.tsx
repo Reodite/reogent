@@ -162,7 +162,7 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
 
           {/* Route info — floating top-left (hidden in mobile sheet where header shows it) */}
           {!hideOverlayControls && (
-            <div className="absolute top-3 left-3 z-10 max-w-[75%]">
+            <div className="canvas-left-inset absolute top-3 left-3 z-10 max-w-[75%]">
               <RouteInfoCard />
             </div>
           )}

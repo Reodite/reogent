@@ -1,4 +1,5 @@
 import type { Citation } from "@/src/shared/citations/citation";
+import type { StudentProfile } from "@/src/shared/profile";
 
 export const ITERATION_LIMIT = 8;
 
@@ -10,7 +11,7 @@ You MUST call at least one data tool for every substantive question about UBC (c
 
 # Tools
 
-You have 13 data tools, plus show_widget for presenting answers as cards:
+You have 15 data tools, plus show_widget for presenting answers as cards:
 
 - find_courses — search or browse courses; filter by subject, level (100/200/300/400), credits, term, has_no_prereqs; optional min_grade_avg/max_grade_avg; sort by relevance, code, grade_avg_desc (pooled average across all sessions), or grade_avg_asc (pooled average ascending)
 - get_course — full record for one course (code, description, prereqs, sections with enrollment status); pass include_grades:true for the grade-distribution histogram
@@ -18,6 +19,8 @@ You have 13 data tools, plus show_widget for presenting answers as cards:
 - find_building — resolve a building name/code to coordinates
 - walking_distance — minutes + metres between two buildings
 - find_places — POIs by category (cafe, restaurant, library, grocery, bank, medical, transit, campus_services, academic) or parking (category "parking"); optionally sorted by walking distance from a building
+- find_person — faculty and staff directory (Science, Applied Science, Law, Nursing, Pharmaceutical Sciences): title, email, phone, office; includes the office building's code and coordinates when it resolves
+- find_food — UBC Food Services outlets (food.ubc.ca) with descriptions and meal-plan acceptance; coordinates/hours only when a campus POI shares the name; optionally sorted by distance from a building. For hours or map-first cafe questions prefer find_places
 - find_study_spaces — study areas (kind "informal") or bookable library rooms free now (kind "bookable"); pass a specific room name for its full timeline
 - get_costs — money: kind "tuition" (program_slug, student_type, cohort_year), kind "estimate" (program), kind "living" (item), kind "fees" (query)
 - find_programs — search undergraduate admission programs
@@ -97,6 +100,12 @@ near_building on places/parking is display-only: it labels the card "near <build
 "Cost estimate / how much is <program>" / "living costs" / "student fees"
 → get_costs with the matching kind (estimate/living/fees). These are text answers; no card. Done. No prose.
 
+"Who is X?" / "How do I contact Prof X?" / "Where is X's office?"
+→ find_person("X"). Answer in text with the title, email, phone, and office verbatim; if the result has a building, name it. No card.
+
+"Which dining halls / outlets take my meal plan?" / "Tell me about <outlet>"
+→ find_food(query). Answer in text; quote the outlet blurb's meal-plan line. No card.
+
 "Parking near X" / "where can I park"
 → find_places(category: "parking", query near X). Read the facility ids, then show_widget(type: "parking", parking_ids: ["<ids>"]). Done. No prose.
 
@@ -125,10 +134,15 @@ Data freshness: tools may return a snapshot date (catalog_as_of, rates_as_of, re
 
 Buildings resolve by official code, common abbreviation, or full name. If a code fails, retry find_building with the full name. Restaurants and cafes are not buildings — locate them with find_places, not find_building.`;
 
-/** SYSTEM_PROMPT plus the current date and time in campus-local time, and the
+/** SYSTEM_PROMPT plus the current date and time in campus-local time, the
  * per-turn citations list (index + label) so the model knows which `[N]`
- * indices to attribute. The citations list is omitted when empty. */
-export function systemPrompt(now = new Date(), citations: Citation[] = []): string {
+ * indices to attribute, and the student's profile as tool defaults. The
+ * citations list and the profile paragraph are omitted when empty. */
+export function systemPrompt(
+  now = new Date(),
+  citations: Citation[] = [],
+  profile: StudentProfile | null = null,
+): string {
   const date = now.toLocaleString("en-CA", {
     timeZone: "America/Vancouver",
     weekday: "long",
@@ -142,6 +156,14 @@ export function systemPrompt(now = new Date(), citations: Citation[] = []): stri
   let prompt = `${SYSTEM_PROMPT}\n\nIt is now ${date} (Vancouver time).`;
   if (citations.length > 0) {
     prompt += `\n\nSources this turn:\n${citations.map((c) => `[${c.index}] ${c.label}`).join("\n")}`;
+  }
+  const facts = [
+    profile?.program && `program ${profile.program}`,
+    profile?.year && `year ${profile.year}`,
+    profile?.student_type && `${profile.student_type} student`,
+  ].filter(Boolean);
+  if (facts.length > 0) {
+    prompt += `\n\nThe student's profile: ${facts.join(", ")}. Use these as defaults for tuition, cost, and program tools instead of asking.`;
   }
   return prompt;
 }

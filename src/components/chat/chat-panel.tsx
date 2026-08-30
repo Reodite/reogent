@@ -7,7 +7,9 @@ import { ChatInput, type ChatInputHandle } from "@/src/components/chat/chat-inpu
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import {
   AssistantMessage,
+  buildUserContent,
   condenseActivity,
+  splitUserContent,
   TypingIndicator,
   UserMessage,
   type ActivityBlock,
@@ -168,6 +170,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     addOptimisticSession,
     newChatNonce,
     askAiRequest,
+    consumeAskAi,
   } = useChatShell();
 
   const [historyState, setHistoryState] = useState<HistoryState>("loading");
@@ -244,7 +247,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     const summary = sessions.find((s) => s.session_id === sessionId);
     if (summary) return summary.title;
     const firstUser = messages.find((m) => m.role === "user");
-    return firstUser ? firstUser.content : "New conversation";
+    return firstUser ? splitUserContent(firstUser.content).text : "New conversation";
   }, [sessions, sessionId, messages]);
 
   // "New conversation" from the sidebar: the minted session only exists in the
@@ -541,7 +544,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   );
 
   const send = useCallback(
-    (text: string) => {
+    (text: string, attachment?: { title: string; content: string }) => {
       if (sending) return;
       if (abortRef.current) return;
       // Mint session ID on first message if this is a new chat
@@ -553,7 +556,9 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
         // Update URL without triggering a navigation/remount
         window.history.replaceState(null, "", `/chat/${activeSessionId}`);
       }
-      const userMessage: DisplayMessage = { id: nextId(), role: "user", content: text };
+      // The agent sees one string: the prompt with the attachment's text
+      // appended. The UI splits it back apart for display (see message.tsx).
+      const userMessage: DisplayMessage = { id: nextId(), role: "user", content: buildUserContent(text, attachment) };
       const conversation = toConversation([...messagesRef.current, userMessage]);
       setMessages((current) => [...current, userMessage]);
       if (messagesRef.current.length === 0) {
@@ -567,13 +572,17 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
 
   // Consume a queued "Ask AI" request (e.g. a course card's context menu) —
   // once per nonce, deferred until history is loaded and no send is in flight.
+  // The request is cleared in the provider after sending: this panel remounts
+  // on mode switches, which resets the nonce ref — without the clear, every
+  // remount would re-send the request into a fresh conversation.
   const consumedAskNonce = useRef(0);
   useEffect(() => {
     if (!askAiRequest || askAiRequest.nonce <= consumedAskNonce.current) return;
     if (historyState !== "ready" || sending) return;
     consumedAskNonce.current = askAiRequest.nonce;
-    send(askAiRequest.text);
-  }, [askAiRequest, historyState, sending, send]);
+    send(askAiRequest.text, askAiRequest.attachment);
+    consumeAskAi();
+  }, [askAiRequest, historyState, sending, send, consumeAskAi]);
 
   const retry = useCallback(() => {
     const pending = pendingRetry.current;

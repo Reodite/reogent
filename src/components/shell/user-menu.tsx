@@ -4,6 +4,7 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { VersionBadge } from "@/src/components/shell/session-sidebar";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -20,7 +21,6 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
   const [signOutError, setSignOutError] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const signOutRef = useRef<HTMLButtonElement>(null);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
 
   useEffect(() => {
@@ -35,9 +35,14 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
         setOpen(false);
         triggerRef.current?.focus();
       }
+      // Arrow keys cycle through menu items.
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
-        signOutRef.current?.focus();
+        const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+        if (items.length === 0) return;
+        const index = items.indexOf(document.activeElement as HTMLElement);
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        items[(index + step + items.length) % items.length].focus();
       }
     };
     document.addEventListener("pointerdown", onPointerDown);
@@ -128,8 +133,17 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
 
             <div className="bg-border-subtle my-1 h-px" />
 
+            <Link
+              href="/settings"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
+            >
+              <Icon name="settings" size={16} className="text-on-surface-variant" />
+              Settings
+            </Link>
+
             <button
-              ref={signOutRef}
               type="button"
               role="menuitem"
               onClick={handleSignOut}

@@ -4,6 +4,7 @@ import { requireUser } from "@/src/server/auth";
 import type { ActivityBlock } from "@/src/server/core/types";
 import { validateChatRequest } from "@/src/server/core/validate";
 import { modules } from "@/src/server/modules";
+import { getProfile } from "@/src/server/profile";
 import { rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
 import { appendExchange } from "@/src/server/sessions/store";
@@ -41,6 +42,12 @@ export async function POST(request: Request): Promise<Response> {
 
     const sessionId = parsed.value.session_id ?? uuid();
     const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
+    // An unreadable profile (no row, no DB, non-UUID dev user) only means no
+    // defaults in the prompt; it never blocks the chat.
+    const profile = await getProfile(user.sub).catch((e: unknown) => {
+      console.warn("profile load failed", e instanceof Error ? e.message : e);
+      return null;
+    });
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -62,7 +69,7 @@ export async function POST(request: Request): Promise<Response> {
           } | null = null;
           const activity: ActivityBlock[] = [];
 
-          for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch() })) {
+          for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch(), profile })) {
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
             if (event.type === "thinking") {
               const last = activity[activity.length - 1];

@@ -10,7 +10,7 @@ vi.mock("../db", () => ({
   }),
 }));
 
-const { castVote, getActiveFeed, publishRound } = await import("./store");
+const { castVote, getActiveFeed, getRoundHistory, publishRound } = await import("./store");
 
 beforeEach(() => {
   queryMock.mockReset();
@@ -43,6 +43,49 @@ describe("getActiveFeed", () => {
     ]);
     // The question query scopes to the active round and the caller.
     expect(queryMock.mock.calls[1][1]).toEqual([3, "u1"]);
+  });
+});
+
+describe("getRoundHistory", () => {
+  it("returns an empty list without querying questions when no round is locked", async () => {
+    queryMock.mockResolvedValueOnce({ rows: [] });
+    expect(await getRoundHistory("u1")).toEqual([]);
+    expect(queryMock).toHaveBeenCalledTimes(1);
+    expect(queryMock.mock.calls[0][0]).toContain("status = 'locked'");
+    expect(queryMock.mock.calls[0][1]).toEqual([10]);
+  });
+
+  it("groups questions under their round, newest round first, with the caller's vote", async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        { id: 2, title: "Week 2", published_at: new Date("2026-08-20T00:00:00Z") },
+        { id: 1, title: null, published_at: new Date("2026-08-13T00:00:00Z") },
+      ],
+    });
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        { round_id: 1, id: 10, text: "Old", my_agree: null, agree_count: 3, disagree_count: 1 },
+        { round_id: 2, id: 20, text: "New A", my_agree: false, agree_count: 6, disagree_count: 4 },
+        { round_id: 2, id: 21, text: "New B", my_agree: null, agree_count: 0, disagree_count: 0 },
+      ],
+    });
+    const history = await getRoundHistory("u1", 5);
+    expect(history).toEqual([
+      {
+        round: { id: 2, title: "Week 2", publishedAt: "2026-08-20T00:00:00.000Z" },
+        questions: [
+          { id: 20, text: "New A", myAgree: false, agreeCount: 6, disagreeCount: 4 },
+          { id: 21, text: "New B", myAgree: null, agreeCount: 0, disagreeCount: 0 },
+        ],
+      },
+      {
+        round: { id: 1, title: null, publishedAt: "2026-08-13T00:00:00.000Z" },
+        questions: [{ id: 10, text: "Old", myAgree: null, agreeCount: 3, disagreeCount: 1 }],
+      },
+    ]);
+    expect(queryMock.mock.calls[0][1]).toEqual([5]);
+    // The question query scopes to the listed rounds and the caller.
+    expect(queryMock.mock.calls[1][1]).toEqual([[2, 1], "u1"]);
   });
 });
 

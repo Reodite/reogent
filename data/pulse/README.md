@@ -1,6 +1,6 @@
 # Pulse rounds
 
-Pulse is the swipe-voting feed at `/pulse`. Signed-in students vote agree (swipe right) or disagree (swipe left) on statement cards. One vote per user per question, first vote wins, and tallies stay hidden until the voter has answered. Questions ship in rounds: publishing a new round locks the current one and freezes its results permanently. The goal is subjective campus data that scraping, UBC APIs, and Reddit cannot provide.
+Pulse is the swipe-voting feed at `/pulse`. Signed-in students vote agree (swipe right) or disagree (swipe left) on statement cards. One vote per user per question, first vote wins, and tallies stay hidden until the voter has answered. Questions ship in rounds: publishing a new round locks the current one and freezes its results permanently. Locked rounds stay visible under "Previous rounds" below the feed, tallies included, whether or not the viewer voted. The goal is subjective campus data that scraping, UBC APIs, and Reddit cannot provide.
 
 ## Publish a round
 

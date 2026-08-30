@@ -819,12 +819,10 @@ export function buildGraph(
   return { nodes, edges, depthCount, bbox };
 }
 
-// Auto-fit tuning: horizontal-first — the full-width zoom is always honored,
-// and within that bound the camera zooms out (down to FIT_VERTICAL_FLOOR) to
-// fit the height too. FIT_MAX_ZOOM keeps tiny graphs from blowing up.
+// Auto-fit tuning, fed to ReactFlow's `getViewportForBounds`: the whole graph is
+// framed on both axes. FIT_MAX_ZOOM keeps tiny graphs from blowing up.
 export const FIT_PADDING = 0.05;
 export const FIT_MAX_ZOOM = 1;
-export const FIT_VERTICAL_FLOOR = 0.5;
 // Instance-wide zoom-out limit. Must sit below the zoom the deepest corpus
 // tree needs for its horizontal fit — ReactFlow's default of 0.5 clamped deep
 // trees mid-fit with the root off-screen.

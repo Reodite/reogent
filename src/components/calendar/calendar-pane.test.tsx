@@ -37,7 +37,7 @@ afterAll(() => {
 
 interface State {
   cursor: string;
-  kinds: string[];
+  hidden: string[];
 }
 
 function renderPane(state: Partial<State> = {}, events: CalendarEvent[] = fixtureEvents) {
@@ -49,10 +49,7 @@ function renderPane(state: Partial<State> = {}, events: CalendarEvent[] = fixtur
       headers: { "content-type": "application/json" },
     })) as unknown as typeof globalThis.fetch;
   const result = render(
-    <CalendarPane
-      state={{ cursor: state.cursor ?? "2024-04", kinds: state.kinds ?? ["academic", "holiday"] }}
-      setState={setState}
-    />,
+    <CalendarPane state={{ cursor: state.cursor ?? "2024-04", hidden: state.hidden }} setState={setState} />,
   );
   const restore = () => {
     globalThis.fetch = original;
@@ -154,12 +151,41 @@ describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17
     expect(setState).toHaveBeenCalledWith({ cursor: "2024-05" });
     restore();
   });
-  it("today button resets cursor to this month", async () => {
+  it("month picker jumps the cursor to the picked month", async () => {
     const { container, setState, restore } = renderPane({ cursor: "2023-01" });
-    await waitFor(() => expect(container.querySelector('[data-calendar-nav="today"]')).not.toBeNull());
-    fireEvent.click(container.querySelector('[data-calendar-nav="today"]') as HTMLElement);
-    expect(setState).toHaveBeenCalledWith({ cursor: "2024-04" });
+    await waitFor(() => expect(container.querySelector("[data-calendar-month-picker]")).not.toBeNull());
+    fireEvent.click(container.querySelector("[data-calendar-month-picker]") as HTMLElement);
+    fireEvent.click(container.querySelector('[data-calendar-month="2023-04"]') as HTMLElement);
+    expect(setState).toHaveBeenCalledWith({ cursor: "2023-04" });
     restore();
+  });
+  it("month picker disables months past the 24-month horizon", async () => {
+    const { container, restore } = renderPane({ cursor: "2026-04" });
+    await waitFor(() => expect(container.querySelector("[data-calendar-month-picker]")).not.toBeNull());
+    fireEvent.click(container.querySelector("[data-calendar-month-picker]") as HTMLElement);
+    expect(container.querySelector('[data-calendar-month="2026-04"]')?.hasAttribute("disabled")).toBe(false);
+    expect(container.querySelector('[data-calendar-month="2026-05"]')?.hasAttribute("disabled")).toBe(true);
+    restore();
+  });
+  it("legend buttons toggle a kind via setState and hidden kinds drop out of the grid", async () => {
+    const on = renderPane({ cursor: "2025-02" });
+    const legend = Array.from(on.container.querySelectorAll("[data-calendar-legend]")).map((el) => el.textContent);
+    expect(legend).toEqual(["Academic", "Holiday", "Campus event"]);
+    const holiday = on.container.querySelector('[data-calendar-legend="holiday"]') as HTMLElement;
+    expect(holiday.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(holiday);
+    expect(on.setState).toHaveBeenCalledWith({ hidden: ["holiday"] });
+    on.restore();
+    cleanup();
+    const off = renderPane({ cursor: "2025-02", hidden: ["holiday"] });
+    const cell = await waitForCell(off.container, "2025-02-17", "[data-calendar-marker]");
+    const kinds = Array.from(cell.querySelectorAll("[data-calendar-marker]")).map((el) =>
+      el.getAttribute("data-calendar-marker"),
+    );
+    expect(kinds).toEqual(["academic"]);
+    const offButton = off.container.querySelector('[data-calendar-legend="holiday"]') as HTMLElement;
+    expect(offButton.getAttribute("aria-pressed")).toBe("false");
+    off.restore();
   });
 });
 
