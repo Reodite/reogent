@@ -6,6 +6,7 @@ import { useApi } from "@/src/components/providers";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { motion, useReducedMotion } from "motion/react";
+import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
@@ -255,6 +256,30 @@ interface SessionSidebarProps {
   footer?: ReactNode;
 }
 
+/** Reodite brand at the top of the sidebar. The collapsed rail shows only the logo tile. */
+export function BrandHeader({ collapsed = false }: { collapsed?: boolean }) {
+  return (
+    <div className={`flex items-center pb-2 ${collapsed ? "justify-center" : "px-2"}`}>
+      <Link
+        href="/"
+        aria-label="Go to Reodite homepage"
+        className="group focus-visible:ring-primary/40 flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
+      >
+        <span className="bg-surface-container-low text-primary group-hover:text-on-surface flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150">
+          <Icon name="school" size={18} />
+        </span>
+        <span
+          className={`text-primary group-hover:text-on-surface text-base font-medium tracking-[-0.025em] whitespace-nowrap transition-opacity duration-300 ${
+            collapsed ? "hidden" : ""
+          }`}
+        >
+          Reodite
+        </span>
+      </Link>
+    </div>
+  );
+}
+
 export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarProps = {}) {
   const router = useRouter();
   const params = useParams<{ session_id?: string }>();
@@ -304,6 +329,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
 
   return (
     <div className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl p-2">
+      <BrandHeader />
       <div className="flex items-center gap-3 px-2 pt-1 pb-2">
         {onCollapse && (
           <button

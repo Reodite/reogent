@@ -363,6 +363,18 @@ details[open] > *:not(summary) {
   }
 }
 
+/* Anchored menus (account menu at the sidebar bottom) enter from the anchor. */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* ---- Reduced motion ---- */
 
 @media (prefers-reduced-motion: reduce) {

@@ -230,7 +230,7 @@ Color tokens accept Tailwind opacity modifiers for layered effects:
 ### In-App Hierarchy
 
 - **Title** (500, 1.25rem/text-xl, -0.02em): Page titles, panel headers, greeting text. One per visible viewport. Line-height varies by context: Tailwind default for text-xl or `leading-tight` (1.25) in compact headings.
-- **Brand Title** (500, text-base sm:text-xl, -0.025em): The "Reodite" text in the header. Uses tighter tracking than standard Title.
+- **Brand Title** (500, text-base, -0.025em): The "Reodite" wordmark in the sidebar brand header. Uses tighter tracking than standard Title.
 - **Heading** (500, 1rem/text-base, -0.01em): Card titles, session names, route info primary values. Uses `leading-tight` (1.25) or `leading-snug` (1.375) in space-constrained contexts.
 - **Body** (400, 0.875rem/text-sm, 1.5): Chat messages, descriptions, button labels. Base size. 14px for information density. Uses `leading-relaxed` (1.625) in chat bubbles and descriptions for extra breathing room.
 - **Body Small** (400, 0.8125rem/text-body-sm, 1.5): Secondary info, timestamps, tool badge content, sidebar session previews.
@@ -268,7 +268,7 @@ Flexbox with spring-driven width animations:
 
 **Mobile (<640px):** Single column. Chat full-width. Sidebar is a slide-over drawer with `bg-scrim` backdrop at z-40/z-50. Map becomes an 80vh bottom sheet (`fixed inset-x-0 bottom-0`) with touch drag-to-dismiss (20% of height threshold). Safe-area inset padding via `env(safe-area-inset-bottom)`.
 
-**Spacing rhythm:** 8px grid with 6px sub-grid for tight icon gaps. Common values: `gap-1.5` (6px icon-to-label), `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px inter-panel), `gap-6` (24px message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) workspace gaps around all panels, `px-4 py-3` (16/12px) header sections, `p-4 sm:p-6` (16/24px) chat message well. Header height: 56px (h-14). Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
+**Spacing rhythm:** 8px grid with 6px sub-grid for tight icon gaps. Common values: `gap-1.5` (6px icon-to-label), `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px inter-panel), `gap-6` (24px message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) workspace gaps around all panels, `px-4 py-3` (16/12px) header sections, `p-4 sm:p-6` (16/24px) chat message well. Header height (toast/header sections): `px-4 py-3`. Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
 
 **Canvas treatment:** `app-shell-canvas` sets flat `var(--background)` color. No gradients in the production app shell.
 
@@ -339,7 +339,7 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 **Form language:** Rounded, consistent per element size. Radius increases with element size.
 
-- **Major panels** (header, chat panel, map panel, sidebar, bottom sheets): `rounded-2xl` (16px)
+- **Major panels** (chat panel, map panel, sidebar, bottom sheets): `rounded-2xl` (16px)
 - **Action buttons, icon buttons, collapse/expand controls**: `rounded-xl` (12px)
 - **Inner controls** (session items, details blocks, tool cards, nav items, thinking blocks): `rounded-lg` (8px)
 - **Small elements** (inline code, small badges, icon containers in tool results): `rounded-md` (6px)
@@ -377,9 +377,9 @@ State changes through shadow transformation + press scale. Buttons never transla
 
 ### Cards / Containers
 
-- **Standard panel** (`.neu-panel`): `bg-surface rounded-2xl` + surface shadow. No border, no blur. Padding: 12-16px. Used for: header, chat panel, map panel, sidebar, building popup, map controls.
+- **Standard panel** (`.neu-panel`): `bg-surface rounded-2xl` + surface shadow. No border, no blur. Padding: 12-16px. Used for: chat panel, map panel, sidebar, building popup, map controls.
 - **Chat panel**: `.neu-panel rounded-2xl`. Internal: title bar (transparent bg, `px-4 py-3`), message well (`.chat-message-well`, recessed with deep inset shadows at `inset 0 10px 24px -22px`, 72% surface-container-low mixed with background), composer area at bottom.
-- **Sidebar** (`.neu-panel rounded-2xl p-2`): Standard panel material. Contains a secondary recessed well (`bg-surface-container-low/60 rounded-xl p-2`) for the session list.
+- **Sidebar** (`.neu-panel rounded-2xl p-2`): Standard panel material. Anatomy, top to bottom: brand header (logo tile `size-9` + `Reodite` wordmark; collapsed rail shows the tile only), mode content (session list in AI, tool list in Tools, community links in Unity) in a recessed well (`bg-surface-container-low/60 rounded-xl p-2`), then a footer stack above a `border-t`: the AI/Tools/Unity mode toggle, then the account row (avatar + username, full width). The account menu portals out of the sidebar's `overflow-hidden` card and anchors 8px above the trigger, spanning the trigger's full width (collapsed rail: flyout to the right, 224px). It contains username, the theme radiogroup, sign out, and the version badge. The shell has no top bar; on mobile the drawer opens from a floating trigger at top-left.
 - **Tool result cards**: `bg-surface-container-low rounded-lg p-3`. Flat within the message bubble. Icon containers use `bg-secondary-container text-on-secondary-container size-9 rounded-lg` (or `size-8 rounded-md` for compact variants).
 
 ### Inputs / Fields
@@ -392,7 +392,7 @@ State changes through shadow transformation + press scale. Buttons never transla
 
 - **Session sidebar items**: `h-9 px-3 py-2 rounded-lg text-sm`. Active: `bg-accent-subtle text-primary border-l-2 border-primary`. Inactive: `text-on-surface-variant`. Hover: `bg-surface-container-high text-on-surface`. Transition: all 150ms. Focus: `ring-primary/40 ring-2 ring-offset-1`.
 - **Session group headers**: `text-muted uppercase text-xs tracking-[0.05em] font-medium px-2 pb-1.5`. Categories: Today, Yesterday, This Week, This Month, Older.
-- **Header** (`.neu-panel`): `rounded-2xl h-14 mx-2 sm:mx-3 mt-3`. Solid panel, not glass. Contains: menu trigger (mobile), app title with logo icon (`bg-surface-container-low text-primary size-8 rounded-lg`), theme toggle + user menu. Title text: `text-base sm:text-xl font-medium tracking-[-0.025em]`.
+- **Header**: The app shell has no persistent top header. Brand lives in the sidebar (`bg-surface-container-low text-primary size-9 rounded-lg` logo tile + `text-base font-medium tracking-[-0.025em]` wordmark). Panel headers (answer canvas, drawer sections) use `px-4 py-3` flex rows.
 - **Collapsed rail** (`.neu-panel`): `w-[3.75rem] rounded-2xl py-3`. Vertical label with `[writing-mode:vertical-rl] text-xs font-medium tracking-[0.06em]`. Expand button: `neu-panel size-9 rounded-xl`.
 
 ### Chat Messages
@@ -471,7 +471,7 @@ Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + op
 - **Session list stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.03` capped at 0.3s total.
 - **Suggestion pills / error banners**: CSS `animate-message-in` (200ms ease-out, opacity + translateY) with `animationDelay` for stagger. CSS rather than spring because staggered delay is cleaner for static lists.
 - **Button states**: shadow change on hover, inset shadow + scale(0.98) on press. No translate — buttons never shift position on hover or active. 150ms ease-out.
-- **Menu entrance**: scale(0.97) + opacity(0) + blur(2px) + translateY(-6px) → scale(1) + opacity(1) + blur(0) + translateY(0). Opacity/filter: 180ms ease-out. Transform: 240ms `--neu-ease`.
+- **Menu entrance**: Anchored menus (account menu) enter with `menu-in` (opacity 0→1, translateY(4px)→0, scale(0.97)→1, 180ms ease-out) from the anchor side. Other popovers: scale(0.97) + opacity(0) + blur(2px) → open. 150-250ms.
 - **Details expand**: opacity 0→1, translateY(-4px→0), 200ms `--neu-ease`.
 - **Sidebar/map content crossfade**: CSS opacity transitions (200ms) with 75ms delay on reveal, immediate on hide. Coordinates with the spring settle.
 - **Easing fallback**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions (mobile drawer, bottom sheet, profile menu, button micro-interactions). Duration: 150ms for micro-interactions, 250-300ms for mobile panel slides.

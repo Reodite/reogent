@@ -3,8 +3,9 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
 import { ModeToggle } from "@/src/components/shell/mode-toggle";
-import { SessionSidebar } from "@/src/components/shell/session-sidebar";
+import { BrandHeader, SessionSidebar } from "@/src/components/shell/session-sidebar";
 import { ToolList } from "@/src/components/shell/tool-list";
+import { UserMenu } from "@/src/components/shell/user-menu";
 import { usePathname, useRouter } from "next/navigation";
 
 const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
@@ -18,7 +19,10 @@ function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
   const router = useRouter();
 
   return (
-    <nav aria-label="Community" className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${collapsed ? "px-0 py-2" : "p-2"}`}>
+    <nav
+      aria-label="Community"
+      className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${collapsed ? "px-0 py-2" : "p-2"}`}
+    >
       <ul className={`flex flex-col gap-1 ${collapsed ? "items-center" : ""}`}>
         {UNITY_ITEMS.map((item) => {
           const active = pathname === item.path;
@@ -38,7 +42,7 @@ function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
               >
                 <Icon name={item.icon} size={16} className="shrink-0" />
                 <span
-                  className={`whitespace-nowrap text-sm font-medium transition-opacity duration-300 ${
+                  className={`text-sm font-medium whitespace-nowrap transition-opacity duration-300 ${
                     collapsed ? "w-0 overflow-hidden opacity-0" : "opacity-100"
                   }`}
                 >
@@ -97,14 +101,22 @@ export function LeftSidebar({
   onClose?: () => void;
 }) {
   const { mode } = useChatShell();
-  const footer = <ModeToggle collapsed={collapsed} />;
+  const footer = (
+    <div className="border-border-subtle flex flex-col gap-2 border-t pt-2">
+      <ModeToggle collapsed={collapsed} />
+      <UserMenu collapsed={collapsed} />
+    </div>
+  );
 
   if (mode === "ai") {
     if (collapsed) {
       return (
-        <div className="neu-panel flex h-full w-full flex-col items-center justify-between overflow-hidden rounded-2xl pt-3 pb-2">
-          <CollapseExpandButton collapsed onExpand={onExpand} label="Sessions" />
-          {footer}
+        <div className="neu-panel flex h-full w-full flex-col items-center overflow-hidden rounded-2xl pt-3 pb-2">
+          <BrandHeader collapsed />
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-between">
+            <CollapseExpandButton collapsed onExpand={onExpand} label="Sessions" />
+            {footer}
+          </div>
         </div>
       );
     }
@@ -114,16 +126,14 @@ export function LeftSidebar({
   const label = mode === "tools" ? "Tools" : "Unity";
 
   return (
-    <div className={`neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl pt-3 pb-2 ${collapsed ? "items-center px-0" : "px-2"}`}>
+    <div
+      className={`neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl pt-3 pb-2 ${collapsed ? "items-center px-0" : "px-2"}`}
+    >
+      <BrandHeader collapsed={collapsed} />
       <div className={`flex h-9 items-center pb-2 ${collapsed ? "justify-center px-0" : "gap-3 px-2"}`}>
-        <CollapseExpandButton
-          collapsed={collapsed}
-          onCollapse={onCollapse}
-          onExpand={onExpand}
-          label={label}
-        />
+        <CollapseExpandButton collapsed={collapsed} onCollapse={onCollapse} onExpand={onExpand} label={label} />
         <span
-          className={`text-on-surface whitespace-nowrap text-base leading-tight font-medium tracking-[-0.02em] transition-opacity duration-300 ${
+          className={`text-on-surface text-base leading-tight font-medium tracking-[-0.02em] whitespace-nowrap transition-opacity duration-300 ${
             collapsed ? "w-0 overflow-hidden opacity-0" : "flex-1 opacity-100"
           }`}
         >

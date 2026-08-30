@@ -17,6 +17,7 @@ vi.mock("@/src/components/calendar/calendar-pane", () => ({ CalendarPane: () => 
 vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({ CourseLookupPane: () => null }));
 vi.mock("@/src/components/shell/session-sidebar", () => ({
   useSidebarCollapsed: () => [false, () => {}],
+  BrandHeader: () => null,
   SessionSidebar: ({ footer }: { footer?: ReactNode }) => <div data-testid="session-list">{footer}</div>,
 }));
 vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => null }));
