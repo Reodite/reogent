@@ -994,7 +994,10 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: mouseleave clears tooltip
-    <div className="relative h-full w-full overflow-hidden rounded-2xl" onMouseLeave={() => setPicked(null)}>
+    // No border-radius here: the hosting card (AnswerCanvas `neu-panel`) already
+    // clips with rounded corners; a second radius would show a double curve
+    // where the map meets the titlebar.
+    <div className="relative h-full w-full overflow-hidden" onMouseLeave={() => setPicked(null)}>
       <div
         ref={containerRef}
         className="h-full w-full"
