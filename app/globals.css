@@ -301,8 +301,6 @@ body {
 
 .maplibregl-map {
   font: inherit;
-  border-radius: 1.01rem;
-  overflow: hidden;
 }
 
 /* ---- Keyframes ---- */
