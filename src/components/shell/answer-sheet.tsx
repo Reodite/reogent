@@ -45,8 +45,13 @@ export function AnswerSheet({
   }, [showDialog, onClose]);
 
   const hasView = view !== null;
-  const slotClass = `flex min-h-0 flex-col transition-[transform,opacity,visibility] duration-300 [transition-timing-function:var(--neu-ease)] lg:h-full will-change-transform ${
-    collapsed || !hasView ? "lg:hidden" : "lg:flex-1 lg:min-w-88"
+  // Desktop: the pane stays mounted and animates width like the sidebar.
+  // flex-grow 0↔1 plus margin and opacity, instead of toggling display. The
+  // margin-left replaces the container gap so a collapsed pane leaves no gap.
+  const slotClass = `flex min-h-0 flex-col transition-[flex-grow,opacity,visibility,margin] duration-300 [transition-timing-function:var(--neu-ease)] lg:h-full will-change-transform ${
+    collapsed || !hasView
+      ? "lg:grow-0 lg:basis-0 lg:min-w-0 lg:ml-0 lg:overflow-hidden lg:opacity-0 lg:invisible lg:pointer-events-none"
+      : "lg:grow lg:basis-0 lg:min-w-88 lg:ml-3 lg:overflow-hidden lg:opacity-100 lg:visible"
   } ${
     open
       ? "max-lg:neu-panel max-lg:bg-surface max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-50 max-lg:h-[80dvh] max-lg:flex-col max-lg:overflow-hidden max-lg:rounded-t-2xl max-lg:pb-[env(safe-area-inset-bottom)] max-lg:translate-y-0 max-lg:opacity-100 max-lg:visible"

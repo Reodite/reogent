@@ -473,6 +473,7 @@ Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + op
 - **Button states**: shadow change on hover, inset shadow + scale(0.98) on press. No translate — buttons never shift position on hover or active. 150ms ease-out.
 - **Menu entrance**: Anchored menus (account menu) enter with `menu-in` (opacity 0→1, translateY(4px)→0, scale(0.97)→1, 180ms ease-out) from the anchor side. Other popovers: scale(0.97) + opacity(0) + blur(2px) → open. 150-250ms.
 - **Details expand**: opacity 0→1, translateY(-4px→0), 200ms `--neu-ease`.
+- **Data panel (answer canvas) collapse/entry**: CSS transition (300ms `--neu-ease`) animating `flex-grow`, `margin-left`, `opacity`, and `visibility` from a zero-width, invisible state to a `flex-1` pane, so it slides/fades in and out like the sidebar width animation. The inter-panel gap belongs to the pane's animating margin, so no leftover gap when collapsed.
 - **Sidebar/map content crossfade**: CSS opacity transitions (200ms) with 75ms delay on reveal, immediate on hide. Coordinates with the spring settle.
 - **Easing fallback**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions (mobile drawer, bottom sheet, profile menu, button micro-interactions). Duration: 150ms for micro-interactions, 250-300ms for mobile panel slides.
 

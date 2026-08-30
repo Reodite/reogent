@@ -173,7 +173,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </aside>
             {mode === "ai" ? (
-              <div className="chat-map-area flex min-h-0 min-w-0 flex-1 gap-3">
+              <div className="chat-map-area flex min-h-0 min-w-0 flex-1">
                 <main
                   id="main-content"
                   data-pane="chat"

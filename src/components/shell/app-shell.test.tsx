@@ -92,9 +92,10 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("wide AI right pane starts collapsed and has no re-expand in topbar", () => {
     const { container } = renderShell(true);
 
-    // Pane is hidden with `lg:hidden` by default.
+    // Pane is collapsed (zero-width, invisible) by default.
     const sheet = container.querySelector("[data-answer-sheet]");
-    expect(sheet?.classList.contains("lg:hidden")).toBe(true);
+    expect(sheet?.classList.contains("lg:grow-0")).toBe(true);
+    expect(sheet?.classList.contains("lg:invisible")).toBe(true);
 
     // There is no topbar expand button for the right pane.
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
