@@ -42,6 +42,11 @@ const json = (body: unknown) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+const validPerson = {
+  handle: "ada",
+  avatar: { kind: "initials", initials: "AD", color: "#4d9de0" },
+  schedule: { sections: [], importedAt: "2026-01-01T00:00:00.000Z" },
+};
 
 // AUTH_ENABLED=false bypasses JWT outside production; force production-style
 // 401s out of scope — every test exercises the bypass user.
@@ -70,9 +75,17 @@ describe("sharer schedule routes", () => {
   });
 
   it("PUT saves a valid person", async () => {
-    const res = await putSchedule(json({ handle: "ada", avatar: { kind: "emoji" }, schedule: { sections: [] } }));
+    const res = await putSchedule(json(validPerson));
     expect(res.status).toBe(200);
     expect(store.savePerson).toHaveBeenCalledWith("default", expect.objectContaining({ handle: "ada" }));
+  });
+
+  it("PUT rejects null and malformed schedules", async () => {
+    expect((await putSchedule(json(null))).status).toBe(400);
+    expect((await putSchedule(json({ ...validPerson, schedule: { sections: [{}], importedAt: "x" } }))).status).toBe(
+      400,
+    );
+    expect(store.savePerson).not.toHaveBeenCalled();
   });
 });
 
@@ -88,8 +101,9 @@ describe("sharer group routes", () => {
     expect(store.createGroup).toHaveBeenCalledWith("default", "Weekend crew");
   });
 
-  it("POST rejects an empty name", async () => {
+  it("POST rejects an empty name or null body", async () => {
     expect((await postGroups(json({ name: "   " }))).status).toBe(400);
+    expect((await postGroups(json(null))).status).toBe(400);
   });
 
   it("GET by code 404s unknown groups and 400s malformed codes", async () => {

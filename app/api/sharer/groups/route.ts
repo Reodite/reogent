@@ -27,6 +27,9 @@ export async function POST(request: Request): Promise<Response> {
     } catch {
       return json({ error: "Invalid JSON body" }, 400);
     }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return json({ error: "Body must be an object" }, 400);
+    }
     const { name } = body as { name?: unknown };
     if (typeof name !== "string" || name.trim().length === 0 || name.length > 80) {
       return json({ error: "name must be a 1-80 character string" }, 400);
