@@ -43,11 +43,11 @@ import { CourseBlock } from "./course-block";
 import { LookupBlock } from "./lookup-block";
 import { MiniCourseLookup } from "./mini-course-lookup";
 import { PlanStructure } from "./plan-structure";
-import { usePlanner, type Year } from "./planner-store";
+import { SEASON_META, usePlanner, type Year } from "./planner-store";
 import { ProgramProgress, ProgramSelectors } from "./program-requirements";
 import { TrashBin } from "./trash-bin";
 import { usePlanSync } from "./use-plan-sync";
-import { EMPTY_VALIDATION, type BlockValidation } from "./validation";
+import { EMPTY_VALIDATION, findDuplicateCourseCodes, type BlockValidation } from "./validation";
 import { YearColumn } from "./year-column";
 
 const ACTIVE_BLOCK_PREFIX = "block:";
@@ -96,6 +96,15 @@ const blockFirstCollision: CollisionDetection = (args) => {
     }),
   });
 };
+
+function dropLabel(overId: string, years: Year[]): string | null {
+  if (overId === "trash") return "remove area";
+  const destination = resolveTermDrop(overId, years);
+  if (!destination) return null;
+  const year = years.find((item) => item.id === destination.yearId);
+  const term = year?.terms[destination.termIdx];
+  return year && term ? `${year.label}, ${SEASON_META[term.season].short}` : null;
+}
 
 function requirementCodesInPlan(req: ProgramRequirements | null, plannedCodes: Set<string>): Set<string> {
   const out = new Set<string>();
@@ -218,6 +227,7 @@ export function DegreePlannerPane() {
   const validations = useMemo<Map<string, BlockValidation>>(() => {
     const out = new Map<string, BlockValidation>();
     if (!courseIndex) return out;
+    const duplicateCodes = findDuplicateCourseCodes(years);
     const cumulative = new Set<string>();
     for (const year of years) {
       for (const term of year.terms) {
@@ -226,10 +236,12 @@ export function DegreePlannerPane() {
         const completedSameOrBefore = new Set([...cumulative, ...codesThisTerm]);
         for (const block of term.blocks) {
           const entry = courseIndex.get(block.code);
+          const missing = duplicateCodes.has(block.code) ? ["duplicate course in plan"] : [];
           if (!entry) {
+            const ignored = ignoredSet.has(block.id);
             out.set(block.id, {
-              ok: true,
-              missing: [],
+              ok: missing.length === 0 || ignored,
+              missing,
               completedBefore,
               completedSameOrBefore,
             });
@@ -237,7 +249,6 @@ export function DegreePlannerPane() {
           }
           const prereqAst = parsePrereq(entry.prerequisite);
           const coreqAst = parsePrereq(entry.corequisite);
-          const missing: string[] = [];
           if (prereqAst && !isSatisfied(prereqAst, completedBefore)) {
             missing.push(...missingPrereqs(prereqAst, completedBefore).map((m) => `prereq ${m}`));
           }
@@ -384,6 +395,20 @@ export function DegreePlannerPane() {
     <DndContext
       sensors={sensors}
       collisionDetection={blockFirstCollision}
+      accessibility={{
+        announcements: {
+          onDragStart: () => "Course picked up.",
+          onDragOver: ({ over }) => {
+            const label = over ? dropLabel(String(over.id), years) : null;
+            return label ? `Course over ${label}.` : "Course outside a drop target.";
+          },
+          onDragEnd: ({ over }) => {
+            const label = over ? dropLabel(String(over.id), years) : null;
+            return label ? `Course dropped on ${label}.` : "Course drag cancelled.";
+          },
+          onDragCancel: () => "Course drag cancelled.",
+        },
+      }}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >

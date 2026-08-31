@@ -99,18 +99,25 @@ export function CourseInfoPopup({
 
   useEffect(() => {
     if (!onClose) return;
-    function handleClick(e: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onClose?.();
-      }
+    function handleClick(event: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) onClose?.();
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose?.();
     }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [onClose]);
 
   return createPortal(
     <div
       ref={popupRef}
+      role="dialog"
+      aria-label={`${course.code} details`}
       style={{
         position: "fixed",
         top: pos?.top ?? -9999,
@@ -121,10 +128,22 @@ export function CourseInfoPopup({
       }}
       className="neu-raised bg-surface border-border-subtle flex flex-col gap-2 rounded-lg border p-3 text-sm"
     >
-      <h4 className="text-on-surface font-semibold">
-        <span className="font-mono">{course.code}</span>
-        {course.title && <span className="text-on-surface-variant"> — {course.title}</span>}
-      </h4>
+      <div className="flex items-start gap-2">
+        <h4 className="text-on-surface min-w-0 flex-1 font-semibold">
+          <span className="font-mono">{course.code}</span>
+          {course.title && <span className="text-on-surface-variant"> — {course.title}</span>}
+        </h4>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted hover:bg-surface-container hover:text-on-surface -mt-1 -mr-1 rounded-lg p-1"
+            aria-label="Close course details"
+          >
+            <Icon name="close" size={15} />
+          </button>
+        )}
+      </div>
       {course.credits != null && (
         <p className="text-on-surface-variant text-xs">
           Credits: <span className="text-on-surface">{course.credits}</span>

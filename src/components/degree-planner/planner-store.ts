@@ -40,7 +40,7 @@ const SEASON_ORDER: Season[] = ["w1", "w2", "s1", "s2"];
 // Credit-load sanity bounds per season. Summer terms are half-length, so a
 // full summer term is ~6-8 credits; winter full-time is ~15.
 export const TERM_CREDIT_TARGET: Record<Season, number> = { w1: 15, w2: 15, s1: 7, s2: 7 };
-export const TERM_CREDIT_WARN: Record<Season, number> = { w1: 18, w2: 18, s1: 9, s2: 9 };
+export const TERM_CREDIT_WARN: Record<Season, number> = { w1: 18, w2: 18, s1: 8, s2: 8 };
 
 export interface PlannedBlock {
   id: string;

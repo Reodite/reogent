@@ -8,11 +8,13 @@
 // aren't met — see degree-planner-pane.tsx for the cumulative-completed-set
 // logic that fills `validation`.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
+import { Icon } from "@/src/components/icons";
 import { parsePrereq } from "@/src/shared/prereq-ast";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { CourseInfoPopup } from "./course-info-popup";
+import { usePlanner } from "./planner-store";
 import type { BlockValidation } from "./validation";
 
 interface CourseBlockProps {
@@ -58,6 +60,7 @@ export function CourseBlock({
   const coreqAst = useMemo(() => parsePrereq(entry?.corequisite), [entry?.corequisite]);
 
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const removeBlock = usePlanner((state) => state.removeBlock);
 
   function togglePopup(e: React.MouseEvent | React.FocusEvent) {
     e.stopPropagation();
@@ -77,6 +80,22 @@ export function CourseBlock({
     >
       <span className="text-on-surface shrink-0 font-mono">{code}</span>
       <span className="text-on-surface-variant flex-1 truncate">{title}</span>
+      {!ghost && (
+        <button
+          type="button"
+          aria-label={`Remove ${code}`}
+          title={`Remove ${code}`}
+          onPointerDown={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            removeBlock(blockId);
+          }}
+          className="text-muted hover:bg-error-container hover:text-error flex size-5 shrink-0 items-center justify-center rounded-md transition-colors"
+        >
+          <Icon name="close" size={13} />
+        </button>
+      )}
       {!ghost && entry && (
         <button
           type="button"
