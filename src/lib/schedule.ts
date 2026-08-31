@@ -45,7 +45,7 @@ export function parseTime(t: string | null): number {
   if (!m) return -1;
   const h = Number(m[1]);
   const min = Number(m[2]);
-  if (h > 24 || min > 59) return -1;
+  if (h > 23 || min > 59) return -1;
   return h * 60 + min;
 }
 
@@ -133,8 +133,8 @@ export function visibleDays(entries: ScheduledSection[]): string[] {
   return [...DAY_ORDER.slice(0, 5), ...extra];
 }
 
-/** Grid hour range (whole hours) covering all entries, clamped to a sane plan
- *  view, padded by an hour on each side inside 08:00–22:00 bounds. */
+/** Grid hour range (whole hours) covering all entries, with an
+ *  08:00–22:00 minimum window. */
 export function hourRange(entries: ScheduledSection[]): { startHour: number; endHour: number } {
   let start = 8 * 60;
   let end = 22 * 60;

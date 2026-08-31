@@ -46,6 +46,7 @@ describe("parseTime / formatTime", () => {
   it("rejects null, malformed, and out-of-range values", () => {
     expect(parseTime(null)).toBe(-1);
     expect(parseTime("9:60")).toBe(-1);
+    expect(parseTime("24:00")).toBe(-1);
     expect(parseTime("25:00")).toBe(-1);
     expect(parseTime("noon")).toBe(-1);
   });
