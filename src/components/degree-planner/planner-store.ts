@@ -217,6 +217,20 @@ export function isSummer(season: Season): boolean {
   return season === "s1" || season === "s2";
 }
 
+/** Returns years with every co-op term reset to study, or null when there was nothing to disable. */
+export function disableCoopYears(years: Year[]): Year[] | null {
+  let changed = false;
+  const next = years.map((y) => ({
+    ...y,
+    terms: y.terms.map((t) => {
+      if (t.kind !== "coop") return t;
+      changed = true;
+      return { ...t, kind: "study" as const, code: undefined };
+    }),
+  }));
+  return changed ? next : null;
+}
+
 /** Normalizes local and server plans into the current seasonal term model. */
 export function migratePersistedPlan(persisted: unknown): PersistedPlan {
   const raw = persisted && typeof persisted === "object" ? (persisted as Record<string, unknown>) : {};
@@ -475,7 +489,14 @@ export const usePlanner = create<PlannerState>()(
           return commit(s, { years });
         }),
 
-      setCoop: (enabled) => set({ coop: enabled }),
+      setCoop: (enabled) =>
+        set((s) => {
+          if (enabled) return { coop: true };
+          // Disabling co-op un-marks every work term so the board stops
+          // showing them. Undoable like other structure changes.
+          const years = disableCoopYears(s.years);
+          return years ? commit(s, { coop: false, years }) : { coop: false };
+        }),
 
       toggleIgnoreBlock: (blockId) =>
         set((s) =>

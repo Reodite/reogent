@@ -14,7 +14,7 @@ import { useDndMonitor, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useState } from "react";
 import { CourseBlock } from "./course-block";
-import { isSummer, SEASON_META, TERM_CREDIT_WARN, usePlanner, type Term, type TermKind } from "./planner-store";
+import { isSummer, SEASON_META, TERM_CREDIT_WARN, usePlanner, type Term } from "./planner-store";
 import { EMPTY_VALIDATION, type BlockValidation } from "./validation";
 
 interface TermSectionProps {
@@ -70,21 +70,25 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations, r
 
   if (term.kind === "coop") {
     return (
-      <div className="border-secondary/40 bg-secondary/10 flex flex-1 flex-col justify-center gap-1 rounded-lg border border-dashed px-2 py-3">
+      <div className="border-border bg-surface-container-low/60 flex flex-1 flex-col justify-center gap-1 rounded-lg border border-dashed px-2 py-3">
         <div className="flex items-center gap-2">
-          <Icon name="briefcase" size={16} className="text-secondary shrink-0" />
+          <Icon name="briefcase" size={16} className="text-on-surface-variant shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-on-surface text-xs font-semibold">Co-op work term</p>
             <p className="text-muted text-[11px]">
               {meta.months} · {term.code ?? "full-time placement"}
             </p>
           </div>
-          <TermKindButton
-            yearId={yearId}
-            termIdx={termIdx}
-            kind={term.kind}
-            onSet={(k) => setTermKind(yearId, termIdx, k)}
-          />
+          <button
+            type="button"
+            onClick={() => setTermKind(yearId, termIdx, "study")}
+            title="Switch back to a study term"
+            aria-label="Switch back to a study term"
+            className="text-muted hover:bg-surface-container hover:text-on-surface flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors"
+          >
+            <Icon name="book2" size={13} />
+            Study
+          </button>
         </div>
       </div>
     );
@@ -117,12 +121,7 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations, r
           {summer && !creditOverload && creditTotal > 0 && <span className="text-muted"> · summer pace</span>}
         </span>
         {coopEnabled && (
-          <TermKindButton
-            yearId={yearId}
-            termIdx={termIdx}
-            kind={term.kind}
-            onSet={(k) => setTermKind(yearId, termIdx, k)}
-          />
+          <TermKindButton yearId={yearId} termIdx={termIdx} onSet={() => setTermKind(yearId, termIdx, "coop")} />
         )}
       </div>
       <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
@@ -148,19 +147,11 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations, r
   );
 }
 
-// Tiny toggle in the term header flipping study ↔ coop. Guarded by a
-// confirm when flipping to coop would drop placed blocks.
-function TermKindButton({
-  yearId,
-  termIdx,
-  kind,
-  onSet,
-}: {
-  yearId: string;
-  termIdx: number;
-  kind: TermKind;
-  onSet: (kind: TermKind) => void;
-}) {
+// Tiny briefcase button in a study-term header marking the term as a
+// co-op work term. Guarded by a confirm when flipping would drop placed
+// blocks. Co-op cards carry their own explicit "Study" switch-back
+// control, so this button only ever appears on study terms.
+function TermKindButton({ yearId, termIdx, onSet }: { yearId: string; termIdx: number; onSet: () => void }) {
   const years = usePlanner((s) => s.years);
   const term = years.find((y) => y.id === yearId)?.terms[termIdx];
   const hasBlocks = (term?.blocks.length ?? 0) > 0;
@@ -168,20 +159,14 @@ function TermKindButton({
     <button
       type="button"
       onClick={() => {
-        if (kind === "study") {
-          if (hasBlocks && !window.confirm("Marking this as a co-op work term removes its courses. Continue?")) {
-            return;
-          }
-          onSet("coop");
-        } else {
-          onSet("study");
+        if (hasBlocks && !window.confirm("Marking this as a co-op work term removes its courses. Continue?")) {
+          return;
         }
+        onSet();
       }}
-      title={kind === "study" ? "Mark as co-op work term" : "Mark as study term"}
-      aria-label={kind === "study" ? "Mark as co-op work term" : "Mark as study term"}
-      className={`flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
-        kind === "coop" ? "text-secondary hover:text-secondary/80" : "text-muted hover:text-on-surface"
-      }`}
+      title="Mark as co-op work term"
+      aria-label="Mark as co-op work term"
+      className="text-muted hover:text-on-surface flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
     >
       <Icon name="briefcase" size={14} />
     </button>
