@@ -1,0 +1,161 @@
+// Persisted state for the Course Schedule pane (zustand + persist →
+// localStorage key 'reodite-schedule'). The persisted slice mirrors the
+// server payload: section picks identified by { code, section, term }, with a
+// local-only snapshot cache so the grid paints before a catalog refetch.
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
+import { sectionComponent } from "@/src/lib/schedule";
+
+/** A picked section: ids for persistence plus a display snapshot resolved
+ *  from the catalog at pick time. The snapshot is re-resolved on mount so
+ *  catalog corrections (time changes, cancellations) flow through; stale
+ *  snapshots get flagged rather than silently trusted. */
+export interface ScheduleEntry {
+  code: string;
+  section: string;
+  term: string;
+  snapshot: {
+    title: string;
+    instructor: string | null;
+    days: string[];
+    start_time: string | null;
+    end_time: string | null;
+    status: string | null;
+  };
+}
+
+/** Server-synced slice: identifiers only, per the route's contract. */
+export interface SyncedSchedule {
+  entries: { code: string; section: string; term: string }[];
+  activeTerm: string;
+}
+
+interface ScheduleState {
+  entries: ScheduleEntry[];
+  /** Term tab the grid shows. Defaults to the first term across entries. */
+  activeTerm: string;
+  /** Catalog staleness flag: true when a re-resolve changed times or found
+   *  a section that no longer exists. Set by use-schedule-sync. */
+  stale: boolean;
+
+  addEntry: (doc: CourseDoc, section: CourseSection) => void;
+  removeEntry: (code: string, section: string, term: string) => void;
+  removeCourse: (code: string, term: string) => void;
+  setActiveTerm: (term: string) => void;
+  setStale: (stale: boolean) => void;
+}
+
+export function normalizeScheduleCode(code: string): string {
+  return code.toUpperCase().replace(/_V(?=\s)/, "").replace(/\s+/g, " ").trim();
+}
+
+export function entryId(e: Pick<ScheduleEntry, "code" | "section" | "term">): string {
+  return `${normalizeScheduleCode(e.code)}::${e.section}::${e.term}`;
+}
+
+/** Canonical display label shared with the schedule sharer: "CPSC 221 101". */
+export function entryLabel(e: Pick<ScheduleEntry, "code" | "section">): string {
+  return `${normalizeScheduleCode(e.code)} ${e.section}`;
+}
+
+export function syncedSlice(s: ScheduleState): SyncedSchedule {
+  return {
+    entries: s.entries.map(({ code, section, term }) => ({ code: normalizeScheduleCode(code), section, term })),
+    activeTerm: s.activeTerm,
+  };
+}
+
+function applyEntries(entries: ScheduleEntry[]): ScheduleEntry[] {
+  // Dedupe by identity; last write wins for the snapshot.
+  const seen = new Map<string, ScheduleEntry>();
+  for (const e of entries) seen.set(entryId(e), e);
+  return [...seen.values()];
+}
+
+export const useSchedule = create<ScheduleState>()(
+  persist(
+    (set) => ({
+      entries: [],
+      activeTerm: "",
+      stale: false,
+
+      addEntry: (doc, section) =>
+        set((s) => {
+          const term = section.term ?? "";
+          const code = normalizeScheduleCode(doc.code);
+          const component = sectionComponent(section.section);
+          const withoutPreviousChoice = s.entries.filter(
+            (e) =>
+              !(
+                normalizeScheduleCode(e.code) === code &&
+                e.term === term &&
+                sectionComponent(e.section) === component
+              ),
+          );
+          return {
+            entries: applyEntries([
+              ...withoutPreviousChoice,
+              {
+                code,
+                section: section.section,
+                term,
+                snapshot: {
+                  title: doc.title,
+                  instructor: section.instructor ?? null,
+                  days: section.days,
+                  start_time: section.start_time ?? null,
+                  end_time: section.end_time ?? null,
+                  status: section.status ?? null,
+                },
+              },
+            ]),
+            // A newly added entry in a fresh term takes over the tab when the
+            // current term has no visible entries — otherwise the user adds a
+            // section and sees nothing happen.
+            activeTerm:
+              s.entries.some((e) => e.term === s.activeTerm) && s.activeTerm !== "" ? s.activeTerm : term,
+          };
+        }),
+
+      removeEntry: (code, section, term) =>
+        set((s) => ({
+          entries: s.entries.filter(
+            (e) =>
+              !(
+                normalizeScheduleCode(e.code) === normalizeScheduleCode(code) &&
+                e.section === section &&
+                e.term === term
+              ),
+          ),
+        })),
+
+      removeCourse: (code, term) =>
+        set((s) => ({
+          entries: s.entries.filter(
+            (e) => normalizeScheduleCode(e.code) !== normalizeScheduleCode(code) || e.term !== term,
+          ),
+        })),
+
+      setActiveTerm: (term) => set({ activeTerm: term }),
+
+      setStale: (stale) => set({ stale }),
+    }),
+    {
+      name: "reodite-schedule",
+      storage: createJSONStorage(() => localStorage),
+      version: 1,
+    },
+  ),
+);
+
+/** Distinct terms across entries: newest session first, term N ascending
+ *  inside a session ("2026-27 Winter Term 1" before "... Term 2"). */
+export function distinctTerms(entries: ScheduleEntry[]): string[] {
+  const sess = (t: string) => t.match(/^\d{4}-\d{2}/)?.[0] ?? t;
+  const rest = (t: string) => t.replace(/^\d{4}-\d{2}\s*/, "");
+  return [...new Set(entries.map((e) => e.term))].sort((a, b) => {
+    const d = sess(b).localeCompare(sess(a));
+    return d !== 0 ? d : rest(a).localeCompare(rest(b));
+  });
+}
