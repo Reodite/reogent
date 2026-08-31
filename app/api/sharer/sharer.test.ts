@@ -45,7 +45,19 @@ const json = (body: unknown) =>
 const validPerson = {
   handle: "ada",
   avatar: { kind: "initials", initials: "AD", color: "#4d9de0" },
-  schedule: { sections: [], importedAt: "2026-01-01T00:00:00.000Z" },
+  schedule: {
+    sections: [
+      {
+        id: "CPSC-221-101",
+        courseCode: "CPSC_V 221",
+        title: "Basic Algorithms and Data Structures",
+        component: "Lecture",
+        instructors: ["A. Instructor"],
+        meetings: [{ days: ["Mon", "Wed", "Fri"], startMin: 780, endMin: 840, raw: "MWF 1:00–2:00" }],
+      },
+    ],
+    importedAt: "2026-01-01T00:00:00.000Z",
+  },
 };
 
 // AUTH_ENABLED=false bypasses JWT outside production; force production-style
