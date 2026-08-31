@@ -34,10 +34,18 @@ export function CourseBlock({
   fulfillsRequirement = false,
   ghost = false,
 }: CourseBlockProps) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+  const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `block:${blockId}`,
     data: { kind: "block", blockId },
   });
+
+  // The whole chip is the drag surface (grab anywhere). Pointer events
+  // that land on interactive controls are routed back to them, so the
+  // info/remove buttons keep working.
+  function startDrag(e: React.PointerEvent) {
+    if ((e.target as HTMLElement).closest("button, a, select, input")) return;
+    listeners?.onPointerDown?.(e);
+  }
 
   const title = entry?.title || code;
   const style = {
@@ -73,23 +81,12 @@ export function CourseBlock({
     <div
       ref={ghost ? undefined : setNodeRef}
       style={ghost ? undefined : style}
-      className={`bg-surface flex min-h-10 w-full shrink-0 items-center gap-1 rounded-lg border px-1 py-1 text-sm select-none ${borderClass} ${
+      onPointerDown={ghost ? undefined : startDrag}
+      className={`bg-surface flex min-h-10 w-full shrink-0 cursor-grab touch-none items-center gap-1 rounded-lg border px-1.5 py-1 text-sm select-none active:cursor-grabbing ${borderClass} ${
         ghost ? "shadow-lg" : "neu-raised"
       } ${flashing ? "planner-flash" : ""}`}
       data-block-id={blockId}
     >
-      {!ghost && (
-        <button
-          ref={setActivatorNodeRef}
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="text-muted hover:bg-surface-container hover:text-on-surface flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing"
-          aria-label={`Drag ${code}`}
-        >
-          <Icon name="menu" size={14} />
-        </button>
-      )}
       <div className="min-w-0 flex-1 leading-tight">
         <span className="text-on-surface block truncate font-mono text-xs">{code}</span>
         <span className="text-on-surface-variant block truncate text-[10px]" title={title}>

@@ -18,31 +18,27 @@ interface LookupBlockProps {
 
 export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
   const code = entry.code;
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef } = useDraggable({
+  const { listeners, setNodeRef } = useDraggable({
     id: `lookup:${code}`,
     data: { kind: "lookup", code },
     disabled: ghost,
   });
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+
+  // Whole row is the drag surface; interactive controls opt out.
+  function startDrag(e: React.PointerEvent) {
+    if ((e.target as HTMLElement).closest("button, a, select, input")) return;
+    listeners?.onPointerDown?.(e);
+  }
+
   return (
     <div
       ref={ghost ? undefined : setNodeRef}
-      className={`border-border-subtle bg-surface flex min-h-10 items-center gap-1 rounded-lg border px-1 py-1 text-sm select-none ${
+      onPointerDown={ghost ? undefined : startDrag}
+      className={`border-border-subtle bg-surface flex min-h-10 cursor-grab touch-none items-center gap-1 rounded-lg border px-1.5 py-1 text-sm select-none active:cursor-grabbing ${
         ghost ? "shadow-lg" : "hover:border-outline-variant"
       }`}
     >
-      {!ghost && (
-        <button
-          ref={setActivatorNodeRef}
-          type="button"
-          {...attributes}
-          {...listeners}
-          className="text-muted hover:bg-surface-container hover:text-on-surface flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing"
-          aria-label={`Drag ${code}`}
-        >
-          <Icon name="menu" size={14} />
-        </button>
-      )}
       <div className="min-w-0 flex-1 leading-tight">
         <span className="text-on-surface block truncate font-mono text-xs">{code}</span>
         <span className="text-on-surface-variant block truncate text-[10px]" title={entry.title}>

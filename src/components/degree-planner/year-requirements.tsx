@@ -171,7 +171,7 @@ function CourseRequirementRow({
     () => (selectedCode ? findCourseTarget(years, courseIndex, selectedCode, preferredYear) : null),
     [years, courseIndex, selectedCode, preferredYear],
   );
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
+  const { listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `requirement:${rowKey}`,
     data: { kind: "requirement", code: selectedCode },
     disabled: !selectedCode || !target,
@@ -184,19 +184,15 @@ function CourseRequirementRow({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1 }}
-      className="border-border bg-surface group flex items-center gap-1 rounded-lg border px-1.5 py-1"
+      onPointerDown={(e) => {
+        // The row is draggable anywhere except its interactive controls.
+        if ((e.target as HTMLElement).closest("button, a, select, input")) return;
+        listeners?.onPointerDown?.(e);
+      }}
+      className={`border-border bg-surface group flex items-center gap-1 rounded-lg border px-1.5 py-1 ${
+        selectedCode && target ? "cursor-grab touch-none active:cursor-grabbing" : ""
+      }`}
     >
-      <button
-        ref={setActivatorNodeRef}
-        type="button"
-        {...attributes}
-        {...listeners}
-        disabled={!selectedCode || !target}
-        className="text-muted hover:bg-surface-container hover:text-on-surface flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-30"
-        aria-label={selectedCode ? `Drag ${selectedCode} into a term` : "No course available to drag"}
-      >
-        <Icon name="menu" size={13} />
-      </button>
       <button
         type="button"
         onClick={onToggle}
