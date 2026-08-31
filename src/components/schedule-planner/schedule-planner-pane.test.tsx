@@ -159,4 +159,17 @@ describe("SchedulePlannerPane", () => {
     fireEvent.click(conflictBlock);
     expect(conflictBlock.getAttribute("aria-expanded")).toBe("true");
   });
+
+  it("lets the user remove a saved section that disappeared from its term", async () => {
+    apiMock.getCourse.mockImplementation(async (code: string) =>
+      code === "CPSC 110" ? { ...courses[code], sections: [] } : courses[code],
+    );
+    const view = render(<SchedulePlannerPane />);
+
+    await waitFor(() => {
+      expect(view.getByText("This saved section is no longer offered in this term.")).toBeTruthy();
+    });
+    fireEvent.click(view.getByRole("button", { name: `Remove CPSC 110 from ${term}` }));
+    expect(scheduleMock.state.removeCourse).toHaveBeenCalledWith("CPSC 110", term);
+  });
 });

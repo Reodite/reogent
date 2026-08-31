@@ -4,7 +4,15 @@
 // left, one column per weekday; sections render as absolutely positioned
 // blocks inside their day column. Conflicting sections split their column
 // into side-by-side lanes and get the error ring.
-import { conflictedIndices, formatTime, hourRange, laneLayout, parseTime, visibleDays } from "@/src/lib/schedule";
+import {
+  conflictedIndices,
+  formatTime,
+  hourRange,
+  laneLayout,
+  normalizeDays,
+  parseTime,
+  visibleDays,
+} from "@/src/lib/schedule";
 import { useMemo, useState } from "react";
 import { entryId, type ScheduleEntry } from "./schedule-store";
 
@@ -59,7 +67,7 @@ export function placeBlocks(
     section: w.entry.section,
     title: w.entry.snapshot.title,
     term: w.entry.term,
-    days: w.entry.snapshot.days,
+    days: normalizeDays(w.entry.snapshot.days),
     startMinutes: w.start,
     endMinutes: w.end,
   }));
@@ -100,7 +108,7 @@ export function TimetableGrid({ entries }: TimetableGridProps) {
           section: e.section,
           title: e.snapshot.title,
           term: e.term,
-          days: e.snapshot.days,
+          days: normalizeDays(e.snapshot.days),
           startMinutes: parseTime(e.snapshot.start_time),
           endMinutes: parseTime(e.snapshot.end_time),
         })),

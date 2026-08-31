@@ -6,6 +6,7 @@ import { useApi } from "@/src/components/providers";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
 import {
   conflictedIndices,
+  normalizeDays,
   parseTime,
   sectionComponent,
   type ScheduledSection,
@@ -52,9 +53,10 @@ function groupSections(sections: CourseSection[]): Map<SectionComponent, CourseS
 }
 
 function sectionOption(section: CourseSection): string {
+  const days = normalizeDays(section.days);
   const when =
     section.start_time && section.end_time
-      ? `${section.days.length ? section.days.join("/") : "TBA"} · ${section.start_time}–${section.end_time}`
+      ? `${days.length ? days.join("/") : "TBA"} · ${section.start_time}–${section.end_time}`
       : "Time TBA";
   const instructor = section.instructor ? ` · ${section.instructor}` : "";
   const status = section.status ? ` · ${section.status}` : "";
@@ -67,7 +69,7 @@ function toScheduled(entries: ScheduleEntry[]): ScheduledSection[] {
     title: e.snapshot.title,
     section: e.section,
     term: e.term,
-    days: e.snapshot.days,
+    days: normalizeDays(e.snapshot.days),
     startMinutes: parseTime(e.snapshot.start_time),
     endMinutes: parseTime(e.snapshot.end_time),
     instructor: e.snapshot.instructor ?? undefined,
@@ -89,9 +91,28 @@ function SectionPicker({ doc, term, conflictingIds }: { doc: CourseDoc; term: st
 
   if (sections.length === 0) {
     return (
-      <div className="bg-surface-container-low rounded-lg p-3">
-        <p className="text-on-surface-variant text-xs">{code} has no sections in this term.</p>
-      </div>
+      <article className="bg-surface-container-low rounded-lg p-3">
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate font-mono text-sm font-medium">{code}</h3>
+            <p className="text-on-surface-variant mt-1 text-xs">
+              {selected.length > 0
+                ? "This saved section is no longer offered in this term."
+                : "No sections are offered in this term."}
+            </p>
+          </div>
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => removeCourse(code, term)}
+              aria-label={`Remove ${code} from ${term}`}
+              className="text-on-surface-variant hover:bg-error/10 hover:text-error focus-visible:ring-primary/40 grid size-9 shrink-0 place-items-center rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
+            >
+              <Icon name="trash" className="size-4" />
+            </button>
+          )}
+        </div>
+      </article>
     );
   }
 
@@ -188,6 +209,7 @@ export function SchedulePlannerPane() {
   const entries = useSchedule((s) => s.entries);
   const activeTerm = useSchedule((s) => s.activeTerm);
   const setActiveTerm = useSchedule((s) => s.setActiveTerm);
+  const removeCourse = useSchedule((s) => s.removeCourse);
   const stale = useSchedule((s) => s.stale);
   const setStale = useSchedule((s) => s.setStale);
   const [query, setQuery] = useState("");
@@ -258,7 +280,7 @@ export function SchedulePlannerPane() {
   const credits = [...pickedCodes].reduce((sum, code) => sum + (docs.get(code)?.credits ?? 0), 0);
 
   return (
-    <div className="flex h-full min-h-[34rem] flex-col overflow-hidden">
+    <div data-mobile-view={mobileView} className="schedule-planner flex h-full min-h-[34rem] flex-col overflow-hidden">
       <div className="border-border-subtle flex shrink-0 items-center gap-2 border-b px-3 pb-3">
         <div role="tablist" aria-label="Academic term" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
           {allTerms.length === 0 ? (
@@ -284,8 +306,8 @@ export function SchedulePlannerPane() {
         </div>
         {visibleEntries.length > 0 && (
           <div className="text-muted flex shrink-0 items-center gap-2 text-xs">
-            <span className="hidden sm:inline">{pickedCodes.size} courses</span>
-            {credits > 0 && <span className="hidden sm:inline">· {credits} credits</span>}
+            <span className="schedule-wide-meta">{pickedCodes.size} courses</span>
+            {credits > 0 && <span className="schedule-wide-meta">· {credits} credits</span>}
             {conflicts.size > 0 && (
               <span
                 role="status"
@@ -293,8 +315,8 @@ export function SchedulePlannerPane() {
                 className="bg-error-container/60 text-on-error-container inline-flex items-center gap-1 rounded-full px-2 py-1"
               >
                 <Icon name="alert" className="size-3.5" />
-                <span className="sm:hidden">{conflicts.size}</span>
-                <span className="hidden sm:inline">
+                <span className="schedule-conflict-short">{conflicts.size}</span>
+                <span className="schedule-conflict-long">
                   {conflicts.size} conflicting {conflicts.size === 1 ? "section" : "sections"}
                 </span>
               </span>
@@ -325,7 +347,7 @@ export function SchedulePlannerPane() {
         </div>
       )}
 
-      <div className="border-border-subtle flex shrink-0 gap-1 border-b p-2 lg:hidden">
+      <div className="schedule-view-toggle border-border-subtle shrink-0 gap-1 border-b p-2">
         <button
           type="button"
           aria-pressed={mobileView === "courses"}
@@ -353,12 +375,8 @@ export function SchedulePlannerPane() {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
-        <aside
-          className={`border-border-subtle bg-surface min-h-0 flex-col gap-3 border-b p-3 lg:flex lg:border-r lg:border-b-0 ${
-            mobileView === "courses" ? "flex h-full" : "hidden"
-          }`}
-        >
+      <div className="schedule-layout min-h-0 flex-1">
+        <aside className="schedule-courses border-border-subtle bg-surface h-full min-h-0 flex-col gap-3 border-b p-3">
           <div className="shrink-0">
             <h3 className="mb-2 text-sm font-medium">Find a course</h3>
             <CourseSearchField
@@ -394,9 +412,19 @@ export function SchedulePlannerPane() {
               {[...pickedCodes]
                 .filter((code) => !docs.has(code))
                 .map((code) => (
-                  <div key={code} className="bg-surface-container-low rounded-lg p-3">
-                    <p className="font-mono text-sm font-medium">{code}</p>
-                    <p className="text-muted mt-1 text-xs">Loading section options…</p>
+                  <div key={code} className="bg-surface-container-low flex items-start gap-2 rounded-lg p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-sm font-medium">{code}</p>
+                      <p className="text-muted mt-1 text-xs">Loading section options…</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeCourse(code, activeTerm)}
+                      aria-label={`Remove ${code} from ${activeTerm}`}
+                      className="text-on-surface-variant hover:bg-error/10 hover:text-error focus-visible:ring-primary/40 grid size-9 shrink-0 place-items-center rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
+                    >
+                      <Icon name="trash" className="size-4" />
+                    </button>
                   </div>
                 ))}
               {shownDocs.length === 0 && pickedCodes.size === 0 && !record && (
@@ -408,12 +436,10 @@ export function SchedulePlannerPane() {
 
         <section
           aria-label="Weekly timetable. Scroll sideways to see later days."
-          className={`bg-surface-container-low/25 min-h-0 min-w-0 overflow-auto lg:block ${
-            mobileView === "timetable" ? "block h-full" : "hidden"
-          }`}
+          className="schedule-timetable bg-surface-container-low/25 h-full min-h-0 min-w-0 overflow-auto"
         >
           {visibleEntries.length > 0 && (
-            <p className="text-muted bg-surface sticky left-0 z-30 px-3 py-1.5 text-xs lg:hidden">
+            <p className="schedule-single-view-only text-muted bg-surface sticky left-0 z-30 px-3 py-1.5 text-xs">
               Scroll sideways to see later days.
             </p>
           )}

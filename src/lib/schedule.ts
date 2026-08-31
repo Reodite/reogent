@@ -11,7 +11,7 @@ export interface ScheduledSection {
   section: string;
   /** Term name, e.g. "2026-27 Winter Term 1". */
   term: string;
-  /** Meeting days, short names as in the catalog ("Mon", "Wed", ...). */
+  /** Meeting days normalized to "Mon", "Tue", etc. */
   days: string[];
   /** Minutes since midnight, or -1 for unset. */
   startMinutes: number;
@@ -29,10 +29,34 @@ const COMPONENT_LETTERS: Record<string, SectionComponent> = {
   D: "discussion",
 };
 
-/** Classifies a section code by its leading characters: all-digit codes are
- *  lectures; a leading letter picks the component family. */
+const DAY_LABELS: Record<string, string> = {
+  m: "Mon",
+  mon: "Mon",
+  t: "Tue",
+  tue: "Tue",
+  w: "Wed",
+  wed: "Wed",
+  th: "Thu",
+  thu: "Thu",
+  f: "Fri",
+  fri: "Fri",
+  sa: "Sat",
+  sat: "Sat",
+  su: "Sun",
+  sun: "Sun",
+};
+
+/** Normalizes the compact day codes in the sections dataset for display and
+ *  grid placement. Unknown values survive unchanged. */
+export function normalizeDays(days: string[]): string[] {
+  return days.map((day) => DAY_LABELS[day.trim().toLowerCase()] ?? day);
+}
+
+/** Classifies a section code by its component suffix. Dataset prefixes such as
+ *  `A_301` and `A_L05` identify the campus/session, so only the suffix decides
+ *  whether the section is a lecture, laboratory, tutorial, or discussion. */
 export function sectionComponent(section: string): SectionComponent {
-  const s = section.trim();
+  const s = section.trim().split("_").at(-1) ?? "";
   if (s === "") return "other";
   if (/^\d/.test(s)) return "lecture";
   return COMPONENT_LETTERS[s[0].toUpperCase()] ?? "other";

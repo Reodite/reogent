@@ -5,6 +5,7 @@ import {
   formatTime,
   hourRange,
   laneLayout,
+  normalizeDays,
   parseTime,
   sectionComponent,
   visibleDays,
@@ -27,14 +28,23 @@ describe("sectionComponent", () => {
     expect(sectionComponent("101")).toBe("lecture");
     expect(sectionComponent("1W1")).toBe("lecture");
   });
-  it("maps letter prefixes to component families", () => {
+  it("maps letter prefixes and dataset-prefixed codes to component families", () => {
     expect(sectionComponent("L1A")).toBe("laboratory");
     expect(sectionComponent("T1B")).toBe("tutorial");
     expect(sectionComponent("D2")).toBe("discussion");
+    expect(sectionComponent("A_301")).toBe("lecture");
+    expect(sectionComponent("A_L05")).toBe("laboratory");
   });
   it("falls back to other for unknown letters and blanks", () => {
     expect(sectionComponent("R01")).toBe("other");
     expect(sectionComponent("")).toBe("other");
+  });
+});
+
+describe("normalizeDays", () => {
+  it("expands the compact day codes supplied by the sections dataset", () => {
+    expect(normalizeDays(["m", "t", "w", "th", "f"])).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
+    expect(normalizeDays(["Sat", "custom"])).toEqual(["Sat", "custom"]);
   });
 });
 

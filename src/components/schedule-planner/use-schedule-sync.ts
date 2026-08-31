@@ -4,13 +4,18 @@
 // pushes changes back with a debounce, and re-resolves every entry against
 // the catalog so stale snapshots flag themselves.
 //
-// Adopt policy: server copy wins when it exists; otherwise whatever the
-// browser already has is adopted upward. Same last-write-wins posture as the
-// degree planner's use-plan-sync.
+// Adopt policy: the server wins unless the user edits while hydration is in
+// flight. Guest schedules may be adopted once; account-owned local caches
+// never cross into another account.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
-import { useEffect } from "react";
+import { normalizeDays } from "@/src/lib/schedule";
+import { useEffect, useLayoutEffect } from "react";
 import {
+  claimScheduleOwner,
+  clearOwnedScheduleForGuest,
+  componentKey,
+  courseTermKey,
   entryId,
   normalizeScheduleCode,
   syncedSlice,
@@ -72,8 +77,6 @@ async function resolveEntries(
     const live = doc?.sections.find((s) => s.section === id.section && s.term === id.term);
     const existing = current.get(entryId(id));
     if (!doc || !live) {
-      // Keep the identifier visible when the catalog is unavailable or the
-      // section disappeared. A later successful resolve can restore details.
       entries.push(
         existing ?? {
           ...id,
@@ -97,7 +100,7 @@ async function resolveEntries(
       snapshot: {
         title: doc.title,
         instructor: live.instructor ?? null,
-        days: live.days,
+        days: normalizeDays(live.days),
         start_time: live.start_time ?? null,
         end_time: live.end_time ?? null,
         status: live.status ?? null,
@@ -109,66 +112,156 @@ async function resolveEntries(
   return { entries, stale };
 }
 
+/** Applies persisted local edit intent to freshly resolved server entries.
+ *  Component/course tombstones remove equivalent server choices even when the
+ *  server's exact section identifier differs from the stale local snapshot. */
+export function mergeHydratedEntries(
+  remote: ScheduleEntry[],
+  current: ScheduleEntry[],
+  selectedComponents: string[],
+  removedComponents: string[],
+  removedCourses: string[],
+): ScheduleEntry[] {
+  const selected = new Set(selectedComponents);
+  const removed = new Set(removedComponents);
+  const removedCourseSet = new Set(removedCourses);
+  const merged = new Map(
+    remote
+      .filter(
+        (entry) =>
+          !removedCourseSet.has(courseTermKey(entry.code, entry.term)) &&
+          !removed.has(componentKey(entry.code, entry.term, entry.section)),
+      )
+      .map((entry) => [entryId(entry), entry]),
+  );
+
+  for (const entry of current) {
+    const key = componentKey(entry.code, entry.term, entry.section);
+    if (!selected.has(key)) continue;
+    for (const [id, candidate] of merged) {
+      if (componentKey(candidate.code, candidate.term, candidate.section) === key) merged.delete(id);
+    }
+    merged.set(entryId(entry), entry);
+  }
+  return [...merged.values()];
+}
+
 export function useScheduleSync(): void {
   const api = useApi();
   const { user, isGuest } = useAppAuth();
   const userId = !isGuest && user ? user.userId : null;
 
+  useLayoutEffect(() => {
+    if (isGuest) clearOwnedScheduleForGuest();
+  }, [isGuest]);
+
   useEffect(() => {
     if (!userId) return;
+
+    claimScheduleOwner(userId);
     let cancelled = false;
     let unsubscribe: (() => void) | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    let pending: SyncedSchedule | null = null;
+    let pending: { schedule: SyncedSchedule; revision: number } | null = null;
+    let hydrating = hydratedFor !== userId;
+    let applyingServer = false;
 
     const flush = () => {
       if (timer) clearTimeout(timer);
       timer = null;
       if (!pending) return;
-      const payload = pending;
+      const save = pending;
       pending = null;
-      api.saveSchedule(payload).catch(() => {
-        // Transient failure — next change re-sends the full slice.
-      });
+      api
+        .saveSchedule(save.schedule)
+        .then(() => {
+          const current = useSchedule.getState();
+          if (current.ownerId === userId) current.markSynced(save.revision);
+        })
+        .catch(() => {
+          // Keep unsynced intent for the next edit or mount.
+          if (!pending) pending = save;
+        });
     };
 
+    const scheduleFlush = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flush, SAVE_DEBOUNCE_MS);
+    };
+
+    unsubscribe = useSchedule.subscribe((state, prev) => {
+      const next = syncedSlice(state);
+      if (sameSynced(next, syncedSlice(prev)) || applyingServer) return;
+      pending = { schedule: next, revision: state.revision };
+      if (!hydrating) scheduleFlush();
+    });
+
+    if (!hydrating && useSchedule.getState().dirty) {
+      const current = useSchedule.getState();
+      pending = { schedule: syncedSlice(current), revision: current.revision };
+      scheduleFlush();
+    }
+
     (async () => {
-      if (hydratedFor !== userId) {
-        try {
-          const { schedule } = await api.getSchedule();
+      if (!hydrating) return;
+      try {
+        const { schedule } = await api.getSchedule();
+        if (cancelled) return;
+        if (isSyncedSchedule(schedule)) {
+          const currentCache = new Map(useSchedule.getState().entries.map((entry) => [entryId(entry), entry]));
+          const resolved = await resolveEntries(api, schedule.entries, currentCache);
           if (cancelled) return;
-          hydratedFor = userId;
-          if (isSyncedSchedule(schedule)) {
-            const current = new Map(useSchedule.getState().entries.map((e) => [entryId(e), e]));
-            const { entries, stale } = await resolveEntries(api, schedule.entries, current);
-            if (cancelled) return;
+
+          applyingServer = true;
+          const current = useSchedule.getState();
+          if (current.dirty) {
+            const entries = mergeHydratedEntries(
+              resolved.entries,
+              current.entries,
+              current.selectedComponents,
+              current.removedComponents,
+              current.removedCourses,
+            );
             useSchedule.setState({
+              ownerId: userId,
               entries,
-              activeTerm: schedule.activeTerm || entries[0]?.term || "",
-              stale,
+              activeTerm: current.activeTermDirty ? current.activeTerm : schedule.activeTerm || entries[0]?.term || "",
+              stale: resolved.stale || current.stale,
             });
+            const merged = useSchedule.getState();
+            pending = { schedule: syncedSlice(merged), revision: merged.revision };
           } else {
-            // No server copy yet — adopt what this browser already has.
-            api.saveSchedule(syncedSlice(useSchedule.getState())).catch(() => {});
+            useSchedule.setState({
+              ownerId: userId,
+              dirty: false,
+              selectedComponents: [],
+              removedComponents: [],
+              removedCourses: [],
+              activeTermDirty: false,
+              entries: resolved.entries,
+              activeTerm: schedule.activeTerm || resolved.entries[0]?.term || "",
+              stale: resolved.stale,
+            });
+            pending = null;
           }
-        } catch {
-          // Server unreachable — keep local; saves retry on later changes.
+          applyingServer = false;
+        } else {
+          const current = useSchedule.getState();
+          pending = { schedule: syncedSlice(current), revision: current.revision };
         }
+        hydratedFor = userId;
+      } catch {
+        // Keep the local cache and retry server hydration on the next mount.
+      } finally {
+        hydrating = false;
+        if (!cancelled && pending) scheduleFlush();
       }
-      if (cancelled) return;
-      unsubscribe = useSchedule.subscribe((state, prev) => {
-        const next = syncedSlice(state);
-        if (sameSynced(next, syncedSlice(prev))) return;
-        pending = next;
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(flush, SAVE_DEBOUNCE_MS);
-      });
     })();
 
     return () => {
       cancelled = true;
       unsubscribe?.();
-      flush();
+      if (!hydrating) flush();
     };
   }, [api, userId]);
 }
