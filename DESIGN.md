@@ -22,8 +22,8 @@ colors:
   muted: "#5a6066"
   outline: "#6e747a"
   outline-variant: "#bfc4c9"
-  border: "#e6e6e2"
-  border-subtle: "#efefeb"
+  border: "#d9d9dd"
+  border-subtle: "#e8e8ea"
   accent-subtle: "#edeef5"
   surface-tint: "#4a4e7a"
   on-primary: "#ffffff"
@@ -193,9 +193,18 @@ A cool-neutral palette anchored by muted indigo. Warmth comes from the off-white
 - **On Surface** (`#18191b`): Primary text. Near-black with warm undertone. >=7:1 on all surfaces.
 - **On Surface Variant** (`#3e4348`): Secondary text, labels, descriptions, tool call summaries. >=4.5:1 on all light surfaces.
 - **Muted** (`#5a6066`): Meta text, timestamps, placeholders, thinking block text, disclaimers. >=4.5:1 on all surfaces.
-- **Border** (`#e6e6e2`): Standard dividers, section separators, hairlines between content, inline code borders.
-- **Border Subtle** (`#efefeb`): Softest separators, button borders, `.glass-neu` edges, pre block borders.
+- **Border** (`#d9d9dd`): Standard dividers, section separators, hairlines between content, inline code borders.
+- **Border Subtle** (`#e8e8ea`): Softest separators, button borders, `.glass-neu` edges, pre block borders.
 - **Accent Subtle** (`#edeef5`): Active nav item background, user message bubble background. Palest indigo tint.
+
+### Surface separation floors
+
+Contrast between adjacent layers is part of the design, not an accident of it. Violating these floors makes cards dissolve into the page:
+
+- Adjacent surface steps (background → surface → container-low → container → container-high) must stay visually distinct. Never assign two steps the same value; in dark theme each step differs by at least #06 per channel.
+- Every card, chip, or inset well sits exactly one step away from its parent surface. Nested elements on the same step read as one blob.
+- `--border` must remain visible against `--surface` without squinting (dark: `#3f3f4a` on `#1c1c22`). `--border-subtle` is for interior hairlines only, never a card's outer edge.
+- Dark-theme neumorphic shadows must stay heavy enough to read (`--neu-shadow` >= 0.3 alpha); a shadow you cannot see is not a shadow.
 
 ### Opacity Modifiers
 
@@ -294,11 +303,11 @@ Single unified shadow recipe applied through `.neu-*` classes. All composed surf
 
 **Primitives:**
 
-| Primitive           | Light                     | Dark                 |
-| ------------------- | ------------------------- | -------------------- |
-| `--neu-highlight`   | `rgba(255,255,255,0.2)`   | `rgba(65,66,72,0.1)` |
-| `--neu-shadow`      | `rgba(105,112,116,0.045)` | `rgba(0,0,0,0.11)`   |
-| `--neu-shadow-deep` | `rgba(91,99,104,0.06)`    | `rgba(0,0,0,0.16)`   |
+| Primitive           | Light                     | Dark                     |
+| ------------------- | ------------------------- | ------------------------ |
+| `--neu-highlight`   | `rgba(255,255,255,0.2)`   | `rgba(255,255,255,0.04)` |
+| `--neu-shadow`      | `rgba(105,112,116,0.045)` | `rgba(0,0,0,0.35)`       |
+| `--neu-shadow-deep` | `rgba(91,99,104,0.06)`    | `rgba(0,0,0,0.45)`       |
 
 **Composed shadows:**
 

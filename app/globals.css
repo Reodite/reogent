@@ -61,8 +61,8 @@
   --outline-variant: #bfc4c9;
 
   /* Borders */
-  --border: #e6e6e2;
-  --border-subtle: #efefeb;
+  --border: #d9d9dd;
+  --border-subtle: #e8e8ea;
 
   /* Accents */
   --accent-subtle: #edeef5;
@@ -92,13 +92,13 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --background: #121214;
-  --surface-container-lowest: #0e0e10;
-  --surface-container-low: #1a1a1e;
-  --surface-container: #222226;
-  --surface-container-high: #2c2c30;
-  --surface: #1a1a1e;
-  --surface-bright: #2a2a2e;
+  --background: #0d0d10;
+  --surface-container-lowest: #070709;
+  --surface-container-low: #222229;
+  --surface-container: #2a2a33;
+  --surface-container-high: #34343f;
+  --surface: #1c1c22;
+  --surface-bright: #3c3c48;
 
   --primary: #b0b4d8;
   --primary-container: #363a5e;
@@ -129,21 +129,21 @@
   --outline: #8c9297;
   --outline-variant: #42484c;
 
-  --border: #2a2a2e;
-  --border-subtle: #232327;
+  --border: #3f3f4a;
+  --border-subtle: #2c2c34;
 
-  --accent-subtle: #1e1f2a;
+  --accent-subtle: #262733;
   --surface-tint: #b0b4d8;
 
-  --elevation-sm: 2px 2px 4px rgba(0, 0, 0, 0.1), -1px -1px 3px rgba(50, 50, 55, 0.15);
-  --elevation-md: 3px 3px 7px rgba(0, 0, 0, 0.12), -2px -2px 5px rgba(50, 50, 55, 0.12);
-  --elevation-lg: 4px 4px 10px rgba(0, 0, 0, 0.15), -3px -3px 8px rgba(50, 50, 55, 0.1);
-  --elevation-inset: inset 1px 1px 3px rgba(0, 0, 0, 0.1), inset -1px -1px 3px rgba(50, 50, 55, 0.1);
+  --elevation-sm: 2px 2px 4px rgba(0, 0, 0, 0.3), -1px -1px 3px rgba(255, 255, 255, 0.03);
+  --elevation-md: 3px 3px 7px rgba(0, 0, 0, 0.35), -2px -2px 5px rgba(255, 255, 255, 0.03);
+  --elevation-lg: 4px 4px 10px rgba(0, 0, 0, 0.4), -3px -3px 8px rgba(255, 255, 255, 0.03);
+  --elevation-inset: inset 1px 1px 3px rgba(0, 0, 0, 0.3), inset -1px -1px 3px rgba(255, 255, 255, 0.03);
   --elevation-glow: 0 2px 8px rgba(176, 180, 216, 0.08);
 
-  --neu-highlight: rgba(65, 66, 72, 0.1);
-  --neu-shadow: rgba(0, 0, 0, 0.11);
-  --neu-shadow-deep: rgba(0, 0, 0, 0.16);
+  --neu-highlight: rgba(255, 255, 255, 0.04);
+  --neu-shadow: rgba(0, 0, 0, 0.35);
+  --neu-shadow-deep: rgba(0, 0, 0, 0.45);
   --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
   --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
 

@@ -28,7 +28,8 @@ function creditValue(entry: CourseIndexEntry | undefined): number {
 }
 
 // Program selectors write the faculty, major, and minor to the planner store.
-export function ProgramSelectors() {
+// `toolbar` renders the compact row used in the pane header.
+export function ProgramSelectors({ layout = "stack" }: { layout?: "stack" | "toolbar" }) {
   const faculty = usePlanner((s) => s.faculty);
   const major = usePlanner((s) => s.major);
   const minor = usePlanner((s) => s.minor);
@@ -69,11 +70,15 @@ export function ProgramSelectors() {
   }
 
   return (
-    <div className="flex min-h-0 flex-col gap-2">
-      <h3 className="text-on-surface text-sm font-semibold">Program</h3>
-      <div className="flex flex-col gap-2 text-sm">
+    <div className={layout === "toolbar" ? "flex flex-wrap items-center gap-2" : "flex min-h-0 flex-col gap-2"}>
+      {layout === "stack" && <h3 className="text-on-surface text-sm font-semibold">Program</h3>}
+      <div
+        className={layout === "toolbar" ? "flex flex-wrap items-center gap-2 text-sm" : "flex flex-col gap-2 text-sm"}
+      >
         <ProgramCombobox
           label="Faculty"
+          hideLabel={layout === "toolbar"}
+          className={layout === "toolbar" ? "w-44" : undefined}
           placeholder="Search faculties"
           value={faculty}
           options={index.faculties.map((name) => ({ value: name, label: name }))}
@@ -85,25 +90,41 @@ export function ProgramSelectors() {
         />
         <ProgramCombobox
           label="Major / program"
+          hideLabel={layout === "toolbar"}
+          className={layout === "toolbar" ? "w-48" : undefined}
           placeholder={faculty ? "Search programs" : "Select a faculty first"}
           value={major}
           options={majorOptions.map((option) => ({ value: option.url, label: option.label }))}
           onChange={(value) => setProgram("major", value)}
           disabled={!faculty}
         />
-        {major && (
-          <a
-            href={major}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary flex items-center gap-1 text-xs hover:underline"
-          >
-            <Icon name="externalLink" size={14} />
-            UBC Calendar page
-          </a>
-        )}
+        {major &&
+          (layout === "toolbar" ? (
+            <a
+              href={major}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open on the UBC Calendar"
+              aria-label="Open program page on the UBC Calendar"
+              className="text-muted hover:bg-surface-container hover:text-primary flex size-7 items-center justify-center rounded-md"
+            >
+              <Icon name="externalLink" size={14} />
+            </a>
+          ) : (
+            <a
+              href={major}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary flex items-center gap-1 text-xs hover:underline"
+            >
+              <Icon name="externalLink" size={14} />
+              UBC Calendar page
+            </a>
+          ))}
         <ProgramCombobox
           label="Minor (optional)"
+          hideLabel={layout === "toolbar"}
+          className={layout === "toolbar" ? "w-40" : undefined}
           placeholder={faculty ? "Search minors" : "Select a faculty first"}
           value={minor}
           options={minorOptions.map((option) => ({ value: option.url, label: option.label }))}
@@ -117,6 +138,8 @@ export function ProgramSelectors() {
 
 function ProgramCombobox({
   label,
+  hideLabel = false,
+  className,
   placeholder,
   value,
   options,
@@ -124,6 +147,8 @@ function ProgramCombobox({
   disabled = false,
 }: {
   label: string;
+  hideLabel?: boolean;
+  className?: string;
   placeholder: string;
   value: string | null;
   options: Array<{ value: string; label: string }>;
@@ -149,13 +174,14 @@ function ProgramCombobox({
 
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-on-surface-variant text-xs">{label}</span>
+      <span className={hideLabel ? "sr-only" : "text-on-surface-variant text-xs"}>{label}</span>
       <input
         type="text"
         list={listId}
         value={query}
         disabled={disabled}
         placeholder={placeholder}
+        aria-label={hideLabel ? label : undefined}
         autoComplete="off"
         onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => {
@@ -171,7 +197,7 @@ function ProgramCombobox({
           if (!event.currentTarget.value) return;
           if (!apply(event.currentTarget.value)) setQuery(selectedLabel);
         }}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 w-full rounded-lg px-2 py-1.5 text-sm focus-visible:ring-2 disabled:opacity-50"
+        className={`neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 w-full rounded-lg px-2 py-1.5 text-sm focus-visible:ring-2 disabled:opacity-50 ${className ?? ""}`}
       />
       <datalist id={listId}>
         {options.map((option) => (
