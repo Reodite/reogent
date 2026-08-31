@@ -399,8 +399,11 @@ export function DegreePlannerPane() {
         settleOverlay();
       }}
     >
-      <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col gap-4 p-6">
-        <header className="relative z-30 flex shrink-0 flex-wrap items-end gap-x-4 gap-y-3">
+      <div
+        data-pane-root="degree-planner"
+        className="flex h-full min-h-0 flex-col gap-4 p-6 max-md:overflow-y-auto max-sm:p-4"
+      >
+        <header className="relative z-30 flex shrink-0 flex-wrap items-end gap-x-4 gap-y-3 max-xl:pl-12">
           <div className="w-56 shrink-0">
             <h2 className="text-on-surface text-xl font-medium tracking-[-0.02em]">Degree Planner</h2>
             <p className="text-muted text-xs">Plan your UBC degree, term by term.</p>
@@ -418,14 +421,14 @@ export function DegreePlannerPane() {
         </header>
 
         <div
-          className="grid min-h-0 flex-1 gap-4"
+          className="grid min-h-0 flex-1 gap-4 max-md:flex max-md:flex-none max-md:flex-col"
           style={{
             gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) 20rem",
           }}
         >
           <section
             aria-label="Degree plan"
-            className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4"
+            className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4 max-md:min-h-[36rem] max-md:shrink-0"
           >
             <p
               className={`text-muted sticky left-0 mb-2 h-4 shrink-0 text-right text-[11px] ${
@@ -457,7 +460,7 @@ export function DegreePlannerPane() {
           {sidebarCollapsed ? (
             <CollapsedSidebar onToggle={toggleSidebar} />
           ) : (
-            <aside className="grid min-h-0 min-w-0 grid-rows-2 gap-4">
+            <aside className="grid min-h-0 min-w-0 grid-rows-2 gap-4 max-md:h-[44rem] max-md:shrink-0">
               <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
                 <header className="flex h-12 shrink-0 items-center gap-2 px-4">
                   <h3 className="text-on-surface flex-1 text-sm font-medium">Requirements</h3>
@@ -679,7 +682,7 @@ function ActionsSection({
     "neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40";
 
   return (
-    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+    <div className="ml-auto flex flex-wrap items-center justify-end gap-2 max-md:ml-0 max-md:w-full max-md:justify-start">
       <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-xl p-1">
         <button
           type="button"

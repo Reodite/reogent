@@ -70,7 +70,7 @@ export function ProgramSelectors() {
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+    <div className="flex flex-wrap items-end gap-x-3 gap-y-2 max-md:w-full">
       <ProgramCombobox
         label="Faculty"
         className="w-44"

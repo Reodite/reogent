@@ -63,7 +63,7 @@ export function PlanStructure() {
         >
           <input
             type="checkbox"
-            className="sr-only"
+            className="peer sr-only"
             checked={coop}
             disabled={!coopInfo && !coop}
             onChange={(event) => {
