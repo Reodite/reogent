@@ -9,8 +9,8 @@ const BUILDING_RE = /^(.*)\(([A-Z0-9]{2,6})\)$/;
 /**
  * A parsed pattern line. Date bounds are carried separately from the
  * MeetingPattern: the schedule parser folds them into the section's
- * termStart/termEnd and then discards them (weekly day+time is all the
- * calendar needs, and dates bloat share links).
+ * termStart/termEnd and then discards them because the weekly calendar only
+ * renders each recurring day and time.
  */
 export interface ParsedMeeting {
   pattern: MeetingPattern;

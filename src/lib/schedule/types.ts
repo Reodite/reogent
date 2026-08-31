@@ -26,7 +26,7 @@ export interface Section {
   /**
    * ISO date bounds of the section (outer range across its meeting patterns).
    * The only date info we keep — drives term bucketing; per-meeting ranges
-   * (reading-break splits) are deliberately dropped to keep share links small.
+   * (reading-break splits) collapse because the week view only needs the outer term range.
    */
   termStart?: string;
   termEnd?: string;
@@ -47,7 +47,7 @@ export interface Avatar {
   initials?: string;
   /** hex accent color, always present (chip border / initials background) */
   color: string;
-  /** 96px JPEG data URL; lives in localStorage + JSON export, never in links */
+  /** 96px JPEG data URL stored with the person's DB record */
   imageDataUrl?: string;
 }
 

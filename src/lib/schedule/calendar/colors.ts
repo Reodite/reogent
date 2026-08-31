@@ -1,9 +1,9 @@
 import { fnv1a } from "../util/hash";
 
 /**
- * Course accent palette — 12 well-spaced hues tuned for the dark UI.
- * Blocks tint these to ~16% over the panel color; the spine and text use
- * them at full strength. Color identifies the COURSE; avatars identify people.
+ * Course accent palette with well-spaced hues across both themes.
+ * Blocks use these for a tinted fill and edge; text keeps the theme's normal
+ * contrast. Color identifies the course while avatars identify people.
  */
 const COURSE_COLORS = [
   "#6ea8fe", // cornflower

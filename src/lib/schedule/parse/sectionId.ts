@@ -8,11 +8,9 @@ function meetingSignature(m: MeetingPattern): string {
 /**
  * Deterministic identity for a section across different people's uploads.
  * Two friends registered in the same class produce the same id, which is
- * what lets the calendar render ONE block with both their avatars — and lets
- * share links store the section data once for the whole group.
- * Dates are deliberately excluded: title + component + weekly slot + room is
- * the identity, so the same class survives a link round-trip (which strips
- * per-meeting dates) without splitting into two blocks.
+ * what lets the calendar render one block with both their avatars.
+ * Dates are excluded because title + component + weekly slot + room form the
+ * stable identity after per-meeting ranges collapse into one term range.
  */
 export function computeSectionId(s: Omit<Section, "id">): string {
   const sig = [s.courseCode, s.title, s.component, ...s.meetings.map(meetingSignature).sort()].join("|");
