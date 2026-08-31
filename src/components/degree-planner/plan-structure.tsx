@@ -5,6 +5,7 @@
 // remain editable on the board.
 import { applyCoopSequence, COOP_SUPPORT } from "@/src/lib/coop";
 import { useState } from "react";
+import { PlannerCheckboxMark } from "./planner-checkbox";
 import { MAX_YEARS, MIN_YEARS, usePlanner } from "./planner-store";
 
 const SELECT_CLASS =
@@ -55,17 +56,22 @@ export function PlanStructure() {
       </label>
 
       <div className="flex flex-col gap-1">
-        <label className="flex items-center gap-2 text-sm">
+        <label
+          className={`hover:bg-surface-container-low flex min-h-11 items-center gap-1 rounded-lg px-1 text-left ${
+            !coopInfo && !coop ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+          }`}
+        >
           <input
             type="checkbox"
-            className="accent-primary"
+            className="sr-only"
             checked={coop}
             disabled={!coopInfo && !coop}
-            onChange={(e) => {
-              setCoop(e.target.checked);
+            onChange={(event) => {
+              setCoop(event.target.checked);
               setSequenceMessage(null);
             }}
           />
+          <PlannerCheckboxMark checked={coop} />
           <span className="text-on-surface text-xs">Co-op program</span>
         </label>
         {faculty == null && <p className="text-muted text-[11px]">Select a faculty to check co-op availability.</p>}
@@ -99,8 +105,8 @@ export function PlanStructure() {
       </div>
 
       <p className="text-muted text-[11px]">
-        Summer sessions and individual work terms are toggled on the board (“Add summer session” under a year, “Work
-        term” in a term header).
+        Add summer sessions beneath a year. Use “Mark as co-op work term” inside any study term to customize the
+        sequence.
       </p>
     </div>
   );

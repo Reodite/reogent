@@ -14,6 +14,7 @@ import {
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
+import { PlannerCheckboxMark } from "./planner-checkbox";
 import { usePlanner } from "./planner-store";
 
 interface YearRequirementsProps {
@@ -150,22 +151,6 @@ function RequirementRow({
   );
 }
 
-// One status glyph for the whole checklist: an empty square means pending,
-// a filled primary square with a check means complete. Whether completion
-// was detected from the plan or marked by hand is carried by a caption
-// ("Planned" / "Marked done"), not by a different icon.
-function StatusGlyph({ complete }: { complete: boolean }) {
-  return (
-    <span
-      className={`mt-px flex size-5 shrink-0 items-center justify-center rounded-md border-2 ${
-        complete ? "border-primary bg-primary" : "border-outline"
-      }`}
-    >
-      {complete && <Icon name="check" size={12} className="text-on-primary" />}
-    </span>
-  );
-}
-
 function CourseRequirementRow({
   rowKey,
   item,
@@ -210,7 +195,7 @@ function CourseRequirementRow({
         if ((e.target as HTMLElement).closest("button, a, select, input")) return;
         listeners?.onPointerDown?.(e);
       }}
-      className={`hover:bg-surface-container-low flex min-h-10 items-start gap-2 rounded-lg px-2 py-2 ${
+      className={`hover:bg-surface-container-low flex min-h-11 items-start gap-1 rounded-lg px-2 py-1 ${
         selectedCode && target ? "cursor-grab touch-none active:cursor-grabbing" : ""
       }`}
     >
@@ -219,11 +204,11 @@ function CourseRequirementRow({
         onClick={onToggle}
         title="Mark complete with transfer or external credit"
         aria-label="Mark requirement complete manually"
-        className="shrink-0"
+        className="hover:bg-surface-container shrink-0 rounded-lg"
       >
-        <StatusGlyph complete={manuallyChecked} />
+        <PlannerCheckboxMark checked={manuallyChecked} />
       </button>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 pt-2">
         <p className="text-on-surface-variant text-xs leading-snug" title={cleanLabel(item.label)}>
           {cleanLabel(item.label)}
         </p>
@@ -248,7 +233,7 @@ function CourseRequirementRow({
         )}
       </div>
       {item.credits != null && (
-        <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">{item.credits} cr</span>
+        <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
       )}
       <button
         type="button"
@@ -256,7 +241,7 @@ function CourseRequirementRow({
         onClick={() => target && addBlock(target.yearId, target.termIdx, selectedCode)}
         title={target ? `Add ${selectedCode} to the plan` : "No available study term"}
         aria-label={target ? `Add ${selectedCode} to the plan` : "No available study term"}
-        className="text-primary hover:bg-primary/10 flex size-7 shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-30"
+        className="text-primary hover:bg-primary/10 flex size-9 shrink-0 items-center justify-center rounded-lg disabled:cursor-not-allowed disabled:opacity-30"
       >
         <Icon name="add" size={14} />
       </button>
@@ -278,12 +263,14 @@ function ManualRequirementRow({
       <button
         type="button"
         onClick={onToggle}
-        className="hover:bg-surface-container-low flex min-h-10 w-full items-start gap-2 rounded-lg px-2 py-2 text-left"
+        className="hover:bg-surface-container-low flex min-h-11 w-full items-start gap-1 rounded-lg px-2 py-1 text-left"
       >
-        <StatusGlyph complete={checked} />
-        <span className="text-on-surface-variant min-w-0 flex-1 text-xs leading-snug">{cleanLabel(item.label)}</span>
+        <PlannerCheckboxMark checked={checked} />
+        <span className="text-on-surface-variant min-w-0 flex-1 pt-2 text-xs leading-snug">
+          {cleanLabel(item.label)}
+        </span>
         {item.credits != null && (
-          <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">{item.credits} cr</span>
+          <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
         )}
       </button>
     </li>
@@ -301,27 +288,27 @@ function CompletedRequirementRow({
 }) {
   const content = (
     <>
-      <StatusGlyph complete />
-      <span className="text-muted min-w-0 flex-1 text-xs leading-snug line-through decoration-current/30">
+      <PlannerCheckboxMark checked />
+      <span className="text-muted min-w-0 flex-1 pt-2 text-xs leading-snug line-through decoration-current/30">
         {cleanLabel(item.label)}
       </span>
-      <span className="text-muted shrink-0 text-[10px]">{met ? "Planned" : "Marked done"}</span>
+      <span className="text-muted shrink-0 pt-2 text-[10px]">{met ? "Planned" : "Marked done"}</span>
       {item.credits != null && (
-        <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">{item.credits} cr</span>
+        <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
       )}
     </>
   );
   // Auto-detected rows are inert; manually checked rows stay clickable so the
   // check can be revoked.
   if (met) {
-    return <li className="flex min-h-10 items-start gap-2 rounded-lg px-2 py-2">{content}</li>;
+    return <li className="flex min-h-11 items-start gap-1 rounded-lg px-2 py-1">{content}</li>;
   }
   return (
     <li>
       <button
         type="button"
         onClick={onToggle}
-        className="hover:bg-surface-container-low flex min-h-10 w-full items-start gap-2 rounded-lg px-2 py-2 text-left"
+        className="hover:bg-surface-container-low flex min-h-11 w-full items-start gap-1 rounded-lg px-2 py-1 text-left"
         aria-label="Mark requirement incomplete"
       >
         {content}

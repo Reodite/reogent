@@ -102,9 +102,6 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
       <div className="flex h-6 shrink-0 items-baseline gap-2 text-xs">
         <span className="text-on-surface shrink-0 font-medium">{meta.short}</span>
         <span className="text-muted min-w-0 truncate text-[11px]">{meta.months}</span>
-        {coopEnabled && (
-          <TermKindButton yearId={yearId} termIdx={termIdx} onSet={() => setTermKind(yearId, termIdx, "coop")} />
-        )}
         <span
           className={`ml-auto shrink-0 text-right text-[11px] tabular-nums ${creditOverload ? "text-error" : "text-muted"}`}
           title={creditOverload ? "Over the usual credit load for this term" : undefined}
@@ -132,12 +129,15 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
           )}
         </div>
       </SortableContext>
+      {coopEnabled && (
+        <TermKindButton yearId={yearId} termIdx={termIdx} onSet={() => setTermKind(yearId, termIdx, "coop")} />
+      )}
     </div>
   );
 }
 
-// Marks a study term as a co-op work term; confirms first when that would
-// drop placed blocks. Co-op cards carry their own switch-back control.
+// Marks a study term as a co-op work term and confirms before removing courses.
+// Co-op cards carry their own switch-back control.
 function TermKindButton({ yearId, termIdx, onSet }: { yearId: string; termIdx: number; onSet: () => void }) {
   const years = usePlanner((s) => s.years);
   const term = years.find((y) => y.id === yearId)?.terms[termIdx];
@@ -151,9 +151,9 @@ function TermKindButton({ yearId, termIdx, onSet }: { yearId: string; termIdx: n
         }
         onSet();
       }}
-      className="text-muted hover:text-on-surface shrink-0 text-[11px] underline-offset-2 transition-colors hover:underline"
+      className="neu-button text-on-surface-variant hover:text-on-surface h-9 w-full shrink-0 rounded-lg px-2 text-xs"
     >
-      Work term
+      Mark as co-op work term
     </button>
   );
 }
