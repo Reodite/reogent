@@ -14,12 +14,13 @@ vi.mock("@/src/components/map/map-panel", () => ({
 const { PANE_REGISTRY, PANE_BY_ID } = await import("./pane-registry");
 
 describe("PANE_REGISTRY — composition (REQ-19.5, design.md §G)", () => {
-  it("registers the panes in canonical order: map, course-lookup, prereq-tree, degree-planner, calendar", () => {
+  it("registers the panes in canonical order", () => {
     expect(PANE_REGISTRY.map((e) => e.id)).toEqual([
       "map",
       "course-lookup",
       "prereq-tree",
       "degree-planner",
+      "schedule",
       "calendar",
     ]);
   });
