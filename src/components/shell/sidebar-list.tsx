@@ -45,13 +45,13 @@ export function SidebarListNav({
   );
 }
 
-/** List item with the shared entrance stagger (spring rise, capped delay). */
+/** List item with the shared entrance stagger (opacity fade, capped delay). */
 export function SidebarListItem({ index = 0, children }: { index?: number; children: ReactNode }) {
   const stagger = useContext(StaggerContext);
   return (
     <motion.li
-      initial={stagger ? { opacity: 0, y: 6 } : false}
-      animate={{ opacity: 1, y: 0 }}
+      initial={stagger ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
       transition={
         stagger ? { type: "spring", stiffness: 500, damping: 30, delay: Math.min(index * 0.03, 0.3) } : { duration: 0 }
       }
