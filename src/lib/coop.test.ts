@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { buildCoopSequence } from "./coop";
 
 describe("buildCoopSequence", () => {
+  it("rejects faculties without co-op", () => {
+    expect(buildCoopSequence("The School of Kinesiology", [createPlannerYear(0)])).toBeNull();
+  });
+
   it("adds both summer terms and extends the plan", () => {
     const original = Array.from({ length: 4 }, (_, index) => createPlannerYear(index));
     const result = buildCoopSequence("The Faculty of Science", original);

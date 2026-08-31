@@ -4,6 +4,7 @@
 // faculty-specific co-op sequence helper. Summer sessions and work terms
 // remain editable on the board.
 import { applyCoopSequence, COOP_SUPPORT } from "@/src/lib/coop";
+import { useState } from "react";
 import { MAX_YEARS, MIN_YEARS, usePlanner } from "./planner-store";
 
 const SELECT_CLASS =
@@ -15,6 +16,7 @@ export function PlanStructure() {
   const faculty = usePlanner((s) => s.faculty);
   const coop = usePlanner((s) => s.coop);
   const setCoop = usePlanner((s) => s.setCoop);
+  const [sequenceMessage, setSequenceMessage] = useState<string | null>(null);
 
   // Co-op support uses the faculty names derived by the program index.
   const coopInfo = faculty ? COOP_SUPPORT[faculty] : undefined;
@@ -58,8 +60,11 @@ export function PlanStructure() {
             type="checkbox"
             className="accent-primary"
             checked={coop}
-            disabled={faculty != null && coopInfo == null}
-            onChange={(e) => setCoop(e.target.checked)}
+            disabled={!coopInfo && !coop}
+            onChange={(e) => {
+              setCoop(e.target.checked);
+              setSequenceMessage(null);
+            }}
           />
           <span className="text-on-surface text-xs">Co-op program</span>
         </label>
@@ -72,11 +77,23 @@ export function PlanStructure() {
             <p className="text-muted text-[11px]">{coopInfo.blurb}</p>
             <button
               type="button"
-              onClick={() => applyCoopSequence(faculty)}
+              onClick={() => {
+                const result = applyCoopSequence(faculty);
+                setSequenceMessage(
+                  result?.skippedTerms
+                    ? `Applied the sequence and kept ${result.skippedTerms} occupied term(s) unchanged.`
+                    : "Applied the co-op sequence. You can edit each work term on the board.",
+                );
+              }}
               className="neu-button bg-surface text-on-surface-variant hover:text-on-surface rounded-lg px-2 py-1 text-left text-xs"
             >
               Apply typical {coopInfo.shortLabel} sequence
             </button>
+            {sequenceMessage && (
+              <p className="text-on-surface-variant text-[11px]" role="status">
+                {sequenceMessage}
+              </p>
+            )}
           </>
         )}
       </div>
