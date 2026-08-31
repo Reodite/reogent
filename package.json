@@ -28,6 +28,8 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^2.19.0",
     "bcryptjs": "^3.0.3",
+    "fast-xml-parser": "^5.0.0",
+    "fflate": "^0.8.2",
     "jose": "^6.2.10",
     "maplibre-gl": "6.6.0",
     "meilisearch": "^0.60.0",
