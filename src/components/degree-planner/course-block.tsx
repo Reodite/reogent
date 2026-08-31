@@ -44,7 +44,7 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const borderClass = !validation.ok ? "border-error" : "border-border hover:border-outline-variant";
+  const borderClass = !validation.ok ? "border-error" : "border-transparent";
 
   // Parse prereq/coreq trees once per block so the popup can render
   // them with clause-level highlighting against the snapshot completed
@@ -68,7 +68,7 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
       ref={ghost ? undefined : setNodeRef}
       style={ghost ? undefined : style}
       onPointerDown={ghost ? undefined : startDrag}
-      className={`group bg-surface-container relative flex min-h-11 w-full shrink-0 cursor-grab touch-none items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
+      className={`group bg-surface-container relative flex min-h-11 w-full shrink-0 cursor-grab touch-none items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
         ghost ? "scale-[1.03] shadow-xl" : "neu-raised"
       } ${flashing ? "planner-flash" : ""}`}
       data-block-id={blockId}
@@ -79,13 +79,16 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
           {title}
         </span>
       </div>
+      <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">
+        {entry?.credits != null ? `${entry.credits} cr` : ""}
+      </span>
       {!ghost && (
-        // Action cluster floats over the chip so the code/title keep the full
-        // width at rest. Reveals on hover or keyboard focus inside the chip;
-        // an invalid placement keeps it pinned so the alert stays visible.
+        // The action zone is always in the layout so text truncates against a
+        // stable edge; the buttons dim at rest and fully appear on hover or
+        // keyboard focus. An invalid placement keeps the alert visible.
         <div
-          className={`absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center gap-0.5 transition-opacity ${
-            !validation.ok ? "opacity-100" : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+          className={`flex shrink-0 items-center gap-0.5 transition-opacity ${
+            !validation.ok ? "opacity-100" : "opacity-60 group-focus-within:opacity-100 group-hover:opacity-100"
           }`}
         >
           {entry && (
@@ -97,12 +100,12 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
                   : `Show ${code} details (${validation.missing.length} placement issue${validation.missing.length === 1 ? "" : "s"})`
               }
               onClick={togglePopup}
-              className={`bg-surface border-border flex size-7 shrink-0 items-center justify-center rounded-md border shadow-sm transition-colors ${
+              className={`flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
                 anchorRect
-                  ? "text-on-surface bg-surface-container"
+                  ? "bg-surface-container-high text-on-surface"
                   : validation.ok
-                    ? "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-                    : "border-error/40 text-error hover:bg-error-container"
+                    ? "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                    : "text-error hover:bg-error-container"
               }`}
             >
               <Icon name={validation.ok ? "info" : "alert"} size={14} />
@@ -113,7 +116,7 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
             aria-label={`Remove ${code}`}
             title={`Remove ${code}`}
             onClick={() => removeBlock(blockId)}
-            className="bg-surface border-border text-muted hover:bg-error-container hover:text-error flex size-7 shrink-0 items-center justify-center rounded-md border shadow-sm transition-colors"
+            className="text-muted hover:bg-error-container hover:text-error flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
           >
             <Icon name="close" size={14} />
           </button>

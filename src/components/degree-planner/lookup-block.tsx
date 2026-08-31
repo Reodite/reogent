@@ -35,8 +35,8 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
     <div
       ref={ghost ? undefined : setNodeRef}
       onPointerDown={ghost ? undefined : startDrag}
-      className={`group border-border bg-surface-container-low flex min-h-11 cursor-grab touch-none items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${
-        ghost ? "scale-[1.03] shadow-xl" : "hover:border-outline-variant"
+      className={`group flex min-h-11 cursor-grab touch-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${
+        ghost ? "bg-surface-container scale-[1.03] shadow-xl" : "hover:bg-surface-container-low"
       }`}
     >
       <div className="min-w-0 flex-1 leading-tight">
@@ -45,6 +45,9 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
           {entry.title}
         </span>
       </div>
+      <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">
+        {entry.credits != null ? `${entry.credits} cr` : ""}
+      </span>
       {!ghost && (
         <button
           type="button"
@@ -52,7 +55,7 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
           onClick={(event) =>
             setAnchorRect((current) => (current ? null : event.currentTarget.getBoundingClientRect()))
           }
-          className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex size-7 shrink-0 items-center justify-center rounded-md"
+          className="text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex size-7 shrink-0 items-center justify-center rounded-md opacity-60 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
         >
           <Icon name="info" size={14} />
         </button>
