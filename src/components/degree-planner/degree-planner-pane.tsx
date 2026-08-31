@@ -420,7 +420,7 @@ export function DegreePlannerPane() {
         <div
           className="grid min-h-0 flex-1 gap-4"
           style={{
-            gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) min(22rem, 32vw)",
+            gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) 20rem",
           }}
         >
           <section
@@ -450,33 +450,27 @@ export function DegreePlannerPane() {
           {sidebarCollapsed ? (
             <CollapsedSidebar onToggle={toggleSidebar} />
           ) : (
-            <aside className="neu-panel border-border bg-surface-container-low flex min-h-0 flex-col rounded-xl border">
-              <header className="border-border flex shrink-0 items-center gap-2 border-b px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-on-surface text-sm font-semibold">Plan details</h3>
-                  <p className="text-muted text-[11px]">Program, requirements, and courses</p>
+            <aside className="grid min-h-0 grid-rows-2 gap-4">
+              <section className="neu-panel bg-surface flex min-h-0 flex-col rounded-2xl">
+                <header className="flex h-12 shrink-0 items-center gap-2 px-4">
+                  <h3 className="text-on-surface flex-1 text-sm font-medium">Requirements</h3>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg p-1.5"
+                    aria-label="Collapse sidebar"
+                    title="Collapse sidebar"
+                  >
+                    <Icon name="right" size={16} />
+                  </button>
+                </header>
+                <div className="border-border-subtle min-h-0 flex-1 overflow-y-auto border-t px-2 py-2">
+                  <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
                 </div>
-                <button
-                  type="button"
-                  onClick={toggleSidebar}
-                  className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg p-1.5"
-                  aria-label="Collapse plan details"
-                  title="Collapse plan details"
-                >
-                  <Icon name="right" size={16} />
-                </button>
-              </header>
-              <div className="flex min-h-0 flex-1 flex-col">
-                <div className="min-h-0 flex-1 overflow-y-auto px-3">
-                  <section className="py-4">
-                    <h3 className="text-on-surface mb-2 text-sm font-semibold">Requirements</h3>
-                    <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
-                  </section>
-                </div>
-                <section className="border-border flex max-h-[38%] min-h-32 shrink-0 flex-col border-t px-4 py-4">
-                  <MiniCourseLookup courseIndex={courseIndex} />
-                </section>
-              </div>
+              </section>
+              <section className="neu-panel bg-surface flex min-h-0 flex-col rounded-2xl">
+                <MiniCourseLookup courseIndex={courseIndex} />
+              </section>
             </aside>
           )}
         </div>
