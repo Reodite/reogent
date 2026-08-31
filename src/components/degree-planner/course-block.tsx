@@ -68,7 +68,7 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
       ref={ghost ? undefined : setNodeRef}
       style={ghost ? undefined : style}
       onPointerDown={ghost ? undefined : startDrag}
-      className={`group bg-surface relative flex min-h-11 w-full shrink-0 cursor-grab touch-none items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
+      className={`group bg-surface-container relative flex min-h-11 w-full shrink-0 cursor-grab touch-none items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
         ghost ? "scale-[1.03] shadow-xl" : "neu-raised"
       } ${flashing ? "planner-flash" : ""}`}
       data-block-id={blockId}

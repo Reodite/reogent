@@ -201,10 +201,10 @@ A cool-neutral palette anchored by muted indigo. Warmth comes from the off-white
 
 Contrast between adjacent layers is part of the design, not an accident of it. Violating these floors makes cards dissolve into the page:
 
-- Adjacent surface steps (background → surface → container-low → container → container-high) must stay visually distinct. Never assign two steps the same value; in dark theme each step differs by at least #06 per channel.
+- Adjacent surface steps (background → surface → container-low → container → container-high) must stay visually distinct. Never assign two steps the same value; in dark theme each step differs by at least #05 per channel, and every step stays neutral gray — no hue drift.
 - Every card, chip, or inset well sits exactly one step away from its parent surface. Nested elements on the same step read as one blob.
-- `--border` must remain visible against `--surface` without squinting (dark: `#3f3f4a` on `#1c1c22`). `--border-subtle` is for interior hairlines only, never a card's outer edge.
-- Dark-theme neumorphic shadows must stay heavy enough to read (`--neu-shadow` >= 0.3 alpha); a shadow you cannot see is not a shadow.
+- `--border` must remain visible against `--surface` without squinting (dark: `#2c2c31` on `#1a1a1e`). `--border-subtle` is for interior hairlines only, never a card's outer edge.
+- Dark-theme shadows and highlights are tonal: darker and lighter shades of the surface color itself (e.g. `#141417` / `#26262c` around `#1a1a1e`), never pure black or white. A shadow you cannot see is not a shadow, and a white glow breaks the monochrome.
 
 ### Opacity Modifiers
 
@@ -305,9 +305,9 @@ Single unified shadow recipe applied through `.neu-*` classes. All composed surf
 
 | Primitive           | Light                     | Dark                     |
 | ------------------- | ------------------------- | ------------------------ |
-| `--neu-highlight`   | `rgba(255,255,255,0.2)`   | `rgba(255,255,255,0.04)` |
-| `--neu-shadow`      | `rgba(105,112,116,0.045)` | `rgba(0,0,0,0.35)`       |
-| `--neu-shadow-deep` | `rgba(91,99,104,0.06)`    | `rgba(0,0,0,0.45)`       |
+| `--neu-highlight`   | `rgba(255,255,255,0.2)`   | `rgba(38,38,44,0.55)` |
+| `--neu-shadow`      | `rgba(105,112,116,0.045)` | `rgba(16,16,19,0.55)` |
+| `--neu-shadow-deep` | `rgba(91,99,104,0.06)`    | `rgba(10,10,12,0.65)` |
 
 **Composed shadows:**
 
