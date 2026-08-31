@@ -14,7 +14,7 @@ import {
   type ProgramRequirements,
 } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { usePlanner } from "./planner-store";
 import { YearRequirements } from "./year-requirements";
 
@@ -29,7 +29,7 @@ function creditValue(entry: CourseIndexEntry | undefined): number {
 
 // Program selectors write the faculty, major, and minor to the planner store.
 // `toolbar` renders the compact row used in the pane header.
-export function ProgramSelectors({ layout = "stack" }: { layout?: "stack" | "toolbar" }) {
+export function ProgramSelectors() {
   const faculty = usePlanner((s) => s.faculty);
   const major = usePlanner((s) => s.major);
   const minor = usePlanner((s) => s.minor);
@@ -70,75 +70,57 @@ export function ProgramSelectors({ layout = "stack" }: { layout?: "stack" | "too
   }
 
   return (
-    <div className={layout === "toolbar" ? "flex flex-wrap items-center gap-2" : "flex min-h-0 flex-col gap-2"}>
-      {layout === "stack" && <h3 className="text-on-surface text-sm font-semibold">Program</h3>}
-      <div
-        className={layout === "toolbar" ? "flex flex-wrap items-center gap-2 text-sm" : "flex flex-col gap-2 text-sm"}
-      >
-        <ProgramCombobox
-          label="Faculty"
-          hideLabel={layout === "toolbar"}
-          className={layout === "toolbar" ? "w-44" : undefined}
-          placeholder="Search faculties"
-          value={faculty}
-          options={index.faculties.map((name) => ({ value: name, label: name }))}
-          onChange={(value) => {
-            setProgram("faculty", value);
-            setProgram("major", null);
-            setProgram("minor", null);
-          }}
-        />
-        <ProgramCombobox
-          label="Major / program"
-          hideLabel={layout === "toolbar"}
-          className={layout === "toolbar" ? "w-48" : undefined}
-          placeholder={faculty ? "Search programs" : "Select a faculty first"}
-          value={major}
-          options={majorOptions.map((option) => ({ value: option.url, label: option.label }))}
-          onChange={(value) => setProgram("major", value)}
-          disabled={!faculty}
-        />
-        {major &&
-          (layout === "toolbar" ? (
+    <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+      <ProgramCombobox
+        label="Faculty"
+        className="w-44"
+        placeholder="Search faculties"
+        value={faculty}
+        options={index.faculties.map((name) => ({ value: name, label: name }))}
+        onChange={(value) => {
+          setProgram("faculty", value);
+          setProgram("major", null);
+          setProgram("minor", null);
+        }}
+      />
+      <ProgramCombobox
+        label="Major / program"
+        className="w-52"
+        labelExtra={
+          major ? (
             <a
               href={major}
               target="_blank"
               rel="noopener noreferrer"
-              title="Open on the UBC Calendar"
-              aria-label="Open program page on the UBC Calendar"
-              className="text-muted hover:bg-surface-container hover:text-primary flex size-7 items-center justify-center rounded-md"
+              className="text-primary flex items-center gap-0.5 text-[11px] hover:underline"
             >
-              <Icon name="externalLink" size={14} />
+              UBC Calendar
+              <Icon name="externalLink" size={11} />
             </a>
-          ) : (
-            <a
-              href={major}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary flex items-center gap-1 text-xs hover:underline"
-            >
-              <Icon name="externalLink" size={14} />
-              UBC Calendar page
-            </a>
-          ))}
-        <ProgramCombobox
-          label="Minor (optional)"
-          hideLabel={layout === "toolbar"}
-          className={layout === "toolbar" ? "w-40" : undefined}
-          placeholder={faculty ? "Search minors" : "Select a faculty first"}
-          value={minor}
-          options={minorOptions.map((option) => ({ value: option.url, label: option.label }))}
-          onChange={(value) => setProgram("minor", value)}
-          disabled={!faculty}
-        />
-      </div>
+          ) : undefined
+        }
+        placeholder={faculty ? "Search programs" : "Select a faculty first"}
+        value={major}
+        options={majorOptions.map((option) => ({ value: option.url, label: option.label }))}
+        onChange={(value) => setProgram("major", value)}
+        disabled={!faculty}
+      />
+      <ProgramCombobox
+        label="Minor (optional)"
+        className="w-40"
+        placeholder={faculty ? "Search minors" : "Select a faculty first"}
+        value={minor}
+        options={minorOptions.map((option) => ({ value: option.url, label: option.label }))}
+        onChange={(value) => setProgram("minor", value)}
+        disabled={!faculty}
+      />
     </div>
   );
 }
 
 function ProgramCombobox({
   label,
-  hideLabel = false,
+  labelExtra,
   className,
   placeholder,
   value,
@@ -147,7 +129,7 @@ function ProgramCombobox({
   disabled = false,
 }: {
   label: string;
-  hideLabel?: boolean;
+  labelExtra?: ReactNode;
   className?: string;
   placeholder: string;
   value: string | null;
@@ -174,14 +156,16 @@ function ProgramCombobox({
 
   return (
     <label className="flex flex-col gap-1">
-      <span className={hideLabel ? "sr-only" : "text-on-surface-variant text-xs"}>{label}</span>
+      <span className="text-muted flex items-baseline justify-between gap-2 text-[11px]">
+        {label}
+        {labelExtra}
+      </span>
       <input
         type="text"
         list={listId}
         value={query}
         disabled={disabled}
         placeholder={placeholder}
-        aria-label={hideLabel ? label : undefined}
         autoComplete="off"
         onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => {
@@ -197,7 +181,7 @@ function ProgramCombobox({
           if (!event.currentTarget.value) return;
           if (!apply(event.currentTarget.value)) setQuery(selectedLabel);
         }}
-        className={`neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 w-full rounded-lg px-2 py-1.5 text-sm focus-visible:ring-2 disabled:opacity-50 ${className ?? ""}`}
+        className={`neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-full rounded-lg px-3 text-sm focus-visible:ring-2 disabled:opacity-50 ${className ?? ""}`}
       />
       <datalist id={listId}>
         {options.map((option) => (

@@ -399,12 +399,13 @@ export function DegreePlannerPane() {
         settleOverlay();
       }}
     >
-      <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col gap-4 p-5">
-        <header className="relative z-30 flex shrink-0 flex-wrap items-center gap-4">
-          <div className="mr-auto min-w-40">
-            <h2 className="text-on-surface text-xl font-semibold">Degree Planner</h2>
-            <p className="text-muted text-xs">Build your UBC degree term by term.</p>
+      <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col gap-4 p-6">
+        <header className="relative z-30 flex shrink-0 flex-wrap items-end gap-x-4 gap-y-3">
+          <div className="w-56 shrink-0">
+            <h2 className="text-on-surface text-xl font-medium tracking-[-0.02em]">Degree Planner</h2>
+            <p className="text-muted text-xs">Plan your UBC degree, term by term.</p>
           </div>
+          <ProgramSelectors />
           <ActionsSection
             years={years}
             validations={validations}
@@ -468,9 +469,6 @@ export function DegreePlannerPane() {
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="min-h-0 flex-1 overflow-y-auto px-3">
                   <section className="py-4">
-                    <ProgramSelectors />
-                  </section>
-                  <section className="border-border border-t py-4">
                     <h3 className="text-on-surface mb-2 text-sm font-semibold">Requirements</h3>
                     <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
                   </section>
@@ -680,8 +678,8 @@ function ActionsSection({
     "neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40";
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      <div className="flex items-center gap-1">
+    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+      <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-xl p-1">
         <button
           type="button"
           onClick={() => {
@@ -690,10 +688,10 @@ function ActionsSection({
           }}
           disabled={!canUndo}
           title="Undo (Ctrl+Z)"
-          aria-label="Undo"
-          className={`${buttonClass} px-2`}
+          className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40"
         >
-          <Icon name="undo" size={14} />
+          <Icon name="undo" size={13} />
+          Undo
         </button>
         <button
           type="button"
@@ -703,15 +701,15 @@ function ActionsSection({
           }}
           disabled={!canRedo}
           title="Redo (Ctrl+Shift+Z)"
-          aria-label="Redo"
-          className={`${buttonClass} px-2`}
+          className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40"
         >
-          <Icon name="redo" size={14} />
+          <Icon name="redo" size={13} />
+          Redo
         </button>
       </div>
 
       <button type="button" onClick={handleAutofill} disabled={filling} className={buttonClass}>
-        <Icon name="sparkles" size={14} className="text-primary" />
+        <Icon name="sparkles" size={14} />
         <span>{filling ? "Filling…" : "Autofill"}</span>
       </button>
 
@@ -722,7 +720,7 @@ function ActionsSection({
           aria-expanded={structureOpen}
           className={buttonClass}
         >
-          <Icon name="settings" size={14} className="text-primary" />
+          <Icon name="settings" size={14} />
           <span>Structure</span>
           <Icon name="down" size={12} className={`transition-transform ${structureOpen ? "rotate-180" : ""}`} />
         </button>
@@ -739,9 +737,9 @@ function ActionsSection({
           type="button"
           onClick={() => setIgnoreOpen((open) => !open)}
           aria-expanded={ignoreOpen}
-          className={buttonClass}
+          className={`${buttonClass} min-w-[92px] justify-center`}
         >
-          <Icon name="eyeOff" size={14} className={erroredBlocks.length > 0 ? "text-error" : "text-primary"} />
+          <Icon name="eyeOff" size={14} className={erroredBlocks.length > 0 ? "text-error" : undefined} />
           <span>Issues</span>
           {erroredBlocks.length > 0 && (
             <span className="bg-error-container text-error rounded-full px-1.5 text-[10px] tabular-nums">
@@ -797,13 +795,17 @@ function ActionsSection({
           setAutofillResult(null);
           onClearAll();
         }}
-        className={buttonClass}
+        className={`${buttonClass} hover:bg-error-container hover:text-error`}
       >
         <Icon name="trash" size={14} />
         <span>Clear</span>
       </button>
-      <button type="button" onClick={handleAskAi} className={buttonClass}>
-        <Icon name="chat1" size={14} className="text-primary" />
+      <button
+        type="button"
+        onClick={handleAskAi}
+        className="neu-primary-button bg-primary text-on-primary flex h-9 items-center gap-1.5 rounded-lg px-4 text-sm font-medium"
+      >
+        <Icon name="chat1" size={14} />
         <span>Ask AI</span>
       </button>
       {autofillResult && <AutofillSummary result={autofillResult} onClose={() => setAutofillResult(null)} />}
