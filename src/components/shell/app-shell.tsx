@@ -3,8 +3,8 @@
 // The dashboard shell: TopBar + LeftSidebar + a mode-dependent workspace
 // (AI: Chat Surface + Answer Canvas; Tools: a single Full-Bleed Tool). The Answer
 // Canvas is hosted here, not inside ChatPanel, so the map survives session swaps
-// (REQ-9.4). Below wide, the AI canvas surfaces as a Bottom Sheet and the Tools
-// Tool List lives in the left drawer.
+// (REQ-9.4). Below each mode's desktop breakpoint, the AI canvas surfaces as a
+// Bottom Sheet and the Tools list lives in the left drawer.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
@@ -65,21 +65,22 @@ function SidebarDrawer() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [sidebarOpen, setSidebarOpen]);
+  const desktopHidden = mode === "tools" ? "xl:hidden" : "lg:hidden";
   return (
-    <div inert={!sidebarOpen} className={sidebarOpen ? "lg:hidden" : "pointer-events-none lg:hidden"}>
+    <div inert={!sidebarOpen} className={sidebarOpen ? desktopHidden : `pointer-events-none ${desktopHidden}`}>
       <button
         type="button"
         tabIndex={-1}
         aria-hidden="true"
         onClick={() => setSidebarOpen(false)}
-        className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-250 lg:hidden ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-250 ${desktopHidden} ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
       />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
-        className="fixed inset-y-0 left-0 z-50 w-[min(18.5rem,calc(100vw-3rem))] p-3 transition-transform duration-250 [transition-timing-function:var(--neu-ease)] lg:hidden"
+        className={`fixed inset-y-0 left-0 z-50 w-[min(18.5rem,calc(100vw-3rem))] p-3 transition-transform duration-250 [transition-timing-function:var(--neu-ease)] ${desktopHidden}`}
         style={{ transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)" }}
       >
         <div className="h-full">
@@ -151,7 +152,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onClick={() => setSidebarOpen(true)}
           aria-label="Open sidebar"
           inert={sidebarOpen || undefined}
-          className="neu-panel bg-surface text-on-surface-variant hover:text-primary fixed top-3 left-3 z-30 flex size-11 items-center justify-center rounded-xl transition-colors duration-150 lg:hidden"
+          className={`neu-panel bg-surface text-on-surface-variant hover:text-primary fixed top-3 left-3 z-30 flex size-11 items-center justify-center rounded-xl transition-colors duration-150 ${mode === "tools" ? "xl:hidden" : "lg:hidden"}`}
         >
           <Icon name="menu" size={21} />
         </button>
@@ -166,7 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <aside
               aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
               style={{ width: sessionsCollapsed ? "3rem" : "17rem" }}
-              className={`sessions-aside absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 overflow-hidden lg:block ${reduce ? "" : "transition-[width] duration-300 ease-[var(--neu-ease)]"}`}
+              className={`sessions-aside absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 overflow-hidden ${mode === "tools" ? "xl:block" : "lg:block"} ${reduce ? "" : "transition-[width] duration-300 ease-[var(--neu-ease)]"}`}
             >
               <div className="h-full">
                 <LeftSidebar collapsed={sessionsCollapsed} onCollapse={collapseSessions} onExpand={expandSessions} />
@@ -200,7 +201,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {children}
               </main>
             ) : (
-              <main id="main-content" data-pane="tool" className="sidebar-content-offset flex min-h-0 min-w-0 flex-1">
+              <main
+                id="main-content"
+                data-pane="tool"
+                className="tool-sidebar-content-offset flex min-h-0 min-w-0 flex-1"
+              >
                 {workspaceView ? <FullBleedTool view={workspaceView} /> : children}
               </main>
             )}
