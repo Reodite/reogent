@@ -35,7 +35,11 @@ function isValidEntry(e: unknown): e is ScheduleEntry {
 }
 
 function canonicalCode(code: string): string {
-  return code.toUpperCase().replace(/_V(?=\s)/, "").replace(/\s+/g, " ").trim();
+  return code
+    .toUpperCase()
+    .replace(/_V(?=\s)/, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** GET /api/schedule — the caller's saved schedule, or `{ schedule: null }`. */
@@ -75,10 +79,12 @@ export async function PUT(request: Request): Promise<Response> {
       !(body as { entries: unknown[] }).entries.every(isValidEntry) ||
       ("activeTerm" in body &&
         (typeof (body as { activeTerm?: unknown }).activeTerm !== "string" ||
-          ((body as { activeTerm: string }).activeTerm.length > MAX_TERM_LENGTH)))
+          (body as { activeTerm: string }).activeTerm.length > MAX_TERM_LENGTH))
     ) {
       return json(
-        { error: `Body must be a schedule object with an entries array (max ${MAX_ENTRIES}) of { code, section, term }` },
+        {
+          error: `Body must be a schedule object with an entries array (max ${MAX_ENTRIES}) of { code, section, term }`,
+        },
         400,
       );
     }

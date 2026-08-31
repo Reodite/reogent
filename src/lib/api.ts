@@ -288,8 +288,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     getPlan: () => request<{ plan: unknown | null }>("/plan"),
     savePlan: (plan) => request<void>("/plan", { method: "PUT", body: JSON.stringify(plan) }),
     getSchedule: () => request<{ schedule: unknown | null }>("/schedule"),
-    saveSchedule: (schedule) =>
-      request<void>("/schedule", { method: "PUT", body: JSON.stringify(schedule) }),
+    saveSchedule: (schedule) => request<void>("/schedule", { method: "PUT", body: JSON.stringify(schedule) }),
     getProfile: () => request<{ profile: StudentProfile | null }>("/profile"),
     saveProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
   };

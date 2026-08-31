@@ -11,13 +11,7 @@ import { useCallback, type ComponentType } from "react";
 
 /** Identifies a pane surface registered in {@link PANE_REGISTRY}. The `(string & {})` tail permits entries defined outside this module. */
 export type PaneId =
-  | "map"
-  | "course-lookup"
-  | "prereq-tree"
-  | "degree-planner"
-  | "schedule"
-  | "calendar"
-  | (string & {});
+  "map" | "course-lookup" | "prereq-tree" | "degree-planner" | "schedule" | "calendar" | (string & {});
 
 /** Per-pane runtime state carried in `activeChannel.state`. Values are whatever the pane needs. */
 export type PaneState = Record<string, unknown>;

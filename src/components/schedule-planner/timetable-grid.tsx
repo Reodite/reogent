@@ -4,7 +4,7 @@
 // left, one column per weekday; sections render as absolutely positioned
 // blocks inside their day column. Conflicting sections split their column
 // into side-by-side lanes and get the error ring.
-import { formatTime, hourRange, conflictedIndices, laneLayout, visibleDays, parseTime } from "@/src/lib/schedule";
+import { conflictedIndices, formatTime, hourRange, laneLayout, parseTime, visibleDays } from "@/src/lib/schedule";
 import { useMemo, useState } from "react";
 import { entryId, type ScheduleEntry } from "./schedule-store";
 
@@ -135,7 +135,7 @@ export function TimetableGrid({ entries }: TimetableGridProps) {
             {Array.from({ length: range.endHour - range.startHour }, (_, i) => range.startHour + i).map((hour) => (
               <div
                 key={hour}
-                className="font-mono text-muted absolute right-1.5 -translate-y-1/2 text-xs"
+                className="text-muted absolute right-1.5 -translate-y-1/2 font-mono text-xs"
                 style={{ top: (hour - range.startHour) * HOUR_PX }}
               >
                 {hour === range.startHour ? "" : formatTime(hour * 60)}
@@ -180,7 +180,7 @@ export function TimetableGrid({ entries }: TimetableGridProps) {
                         )} ${b.conflict ? "ring-error/70 ring-2" : ""}`}
                         style={{ top, height, left: `${left}%`, width: `${width}%` }}
                       >
-                        <span className="block truncate font-mono font-medium leading-tight">
+                        <span className="block truncate font-mono leading-tight font-medium">
                           {b.entry.code} {b.entry.section}
                         </span>
                         <span className="block truncate font-mono text-xs opacity-80">

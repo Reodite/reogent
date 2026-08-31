@@ -105,8 +105,7 @@ const scheduleMock = vi.hoisted(() => ({
 
 vi.mock("./schedule-store", () => ({
   normalizeScheduleCode: (code: string) => code.replace("_V", "").replace(/\s+/g, " ").trim().toUpperCase(),
-  entryId: (entry: { code: string; section: string; term: string }) =>
-    `${entry.code}::${entry.section}::${entry.term}`,
+  entryId: (entry: { code: string; section: string; term: string }) => `${entry.code}::${entry.section}::${entry.term}`,
   useSchedule: (selector: (state: typeof scheduleMock.state) => unknown) => selector(scheduleMock.state),
 }));
 

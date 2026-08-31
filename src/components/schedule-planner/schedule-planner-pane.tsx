@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  CourseSearchField,
-  useCourseAutocomplete,
-} from "@/src/components/course-lookup/course-search";
+import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
@@ -77,15 +74,7 @@ function toScheduled(entries: ScheduleEntry[]): ScheduledSection[] {
   }));
 }
 
-function SectionPicker({
-  doc,
-  term,
-  conflictingIds,
-}: {
-  doc: CourseDoc;
-  term: string;
-  conflictingIds: Set<string>;
-}) {
+function SectionPicker({ doc, term, conflictingIds }: { doc: CourseDoc; term: string; conflictingIds: Set<string> }) {
   const entries = useSchedule((s) => s.entries);
   const addEntry = useSchedule((s) => s.addEntry);
   const removeEntry = useSchedule((s) => s.removeEntry);
@@ -94,7 +83,9 @@ function SectionPicker({
   const sections = useMemo(() => doc.sections.filter((s) => s.term === term), [doc.sections, term]);
   const groups = useMemo(() => groupSections(sections), [sections]);
   const selected = entries.filter((e) => normalizeScheduleCode(e.code) === code && e.term === term);
-  const courseHasConflict = selected.some((entry) => conflictingIds.has(`${entry.code}::${entry.section}::${entry.term}`));
+  const courseHasConflict = selected.some((entry) =>
+    conflictingIds.has(`${entry.code}::${entry.section}::${entry.term}`),
+  );
 
   if (sections.length === 0) {
     return (
@@ -388,7 +379,7 @@ export function SchedulePlannerPane() {
             <div className="mb-2 flex items-center justify-between gap-2">
               <h3 className="text-sm font-medium">Courses in this term</h3>
               {visibleEntries.length > 0 && (
-                <span className="font-mono text-muted text-xs">{visibleEntries.length} sections</span>
+                <span className="text-muted font-mono text-xs">{visibleEntries.length} sections</span>
               )}
             </div>
             <div className="flex flex-col gap-2">

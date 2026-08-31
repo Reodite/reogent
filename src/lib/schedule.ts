@@ -86,9 +86,7 @@ export function conflictedIndices(entries: ScheduledSection[]): Set<number> {
 export function laneLayout(
   daySections: { index: number; startMinutes: number; endMinutes: number }[],
 ): Map<number, { lane: number; lanes: number }> {
-  const sorted = [...daySections].sort(
-    (a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes,
-  );
+  const sorted = [...daySections].sort((a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes);
   const out = new Map<number, { lane: number; lanes: number }>();
   // Sweep: a "cluster" is a maximal run of mutually reachable overlaps; within
   // it, assign the lowest free lane. Lane count = max concurrency in cluster.
@@ -127,9 +125,7 @@ export function laneLayout(
 
 /** Visible days for the grid: Mon–Fri always, weekend days only when used. */
 export function visibleDays(entries: ScheduledSection[]): string[] {
-  const extra = DAY_ORDER.filter(
-    (d) => (d === "Sat" || d === "Sun") && entries.some((e) => e.days.includes(d)),
-  );
+  const extra = DAY_ORDER.filter((d) => (d === "Sat" || d === "Sun") && entries.some((e) => e.days.includes(d)));
   return [...DAY_ORDER.slice(0, 5), ...extra];
 }
 

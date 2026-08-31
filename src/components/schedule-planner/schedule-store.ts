@@ -2,10 +2,10 @@
 // localStorage key 'reodite-schedule'). The persisted slice mirrors the
 // server payload: section picks identified by { code, section, term }, with a
 // local-only snapshot cache so the grid paints before a catalog refetch.
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
 import { sectionComponent } from "@/src/lib/schedule";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 /** A picked section: ids for persistence plus a display snapshot resolved
  *  from the catalog at pick time. The snapshot is re-resolved on mount so
@@ -47,7 +47,11 @@ interface ScheduleState {
 }
 
 export function normalizeScheduleCode(code: string): string {
-  return code.toUpperCase().replace(/_V(?=\s)/, "").replace(/\s+/g, " ").trim();
+  return code
+    .toUpperCase()
+    .replace(/_V(?=\s)/, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function entryId(e: Pick<ScheduleEntry, "code" | "section" | "term">): string {
@@ -87,11 +91,7 @@ export const useSchedule = create<ScheduleState>()(
           const component = sectionComponent(section.section);
           const withoutPreviousChoice = s.entries.filter(
             (e) =>
-              !(
-                normalizeScheduleCode(e.code) === code &&
-                e.term === term &&
-                sectionComponent(e.section) === component
-              ),
+              !(normalizeScheduleCode(e.code) === code && e.term === term && sectionComponent(e.section) === component),
           );
           return {
             entries: applyEntries([
@@ -113,8 +113,7 @@ export const useSchedule = create<ScheduleState>()(
             // A newly added entry in a fresh term takes over the tab when the
             // current term has no visible entries — otherwise the user adds a
             // section and sees nothing happen.
-            activeTerm:
-              s.entries.some((e) => e.term === s.activeTerm) && s.activeTerm !== "" ? s.activeTerm : term,
+            activeTerm: s.entries.some((e) => e.term === s.activeTerm) && s.activeTerm !== "" ? s.activeTerm : term,
           };
         }),
 
