@@ -1,10 +1,7 @@
 "use client";
 
-// Mini course search for the planner sidebar. Single input — accepts the
-// same code/subject/filter syntax as the Course Finder (via parseQuery) but
-// also falls through to substring matching on title so "linear algebra"
-// surfaces MATH 152 etc. Results are LookupBlocks that drag straight into
-// year-column terms.
+// Course search for the planner rail. It accepts Course Finder syntax and
+// title substrings, then exposes draggable results for the year columns.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { searchCourses } from "@/src/lib/planner-search";
 import { useEffect, useMemo, useRef } from "react";
@@ -19,7 +16,7 @@ interface MiniCourseLookupProps {
 
 export function MiniCourseLookup({ courseIndex }: MiniCourseLookupProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  // Lives in the persisted planner store so tab swaps keep the search.
+  // The persisted query survives planner remounts.
   const query = usePlanner((s) => s.lookupQuery);
   const setQuery = usePlanner((s) => s.setLookupQuery);
 

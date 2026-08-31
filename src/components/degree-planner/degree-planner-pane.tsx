@@ -10,7 +10,7 @@
 // active.id prefix and the over.id to route the move/add/delete.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
-import { Icon, type IconName } from "@/src/components/icons";
+import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import {
   getProgramIndex,
@@ -43,7 +43,7 @@ import { CourseBlock } from "./course-block";
 import { LookupBlock } from "./lookup-block";
 import { MiniCourseLookup } from "./mini-course-lookup";
 import { PlanStructure } from "./plan-structure";
-import { usePlanner, type PlannerSidebarTab, type Year } from "./planner-store";
+import { usePlanner, type Year } from "./planner-store";
 import { ProgramProgress, ProgramSelectors } from "./program-requirements";
 import { TrashBin } from "./trash-bin";
 import { usePlanSync } from "./use-plan-sync";
@@ -127,8 +127,6 @@ export function DegreePlannerPane() {
   const clearAllBlocks = usePlanner((s) => s.clearAllBlocks);
   const ignoredBlocks = usePlanner((s) => s.ignoredBlocks);
   const sidebarCollapsed = usePlanner((s) => s.sidebarCollapsed);
-  const sidebarTab = usePlanner((s) => s.sidebarTab);
-  const setSidebarTab = usePlanner((s) => s.setSidebarTab);
   const toggleSidebar = usePlanner((s) => s.toggleSidebar);
   const undo = usePlanner((s) => s.undo);
   const redo = usePlanner((s) => s.redo);
@@ -383,107 +381,89 @@ export function DegreePlannerPane() {
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
-      <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col p-4">
+      <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col gap-3 p-4">
+        <header className="flex shrink-0 flex-wrap items-center gap-3">
+          <div className="mr-auto min-w-40">
+            <h2 className="text-on-surface text-xl font-semibold">Degree Planner</h2>
+            <p className="text-muted text-xs">Build your UBC degree term by term.</p>
+          </div>
+          <ActionsSection
+            years={years}
+            validations={validations}
+            ignoredSet={ignoredSet}
+            courseIndex={courseIndex}
+            plannedCodes={plannedCodes}
+            onClearAll={() => {
+              const total = years.reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
+              if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
+            }}
+          />
+        </header>
+
         <div
-          className="grid min-h-0 flex-1 gap-4"
+          className="grid min-h-0 flex-1 gap-3"
           style={{
-            gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) 20rem",
+            gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) min(22rem, 32vw)",
           }}
         >
-          <div className="flex min-h-0 flex-col gap-3">
-            <header className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Degree Planner</h2>
-            </header>
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              <div
-                className="grid h-full gap-3"
-                style={{ gridTemplateColumns: `repeat(${years.length}, minmax(0, 1fr))` }}
-              >
-                {years.map((year) => (
-                  <YearColumn
-                    key={year.id}
-                    year={year}
-                    courseIndex={courseIndex}
-                    validations={validations}
-                    requirementCodes={requirementCodes}
-                  />
-                ))}
-              </div>
+          <main className="border-border bg-surface-container-low/40 relative min-h-0 overflow-auto rounded-xl border p-3">
+            <div
+              className="grid h-full gap-3"
+              style={{
+                gridTemplateColumns: `repeat(${years.length}, minmax(13rem, 1fr))`,
+                minWidth: `${years.length * 13 + Math.max(0, years.length - 1) * 0.75}rem`,
+              }}
+            >
+              {years.map((year) => (
+                <YearColumn
+                  key={year.id}
+                  year={year}
+                  courseIndex={courseIndex}
+                  validations={validations}
+                  requirementCodes={requirementCodes}
+                />
+              ))}
             </div>
-          </div>
+            {activeDrag && (
+              <div className="pointer-events-none sticky bottom-2 z-20 mx-auto -mt-14 w-72">
+                <div className="pointer-events-auto">
+                  <TrashBin />
+                </div>
+              </div>
+            )}
+          </main>
 
           {sidebarCollapsed ? (
-            <CollapsedSidebar
-              onExpand={(tab) => {
-                setSidebarTab(tab);
-                toggleSidebar();
-              }}
-              onToggle={toggleSidebar}
-            />
+            <CollapsedSidebar onToggle={toggleSidebar} />
           ) : (
-            <aside className="neu-panel border-border bg-surface-container-low flex min-h-0 flex-col gap-2 rounded-xl border p-4">
-              <div className="flex items-center gap-1">
+            <aside className="neu-panel border-border bg-surface-container-low flex min-h-0 flex-col rounded-xl border">
+              <header className="border-border flex shrink-0 items-center gap-2 border-b px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-on-surface text-sm font-semibold">Plan details</h3>
+                  <p className="text-muted text-[11px]">Program, requirements, and courses</p>
+                </div>
                 <button
                   type="button"
                   onClick={toggleSidebar}
-                  className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg p-1"
-                  aria-label="Collapse sidebar"
-                  title="Collapse sidebar"
+                  className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg p-1.5"
+                  aria-label="Collapse plan details"
+                  title="Collapse plan details"
                 >
                   <Icon name="right" size={16} />
                 </button>
-                <div className="flex flex-1 gap-1">
-                  <SidebarTabButton
-                    active={sidebarTab === "preferences"}
-                    onClick={() => setSidebarTab("preferences")}
-                    label="Info"
-                    icon="info"
-                  />
-                  <SidebarTabButton
-                    active={sidebarTab === "progress"}
-                    onClick={() => setSidebarTab("progress")}
-                    label="Progress"
-                    icon="checkbox"
-                  />
-                  <SidebarTabButton
-                    active={sidebarTab === "courses"}
-                    onClick={() => setSidebarTab("courses")}
-                    label="Courses"
-                    icon="book2"
-                  />
-                </div>
+              </header>
+              <div className="min-h-0 flex-1 overflow-y-auto px-3">
+                <section className="py-3">
+                  <ProgramSelectors />
+                </section>
+                <section className="border-border border-t py-3">
+                  <h3 className="text-on-surface mb-2 text-sm font-semibold">Requirements</h3>
+                  <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
+                </section>
+                <section className="border-border border-t py-3">
+                  <MiniCourseLookup courseIndex={courseIndex} />
+                </section>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-2">
-                {sidebarTab === "preferences" && (
-                  <div className="flex flex-col gap-4">
-                    <PlanStructure />
-                    <ProgramSelectors />
-                  </div>
-                )}
-                {sidebarTab === "progress" && <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />}
-                {sidebarTab === "courses" && <MiniCourseLookup courseIndex={courseIndex} />}
-              </div>
-              {/* Actions live as a footer under the Courses tab, just above
-                  the trash bin. */}
-              {sidebarTab === "courses" && (
-                <ActionsSection
-                  years={years}
-                  validations={validations}
-                  ignoredSet={ignoredSet}
-                  courseIndex={courseIndex}
-                  plannedCodes={plannedCodes}
-                  onClearAll={() => {
-                    const total = years.reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
-                    if (total === 0) return;
-                    if (window.confirm(`Remove all ${total} course(s) from the plan?`)) {
-                      clearAllBlocks();
-                    }
-                  }}
-                />
-              )}
-              {/* Trash sits outside the tab area so it's always a valid
-                  drop target regardless of which page is showing. */}
-              <TrashBin />
             </aside>
           )}
         </div>
@@ -510,61 +490,18 @@ export function DegreePlannerPane() {
   );
 }
 
-function SidebarTabButton({
-  active,
-  onClick,
-  label,
-  icon,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  icon: IconName;
-}) {
+function CollapsedSidebar({ onToggle }: { onToggle: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-1 text-xs transition-colors ${
-        active
-          ? "neu-raised bg-surface text-on-surface"
-          : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-      }`}
-    >
-      <Icon name={icon} size={14} className="text-primary shrink-0" />
-      <span className="whitespace-nowrap">{label}</span>
-    </button>
-  );
-}
-
-// Slim strip shown when the right sidebar is collapsed. Holds the expand
-// arrow, page-icon shortcuts (click to expand + jump to that page), and
-// the trash drop zone so deletion still works without expanding.
-function CollapsedSidebar({
-  onExpand,
-  onToggle,
-}: {
-  onExpand: (tab: PlannerSidebarTab) => void;
-  onToggle: () => void;
-}) {
-  const stripBtn =
-    "text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex w-full justify-center rounded-lg p-1";
-  return (
-    <aside className="neu-panel border-border bg-surface-container-low flex flex-col items-center gap-2 rounded-xl border p-1">
-      <button type="button" onClick={onToggle} className={stripBtn} aria-label="Expand sidebar" title="Expand sidebar">
+    <aside className="neu-panel border-border bg-surface-container-low flex flex-col items-center rounded-xl border p-1">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex w-full justify-center rounded-lg p-1.5"
+        aria-label="Expand plan details"
+        title="Expand plan details"
+      >
         <Icon name="left" size={16} />
       </button>
-      <button type="button" onClick={() => onExpand("preferences")} className={stripBtn} title="Info">
-        <Icon name="info" size={16} className="text-primary" />
-      </button>
-      <button type="button" onClick={() => onExpand("progress")} className={stripBtn} title="Progress">
-        <Icon name="checkbox" size={16} className="text-primary" />
-      </button>
-      <button type="button" onClick={() => onExpand("courses")} className={stripBtn} title="Courses">
-        <Icon name="book2" size={16} className="text-primary" />
-      </button>
-      <div className="flex-1" />
-      <TrashBin compact />
     </aside>
   );
 }
@@ -811,6 +748,7 @@ function ActionsSection({
       const slot = new Map<string, number>();
       for (const [y, year] of years.entries()) {
         for (const [t, term] of year.terms.entries()) {
+          if (term.kind !== "study") continue;
           const gi = slotOf.length;
           slotOf.push({ yearIdx: y, termIdx: t });
           for (const b of term.blocks) slot.set(b.code, gi);
@@ -1012,70 +950,99 @@ function ActionsSection({
     shell?.askAi("Help me plan my degree:", { title: "Degree course table", content: lines.join("\n").trimEnd() });
   }
 
-  const btnClass =
-    "neu-button bg-surface flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-left text-xs text-on-surface-variant hover:text-on-surface transition-colors";
-  // Undo/Redo reuse btnClass but dim + lock when their stack is empty.
-  const disabledBtnClass = `${btnClass} disabled:opacity-40 disabled:pointer-events-none`;
+  const buttonClass =
+    "neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40";
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-on-surface text-sm font-semibold">Actions</h3>
-      <div className="grid grid-cols-2 gap-1.5">
-        <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" className={disabledBtnClass}>
-          <Icon name="undo" size={14} className="text-primary" />
-          <span>Undo</span>
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={undo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+          aria-label="Undo"
+          className={`${buttonClass} px-2`}
+        >
+          <Icon name="undo" size={14} />
         </button>
         <button
           type="button"
           onClick={redo}
           disabled={!canRedo}
           title="Redo (Ctrl+Shift+Z)"
-          className={disabledBtnClass}
+          aria-label="Redo"
+          className={`${buttonClass} px-2`}
         >
-          <Icon name="redo" size={14} className="text-primary" />
-          <span>Redo</span>
+          <Icon name="redo" size={14} />
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-1.5">
-        <button type="button" onClick={onClearAll} className={btnClass}>
-          <Icon name="trash" size={14} className="text-primary" />
-          <span>Clear All</span>
-        </button>
-        <button type="button" onClick={() => setIgnoreOpen((o) => !o)} aria-pressed={ignoreOpen} className={btnClass}>
-          <Icon name="eyeOff" size={14} className="text-primary" />
-          <span>Ignore Error</span>
-        </button>
-        <button type="button" onClick={handleAutofill} disabled={filling} className={`${btnClass} disabled:opacity-50`}>
-          <Icon name="sparkles" size={14} className="text-primary" />
-          <span>{filling ? "Filling…" : "Autofill"}</span>
-        </button>
-        <button type="button" onClick={handleAskAi} className={btnClass}>
-          <Icon name="chat1" size={14} className="text-primary" />
-          <span>Ask AI</span>
-        </button>
-      </div>
-      {ignoreOpen && (
-        <div className="border-border bg-surface flex flex-col gap-1 rounded-lg border p-2">
-          {erroredBlocks.length === 0 ? (
-            <p className="text-muted text-xs italic">No errors to ignore</p>
-          ) : (
-            erroredBlocks.map((block) => (
-              <label
-                key={block.id}
-                className="hover:bg-surface-container flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs"
-              >
-                <input
-                  type="checkbox"
-                  checked={ignoredSet.has(block.id)}
-                  onChange={() => toggleIgnoreBlock(block.id)}
-                  className="accent-primary"
-                />
-                <span className="text-on-surface font-mono">{block.code}</span>
-              </label>
-            ))
-          )}
+
+      <button type="button" onClick={handleAutofill} disabled={filling} className={buttonClass}>
+        <Icon name="sparkles" size={14} className="text-primary" />
+        <span>{filling ? "Filling…" : "Autofill"}</span>
+      </button>
+
+      <details className="group relative">
+        <summary className={`${buttonClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+          <Icon name="settings" size={14} className="text-primary" />
+          <span>Structure</span>
+          <Icon name="down" size={12} className="transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-border bg-surface-container absolute top-10 right-0 z-50 rounded-xl border p-3 shadow-xl">
+          <h3 className="text-on-surface mb-3 text-sm font-semibold">Plan structure</h3>
+          <PlanStructure />
         </div>
-      )}
+      </details>
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIgnoreOpen((open) => !open)}
+          aria-expanded={ignoreOpen}
+          className={buttonClass}
+        >
+          <Icon name="eyeOff" size={14} className={erroredBlocks.length > 0 ? "text-error" : "text-primary"} />
+          <span>Issues</span>
+          {erroredBlocks.length > 0 && (
+            <span className="bg-error-container text-error rounded-full px-1.5 text-[10px] tabular-nums">
+              {erroredBlocks.length}
+            </span>
+          )}
+        </button>
+        {ignoreOpen && (
+          <div className="border-border bg-surface-container absolute top-10 right-0 z-50 flex max-h-64 w-56 flex-col gap-1 overflow-y-auto rounded-xl border p-2 shadow-xl">
+            {erroredBlocks.length === 0 ? (
+              <p className="text-muted px-1 py-2 text-xs">No prerequisite issues.</p>
+            ) : (
+              erroredBlocks.map((block) => (
+                <label
+                  key={block.id}
+                  className="hover:bg-surface-container-high flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-xs"
+                >
+                  <input
+                    type="checkbox"
+                    checked={ignoredSet.has(block.id)}
+                    onChange={() => toggleIgnoreBlock(block.id)}
+                    className="accent-primary"
+                  />
+                  <span className="text-on-surface font-mono">{block.code}</span>
+                  <span className="text-muted ml-auto">ignore</span>
+                </label>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      <button type="button" onClick={onClearAll} className={buttonClass}>
+        <Icon name="trash" size={14} />
+        <span>Clear</span>
+      </button>
+      <button type="button" onClick={handleAskAi} className={buttonClass}>
+        <Icon name="chat1" size={14} className="text-primary" />
+        <span>Ask AI</span>
+      </button>
     </div>
   );
 }

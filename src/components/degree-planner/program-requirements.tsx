@@ -1,11 +1,8 @@
 "use client";
 
-// Right-sidebar program selector + requirements progress. Two render
-// modes driven by src/lib/program-requirements:
-//   - structured (overlay):  per-category credit progress bars
-//   - prose (default):       year-by-year checklist when the calendar page
-//                            has parseable requirement tables, else a flat
-//                            checklist of referenced courses
+// Program selection and requirement progress for the planner rail. Structured
+// requirements show category credit bars; prose requirements show a parsed
+// year-by-year checklist or a flat course fallback.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import {
@@ -33,9 +30,7 @@ function creditValue(entry: CourseIndexEntry | undefined): number {
   return entry?.credits ?? 0;
 }
 
-// Program selectors (Faculty / Major / Minor) — lives in the Info tab. Writes
-// the selection to the planner store; the Progress tab (ProgramProgress) reads
-// it to resolve and render the requirements.
+// Program selectors write the faculty, major, and minor to the planner store.
 export function ProgramSelectors() {
   const faculty = usePlanner((s) => s.faculty);
   const major = usePlanner((s) => s.major);
@@ -148,9 +143,7 @@ export function ProgramSelectors() {
   );
 }
 
-// Requirements display (the progress bar + year-by-year course checklist) —
-// lives in the Progress tab. Reads the selected major from the store and
-// resolves its requirements; falls back to a hint until a major is picked.
+// Resolves the selected program into progress bars and requirement rows.
 export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequirementsProps) {
   const major = usePlanner((s) => s.major);
   const [requirements, setRequirements] = useState<ProgramRequirements | null>(null);
@@ -177,7 +170,7 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
   }, [major]);
 
   if (!major) {
-    return <div className="text-muted text-sm">Select a major in the Info tab to see program requirements.</div>;
+    return <div className="text-muted text-sm">Select a major above to see its requirements.</div>;
   }
   if (!requirements) {
     return <div className="text-muted text-sm">Loading requirements…</div>;

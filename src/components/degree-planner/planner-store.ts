@@ -20,8 +20,6 @@ export type Season = "w1" | "w2" | "s1" | "s2";
 // term never counts its (empty) contents and simply passes time.
 export type TermKind = "study" | "coop";
 
-export type PlannerSidebarTab = "preferences" | "progress" | "courses";
-
 export interface SeasonMeta {
   season: Season;
   short: string;
@@ -83,7 +81,6 @@ interface PlannerState {
   // canonical work-term sequence for the selected faculty.
   coop: boolean;
   sidebarCollapsed: boolean;
-  sidebarTab: PlannerSidebarTab;
   lookupQuery: string;
   // Block IDs whose prereq/coreq errors the user chose to suppress.
   ignoredBlocks: string[];
@@ -113,7 +110,6 @@ interface PlannerState {
   toggleRequirement: (key: string) => void;
   setProgram: (level: "faculty" | "major" | "minor", value: string | null) => void;
   toggleSidebar: () => void;
-  setSidebarTab: (tab: PlannerSidebarTab) => void;
   setLookupQuery: (q: string) => void;
   // Step the plan back / forward through the history stacks. No-ops when the
   // respective stack is empty.
@@ -131,7 +127,6 @@ export type PersistedPlan = Pick<
   | "minor"
   | "coop"
   | "sidebarCollapsed"
-  | "sidebarTab"
   | "lookupQuery"
   | "ignoredBlocks"
   | "checkedRequirements"
@@ -146,7 +141,6 @@ export function persistedSlice(s: PlannerState): PersistedPlan {
     minor: s.minor,
     coop: s.coop,
     sidebarCollapsed: s.sidebarCollapsed,
-    sidebarTab: s.sidebarTab,
     lookupQuery: s.lookupQuery,
     ignoredBlocks: s.ignoredBlocks,
     checkedRequirements: s.checkedRequirements,
@@ -277,10 +271,6 @@ export function migratePersistedPlan(persisted: unknown): PersistedPlan {
       terms,
     };
   });
-  const sidebarTab =
-    raw.sidebarTab === "progress" || raw.sidebarTab === "courses" || raw.sidebarTab === "preferences"
-      ? raw.sidebarTab
-      : "preferences";
   return {
     schemaVersion: 2,
     years: years.length > 0 ? years : initialYears(),
@@ -289,7 +279,6 @@ export function migratePersistedPlan(persisted: unknown): PersistedPlan {
     minor: typeof raw.minor === "string" ? raw.minor : null,
     coop: raw.coop === true,
     sidebarCollapsed: raw.sidebarCollapsed === true,
-    sidebarTab,
     lookupQuery: typeof raw.lookupQuery === "string" ? raw.lookupQuery : "",
     ignoredBlocks: Array.isArray(raw.ignoredBlocks)
       ? raw.ignoredBlocks.filter((id): id is string => typeof id === "string")
@@ -309,7 +298,6 @@ export const usePlanner = create<PlannerState>()(
       minor: null,
       coop: false,
       sidebarCollapsed: false,
-      sidebarTab: "preferences",
       lookupQuery: "",
       ignoredBlocks: [],
       checkedRequirements: [],
@@ -510,8 +498,6 @@ export const usePlanner = create<PlannerState>()(
       setProgram: (level, value) => set(() => ({ [level]: value }) as Partial<PlannerState>),
 
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-
-      setSidebarTab: (tab) => set({ sidebarTab: tab }),
 
       setLookupQuery: (q) => set({ lookupQuery: q }),
 
