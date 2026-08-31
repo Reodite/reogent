@@ -17,7 +17,7 @@ export function AvatarChip({ avatar, size = 26, title }: Props) {
     borderColor: avatar.color,
   } as React.CSSProperties;
   const base =
-    "neu-panel inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border-2 font-semibold text-on-surface select-none";
+    "bg-surface-container-low inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border font-medium text-on-surface select-none";
   if (avatar.kind === "image" && avatar.imageDataUrl) {
     return (
       <span className={base} style={style} title={title}>

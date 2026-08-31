@@ -17,13 +17,14 @@ import type { Avatar, DayCode, Person, Schedule } from "@/src/lib/schedule/types
 import { dayCodeOf, minutesToFullLabel, toISODate } from "@/src/lib/schedule/util/time";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { BlockDetail } from "./block-detail";
 import { NowPanel } from "./now-panel";
 import { PeoplePanel } from "./people-panel";
 import { TermSwitcher } from "./term-switcher";
 import { ToastProvider, useToast } from "./toast";
 import { UploadDropzone } from "./upload-dropzone";
+import { useDialogFocus } from "./use-dialog-focus";
 import { WeekGrid } from "./week-grid";
 
 const ProfileModal = dynamic(() => import("./profile-modal").then((module) => module.ProfileModal));
@@ -90,13 +91,11 @@ function ScheduleAppInner({ groupCode }: Props) {
     return result.groups;
   }, [request]);
 
-  const refreshGroup = useCallback(
+  const fetchGroup = useCallback(
     async (code: string) => {
       // POST is an idempotent join. It covers a shared-link visit and normal
       // switching with one request instead of a separate membership probe.
       const result = await request<{ group: GroupDetail }>(`/groups/${code}`, { method: "POST" });
-      setGroup(result.group);
-      setGroupError("");
       return result.group;
     },
     [request],
@@ -132,17 +131,24 @@ function ScheduleAppInner({ groupCode }: Props) {
 
   useEffect(() => {
     if (!activeCode) return;
-    const refreshVisibleGroup = () => {
+    let cancelled = false;
+    const refreshVisibleGroup = async () => {
       if (document.visibilityState === "hidden") return;
-      void Promise.all([refreshGroup(activeCode), refreshGroups()]).catch(() => undefined);
+      try {
+        const [nextGroup] = await Promise.all([fetchGroup(activeCode), refreshGroups()]);
+        if (!cancelled) setGroup(nextGroup);
+      } catch {
+        // Focus/poll refresh is best-effort; the visible data remains usable.
+      }
     };
-    const timer = window.setInterval(refreshVisibleGroup, 30_000);
+    const timer = window.setInterval(() => void refreshVisibleGroup(), 30_000);
     window.addEventListener("focus", refreshVisibleGroup);
     return () => {
+      cancelled = true;
       window.clearInterval(timer);
       window.removeEventListener("focus", refreshVisibleGroup);
     };
-  }, [activeCode, refreshGroup, refreshGroups]);
+  }, [activeCode, fetchGroup, refreshGroups]);
 
   useEffect(() => {
     if (!activeCode) {
@@ -151,8 +157,12 @@ function ScheduleAppInner({ groupCode }: Props) {
     }
     let cancelled = false;
     setGroupLoading(true);
-    refreshGroup(activeCode)
-      .then(() => refreshGroups())
+    Promise.all([fetchGroup(activeCode), refreshGroups()])
+      .then(([nextGroup]) => {
+        if (cancelled) return;
+        setGroup(nextGroup);
+        setGroupError("");
+      })
       .catch((error) => {
         if (cancelled) return;
         setGroup(null);
@@ -162,7 +172,7 @@ function ScheduleAppInner({ groupCode }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [activeCode, refreshGroup, refreshGroups]);
+  }, [activeCode, fetchGroup, refreshGroups]);
 
   const people = useMemo(
     () => group?.members.map((person) => normalizePerson(person, enabled[person.id] ?? true)) ?? [],
@@ -173,6 +183,7 @@ function ScheduleAppInner({ groupCode }: Props) {
     termKey && terms.some((term) => term.key === termKey) ? termKey : defaultTermKey(terms, toISODate(now));
   const term = terms.find((candidate) => candidate.key === selectedTermKey) ?? null;
   const model = useMemo(() => buildCalendar(people, term), [people, term]);
+  const hasBlocks = [...model.blocksByDay.values()].some((blocks) => blocks.length > 0);
   const freeBands = useMemo(() => {
     if (!showFree) return [];
     const visible = people.filter((person) => person.enabled && person.schedule);
@@ -187,6 +198,18 @@ function ScheduleAppInner({ groupCode }: Props) {
     router.push(`/pulse/schedule/${code}`);
   }
 
+  function moveDayTab(event: ReactKeyboardEvent<HTMLButtonElement>, index: number) {
+    let next: number;
+    if (event.key === "ArrowRight") next = (index + 1) % model.days.length;
+    else if (event.key === "ArrowLeft") next = (index - 1 + model.days.length) % model.days.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = model.days.length - 1;
+    else return;
+    event.preventDefault();
+    setMobileDay(model.days[next]);
+    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+  }
+
   async function saveSchedule(handle: string, avatar: Avatar) {
     if (!draftSchedule) return;
     try {
@@ -196,7 +219,11 @@ function ScheduleAppInner({ groupCode }: Props) {
       });
       setMe(result.person);
       setDraftSchedule(null);
-      if (activeCode) await refreshGroup(activeCode);
+      setGroup((current) => {
+        if (!current || current.code !== activeCode) return current;
+        const members = current.members.map((member) => (member.id === result.person.id ? result.person : member));
+        return { ...current, members };
+      });
       toast(`Saved ${handle}'s schedule · ${draftSchedule.sections.length} sections`);
     } catch (error) {
       toast(messageOf(error), "error");
@@ -259,7 +286,7 @@ function ScheduleAppInner({ groupCode }: Props) {
             <Icon name="calendar" size={18} />
           </span>
           <div className="min-w-0">
-            <h1 className="text-on-surface truncate text-sm font-semibold">Student schedules</h1>
+            <h1 className="text-on-surface truncate text-sm font-medium">Student schedules</h1>
             <p className="text-muted hidden text-xs sm:block">One week for the whole crew</p>
           </div>
         </div>
@@ -296,7 +323,7 @@ function ScheduleAppInner({ groupCode }: Props) {
               type="button"
               aria-label={`Copy share link ${activeCode}`}
               onClick={copyShareLink}
-              className="neu-button bg-primary text-on-primary flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+              className="neu-primary-button bg-primary text-on-primary flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
             >
               <Icon name="externalLink" size={16} />
               <span className="hidden sm:inline">Copy link</span>
@@ -320,8 +347,8 @@ function ScheduleAppInner({ groupCode }: Props) {
       {groupLoading ? (
         <div className="text-muted flex flex-1 items-center justify-center text-sm">Opening shared schedule…</div>
       ) : group ? (
-        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <aside className="border-outline-variant/50 bg-surface-container-low flex max-h-72 w-full shrink-0 flex-col gap-3 overflow-y-auto border-b p-3 lg:max-h-none lg:w-72 lg:border-r lg:border-b-0">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+          <aside className="border-outline-variant/50 bg-surface-container-low order-last flex w-full shrink-0 flex-col gap-3 border-b p-3 lg:order-none lg:h-full lg:w-72 lg:overflow-y-auto lg:border-r lg:border-b-0">
             <UploadDropzone onParsed={(schedule) => setDraftSchedule(schedule)} />
             <PeoplePanel
               people={people}
@@ -347,7 +374,7 @@ function ScheduleAppInner({ groupCode }: Props) {
                   {freeBands.map((band) => (
                     <div key={`${band.day}-${band.startMin}`} className="flex justify-between gap-2">
                       <span className="text-secondary font-medium">{band.day}</span>
-                      <span className="tabular-nums">
+                      <span className="font-mono tabular-nums">
                         {minutesToFullLabel(band.startMin)}–{minutesToFullLabel(band.endMin)}
                       </span>
                     </div>
@@ -358,17 +385,23 @@ function ScheduleAppInner({ groupCode }: Props) {
             {termIsLive && <NowPanel people={people} now={now} />}
           </aside>
 
-          <main className="bg-surface min-w-0 flex-1 overflow-auto p-2 sm:p-3">
-            {model.days.length > 0 ? (
+          <main className="bg-surface order-first min-w-0 shrink-0 overflow-visible p-2 sm:p-3 lg:order-none lg:min-h-0 lg:flex-1 lg:shrink lg:overflow-auto">
+            {hasBlocks ? (
               <>
-                <div className="mb-2 flex gap-1 md:hidden" role="tablist" aria-label="Day">
-                  {model.days.map((day) => (
+                <div
+                  className="bg-surface sticky top-0 z-20 mb-2 flex gap-1 py-1 md:hidden"
+                  role="tablist"
+                  aria-label="Day"
+                >
+                  {model.days.map((day, index) => (
                     <button
                       key={day}
                       type="button"
                       role="tab"
+                      tabIndex={day === mobileDay ? 0 : -1}
                       aria-selected={day === mobileDay}
                       onClick={() => setMobileDay(day)}
+                      onKeyDown={(event) => moveDayTab(event, index)}
                       className={`min-h-9 flex-1 rounded-lg text-xs font-medium ${
                         day === mobileDay ? "neu-button text-primary" : "text-on-surface-variant"
                       }`}
@@ -452,7 +485,7 @@ function NoGroup({
           <span className="neu-button text-primary mx-auto flex size-12 items-center justify-center rounded-2xl">
             <Icon name="group" size={24} />
           </span>
-          <h2 className="text-on-surface mt-3 text-xl font-semibold">
+          <h2 className="text-on-surface mt-3 text-xl font-medium">
             {error
               ? "That schedule is unavailable"
               : me
@@ -473,7 +506,7 @@ function NoGroup({
           <button
             type="button"
             onClick={onCreate}
-            className="neu-button bg-primary text-on-primary min-h-12 w-full rounded-xl px-5 text-sm font-semibold"
+            className="neu-primary-button bg-primary text-on-primary min-h-12 w-full rounded-xl px-5 text-sm font-medium"
           >
             Create a shared schedule
           </button>
@@ -522,46 +555,67 @@ function CalendarEmpty({ people }: { people: Person[] }) {
           {waiting ? "Waiting for someone to add a schedule" : "No classes in this term"}
         </p>
         <p className="text-on-surface-variant mt-1 text-xs">
-          {waiting ? "Use the upload area on the left to add yours." : "Try another term from the top bar."}
+          {waiting ? "Add yours from the upload area." : "Try another term from the top bar."}
         </p>
       </div>
     </div>
   );
 }
 
-function CreateGroupModal({ onCreate, onClose }: { onCreate: (name: string) => void; onClose: () => void }) {
+export function CreateGroupModal({
+  onCreate,
+  onClose,
+}: {
+  onCreate: (name: string) => Promise<void>;
+  onClose: () => void;
+}) {
   const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const dialogRef = useDialogFocus<HTMLFormElement>();
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !creating && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [creating, onClose]);
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         type="button"
         aria-label="Cancel new shared schedule"
+        tabIndex={-1}
+        disabled={creating}
         onClick={onClose}
-        className="bg-on-surface/20 absolute inset-0 cursor-default backdrop-blur-[2px]"
+        className="bg-on-surface/20 absolute inset-0 cursor-default"
       />
       <form
+        ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-label="Create shared schedule"
+        aria-busy={creating}
         className="neu-panel relative w-full max-w-sm rounded-2xl p-5"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
-          if (name.trim()) onCreate(name.trim());
+          if (!name.trim() || creating) return;
+          setCreating(true);
+          try {
+            await onCreate(name.trim());
+          } finally {
+            setCreating(false);
+          }
         }}
       >
-        <h2 className="text-on-surface text-base font-semibold">Create a shared schedule</h2>
+        <h2 className="text-on-surface text-base font-medium">Create a shared schedule</h2>
         <p className="text-on-surface-variant mt-1 text-sm">Name it for the group chat, club, or study crew.</p>
         <label className="mt-4 flex flex-col gap-1">
           <span className="text-muted text-xs font-medium">Group name</span>
           <input
+            data-dialog-initial-focus
             value={name}
+            disabled={creating}
             maxLength={80}
             placeholder="CPSC study crew"
             onChange={(event) => setName(event.target.value)}
@@ -571,17 +625,18 @@ function CreateGroupModal({ onCreate, onClose }: { onCreate: (name: string) => v
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
+            disabled={creating}
             onClick={onClose}
-            className="neu-button text-on-surface-variant min-h-10 rounded-xl px-4 text-sm"
+            className="neu-button text-on-surface-variant min-h-10 rounded-xl px-4 text-sm disabled:opacity-45"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={!name.trim()}
-            className="neu-button bg-primary text-on-primary min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
+            disabled={!name.trim() || creating}
+            className="neu-primary-button bg-primary text-on-primary min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
           >
-            Create group
+            {creating ? "Creating…" : "Create group"}
           </button>
         </div>
       </form>

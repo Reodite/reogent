@@ -62,7 +62,7 @@ export function UploadDropzone({ onParsed, hero }: Props) {
       >
         {hero ? (
           <span>
-            <strong className="text-on-surface font-semibold">Drop your Workday schedule here</strong>
+            <strong className="text-on-surface font-medium">Drop your Workday schedule here</strong>
             <br />
             Academics → Registration &amp; Courses → View Saved Schedule → export to Excel (.xlsx)
             <br />
@@ -70,7 +70,7 @@ export function UploadDropzone({ onParsed, hero }: Props) {
           </span>
         ) : (
           <span>
-            <strong className="text-on-surface font-semibold">Add your schedule</strong> — drop a Workday .xlsx or click
+            <strong className="text-on-surface font-medium">Add your schedule</strong> — drop a Workday .xlsx or click
           </span>
         )}
       </button>

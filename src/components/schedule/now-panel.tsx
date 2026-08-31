@@ -27,9 +27,9 @@ export function NowPanel({ people, now }: Props) {
 
   return (
     <section className="neu-panel rounded-2xl p-3" aria-label="Right now">
-      <h3 className="text-muted mb-2 flex items-baseline justify-between px-1 text-xs font-semibold tracking-wide uppercase">
+      <h3 className="text-muted mb-2 flex items-baseline justify-between px-1 text-xs font-medium tracking-wide uppercase">
         Right now
-        <span className="text-[11px] font-normal tabular-nums">
+        <span className="font-mono text-[11px] font-normal tabular-nums">
           {now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
         </span>
       </h3>
@@ -41,20 +41,32 @@ export function NowPanel({ people, now }: Props) {
               <div className="text-on-surface truncate text-sm font-medium">{names.get(person.id)}</div>
               {current ? (
                 <div className="text-on-surface-variant truncate text-xs">
-                  {shortLabel(current.section)}
-                  {current.pattern.buildingCode
-                    ? ` · ${current.pattern.buildingCode} ${current.pattern.room ?? ""}`
-                    : ""}
-                  {` · til ${minutesToFullLabel(current.pattern.endMin)}`}
+                  <span className="font-mono">{shortLabel(current.section)}</span>
+                  {current.pattern.buildingCode ? (
+                    <>
+                      {" · "}
+                      <span className="font-mono">
+                        {current.pattern.buildingCode} {current.pattern.room ?? ""}
+                      </span>
+                    </>
+                  ) : null}
+                  {" · til "}
+                  <span className="font-mono">{minutesToFullLabel(current.pattern.endMin)}</span>
                 </div>
               ) : (
                 <div className="text-secondary truncate text-xs">
                   free
-                  {next
-                    ? ` · ${shortLabel(next.section)} at ${minutesToFullLabel(next.pattern.startMin)}`
-                    : hasClassesToday
-                      ? " · rest of day" // done for today ≠ free all day
-                      : " all day"}
+                  {next ? (
+                    <>
+                      {" · "}
+                      <span className="font-mono">{shortLabel(next.section)}</span> at{" "}
+                      <span className="font-mono">{minutesToFullLabel(next.pattern.startMin)}</span>
+                    </>
+                  ) : hasClassesToday ? (
+                    " · rest of day" // done for today ≠ free all day
+                  ) : (
+                    " all day"
+                  )}
                 </div>
               )}
             </div>

@@ -21,7 +21,7 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
   return (
     <section className="neu-panel rounded-2xl p-3" aria-label="People in this schedule">
       <div className="mb-2 flex items-center justify-between px-1">
-        <h3 className="text-muted text-xs font-semibold tracking-wide uppercase">Crew · {people.length}</h3>
+        <h3 className="text-muted text-xs font-medium tracking-wide uppercase">Crew · {people.length}</h3>
         {!allOn && (
           <button type="button" onClick={onEnableAll} className="text-primary text-xs font-medium hover:underline">
             show all

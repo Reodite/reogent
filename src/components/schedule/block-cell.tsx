@@ -50,21 +50,21 @@ export function BlockCell({ block, top, height, onClick }: Props) {
   return (
     <button
       type="button"
-      className="focus-visible:ring-primary/40 absolute flex cursor-pointer flex-col gap-0.5 overflow-hidden rounded-lg border-l-[3px] px-1.5 py-1 text-left transition-shadow hover:shadow-md focus-visible:ring-2"
+      className="focus-visible:ring-primary/40 absolute flex cursor-pointer flex-col gap-0.5 overflow-hidden rounded-lg border px-1.5 py-1 text-left transition-shadow hover:shadow-md focus-visible:ring-2"
       style={style}
       title={`${displayCode(block.section)} — ${block.section.title} (${block.section.component}) · ${rangeLabel(block.startMin, block.endMin)}${loc ? ` · ${loc}` : ""} · ${block.people.map((p) => p.handle).join(", ")}`}
       onClick={() => onClick(block)}
     >
-      <span className="text-on-surface truncate text-[11px] leading-tight font-semibold">
+      <span className="text-on-surface truncate font-mono text-[11px] leading-tight font-medium">
         {displayCode(block.section)}{" "}
         <span className="text-on-surface-variant font-normal">{componentAbbrev(block.section.component)}</span>
       </span>
       {!compact && (
         <>
-          <span className="text-on-surface-variant truncate text-[11px] leading-tight">
+          <span className="text-on-surface-variant truncate font-mono text-[11px] leading-tight">
             {rangeLabel(block.startMin, block.endMin)}
           </span>
-          {loc && <span className="text-muted truncate text-[11px] leading-tight">{loc}</span>}
+          {loc && <span className="text-muted truncate font-mono text-[11px] leading-tight">{loc}</span>}
         </>
       )}
       <span className="mt-auto flex items-center gap-0.5">

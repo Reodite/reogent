@@ -21,9 +21,6 @@ const store = vi.hoisted(() => ({
     createdAt: "2026-01-01T00:00:00.000Z",
     members: [],
   })),
-  getGroup: vi.fn(async (code: string) =>
-    code === "zzzzzz" ? null : { code, name: "Crew", createdBy: "u1", createdAt: "x", members: [] },
-  ),
   joinGroup: vi.fn(async (_sub: string, code: string) =>
     code === "zzzzzz" ? null : { code, name: "Crew", createdBy: "u1", createdAt: "x", members: [] },
   ),
@@ -33,7 +30,7 @@ vi.mock("@/src/server/sharer/store", () => ({ ...store, CODE_PATTERN: /^[0-9A-Za
 
 const { GET: getSchedule, PUT: putSchedule } = await import("./schedule/route");
 const { GET: getGroups, POST: postGroups } = await import("./groups/route");
-const { GET: getGroup, POST: joinGroup, DELETE: leaveGroup } = await import("./groups/[code]/route");
+const { POST: joinGroup, DELETE: leaveGroup } = await import("./groups/[code]/route");
 
 const ctx = (code: string) => ({ params: Promise.resolve({ code }) });
 const json = (body: unknown) =>
@@ -118,14 +115,10 @@ describe("sharer group routes", () => {
     expect((await postGroups(json(null))).status).toBe(400);
   });
 
-  it("GET by code 404s unknown groups and 400s malformed codes", async () => {
-    expect((await getGroup(new Request("http://x"), ctx("zzzzzz"))).status).toBe(404);
-    expect((await getGroup(new Request("http://x"), ctx("nope!"))).status).toBe(400);
-  });
-
   it("join and leave hit the store with the caller's id", async () => {
     expect((await joinGroup(new Request("http://x", { method: "POST" }), ctx("aB12cD"))).status).toBe(200);
     expect(store.joinGroup).toHaveBeenCalledWith("default", "aB12cD");
+    expect((await joinGroup(new Request("http://x", { method: "POST" }), ctx("nope!"))).status).toBe(400);
     expect((await leaveGroup(new Request("http://x", { method: "DELETE" }), ctx("aB12cD"))).status).toBe(204);
     expect(store.leaveGroup).toHaveBeenCalledWith("default", "aB12cD");
   });

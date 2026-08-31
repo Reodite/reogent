@@ -38,8 +38,8 @@ describe("terms", () => {
   it("derives both terms from the group", () => {
     const terms = deriveTerms([alice, bob]);
     expect(terms.map((t) => t.label)).toEqual(["Fall 2026", "Spring 2027"]);
-    expect(terms[1].start).toBe("2027-01-05");
-    expect(terms[1].end).toBe("2027-04-12");
+    expect(terms[1].start).toBe("2027-01-01");
+    expect(terms[1].end).toBe("2027-04-30");
   });
 
   it("defaults to the term containing today, else nearest upcoming", () => {
@@ -48,6 +48,29 @@ describe("terms", () => {
     expect(defaultTermKey(terms, "2026-06-04")).toBe("2026-fall"); // before both -> upcoming
     expect(defaultTermKey(terms, "2027-02-15")).toBe("2027-spring"); // mid-term
     expect(defaultTermKey(terms, "2028-01-01")).toBe("2027-spring"); // after both -> latest
+  });
+
+  it("places a full-year section in Fall and Spring without leaking Spring-only classes into Fall", () => {
+    const aliceSchedule = alice.schedule;
+    if (!aliceSchedule) throw new Error("alice fixture has no schedule");
+    const fullYearSection: Section = {
+      ...aliceSchedule.sections[0],
+      id: "full-year",
+      termStart: "2026-09-08",
+      termEnd: "2027-04-09",
+    };
+    const fullYearPerson: Person = {
+      ...alice,
+      id: "full-year-person",
+      schedule: { ...aliceSchedule, sections: [fullYearSection] },
+    };
+    const terms = deriveTerms([fullYearPerson, alice]);
+    expect(terms.map((term) => term.key)).toEqual(["2026-fall", "2027-spring"]);
+
+    const fall = terms[0];
+    const fallBlocks = expandBlocks([fullYearPerson, alice], fall);
+    expect(fallBlocks.some((block) => block.section.id === "full-year")).toBe(true);
+    expect(fallBlocks.some((block) => block.person.id === alice.id)).toBe(false);
   });
 });
 

@@ -37,7 +37,7 @@ export function WeekGrid({ model, freeBands, now, termIsLive, activeDay, onBlock
         {days.map((day) => (
           <div
             key={day}
-            className={`flex-1 py-1.5 text-center text-xs font-semibold tracking-wide uppercase ${
+            className={`flex-1 py-1.5 text-center text-xs font-medium tracking-wide uppercase ${
               day === activeDay ? "" : "hidden md:block"
             } ${day === today && termIsLive ? "text-primary" : "text-on-surface-variant"}`}
           >
@@ -50,7 +50,7 @@ export function WeekGrid({ model, freeBands, now, termIsLive, activeDay, onBlock
           {hours.map((m) => (
             <span
               key={m}
-              className="text-muted absolute right-2 -translate-y-1/2 text-[11px] tabular-nums"
+              className="text-muted absolute right-2 -translate-y-1/2 font-mono text-[11px] tabular-nums"
               style={{ top: (m - dayStartMin) * PX_PER_MIN }}
             >
               {minutesToFullLabel(m).replace(":00", "")}

@@ -6,6 +6,7 @@ import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
 import { useEffect } from "react";
 import { AvatarChip } from "./avatar-chip";
 import { displayCode } from "./block-cell";
+import { useDialogFocus } from "./use-dialog-focus";
 
 interface Props {
   block: MergedBlock;
@@ -21,6 +22,7 @@ function fmtDate(iso: string): string {
 export function BlockDetail({ block, onClose }: Props) {
   const s = block.section;
   const color = courseColor(s);
+  const dialogRef = useDialogFocus<HTMLDivElement>();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -40,24 +42,38 @@ export function BlockDetail({ block, onClose }: Props) {
       <button
         type="button"
         aria-label="Close course details"
+        tabIndex={-1}
         onClick={onClose}
-        className="bg-on-surface/20 absolute inset-0 cursor-default backdrop-blur-[2px]"
+        className="bg-on-surface/20 absolute inset-0 cursor-default"
       />
       <div
+        ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-label={displayCode(s)}
         className="neu-panel relative w-full max-w-md rounded-2xl p-5"
       >
         <div className="flex items-center gap-2.5">
           <span className="size-3 shrink-0 rounded-full" style={{ background: color }} />
-          <h2 className="text-on-surface text-base font-semibold">
-            {s.courseCode ? `${displayCode(s)} — ${s.title}` : s.title}
+          <h2 className="text-on-surface text-base font-medium">
+            {s.courseCode ? (
+              <>
+                <span className="font-mono">{displayCode(s)}</span> — {s.title}
+              </>
+            ) : (
+              s.title
+            )}
           </h2>
         </div>
         <p className="text-on-surface-variant mt-1 text-sm">
           {s.component}
-          {s.termStart && s.termEnd ? ` · ${fmtDate(s.termStart)} → ${fmtDate(s.termEnd)}` : ""}
+          {s.termStart && s.termEnd ? (
+            <span className="font-mono">
+              {" "}
+              · {fmtDate(s.termStart)} → {fmtDate(s.termEnd)}
+            </span>
+          ) : null}
         </p>
 
         <dl className="mt-4 flex flex-col gap-3 text-sm">
@@ -71,7 +87,7 @@ export function BlockDetail({ block, onClose }: Props) {
             <dt className="text-muted w-16 shrink-0">Meets</dt>
             <dd className="text-on-surface">
               {meetingSlots.map((m) => (
-                <div key={`${m.days.join("")}-${m.startMin}`} className="tabular-nums">
+                <div key={`${m.days.join("")}-${m.startMin}`} className="font-mono tabular-nums">
                   {m.days.join(" ")} {minutesToFullLabel(m.startMin)}–{minutesToFullLabel(m.endMin)}
                 </div>
               ))}
@@ -82,9 +98,19 @@ export function BlockDetail({ block, onClose }: Props) {
               <dt className="text-muted w-16 shrink-0">Where</dt>
               <dd className="text-on-surface">
                 {block.pattern.buildingName}
-                {block.pattern.buildingCode ? ` (${block.pattern.buildingCode})` : ""}
-                {block.pattern.floor ? ` · floor ${block.pattern.floor}` : ""}
-                {block.rooms.length > 0 ? ` · room${block.rooms.length > 1 ? "s" : ""} ${block.rooms.join(", ")}` : ""}
+                {block.pattern.buildingCode ? <span className="font-mono"> ({block.pattern.buildingCode})</span> : null}
+                {block.pattern.floor ? (
+                  <>
+                    {" "}
+                    · floor <span className="font-mono">{block.pattern.floor}</span>
+                  </>
+                ) : null}
+                {block.rooms.length > 0 ? (
+                  <>
+                    {` · room${block.rooms.length > 1 ? "s" : ""} `}
+                    <span className="font-mono">{block.rooms.join(", ")}</span>
+                  </>
+                ) : null}
               </dd>
             </div>
           )}
@@ -104,6 +130,7 @@ export function BlockDetail({ block, onClose }: Props) {
         <div className="mt-5 flex justify-end">
           <button
             type="button"
+            data-dialog-initial-focus
             onClick={onClose}
             className="neu-button bg-surface text-on-surface min-h-10 rounded-xl px-4 text-sm font-medium"
           >
