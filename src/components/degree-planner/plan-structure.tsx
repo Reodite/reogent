@@ -1,89 +1,90 @@
 "use client";
 
-// "Plan structure" preferences block — year count + terms per year. Lives
-// at the top of the Info sidebar tab so the structural controls are grouped
-// with the program selectors. Shrinking either dimension can drop already-
-// planned blocks, so both selectors guard the change with a confirm naming
-// the loss.
-import { MAX_TERMS, MAX_YEARS, MIN_TERMS, MIN_YEARS, usePlanner } from "./planner-store";
+// Plan-wide structure controls: year count, co-op participation, and a
+// faculty-specific co-op sequence helper. Summer sessions and work terms
+// remain editable on the board.
+import { applyCoopSequence, COOP_SUPPORT } from "@/src/lib/coop";
+import { MAX_YEARS, MIN_YEARS, usePlanner } from "./planner-store";
 
 const SELECT_CLASS =
   "neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 rounded-lg px-2 py-1 text-sm focus-visible:ring-2";
 
 export function PlanStructure() {
   const years = usePlanner((s) => s.years);
-  const termsPerYear = usePlanner((s) => s.termsPerYear);
   const setYearCount = usePlanner((s) => s.setYearCount);
-  const setTermsPerYear = usePlanner((s) => s.setTermsPerYear);
+  const faculty = usePlanner((s) => s.faculty);
+  const coop = usePlanner((s) => s.coop);
+  const setCoop = usePlanner((s) => s.setCoop);
+
+  // Co-op support uses the faculty names derived by the program index.
+  const coopInfo = faculty ? COOP_SUPPORT[faculty] : undefined;
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-on-surface text-sm font-semibold">Structure</h3>
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Years</span>
-          <select
-            value={years.length}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              if (next >= years.length) {
-                setYearCount(next);
-                return;
-              }
-              const droppedBlocks = years
-                .slice(next)
-                .reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
-              if (
-                droppedBlocks > 0 &&
-                !window.confirm(`Reducing to ${next} years will discard ${droppedBlocks} planned course(s). Continue?`)
-              ) {
-                return;
-              }
+    <div className="flex w-64 flex-col gap-3">
+      <label className="flex items-center justify-between gap-2 text-sm">
+        <span className="text-on-surface-variant text-xs">Years in plan</span>
+        <select
+          value={years.length}
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            if (next >= years.length) {
               setYearCount(next);
-            }}
-            className={SELECT_CLASS}
-          >
-            {Array.from({ length: MAX_YEARS - MIN_YEARS + 1 }, (_, i) => MIN_YEARS + i).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+              return;
+            }
+            const droppedBlocks = years
+              .slice(next)
+              .reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
+            if (
+              droppedBlocks > 0 &&
+              !window.confirm(`Reducing to ${next} years will discard ${droppedBlocks} planned course(s). Continue?`)
+            ) {
+              return;
+            }
+            setYearCount(next);
+          }}
+          className={SELECT_CLASS}
+        >
+          {Array.from({ length: MAX_YEARS - MIN_YEARS + 1 }, (_, i) => MIN_YEARS + i).map((n) => (
+            <option key={n} value={n}>
+              {n} years
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="flex flex-col gap-1">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="accent-primary"
+            checked={coop}
+            disabled={faculty != null && coopInfo == null}
+            onChange={(e) => setCoop(e.target.checked)}
+          />
+          <span className="text-on-surface text-xs">Co-op program</span>
         </label>
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Terms</span>
-          <select
-            value={termsPerYear}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              if (next >= termsPerYear) {
-                setTermsPerYear(next);
-                return;
-              }
-              const droppedBlocks = years.reduce(
-                (n, y) => n + y.terms.slice(next).reduce((m, t) => m + t.blocks.length, 0),
-                0,
-              );
-              if (
-                droppedBlocks > 0 &&
-                !window.confirm(
-                  `Reducing to ${next} term${next === 1 ? "" : "s"} per year will discard ${droppedBlocks} planned course(s). Continue?`,
-                )
-              ) {
-                return;
-              }
-              setTermsPerYear(next);
-            }}
-            className={SELECT_CLASS}
-          >
-            {Array.from({ length: MAX_TERMS - MIN_TERMS + 1 }, (_, i) => MIN_TERMS + i).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+        {faculty == null && <p className="text-muted text-[11px]">Select a faculty to check co-op availability.</p>}
+        {faculty != null && coopInfo == null && (
+          <p className="text-muted text-[11px]">This faculty has no co-op program.</p>
+        )}
+        {faculty != null && coopInfo != null && coop && (
+          <>
+            <p className="text-muted text-[11px]">{coopInfo.blurb}</p>
+            <button
+              type="button"
+              onClick={() => applyCoopSequence(faculty)}
+              className="neu-button bg-surface text-on-surface-variant hover:text-on-surface rounded-lg px-2 py-1 text-left text-xs"
+            >
+              Apply typical {coopInfo.shortLabel} sequence
+            </button>
+          </>
+        )}
       </div>
+
+      <p className="text-muted text-[11px]">
+        Summer sessions and individual work terms are toggled on the board (“+ Summer” under a year, briefcase icon in a
+        term header).
+      </p>
     </div>
   );
 }

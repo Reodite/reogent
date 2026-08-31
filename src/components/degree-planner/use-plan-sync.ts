@@ -14,7 +14,7 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import { useEffect } from "react";
-import { persistedSlice, usePlanner, type PersistedPlan } from "./planner-store";
+import { migratePersistedPlan, persistedSlice, usePlanner, type PersistedPlan } from "./planner-store";
 
 const SAVE_DEBOUNCE_MS = 1000;
 
@@ -67,9 +67,10 @@ export function usePlanSync(): void {
           if (cancelled) return;
           hydratedFor = userId;
           if (isApplicablePlan(plan)) {
-            // Server wins: fresh undo history, zustand persist re-mirrors to
-            // localStorage on its own.
-            usePlanner.setState({ ...plan, past: [], future: [] });
+            // Server wins: migrate legacy term names before applying the plan,
+            // then start with fresh undo history.
+            const { schemaVersion: _, ...migrated } = migratePersistedPlan(plan);
+            usePlanner.setState({ ...migrated, past: [], future: [] });
           } else {
             // No server copy yet — adopt what this browser already has.
             api.savePlan(persistedSlice(usePlanner.getState())).catch(() => {});
