@@ -106,7 +106,8 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
           <TermKindButton yearId={yearId} termIdx={termIdx} onSet={() => setTermKind(yearId, termIdx, "coop")} />
         )}
         <span
-          className={`ml-auto w-12 shrink-0 text-right text-[11px] tabular-nums ${creditOverload ? "text-error" : "text-muted"}`}
+          className={`ml-auto shrink-0 text-right text-[11px] tabular-nums ${creditOverload ? "text-error" : "text-muted"}`}
+          title={creditOverload ? "Over the usual credit load for this term" : undefined}
         >
           {creditTotal} cr
         </span>

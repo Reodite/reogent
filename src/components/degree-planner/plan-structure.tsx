@@ -99,8 +99,8 @@ export function PlanStructure() {
       </div>
 
       <p className="text-muted text-[11px]">
-        Summer sessions and individual work terms are toggled on the board (“+ Summer” under a year, briefcase icon in a
-        term header).
+        Summer sessions and individual work terms are toggled on the board (“Add summer session” under a year, “Work
+        term” in a term header).
       </p>
     </div>
   );

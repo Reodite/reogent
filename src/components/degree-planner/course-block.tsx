@@ -79,16 +79,14 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
           {title}
         </span>
       </div>
-      <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">
-        {entry?.credits != null ? `${entry.credits} cr` : ""}
-      </span>
       {!ghost && (
-        // The action zone is always in the layout so text truncates against a
-        // stable edge; the buttons dim at rest and fully appear on hover or
-        // keyboard focus. An invalid placement keeps the alert visible.
+        // Actions sit on a gradient fade over the text: invisible at rest so
+        // the code/title keep the full chip width; on hover or keyboard focus
+        // the fade masks the text before the buttons, so nothing clips.
+        // An invalid placement keeps the alert button pinned.
         <div
-          className={`flex shrink-0 items-center gap-0.5 transition-opacity ${
-            !validation.ok ? "opacity-100" : "opacity-60 group-focus-within:opacity-100 group-hover:opacity-100"
+          className={`from-surface-container absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 rounded-md bg-gradient-to-l from-60% to-transparent pl-6 transition-opacity ${
+            !validation.ok ? "opacity-100" : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
           }`}
         >
           {entry && (
