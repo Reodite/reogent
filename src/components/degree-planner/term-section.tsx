@@ -23,10 +23,9 @@ interface TermSectionProps {
   term: Term;
   courseIndex: Map<string, CourseIndexEntry>;
   validations: Map<string, BlockValidation>;
-  requirementCodes: Set<string>;
 }
 
-export function TermSection({ yearId, termIdx, term, courseIndex, validations, requirementCodes }: TermSectionProps) {
+export function TermSection({ yearId, termIdx, term, courseIndex, validations }: TermSectionProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `term:${yearId}:${termIdx}`,
     data: { kind: "term", yearId, termIdx },
@@ -70,7 +69,7 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations, r
 
   if (term.kind === "coop") {
     return (
-      <div className="border-border bg-surface-container-low/60 flex flex-1 flex-col justify-center gap-1 rounded-lg border border-dashed px-2 py-3">
+      <div className="border-border bg-surface-container-low/60 animate-planner-term-in flex flex-1 flex-col justify-center gap-1 rounded-lg border border-dashed px-2 py-3">
         <div className="flex items-center gap-2">
           <Icon name="briefcase" size={16} className="text-on-surface-variant shrink-0" />
           <div className="min-w-0 flex-1">
@@ -104,8 +103,10 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations, r
     <div
       ref={setNodeRef}
       className={`rounded-lg border ${
-        highlighted ? "border-primary bg-accent-subtle" : "border-border bg-surface-container-low neu-inset"
-      } flex min-h-[5.5rem] flex-1 flex-col gap-1.5 p-2`}
+        highlighted
+          ? "border-primary/40 bg-accent-subtle/40 border-dashed"
+          : "border-border bg-surface-container-low neu-inset"
+      } animate-planner-term-in flex min-h-[5.5rem] flex-1 flex-col gap-1.5 p-2`}
     >
       <div className="flex shrink-0 items-baseline gap-2 text-xs">
         <span className="text-on-surface shrink-0 font-medium">{meta.short}</span>
@@ -133,7 +134,6 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations, r
               code={b.code}
               entry={courseIndex.get(b.code)}
               validation={validations.get(b.id) ?? EMPTY_VALIDATION}
-              fulfillsRequirement={requirementCodes.has(b.code)}
             />
           ))}
           {term.blocks.length === 0 && (

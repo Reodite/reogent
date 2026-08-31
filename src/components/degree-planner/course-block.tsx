@@ -22,18 +22,10 @@ interface CourseBlockProps {
   code: string;
   entry: CourseIndexEntry | undefined;
   validation: BlockValidation;
-  fulfillsRequirement?: boolean;
   ghost?: boolean;
 }
 
-export function CourseBlock({
-  blockId,
-  code,
-  entry,
-  validation,
-  fulfillsRequirement = false,
-  ghost = false,
-}: CourseBlockProps) {
+export function CourseBlock({ blockId, code, entry, validation, ghost = false }: CourseBlockProps) {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `block:${blockId}`,
     data: { kind: "block", blockId },
@@ -54,11 +46,7 @@ export function CourseBlock({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const borderClass = !validation.ok
-    ? "border-error"
-    : fulfillsRequirement
-      ? "border-secondary hover:border-secondary"
-      : "border-border hover:border-outline-variant";
+  const borderClass = !validation.ok ? "border-error" : "border-border hover:border-outline-variant";
 
   // Parse prereq/coreq trees once per block so the popup can render
   // them with clause-level highlighting against the snapshot completed
@@ -83,8 +71,8 @@ export function CourseBlock({
       style={ghost ? undefined : style}
       onPointerDown={ghost ? undefined : startDrag}
       className={`bg-surface flex min-h-10 w-full shrink-0 cursor-grab touch-none items-center gap-1 rounded-lg border px-1.5 py-1 text-sm select-none active:cursor-grabbing ${borderClass} ${
-        ghost ? "shadow-lg" : "neu-raised"
-      } ${flashing ? "planner-flash" : ""}`}
+        ghost ? "scale-[1.03] shadow-xl" : "neu-raised"
+      } } ${flashing ? "planner-flash" : ""}`}
       data-block-id={blockId}
     >
       <div className="min-w-0 flex-1 leading-tight">

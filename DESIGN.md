@@ -174,7 +174,7 @@ A cool-neutral palette anchored by muted indigo. Warmth comes from the off-white
 
 ### Secondary
 
-- **Campus Verdant** (`#2d6b47`): Success states, route confirmation, positive feedback, tool result icons. Appears when the system confirms something went right.
+- **Campus Verdant** (`#2d6b47`): Success states, route confirmation, positive feedback, tool result icons. Appears when the system confirms something went right. Reserved for transient confirmations (toasts, route completion) — never used as decorative state on persistent list items, cards, or borders; requirement/progress surfaces use primary and neutral treatments instead.
 - **Verdant Container** (`#b0efc2`): Success backgrounds, route info cards, positive notification surfaces.
 
 ### Tertiary

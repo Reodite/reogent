@@ -13,12 +13,7 @@ import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
-import {
-  getProgramIndex,
-  getRequirementsFor,
-  optionMatches,
-  type ProgramRequirements,
-} from "@/src/lib/program-requirements";
+import { getProgramIndex, getRequirementsFor } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
 import { isSatisfied, missingPrereqs, parsePrereq } from "@/src/shared/prereq-ast";
 import {
@@ -101,34 +96,11 @@ function dropLabel(overId: string, years: Year[]): string | null {
   return year && term ? `${year.label}, ${SEASON_META[term.season].short}` : null;
 }
 
-function requirementCodesInPlan(req: ProgramRequirements | null, plannedCodes: Set<string>): Set<string> {
-  const out = new Set<string>();
-  if (!req) return out;
-  if (req.kind === "structured") {
-    for (const code of plannedCodes) {
-      if (req.categories.some((cat) => cat.options.some((opt) => optionMatches(opt, code)))) {
-        out.add(code);
-      }
-    }
-    return out;
-  }
-
-  const parsed = parseProgramYears(req.text);
-  const listedCodes = hasYearRequirements(parsed)
-    ? parsed.years.flatMap((year) => year.items.flatMap((item) => (item.kind === "course" ? item.codes : [])))
-    : (req.referenced_courses ?? []);
-  for (const code of listedCodes) {
-    if (plannedCodes.has(code)) out.add(code);
-  }
-  return out;
-}
-
 export function DegreePlannerPane() {
   const api = useApi();
   // Server-backed plan for signed-in accounts (guests stay local-only).
   usePlanSync();
   const years = usePlanner((s) => s.years);
-  const major = usePlanner((s) => s.major);
   const addBlock = usePlanner((s) => s.addBlock);
   const moveBlock = usePlanner((s) => s.moveBlock);
   const removeBlock = usePlanner((s) => s.removeBlock);
@@ -145,7 +117,6 @@ export function DegreePlannerPane() {
   const [activeDrag, setActiveDrag] = useState<
     { kind: "block"; blockId: string; code: string } | { kind: "lookup"; code: string } | null
   >(null);
-  const [requirements, setRequirements] = useState<ProgramRequirements | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: loadNonce re-triggers the fetch from the Retry button.
   useEffect(() => {
@@ -163,24 +134,6 @@ export function DegreePlannerPane() {
       cancelled = true;
     };
   }, [api, loadNonce]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!major) {
-      queueMicrotask(() => {
-        if (!cancelled) setRequirements(null);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
-    getRequirementsFor(major).then((req) => {
-      if (!cancelled) setRequirements(req);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [major]);
 
   // Keyboard shortcuts for the planner: Ctrl/Cmd+Z undoes, Ctrl/Cmd+
   // Shift+Z and Ctrl+Y redo. Skipped while a text field is focused so we
@@ -273,11 +226,6 @@ export function DegreePlannerPane() {
     }
     return out;
   }, [years]);
-
-  const requirementCodes = useMemo(
-    () => requirementCodesInPlan(requirements, plannedCodes),
-    [requirements, plannedCodes],
-  );
 
   function findBlockYearTerm(blockId: string): { year: Year; termIdx: number; pos: number } | null {
     for (const year of years) {
@@ -442,13 +390,7 @@ export function DegreePlannerPane() {
               }}
             >
               {years.map((year) => (
-                <YearColumn
-                  key={year.id}
-                  year={year}
-                  courseIndex={courseIndex}
-                  validations={validations}
-                  requirementCodes={requirementCodes}
-                />
+                <YearColumn key={year.id} year={year} courseIndex={courseIndex} validations={validations} />
               ))}
             </div>
             {activeDrag && (
@@ -498,14 +440,18 @@ export function DegreePlannerPane() {
         </div>
       </div>
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay
+        dropAnimation={{
+          duration: 280,
+          easing: "cubic-bezier(0.2, 0.9, 0.25, 1)",
+        }}
+      >
         {activeDrag?.kind === "block" && (
           <CourseBlock
             blockId={activeDrag.blockId}
             code={activeDrag.code}
             entry={courseIndex.get(activeDrag.code)}
             validation={validations.get(activeDrag.blockId) ?? EMPTY_VALIDATION}
-            fulfillsRequirement={requirementCodes.has(activeDrag.code)}
             ghost
           />
         )}

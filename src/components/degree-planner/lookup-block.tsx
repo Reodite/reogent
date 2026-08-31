@@ -36,7 +36,7 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
       ref={ghost ? undefined : setNodeRef}
       onPointerDown={ghost ? undefined : startDrag}
       className={`border-border-subtle bg-surface flex min-h-10 cursor-grab touch-none items-center gap-1 rounded-lg border px-1.5 py-1 text-sm select-none active:cursor-grabbing ${
-        ghost ? "shadow-lg" : "hover:border-outline-variant"
+        ghost ? "scale-[1.03] shadow-xl" : "hover:border-outline-variant"
       }`}
     >
       <div className="min-w-0 flex-1 leading-tight">

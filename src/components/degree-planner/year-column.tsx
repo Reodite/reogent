@@ -13,10 +13,9 @@ interface YearColumnProps {
   year: Year;
   courseIndex: Map<string, CourseIndexEntry>;
   validations: Map<string, BlockValidation>;
-  requirementCodes: Set<string>;
 }
 
-export function YearColumn({ year, courseIndex, validations, requirementCodes }: YearColumnProps) {
+export function YearColumn({ year, courseIndex, validations }: YearColumnProps) {
   const toggleSummer = usePlanner((s) => s.toggleSummer);
   const hasSummer = year.terms.some((t) => isSummer(t.season));
 
@@ -34,7 +33,6 @@ export function YearColumn({ year, courseIndex, validations, requirementCodes }:
             term={term}
             courseIndex={courseIndex}
             validations={validations}
-            requirementCodes={requirementCodes}
           />
         ))}
         <button
