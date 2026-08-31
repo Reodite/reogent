@@ -18,13 +18,18 @@ interface YearColumnProps {
 export function YearColumn({ year, courseIndex, validations }: YearColumnProps) {
   const toggleSummer = usePlanner((s) => s.toggleSummer);
   const hasSummer = year.terms.some((t) => isSummer(t.season));
+  const yearCredits = year.terms.reduce(
+    (sum, t) => sum + t.blocks.reduce((n, b) => n + (courseIndex.get(b.code)?.credits ?? 0), 0),
+    0,
+  );
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col gap-3">
-      <header className="flex shrink-0 items-baseline gap-2 px-1.5 pb-0.5">
-        <h3 className="text-on-surface text-sm font-semibold">{year.label}</h3>
+    <section className="flex h-full min-h-0 min-w-0 flex-col gap-2">
+      <header className="flex h-8 shrink-0 items-baseline px-1">
+        <h3 className="text-on-surface text-sm font-medium">{year.label}</h3>
+        <span className="text-muted ml-auto w-12 text-right text-xs tabular-nums">{yearCredits} cr</span>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-2.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
         {year.terms.map((term, idx) => (
           <TermSection
             key={term.season}
@@ -51,14 +56,10 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
             }
             toggleSummer(year.id);
           }}
-          className={`flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-lg border border-dashed px-2 py-1.5 text-[11px] transition-colors ${
-            hasSummer
-              ? "border-border text-muted hover:text-on-surface"
-              : "border-border-subtle text-muted hover:border-primary/50 hover:text-primary"
-          }`}
+          className="neu-button text-muted hover:text-on-surface flex h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg text-xs"
         >
-          <Icon name={hasSummer ? "close" : "add"} size={12} />
-          {hasSummer ? "Remove summer session" : "Add summer session (May–Aug)"}
+          <Icon name={hasSummer ? "close" : "add"} size={13} />
+          {hasSummer ? "Remove summer session" : "Add summer session"}
         </button>
       </div>
     </section>

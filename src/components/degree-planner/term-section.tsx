@@ -69,26 +69,19 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
 
   if (term.kind === "coop") {
     return (
-      <div className="border-border bg-surface-container-low/60 animate-planner-term-in flex flex-1 flex-col justify-center gap-1.5 rounded-lg border border-dashed px-3 py-4">
-        <div className="flex items-center gap-2">
-          <Icon name="briefcase" size={16} className="text-on-surface-variant shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-on-surface text-xs font-semibold">Co-op work term</p>
-            <p className="text-muted text-[11px]">
-              {meta.months} · {term.code ?? "full-time placement"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setTermKind(yearId, termIdx, "study")}
-            title="Switch back to a study term"
-            aria-label="Switch back to a study term"
-            className="text-muted hover:bg-surface-container hover:text-on-surface flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] transition-colors"
-          >
-            <Icon name="book2" size={13} />
-            Study
-          </button>
-        </div>
+      <div className="neu-inset bg-surface-container-low animate-planner-term-in flex flex-1 flex-col items-center justify-center gap-1 rounded-xl p-3 text-center">
+        <Icon name="briefcase" size={18} className="text-on-surface-variant" />
+        <p className="text-on-surface text-sm font-medium">Co-op work term</p>
+        <p className="text-muted text-xs">
+          {meta.months} · {term.code ?? "Full-time placement"}
+        </p>
+        <button
+          type="button"
+          onClick={() => setTermKind(yearId, termIdx, "study")}
+          className="neu-button text-on-surface-variant hover:text-on-surface mt-auto h-9 w-full rounded-lg text-xs"
+        >
+          Switch to study term
+        </button>
       </div>
     );
   }
@@ -102,28 +95,21 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border ${
-        highlighted
-          ? "border-primary/40 bg-accent-subtle/40 border-dashed"
-          : "border-border bg-surface-container-low neu-inset"
-      } animate-planner-term-in flex min-h-28 flex-1 flex-col gap-2 p-3`}
+      className={`neu-inset bg-surface-container-low animate-planner-term-in flex min-h-28 flex-1 flex-col gap-2 rounded-xl border p-3 ${
+        highlighted ? "border-primary border-dashed" : "border-transparent"
+      }`}
     >
-      <div className="flex shrink-0 items-baseline gap-2 px-0.5 text-xs">
+      <div className="flex h-6 shrink-0 items-baseline gap-2 text-xs">
         <span className="text-on-surface shrink-0 font-medium">{meta.short}</span>
-        <span className="text-muted shrink-0 text-[11px]">{meta.months}</span>
-        <span className="text-muted ml-auto shrink-0 text-[11px] tabular-nums">
-          {creditTotal} cr
-          {creditOverload && (
-            <span className="text-error ml-1 inline-flex items-center gap-0.5 font-medium">
-              <Icon name="warning" size={12} />
-              heavy
-            </span>
-          )}
-          {summer && !creditOverload && creditTotal > 0 && <span className="text-muted"> · summer pace</span>}
-        </span>
+        <span className="text-muted min-w-0 truncate text-[11px]">{meta.months}</span>
         {coopEnabled && (
           <TermKindButton yearId={yearId} termIdx={termIdx} onSet={() => setTermKind(yearId, termIdx, "coop")} />
         )}
+        <span
+          className={`ml-auto w-12 shrink-0 text-right text-[11px] tabular-nums ${creditOverload ? "text-error" : "text-muted"}`}
+        >
+          {creditTotal} cr
+        </span>
       </div>
       <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
         <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-0.5 pt-0.5">
@@ -137,8 +123,10 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
             />
           ))}
           {term.blocks.length === 0 && (
-            <p className="text-muted px-1 py-1 text-[11px] italic">
-              {summer ? "No summer courses" : "Drag courses here"}
+            <p className="text-muted flex flex-1 items-center justify-center px-2 text-center text-xs">
+              {summer
+                ? "No summer courses. Drag one here to add it."
+                : "Drag a course here, or add one from Requirements."}
             </p>
           )}
         </div>
@@ -162,11 +150,9 @@ function TermKindButton({ yearId, termIdx, onSet }: { yearId: string; termIdx: n
         }
         onSet();
       }}
-      title="Mark as co-op work term"
-      aria-label="Mark as co-op work term"
-      className="text-muted hover:text-on-surface flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+      className="text-muted hover:text-on-surface shrink-0 text-[11px] underline-offset-2 transition-colors hover:underline"
     >
-      <Icon name="briefcase" size={14} />
+      Work term
     </button>
   );
 }
