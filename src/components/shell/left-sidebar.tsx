@@ -98,7 +98,7 @@ export function LeftSidebar({
 }) {
   const { mode } = useChatShell();
   const footer = (
-    <div className="border-border-subtle flex flex-col gap-2 border-t pt-2">
+    <div className="flex flex-col gap-2">
       <ModeToggle collapsed={collapsed} />
       <UserMenu collapsed={collapsed} />
     </div>
