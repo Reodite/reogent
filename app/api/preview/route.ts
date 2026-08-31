@@ -10,7 +10,7 @@ const cache = new Map<string, { img: string; t: number }>(); // per-instance; si
 const PREVIEW_TTL = 60 * 60 * 1000;
 
 /** Reject obvious internal targets — this endpoint fetches caller-supplied URLs. */
-// ponytail: hostname-literal blocklist only; add DNS resolution checks if this ever leaves the hackathon
+// Hostname-literal blocklist only; add DNS resolution checks if this is ever exposed beyond a trusted dev tool.
 function isPrivateHost(hostname: string): boolean {
   return (
     hostname === "localhost" ||

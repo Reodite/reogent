@@ -1,8 +1,8 @@
 "use client";
 
-// Portal-rendered course-detail popup. Anchored to a `?` button's bounding
-// rect so it can escape the planner's overflow-clip without being trapped
-// inside year columns or term scroll areas.
+// Portal-rendered course-detail popup. Anchored to the triggering icon
+// button's bounding rect so it can escape the planner's overflow-clip
+// without being trapped inside year columns or term scroll areas.
 //
 // Highlighting strategy:
 //   The popup shows UBC's *verbatim* prereq/coreq text and paints unmet

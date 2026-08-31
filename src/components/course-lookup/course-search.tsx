@@ -75,7 +75,7 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
             return;
           } catch (e) {
             if (e instanceof ApiError && e.status === 404) {
-              // ponytail: q-search spans all fields and Meilisearch ranks by
+              // q-search spans all fields and Meilisearch ranks by
               // relevance, surfacing APSC 160 and ELEC 331 for "CPSC 101".
               // Narrow by subject + exact number so a dead code lands on a
               // no-results state instead of fuzzy spew.
@@ -111,7 +111,7 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
           return;
         }
         if (canonical?.kind === "partialCode") {
-          // ponytail: server-side substring filter on `number` keeps "CPSC 11"
+          // server-side substring filter on `number` keeps "CPSC 11"
           // scoped to the typed subject and ranks ascending so the smallest
           // completion (110) surfaces first. If the subject part isn't a
           // real catalogue subject (e.g. "calc"), drop the partial number and

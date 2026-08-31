@@ -53,9 +53,9 @@ const TERM_PREFIX = "term:";
 //  2. Sortable blocks — only when the pointer is literally inside a
 //     block (pointerWithin again). This gives precise reorder positions
 //     when the user hovers a destination block, and crucially *fails*
-//     when the cursor is over an empty term, instead of snapping to
-//     "whatever block is geometrically closest" — that previous behaviour
-//     masked every empty term because closestCenter always wins.
+//     when the cursor is over an empty term; without this priority,
+//     closestCenter would resolve the nearest block in another term and
+//     the empty term would never receive the drop.
 //  3. Term containers — closestCenter falls back here so dropping in the
 //     blank area of a term still lands you in that term, even if it's
 //     visually a bit far from any block.

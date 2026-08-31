@@ -4,8 +4,8 @@
 // title/credits against the live course index at render time (we persist
 // only the code), so a refreshed catalog flows through to existing plans.
 //
-// The error border + popup is the planner's only signal that prereqs
-// aren't met — see degree-planner-pane.tsx for the cumulative-completed-set
+// The error border, alert icon, Issues popover, and popup flag unmet
+// prereqs — see degree-planner-pane.tsx for the cumulative-completed-set
 // logic that fills `validation`.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";

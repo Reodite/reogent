@@ -8,7 +8,7 @@
 // plan is adopted upward so nothing already built is lost. After hydration,
 // every change to the persisted slice is pushed with a debounce, and a
 // pending push is flushed when the pane unmounts.
-// ponytail: last-write-wins, no conflict merge — fine for a single user
+// last-write-wins, no conflict merge — fine for a single user
 // editing one board; add updated_at reconciliation if simultaneous
 // multi-device editing ever matters.
 import { useAppAuth } from "@/src/components/auth/app-auth";
