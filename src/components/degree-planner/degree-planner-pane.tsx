@@ -719,8 +719,8 @@ function ActionsSection({
           <Icon name="down" size={12} className={`transition-transform ${structureOpen ? "rotate-180" : ""}`} />
         </button>
         {structureOpen && (
-          <div className="border-border bg-surface-container absolute top-10 right-0 z-50 rounded-xl border p-3 shadow-xl">
-            <h3 className="text-on-surface mb-3 text-sm font-semibold">Plan structure</h3>
+          <div className="neu-panel bg-surface absolute top-10 right-0 z-50 rounded-2xl p-4">
+            <h3 className="text-on-surface mb-3 text-sm font-medium">Plan structure</h3>
             <PlanStructure />
           </div>
         )}
@@ -742,17 +742,17 @@ function ActionsSection({
           )}
         </button>
         {ignoreOpen && (
-          <div className="border-border bg-surface-container absolute top-10 right-0 z-50 flex max-h-80 w-80 flex-col gap-1 overflow-y-auto rounded-xl border p-2 shadow-xl">
-            <p className="text-on-surface px-1.5 pt-1 text-xs font-semibold">
+          <div className="neu-panel bg-surface absolute top-10 right-0 z-50 flex max-h-80 w-80 flex-col gap-1 overflow-y-auto rounded-2xl p-2">
+            <p className="text-on-surface px-2 pt-1 text-xs font-medium">
               {erroredBlocks.length === 0 ? "No placement issues" : `${erroredBlocks.length} placement issue(s)`}
             </p>
             {erroredBlocks.length > 0 && (
-              <p className="text-muted px-1.5 pb-1 text-[11px]">Click a problem to find the course on the board.</p>
+              <p className="text-muted px-2 pb-1 text-[11px]">Select an issue to highlight the course on the board.</p>
             )}
             {erroredBlocks.map((block) => (
               <div
                 key={block.id}
-                className="hover:bg-surface-container-high flex items-start gap-1 rounded-lg px-1.5 py-1.5"
+                className="hover:bg-surface-container-low flex items-start gap-1 rounded-lg px-2 py-1.5"
               >
                 <button
                   type="button"
