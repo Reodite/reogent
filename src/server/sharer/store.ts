@@ -71,8 +71,15 @@ export async function createGroup(ownerId: string, name: string): Promise<GroupD
   for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt++) {
     const code = drawCode();
     try {
-      await pool.query(`INSERT INTO sharer_groups (code, name, created_by) VALUES ($1, $2, $3)`, [code, name, ownerId]);
-      await pool.query(`INSERT INTO sharer_group_members (group_code, user_id) VALUES ($1, $2)`, [code, ownerId]);
+      await pool.query(
+        `WITH new_group AS (
+           INSERT INTO sharer_groups (code, name, created_by) VALUES ($1, $2, $3)
+           RETURNING code
+         )
+         INSERT INTO sharer_group_members (group_code, user_id)
+         SELECT code, $3 FROM new_group`,
+        [code, name, ownerId],
+      );
       return {
         code,
         name,

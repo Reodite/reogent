@@ -26,27 +26,26 @@ describe("savePerson", () => {
 
 describe("createGroup", () => {
   it("draws a 6-char base62 code, inserts the group, and joins the creator", async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] }); // insert group
-    queryMock.mockResolvedValueOnce({ rows: [] }); // insert membership
+    queryMock.mockResolvedValueOnce({ rows: [] }); // atomic group + membership CTE
     queryMock.mockResolvedValueOnce({
       rows: [{ code: "aB12cD", name: "Crew", created_by: "u1", created_at: new Date() }],
     });
     queryMock.mockResolvedValueOnce({ rows: [] }); // members
     const group = await createGroup("u1", "Crew");
     expect(group?.name).toBe("Crew");
+    expect(queryMock.mock.calls[0][0]).toContain("INSERT INTO sharer_group_members");
     expect(queryMock.mock.calls[0][1][0]).toMatch(CODE_PATTERN);
-    expect(queryMock.mock.calls[1][1][1]).toBe("u1");
+    expect(queryMock.mock.calls[0][1][2]).toBe("u1");
   });
 
   it("retries with a fresh code on unique violation", async () => {
     queryMock.mockRejectedValueOnce({ code: "23505" });
     queryMock.mockResolvedValueOnce({ rows: [] });
-    queryMock.mockResolvedValueOnce({ rows: [] });
     queryMock.mockResolvedValueOnce({ rows: [{ code: "x", name: "", created_by: "u1", created_at: new Date() }] });
     queryMock.mockResolvedValueOnce({ rows: [] });
     const group = await createGroup("u1", "");
     expect(group).not.toBeNull();
-    expect(queryMock).toHaveBeenCalledTimes(5);
+    expect(queryMock).toHaveBeenCalledTimes(4);
   });
 
   it("gives up after the max attempts instead of looping forever", async () => {
