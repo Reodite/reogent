@@ -425,10 +425,17 @@ export function DegreePlannerPane() {
         >
           <section
             aria-label="Degree plan"
-            className="border-border bg-surface-container-low/40 relative min-h-0 overflow-auto rounded-xl border p-4"
+            className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4"
           >
+            <p
+              className={`text-muted sticky left-0 mb-2 h-4 shrink-0 text-right text-[11px] ${
+                years.length > 4 ? "" : "xl:hidden"
+              }`}
+            >
+              Scroll horizontally to view all years →
+            </p>
             <div
-              className="grid h-full gap-4"
+              className="grid min-h-0 flex-1 gap-4"
               style={{
                 gridTemplateColumns: `repeat(${years.length}, minmax(10.5rem, 1fr))`,
                 minWidth: `${years.length * 10.5 + Math.max(0, years.length - 1)}rem`,
@@ -450,8 +457,8 @@ export function DegreePlannerPane() {
           {sidebarCollapsed ? (
             <CollapsedSidebar onToggle={toggleSidebar} />
           ) : (
-            <aside className="grid min-h-0 grid-rows-2 gap-4">
-              <section className="neu-panel bg-surface flex min-h-0 flex-col rounded-2xl">
+            <aside className="grid min-h-0 min-w-0 grid-rows-2 gap-4">
+              <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
                 <header className="flex h-12 shrink-0 items-center gap-2 px-4">
                   <h3 className="text-on-surface flex-1 text-sm font-medium">Requirements</h3>
                   <button
@@ -464,11 +471,11 @@ export function DegreePlannerPane() {
                     <Icon name="right" size={16} />
                   </button>
                 </header>
-                <div className="border-border-subtle min-h-0 flex-1 overflow-y-auto border-t px-2 py-2">
+                <div className="border-border-subtle min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-2 py-2">
                   <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
                 </div>
               </section>
-              <section className="neu-panel bg-surface flex min-h-0 flex-col rounded-2xl">
+              <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
                 <MiniCourseLookup courseIndex={courseIndex} />
               </section>
             </aside>
@@ -736,7 +743,7 @@ function ActionsSection({
           <Icon name="eyeOff" size={14} className={erroredBlocks.length > 0 ? "text-error" : undefined} />
           <span>Issues</span>
           {erroredBlocks.length > 0 && (
-            <span className="bg-error-container text-error rounded-full px-1.5 text-[10px] tabular-nums">
+            <span className="bg-error-container text-on-error-container rounded-full px-1.5 text-[11px] tabular-nums">
               {erroredBlocks.length}
             </span>
           )}

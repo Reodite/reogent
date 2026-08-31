@@ -69,7 +69,7 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
       style={ghost ? undefined : style}
       onPointerDown={ghost ? undefined : startDrag}
       className={`group bg-surface-container relative flex min-h-11 w-full shrink-0 cursor-grab touch-none items-center gap-2 rounded-lg border px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
-        ghost ? "scale-[1.03] shadow-xl" : "neu-raised"
+        ghost ? "neu-raised scale-[1.03]" : "neu-raised"
       } ${flashing ? "planner-flash" : ""}`}
       data-block-id={blockId}
     >
@@ -80,13 +80,13 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
         </span>
       </div>
       {!ghost && (
-        // Actions sit on a gradient fade over the text: invisible at rest so
-        // the code/title keep the full chip width; on hover or keyboard focus
-        // the fade masks the text before the buttons, so nothing clips.
-        // An invalid placement keeps the alert button pinned.
+        // The gradient masks text before actions appear. Invalid courses keep
+        // the issue button visible while removal waits for hover or focus.
         <div
-          className={`from-surface-container absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 rounded-md bg-gradient-to-l from-60% to-transparent pl-6 transition-opacity ${
-            !validation.ok ? "opacity-100" : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+          className={`from-surface-container absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 rounded-md bg-gradient-to-l from-60% to-transparent transition-opacity ${
+            !validation.ok
+              ? "pl-4 opacity-100"
+              : "pl-6 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
           }`}
         >
           {entry && (
@@ -114,7 +114,9 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
             aria-label={`Remove ${code}`}
             title={`Remove ${code}`}
             onClick={() => removeBlock(blockId)}
-            className="text-muted hover:bg-error-container hover:text-error flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+            className={`text-muted hover:bg-error-container hover:text-error size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+              validation.ok ? "flex" : "hidden group-focus-within:flex group-hover:flex"
+            }`}
           >
             <Icon name="close" size={14} />
           </button>

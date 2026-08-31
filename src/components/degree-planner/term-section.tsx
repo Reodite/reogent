@@ -95,8 +95,10 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
   return (
     <div
       ref={setNodeRef}
-      className={`neu-inset bg-surface-container-low animate-planner-term-in flex min-h-28 flex-1 flex-col gap-2 rounded-xl border p-3 ${
-        highlighted ? "border-primary border-dashed" : "border-transparent"
+      className={`neu-inset animate-planner-term-in flex min-h-28 flex-1 flex-col gap-2 rounded-xl border p-3 ${
+        highlighted
+          ? "border-muted/70 bg-surface-container border-dashed"
+          : "bg-surface-container-low border-transparent"
       }`}
     >
       <div className="flex h-6 shrink-0 items-baseline gap-2 text-xs">

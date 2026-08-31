@@ -25,20 +25,20 @@ export function MiniCourseLookup({ courseIndex }: MiniCourseLookupProps) {
   }, [query, courseIndex]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="flex h-12 shrink-0 items-baseline gap-2 px-4">
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
+      <header className="flex h-12 min-w-0 shrink-0 items-center gap-2 px-4">
         <h3 className="text-on-surface text-sm font-medium">Find courses</h3>
         <span className="text-muted text-[11px]">Drag a result onto any term.</span>
       </header>
-      <div className="shrink-0 px-4 pb-3">
+      <div className="min-w-0 shrink-0 px-4 pb-3">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by code or title (e.g. CPSC 110)"
-          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-full rounded-lg px-3 text-sm focus-visible:ring-2"
+          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-full min-w-0 rounded-lg px-3 text-sm focus-visible:ring-2"
         />
       </div>
-      <div className="border-border-subtle flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto border-t px-2 py-2">
+      <div className="border-border-subtle flex min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] flex-col gap-1 overflow-y-auto border-t px-2 py-2">
         {!query.trim() && (
           <p className="text-muted px-2 py-6 text-center text-xs">Search above, then drag a course onto the board.</p>
         )}

@@ -50,7 +50,7 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
   const pct = totalCredits === 0 ? 0 : Math.min(100, (doneCredits / totalCredits) * 100);
 
   return (
-    <div className="flex flex-col gap-4 text-sm">
+    <div className="flex min-w-0 flex-col gap-4 text-sm">
       <div className="flex flex-col gap-1 px-2 pt-2">
         <div className="flex items-baseline justify-between">
           <span className="text-on-surface text-xs font-medium">Degree progress</span>

@@ -229,7 +229,7 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
     return <div className="text-muted text-sm">Loading requirements…</div>;
   }
   return (
-    <div className="flex min-h-0 flex-col gap-2">
+    <div className="flex min-h-0 min-w-0 flex-col gap-2">
       <RequirementsPanel req={requirements} courseIndex={courseIndex} plannedCodes={plannedCodes} />
     </div>
   );
