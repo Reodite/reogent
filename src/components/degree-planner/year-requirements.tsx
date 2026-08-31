@@ -192,7 +192,7 @@ function CourseRequirementRow({
         {...attributes}
         {...listeners}
         disabled={!selectedCode || !target}
-        className="text-muted hover:text-on-surface cursor-grab rounded p-0.5 disabled:cursor-not-allowed disabled:opacity-30"
+        className="text-muted hover:bg-surface-container hover:text-on-surface flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-30"
         aria-label={selectedCode ? `Drag ${selectedCode} into a term` : "No course available to drag"}
       >
         <Icon name="menu" size={13} />
@@ -201,7 +201,7 @@ function CourseRequirementRow({
         type="button"
         onClick={onToggle}
         title="Mark complete with transfer or external credit"
-        className="text-muted hover:text-primary rounded p-0.5"
+        className="text-muted hover:bg-surface-container hover:text-primary flex size-7 shrink-0 items-center justify-center rounded-md"
         aria-label="Mark requirement complete manually"
       >
         <Icon name={manuallyChecked ? "checkbox" : "square"} size={14} />
@@ -237,7 +237,7 @@ function CourseRequirementRow({
         onClick={() => target && addBlock(target.yearId, target.termIdx, selectedCode)}
         title={target ? `Add ${selectedCode} to the plan` : "No available study term"}
         aria-label={target ? `Add ${selectedCode} to the plan` : "No available study term"}
-        className="text-primary hover:bg-primary/10 rounded p-1 disabled:cursor-not-allowed disabled:opacity-30"
+        className="text-primary hover:bg-primary/10 flex size-7 shrink-0 items-center justify-center rounded-md disabled:cursor-not-allowed disabled:opacity-30"
       >
         <Icon name="add" size={14} />
       </button>
@@ -259,7 +259,7 @@ function ManualRequirementRow({
       <button
         type="button"
         onClick={onToggle}
-        className="hover:bg-surface-container flex w-full items-start gap-2 rounded-lg px-1.5 py-1 text-left text-xs"
+        className="hover:bg-surface-container flex min-h-9 w-full items-start gap-2 rounded-lg px-1.5 py-2 text-left text-xs"
       >
         <Icon name={checked ? "checkbox" : "square"} size={14} className="text-muted mt-0.5 shrink-0" />
         <span className="text-on-surface-variant flex-1">{cleanLabel(item.label)}</span>
@@ -286,7 +286,7 @@ function CompletedRequirementRow({
         <button
           type="button"
           onClick={onToggle}
-          className="text-primary rounded"
+          className="text-primary hover:bg-surface-container flex size-7 shrink-0 items-center justify-center rounded-md"
           aria-label="Mark requirement incomplete"
         >
           <Icon name="checkbox" size={14} />
@@ -299,6 +299,18 @@ function CompletedRequirementRow({
 }
 
 function nextChoices(item: YearRequirement, plannedCodes: Set<string>): string[] {
+  if (item.paths && item.paths.length > 0) {
+    const ranked = item.paths
+      .map((path, index) => ({
+        index,
+        missing: path.filter((code) => !plannedCodes.has(code)),
+        overlap: path.filter((code) => plannedCodes.has(code)).length,
+      }))
+      .filter((path) => path.missing.length > 0)
+      .sort((a, b) => b.overlap - a.overlap || a.missing.length - b.missing.length || a.index - b.index);
+    if ((ranked[0]?.overlap ?? 0) > 0) return ranked[0].missing.slice(0, 1);
+    return [...new Set(ranked.flatMap((path) => path.missing.slice(0, 1)))];
+  }
   if (item.groups.length > 0) {
     return item.groups.find((group) => !group.some((code) => plannedCodes.has(code))) ?? [];
   }

@@ -34,7 +34,7 @@ export function CourseBlock({
   fulfillsRequirement = false,
   ghost = false,
 }: CourseBlockProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: `block:${blockId}`,
     data: { kind: "block", blockId },
   });
@@ -72,44 +72,51 @@ export function CourseBlock({
     <div
       ref={ghost ? undefined : setNodeRef}
       style={ghost ? undefined : style}
-      {...(ghost ? {} : attributes)}
-      {...(ghost ? {} : listeners)}
-      className={`group bg-surface flex w-full shrink-0 cursor-grab items-baseline gap-2 rounded-lg border px-2 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
+      className={`bg-surface flex min-h-10 w-full shrink-0 items-center gap-1 rounded-lg border px-1 py-1 text-sm select-none ${borderClass} ${
         ghost ? "shadow-lg" : "neu-raised"
       }`}
     >
-      <span className="text-on-surface shrink-0 font-mono">{code}</span>
-      <span className="text-on-surface-variant flex-1 truncate">{title}</span>
+      {!ghost && (
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="text-muted hover:bg-surface-container hover:text-on-surface flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing"
+          aria-label={`Drag ${code}`}
+        >
+          <Icon name="menu" size={14} />
+        </button>
+      )}
+      <div className="min-w-0 flex-1 leading-tight">
+        <span className="text-on-surface block truncate font-mono text-xs">{code}</span>
+        <span className="text-on-surface-variant block truncate text-[10px]" title={title}>
+          {title}
+        </span>
+      </div>
       {!ghost && (
         <button
           type="button"
           aria-label={`Remove ${code}`}
           title={`Remove ${code}`}
-          onPointerDown={(event) => event.stopPropagation()}
-          onMouseDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            removeBlock(blockId);
-          }}
-          className="text-muted hover:bg-error-container hover:text-error flex size-5 shrink-0 items-center justify-center rounded-md transition-colors"
+          onClick={() => removeBlock(blockId)}
+          className="text-muted hover:bg-error-container hover:text-error flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
         >
-          <Icon name="close" size={13} />
+          <Icon name="close" size={14} />
         </button>
       )}
       {!ghost && entry && (
         <button
           type="button"
-          aria-label="Show course details"
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
+          aria-label={`Show ${code} details`}
           onClick={togglePopup}
-          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-xs leading-none transition-colors ${
+          className={`flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
             anchorRect
-              ? "border-on-surface-variant text-on-surface bg-surface-container"
-              : "border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-on-surface-variant"
+              ? "text-on-surface bg-surface-container"
+              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
           }`}
         >
-          ?
+          <Icon name="info" size={14} />
         </button>
       )}
       {anchorRect && entry && (

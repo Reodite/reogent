@@ -4,7 +4,7 @@
 // title substrings, then exposes draggable results for the year columns.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { searchCourses } from "@/src/lib/planner-search";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { LookupBlock } from "./lookup-block";
 import { usePlanner } from "./planner-store";
 
@@ -15,24 +15,19 @@ interface MiniCourseLookupProps {
 }
 
 export function MiniCourseLookup({ courseIndex }: MiniCourseLookupProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
   // The persisted query survives planner remounts.
   const query = usePlanner((s) => s.lookupQuery);
   const setQuery = usePlanner((s) => s.setLookupQuery);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
   const results = useMemo(() => {
     if (!query.trim()) return [] as CourseIndexEntry[];
     return searchCourses(courseIndex, query, RESULT_LIMIT);
   }, [query, courseIndex]);
 
   return (
-    <div className="flex min-h-0 flex-col gap-2">
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <h3 className="text-on-surface text-sm font-semibold">Find courses</h3>
       <input
-        ref={inputRef}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Code or title (e.g. CPSC 110, linear algebra)"

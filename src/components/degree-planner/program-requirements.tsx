@@ -14,7 +14,7 @@ import {
   type ProgramRequirements,
 } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { usePlanner } from "./planner-store";
 import { YearRequirements } from "./year-requirements";
 
@@ -22,9 +22,6 @@ interface ProgramRequirementsProps {
   courseIndex: Map<string, CourseIndexEntry>;
   plannedCodes: Set<string>;
 }
-
-const SELECT_CLASS =
-  "neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 rounded-lg px-2 py-1 text-sm focus-visible:ring-2 disabled:opacity-50";
 
 function creditValue(entry: CourseIndexEntry | undefined): number {
   return entry?.credits ?? 0;
@@ -75,71 +72,113 @@ export function ProgramSelectors() {
     <div className="flex min-h-0 flex-col gap-2">
       <h3 className="text-on-surface text-sm font-semibold">Program</h3>
       <div className="flex flex-col gap-2 text-sm">
-        <label className="flex flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Faculty</span>
-          <select
-            value={faculty ?? ""}
-            onChange={(e) => {
-              const value = e.target.value || null;
-              setProgram("faculty", value);
-              setProgram("major", null);
-              setProgram("minor", null);
-            }}
-            className={SELECT_CLASS}
+        <ProgramCombobox
+          label="Faculty"
+          placeholder="Search faculties"
+          value={faculty}
+          options={index.faculties.map((name) => ({ value: name, label: name }))}
+          onChange={(value) => {
+            setProgram("faculty", value);
+            setProgram("major", null);
+            setProgram("minor", null);
+          }}
+        />
+        <ProgramCombobox
+          label="Major / program"
+          placeholder={faculty ? "Search programs" : "Select a faculty first"}
+          value={major}
+          options={majorOptions.map((option) => ({ value: option.url, label: option.label }))}
+          onChange={(value) => setProgram("major", value)}
+          disabled={!faculty}
+        />
+        {major && (
+          <a
+            href={major}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary flex items-center gap-1 text-xs hover:underline"
           >
-            <option value="">— Select faculty —</option>
-            {index.faculties.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Major / program</span>
-          <select
-            value={major ?? ""}
-            onChange={(e) => setProgram("major", e.target.value || null)}
-            disabled={!faculty}
-            className={SELECT_CLASS}
-          >
-            <option value="">— Select major —</option>
-            {majorOptions.map((opt) => (
-              <option key={opt.url} value={opt.url}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {major && (
-            <a
-              href={major}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary flex items-center gap-1 text-xs hover:underline"
-            >
-              <Icon name="externalLink" size={14} />
-              UBC Calendar page
-            </a>
-          )}
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Minor (optional)</span>
-          <select
-            value={minor ?? ""}
-            onChange={(e) => setProgram("minor", e.target.value || null)}
-            disabled={!faculty}
-            className={SELECT_CLASS}
-          >
-            <option value="">— Select minor —</option>
-            {minorOptions.map((opt) => (
-              <option key={opt.url} value={opt.url}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <Icon name="externalLink" size={14} />
+            UBC Calendar page
+          </a>
+        )}
+        <ProgramCombobox
+          label="Minor (optional)"
+          placeholder={faculty ? "Search minors" : "Select a faculty first"}
+          value={minor}
+          options={minorOptions.map((option) => ({ value: option.url, label: option.label }))}
+          onChange={(value) => setProgram("minor", value)}
+          disabled={!faculty}
+        />
       </div>
     </div>
+  );
+}
+
+function ProgramCombobox({
+  label,
+  placeholder,
+  value,
+  options,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  placeholder: string;
+  value: string | null;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string | null) => void;
+  disabled?: boolean;
+}) {
+  const listId = useId();
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
+  const [query, setQuery] = useState(selectedLabel);
+
+  useEffect(() => setQuery(selectedLabel), [selectedLabel]);
+
+  function apply(value: string): boolean {
+    const normalized = value.trim().toLowerCase();
+    const match = options.find(
+      (option) => option.label.toLowerCase() === normalized || option.value.toLowerCase() === normalized,
+    );
+    if (!match) return false;
+    setQuery(match.label);
+    onChange(match.value);
+    return true;
+  }
+
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-on-surface-variant text-xs">{label}</span>
+      <input
+        type="text"
+        list={listId}
+        value={query}
+        disabled={disabled}
+        placeholder={placeholder}
+        autoComplete="off"
+        onFocus={(event) => event.currentTarget.select()}
+        onChange={(event) => {
+          const next = event.target.value;
+          setQuery(next);
+          if (!next) onChange(null);
+          else apply(next);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && apply(event.currentTarget.value)) event.preventDefault();
+        }}
+        onBlur={(event) => {
+          if (!event.currentTarget.value) return;
+          if (!apply(event.currentTarget.value)) setQuery(selectedLabel);
+        }}
+        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 w-full rounded-lg px-2 py-1.5 text-sm focus-visible:ring-2 disabled:opacity-50"
+      />
+      <datalist id={listId}>
+        {options.map((option) => (
+          <option key={option.value} value={option.label} />
+        ))}
+      </datalist>
+    </label>
   );
 }
 

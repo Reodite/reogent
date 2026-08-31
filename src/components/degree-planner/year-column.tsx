@@ -53,7 +53,7 @@ export function YearColumn({ year, courseIndex, validations, requirementCodes }:
             }
             toggleSummer(year.id);
           }}
-          className={`flex shrink-0 items-center justify-center gap-1 rounded-lg border border-dashed px-2 py-1 text-[11px] transition-colors ${
+          className={`flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-lg border border-dashed px-2 py-1.5 text-[11px] transition-colors ${
             hasSummer
               ? "border-border text-muted hover:text-on-surface"
               : "border-border-subtle text-muted hover:border-primary/50 hover:text-primary"

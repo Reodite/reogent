@@ -2,7 +2,7 @@ import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { createPlannerYear } from "@/src/components/degree-planner/planner-store";
 import { describe, expect, it } from "vitest";
 import { buildAutofillPlan } from "./planner-autofill";
-import type { ParsedProgramYears, YearRequirement } from "./program-years";
+import { parseProgramYears, type ParsedProgramYears, type YearRequirement } from "./program-years";
 
 function course(code: string, prerequisite: string | null = null): CourseIndexEntry {
   return { code, title: code, credits: 3, prerequisite, corequisite: null };
@@ -35,6 +35,27 @@ describe("buildAutofillPlan", () => {
     expect(result.choices).toEqual([{ requirement: "Requirement", code: "CPSC 103" }]);
   });
 
+  it("uses one complete path through nested alternatives", () => {
+    const years = Array.from({ length: 4 }, (_, index) => createPlannerYear(index));
+    const index = new Map([
+      ["CPSC 110", course("CPSC 110")],
+      ["CPSC 103", course("CPSC 103")],
+      ["CPSC 107", course("CPSC 107")],
+    ]);
+    const requirements = parseProgramYears(
+      ["First Year", "CPSC_V 110 (or 103 and 107)", "4", "Total Credits", "30"].join("\n"),
+    );
+    const result = buildAutofillPlan({
+      years,
+      courseIndex: index,
+      parsed: requirements,
+      programUrl: "/program",
+      checkedRequirements: [],
+    });
+
+    expect(result.placedCodes).toEqual(["CPSC 110"]);
+  });
+
   it("places prerequisite closure before the official requirement year", () => {
     const years = Array.from({ length: 4 }, (_, index) => createPlannerYear(index));
     const index = new Map([
@@ -52,6 +73,35 @@ describe("buildAutofillPlan", () => {
     expect(result.placedCodes).toEqual(["CPSC 110", "CPSC 210"]);
     expect(result.placements[0]).toMatchObject({ yearId: years[0].id, code: "CPSC 110" });
     expect(result.placements[1]).toMatchObject({ yearId: years[1].id, code: "CPSC 210" });
+  });
+
+  it("keeps required prerequisites in their official year", () => {
+    const years = Array.from({ length: 4 }, (_, index) => createPlannerYear(index));
+    const index = new Map([
+      ["CPSC 210", course("CPSC 210")],
+      ["CPSC 213", course("CPSC 213", "CPSC 210")],
+    ]);
+    const result = buildAutofillPlan({
+      years,
+      courseIndex: index,
+      parsed: {
+        years: [
+          {
+            label: "Second Year",
+            totalCredits: 6,
+            items: [requirement({ codes: ["CPSC 210"] }), requirement({ codes: ["CPSC 213"] })],
+          },
+        ],
+        degreeTotalCredits: 120,
+      },
+      programUrl: "/program",
+      checkedRequirements: [],
+    });
+
+    expect(result.placements).toEqual([
+      { yearId: years[1].id, termIdx: 0, code: "CPSC 210" },
+      { yearId: years[1].id, termIdx: 1, code: "CPSC 213" },
+    ]);
   });
 
   it("fills about fifteen credits per winter term", () => {

@@ -82,6 +82,7 @@ export function buildAutofillPlan({
 
   const prerequisites = new Map<string, Set<string>>();
   const corequisites = new Map<string, Set<string>>();
+  const requiredSet = new Set(requiredCodes);
   const placementCodes = [...requiredCodes];
   for (let index = 0; index < placementCodes.length; index++) {
     const code = placementCodes[index];
@@ -97,11 +98,11 @@ export function buildAutofillPlan({
 
     const courseYear = preferredYear.get(code) ?? 0;
     for (const dependency of pre) {
-      setEarlierYear(preferredYear, dependency, Math.max(0, courseYear - 1));
+      if (!requiredSet.has(dependency)) setEarlierYear(preferredYear, dependency, Math.max(0, courseYear - 1));
       if (!existingCodes.has(dependency) && !placementCodes.includes(dependency)) placementCodes.push(dependency);
     }
     for (const dependency of core) {
-      setEarlierYear(preferredYear, dependency, courseYear);
+      if (!requiredSet.has(dependency)) setEarlierYear(preferredYear, dependency, courseYear);
       if (!existingCodes.has(dependency) && !placementCodes.includes(dependency)) placementCodes.push(dependency);
     }
   }
@@ -177,6 +178,19 @@ function requirementPicks(
   selected: Set<string>,
   courseIndex: Map<string, CourseIndexEntry>,
 ): Array<{ code: string; alternatives: number }> {
+  if (item.paths && item.paths.length > 0) {
+    const ranked = item.paths
+      .filter((path) => path.every((code) => courseIndex.has(code)))
+      .map((path, index) => ({
+        index,
+        missing: path.filter((code) => !selected.has(code)),
+        overlap: path.filter((code) => selected.has(code)).length,
+      }))
+      .filter((path) => path.missing.length > 0)
+      .sort((a, b) => b.overlap - a.overlap || a.missing.length - b.missing.length || a.index - b.index);
+    const chosen = ranked[0];
+    return chosen ? chosen.missing.map((code, index) => ({ code, alternatives: index === 0 ? ranked.length : 1 })) : [];
+  }
   if (item.groups.length > 0) {
     return item.groups.flatMap((group) => {
       if (group.some((code) => selected.has(code))) return [];

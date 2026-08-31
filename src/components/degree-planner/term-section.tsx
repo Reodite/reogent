@@ -179,11 +179,11 @@ function TermKindButton({
       }}
       title={kind === "study" ? "Mark as co-op work term" : "Mark as study term"}
       aria-label={kind === "study" ? "Mark as co-op work term" : "Mark as study term"}
-      className={`-my-0.5 rounded p-0.5 transition-colors ${
+      className={`flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
         kind === "coop" ? "text-secondary hover:text-secondary/80" : "text-muted hover:text-on-surface"
       }`}
     >
-      <Icon name="briefcase" size={13} />
+      <Icon name="briefcase" size={14} />
     </button>
   );
 }

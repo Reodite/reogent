@@ -408,7 +408,7 @@ export function DegreePlannerPane() {
       onDragEnd={onDragEnd}
     >
       <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col gap-3 p-4">
-        <header className="flex shrink-0 flex-wrap items-center gap-3">
+        <header className="relative z-30 flex shrink-0 flex-wrap items-center gap-3">
           <div className="mr-auto min-w-40">
             <h2 className="text-on-surface text-xl font-semibold">Degree Planner</h2>
             <p className="text-muted text-xs">Build your UBC degree term by term.</p>
@@ -431,12 +431,15 @@ export function DegreePlannerPane() {
             gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) min(22rem, 32vw)",
           }}
         >
-          <main className="border-border bg-surface-container-low/40 relative min-h-0 overflow-auto rounded-xl border p-3">
+          <section
+            aria-label="Degree plan"
+            className="border-border bg-surface-container-low/40 relative min-h-0 overflow-auto rounded-xl border p-3"
+          >
             <div
               className="grid h-full gap-3"
               style={{
-                gridTemplateColumns: `repeat(${years.length}, minmax(13rem, 1fr))`,
-                minWidth: `${years.length * 13 + Math.max(0, years.length - 1) * 0.75}rem`,
+                gridTemplateColumns: `repeat(${years.length}, minmax(10.5rem, 1fr))`,
+                minWidth: `${years.length * 10.5 + Math.max(0, years.length - 1) * 0.75}rem`,
               }}
             >
               {years.map((year) => (
@@ -456,7 +459,7 @@ export function DegreePlannerPane() {
                 </div>
               </div>
             )}
-          </main>
+          </section>
 
           {sidebarCollapsed ? (
             <CollapsedSidebar onToggle={toggleSidebar} />
@@ -477,15 +480,17 @@ export function DegreePlannerPane() {
                   <Icon name="right" size={16} />
                 </button>
               </header>
-              <div className="min-h-0 flex-1 overflow-y-auto px-3">
-                <section className="py-3">
-                  <ProgramSelectors />
-                </section>
-                <section className="border-border border-t py-3">
-                  <h3 className="text-on-surface mb-2 text-sm font-semibold">Requirements</h3>
-                  <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
-                </section>
-                <section className="border-border border-t py-3">
+              <div className="flex min-h-0 flex-1 flex-col">
+                <div className="min-h-0 flex-1 overflow-y-auto px-3">
+                  <section className="py-3">
+                    <ProgramSelectors />
+                  </section>
+                  <section className="border-border border-t py-3">
+                    <h3 className="text-on-surface mb-2 text-sm font-semibold">Requirements</h3>
+                    <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
+                  </section>
+                </div>
+                <section className="border-border flex max-h-[38%] min-h-32 shrink-0 flex-col border-t px-3 py-3">
                   <MiniCourseLookup courseIndex={courseIndex} />
                 </section>
               </div>
@@ -554,8 +559,18 @@ function ActionsSection({
   const canUndo = usePlanner((s) => s.past.length > 0);
   const canRedo = usePlanner((s) => s.future.length > 0);
   const [ignoreOpen, setIgnoreOpen] = useState(false);
+  const [structureOpen, setStructureOpen] = useState(false);
   const [filling, setFilling] = useState(false);
   const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
+
+  useEffect(() => {
+    if (!structureOpen) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setStructureOpen(false);
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [structureOpen]);
 
   const erroredBlocks = useMemo(() => {
     const out: { id: string; code: string }[] = [];
@@ -647,7 +662,10 @@ function ActionsSection({
       <div className="flex items-center gap-1">
         <button
           type="button"
-          onClick={undo}
+          onClick={() => {
+            setAutofillResult(null);
+            undo();
+          }}
           disabled={!canUndo}
           title="Undo (Ctrl+Z)"
           aria-label="Undo"
@@ -657,7 +675,10 @@ function ActionsSection({
         </button>
         <button
           type="button"
-          onClick={redo}
+          onClick={() => {
+            setAutofillResult(null);
+            redo();
+          }}
           disabled={!canRedo}
           title="Redo (Ctrl+Shift+Z)"
           aria-label="Redo"
@@ -672,17 +693,24 @@ function ActionsSection({
         <span>{filling ? "Filling…" : "Autofill"}</span>
       </button>
 
-      <details className="group relative">
-        <summary className={`${buttonClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setStructureOpen((open) => !open)}
+          aria-expanded={structureOpen}
+          className={buttonClass}
+        >
           <Icon name="settings" size={14} className="text-primary" />
           <span>Structure</span>
-          <Icon name="down" size={12} className="transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="border-border bg-surface-container absolute top-10 right-0 z-50 rounded-xl border p-3 shadow-xl">
-          <h3 className="text-on-surface mb-3 text-sm font-semibold">Plan structure</h3>
-          <PlanStructure />
-        </div>
-      </details>
+          <Icon name="down" size={12} className={`transition-transform ${structureOpen ? "rotate-180" : ""}`} />
+        </button>
+        {structureOpen && (
+          <div className="border-border bg-surface-container absolute top-10 right-0 z-50 rounded-xl border p-3 shadow-xl">
+            <h3 className="text-on-surface mb-3 text-sm font-semibold">Plan structure</h3>
+            <PlanStructure />
+          </div>
+        )}
+      </div>
 
       <div className="relative">
         <button
@@ -724,7 +752,14 @@ function ActionsSection({
         )}
       </div>
 
-      <button type="button" onClick={onClearAll} className={buttonClass}>
+      <button
+        type="button"
+        onClick={() => {
+          setAutofillResult(null);
+          onClearAll();
+        }}
+        className={buttonClass}
+      >
         <Icon name="trash" size={14} />
         <span>Clear</span>
       </button>
