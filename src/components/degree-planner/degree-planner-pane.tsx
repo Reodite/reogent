@@ -26,8 +26,10 @@ import {
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { motion, useReducedMotion, useSpring } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CourseBlock } from "./course-block";
 import { LookupBlock } from "./lookup-block";
@@ -166,6 +168,40 @@ export function DegreePlannerPane() {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
+  // Drag physics: horizontal velocity tilts the overlay (clamped to ±12°)
+  // and shifts it against the travel direction; the spring settles it level
+  // on pause or drop. Reduced-motion keeps it flat.
+  const reducedMotion = useReducedMotion();
+  const dragRotate = useSpring(0, { stiffness: 260, damping: 14, mass: 0.7 });
+  const dragLagX = useSpring(0, { stiffness: 260, damping: 14, mass: 0.7 });
+  const dragSample = useRef({ x: 0, t: 0 });
+  const dragIdleTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (dragIdleTimer.current !== null) window.clearTimeout(dragIdleTimer.current);
+    },
+    [],
+  );
+
+  function settleOverlay() {
+    dragRotate.set(0);
+    dragLagX.set(0);
+  }
+
+  function onDragMove(event: DragMoveEvent) {
+    if (reducedMotion) return;
+    const now = performance.now();
+    const dt = Math.max(1, now - dragSample.current.t) / 1000;
+    const vx = (event.delta.x - dragSample.current.x) / dt;
+    dragSample.current = { x: event.delta.x, t: now };
+    const swing = Math.max(-12, Math.min(12, vx * 0.01));
+    dragRotate.set(swing);
+    dragLagX.set(-swing * 1.6);
+    if (dragIdleTimer.current !== null) window.clearTimeout(dragIdleTimer.current);
+    dragIdleTimer.current = window.setTimeout(settleOverlay, 120);
+  }
+
   // Per-block validation. Walks years/terms in order, building the
   // cumulative completed-set as we go: prereqs check against strictly-
   // earlier terms, coreqs check against earlier-or-same. Recomputes
@@ -238,6 +274,8 @@ export function DegreePlannerPane() {
   }
 
   function onDragStart(event: DragStartEvent) {
+    dragSample.current = { x: 0, t: performance.now() };
+    settleOverlay();
     const id = String(event.active.id);
     if (id.startsWith(ACTIVE_BLOCK_PREFIX)) {
       const blockId = id.slice(ACTIVE_BLOCK_PREFIX.length);
@@ -264,6 +302,7 @@ export function DegreePlannerPane() {
 
   function onDragEnd(event: DragEndEvent) {
     setActiveDrag(null);
+    settleOverlay();
     const { active, over } = event;
     if (!over) return;
     const activeId = String(active.id);
@@ -353,7 +392,12 @@ export function DegreePlannerPane() {
         },
       }}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={onDragEnd}
+      onDragCancel={() => {
+        setActiveDrag(null);
+        settleOverlay();
+      }}
     >
       <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col gap-3 p-4">
         <header className="relative z-30 flex shrink-0 flex-wrap items-center gap-3">
@@ -442,24 +486,26 @@ export function DegreePlannerPane() {
 
       <DragOverlay
         dropAnimation={{
-          duration: 280,
-          easing: "cubic-bezier(0.2, 0.9, 0.25, 1)",
+          duration: 260,
+          easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
         }}
       >
-        {activeDrag?.kind === "block" && (
-          <CourseBlock
-            blockId={activeDrag.blockId}
-            code={activeDrag.code}
-            entry={courseIndex.get(activeDrag.code)}
-            validation={validations.get(activeDrag.blockId) ?? EMPTY_VALIDATION}
-            ghost
-          />
-        )}
-        {activeDrag?.kind === "lookup" && courseIndex.get(activeDrag.code) && (
-          <div style={{ width: "18rem" }}>
-            <LookupBlock entry={courseIndex.get(activeDrag.code) as CourseIndexEntry} ghost />
-          </div>
-        )}
+        <motion.div style={reducedMotion ? undefined : { rotate: dragRotate, x: dragLagX, transformOrigin: "50% 0%" }}>
+          {activeDrag?.kind === "block" && (
+            <CourseBlock
+              blockId={activeDrag.blockId}
+              code={activeDrag.code}
+              entry={courseIndex.get(activeDrag.code)}
+              validation={validations.get(activeDrag.blockId) ?? EMPTY_VALIDATION}
+              ghost
+            />
+          )}
+          {activeDrag?.kind === "lookup" && courseIndex.get(activeDrag.code) && (
+            <div style={{ width: "18rem" }}>
+              <LookupBlock entry={courseIndex.get(activeDrag.code) as CourseIndexEntry} ghost />
+            </div>
+          )}
+        </motion.div>
       </DragOverlay>
     </DndContext>
   );

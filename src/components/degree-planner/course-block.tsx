@@ -31,9 +31,7 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
     data: { kind: "block", blockId },
   });
 
-  // The whole chip is the drag surface (grab anywhere). Pointer events
-  // that land on interactive controls are routed back to them, so the
-  // info/remove buttons keep working.
+  // The whole chip is draggable; interactive controls opt out.
   function startDrag(e: React.PointerEvent) {
     if ((e.target as HTMLElement).closest("button, a, select, input")) return;
     listeners?.onPointerDown?.(e);

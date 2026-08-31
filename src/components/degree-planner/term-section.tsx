@@ -147,10 +147,8 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
   );
 }
 
-// Tiny briefcase button in a study-term header marking the term as a
-// co-op work term. Guarded by a confirm when flipping would drop placed
-// blocks. Co-op cards carry their own explicit "Study" switch-back
-// control, so this button only ever appears on study terms.
+// Marks a study term as a co-op work term; confirms first when that would
+// drop placed blocks. Co-op cards carry their own switch-back control.
 function TermKindButton({ yearId, termIdx, onSet }: { yearId: string; termIdx: number; onSet: () => void }) {
   const years = usePlanner((s) => s.years);
   const term = years.find((y) => y.id === yearId)?.terms[termIdx];
