@@ -69,7 +69,7 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
 
   if (term.kind === "coop") {
     return (
-      <div className="border-border bg-surface-container-low/60 animate-planner-term-in flex flex-1 flex-col justify-center gap-1 rounded-lg border border-dashed px-2 py-3">
+      <div className="border-border bg-surface-container-low/60 animate-planner-term-in flex flex-1 flex-col justify-center gap-1.5 rounded-lg border border-dashed px-3 py-4">
         <div className="flex items-center gap-2">
           <Icon name="briefcase" size={16} className="text-on-surface-variant shrink-0" />
           <div className="min-w-0 flex-1">
@@ -106,9 +106,9 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
         highlighted
           ? "border-primary/40 bg-accent-subtle/40 border-dashed"
           : "border-border bg-surface-container-low neu-inset"
-      } animate-planner-term-in flex min-h-[5.5rem] flex-1 flex-col gap-1.5 p-2`}
+      } animate-planner-term-in flex min-h-28 flex-1 flex-col gap-2 p-3`}
     >
-      <div className="flex shrink-0 items-baseline gap-2 text-xs">
+      <div className="flex shrink-0 items-baseline gap-2 px-0.5 text-xs">
         <span className="text-on-surface shrink-0 font-medium">{meta.short}</span>
         <span className="text-muted shrink-0 text-[11px]">{meta.months}</span>
         <span className="text-muted ml-auto shrink-0 text-[11px] tabular-nums">
@@ -126,7 +126,7 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
         )}
       </div>
       <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
-        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-0.5 pt-0.5">
           {term.blocks.map((b) => (
             <CourseBlock
               key={b.id}

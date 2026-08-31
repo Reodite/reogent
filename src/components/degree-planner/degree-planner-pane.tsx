@@ -399,8 +399,8 @@ export function DegreePlannerPane() {
         settleOverlay();
       }}
     >
-      <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col gap-3 p-4">
-        <header className="relative z-30 flex shrink-0 flex-wrap items-center gap-3">
+      <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col gap-4 p-5">
+        <header className="relative z-30 flex shrink-0 flex-wrap items-center gap-4">
           <div className="mr-auto min-w-40">
             <h2 className="text-on-surface text-xl font-semibold">Degree Planner</h2>
             <p className="text-muted text-xs">Build your UBC degree term by term.</p>
@@ -417,20 +417,20 @@ export function DegreePlannerPane() {
         </header>
 
         <div
-          className="grid min-h-0 flex-1 gap-3"
+          className="grid min-h-0 flex-1 gap-4"
           style={{
             gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) min(22rem, 32vw)",
           }}
         >
           <section
             aria-label="Degree plan"
-            className="border-border bg-surface-container-low/40 relative min-h-0 overflow-auto rounded-xl border p-3"
+            className="border-border bg-surface-container-low/40 relative min-h-0 overflow-auto rounded-xl border p-4"
           >
             <div
-              className="grid h-full gap-3"
+              className="grid h-full gap-4"
               style={{
                 gridTemplateColumns: `repeat(${years.length}, minmax(10.5rem, 1fr))`,
-                minWidth: `${years.length * 10.5 + Math.max(0, years.length - 1) * 0.75}rem`,
+                minWidth: `${years.length * 10.5 + Math.max(0, years.length - 1)}rem`,
               }}
             >
               {years.map((year) => (
@@ -450,7 +450,7 @@ export function DegreePlannerPane() {
             <CollapsedSidebar onToggle={toggleSidebar} />
           ) : (
             <aside className="neu-panel border-border bg-surface-container-low flex min-h-0 flex-col rounded-xl border">
-              <header className="border-border flex shrink-0 items-center gap-2 border-b px-3 py-2.5">
+              <header className="border-border flex shrink-0 items-center gap-2 border-b px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-on-surface text-sm font-semibold">Plan details</h3>
                   <p className="text-muted text-[11px]">Program, requirements, and courses</p>
@@ -467,15 +467,15 @@ export function DegreePlannerPane() {
               </header>
               <div className="flex min-h-0 flex-1 flex-col">
                 <div className="min-h-0 flex-1 overflow-y-auto px-3">
-                  <section className="py-3">
+                  <section className="py-4">
                     <ProgramSelectors />
                   </section>
-                  <section className="border-border border-t py-3">
+                  <section className="border-border border-t py-4">
                     <h3 className="text-on-surface mb-2 text-sm font-semibold">Requirements</h3>
                     <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
                   </section>
                 </div>
-                <section className="border-border flex max-h-[38%] min-h-32 shrink-0 flex-col border-t px-3 py-3">
+                <section className="border-border flex max-h-[38%] min-h-32 shrink-0 flex-col border-t px-4 py-4">
                   <MiniCourseLookup courseIndex={courseIndex} />
                 </section>
               </div>
@@ -677,10 +677,10 @@ function ActionsSection({
   }
 
   const buttonClass =
-    "neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40";
+    "neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40";
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
+    <div className="flex flex-wrap items-center justify-end gap-2">
       <div className="flex items-center gap-1">
         <button
           type="button"

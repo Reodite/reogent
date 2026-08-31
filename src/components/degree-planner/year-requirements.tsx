@@ -49,7 +49,7 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
   const pct = totalCredits === 0 ? 0 : Math.min(100, (doneCredits / totalCredits) * 100);
 
   return (
-    <div className="flex flex-col gap-3 text-sm">
+    <div className="flex flex-col gap-4 text-sm">
       <div className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
         <div className="flex items-baseline justify-between">
           <span className="text-on-surface">Degree progress</span>
@@ -73,12 +73,12 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
         const completed = rows.filter((row) => row.complete);
 
         return (
-          <section key={year.label} className="flex flex-col gap-1.5">
+          <section key={year.label} className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between">
               <h4 className="text-on-surface-variant text-xs font-semibold tracking-wide uppercase">{year.label}</h4>
               {year.totalCredits != null && <span className="text-muted text-xs">{year.totalCredits} cr</span>}
             </div>
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col gap-1.5">
               {pending.map(({ item, key, manuallyChecked }) => (
                 <RequirementRow
                   key={key}
@@ -189,7 +189,7 @@ function CourseRequirementRow({
         if ((e.target as HTMLElement).closest("button, a, select, input")) return;
         listeners?.onPointerDown?.(e);
       }}
-      className={`border-border bg-surface group flex items-center gap-1 rounded-lg border px-1.5 py-1 ${
+      className={`border-border bg-surface group flex items-center gap-2 rounded-lg border px-2.5 py-2 ${
         selectedCode && target ? "cursor-grab touch-none active:cursor-grabbing" : ""
       }`}
     >
@@ -255,7 +255,7 @@ function ManualRequirementRow({
       <button
         type="button"
         onClick={onToggle}
-        className="hover:bg-surface-container flex min-h-9 w-full items-start gap-2 rounded-lg px-1.5 py-2 text-left text-xs"
+        className="hover:bg-surface-container flex min-h-10 w-full items-start gap-2.5 rounded-lg px-2 py-2.5 text-left text-xs"
       >
         <Icon name={checked ? "checkbox" : "square"} size={14} className="text-muted mt-0.5 shrink-0" />
         <span className="text-on-surface-variant flex-1">{cleanLabel(item.label)}</span>

@@ -20,11 +20,11 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
   const hasSummer = year.terms.some((t) => isSummer(t.season));
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col gap-2">
-      <header className="flex shrink-0 items-baseline gap-2 px-1">
+    <section className="flex h-full min-h-0 min-w-0 flex-col gap-3">
+      <header className="flex shrink-0 items-baseline gap-2 px-1.5 pb-0.5">
         <h3 className="text-on-surface text-sm font-semibold">{year.label}</h3>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2.5">
         {year.terms.map((term, idx) => (
           <TermSection
             key={term.season}

@@ -68,47 +68,56 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
       ref={ghost ? undefined : setNodeRef}
       style={ghost ? undefined : style}
       onPointerDown={ghost ? undefined : startDrag}
-      className={`bg-surface flex min-h-10 w-full shrink-0 cursor-grab touch-none items-center gap-1 rounded-lg border px-1.5 py-1 text-sm select-none active:cursor-grabbing ${borderClass} ${
+      className={`group bg-surface relative flex min-h-11 w-full shrink-0 cursor-grab touch-none items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
         ghost ? "scale-[1.03] shadow-xl" : "neu-raised"
-      } } ${flashing ? "planner-flash" : ""}`}
+      } ${flashing ? "planner-flash" : ""}`}
       data-block-id={blockId}
     >
       <div className="min-w-0 flex-1 leading-tight">
         <span className="text-on-surface block truncate font-mono text-xs">{code}</span>
-        <span className="text-on-surface-variant block truncate text-[10px]" title={title}>
+        <span className="text-on-surface-variant block truncate text-[11px]" title={title}>
           {title}
         </span>
       </div>
       {!ghost && (
-        <button
-          type="button"
-          aria-label={`Remove ${code}`}
-          title={`Remove ${code}`}
-          onClick={() => removeBlock(blockId)}
-          className="text-muted hover:bg-error-container hover:text-error flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
-        >
-          <Icon name="close" size={14} />
-        </button>
-      )}
-      {!ghost && entry && (
-        <button
-          type="button"
-          aria-label={
-            validation.ok
-              ? `Show ${code} details`
-              : `Show ${code} details (${validation.missing.length} placement issue${validation.missing.length === 1 ? "" : "s"})`
-          }
-          onClick={togglePopup}
-          className={`flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
-            anchorRect
-              ? "text-on-surface bg-surface-container"
-              : validation.ok
-                ? "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-                : "text-error hover:bg-error-container"
+        // Action cluster floats over the chip so the code/title keep the full
+        // width at rest. Reveals on hover or keyboard focus inside the chip;
+        // an invalid placement keeps it pinned so the alert stays visible.
+        <div
+          className={`absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center gap-0.5 transition-opacity ${
+            !validation.ok ? "opacity-100" : "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
           }`}
         >
-          <Icon name={validation.ok ? "info" : "alert"} size={14} />
-        </button>
+          {entry && (
+            <button
+              type="button"
+              aria-label={
+                validation.ok
+                  ? `Show ${code} details`
+                  : `Show ${code} details (${validation.missing.length} placement issue${validation.missing.length === 1 ? "" : "s"})`
+              }
+              onClick={togglePopup}
+              className={`bg-surface border-border flex size-7 shrink-0 items-center justify-center rounded-md border shadow-sm transition-colors ${
+                anchorRect
+                  ? "text-on-surface bg-surface-container"
+                  : validation.ok
+                    ? "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                    : "border-error/40 text-error hover:bg-error-container"
+              }`}
+            >
+              <Icon name={validation.ok ? "info" : "alert"} size={14} />
+            </button>
+          )}
+          <button
+            type="button"
+            aria-label={`Remove ${code}`}
+            title={`Remove ${code}`}
+            onClick={() => removeBlock(blockId)}
+            className="bg-surface border-border text-muted hover:bg-error-container hover:text-error flex size-7 shrink-0 items-center justify-center rounded-md border shadow-sm transition-colors"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
       )}
       {anchorRect && entry && (
         <CourseInfoPopup
