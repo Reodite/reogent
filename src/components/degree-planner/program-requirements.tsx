@@ -238,7 +238,14 @@ function RequirementsPanel({
   // is fine (no hook needed — keeps RequirementsPanel hook-free).
   const parsedYears = parseProgramYears(req.text);
   if (hasYearRequirements(parsedYears)) {
-    return <YearRequirements programUrl={req.program_url} parsed={parsedYears} plannedCodes={plannedCodes} />;
+    return (
+      <YearRequirements
+        programUrl={req.program_url}
+        parsed={parsedYears}
+        plannedCodes={plannedCodes}
+        courseIndex={courseIndex}
+      />
+    );
   }
   // Fallback: checklist of referenced courses.
   return <ProseRequirements req={req} courseIndex={courseIndex} plannedCodes={plannedCodes} />;

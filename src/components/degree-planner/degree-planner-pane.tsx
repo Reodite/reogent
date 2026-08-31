@@ -52,6 +52,7 @@ import { YearColumn } from "./year-column";
 
 const ACTIVE_BLOCK_PREFIX = "block:";
 const ACTIVE_LOOKUP_PREFIX = "lookup:";
+const ACTIVE_REQUIREMENT_PREFIX = "requirement:";
 const TERM_PREFIX = "term:";
 
 // Resolve drop targets in priority order:
@@ -68,8 +69,11 @@ const TERM_PREFIX = "term:";
 //     visually a bit far from any block.
 const blockFirstCollision: CollisionDetection = (args) => {
   const activeId = String(args.active.id);
-  const isBlockOrLookup = activeId.startsWith(ACTIVE_BLOCK_PREFIX) || activeId.startsWith(ACTIVE_LOOKUP_PREFIX);
-  if (isBlockOrLookup) {
+  const isCourseDrag =
+    activeId.startsWith(ACTIVE_BLOCK_PREFIX) ||
+    activeId.startsWith(ACTIVE_LOOKUP_PREFIX) ||
+    activeId.startsWith(ACTIVE_REQUIREMENT_PREFIX);
+  if (isCourseDrag) {
     const trashHit = pointerWithin({
       ...args,
       droppableContainers: args.droppableContainers.filter((c) => String(c.id) === "trash"),
@@ -296,6 +300,11 @@ export function DegreePlannerPane() {
     }
     if (id.startsWith(ACTIVE_LOOKUP_PREFIX)) {
       setActiveDrag({ kind: "lookup", code: id.slice(ACTIVE_LOOKUP_PREFIX.length) });
+      return;
+    }
+    if (id.startsWith(ACTIVE_REQUIREMENT_PREFIX)) {
+      const code = event.active.data.current?.code;
+      if (typeof code === "string") setActiveDrag({ kind: "lookup", code });
     }
   }
 
@@ -306,28 +315,25 @@ export function DegreePlannerPane() {
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // === Lookup → term: spawn a new block. Dropping a lookup on trash
-    // is a no-op (you can't delete something that never existed). ===
-    if (activeId.startsWith(ACTIVE_LOOKUP_PREFIX)) {
-      const code = activeId.slice(ACTIVE_LOOKUP_PREFIX.length);
-      if (!code) return;
-      if (overId === "trash") return;
-      // Drop target can be either a term container or another block
-      // inside one (closestCenter likes to resolve to the nearest sortable
-      // item). Walk the data to recover (yearId, termIdx).
+    // Search and requirement drags create a block in the resolved term.
+    if (activeId.startsWith(ACTIVE_LOOKUP_PREFIX) || activeId.startsWith(ACTIVE_REQUIREMENT_PREFIX)) {
+      const draggedCode = activeId.startsWith(ACTIVE_LOOKUP_PREFIX)
+        ? activeId.slice(ACTIVE_LOOKUP_PREFIX.length)
+        : active.data.current?.code;
+      if (typeof draggedCode !== "string" || !draggedCode || overId === "trash") return;
       const dest = resolveTermDrop(overId, years);
       if (!dest) return;
-      addBlock(dest.yearId, dest.termIdx, code);
+      addBlock(dest.yearId, dest.termIdx, draggedCode);
       return;
     }
 
-    // === Block → trash: delete. ===
+    // A planned block dropped on trash is removed.
     if (overId === "trash" && activeId.startsWith(ACTIVE_BLOCK_PREFIX)) {
       removeBlock(activeId.slice(ACTIVE_BLOCK_PREFIX.length));
       return;
     }
 
-    // === Block → term (or another block): move/reorder. ===
+    // A planned block dropped on a term or another block is moved.
     if (activeId.startsWith(ACTIVE_BLOCK_PREFIX)) {
       const blockId = activeId.slice(ACTIVE_BLOCK_PREFIX.length);
       const src = findBlockYearTerm(blockId);
