@@ -122,11 +122,8 @@ vi.mock("@/src/components/course-lookup/course-search", () => ({
     lookup: vi.fn(),
   }),
 }));
-vi.mock("@/src/components/providers", () => ({
-  useApi: () => ({
-    getCourse: async (code: string) => courses[code],
-  }),
-}));
+const apiMock = vi.hoisted(() => ({ getCourse: vi.fn() }));
+vi.mock("@/src/components/providers", () => ({ useApi: () => apiMock }));
 
 afterEach(() => {
   cleanup();
@@ -135,6 +132,7 @@ afterEach(() => {
 
 describe("SchedulePlannerPane", () => {
   it("renders selected sections, component pickers, and conflicts", async () => {
+    apiMock.getCourse.mockImplementation(async (code: string) => courses[code]);
     const view = render(<SchedulePlannerPane />);
 
     await waitFor(() => {
@@ -146,9 +144,20 @@ describe("SchedulePlannerPane", () => {
     expect(view.getByText("Laboratory")).toBeTruthy();
     expect(view.getByText("2 conflicting sections")).toBeTruthy();
     expect(view.getByText("· 7 credits")).toBeTruthy();
+    expect(view.getAllByText("Conflicts with another selected section.").length).toBe(2);
     expect(view.getAllByText("Mon").length).toBeGreaterThan(0);
 
-    fireEvent.change(view.getAllByRole("combobox", { name: "Lecture" })[0], { target: { value: "102" } });
+    fireEvent.change(view.getAllByRole("combobox", { name: /^Lecture/ })[0], { target: { value: "102" } });
     expect(scheduleMock.state.addEntry).toHaveBeenCalledWith(courses["CPSC 110"], courses["CPSC 110"].sections[1]);
+
+    const timetableToggle = view.getByRole("button", { name: /Timetable/ });
+    fireEvent.click(timetableToggle);
+    expect(timetableToggle.getAttribute("aria-pressed")).toBe("true");
+
+    const conflictBlock = view.getAllByRole("button", {
+      name: /CPSC 110 101.*conflicts with another section/,
+    })[0];
+    fireEvent.click(conflictBlock);
+    expect(conflictBlock.getAttribute("aria-expanded")).toBe("true");
   });
 });

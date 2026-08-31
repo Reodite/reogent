@@ -5,7 +5,7 @@
 // blocks inside their day column. Conflicting sections split their column
 // into side-by-side lanes and get the error ring.
 import { formatTime, hourRange, conflictedIndices, laneLayout, visibleDays, parseTime } from "@/src/lib/schedule";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { entryId, type ScheduleEntry } from "./schedule-store";
 
 const HOUR_PX = 56;
@@ -91,6 +91,7 @@ export function placeBlocks(
 }
 
 export function TimetableGrid({ entries }: TimetableGridProps) {
+  const [openBlock, setOpenBlock] = useState<string | null>(null);
   const range = useMemo(
     () =>
       hourRange(
@@ -110,28 +111,31 @@ export function TimetableGrid({ entries }: TimetableGridProps) {
   const gridHeight = (range.endHour - range.startHour) * HOUR_PX;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <div
-        className={`grid grid-cols-[3rem_repeat(var(--day-count),minmax(0,1fr))] border-border-subtle border-b`}
+        className="border-border-subtle bg-surface sticky top-0 z-30 grid grid-cols-[3rem_repeat(var(--day-count),minmax(0,1fr))] border-b"
         style={{ ["--day-count" as string]: days.length }}
       >
-        <div className="border-border-subtle border-r" aria-hidden="true" />
+        <div className="border-border-subtle bg-surface sticky left-0 z-20 border-r" aria-hidden="true" />
         {days.map((d) => (
-          <div key={d} className="border-border-subtle text-muted border-l px-2 py-1.5 text-center text-xs font-medium">
+          <div
+            key={d}
+            className="border-border-subtle bg-surface text-muted border-l px-2 py-1.5 text-center text-xs font-medium"
+          >
             {d}
           </div>
         ))}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1">
         <div
           className="grid grid-cols-[3rem_repeat(var(--day-count),minmax(0,1fr))]"
           style={{ ["--day-count" as string]: days.length, height: gridHeight }}
         >
-          <div className="border-border-subtle relative border-r">
+          <div className="border-border-subtle bg-surface-container-low sticky left-0 z-20 border-r">
             {Array.from({ length: range.endHour - range.startHour }, (_, i) => range.startHour + i).map((hour) => (
               <div
                 key={hour}
-                className="font-mono text-muted absolute right-1.5 -translate-y-1/2 text-[0.6875rem]"
+                className="font-mono text-muted absolute right-1.5 -translate-y-1/2 text-xs"
                 style={{ top: (hour - range.startHour) * HOUR_PX }}
               >
                 {hour === range.startHour ? "" : formatTime(hour * 60)}
@@ -149,31 +153,61 @@ export function TimetableGrid({ entries }: TimetableGridProps) {
               ))}
               {blocks
                 .filter((b) => b.day === day)
-                .map((b) => (
-                  <section
-                    key={`${entryId(b.entry)}-${day}`}
-                    aria-label={`${b.entry.code} ${b.entry.section} ${b.entry.snapshot.start_time}`}
-                    title={`${b.entry.snapshot.title} · ${b.entry.snapshot.start_time ?? "?"}–${b.entry.snapshot.end_time ?? "?"}${
-                      b.entry.snapshot.instructor ? ` · ${b.entry.snapshot.instructor}` : ""
-                    }`}
-                    className={`absolute overflow-hidden rounded-md px-1.5 py-1 text-left ${courseColor(b.entry.code)} ${
-                      b.conflict ? "ring-error/70 ring-2" : ""
-                    }`}
-                    style={{
-                      top: b.top !== undefined ? (b.top / 100) * gridHeight : 0,
-                      height: Math.max(18, (b.height / 100) * gridHeight),
-                      left: `${(b.lane / b.lanes) * 100}%`,
-                      width: `${100 / b.lanes}%`,
-                    }}
-                  >
-                    <p className="truncate font-mono text-[0.6875rem] font-medium leading-tight">
-                      {b.entry.code} {b.entry.section}
-                    </p>
-                    <p className="truncate font-mono text-[0.6875rem] opacity-80">
-                      {b.entry.snapshot.start_time}–{b.entry.snapshot.end_time}
-                    </p>
-                  </section>
-                ))}
+                .map((b) => {
+                  const blockId = `${entryId(b.entry)}-${day}`;
+                  const top = b.top !== undefined ? (b.top / 100) * gridHeight : 0;
+                  const height = Math.max(22, (b.height / 100) * gridHeight);
+                  const left = (b.lane / b.lanes) * 100;
+                  const width = 100 / b.lanes;
+                  const details = `${b.entry.snapshot.title} · ${b.entry.snapshot.start_time ?? "?"}–${
+                    b.entry.snapshot.end_time ?? "?"
+                  }${b.entry.snapshot.instructor ? ` · ${b.entry.snapshot.instructor}` : ""}`;
+                  return (
+                    <div key={blockId}>
+                      <button
+                        type="button"
+                        aria-expanded={openBlock === blockId}
+                        aria-label={`${b.entry.code} ${b.entry.section}, ${details}${
+                          b.conflict ? ", conflicts with another section" : ""
+                        }`}
+                        title={details}
+                        onClick={() => setOpenBlock((current) => (current === blockId ? null : blockId))}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") setOpenBlock(null);
+                        }}
+                        className={`focus-visible:ring-primary absolute overflow-hidden rounded-md px-1.5 py-1 text-left text-xs focus-visible:z-30 focus-visible:ring-2 ${courseColor(
+                          b.entry.code,
+                        )} ${b.conflict ? "ring-error/70 ring-2" : ""}`}
+                        style={{ top, height, left: `${left}%`, width: `${width}%` }}
+                      >
+                        <span className="block truncate font-mono font-medium leading-tight">
+                          {b.entry.code} {b.entry.section}
+                        </span>
+                        <span className="block truncate font-mono text-xs opacity-80">
+                          {b.entry.snapshot.start_time}–{b.entry.snapshot.end_time}
+                        </span>
+                      </button>
+                      {openBlock === blockId && (
+                        <div
+                          role="status"
+                          className="neu-raised bg-surface text-on-surface absolute z-40 w-52 rounded-lg p-2.5 text-xs"
+                          style={{
+                            top: top + height + 4,
+                            ...(days.indexOf(day) >= days.length - 2 ? { right: 0 } : { left: 0 }),
+                          }}
+                        >
+                          <p className="font-mono font-medium">
+                            {b.entry.code} {b.entry.section}
+                          </p>
+                          <p className="text-on-surface-variant mt-1 leading-relaxed">{details}</p>
+                          {b.conflict && (
+                            <p className="text-error mt-1.5 font-medium">Conflicts with another selected section.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           ))}
         </div>

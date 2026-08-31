@@ -77,7 +77,15 @@ function toScheduled(entries: ScheduleEntry[]): ScheduledSection[] {
   }));
 }
 
-function SectionPicker({ doc, term }: { doc: CourseDoc; term: string }) {
+function SectionPicker({
+  doc,
+  term,
+  conflictingIds,
+}: {
+  doc: CourseDoc;
+  term: string;
+  conflictingIds: Set<string>;
+}) {
   const entries = useSchedule((s) => s.entries);
   const addEntry = useSchedule((s) => s.addEntry);
   const removeEntry = useSchedule((s) => s.removeEntry);
@@ -86,6 +94,7 @@ function SectionPicker({ doc, term }: { doc: CourseDoc; term: string }) {
   const sections = useMemo(() => doc.sections.filter((s) => s.term === term), [doc.sections, term]);
   const groups = useMemo(() => groupSections(sections), [sections]);
   const selected = entries.filter((e) => normalizeScheduleCode(e.code) === code && e.term === term);
+  const courseHasConflict = selected.some((entry) => conflictingIds.has(`${entry.code}::${entry.section}::${entry.term}`));
 
   if (sections.length === 0) {
     return (
@@ -100,7 +109,14 @@ function SectionPicker({ doc, term }: { doc: CourseDoc; term: string }) {
       <div className="mb-3 flex items-start gap-2">
         <span className={`mt-1 size-2 shrink-0 rounded-full ${courseColor(code).split(" ")[0]}`} />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-mono text-sm font-medium">{code}</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="truncate font-mono text-sm font-medium">{code}</h3>
+            {courseHasConflict && (
+              <span className="bg-error-container/70 text-on-error-container inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs">
+                <Icon name="alert" className="size-3" /> Conflict
+              </span>
+            )}
+          </div>
           <p className="text-muted truncate text-xs">{doc.title}</p>
         </div>
         {selected.length > 0 && (
@@ -119,6 +135,9 @@ function SectionPicker({ doc, term }: { doc: CourseDoc; term: string }) {
           const options = groups.get(kind);
           if (!options?.length) return null;
           const current = selected.find((e) => sectionComponent(e.section) === kind);
+          const hasConflict = current
+            ? conflictingIds.has(`${current.code}::${current.section}::${current.term}`)
+            : false;
           return (
             <label key={kind} className="flex flex-col gap-1">
               <span className="text-on-surface-variant text-xs font-medium">{COMPONENT_LABELS[kind]}</span>
@@ -129,7 +148,9 @@ function SectionPicker({ doc, term }: { doc: CourseDoc; term: string }) {
                   if (next) addEntry(doc, next);
                   else if (current) removeEntry(current.code, current.section, current.term);
                 }}
-                className="neu-inset bg-surface text-on-surface focus-visible:ring-primary/40 h-10 w-full rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-offset-1"
+                className={`neu-inset bg-surface text-on-surface focus-visible:ring-primary/40 h-10 w-full rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-offset-1 ${
+                  hasConflict ? "ring-error/60 ring-2" : ""
+                }`}
               >
                 <option value="">Choose {COMPONENT_LABELS[kind].toLowerCase()}</option>
                 {options.map((section) => (
@@ -138,6 +159,11 @@ function SectionPicker({ doc, term }: { doc: CourseDoc; term: string }) {
                   </option>
                 ))}
               </select>
+              {hasConflict && (
+                <span className="text-error inline-flex items-center gap-1 text-xs">
+                  <Icon name="alert" className="size-3.5" /> Conflicts with another selected section.
+                </span>
+              )}
               {current?.snapshot.status && !/open|active|available/i.test(current.snapshot.status) && (
                 <span className="text-tertiary text-xs">Status: {current.snapshot.status}</span>
               )}
@@ -151,7 +177,7 @@ function SectionPicker({ doc, term }: { doc: CourseDoc; term: string }) {
 
 function EmptyGrid() {
   return (
-    <div className="grid min-h-[28rem] flex-1 place-items-center p-8 text-center">
+    <div className="grid h-full min-h-[28rem] w-full place-items-center p-8 text-center">
       <div className="max-w-sm">
         <span className="bg-surface-container-low text-primary mx-auto mb-4 grid size-11 place-items-center rounded-xl">
           <Icon name="calendar" className="size-5" />
@@ -176,6 +202,7 @@ export function SchedulePlannerPane() {
   const [query, setQuery] = useState("");
   const [docs, setDocs] = useState<Map<string, CourseDoc>>(new Map());
   const [catalogError, setCatalogError] = useState(false);
+  const [mobileView, setMobileView] = useState<"courses" | "timetable">("courses");
 
   const resolveSingle = useCallback((code: string) => api.getCourse(code), [api]);
   const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(query, { resolveSingle });
@@ -231,6 +258,12 @@ export function SchedulePlannerPane() {
   if (record?.sections.some((s) => s.term === activeTerm)) shownCodes.add(normalizeScheduleCode(record.code));
   const shownDocs = [...shownCodes].map((code) => docs.get(code)).filter((doc): doc is CourseDoc => !!doc);
   const conflicts = conflictedIndices(toScheduled(visibleEntries));
+  const conflictingIds = new Set(
+    [...conflicts].map((index) => {
+      const entry = visibleEntries[index];
+      return `${entry.code}::${entry.section}::${entry.term}`;
+    }),
+  );
   const credits = [...pickedCodes].reduce((sum, code) => sum + (docs.get(code)?.credits ?? 0), 0);
 
   return (
@@ -259,12 +292,20 @@ export function SchedulePlannerPane() {
           )}
         </div>
         {visibleEntries.length > 0 && (
-          <div className="text-muted hidden shrink-0 items-center gap-2 text-xs sm:flex">
-            <span>{pickedCodes.size} courses</span>
-            {credits > 0 && <span>· {credits} credits</span>}
+          <div className="text-muted flex shrink-0 items-center gap-2 text-xs">
+            <span className="hidden sm:inline">{pickedCodes.size} courses</span>
+            {credits > 0 && <span className="hidden sm:inline">· {credits} credits</span>}
             {conflicts.size > 0 && (
-              <span className="bg-error-container/60 text-on-error-container rounded-full px-2 py-1">
-                {conflicts.size} conflicting {conflicts.size === 1 ? "section" : "sections"}
+              <span
+                role="status"
+                aria-label={`${conflicts.size} conflicting ${conflicts.size === 1 ? "section" : "sections"}`}
+                className="bg-error-container/60 text-on-error-container inline-flex items-center gap-1 rounded-full px-2 py-1"
+              >
+                <Icon name="alert" className="size-3.5" />
+                <span className="sm:hidden">{conflicts.size}</span>
+                <span className="hidden sm:inline">
+                  {conflicts.size} conflicting {conflicts.size === 1 ? "section" : "sections"}
+                </span>
               </span>
             )}
           </div>
@@ -293,8 +334,40 @@ export function SchedulePlannerPane() {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(30rem,1fr)] lg:grid-cols-[20rem_minmax(0,1fr)] lg:grid-rows-1">
-        <aside className="border-border-subtle bg-surface flex min-h-0 flex-col gap-3 border-b p-3 lg:border-r lg:border-b-0">
+      <div className="border-border-subtle flex shrink-0 gap-1 border-b p-2 lg:hidden">
+        <button
+          type="button"
+          aria-pressed={mobileView === "courses"}
+          onClick={() => setMobileView("courses")}
+          className={`focus-visible:ring-primary/40 flex-1 rounded-lg px-3 py-2 text-xs font-medium focus-visible:ring-2 ${
+            mobileView === "courses" ? "bg-accent-subtle text-primary" : "text-on-surface-variant"
+          }`}
+        >
+          Courses
+        </button>
+        <button
+          type="button"
+          aria-pressed={mobileView === "timetable"}
+          onClick={() => setMobileView("timetable")}
+          className={`focus-visible:ring-primary/40 flex-1 rounded-lg px-3 py-2 text-xs font-medium focus-visible:ring-2 ${
+            mobileView === "timetable" ? "bg-accent-subtle text-primary" : "text-on-surface-variant"
+          }`}
+        >
+          Timetable
+          {conflicts.size > 0 && (
+            <span className="bg-error-container text-on-error-container ml-1.5 rounded-full px-1.5 py-0.5">
+              {conflicts.size}
+            </span>
+          )}
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <aside
+          className={`border-border-subtle bg-surface min-h-0 flex-col gap-3 border-b p-3 lg:flex lg:border-r lg:border-b-0 ${
+            mobileView === "courses" ? "flex h-full" : "hidden"
+          }`}
+        >
           <div className="shrink-0">
             <h3 className="mb-2 text-sm font-medium">Find a course</h3>
             <CourseSearchField
@@ -320,7 +393,12 @@ export function SchedulePlannerPane() {
             </div>
             <div className="flex flex-col gap-2">
               {shownDocs.map((doc) => (
-                <SectionPicker key={`${doc.code}-${activeTerm}`} doc={doc} term={activeTerm} />
+                <SectionPicker
+                  key={`${doc.code}-${activeTerm}`}
+                  doc={doc}
+                  term={activeTerm}
+                  conflictingIds={conflictingIds}
+                />
               ))}
               {[...pickedCodes]
                 .filter((code) => !docs.has(code))
@@ -337,11 +415,21 @@ export function SchedulePlannerPane() {
           </div>
         </aside>
 
-        <main className="bg-surface-container-low/25 min-h-0 min-w-0 overflow-x-auto">
-          <div className="h-full min-w-[42rem]">
+        <section
+          aria-label="Weekly timetable. Scroll sideways to see later days."
+          className={`bg-surface-container-low/25 min-h-0 min-w-0 overflow-auto lg:block ${
+            mobileView === "timetable" ? "block h-full" : "hidden"
+          }`}
+        >
+          {visibleEntries.length > 0 && (
+            <p className="text-muted bg-surface sticky left-0 z-30 px-3 py-1.5 text-xs lg:hidden">
+              Scroll sideways to see later days.
+            </p>
+          )}
+          <div className={visibleEntries.length === 0 ? "h-full min-w-0" : "h-full min-w-[42rem]"}>
             {visibleEntries.length === 0 ? <EmptyGrid /> : <TimetableGrid entries={visibleEntries} />}
           </div>
-        </main>
+        </section>
       </div>
     </div>
   );
