@@ -4,6 +4,7 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
 import { ModeToggle } from "@/src/components/shell/mode-toggle";
 import { BrandHeader, SessionSidebar } from "@/src/components/shell/session-sidebar";
+import { SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
 import { ToolList } from "@/src/components/shell/tool-list";
 import { UserMenu } from "@/src/components/shell/user-menu";
 import { usePathname, useRouter } from "next/navigation";
@@ -19,41 +20,36 @@ function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
   const router = useRouter();
 
   return (
-    <nav
-      aria-label="Community"
-      className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${collapsed ? "px-0 py-2" : "p-2"}`}
-    >
-      <ul className={`flex flex-col gap-1 ${collapsed ? "items-center" : ""}`}>
-        {UNITY_ITEMS.map((item) => {
-          const active = pathname === item.path;
-          return (
-            <li key={item.path}>
-              <button
-                type="button"
-                aria-current={active ? "page" : undefined}
-                onClick={() => router.push(item.path)}
-                className={`focus-visible:ring-primary/40 flex h-9 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
-                  collapsed ? "w-9 justify-center" : "w-full gap-2.5 px-3"
-                } ${
-                  active
-                    ? "bg-accent-subtle text-primary"
-                    : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+    <SidebarListNav label="Community" collapsed={collapsed}>
+      {UNITY_ITEMS.map((item, i) => {
+        const active = pathname === item.path;
+        return (
+          <SidebarListItem key={item.path} index={i}>
+            <button
+              type="button"
+              aria-current={active ? "page" : undefined}
+              onClick={() => router.push(item.path)}
+              className={`focus-visible:ring-primary/40 flex h-9 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
+                collapsed ? "w-9 justify-center" : "w-full gap-2.5 px-3"
+              } ${
+                active
+                  ? "bg-accent-subtle text-primary"
+                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              }`}
+            >
+              <Icon name={item.icon} size={16} className="shrink-0" />
+              <span
+                className={`text-sm font-medium whitespace-nowrap transition-opacity duration-300 ${
+                  collapsed ? "w-0 overflow-hidden opacity-0" : "opacity-100"
                 }`}
               >
-                <Icon name={item.icon} size={16} className="shrink-0" />
-                <span
-                  className={`text-sm font-medium whitespace-nowrap transition-opacity duration-300 ${
-                    collapsed ? "w-0 overflow-hidden opacity-0" : "opacity-100"
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+                {item.label}
+              </span>
+            </button>
+          </SidebarListItem>
+        );
+      })}
+    </SidebarListNav>
   );
 }
 

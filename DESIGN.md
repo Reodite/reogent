@@ -468,7 +468,7 @@ Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + op
 - **Spring physics**: Layout state changes (sidebar collapse/expand, map panel collapse/expand) use `type: "spring"` with `stiffness: 300, damping: 30` via the `motion` library. Slightly underdamped for a natural settle.
 - **Message entrance**: Spring (stiffness: 400, damping: 25) — opacity 0→1, translateY(6px→0). Quicker than panels, gentle overshoot.
 - **Tool badge stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.05`. Snappy, minimal overshoot.
-- **Session list stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.03` capped at 0.3s total.
+- **Sidebar list stagger** (session items, tool rows, Unity links): spring (stiffness: 500, damping: 30) with `delay: min(i * 0.03, 0.3)` — shared component, plays once per list mount.
 - **Suggestion pills / error banners**: CSS `animate-message-in` (200ms ease-out, opacity + translateY) with `animationDelay` for stagger. CSS rather than spring because staggered delay is cleaner for static lists.
 - **Button states**: shadow change on hover, inset shadow + scale(0.98) on press. No translate — buttons never shift position on hover or active. 150ms ease-out.
 - **Menu entrance**: Anchored menus (account menu) enter with `menu-in` (opacity 0→1, translateY(4px)→0, scale(0.97)→1, 180ms ease-out) from the anchor side. Other popovers: scale(0.97) + opacity(0) + blur(2px) → open. 150-250ms.

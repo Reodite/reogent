@@ -3,9 +3,10 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { SidebarListItem, SidebarStaggerContext } from "@/src/components/shell/sidebar-list";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
@@ -377,79 +378,71 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
         aria-busy={sessionsLoading}
         className="bg-surface-container-low/60 min-h-0 flex-1 overflow-y-auto [overscroll-behavior-y:contain] rounded-xl p-2"
       >
-        {sessionsLoading && (
-          <div className="flex flex-col gap-2" role="status" aria-label="Loading sessions">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="bg-surface-container h-10 animate-pulse rounded-lg" />
-            ))}
-          </div>
-        )}
+        <SidebarStaggerContext.Provider value={!hasAnimated.current && !reduce}>
+          {sessionsLoading && (
+            <div className="flex flex-col gap-2" role="status" aria-label="Loading sessions">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="bg-surface-container h-10 animate-pulse rounded-lg" />
+              ))}
+            </div>
+          )}
 
-        {!sessionsLoading && sessionsError && (
-          <div role="alert" className="text-body-sm text-on-surface-variant px-1 py-2">
-            <p>Couldn&apos;t load your conversations. Check your connection and try again.</p>
+          {!sessionsLoading && sessionsError && (
+            <div role="alert" className="text-body-sm text-on-surface-variant px-1 py-2">
+              <p>Couldn&apos;t load your conversations. Check your connection and try again.</p>
+              <button
+                type="button"
+                onClick={refreshSessions}
+                className="neu-button bg-surface text-on-surface mt-3 flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+              >
+                <Icon name="refresh2" size={14} />
+                Try again
+              </button>
+            </div>
+          )}
+
+          {!sessionsLoading && !sessionsError && sessions.length === 0 && (
+            <p className="text-body-sm text-muted px-2 py-3">Your conversations will appear here.</p>
+          )}
+
+          {!sessionsLoading &&
+            !sessionsError &&
+            grouped.map(([group, items]) => {
+              const groupId = `session-group-${group.replace(/\s+/g, "-").toLowerCase()}`;
+              return (
+                <div key={group} className="pt-2 first:pt-0">
+                  <h3 id={groupId} className="text-muted px-2 pb-1.5 text-xs font-medium tracking-[0.05em] uppercase">
+                    {group}
+                  </h3>
+                  <ul aria-labelledby={groupId} className="flex flex-col gap-1">
+                    {items.map((session, i) => {
+                      const active = session.session_id === activeId;
+                      return (
+                        <SidebarListItem key={session.session_id} index={i}>
+                          <SessionItem
+                            session={session}
+                            active={active}
+                            onOpen={() => openSession(session.session_id)}
+                            onRename={(title) => renameSessionLocally(session.session_id, title)}
+                            onDelete={() => removeSessionLocally(session.session_id)}
+                          />
+                        </SidebarListItem>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
+          {!sessionsLoading && !sessionsError && sessions.length > renderLimit && (
             <button
               type="button"
-              onClick={refreshSessions}
-              className="neu-button bg-surface text-on-surface mt-3 flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+              onClick={() => setRenderLimit((n) => n + 100)}
+              className="text-primary hover:bg-accent-subtle mt-2 w-full rounded-lg px-2 py-2 text-center text-xs font-medium"
             >
-              <Icon name="refresh2" size={14} />
-              Try again
+              Show more ({sessions.length - renderLimit} remaining)
             </button>
-          </div>
-        )}
-
-        {!sessionsLoading && !sessionsError && sessions.length === 0 && (
-          <p className="text-body-sm text-muted px-2 py-3">Your conversations will appear here.</p>
-        )}
-
-        {!sessionsLoading &&
-          !sessionsError &&
-          grouped.map(([group, items]) => {
-            const shouldStagger = !hasAnimated.current && !reduce;
-            const groupId = `session-group-${group.replace(/\s+/g, "-").toLowerCase()}`;
-            return (
-              <div key={group} className="pt-2 first:pt-0">
-                <h3 id={groupId} className="text-muted px-2 pb-1.5 text-xs font-medium tracking-[0.05em] uppercase">
-                  {group}
-                </h3>
-                <ul aria-labelledby={groupId} className="flex flex-col gap-1">
-                  {items.map((session, i) => {
-                    const active = session.session_id === activeId;
-                    return (
-                      <motion.li
-                        key={session.session_id}
-                        initial={shouldStagger ? { opacity: 0, y: 6 } : false}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={
-                          shouldStagger
-                            ? { type: "spring", stiffness: 500, damping: 30, delay: Math.min(i * 0.03, 0.3) }
-                            : { duration: 0 }
-                        }
-                      >
-                        <SessionItem
-                          session={session}
-                          active={active}
-                          onOpen={() => openSession(session.session_id)}
-                          onRename={(title) => renameSessionLocally(session.session_id, title)}
-                          onDelete={() => removeSessionLocally(session.session_id)}
-                        />
-                      </motion.li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
-        {!sessionsLoading && !sessionsError && sessions.length > renderLimit && (
-          <button
-            type="button"
-            onClick={() => setRenderLimit((n) => n + 100)}
-            className="text-primary hover:bg-accent-subtle mt-2 w-full rounded-lg px-2 py-2 text-center text-xs font-medium"
-          >
-            Show more ({sessions.length - renderLimit} remaining)
-          </button>
-        )}
+          )}
+        </SidebarStaggerContext.Provider>
       </nav>
       <output className="sr-only" aria-live="polite">
         {!sessionsLoading && sessions.length > 0 ? `${sessions.length} conversations` : ""}
