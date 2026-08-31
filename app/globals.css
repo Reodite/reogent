@@ -340,6 +340,39 @@ body {
   animation: message-in 200ms ease-out both;
 }
 
+@keyframes planner-flash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  20%,
+  60% {
+    box-shadow: 0 0 0 3px var(--error);
+    background-color: var(--error-container);
+  }
+}
+
+/* Pulsed on a planner course chip after the user clicks its entry in the issues list. */
+.planner-flash {
+  animation: planner-flash 1.4s ease-out 1;
+}
+
+/* Entrance for newly added planner terms (e.g. summer session). */
+@keyframes planner-term-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-planner-term-in {
+  animation: planner-term-in 200ms var(--neu-ease, ease-out) both;
+}
+
 .animate-topo-drift {
   animation: topo-drift 30s ease-in-out infinite;
 }

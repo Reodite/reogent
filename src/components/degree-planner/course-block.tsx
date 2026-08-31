@@ -61,6 +61,7 @@ export function CourseBlock({
 
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const removeBlock = usePlanner((state) => state.removeBlock);
+  const flashing = usePlanner((state) => state.flashBlockId === blockId);
 
   function togglePopup(e: React.MouseEvent | React.FocusEvent) {
     e.stopPropagation();
@@ -74,7 +75,8 @@ export function CourseBlock({
       style={ghost ? undefined : style}
       className={`bg-surface flex min-h-10 w-full shrink-0 items-center gap-1 rounded-lg border px-1 py-1 text-sm select-none ${borderClass} ${
         ghost ? "shadow-lg" : "neu-raised"
-      }`}
+      } ${flashing ? "planner-flash" : ""}`}
+      data-block-id={blockId}
     >
       {!ghost && (
         <button
@@ -108,15 +110,21 @@ export function CourseBlock({
       {!ghost && entry && (
         <button
           type="button"
-          aria-label={`Show ${code} details`}
+          aria-label={
+            validation.ok
+              ? `Show ${code} details`
+              : `Show ${code} details (${validation.missing.length} placement issue${validation.missing.length === 1 ? "" : "s"})`
+          }
           onClick={togglePopup}
           className={`flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
             anchorRect
               ? "text-on-surface bg-surface-container"
-              : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+              : validation.ok
+                ? "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                : "text-error hover:bg-error-container"
           }`}
         >
-          <Icon name="info" size={14} />
+          <Icon name={validation.ok ? "info" : "alert"} size={14} />
         </button>
       )}
       {anchorRect && entry && (
@@ -127,6 +135,7 @@ export function CourseBlock({
           coreqAst={coreqAst}
           completedBefore={validation.completedBefore}
           completedSameOrBefore={validation.completedSameOrBefore}
+          issues={validation.missing}
           onClose={() => setAnchorRect(null)}
         />
       )}

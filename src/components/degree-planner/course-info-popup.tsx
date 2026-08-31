@@ -23,6 +23,7 @@ import { isSatisfied, type Expr } from "@/src/shared/prereq-ast";
 import Link from "next/link";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { describeIssue } from "./validation";
 
 const POPUP_WIDTH = 320;
 const POPUP_GAP = 8;
@@ -40,6 +41,8 @@ interface CourseInfoPopupProps {
   coreqAst?: Expr | null;
   completedBefore?: Set<string>;
   completedSameOrBefore?: Set<string>;
+  // Placement issues for this block, as internal tokens from validation.
+  issues?: string[];
   onClose?: () => void;
 }
 
@@ -50,6 +53,7 @@ export function CourseInfoPopup({
   coreqAst,
   completedBefore,
   completedSameOrBefore,
+  issues,
   onClose,
 }: CourseInfoPopupProps) {
   const api = useApi();
@@ -144,6 +148,16 @@ export function CourseInfoPopup({
           </button>
         )}
       </div>
+      {issues && issues.length > 0 && (
+        <div className="border-error/30 bg-error-container/50 flex flex-col gap-1 rounded-lg border px-2 py-1.5">
+          <p className="text-error text-xs font-semibold">Why it&rsquo;s flagged</p>
+          <ul className="text-on-surface list-disc pl-4 text-xs">
+            {issues.map((token) => (
+              <li key={token}>{describeIssue(token)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {course.credits != null && (
         <p className="text-on-surface-variant text-xs">
           Credits: <span className="text-on-surface">{course.credits}</span>

@@ -82,6 +82,9 @@ interface PlannerState {
   coop: boolean;
   sidebarCollapsed: boolean;
   lookupQuery: string;
+  // Block the UI is flashing after the user clicked an issue entry.
+  // Session-only, non-persisted, cleared after the pulse ends.
+  flashBlockId: string | null;
   // Block IDs whose prereq/coreq errors the user chose to suppress.
   ignoredBlocks: string[];
   // Program-requirement rows the user manually ticked (transfer credit, AP,
@@ -111,6 +114,7 @@ interface PlannerState {
   setProgram: (level: "faculty" | "major" | "minor", value: string | null) => void;
   toggleSidebar: () => void;
   setLookupQuery: (q: string) => void;
+  setFlashBlockId: (id: string | null) => void;
   // Step the plan back / forward through the history stacks. No-ops when the
   // respective stack is empty.
   undo: () => void;
@@ -313,6 +317,7 @@ export const usePlanner = create<PlannerState>()(
       coop: false,
       sidebarCollapsed: false,
       lookupQuery: "",
+      flashBlockId: null,
       ignoredBlocks: [],
       checkedRequirements: [],
       past: [],
@@ -521,6 +526,8 @@ export const usePlanner = create<PlannerState>()(
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
 
       setLookupQuery: (q) => set({ lookupQuery: q }),
+
+      setFlashBlockId: (id) => set({ flashBlockId: id }),
 
       undo: () =>
         set((s) => {

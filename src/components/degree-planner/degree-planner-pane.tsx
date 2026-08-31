@@ -33,7 +33,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CourseBlock } from "./course-block";
 import { LookupBlock } from "./lookup-block";
 import { MiniCourseLookup } from "./mini-course-lookup";
@@ -42,7 +42,7 @@ import { SEASON_META, usePlanner, type Year } from "./planner-store";
 import { ProgramProgress, ProgramSelectors } from "./program-requirements";
 import { TrashBin } from "./trash-bin";
 import { usePlanSync } from "./use-plan-sync";
-import { EMPTY_VALIDATION, findDuplicateCourseCodes, type BlockValidation } from "./validation";
+import { describeIssue, EMPTY_VALIDATION, findDuplicateCourseCodes, type BlockValidation } from "./validation";
 import { YearColumn } from "./year-column";
 
 const ACTIVE_BLOCK_PREFIX = "block:";
@@ -416,7 +416,6 @@ export function DegreePlannerPane() {
           <ActionsSection
             years={years}
             validations={validations}
-            ignoredSet={ignoredSet}
             courseIndex={courseIndex}
             onClearAll={() => {
               const total = years.reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
@@ -539,13 +538,11 @@ function CollapsedSidebar({ onToggle }: { onToggle: () => void }) {
 function ActionsSection({
   years,
   validations,
-  ignoredSet,
   courseIndex,
   onClearAll,
 }: {
   years: Year[];
   validations: Map<string, BlockValidation>;
-  ignoredSet: Set<string>;
   courseIndex: Map<string, CourseIndexEntry>;
   onClearAll: () => void;
 }) {
@@ -573,17 +570,50 @@ function ActionsSection({
   }, [structureOpen]);
 
   const erroredBlocks = useMemo(() => {
-    const out: { id: string; code: string }[] = [];
+    const out: { id: string; code: string; place: string; issues: string[] }[] = [];
     for (const year of years) {
       for (const term of year.terms) {
         for (const block of term.blocks) {
           const v = validations.get(block.id);
-          if (v && v.missing.length > 0) out.push(block);
+          if (v && v.missing.length > 0) {
+            out.push({
+              id: block.id,
+              code: block.code,
+              place: `${year.label} · ${SEASON_META[term.season].short}`,
+              issues: v.missing,
+            });
+          }
         }
       }
     }
     return out;
   }, [years, validations]);
+
+  const flashTimer = useRef<number | null>(null);
+  const setFlashBlockId = usePlanner((s) => s.setFlashBlockId);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    };
+  }, []);
+
+  function locateBlock(blockId: string) {
+    setIgnoreOpen(false);
+    setFlashBlockId(blockId);
+    document.querySelector(`[data-block-id="${blockId}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlashBlockId(null), 1500);
+  }
+
+  useEffect(() => {
+    if (!ignoreOpen) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIgnoreOpen(false);
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [ignoreOpen]);
 
   async function handleAutofill() {
     if (!major) {
@@ -728,26 +758,43 @@ function ActionsSection({
           )}
         </button>
         {ignoreOpen && (
-          <div className="border-border bg-surface-container absolute top-10 right-0 z-50 flex max-h-64 w-56 flex-col gap-1 overflow-y-auto rounded-xl border p-2 shadow-xl">
-            {erroredBlocks.length === 0 ? (
-              <p className="text-muted px-1 py-2 text-xs">No prerequisite issues.</p>
-            ) : (
-              erroredBlocks.map((block) => (
-                <label
-                  key={block.id}
-                  className="hover:bg-surface-container-high flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-xs"
-                >
-                  <input
-                    type="checkbox"
-                    checked={ignoredSet.has(block.id)}
-                    onChange={() => toggleIgnoreBlock(block.id)}
-                    className="accent-primary"
-                  />
-                  <span className="text-on-surface font-mono">{block.code}</span>
-                  <span className="text-muted ml-auto">ignore</span>
-                </label>
-              ))
+          <div className="border-border bg-surface-container absolute top-10 right-0 z-50 flex max-h-80 w-80 flex-col gap-1 overflow-y-auto rounded-xl border p-2 shadow-xl">
+            <p className="text-on-surface px-1.5 pt-1 text-xs font-semibold">
+              {erroredBlocks.length === 0 ? "No placement issues" : `${erroredBlocks.length} placement issue(s)`}
+            </p>
+            {erroredBlocks.length > 0 && (
+              <p className="text-muted px-1.5 pb-1 text-[11px]">Click a problem to find the course on the board.</p>
             )}
+            {erroredBlocks.map((block) => (
+              <div
+                key={block.id}
+                className="hover:bg-surface-container-high flex items-start gap-1 rounded-lg px-1.5 py-1.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => locateBlock(block.id)}
+                  className="min-w-0 flex-1 text-left"
+                  title="Locate on the board"
+                >
+                  <p className="text-xs">
+                    <span className="text-on-surface font-mono font-medium">{block.code}</span>
+                    <span className="text-muted"> · {block.place}</span>
+                  </p>
+                  <p className="text-on-surface-variant mt-0.5 text-[11px] leading-snug">
+                    {block.issues.map(describeIssue).join(" ")}
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleIgnoreBlock(block.id)}
+                  title="Mute this issue"
+                  aria-label={`Mute issue for ${block.code}`}
+                  className="text-muted hover:bg-surface-container hover:text-on-surface mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md"
+                >
+                  <Icon name="eyeOff" size={13} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createPlannerYear } from "./planner-store";
-import { findDuplicateCourseCodes } from "./validation";
+import { describeIssue, findDuplicateCourseCodes } from "./validation";
 
 describe("findDuplicateCourseCodes", () => {
   it("finds duplicates across years and terms", () => {
@@ -10,5 +10,15 @@ describe("findDuplicateCourseCodes", () => {
     years[1].terms[1].blocks.push({ id: "three", code: "CPSC 210" });
 
     expect([...findDuplicateCourseCodes(years)]).toEqual(["CPSC 110"]);
+  });
+});
+
+describe("describeIssue", () => {
+  it("renders internal tokens as sentences", () => {
+    expect(describeIssue("duplicate course in plan")).toContain("Duplicate");
+    expect(describeIssue("prereq CPSC 210")).toContain("prerequisite");
+    expect(describeIssue("prereq CPSC 210")).toContain("CPSC 210");
+    expect(describeIssue("coreq MATH 221")).toContain("corequisite");
+    expect(describeIssue("custom token")).toBe("custom token");
   });
 });
