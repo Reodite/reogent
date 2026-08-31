@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS sharer_schedules (
 );
 
 CREATE TABLE IF NOT EXISTS sharer_groups (
-  code CHAR(6) PRIMARY KEY,
+  code CHAR(6) PRIMARY KEY CHECK (code ~ '^[0-9A-Za-z]{6}$'),
   name TEXT NOT NULL,
   created_by UUID NOT NULL REFERENCES users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
