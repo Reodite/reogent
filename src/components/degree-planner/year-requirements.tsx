@@ -50,15 +50,18 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
 
   return (
     <div className="flex flex-col gap-4 text-sm">
-      <div className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
+      <div className="flex flex-col gap-1 px-2 pt-2">
         <div className="flex items-baseline justify-between">
-          <span className="text-on-surface">Degree progress</span>
-          <span className="text-on-surface-variant text-xs">
+          <span className="text-on-surface text-xs font-medium">Degree progress</span>
+          <span className="text-muted text-xs tabular-nums">
             {doneCredits}/{totalCredits} credits
           </span>
         </div>
-        <div className="bg-outline-variant/40 h-1.5 overflow-hidden rounded">
-          <div className="bg-primary h-full transition-[width] duration-200" style={{ width: `${pct}%` }} />
+        <div className="bg-surface-container-high h-1.5 overflow-hidden rounded-full">
+          <div
+            className="bg-primary h-full rounded-full transition-[width] duration-200"
+            style={{ width: `${pct}%` }}
+          />
         </div>
       </div>
 
@@ -74,11 +77,13 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
 
         return (
           <section key={year.label} className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between">
-              <h4 className="text-on-surface-variant text-xs font-semibold tracking-wide uppercase">{year.label}</h4>
-              {year.totalCredits != null && <span className="text-muted text-xs">{year.totalCredits} cr</span>}
+            <div className="flex items-baseline px-2 pt-3 pb-1">
+              <h4 className="text-muted text-xs font-medium tracking-[0.05em] uppercase">{year.label}</h4>
+              {year.totalCredits != null && (
+                <span className="text-muted ml-auto text-xs tabular-nums">{year.totalCredits} cr</span>
+              )}
             </div>
-            <ul className="flex flex-col gap-1.5">
+            <ul className="flex flex-col gap-0.5">
               {pending.map(({ item, key, manuallyChecked }) => (
                 <RequirementRow
                   key={key}
@@ -94,7 +99,7 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
             </ul>
             {completed.length > 0 && (
               <details className="group">
-                <summary className="text-muted hover:text-on-surface-variant flex cursor-pointer list-none items-center gap-1 rounded px-1 py-0.5 text-[11px] [&::-webkit-details-marker]:hidden">
+                <summary className="text-muted hover:text-on-surface-variant flex h-8 cursor-pointer list-none items-center gap-1 rounded px-2 text-xs [&::-webkit-details-marker]:hidden">
                   <Icon name="right" size={11} className="transition-transform group-open:rotate-90" />
                   {completed.length} completed
                 </summary>
@@ -145,6 +150,22 @@ function RequirementRow({
   );
 }
 
+// One status glyph for the whole checklist: an empty square means pending,
+// a filled primary square with a check means complete. Whether completion
+// was detected from the plan or marked by hand is carried by a caption
+// ("Planned" / "Marked done"), not by a different icon.
+function StatusGlyph({ complete }: { complete: boolean }) {
+  return (
+    <span
+      className={`mt-px flex size-5 shrink-0 items-center justify-center rounded-md border-2 ${
+        complete ? "border-primary bg-primary" : "border-outline"
+      }`}
+    >
+      {complete && <Icon name="check" size={12} className="text-on-primary" />}
+    </span>
+  );
+}
+
 function CourseRequirementRow({
   rowKey,
   item,
@@ -189,7 +210,7 @@ function CourseRequirementRow({
         if ((e.target as HTMLElement).closest("button, a, select, input")) return;
         listeners?.onPointerDown?.(e);
       }}
-      className={`border-border bg-surface group flex items-center gap-2 rounded-lg border px-2.5 py-2 ${
+      className={`hover:bg-surface-container-low flex min-h-10 items-start gap-2 rounded-lg px-2 py-2 ${
         selectedCode && target ? "cursor-grab touch-none active:cursor-grabbing" : ""
       }`}
     >
@@ -197,36 +218,38 @@ function CourseRequirementRow({
         type="button"
         onClick={onToggle}
         title="Mark complete with transfer or external credit"
-        className="text-muted hover:bg-surface-container hover:text-primary flex size-7 shrink-0 items-center justify-center rounded-md"
         aria-label="Mark requirement complete manually"
+        className="shrink-0"
       >
-        <Icon name={manuallyChecked ? "checkbox" : "square"} size={14} />
+        <StatusGlyph complete={manuallyChecked} />
       </button>
       <div className="min-w-0 flex-1">
-        <p className="text-on-surface-variant truncate text-xs" title={cleanLabel(item.label)}>
+        <p className="text-on-surface-variant text-xs leading-snug" title={cleanLabel(item.label)}>
           {cleanLabel(item.label)}
         </p>
-        <div className="text-muted flex items-center gap-1 text-[10px]">
-          {choices.length > 1 ? (
-            <select
-              value={selectedCode}
-              onChange={(event) => setChosenCode(event.target.value)}
-              className="bg-surface-container-low text-on-surface max-w-full rounded px-1 py-0.5 font-mono"
-              aria-label="Course alternative"
-            >
-              {choices.map((code) => (
-                <option key={code} value={code}>
-                  {code}
-                </option>
-              ))}
-            </select>
-          ) : (
-            selectedCode && <span className="font-mono">{selectedCode}</span>
-          )}
-          {partial && <span>· {partial}</span>}
-        </div>
+        {(choices.length > 1 || partial) && (
+          <div className="text-muted mt-0.5 flex items-center gap-1 text-[11px]">
+            {choices.length > 1 && (
+              <select
+                value={selectedCode}
+                onChange={(event) => setChosenCode(event.target.value)}
+                className="neu-inset bg-surface-container-low text-on-surface h-6 max-w-full rounded-md px-1 font-mono text-[11px]"
+                aria-label="Course alternative"
+              >
+                {choices.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            )}
+            {partial && <span>{partial}</span>}
+          </div>
+        )}
       </div>
-      {item.credits != null && <span className="text-muted text-[10px] tabular-nums">{item.credits} cr</span>}
+      {item.credits != null && (
+        <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">{item.credits} cr</span>
+      )}
       <button
         type="button"
         disabled={!target || !selectedCode}
@@ -255,11 +278,13 @@ function ManualRequirementRow({
       <button
         type="button"
         onClick={onToggle}
-        className="hover:bg-surface-container flex min-h-10 w-full items-start gap-2.5 rounded-lg px-2 py-2.5 text-left text-xs"
+        className="hover:bg-surface-container-low flex min-h-10 w-full items-start gap-2 rounded-lg px-2 py-2 text-left"
       >
-        <Icon name={checked ? "checkbox" : "square"} size={14} className="text-muted mt-0.5 shrink-0" />
-        <span className="text-on-surface-variant flex-1">{cleanLabel(item.label)}</span>
-        {item.credits != null && <span className="text-muted shrink-0 tabular-nums">{item.credits} cr</span>}
+        <StatusGlyph complete={checked} />
+        <span className="text-on-surface-variant min-w-0 flex-1 text-xs leading-snug">{cleanLabel(item.label)}</span>
+        {item.credits != null && (
+          <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">{item.credits} cr</span>
+        )}
       </button>
     </li>
   );
@@ -274,22 +299,33 @@ function CompletedRequirementRow({
   met: boolean;
   onToggle: () => void;
 }) {
-  return (
-    <li className="flex items-start gap-2 px-1.5 py-0.5 text-xs">
-      {met ? (
-        <Icon name="check" size={14} className="text-primary mt-0.5 shrink-0" />
-      ) : (
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-primary hover:bg-surface-container flex size-7 shrink-0 items-center justify-center rounded-md"
-          aria-label="Mark requirement incomplete"
-        >
-          <Icon name="checkbox" size={14} />
-        </button>
+  const content = (
+    <>
+      <StatusGlyph complete />
+      <span className="text-muted min-w-0 flex-1 text-xs leading-snug line-through decoration-current/30">
+        {cleanLabel(item.label)}
+      </span>
+      <span className="text-muted shrink-0 text-[10px]">{met ? "Planned" : "Marked done"}</span>
+      {item.credits != null && (
+        <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">{item.credits} cr</span>
       )}
-      <span className="text-muted flex-1 line-through decoration-current/30">{cleanLabel(item.label)}</span>
-      {item.credits != null && <span className="text-muted shrink-0 tabular-nums">{item.credits} cr</span>}
+    </>
+  );
+  // Auto-detected rows are inert; manually checked rows stay clickable so the
+  // check can be revoked.
+  if (met) {
+    return <li className="flex min-h-10 items-start gap-2 rounded-lg px-2 py-2">{content}</li>;
+  }
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="hover:bg-surface-container-low flex min-h-10 w-full items-start gap-2 rounded-lg px-2 py-2 text-left"
+        aria-label="Mark requirement incomplete"
+      >
+        {content}
+      </button>
     </li>
   );
 }

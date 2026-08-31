@@ -219,7 +219,11 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
   }, [major]);
 
   if (!major) {
-    return <div className="text-muted text-sm">Select a major above to see its requirements.</div>;
+    return (
+      <p className="text-muted px-4 py-6 text-center text-xs">
+        Pick a faculty and major in the top bar to see your checklist.
+      </p>
+    );
   }
   if (!requirements) {
     return <div className="text-muted text-sm">Loading requirements…</div>;
