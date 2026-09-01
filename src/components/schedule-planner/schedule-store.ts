@@ -59,7 +59,7 @@ interface ScheduleState {
   stale: boolean;
 
   addEntry: (doc: CourseDoc, section: CourseSection) => void;
-  addCourseSections: (doc: CourseDoc, sections: CourseSection[]) => void;
+  addCourseSections: (doc: CourseDoc, sections: CourseSection[], options?: { activateTerm?: boolean }) => void;
   importSections: (selections: ScheduleImportSelection[], mode: ScheduleImportMode) => void;
   removeEntry: (code: string, section: string, term: string) => void;
   removeCourse: (code: string, term: string) => void;
@@ -192,7 +192,7 @@ export const useSchedule = create<ScheduleState>()(
           };
         }),
 
-      addCourseSections: (doc, sections) =>
+      addCourseSections: (doc, sections, options) =>
         set((s) => {
           if (sections.length === 0) return s;
           const code = normalizeScheduleCode(doc.code);
@@ -209,7 +209,9 @@ export const useSchedule = create<ScheduleState>()(
           const courseKeys = new Set(additions.map((entry) => courseTermKey(entry.code, entry.term)));
           const nextTerm = additions[0].term;
           const activeTerm =
-            s.entries.some((entry) => entry.term === s.activeTerm) && s.activeTerm !== "" ? s.activeTerm : nextTerm;
+            options?.activateTerm || !s.entries.some((entry) => entry.term === s.activeTerm) || s.activeTerm === ""
+              ? nextTerm
+              : s.activeTerm;
           return {
             dirty: true,
             revision: s.revision + 1,

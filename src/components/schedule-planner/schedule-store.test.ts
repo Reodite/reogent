@@ -110,6 +110,19 @@ describe("schedule store", () => {
     expect(store.useSchedule.getState()).toMatchObject({ replacePending: true, revision: 3 });
   });
 
+  it("adds an off-term course and activates its term in one revision", () => {
+    const nextTerm = "2026-27 Winter Term 2";
+    store.useSchedule.getState().addEntry(doc, section("101", "09:00"));
+    const nextSection = { ...section("201", "11:00"), term: nextTerm };
+
+    store.useSchedule
+      .getState()
+      .addCourseSections({ ...doc, terms: [nextTerm] }, [nextSection], { activateTerm: true });
+
+    expect(store.useSchedule.getState()).toMatchObject({ activeTerm: nextTerm, revision: 2 });
+    expect(store.useSchedule.getState().entries.map((entry) => entry.term)).toEqual([term, nextTerm]);
+  });
+
   it("keeps distinct unknown component prefixes", () => {
     store.useSchedule.getState().addEntry(doc, section("R01", "09:00"));
     store.useSchedule.getState().addEntry(doc, section("W-L", "11:00"));
