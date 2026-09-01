@@ -4,6 +4,7 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
+import { LoadingStatus } from "@/src/components/ui/feedback";
 import { Checkbox, Field, SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import { buildCalendar, expandBlocks } from "@/src/lib/schedule/calendar/buildCalendar";
@@ -521,34 +522,32 @@ function ScheduleAppInner({ groupCode }: Props) {
         mobileView={mobileView}
         onMobileViewChange={setMobileView}
       >
-        <div data-sharer-content-card className="neu-panel bg-surface h-full min-h-0 rounded-xl p-2">
-          <ScheduleGrid
-            model={grid.model}
-            activeDay={mobileDay}
-            onActiveDayChange={setMobileDay}
-            onBlockActivate={(id) => {
-              const block = grid.blocksById.get(id);
-              if (block) setDetail(block);
-            }}
-            bands={gridBands}
-            now={nowLine}
-            empty={empty}
-            renderBlockFooter={(block) => {
-              const peopleForBlock = grid.blocksById.get(block.id)?.people ?? [];
-              return (
-                <>
-                  {peopleForBlock.slice(0, 4).map((person) => (
-                    <AvatarChip key={person.id} avatar={person.avatar} size={16} title={person.handle} />
-                  ))}
-                  {peopleForBlock.length > 4 ? (
-                    <span className="text-on-surface-variant ml-0.5 text-xs">+{peopleForBlock.length - 4}</span>
-                  ) : null}
-                </>
-              );
-            }}
-            ariaLabel={group ? `${group.name} weekly schedule` : `${groupLabel} weekly schedule preview`}
-          />
-        </div>
+        <ScheduleGrid
+          model={grid.model}
+          activeDay={mobileDay}
+          onActiveDayChange={setMobileDay}
+          onBlockActivate={(id) => {
+            const block = grid.blocksById.get(id);
+            if (block) setDetail(block);
+          }}
+          bands={gridBands}
+          now={nowLine}
+          empty={empty}
+          renderBlockFooter={(block) => {
+            const peopleForBlock = grid.blocksById.get(block.id)?.people ?? [];
+            return (
+              <>
+                {peopleForBlock.slice(0, 4).map((person) => (
+                  <AvatarChip key={person.id} avatar={person.avatar} size={16} title={person.handle} />
+                ))}
+                {peopleForBlock.length > 4 ? (
+                  <span className="text-on-surface-variant ml-0.5 text-xs">+{peopleForBlock.length - 4}</span>
+                ) : null}
+              </>
+            );
+          }}
+          ariaLabel={group ? `${group.name} weekly schedule` : `${groupLabel} weekly schedule preview`}
+        />
       </ScheduleWorkspace>
       {draftSchedule && (
         <ProfileModal
@@ -575,29 +574,22 @@ function ScheduleLoading() {
     <ScheduleWorkspace
       title="Shared schedule"
       description="Loading your groups and saved Workday schedule."
-      notice={
-        <div role="status" className="text-muted flex items-center gap-2 px-1 text-sm">
-          <span className="border-primary/25 border-t-primary size-4 animate-spin rounded-full border-2" />
-          Loading schedules…
-        </div>
-      }
+      notice={<LoadingStatus size="md">Loading schedules…</LoadingStatus>}
       controlsLabel="Controls"
       controls={<p className="text-muted p-4 text-sm">Your group and import controls are loading.</p>}
       mobileView={mobileView}
       onMobileViewChange={setMobileView}
     >
-      <div data-sharer-content-card className="neu-panel bg-surface h-full min-h-0 rounded-xl p-2">
-        <ScheduleGrid
-          model={model}
-          activeDay="Mon"
-          onActiveDayChange={() => {}}
-          onBlockActivate={() => {}}
-          empty={{
-            title: "Loading your week",
-            description: "The timetable will stay here while your saved schedules arrive.",
-          }}
-        />
-      </div>
+      <ScheduleGrid
+        model={model}
+        activeDay="Mon"
+        onActiveDayChange={() => {}}
+        onBlockActivate={() => {}}
+        empty={{
+          title: "Loading your week",
+          description: "The timetable will stay here while your saved schedules arrive.",
+        }}
+      />
     </ScheduleWorkspace>
   );
 }

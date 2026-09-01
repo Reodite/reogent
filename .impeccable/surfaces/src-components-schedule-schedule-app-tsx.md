@@ -21,14 +21,14 @@ Planner blocks show course, section, and type with a compact one-line form for s
 
 ## Visual direction
 
-Use Calendar geometry literally where shared: 24px desktop padding, plain 288px aside, 24px gap, and one 10px timetable frame. The aside owns no background, border, radius, or shadow. Host-aware chrome uses the Answer Canvas titlebar when present and an internal aligned header in full-bleed Tools and Unity.
+Use the shared `WorkspacePage` geometry: 24px desktop and 16px compact padding, a raised 20rem controls panel, a 16px gap, and one inset canvas around the 10px timetable frame. The panel owns a fixed 48px header while its contained body preserves fixed search/import controls and the module scroller. Host context suppresses duplicate Answer Canvas titles before paint, keeps the term toolbar inside the workspace, and portals only bounded actions such as Share.
 
 Type uses the documented 20/14/13/12 hierarchy with mono only for identifiers and measurements. Radius is fixed by level: 16px protected modal/sheet, 12px actions and floating overlay, 10px timetable frame, 8px modules/fields/rows/blocks, 6px compact subcontrols, full only for pills/avatars/dots. Course colors keep the documented 1px edge and low-opacity surface mix.
 
 ## Boundaries
 
-Preserve planner persistence, hydration journals, Workday reconciliation, section drag physics, sharer groups, imports, people toggles, free-time computation, and read-only details. Course Lookup keeps its existing inline search presentation unless it opts into overlay mode. No new palette, font, or animation vocabulary.
+Preserve planner persistence, hydration journals, Workday reconciliation, section drag physics, sharer groups, imports, people toggles, free-time computation, and read-only details. The shared course combobox keeps explicit inline/overlay presentation and primary/rail density choices. No new palette, font, or animation vocabulary.
 
 ## Verification
 
-Measure zero search layout shift; explicit full-code commit; active/off-term/duplicate/stale/error paths; inline known and additional selectors; compact/tall blocks; hidden-person derivations; keyed group switching; all three host contexts; Calendar-derived geometry and radius values; 1440, constrained, 768, 390, and 320 widths; empty and populated axe passes. Screenshots require human review because this session has no vision model.
+Measure zero search layout shift; explicit full-code commit; active/off-term/duplicate/stale/error paths; inline known and additional selectors; compact/tall blocks; hidden-person derivations; keyed group switching; all three host contexts; the shared 20rem/16px workspace geometry; 55rem view switching; 1440, constrained, 768, 390, and 320 widths; empty and populated axe passes. Screenshots require human review because this session has no vision model.

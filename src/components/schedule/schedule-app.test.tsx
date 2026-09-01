@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -182,16 +183,18 @@ describe("ScheduleApp group loading", () => {
     );
 
     const view = render(
-      <main data-pane="unity">
-        <ScheduleApp />
-      </main>,
+      <WorkspaceHostProvider host="unity" menuClearance>
+        <main data-pane="unity">
+          <ScheduleApp />
+        </main>
+      </WorkspaceHostProvider>,
     );
 
     expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
-    expect(view.container.querySelector<HTMLElement>("[data-schedule-host]")?.dataset.scheduleHost).toBe("unity");
-    const contentCard = view.container.querySelector("[data-sharer-content-card]");
-    expect(contentCard?.className).toContain("neu-panel");
-    expect(contentCard?.className).toContain("bg-surface");
+    expect(view.container.querySelector<HTMLElement>("[data-workspace-page]")?.dataset.workspaceHost).toBe("unity");
+    const contentCanvas = view.container.querySelector("[data-workspace-canvas]");
+    expect(contentCanvas?.className).toContain("bg-surface-container-low/40");
+    expect(contentCanvas?.className).toContain("p-2");
     expect(screen.getAllByText("Mon").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Controls" }).getAttribute("aria-pressed")).toBe("false");

@@ -535,84 +535,17 @@ html.vt-active *::after {
   }
 }
 
-.schedule-workspace,
-.schedule-planner {
-  container-type: inline-size;
-}
-
-.schedule-workspace-toggle,
 .schedule-grid-day-tabs {
   display: none;
-}
-
-[data-schedule-toolbar] [role="tablist"] {
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border-radius: 0.5rem;
-  background: var(--surface-container-low);
-  box-shadow: var(--neu-inset-shadow);
-}
-
-[data-schedule-toolbar] [role="tab"] {
-  min-height: 2.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  box-shadow: none;
-}
-
-[data-schedule-toolbar] [role="tab"][aria-selected="true"] {
-  background: var(--surface);
 }
 
 .schedule-grid-columns {
   grid-template-columns: 3.5rem repeat(var(--schedule-day-count), minmax(0, 1fr));
 }
 
-@media (max-width: 1279px) {
-  [data-schedule-host="tools"] [data-schedule-header] {
-    padding-left: 3rem;
-  }
-}
-
-@media (max-width: 1023px) {
-  [data-schedule-host="unity"] [data-schedule-header] {
-    padding-left: 3rem;
-  }
-}
-
 @container (max-width: 55rem) {
-  .schedule-workspace-layout {
-    gap: 0.75rem;
-    padding: 0.75rem;
-  }
-
-  [data-schedule-header] {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
-  }
-
-  [data-schedule-header-context] p {
-    display: none;
-  }
-
-  .schedule-workspace-toggle,
   .schedule-grid-day-tabs {
     display: flex;
-  }
-
-  .schedule-workspace-body {
-    display: block;
-  }
-
-  .schedule-workspace-controls,
-  .schedule-workspace-canvas {
-    display: none;
-    height: 100%;
-  }
-
-  .schedule-workspace[data-mobile-view="controls"] .schedule-workspace-controls,
-  .schedule-workspace[data-mobile-view="schedule"] .schedule-workspace-canvas {
-    display: block;
   }
 
   .schedule-grid-columns {
@@ -621,65 +554,6 @@ html.vt-active *::after {
 
   [data-schedule-day][data-active="false"] {
     display: none;
-  }
-}
-
-.schedule-view-toggle {
-  display: flex;
-}
-
-.schedule-courses,
-.schedule-timetable {
-  display: none;
-}
-
-.schedule-planner[data-mobile-view="courses"] .schedule-courses {
-  display: flex;
-}
-
-.schedule-planner[data-mobile-view="timetable"] .schedule-timetable {
-  display: block;
-}
-
-.schedule-wide-meta,
-.schedule-conflict-long {
-  display: none;
-}
-
-.schedule-conflict-short {
-  display: inline;
-}
-
-@container (min-width: 40rem) {
-  .schedule-wide-meta,
-  .schedule-conflict-long {
-    display: inline;
-  }
-
-  .schedule-conflict-short {
-    display: none;
-  }
-}
-
-@container (min-width: 56rem) {
-  .schedule-view-toggle,
-  .schedule-single-view-only {
-    display: none;
-  }
-
-  .schedule-layout {
-    display: grid;
-    grid-template-columns: 20rem minmax(0, 1fr);
-  }
-
-  .schedule-courses {
-    display: flex;
-    border-right: 1px solid var(--border-subtle);
-    border-bottom: 0;
-  }
-
-  .schedule-timetable {
-    display: block;
   }
 }
 
