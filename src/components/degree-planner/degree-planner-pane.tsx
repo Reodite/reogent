@@ -532,7 +532,7 @@ export function DegreePlannerPane() {
                     <Icon name="right" size={16} />
                   </button>
                 </header>
-                <div className="border-border-subtle min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-2 py-2">
+                <div className="border-border-subtle min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-2 pb-2">
                   <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
                 </div>
               </section>
