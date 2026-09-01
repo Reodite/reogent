@@ -21,10 +21,12 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
   return (
     <section className="neu-panel rounded-2xl p-3" aria-label="People in this schedule">
       <div className="mb-2 flex items-center justify-between px-1">
-        <h3 className="text-muted text-xs font-medium tracking-wide uppercase">Crew · {people.length}</h3>
+        <h3 className="text-on-surface text-sm font-medium">
+          People <span className="text-muted ml-1 font-mono text-xs">{people.length}</span>
+        </h3>
         {!allOn && (
           <button type="button" onClick={onEnableAll} className="text-primary text-xs font-medium hover:underline">
-            show all
+            Show all
           </button>
         )}
       </div>
@@ -45,10 +47,16 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
                 >
                   <span className="text-on-surface truncate text-sm font-medium">
                     {displayName}
-                    {p.id === meId && <span className="text-muted ml-1.5 text-[10px] font-medium">(you)</span>}
+                    {p.id === meId && <span className="text-muted ml-1.5 text-xs font-medium">(you)</span>}
                   </span>
                   <span className="text-on-surface-variant text-xs">
-                    {p.schedule ? `${courses} ${courses === 1 ? "course" : "courses"}` : "no schedule yet"}
+                    {p.schedule ? (
+                      <>
+                        <span className="font-mono">{courses}</span> {courses === 1 ? "course" : "courses"}
+                      </>
+                    ) : (
+                      "No schedule yet"
+                    )}
                   </span>
                 </button>
               </div>

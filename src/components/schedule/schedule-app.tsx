@@ -12,20 +12,23 @@ import {
   type WirePerson,
 } from "@/src/lib/schedule/client";
 import { commonFreeIntervals } from "@/src/lib/schedule/features/freeTime";
-import { defaultTermKey, deriveTerms } from "@/src/lib/schedule/features/terms";
-import type { Avatar, DayCode, Person, Schedule } from "@/src/lib/schedule/types";
-import { dayCodeOf, minutesToFullLabel, toISODate } from "@/src/lib/schedule/util/time";
+import { defaultTermKey, deriveTerms, type Term } from "@/src/lib/schedule/features/terms";
+import type { Avatar, DayCode, Person, Schedule, Section } from "@/src/lib/schedule/types";
+import { dayCodeOf, minutesNow, minutesToFullLabel, toISODate } from "@/src/lib/schedule/util/time";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AvatarChip } from "./avatar-chip";
 import { BlockDetail } from "./block-detail";
 import { NowPanel } from "./now-panel";
 import { PeoplePanel } from "./people-panel";
+import { ScheduleGrid, type ScheduleGridEmptyState } from "./schedule-grid";
+import { buildSharerBands, buildSharerGrid } from "./schedule-grid-adapter";
+import { ScheduleWorkspace, type ScheduleWorkspaceView } from "./schedule-workspace";
 import { TermSwitcher } from "./term-switcher";
 import { ToastProvider, useToast } from "./toast";
 import { UploadDropzone } from "./upload-dropzone";
 import { useDialogFocus } from "./use-dialog-focus";
-import { WeekGrid } from "./week-grid";
 
 const ProfileModal = dynamic(() => import("./profile-modal").then((module) => module.ProfileModal));
 
@@ -72,6 +75,7 @@ function ScheduleAppInner({ groupCode }: Props) {
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
   const [termKey, setTermKey] = useState<string | null>(null);
   const [showFree, setShowFree] = useState(true);
+  const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
   const [mobileDay, setMobileDay] = useState<DayCode>(() => {
     const day = dayCodeOf(new Date());
     return day === "Sat" || day === "Sun" ? "Mon" : day;
@@ -182,13 +186,15 @@ function ScheduleAppInner({ groupCode }: Props) {
   const selectedTermKey =
     termKey && terms.some((term) => term.key === termKey) ? termKey : defaultTermKey(terms, toISODate(now));
   const term = terms.find((candidate) => candidate.key === selectedTermKey) ?? null;
-  const model = useMemo(() => buildCalendar(people, term), [people, term]);
-  const hasBlocks = [...model.blocksByDay.values()].some((blocks) => blocks.length > 0);
+  const calendar = useMemo(() => buildCalendar(people, term), [people, term]);
+  const mergedBlocks = useMemo(() => [...calendar.blocksByDay.values()].flat(), [calendar.blocksByDay]);
+  const grid = useMemo(() => buildSharerGrid(mergedBlocks), [mergedBlocks]);
   const freeBands = useMemo(() => {
     if (!showFree) return [];
     const visible = people.filter((person) => person.enabled && person.schedule);
-    return visible.length > 0 ? commonFreeIntervals(expandBlocks(visible, term), model.days) : [];
-  }, [showFree, people, term, model.days]);
+    return visible.length > 0 ? commonFreeIntervals(expandBlocks(visible, term), calendar.days) : [];
+  }, [showFree, people, term, calendar.days]);
+  const gridBands = useMemo(() => buildSharerBands(freeBands), [freeBands]);
   const termIsLive = !!term && toISODate(now) >= term.start && toISODate(now) <= term.end;
 
   function switchGroup(code: string) {
@@ -196,18 +202,6 @@ function ScheduleAppInner({ groupCode }: Props) {
     setTermKey(null);
     setEnabled({});
     router.push(`/pulse/schedule/${code}`);
-  }
-
-  function moveDayTab(event: ReactKeyboardEvent<HTMLButtonElement>, index: number) {
-    let next: number;
-    if (event.key === "ArrowRight") next = (index + 1) % model.days.length;
-    else if (event.key === "ArrowLeft") next = (index - 1 + model.days.length) % model.days.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = model.days.length - 1;
-    else return;
-    event.preventDefault();
-    setMobileDay(model.days[next]);
-    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
   }
 
   async function saveSchedule(handle: string, avatar: Avatar) {
@@ -275,28 +269,79 @@ function ScheduleAppInner({ groupCode }: Props) {
 
   if (booting) return <ScheduleLoading />;
 
-  return (
-    <section
-      aria-label="Shared schedule"
-      className="neu-panel flex min-h-0 w-full flex-col overflow-hidden rounded-2xl"
-    >
-      <header className="border-outline-variant/50 flex min-h-16 flex-wrap items-center gap-2 border-b px-3 py-2 max-lg:pl-12 sm:pr-4 lg:pl-4">
-        <div className="mr-1 flex min-w-0 items-center gap-2">
-          <span className="neu-button text-primary flex size-9 shrink-0 items-center justify-center rounded-xl">
-            <Icon name="calendar" size={18} />
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-on-surface truncate text-sm font-medium">Student schedules</h1>
-            <p className="text-muted hidden text-xs sm:block">One week for the whole crew</p>
-          </div>
-        </div>
+  const nobodyImported = !!group && people.every((person) => !person.schedule);
+  const allPeopleFiltered = !!group && people.length > 0 && people.every((person) => !person.enabled);
+  const selectedSections = people
+    .filter((person) => person.enabled && person.schedule)
+    .flatMap((person) => person.schedule?.sections ?? [])
+    .filter((section) => sectionOverlapsTerm(section, term));
+  const tbaOnly = selectedSections.length > 0 && selectedSections.every((section) => section.meetings.length === 0);
+  const empty = scheduleEmptyState({
+    group,
+    groupError,
+    me: me ? normalizePerson(me) : null,
+    nobodyImported,
+    allPeopleFiltered,
+    tbaOnly,
+    onImport: () => setMobileView("controls"),
+    onCreate: () => setShowCreate(true),
+  });
+  const nowLine = termIsLive
+    ? {
+        day: dayCodeOf(now),
+        minute: minutesNow(now),
+        label: `Current time: ${now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+      }
+    : undefined;
 
-        {groups.length > 0 && (
+  const actions = (
+    <>
+      <button
+        type="button"
+        aria-label="Create a new shared schedule"
+        onClick={() => setShowCreate(true)}
+        className="neu-button text-on-surface flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+      >
+        <Icon name="add" size={16} />
+        New group
+      </button>
+      {activeCode ? (
+        <button
+          type="button"
+          aria-label={`Copy share link ${activeCode}`}
+          onClick={copyShareLink}
+          className="neu-primary-button bg-primary text-on-primary flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+        >
+          <Icon name="externalLink" size={16} />
+          Share <span className="font-mono text-xs opacity-80">{activeCode}</span>
+        </button>
+      ) : null}
+      {group ? (
+        <button
+          type="button"
+          title={`Leave ${group.name}`}
+          aria-label={`Leave ${group.name}`}
+          onClick={leaveActiveGroup}
+          className="neu-button text-muted hover:text-error flex size-10 items-center justify-center rounded-xl"
+        >
+          <Icon name="exit" size={17} />
+        </button>
+      ) : null}
+    </>
+  );
+
+  const controls = (
+    <div className="flex flex-col gap-3 p-3">
+      {groups.length > 0 ? (
+        <section aria-labelledby="schedule-groups-heading">
+          <label id="schedule-groups-heading" htmlFor="schedule-group" className="text-on-surface text-sm font-medium">
+            Group
+          </label>
           <select
-            aria-label="Shared schedule"
+            id="schedule-group"
             value={activeCode ?? ""}
             onChange={(event) => switchGroup(event.target.value)}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-10 max-w-48 rounded-xl px-3 text-sm font-medium outline-none focus-visible:ring-2"
+            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 mt-2 min-h-11 w-full rounded-xl px-3 text-sm outline-none focus-visible:ring-2"
           >
             {groups.map((item) => (
               <option key={item.code} value={item.code}>
@@ -304,138 +349,108 @@ function ScheduleAppInner({ groupCode }: Props) {
               </option>
             ))}
           </select>
-        )}
+        </section>
+      ) : null}
 
-        <button
-          type="button"
-          aria-label="Create a new shared schedule"
-          onClick={() => setShowCreate(true)}
-          className="neu-button text-on-surface flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
-        >
-          <Icon name="add" size={16} />
-          <span className="hidden sm:inline">New group</span>
-        </button>
-
-        <div className="ml-auto flex items-center gap-2">
-          <TermSwitcher terms={terms} selected={selectedTermKey} onSelect={setTermKey} />
-          {activeCode && (
-            <button
-              type="button"
-              aria-label={`Copy share link ${activeCode}`}
-              onClick={copyShareLink}
-              className="neu-primary-button bg-primary text-on-primary flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
-            >
-              <Icon name="externalLink" size={16} />
-              <span className="hidden sm:inline">Copy link</span>
-              <span className="font-mono text-[11px] opacity-80">{activeCode}</span>
-            </button>
-          )}
-          {group && (
-            <button
-              type="button"
-              title={`Leave ${group.name}`}
-              aria-label={`Leave ${group.name}`}
-              onClick={leaveActiveGroup}
-              className="neu-button text-muted hover:text-error flex size-10 items-center justify-center rounded-xl"
-            >
-              <Icon name="exit" size={17} />
-            </button>
-          )}
-        </div>
-      </header>
-
-      {groupLoading ? (
-        <div className="text-muted flex flex-1 items-center justify-center text-sm">Opening shared schedule…</div>
-      ) : group ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-          <aside className="border-outline-variant/50 bg-surface-container-low order-last flex w-full shrink-0 flex-col gap-3 border-b p-3 lg:order-none lg:h-full lg:w-72 lg:overflow-y-auto lg:border-r lg:border-b-0">
-            <UploadDropzone onParsed={(schedule) => setDraftSchedule(schedule)} />
-            <PeoplePanel
-              people={people}
-              meId={me?.id ?? auth.user?.userId ?? null}
-              onToggle={(id, value) => setEnabled((prev) => ({ ...prev, [id]: value }))}
-              onEnableAll={() => setEnabled({})}
-            />
-            <section className="neu-panel rounded-2xl p-3">
-              <label className="text-on-surface flex min-h-8 cursor-pointer items-center justify-between gap-3 text-sm">
-                <span>Common free time</span>
-                <input
-                  type="checkbox"
-                  checked={showFree}
-                  onChange={(event) => setShowFree(event.target.checked)}
-                  className="accent-primary size-4"
-                />
-              </label>
-              {showFree && freeBands.length > 0 && (
-                <section
-                  aria-label="Common free-time intervals"
-                  className="text-on-surface-variant mt-2 flex flex-col gap-1 text-xs"
-                >
-                  {freeBands.map((band) => (
-                    <div key={`${band.day}-${band.startMin}`} className="flex justify-between gap-2">
-                      <span className="text-secondary font-medium">{band.day}</span>
-                      <span className="font-mono tabular-nums">
-                        {minutesToFullLabel(band.startMin)}–{minutesToFullLabel(band.endMin)}
-                      </span>
-                    </div>
-                  ))}
-                </section>
-              )}
-            </section>
-            {termIsLive && <NowPanel people={people} now={now} />}
-          </aside>
-
-          <main className="bg-surface order-first min-w-0 shrink-0 overflow-visible p-2 sm:p-3 lg:order-none lg:min-h-0 lg:flex-1 lg:shrink lg:overflow-auto">
-            {hasBlocks ? (
-              <>
-                <div
-                  className="bg-surface sticky top-0 z-20 mb-2 flex gap-1 py-1 md:hidden"
-                  role="tablist"
-                  aria-label="Day"
-                >
-                  {model.days.map((day, index) => (
-                    <button
-                      key={day}
-                      type="button"
-                      role="tab"
-                      tabIndex={day === mobileDay ? 0 : -1}
-                      aria-selected={day === mobileDay}
-                      onClick={() => setMobileDay(day)}
-                      onKeyDown={(event) => moveDayTab(event, index)}
-                      className={`min-h-9 flex-1 rounded-lg text-xs font-medium ${
-                        day === mobileDay ? "neu-button text-primary" : "text-on-surface-variant"
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
-                </div>
-                <div className="neu-inset bg-surface-container-low min-w-[320px] overflow-hidden rounded-2xl">
-                  <WeekGrid
-                    model={model}
-                    freeBands={freeBands}
-                    now={now}
-                    termIsLive={termIsLive}
-                    activeDay={mobileDay}
-                    onBlockClick={setDetail}
-                  />
-                </div>
-              </>
-            ) : (
-              <CalendarEmpty people={people} />
-            )}
-          </main>
-        </div>
-      ) : (
-        <NoGroup
+      {!group ? (
+        <NoGroupControls
           me={me ? normalizePerson(me) : null}
           error={groupError}
           onUpload={(schedule) => setDraftSchedule(schedule)}
           onCreate={() => setShowCreate(true)}
-          onJoin={(code) => switchGroup(code)}
+          onJoin={switchGroup}
         />
+      ) : (
+        <>
+          <UploadDropzone onParsed={(schedule) => setDraftSchedule(schedule)} />
+          <PeoplePanel
+            people={people}
+            meId={me?.id ?? auth.user?.userId ?? null}
+            onToggle={(id, value) => setEnabled((previous) => ({ ...previous, [id]: value }))}
+            onEnableAll={() => setEnabled({})}
+          />
+          <section className="neu-panel rounded-2xl p-3">
+            <label className="text-on-surface flex min-h-8 cursor-pointer items-center justify-between gap-3 text-sm font-medium">
+              <span>Common free time</span>
+              <input
+                type="checkbox"
+                checked={showFree}
+                onChange={(event) => setShowFree(event.target.checked)}
+                className="accent-primary size-4"
+              />
+            </label>
+            {showFree && freeBands.length > 0 ? (
+              <section
+                aria-label="Common free-time intervals"
+                className="text-on-surface-variant mt-2 flex flex-col gap-1 text-xs"
+              >
+                {freeBands.map((band) => (
+                  <div key={`${band.day}-${band.startMin}`} className="flex justify-between gap-2">
+                    <span>{band.day}</span>
+                    <span className="font-mono tabular-nums">
+                      {minutesToFullLabel(band.startMin)}–{minutesToFullLabel(band.endMin)}
+                    </span>
+                  </div>
+                ))}
+              </section>
+            ) : null}
+          </section>
+          {termIsLive ? <NowPanel people={people} now={now} /> : null}
+        </>
       )}
+    </div>
+  );
 
+  return (
+    <>
+      <ScheduleWorkspace
+        title={group?.name ?? "Shared schedule"}
+        description={
+          group
+            ? "Compare everyone’s week, find common free time, and open a class for details."
+            : "Import your Workday schedule, then create or join a group to compare weeks."
+        }
+        actions={actions}
+        toolbar={<TermSwitcher terms={terms} selected={selectedTermKey} onSelect={setTermKey} />}
+        notice={
+          groupLoading ? (
+            <div role="status" className="text-muted px-1 text-sm">
+              Opening shared schedule…
+            </div>
+          ) : undefined
+        }
+        controlsLabel="Controls"
+        controls={controls}
+        mobileView={mobileView}
+        onMobileViewChange={setMobileView}
+      >
+        <ScheduleGrid
+          model={grid.model}
+          activeDay={mobileDay}
+          onActiveDayChange={setMobileDay}
+          onBlockActivate={(id) => {
+            const block = grid.blocksById.get(id);
+            if (block) setDetail(block);
+          }}
+          bands={gridBands}
+          now={nowLine}
+          empty={empty}
+          renderBlockFooter={(block) => {
+            const peopleForBlock = grid.blocksById.get(block.id)?.people ?? [];
+            return (
+              <>
+                {peopleForBlock.slice(0, 4).map((person) => (
+                  <AvatarChip key={person.id} avatar={person.avatar} size={16} title={person.handle} />
+                ))}
+                {peopleForBlock.length > 4 ? (
+                  <span className="text-on-surface-variant ml-0.5 font-mono text-xs">+{peopleForBlock.length - 4}</span>
+                ) : null}
+              </>
+            );
+          }}
+          ariaLabel={group ? `${group.name} weekly schedule` : "Weekly schedule preview"}
+        />
+      </ScheduleWorkspace>
       {draftSchedule && (
         <ProfileModal
           schedule={draftSchedule}
@@ -449,22 +464,44 @@ function ScheduleAppInner({ groupCode }: Props) {
       )}
       {showCreate && <CreateGroupModal onCreate={createGroup} onClose={() => setShowCreate(false)} />}
       {detail && <BlockDetail block={detail} onClose={() => setDetail(null)} />}
-    </section>
+    </>
   );
 }
 
 function ScheduleLoading() {
+  const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
+  const model = useMemo(() => buildSharerGrid([]).model, []);
+
   return (
-    <section className="neu-panel flex min-h-72 w-full items-center justify-center rounded-2xl">
-      <div className="text-muted flex items-center gap-2 text-sm">
-        <span className="border-primary/25 border-t-primary size-4 animate-spin rounded-full border-2" />
-        Loading schedules…
-      </div>
-    </section>
+    <ScheduleWorkspace
+      title="Shared schedule"
+      description="Loading your groups and saved Workday schedule."
+      notice={
+        <div role="status" className="text-muted flex items-center gap-2 px-1 text-sm">
+          <span className="border-primary/25 border-t-primary size-4 animate-spin rounded-full border-2" />
+          Loading schedules…
+        </div>
+      }
+      controlsLabel="Controls"
+      controls={<p className="text-muted p-4 text-sm">Your group and import controls are loading.</p>}
+      mobileView={mobileView}
+      onMobileViewChange={setMobileView}
+    >
+      <ScheduleGrid
+        model={model}
+        activeDay="Mon"
+        onActiveDayChange={() => {}}
+        onBlockActivate={() => {}}
+        empty={{
+          title: "Loading your week",
+          description: "The timetable will stay here while your saved schedules arrive.",
+        }}
+      />
+    </ScheduleWorkspace>
   );
 }
 
-function NoGroup({
+function NoGroupControls({
   me,
   error,
   onUpload,
@@ -479,87 +516,142 @@ function NoGroup({
 }) {
   const [code, setCode] = useState("");
   return (
-    <div className="flex flex-1 items-center justify-center overflow-y-auto p-4 sm:p-8">
-      <div className="w-full max-w-xl">
-        <div className="mb-5 text-center">
-          <span className="neu-button text-primary mx-auto flex size-12 items-center justify-center rounded-2xl">
-            <Icon name="group" size={24} />
-          </span>
-          <h2 className="text-on-surface mt-3 text-xl font-medium">
-            {error
-              ? "That schedule is unavailable"
-              : me
-                ? "Bring your schedules together"
-                : "Start with your Workday schedule"}
-          </h2>
-          <p className="text-on-surface-variant mt-1 text-sm">
-            {error ||
-              (me
-                ? "Create a group, copy its six-character link, and everyone you invite appears in the same week."
-                : "Your .xlsx is parsed in this browser, then saved to your Reodite account.")}
-          </p>
-        </div>
+    <div className="flex flex-col gap-4">
+      <section>
+        <h2 className="text-on-surface text-sm font-medium">
+          {error ? "Group unavailable" : me ? "Start a group" : "Import from Workday"}
+        </h2>
+        <p className="text-muted mt-1 text-xs leading-relaxed">
+          {error ||
+            (me
+              ? "Create a group for your schedule, or join one with its six-character code."
+              : "Your Excel export is parsed in this browser before it is saved to Reodite.")}
+        </p>
+      </section>
 
-        {!me ? (
-          <UploadDropzone hero onParsed={onUpload} />
-        ) : (
-          <button
-            type="button"
-            onClick={onCreate}
-            className="neu-primary-button bg-primary text-on-primary min-h-12 w-full rounded-xl px-5 text-sm font-medium"
-          >
-            Create a shared schedule
-          </button>
-        )}
-
-        <form
-          className="mt-4 flex items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (/^[0-9A-Za-z]{6}$/.test(code)) onJoin(code);
-          }}
+      {!me ? (
+        <UploadDropzone onParsed={onUpload} />
+      ) : (
+        <button
+          type="button"
+          onClick={onCreate}
+          className="neu-primary-button bg-primary text-on-primary min-h-11 w-full rounded-xl px-4 text-sm font-medium"
         >
-          <div className="bg-outline-variant/60 h-px flex-1" />
-          <label className="sr-only" htmlFor="schedule-code">
-            Six-character schedule code
-          </label>
+          Create a shared schedule
+        </button>
+      )}
+
+      <form
+        className="border-border-subtle flex flex-col gap-2 border-t pt-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (/^[0-9A-Za-z]{6}$/.test(code)) onJoin(code);
+        }}
+      >
+        <label className="text-on-surface text-sm font-medium" htmlFor="schedule-code">
+          Join with a code
+        </label>
+        <div className="flex gap-2">
           <input
             id="schedule-code"
             value={code}
             maxLength={6}
             placeholder="ABC123"
+            aria-describedby="schedule-code-help"
             onChange={(event) => setCode(event.target.value.replace(/[^0-9A-Za-z]/g, ""))}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-10 w-28 rounded-xl px-3 text-center font-mono text-sm tracking-widest outline-none focus-visible:ring-2"
+            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 min-w-0 flex-1 rounded-xl px-3 text-center font-mono text-sm uppercase outline-none focus-visible:ring-2"
           />
           <button
             type="submit"
             disabled={!/^[0-9A-Za-z]{6}$/.test(code)}
-            className="neu-button text-on-surface min-h-10 rounded-xl px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-45"
+            className="neu-button text-on-surface min-h-11 rounded-xl px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-45"
           >
             Join
           </button>
-          <div className="bg-outline-variant/60 h-px flex-1" />
-        </form>
-      </div>
+        </div>
+        <p id="schedule-code-help" className="text-muted text-xs">
+          Enter the six-character code from a shared link.
+        </p>
+      </form>
     </div>
   );
 }
 
-function CalendarEmpty({ people }: { people: Person[] }) {
-  const waiting = people.length > 0 && people.every((person) => !person.schedule);
-  return (
-    <div className="border-outline-variant flex min-h-72 items-center justify-center rounded-2xl border border-dashed p-6 text-center">
-      <div>
-        <Icon name="calendar" size={28} className="text-muted mx-auto" />
-        <p className="text-on-surface mt-2 text-sm font-medium">
-          {waiting ? "Waiting for someone to add a schedule" : "No classes in this term"}
-        </p>
-        <p className="text-on-surface-variant mt-1 text-xs">
-          {waiting ? "Add yours from the upload area." : "Try another term from the top bar."}
-        </p>
-      </div>
-    </div>
-  );
+function sectionOverlapsTerm(section: Section, term: Term | null): boolean {
+  if (!term || !section.termStart || !section.termEnd) return true;
+  return section.termStart <= term.end && section.termEnd >= term.start;
+}
+
+/** Describes why the shared grid is empty and the next available action. */
+export function scheduleEmptyState({
+  group,
+  groupError,
+  me,
+  nobodyImported,
+  allPeopleFiltered,
+  tbaOnly,
+  onImport,
+  onCreate,
+}: {
+  group: GroupDetail | null;
+  groupError: string;
+  me: Person | null;
+  nobodyImported: boolean;
+  allPeopleFiltered: boolean;
+  tbaOnly: boolean;
+  onImport: () => void;
+  onCreate: () => void;
+}): ScheduleGridEmptyState {
+  if (!group) {
+    if (groupError) {
+      return {
+        title: "This group could not be opened",
+        description: "Check the shared code or join a different group from Controls.",
+        actionLabel: "Open controls",
+        onAction: onImport,
+      };
+    }
+    if (!me) {
+      return {
+        title: "Your empty week is ready",
+        description: "Import your Workday schedule from Controls to put your classes on this grid.",
+        actionLabel: "Import schedule",
+        onAction: onImport,
+      };
+    }
+    return {
+      title: "No group selected",
+      description: "Create a group or join one with a shared code. Your saved schedule stays unchanged.",
+      actionLabel: "Create group",
+      onAction: onCreate,
+    };
+  }
+  if (nobodyImported) {
+    return {
+      title: "Nobody has imported a schedule",
+      description: "Group members are here, but no one has added a Workday schedule yet.",
+      actionLabel: "Import schedule",
+      onAction: onImport,
+    };
+  }
+  if (allPeopleFiltered) {
+    return {
+      title: "Everyone is hidden",
+      description: "Turn someone back on in Controls to show their classes.",
+      actionLabel: "Open people controls",
+      onAction: onImport,
+    };
+  }
+  if (tbaOnly) {
+    return {
+      title: "Meeting times are still TBA",
+      description: "This term has sections, but Workday does not list a day or time for them yet.",
+    };
+  }
+  return {
+    title: "No classes in this term",
+    description: "The selected people have no scheduled meetings in this term. Try another term above.",
+  };
 }
 
 export function CreateGroupModal({

@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CreateGroupModal, ScheduleApp } from "./schedule-app";
+import { CreateGroupModal, ScheduleApp, scheduleEmptyState } from "./schedule-app";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 const getToken = vi.hoisted(() => vi.fn(async () => "token"));
@@ -72,8 +72,30 @@ describe("CreateGroupModal", () => {
   });
 });
 
+describe("ScheduleApp empty states", () => {
+  const group = { code: "ABC123", name: "Study group", createdBy: "u1", createdAt: "x", members: [] };
+  const base = {
+    group,
+    groupError: "",
+    me: null,
+    nobodyImported: false,
+    allPeopleFiltered: false,
+    tbaOnly: false,
+    onImport: vi.fn(),
+    onCreate: vi.fn(),
+  };
+
+  it("keeps no-group, unimported, filtered, TBA, and empty-term copy distinct", () => {
+    expect(scheduleEmptyState({ ...base, group: null }).title).toBe("Your empty week is ready");
+    expect(scheduleEmptyState({ ...base, nobodyImported: true }).title).toBe("Nobody has imported a schedule");
+    expect(scheduleEmptyState({ ...base, allPeopleFiltered: true }).title).toBe("Everyone is hidden");
+    expect(scheduleEmptyState({ ...base, tbaOnly: true }).title).toBe("Meeting times are still TBA");
+    expect(scheduleEmptyState(base).title).toBe("No classes in this term");
+  });
+});
+
 describe("ScheduleApp group loading", () => {
-  it("keeps the header clear of the compact shell menu", async () => {
+  it("shows the shared week immediately and defaults mobile to Schedule", async () => {
     const response = (body: unknown) =>
       new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
     vi.stubGlobal(
@@ -88,7 +110,13 @@ describe("ScheduleApp group loading", () => {
 
     render(<ScheduleApp />);
 
-    expect((await screen.findByText("Student schedules")).closest("header")?.className).toContain("max-lg:pl-12");
+    expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Shared schedule" }).closest("header")?.className).toContain(
+      "max-xl:pl-12",
+    );
+    expect(screen.getAllByText("Mon").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Controls" }).getAttribute("aria-pressed")).toBe("false");
   });
 
   it("ignores a slower response for the previously active group", async () => {

@@ -5,7 +5,7 @@ import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
 import { useEffect } from "react";
 import { AvatarChip } from "./avatar-chip";
-import { displayCode } from "./block-cell";
+import { displayCode } from "./block-format";
 import { useDialogFocus } from "./use-dialog-focus";
 
 interface Props {

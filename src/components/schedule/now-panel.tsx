@@ -27,9 +27,9 @@ export function NowPanel({ people, now }: Props) {
 
   return (
     <section className="neu-panel rounded-2xl p-3" aria-label="Right now">
-      <h3 className="text-muted mb-2 flex items-baseline justify-between px-1 text-xs font-medium tracking-wide uppercase">
+      <h3 className="text-on-surface mb-2 flex items-baseline justify-between px-1 text-sm font-medium">
         Right now
-        <span className="font-mono text-[11px] font-normal tabular-nums">
+        <span className="font-mono text-xs font-normal tabular-nums">
           {now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
         </span>
       </h3>
