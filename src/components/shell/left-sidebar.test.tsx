@@ -9,9 +9,10 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: "signedOut" }) }));
+const pathname = vi.hoisted(() => ({ value: "/chat" }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: () => {}, push: () => {} }),
-  usePathname: () => "/chat",
+  usePathname: () => pathname.value,
   useParams: () => ({}),
 }));
 vi.mock("@/src/components/map/map-panel", () => ({
@@ -61,6 +62,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+  pathname.value = "/chat";
   mem.clear();
   vi.clearAllMocks();
   cleanup();
@@ -137,5 +139,19 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     ) as HTMLElement;
     act(() => fireEvent.click(toolsTab));
     expect(container.querySelector('[role="tab"]')).not.toBeNull();
+  });
+
+  it("marks shared schedule links as part of Schedule", () => {
+    pathname.value = "/pulse/schedule/ABC123";
+    localStorage.setItem(SHELL_MODE_STORAGE_KEY, "unity");
+
+    const { getByRole } = render(
+      <ChatShellProvider>
+        <LeftSidebar />
+      </ChatShellProvider>,
+    );
+
+    expect(getByRole("button", { name: "Schedule" }).getAttribute("aria-current")).toBe("page");
+    expect(getByRole("button", { name: "Pulse" }).getAttribute("aria-current")).toBeNull();
   });
 });

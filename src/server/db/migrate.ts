@@ -73,6 +73,30 @@ CREATE TABLE IF NOT EXISTS schedules (
   data JSONB NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Schedule sharer: one opaque person blob per user; groups keyed by the
+-- 6-char base62 code that appears in share links.
+CREATE TABLE IF NOT EXISTS sharer_schedules (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  person JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS sharer_groups (
+  code CHAR(6) PRIMARY KEY CHECK (code ~ '^[0-9A-Za-z]{6}$'),
+  name TEXT NOT NULL,
+  created_by UUID NOT NULL REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS sharer_group_members (
+  group_code CHAR(6) NOT NULL REFERENCES sharer_groups(code) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (group_code, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sharer_group_members_user ON sharer_group_members(user_id);
 `;
 
 // Reshapes pre-existing installs onto the current message columns: the legacy
