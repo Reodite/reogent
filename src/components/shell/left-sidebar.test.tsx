@@ -10,8 +10,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: "signedOut" }) }));
 const pathname = vi.hoisted(() => ({ value: "/chat" }));
+const routerPush = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: () => {}, push: () => {} }),
+  useRouter: () => ({ replace: () => {}, push: routerPush }),
   usePathname: () => pathname.value,
   useParams: () => ({}),
 }));
@@ -64,6 +65,7 @@ beforeAll(() => {
 afterEach(() => {
   pathname.value = "/chat";
   mem.clear();
+  routerPush.mockReset();
   vi.clearAllMocks();
   cleanup();
 });
@@ -139,17 +141,31 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
   });
 
-  it("ToolList selection sets workspaceView to the tool's default view", () => {
+  it("ToolList selection navigates by URL and closes its host drawer", () => {
+    const onClose = vi.fn();
     const { container } = render(
       <ChatShellProvider>
-        <LeftSidebar />
+        <LeftSidebar onClose={onClose} />
         <Capture />
       </ChatShellProvider>,
     );
     act(() => fireEvent.click(modeLink(container, "Tools")));
+    routerPush.mockClear();
     act(() => fireEvent.click(container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement));
-    expect(shellRef.current?.workspaceView?.paneId).toBe("prereq-tree");
-    expect(shellRef.current?.workspaceView?.state).toEqual({ root: "", query: "", selections: {}, softDisabled: {} });
+    expect(routerPush).toHaveBeenCalledWith("/tools/prereq");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("marks the pathname tool current without depending on workspace state", () => {
+    pathname.value = "/tools/prereq/CPSC320";
+    const { container } = render(
+      <ChatShellProvider initialMode="tools">
+        <LeftSidebar />
+      </ChatShellProvider>,
+    );
+
+    expect(container.querySelector('[data-tool-id="prereq-tree"]')?.getAttribute("aria-current")).toBe("page");
+    expect(container.querySelector('[data-tool-id="course-lookup"]')?.getAttribute("aria-current")).toBeNull();
   });
 
   it("the ModeToggle is reachable from both modes", () => {

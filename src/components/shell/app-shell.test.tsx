@@ -172,7 +172,9 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("compact Tools lives in the left drawer and keeps the tool full-bleed", () => {
     const { container } = renderShell(false);
     fireEvent.click(modeLink(container, "Tools"));
-    fireEvent.click(container.querySelector('[aria-label="Open sidebar"]') as HTMLElement);
+    const opener = container.querySelector('[aria-label="Open sidebar"]') as HTMLElement;
+    expect(opener.className).toContain("z-40");
+    fireEvent.click(opener);
     const drawer = container.querySelector('[role="dialog"][aria-label="Tools"]');
     expect(drawer).not.toBeNull();
     expect(drawer?.querySelector("[data-tool-list]")).not.toBeNull();

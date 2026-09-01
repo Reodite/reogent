@@ -151,7 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onClick={() => setSidebarOpen(true)}
           aria-label="Open sidebar"
           inert={sidebarOpen || undefined}
-          className={`neu-panel bg-surface text-on-surface-variant hover:text-primary fixed top-3 left-3 z-30 flex size-11 items-center justify-center rounded-xl transition-colors duration-150 ${mode === "tools" ? "xl:hidden" : "lg:hidden"}`}
+          className={`neu-panel bg-surface text-on-surface-variant hover:text-primary fixed top-3 left-3 z-40 flex size-11 items-center justify-center rounded-xl transition-colors duration-150 ${mode === "tools" ? "xl:hidden" : "lg:hidden"}`}
         >
           <Icon name="menu" size={21} />
         </button>

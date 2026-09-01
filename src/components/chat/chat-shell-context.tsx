@@ -14,7 +14,7 @@ import type { CanvasView, PaneId, PaneState } from "@/src/components/shell/pane-
 import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useShellMode } from "@/src/components/shell/use-shell-mode";
 import type { SessionSummary, ToolCall } from "@/src/lib/api-types";
-import { courseSlugToCode, parseToolSlug } from "@/src/lib/pane-route";
+import { parseToolPath } from "@/src/lib/pane-route";
 import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import { LAST_CHAT_PATH_KEY, type ShellMode } from "@/src/lib/shell-mode";
 import { toolCallToCanvasView } from "@/src/lib/walking";
@@ -381,26 +381,13 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   );
 }
 
-/** When the URL is `/tools/<slug>` (or `/tools/courses/<code>`), push the
- * matching pane state onto the workspace canvas. Mounted in ChatShellProvider
- * so it lives wherever the shell is rendered and runs the URL effect
- * independent of AppShell's chat-vs-tool layout decision. */
+/** Pushes URL-owned Tools state onto the workspace canvas independently of AppShell's layout. */
 function ToolRouteActivator() {
   const pathname = usePathname();
   const { setActiveChannel } = useChatShell();
   useEffect(() => {
-    if (!pathname?.startsWith("/tools/")) return;
-    const segments = pathname.slice("/tools/".length).split("/");
-    if (segments[0] === "courses" && segments[1]) {
-      const code = courseSlugToCode(segments[1]);
-      if (code) {
-        setActiveChannel("course-lookup", { code });
-        return;
-      }
-    }
-    const paneId = parseToolSlug(segments[0]);
-    // No explicit overrides: the pane comes back with its cached state.
-    if (paneId) setActiveChannel(paneId);
+    const activation = parseToolPath(pathname ?? "");
+    if (activation) setActiveChannel(activation.paneId, activation.state);
   }, [pathname, setActiveChannel]);
   return null;
 }

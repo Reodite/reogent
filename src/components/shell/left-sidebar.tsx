@@ -142,7 +142,11 @@ export function LeftSidebar({
         }
       />
       {collapsed && <CollapseExpandButton collapsed onExpand={onExpand} label="Sidebar" />}
-      {mode === "tools" ? <ToolList collapsed={collapsed} /> : <UnitySidebar collapsed={collapsed} />}
+      {mode === "tools" ? (
+        <ToolList collapsed={collapsed} onSelect={onClose} />
+      ) : (
+        <UnitySidebar collapsed={collapsed} />
+      )}
       {footer}
     </div>
   );
