@@ -76,6 +76,7 @@ function ScheduleAppInner({ groupCode }: Props) {
   const [groups, setGroups] = useState<GroupSummary[]>([]);
   const initialCode = groupCode ?? null;
   const selectionRef = useRef({ code: initialCode, generation: initialCode ? 1 : 0 });
+  const refreshToken = useRef(0);
   const [groupView, setGroupView] = useState<GroupViewState>(() =>
     initialCode
       ? { status: "loading", code: initialCode, generation: 1 }
@@ -113,10 +114,9 @@ function ScheduleAppInner({ groupCode }: Props) {
   }, []);
 
   const fetchGroup = useCallback(
-    async (code: string) => {
-      // POST is an idempotent join. It covers a shared-link visit and normal
-      // switching with one request instead of a separate membership probe.
-      const result = await request<{ group: GroupDetail }>(`/groups/${code}`, { method: "POST" });
+    async (code: string, join = true) => {
+      // Opening a link joins once; polling uses the read-only member endpoint.
+      const result = await request<{ group: GroupDetail }>(`/groups/${code}`, { method: join ? "POST" : "GET" });
       return result.group;
     },
     [request],
@@ -178,9 +178,10 @@ function ScheduleAppInner({ groupCode }: Props) {
     let cancelled = false;
     const refreshVisibleGroup = async () => {
       if (document.visibilityState === "hidden") return;
+      const token = ++refreshToken.current;
       try {
-        const [nextGroup] = await Promise.all([fetchGroup(code), refreshGroups()]);
-        if (cancelled) return;
+        const nextGroup = await fetchGroup(code, false);
+        if (cancelled || token !== refreshToken.current) return;
         const selected = selectionRef.current;
         if (selected.code !== code || selected.generation !== generation) return;
         setGroupView((current) =>
@@ -196,10 +197,11 @@ function ScheduleAppInner({ groupCode }: Props) {
     window.addEventListener("focus", refreshVisibleGroup);
     return () => {
       cancelled = true;
+      refreshToken.current += 1;
       window.clearInterval(timer);
       window.removeEventListener("focus", refreshVisibleGroup);
     };
-  }, [fetchGroup, groupView, refreshGroups]);
+  }, [fetchGroup, groupView]);
 
   const activeCode = groupView.code;
   const group = groupView.status === "ready" ? groupView.group : null;

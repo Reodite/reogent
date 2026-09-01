@@ -156,6 +156,15 @@ export async function getGroup(code: string): Promise<GroupDetail | null> {
   };
 }
 
+/** Returns group detail only when the caller is already a member. */
+export async function getGroupForMember(userId: string, code: string): Promise<GroupDetail | null> {
+  const { rowCount } = await getPool().query(
+    `SELECT 1 FROM sharer_group_members WHERE group_code = $1 AND user_id = $2`,
+    [code, userId],
+  );
+  return rowCount ? getGroup(code) : null;
+}
+
 /**
  * Adds the caller to a group. Null when the code is unknown; otherwise the
  * group detail (idempotent — rejoining is a no-op).

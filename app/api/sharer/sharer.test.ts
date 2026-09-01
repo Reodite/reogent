@@ -21,6 +21,13 @@ const store = vi.hoisted(() => ({
     createdAt: "2026-01-01T00:00:00.000Z",
     members: [],
   })),
+  getGroupForMember: vi.fn(async (_sub: string, code: string) => ({
+    code,
+    name: "Crew",
+    createdBy: "u1",
+    createdAt: "x",
+    members: [],
+  })),
   joinGroup: vi.fn(async (_sub: string, code: string) =>
     code === "zzzzzz" ? null : { code, name: "Crew", createdBy: "u1", createdAt: "x", members: [] },
   ),
@@ -30,7 +37,7 @@ vi.mock("@/src/server/sharer/store", () => ({ ...store, CODE_PATTERN: /^[0-9A-Za
 
 const { GET: getSchedule, PUT: putSchedule } = await import("./schedule/route");
 const { GET: getGroups, POST: postGroups } = await import("./groups/route");
-const { POST: joinGroup, DELETE: leaveGroup } = await import("./groups/[code]/route");
+const { GET: readGroup, POST: joinGroup, DELETE: leaveGroup } = await import("./groups/[code]/route");
 
 const ctx = (code: string) => ({ params: Promise.resolve({ code }) });
 const json = (body: unknown) =>
@@ -113,6 +120,12 @@ describe("sharer group routes", () => {
   it("POST rejects an empty name or null body", async () => {
     expect((await postGroups(json({ name: "   " }))).status).toBe(400);
     expect((await postGroups(json(null))).status).toBe(400);
+  });
+
+  it("reads an existing membership without joining again", async () => {
+    expect((await readGroup(new Request("http://x"), ctx("aB12cD"))).status).toBe(200);
+    expect(store.getGroupForMember).toHaveBeenCalledWith("default", "aB12cD");
+    expect(store.joinGroup).not.toHaveBeenCalled();
   });
 
   it("join and leave hit the store with the caller's id", async () => {

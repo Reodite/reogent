@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const queryMock = vi.hoisted(() => vi.fn());
 vi.mock("../db", () => ({ getPool: () => ({ query: queryMock }) }));
 
-const { createGroup, getGroup, joinGroup, leaveGroup, listGroups, savePerson, CODE_PATTERN } = await import("./store");
+const { createGroup, getGroup, getGroupForMember, joinGroup, leaveGroup, listGroups, savePerson, CODE_PATTERN } =
+  await import("./store");
 
 beforeEach(() => queryMock.mockReset());
 
@@ -81,6 +82,25 @@ describe("getGroup", () => {
     expect(group?.members).toHaveLength(2);
     expect(group?.members[0].handle).toBe("Ada");
     expect(group?.members[1]).toMatchObject({ id: "u2", handle: "grace", schedule: null });
+  });
+});
+
+describe("getGroupForMember", () => {
+  it("reads group detail only after confirming membership", async () => {
+    queryMock.mockResolvedValueOnce({ rowCount: 1 });
+    queryMock.mockResolvedValueOnce({
+      rows: [{ code: "aB12cD", name: "Crew", created_by: "u1", created_at: new Date("2026-01-01") }],
+    });
+    queryMock.mockResolvedValueOnce({ rows: [] });
+
+    expect(await getGroupForMember("u1", "aB12cD")).toMatchObject({ code: "aB12cD" });
+    expect(queryMock.mock.calls[0][0]).toContain("sharer_group_members");
+  });
+
+  it("returns null without reading group detail for a non-member", async () => {
+    queryMock.mockResolvedValueOnce({ rowCount: 0 });
+    expect(await getGroupForMember("u1", "aB12cD")).toBeNull();
+    expect(queryMock).toHaveBeenCalledTimes(1);
   });
 });
 

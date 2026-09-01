@@ -1,8 +1,24 @@
 import { requireUser } from "@/src/server/auth";
-import { CODE_PATTERN, joinGroup, leaveGroup } from "@/src/server/sharer/store";
+import { CODE_PATTERN, getGroupForMember, joinGroup, leaveGroup } from "@/src/server/sharer/store";
 import { json, serverError } from "../../../http";
 
 type Ctx = { params: Promise<{ code: string }> };
+
+/** GET /api/sharer/groups/[code] — reads a group the caller already belongs to. */
+export async function GET(request: Request, { params }: Ctx): Promise<Response> {
+  try {
+    const user = await requireUser(request);
+    if (user instanceof Response) return user;
+    const { code } = await params;
+    if (!CODE_PATTERN.test(code)) return json({ error: "Invalid group code" }, 400);
+
+    const group = await getGroupForMember(user.sub, code);
+    if (!group) return json({ error: "Not a member of this group" }, 404);
+    return json({ group });
+  } catch (e) {
+    return serverError(e);
+  }
+}
 
 /** POST /api/sharer/groups/[code] — joins the caller to the group. */
 export async function POST(request: Request, { params }: Ctx): Promise<Response> {

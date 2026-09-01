@@ -156,7 +156,7 @@ function stubSharerFetch({
     if (url.endsWith("/schedule")) return Promise.resolve(json({ person: me }));
     if (url.endsWith("/groups") && !init?.method) return Promise.resolve(json({ groups }));
     const match = url.match(/\/groups\/([0-9A-Za-z]{6})$/);
-    if (match?.[1] && init?.method === "POST") return loadGroup(match[1]);
+    if (match?.[1] && (init?.method === "POST" || init?.method === "GET")) return loadGroup(match[1]);
     throw new Error(`unexpected request: ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -257,6 +257,8 @@ describe("ScheduleApp group loading", () => {
     await waitFor(() =>
       expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/groups/AAAAAA"))).toHaveLength(2),
     );
+    const refreshCall = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/groups/AAAAAA"))[1];
+    expect(refreshCall[1]?.method).toBe("GET");
 
     fireEvent.change(screen.getByRole("combobox", { name: "Group" }), { target: { value: "BBBBBB" } });
     expect(await screen.findAllByText("Person B")).not.toHaveLength(0);
