@@ -375,7 +375,7 @@ function MonthYearPicker({
               type="button"
               aria-label="Previous year"
               onClick={() => setYear((y) => y - 1)}
-              className="hover:bg-surface-container focus-visible:ring-primary/40 flex size-8 items-center justify-center rounded-lg focus-visible:ring-2"
+              className="hover:bg-surface-container focus-visible:ring-primary/40 flex size-11 items-center justify-center rounded-lg focus-visible:ring-2 @min-[55rem]:size-8"
             >
               <Icon name="left" size={16} />
             </button>
@@ -385,7 +385,7 @@ function MonthYearPicker({
               aria-label="Next year"
               disabled={nextYearBlocked}
               onClick={() => setYear((y) => y + 1)}
-              className="hover:bg-surface-container focus-visible:ring-primary/40 flex size-8 items-center justify-center rounded-lg focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
+              className="hover:bg-surface-container focus-visible:ring-primary/40 flex size-11 items-center justify-center rounded-lg focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40 @min-[55rem]:size-8"
             >
               <Icon name="right" size={16} />
             </button>
@@ -405,7 +405,7 @@ function MonthYearPicker({
                     onPick(d);
                     setOpen(false);
                   }}
-                  className={`focus-visible:ring-primary/40 rounded-lg py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-30 ${
+                  className={`focus-visible:ring-primary/40 min-h-11 rounded-lg py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-30 @min-[55rem]:min-h-8 ${
                     selected ? "bg-primary text-on-primary" : "text-on-surface hover:bg-surface-container"
                   }`}
                 >
