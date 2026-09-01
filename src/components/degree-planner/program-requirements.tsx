@@ -5,6 +5,7 @@
 // year-by-year checklist or a flat course fallback.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { TextInput } from "@/src/components/ui/form-controls";
 import {
   getProgramIndex,
   getRequirementsFor,
@@ -138,6 +139,7 @@ function ProgramCombobox({
   disabled?: boolean;
 }) {
   const listId = useId();
+  const inputId = `${listId}-input`;
   const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
   const [query, setQuery] = useState(selectedLabel);
 
@@ -155,12 +157,13 @@ function ProgramCombobox({
   }
 
   return (
-    <label className={`flex flex-col gap-1 ${className ?? ""}`}>
+    <label htmlFor={inputId} className={`flex flex-col gap-1 ${className ?? ""}`}>
       <span className="text-muted flex items-baseline justify-between gap-2 text-[11px]">
         {label}
         {labelExtra}
       </span>
-      <input
+      <TextInput
+        id={inputId}
         type="text"
         list={listId}
         value={query}
@@ -181,7 +184,7 @@ function ProgramCombobox({
           if (!event.currentTarget.value) return;
           if (!apply(event.currentTarget.value)) setQuery(selectedLabel);
         }}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-full rounded-lg px-3 text-sm focus-visible:ring-2 disabled:opacity-50"
+        controlSize="compact"
       />
       <datalist id={listId}>
         {options.map((option) => (

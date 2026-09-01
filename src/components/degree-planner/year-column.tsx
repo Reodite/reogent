@@ -5,6 +5,7 @@
 // presence is per-year — a co-op year may skip it while others keep it.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { isSummer, usePlanner, type Year } from "./planner-store";
 import { TermSection } from "./term-section";
@@ -71,8 +72,9 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
             </motion.div>
           )}
         </AnimatePresence>
-        <button
-          type="button"
+        <Button
+          variant={hasSummer ? "danger" : "secondary"}
+          size="toolbar"
           onClick={() => {
             if (hasSummer) {
               const summerBlocks = year.terms
@@ -87,11 +89,11 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
             }
             toggleSummer(year.id);
           }}
-          className="neu-button text-muted hover:text-on-surface mt-2 flex h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg text-xs"
+          className="mt-2 w-full"
         >
           <Icon name={hasSummer ? "close" : "add"} size={13} />
           {hasSummer ? "Remove summer session" : "Add summer session"}
-        </button>
+        </Button>
       </div>
     </section>
   );

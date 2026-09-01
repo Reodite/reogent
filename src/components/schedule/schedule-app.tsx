@@ -406,14 +406,10 @@ function ScheduleAppInner({ groupCode }: Props) {
               <Icon name="add" size={16} />
               New group
             </Button>
-            <button
-              type="button"
-              onClick={leaveActiveGroup}
-              className="neu-button text-on-surface-variant hover:text-error flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-medium"
-            >
+            <Button variant="danger" size="prominent" onClick={leaveActiveGroup} className="flex-1">
               <Icon name="exit" size={16} />
               Leave
-            </button>
+            </Button>
           </section>
           {!meHasSchedule ? importControl : null}
           <div data-control-section="people" className="border-border-subtle border-t py-4">

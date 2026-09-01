@@ -7,11 +7,13 @@ const BASE_CLASSES =
 const VARIANT_CLASSES = {
   primary: "neu-primary-button bg-primary text-on-primary",
   secondary: "neu-button bg-surface text-on-surface",
+  danger: "neu-button bg-surface text-on-surface-variant hover:bg-error/10 hover:text-error",
   ghost: "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
 } as const;
 
 const SIZE_CLASSES = {
   compact: "h-11 rounded-lg px-3 text-xs sm:h-8",
+  toolbar: "h-11 rounded-lg px-3 text-xs sm:h-9",
   default: "h-11 rounded-xl px-4 text-sm sm:h-9",
   prominent: "h-11 rounded-xl px-4 text-sm sm:h-10",
   field: "h-11 rounded-xl px-4 text-sm",

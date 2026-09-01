@@ -403,11 +403,12 @@ State changes through shadow transformation + press scale. Buttons never transla
 - **Primary Large**: Same as primary but `h-12 px-8 text-base`. Used on landing CTAs and auth submit.
 - **Primary Prominent**: `h-10 px-4` — slightly taller than standard for emphasis in error recovery states. Same shadow recipe.
 - **Secondary** (`.neu-button`): `bg-surface text-on-surface rounded-xl h-9 px-4 border-subtle text-sm font-medium`. Shadow: surface shadow. Hover: expanded shadow. Active: inset shadow, scale(0.98).
+- **Danger**: Secondary material with `text-on-surface-variant`; hover uses `bg-error/10 text-error`. Use for destructive native actions after the label names the consequence.
 - **Secondary Compact**: `h-9 px-3` — reduced horizontal padding for tight layouts (retry buttons, inline actions).
 - **Ghost**: `bg-transparent text-on-surface-variant rounded-xl`. No shadow at rest (the one exception to whisper dimension). Hover: subtle surface background appears. Landing sign-in link uses `text-on-surface-variant hover:text-on-surface` for a softer secondary feel.
 - **Icon Button**: `size-9` (36px) standard. Uses `neu-button` or `neu-panel` shadow. Contains centered icon.
 - **Compact Pill** (inline tool cards): `border border-primary text-primary rounded-full px-3 py-1.5 text-xs font-medium min-h-[44px]`. Smaller padding than suggestion pills; used inside tool result cards where space is tight. Focus: `ring-primary/40 ring-2 ring-offset-2`. Active: `scale-95`.
-- **Sizes**: Standard 36px (h-9), Prominent 40px (h-10), Field Companion 44px (h-11), Compact 32px (h-8), Large 48px (h-12, landing/auth only), Icon 36px. Field Companion aligns an action beside a 44px input. Below 640px, compact, standard, prominent, and icon controls expand to the 44px touch floor.
+- **Sizes**: Standard 36px (h-9), Toolbar 36px (h-9 with 8px radius and caption text), Prominent 40px (h-10), Field Companion 44px (h-11), Compact 32px (h-8), Large 48px (h-12, landing/auth only), Icon 36px. Field Companion aligns an action beside a 44px input. Below 640px, compact, toolbar, standard, prominent, and icon controls expand to the 44px touch floor.
 - **Transitions**: `color`, `background-color`, `box-shadow`, `transform` at 150ms ease-out.
 - **Disabled**: `disabled:pointer-events-none disabled:opacity-45` (send) or `disabled:opacity-60` (forms). Cursor: `disabled:cursor-not-allowed` on form submits.
 

@@ -3,13 +3,11 @@
 // Plan-wide structure controls: year count, co-op participation, and a
 // faculty-specific co-op sequence helper. Summer sessions and work terms
 // remain editable on the board.
+import { SelectInput } from "@/src/components/ui/form-controls";
 import { applyCoopSequence, COOP_SUPPORT } from "@/src/lib/coop";
 import { useState } from "react";
 import { PlannerCheckboxMark } from "./planner-checkbox";
 import { MAX_YEARS, MIN_YEARS, usePlanner } from "./planner-store";
-
-const SELECT_CLASS =
-  "neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 rounded-lg px-2 py-1 text-sm focus-visible:ring-2";
 
 export function PlanStructure() {
   const years = usePlanner((s) => s.years);
@@ -24,9 +22,10 @@ export function PlanStructure() {
 
   return (
     <div className="flex w-64 flex-col gap-3">
-      <label className="flex items-center justify-between gap-2 text-sm">
+      <label htmlFor="planner-year-count" className="flex items-center justify-between gap-2 text-sm">
         <span className="text-on-surface-variant text-xs">Years in plan</span>
-        <select
+        <SelectInput
+          id="planner-year-count"
           value={years.length}
           onChange={(e) => {
             const next = Number(e.target.value);
@@ -45,14 +44,15 @@ export function PlanStructure() {
             }
             setYearCount(next);
           }}
-          className={SELECT_CLASS}
+          controlSize="compact"
+          width="auto"
         >
           {Array.from({ length: MAX_YEARS - MIN_YEARS + 1 }, (_, i) => MIN_YEARS + i).map((n) => (
             <option key={n} value={n}>
               {n} years
             </option>
           ))}
-        </select>
+        </SelectInput>
       </label>
 
       <div className="flex flex-col gap-1">

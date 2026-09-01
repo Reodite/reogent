@@ -166,14 +166,10 @@ export default function SettingsPage() {
             </div>
           </div>
           {!auth.isGuest && <ProfileForm />}
-          <button
-            type="button"
-            onClick={auth.signOut}
-            className="neu-button bg-surface text-on-surface hover:text-error mt-4 flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-medium"
-          >
+          <Button variant="danger" size="field" onClick={auth.signOut} className="mt-4">
             <Icon name="exit" size={16} />
             Sign out
-          </button>
+          </Button>
         </section>
 
         <section aria-labelledby="settings-preferences" className="neu-panel rounded-2xl p-4 sm:p-6">

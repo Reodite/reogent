@@ -17,6 +17,7 @@ import {
 } from "@/src/components/dnd/drag-overlay-physics";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
 import { getProgramIndex, getRequirementsFor } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
@@ -628,9 +629,6 @@ function ActionsSection({
     shell?.askAi("Help me plan my degree:", { title: "Degree course table", content: lines.join("\n").trimEnd() });
   }
 
-  const buttonClass =
-    "neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40";
-
   return (
     <div className="ml-auto flex flex-wrap items-center justify-end gap-2 max-md:ml-0 max-md:w-full max-md:justify-start">
       <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-xl p-1">
@@ -662,22 +660,17 @@ function ActionsSection({
         </button>
       </div>
 
-      <button type="button" onClick={handleAutofill} disabled={filling} className={buttonClass}>
+      <Button size="toolbar" onClick={handleAutofill} disabled={filling}>
         <Icon name="sparkles" size={14} />
         <span>{filling ? "Filling…" : "Autofill"}</span>
-      </button>
+      </Button>
 
       <div className="relative">
-        <button
-          type="button"
-          onClick={() => setStructureOpen((open) => !open)}
-          aria-expanded={structureOpen}
-          className={buttonClass}
-        >
+        <Button size="toolbar" onClick={() => setStructureOpen((open) => !open)} aria-expanded={structureOpen}>
           <Icon name="settings" size={14} />
           <span>Structure</span>
           <Icon name="down" size={12} className={`transition-transform ${structureOpen ? "rotate-180" : ""}`} />
-        </button>
+        </Button>
         {structureOpen && (
           <div className="neu-panel bg-surface absolute top-10 right-0 z-50 rounded-2xl p-4">
             <h3 className="text-on-surface mb-3 text-sm font-medium">Plan structure</h3>
@@ -687,11 +680,11 @@ function ActionsSection({
       </div>
 
       <div className="relative">
-        <button
-          type="button"
+        <Button
+          size="toolbar"
           onClick={() => setIgnoreOpen((open) => !open)}
           aria-expanded={ignoreOpen}
-          className={`${buttonClass} min-w-[92px] justify-center`}
+          className="min-w-[92px]"
         >
           <Icon name="eyeOff" size={14} className={erroredBlocks.length > 0 ? "text-error" : undefined} />
           <span>Issues</span>
@@ -700,7 +693,7 @@ function ActionsSection({
               {erroredBlocks.length}
             </span>
           )}
-        </button>
+        </Button>
         {ignoreOpen && (
           <div className="neu-panel bg-surface absolute top-10 right-0 z-50 flex max-h-80 w-80 flex-col gap-1 overflow-y-auto rounded-2xl p-2">
             <p className="text-on-surface px-2 pt-1 text-xs font-medium">
@@ -743,25 +736,21 @@ function ActionsSection({
         )}
       </div>
 
-      <button
-        type="button"
+      <Button
+        variant="danger"
+        size="toolbar"
         onClick={() => {
           setAutofillResult(null);
           onClearAll();
         }}
-        className={`${buttonClass} hover:bg-error-container hover:text-error`}
       >
         <Icon name="trash" size={14} />
         <span>Clear</span>
-      </button>
-      <button
-        type="button"
-        onClick={handleAskAi}
-        className="neu-primary-button bg-primary text-on-primary flex h-9 items-center gap-1.5 rounded-lg px-4 text-sm font-medium"
-      >
+      </Button>
+      <Button variant="primary" onClick={handleAskAi}>
         <Icon name="chat1" size={14} />
         <span>Ask AI</span>
-      </button>
+      </Button>
       {autofillResult && <AutofillSummary result={autofillResult} onClose={() => setAutofillResult(null)} />}
     </div>
   );

@@ -38,6 +38,11 @@ describe("Button", () => {
     expect(button.className).not.toContain("neu-button");
     expect(button.className).toContain("h-11");
     expect(button.className).toContain("sm:h-8");
+
+    rerender(<Button variant="danger">Delete</Button>);
+    button = getByRole("button", { name: "Delete" });
+    expect(button.className).toContain("neu-button");
+    expect(button.className).toContain("hover:text-error");
   });
 
   it("passes native props, events, classes, and refs through", () => {
@@ -60,6 +65,7 @@ describe("Button", () => {
 
   it.each([
     ["compact", "sm:h-8"],
+    ["toolbar", "sm:h-9"],
     ["default", "sm:h-9"],
     ["prominent", "sm:h-10"],
     ["field", "h-11"],
