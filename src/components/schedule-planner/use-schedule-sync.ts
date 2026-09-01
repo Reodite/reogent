@@ -215,13 +215,15 @@ export function useScheduleSync(): void {
           applyingServer = true;
           const current = useSchedule.getState();
           if (current.dirty) {
-            const entries = mergeHydratedEntries(
-              resolved.entries,
-              current.entries,
-              current.selectedComponents,
-              current.removedComponents,
-              current.removedCourses,
-            );
+            const entries = current.replacePending
+              ? current.entries
+              : mergeHydratedEntries(
+                  resolved.entries,
+                  current.entries,
+                  current.selectedComponents,
+                  current.removedComponents,
+                  current.removedCourses,
+                );
             useSchedule.setState({
               ownerId: userId,
               entries,
@@ -238,6 +240,7 @@ export function useScheduleSync(): void {
               removedComponents: [],
               removedCourses: [],
               activeTermDirty: false,
+              replacePending: false,
               entries: resolved.entries,
               activeTerm: schedule.activeTerm || resolved.entries[0]?.term || "",
               stale: resolved.stale,

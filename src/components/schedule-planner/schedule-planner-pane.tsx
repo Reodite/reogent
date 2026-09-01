@@ -9,6 +9,8 @@ import {
   type ScheduleGridDragOption,
 } from "@/src/components/schedule/schedule-grid";
 import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/schedule/schedule-workspace";
+import { ToastProvider } from "@/src/components/schedule/toast";
+import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
 import { useDialogFocus } from "@/src/components/schedule/use-dialog-focus";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
 import {
@@ -21,11 +23,20 @@ import {
   type SectionComponent,
 } from "@/src/lib/schedule";
 import { selectAutomaticSections } from "@/src/lib/schedule-planner";
+import { resolvePlannerImport, type PlannerImportReview } from "@/src/lib/schedule-planner-import";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import { buildScheduleGrid, type ScheduleGridItem } from "@/src/lib/schedule/grid";
-import { DAY_ORDER, type DayCode } from "@/src/lib/schedule/types";
+import { DAY_ORDER, type DayCode, type Schedule } from "@/src/lib/schedule/types";
+import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { entryId, normalizeScheduleCode, useSchedule, type ScheduleEntry } from "./schedule-store";
+import {
+  entryId,
+  normalizeScheduleCode,
+  useSchedule,
+  type ScheduleEntry,
+  type ScheduleImportMode,
+  type ScheduleImportSelection,
+} from "./schedule-store";
 import { useScheduleSync } from "./use-schedule-sync";
 
 const COMPONENT_ORDER: SectionComponent[] = ["lecture", "laboratory", "tutorial", "discussion", "other"];
@@ -396,7 +407,176 @@ function CourseRailCard({
   );
 }
 
+function PlannerImportDialog({
+  review,
+  onApply,
+  onClose,
+}: {
+  review: PlannerImportReview;
+  onApply: (selections: ScheduleImportSelection[], mode: ScheduleImportMode) => void;
+  onClose: () => void;
+}) {
+  const [choices, setChoices] = useState<Record<string, string>>({});
+  const dialogRef = useDialogFocus<HTMLDivElement>();
+  const unresolved = review.matches.filter((match) => match.status === "ambiguous" && !choices[match.source.id]);
+  const selections = review.matches.flatMap((match): ScheduleImportSelection[] => {
+    const section =
+      match.status === "exact"
+        ? match.candidates[0]
+        : match.candidates.find((candidate) => candidate.section === choices[match.source.id]);
+    return match.doc && section ? [{ doc: match.doc, section }] : [];
+  });
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
+      <button
+        type="button"
+        aria-label="Cancel Workday import"
+        tabIndex={-1}
+        onClick={onClose}
+        className="bg-on-surface/20 absolute inset-0 cursor-default"
+      />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
+        aria-modal="true"
+        aria-labelledby="schedule-import-title"
+        className="neu-panel bg-surface relative flex max-h-[min(48rem,calc(100dvh-1.5rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl"
+      >
+        <header className="border-border-subtle flex shrink-0 items-start gap-3 border-b p-4 sm:p-5">
+          <div className="min-w-0 flex-1">
+            <h2 id="schedule-import-title" className="text-on-surface text-base font-medium">
+              Review Workday import
+            </h2>
+            <p className="text-muted mt-1 text-sm leading-relaxed">
+              {review.sourceFileName ?? "Workday schedule"} matched {selections.length} of {review.matches.length}{" "}
+              sections.
+            </p>
+          </div>
+          <button
+            type="button"
+            data-dialog-initial-focus
+            onClick={onClose}
+            aria-label="Close Workday import review"
+            className="neu-button text-on-surface-variant grid size-10 shrink-0 place-items-center rounded-xl"
+          >
+            <Icon name="close" className="size-4" />
+          </button>
+        </header>
+
+        <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
+          <div className="flex flex-col gap-2">
+            {review.matches.map((match) => {
+              const meeting = match.source.meetings[0];
+              const meetingLabel = meeting
+                ? `${meeting.days.join("/")} · ${minutesToFullLabel(meeting.startMin)}–${minutesToFullLabel(meeting.endMin)}`
+                : "Time TBA";
+              const code = normalizeScheduleCode(match.source.courseCode);
+              return (
+                <article key={match.source.id} className="bg-surface-container-low rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-mono text-sm font-medium">{code || match.source.title}</h3>
+                      <p className="text-muted mt-0.5 truncate text-xs">{match.source.title}</p>
+                      <p className="text-on-surface-variant mt-1 font-mono text-xs">{meetingLabel}</p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
+                        match.status === "exact"
+                          ? "bg-accent-subtle text-on-surface-variant"
+                          : match.status === "ambiguous"
+                            ? "bg-tertiary-container text-on-tertiary-container"
+                            : "bg-error-container/60 text-on-error-container"
+                      }`}
+                    >
+                      {match.status === "exact"
+                        ? "Matched"
+                        : match.status === "ambiguous"
+                          ? "Choose section"
+                          : "Skipped"}
+                    </span>
+                  </div>
+                  {match.status === "ambiguous" ? (
+                    <label className="mt-3 flex flex-col gap-1.5">
+                      <span className="text-on-surface text-xs font-medium">Catalog section</span>
+                      <select
+                        value={choices[match.source.id] ?? ""}
+                        onChange={(event) =>
+                          setChoices((current) => ({ ...current, [match.source.id]: event.target.value }))
+                        }
+                        className="neu-inset bg-surface text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 text-sm focus-visible:ring-2"
+                      >
+                        <option value="">Choose the section from Workday</option>
+                        {match.candidates.map((candidate) => (
+                          <option key={candidate.section} value={candidate.section}>
+                            {sectionOption(candidate)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  {match.reason ? <p className="text-muted mt-2 text-xs leading-relaxed">{match.reason}</p> : null}
+                  {match.candidates[0]?.status && !/open|active|available/i.test(match.candidates[0].status) ? (
+                    <p className="text-tertiary mt-2 text-xs">Catalog status: {match.candidates[0].status}</p>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </div>
+
+        <footer className="border-border-subtle shrink-0 border-t p-4 sm:px-5">
+          {unresolved.length > 0 ? (
+            <p className="text-tertiary mb-3 text-xs">
+              Choose a section for {unresolved.length} ambiguous row(s) to continue.
+            </p>
+          ) : null}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" onClick={onClose} className="neu-button min-h-10 rounded-xl px-4 text-sm">
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={selections.length === 0 || unresolved.length > 0}
+              onClick={() => onApply(selections, "replace")}
+              className="neu-button text-on-surface min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
+            >
+              Replace planner
+            </button>
+            <button
+              type="button"
+              disabled={selections.length === 0 || unresolved.length > 0}
+              onClick={() => onApply(selections, "merge")}
+              className="neu-primary-button bg-primary text-on-primary min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
+            >
+              Merge with planner
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+/** Planner schedule surface with shared timetable rendering and local editing controls. */
 export function SchedulePlannerPane() {
+  return (
+    <ToastProvider>
+      <SchedulePlannerPaneInner />
+    </ToastProvider>
+  );
+}
+
+function SchedulePlannerPaneInner() {
   useScheduleSync();
   const api = useApi();
   const entries = useSchedule((state) => state.entries);
@@ -404,6 +584,7 @@ export function SchedulePlannerPane() {
   const setActiveTerm = useSchedule((state) => state.setActiveTerm);
   const addEntry = useSchedule((state) => state.addEntry);
   const addCourseSections = useSchedule((state) => state.addCourseSections);
+  const importSections = useSchedule((state) => state.importSections);
   const stale = useSchedule((state) => state.stale);
   const setStale = useSchedule((state) => state.setStale);
   const [query, setQuery] = useState("");
@@ -412,10 +593,32 @@ export function SchedulePlannerPane() {
   const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
   const [activeDay, setActiveDay] = useState<DayCode>("Mon");
   const [detailCode, setDetailCode] = useState<string | null>(null);
+  const [importReview, setImportReview] = useState<PlannerImportReview | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
   const lastAutoRecord = useRef<CourseDoc | null>(null);
 
   const resolveSingle = useCallback((code: string) => api.getCourse(code), [api]);
   const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(query, { resolveSingle });
+
+  async function prepareImport(schedule: Schedule) {
+    setImportLoading(true);
+    try {
+      setImportReview(await resolvePlannerImport(schedule, api.getCourse));
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  function applyImport(selections: ScheduleImportSelection[], mode: ScheduleImportMode) {
+    importSections(selections, mode);
+    setDocs((current) => {
+      const next = new Map(current);
+      for (const { doc } of selections) next.set(normalizeScheduleCode(doc.code), doc);
+      return next;
+    });
+    setImportReview(null);
+    setMobileView("schedule");
+  }
 
   useEffect(() => {
     if (!record || lastAutoRecord.current === record) return;
@@ -585,6 +788,20 @@ export function SchedulePlannerPane() {
       </section>
 
       <section className="border-border-subtle border-t pt-4">
+        <h2 className="text-on-surface text-sm font-medium">Import from Workday</h2>
+        <p className="text-muted mt-1 mb-2 text-xs leading-relaxed">
+          Add your registered sections from a Workday Excel export.
+        </p>
+        {importLoading ? (
+          <div role="status" className="bg-surface-container-low text-muted rounded-xl px-3 py-4 text-sm">
+            Matching Workday sections to the catalog…
+          </div>
+        ) : (
+          <UploadDropzone onParsed={(schedule) => void prepareImport(schedule)} />
+        )}
+      </section>
+
+      <section className="border-border-subtle border-t pt-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-sm font-medium">Courses in this term</h2>
           {visibleEntries.length > 0 ? (
@@ -650,6 +867,10 @@ export function SchedulePlannerPane() {
           }}
         />
       </ScheduleWorkspace>
+
+      {importReview ? (
+        <PlannerImportDialog review={importReview} onApply={applyImport} onClose={() => setImportReview(null)} />
+      ) : null}
 
       {detailCode ? (
         <CourseDetailsDialog

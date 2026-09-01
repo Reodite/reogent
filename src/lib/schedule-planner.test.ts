@@ -64,6 +64,13 @@ describe("selectAutomaticSections", () => {
     ]);
   });
 
+  it("prefers scheduled sections over open TBA placeholders", () => {
+    const scheduled = section("102", ["Tue"], "09:00", "Closed");
+    const tba = { ...section("101", [], "09:00"), start_time: null, end_time: null, status: "Open" };
+
+    expect(selectAutomaticSections(course([tba, scheduled]), term, []).sections[0].section).toBe("102");
+  });
+
   it("prefers available sections within a conflict-free combination", () => {
     const doc = course([section("101", ["Mon"], "09:00", "Closed"), section("102", ["Tue"], "09:00", "Open")]);
 

@@ -13,6 +13,11 @@ function isAvailable(section: CourseSection): boolean {
   return !section.status || /open|active|available/i.test(section.status);
 }
 
+function hasMeeting(section: CourseSection): boolean {
+  const start = parseTime(section.start_time);
+  return normalizeDays(section.days).length > 0 && start >= 0 && parseTime(section.end_time) > start;
+}
+
 function asScheduled(doc: CourseDoc, section: CourseSection): ScheduledSection {
   return {
     code: doc.code,
@@ -48,7 +53,12 @@ function orderedGroups(sections: CourseSection[]): CourseSection[][] {
       );
     })
     .map(([, group]) =>
-      group.toSorted((a, b) => Number(isAvailable(b)) - Number(isAvailable(a)) || a.section.localeCompare(b.section)),
+      group.toSorted(
+        (a, b) =>
+          Number(hasMeeting(b)) - Number(hasMeeting(a)) ||
+          Number(isAvailable(b)) - Number(isAvailable(a)) ||
+          a.section.localeCompare(b.section),
+      ),
     );
 }
 

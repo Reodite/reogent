@@ -31,6 +31,15 @@ export interface SyncedSchedule {
   activeTerm: string;
 }
 
+/** How an approved Workday import applies to existing planner entries. */
+export type ScheduleImportMode = "merge" | "replace";
+
+/** One reconciled catalog section ready for an atomic planner import. */
+export interface ScheduleImportSelection {
+  doc: CourseDoc;
+  section: CourseSection;
+}
+
 interface ScheduleState {
   /** Account that owns the local snapshot cache. Null means an unclaimed guest schedule. */
   ownerId: string | null;
@@ -41,6 +50,7 @@ interface ScheduleState {
   removedComponents: string[];
   removedCourses: string[];
   activeTermDirty: boolean;
+  replacePending: boolean;
   entries: ScheduleEntry[];
   /** Term tab the grid shows. Defaults to the first term across entries. */
   activeTerm: string;
@@ -50,6 +60,7 @@ interface ScheduleState {
 
   addEntry: (doc: CourseDoc, section: CourseSection) => void;
   addCourseSections: (doc: CourseDoc, sections: CourseSection[]) => void;
+  importSections: (selections: ScheduleImportSelection[], mode: ScheduleImportMode) => void;
   removeEntry: (code: string, section: string, term: string) => void;
   removeCourse: (code: string, term: string) => void;
   setActiveTerm: (term: string) => void;
@@ -100,11 +111,28 @@ function applyEntries(entries: ScheduleEntry[]): ScheduleEntry[] {
   return [...seen.values()];
 }
 
+function scheduleEntry(doc: CourseDoc, section: CourseSection): ScheduleEntry {
+  return {
+    code: normalizeScheduleCode(doc.code),
+    section: section.section,
+    term: section.term ?? "",
+    snapshot: {
+      title: doc.title,
+      instructor: section.instructor ?? null,
+      days: normalizeDays(section.days),
+      start_time: section.start_time ?? null,
+      end_time: section.end_time ?? null,
+      status: section.status ?? null,
+    },
+  };
+}
+
 /** Ownerless version-1 caches cannot prove which account created them, so the
  *  version-2 migration discards their entries instead of risking cross-account
  *  adoption. */
 export function migrateScheduleState(persisted: unknown, version: number): unknown {
-  if (version >= 2) return persisted;
+  if (version >= 3) return persisted;
+  if (version === 2) return { ...(persisted as object), replacePending: false };
   return {
     ...(persisted as object),
     ownerId: null,
@@ -114,6 +142,7 @@ export function migrateScheduleState(persisted: unknown, version: number): unkno
     removedComponents: [],
     removedCourses: [],
     activeTermDirty: false,
+    replacePending: false,
     entries: [],
     activeTerm: "",
     stale: false,
@@ -130,6 +159,7 @@ export const useSchedule = create<ScheduleState>()(
       removedComponents: [],
       removedCourses: [],
       activeTermDirty: false,
+      replacePending: false,
       entries: [],
       activeTerm: "",
       stale: false,
@@ -154,22 +184,7 @@ export const useSchedule = create<ScheduleState>()(
             selectedComponents: unique([...s.selectedComponents, selectedKey]),
             removedComponents: s.removedComponents.filter((key) => key !== selectedKey),
             removedCourses: s.removedCourses.filter((key) => key !== courseKey),
-            entries: applyEntries([
-              ...withoutPreviousChoice,
-              {
-                code,
-                section: section.section,
-                term,
-                snapshot: {
-                  title: doc.title,
-                  instructor: section.instructor ?? null,
-                  days: normalizeDays(section.days),
-                  start_time: section.start_time ?? null,
-                  end_time: section.end_time ?? null,
-                  status: section.status ?? null,
-                },
-              },
-            ]),
+            entries: applyEntries([...withoutPreviousChoice, scheduleEntry(doc, section)]),
             // A newly added entry in a fresh term takes over the tab when the
             // current term has no visible entries — otherwise the user adds a
             // section and sees nothing happen.
@@ -189,19 +204,7 @@ export const useSchedule = create<ScheduleState>()(
               !terms.has(entry.term) ||
               !selectedGroups.has(sectionGroup(entry.section)),
           );
-          const additions = sections.map((section) => ({
-            code,
-            section: section.section,
-            term: section.term ?? "",
-            snapshot: {
-              title: doc.title,
-              instructor: section.instructor ?? null,
-              days: normalizeDays(section.days),
-              start_time: section.start_time ?? null,
-              end_time: section.end_time ?? null,
-              status: section.status ?? null,
-            },
-          }));
+          const additions = sections.map((section) => scheduleEntry(doc, section));
           const selectedKeys = additions.map((entry) => componentKey(entry.code, entry.term, entry.section));
           const courseKeys = new Set(additions.map((entry) => courseTermKey(entry.code, entry.term)));
           const nextTerm = additions[0].term;
@@ -216,6 +219,31 @@ export const useSchedule = create<ScheduleState>()(
             removedCourses: s.removedCourses.filter((key) => !courseKeys.has(key)),
             entries: applyEntries([...entries, ...additions]),
             activeTerm,
+          };
+        }),
+
+      importSections: (selections, mode) =>
+        set((s) => {
+          if (selections.length === 0) return s;
+          const additions = selections.map(({ doc, section }) => scheduleEntry(doc, section));
+          const selectedKeys = new Set(additions.map((entry) => componentKey(entry.code, entry.term, entry.section)));
+          const entries =
+            mode === "replace"
+              ? []
+              : s.entries.filter((entry) => !selectedKeys.has(componentKey(entry.code, entry.term, entry.section)));
+          const activeTerm = additions[0].term;
+          return {
+            dirty: true,
+            revision: s.revision + 1,
+            activeTermDirty: true,
+            replacePending: mode === "replace" || s.replacePending,
+            selectedComponents:
+              mode === "replace" ? [...selectedKeys] : unique([...s.selectedComponents, ...selectedKeys]),
+            removedComponents: mode === "replace" ? [] : s.removedComponents.filter((key) => !selectedKeys.has(key)),
+            removedCourses: [],
+            entries: applyEntries([...entries, ...additions]),
+            activeTerm,
+            stale: false,
           };
         }),
 
@@ -272,13 +300,14 @@ export const useSchedule = create<ScheduleState>()(
                 removedComponents: [],
                 removedCourses: [],
                 activeTermDirty: false,
+                replacePending: false,
               },
         ),
     }),
     {
       name: "reodite-schedule",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: migrateScheduleState,
     },
   ),
@@ -298,6 +327,7 @@ export function claimScheduleOwner(userId: string): void {
       removedComponents: [],
       removedCourses: [],
       activeTermDirty: false,
+      replacePending: false,
       entries: [],
       activeTerm: "",
       stale: false,
@@ -318,6 +348,7 @@ export function clearOwnedScheduleForGuest(): void {
     removedComponents: [],
     removedCourses: [],
     activeTermDirty: false,
+    replacePending: false,
     entries: [],
     activeTerm: "",
     stale: false,

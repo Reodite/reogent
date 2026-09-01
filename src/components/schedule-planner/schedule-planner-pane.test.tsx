@@ -99,6 +99,7 @@ const scheduleMock = vi.hoisted(() => ({
     stale: false,
     addEntry: vi.fn(),
     addCourseSections: vi.fn(),
+    importSections: vi.fn(),
     removeEntry: vi.fn(),
     removeCourse: vi.fn(),
     setActiveTerm: vi.fn(),

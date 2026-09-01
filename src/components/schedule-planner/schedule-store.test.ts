@@ -60,6 +60,7 @@ beforeEach(() => {
     removedComponents: [],
     removedCourses: [],
     activeTermDirty: false,
+    replacePending: false,
     entries: [],
     activeTerm: "",
     stale: false,
@@ -89,6 +90,24 @@ describe("schedule store", () => {
 
     expect(store.useSchedule.getState().entries.map((entry) => entry.section)).toEqual(["101", "L1A"]);
     expect(store.useSchedule.getState().revision).toBe(1);
+  });
+
+  it("merges or replaces a reconciled Workday import atomically", () => {
+    const math = { ...doc, code: "MATH 100", title: "Differential Calculus" };
+    store.useSchedule.getState().addEntry(math, section("201", "11:00"));
+
+    store.useSchedule.getState().importSections([{ doc, section: section("102", "13:00") }], "merge");
+    expect(
+      store.useSchedule
+        .getState()
+        .entries.map((entry) => entry.code)
+        .sort(),
+    ).toEqual(["CPSC 110", "MATH 100"]);
+    expect(store.useSchedule.getState().replacePending).toBe(false);
+
+    store.useSchedule.getState().importSections([{ doc, section: section("103", "15:00") }], "replace");
+    expect(store.useSchedule.getState().entries.map((entry) => entry.section)).toEqual(["103"]);
+    expect(store.useSchedule.getState()).toMatchObject({ replacePending: true, revision: 3 });
   });
 
   it("keeps distinct unknown component prefixes", () => {
@@ -163,7 +182,13 @@ describe("schedule store", () => {
       { entries: [{ code: "CPSC 110", section: "101", term }], activeTerm: term },
       1,
     );
-    expect(migrated).toMatchObject({ ownerId: null, entries: [], activeTerm: "", dirty: false });
+    expect(migrated).toMatchObject({
+      ownerId: null,
+      entries: [],
+      activeTerm: "",
+      dirty: false,
+      replacePending: false,
+    });
   });
 
   it("does not expose or adopt another account's local cache", () => {
