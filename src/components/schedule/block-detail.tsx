@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/src/components/ui/button";
 import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
@@ -123,14 +124,9 @@ export function BlockDetail({ block, onClose }: Props) {
         </dl>
 
         <div className="mt-5 flex justify-end">
-          <button
-            type="button"
-            data-dialog-initial-focus
-            onClick={onClose}
-            className="neu-button bg-surface text-on-surface min-h-10 rounded-xl px-4 text-sm font-medium"
-          >
+          <Button data-dialog-initial-focus size="prominent" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

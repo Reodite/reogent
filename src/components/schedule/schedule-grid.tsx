@@ -5,6 +5,7 @@ import {
   DragOverlayFrame,
   useDragOverlayPhysics,
 } from "@/src/components/dnd/drag-overlay-physics";
+import { Button } from "@/src/components/ui/button";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import {
   buildScheduleGrid,
@@ -465,13 +466,9 @@ export function ScheduleGrid({
                 <h3 className="text-on-surface text-base font-medium">{empty.title}</h3>
                 <p className="text-muted mt-1 text-sm leading-relaxed">{empty.description}</p>
                 {empty.actionLabel && empty.onAction ? (
-                  <button
-                    type="button"
-                    onClick={empty.onAction}
-                    className="neu-primary-button bg-primary text-on-primary mt-4 min-h-10 rounded-xl px-4 text-sm font-medium"
-                  >
+                  <Button variant="primary" size="prominent" onClick={empty.onAction} className="mt-4">
                     {empty.actionLabel}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </div>

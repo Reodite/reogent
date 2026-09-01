@@ -9,6 +9,7 @@ import { TermSwitcher } from "@/src/components/schedule/term-switcher";
 import { ToastProvider } from "@/src/components/schedule/toast";
 import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
 import { useDialogFocus } from "@/src/components/schedule/use-dialog-focus";
+import { Button } from "@/src/components/ui/button";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { normalizeDays, sectionGroup } from "@/src/lib/schedule";
 import { selectAutomaticSections } from "@/src/lib/schedule-planner";
@@ -113,15 +114,15 @@ function PlannerImportDialog({
               sections.
             </p>
           </div>
-          <button
-            type="button"
+          <Button
             data-dialog-initial-focus
             onClick={onClose}
             aria-label="Close Workday import review"
-            className="neu-button text-on-surface-variant grid size-10 shrink-0 place-items-center rounded-xl"
+            variant="ghost"
+            size="icon"
           >
             <Icon name="close" className="size-4" />
-          </button>
+          </Button>
         </header>
 
         <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
@@ -192,25 +193,24 @@ function PlannerImportDialog({
             </p>
           ) : null}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onClose} className="neu-button min-h-10 rounded-xl px-4 text-sm">
+            <Button size="prominent" onClick={onClose}>
               Cancel
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="prominent"
               disabled={selections.length === 0 || unresolved.length > 0}
               onClick={() => onApply(selections, "replace")}
-              className="neu-button text-on-surface min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
             >
               Replace planner
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
+              size="prominent"
               disabled={selections.length === 0 || unresolved.length > 0}
               onClick={() => onApply(selections, "merge")}
-              className="neu-primary-button bg-primary text-on-primary min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
             >
               Merge with planner
-            </button>
+            </Button>
           </div>
         </footer>
       </div>

@@ -14,6 +14,7 @@ const SIZE_CLASSES = {
   compact: "h-11 rounded-lg px-3 text-xs sm:h-8",
   default: "h-11 rounded-xl px-4 text-sm sm:h-9",
   prominent: "h-11 rounded-xl px-4 text-sm sm:h-10",
+  field: "h-11 rounded-xl px-4 text-sm",
   large: "h-12 rounded-xl px-8 text-base",
   icon: "size-11 rounded-xl p-0 sm:size-9",
 } as const;

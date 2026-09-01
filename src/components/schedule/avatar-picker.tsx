@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/src/components/ui/button";
 import { AVATAR_COLORS, AVATAR_EMOJI, downscaleImage, initialsFor } from "@/src/lib/schedule/avatar";
 import type { Avatar } from "@/src/lib/schedule/types";
 import { useRef, useState } from "react";
@@ -59,13 +60,9 @@ export function AvatarPicker({ handle, avatar, onChange }: Props) {
 
       {tab === "photo" && (
         <>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="neu-button bg-surface text-on-surface min-h-10 rounded-xl px-4 text-sm font-medium"
-          >
+          <Button size="prominent" onClick={() => fileRef.current?.click()}>
             {avatar.imageDataUrl ? "Replace photo" : "Upload photo"}
-          </button>
+          </Button>
           <input
             ref={fileRef}
             type="file"

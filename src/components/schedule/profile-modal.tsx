@@ -1,6 +1,8 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { TextInput } from "@/src/components/ui/form-controls";
 import { colorFor, initialsFor } from "@/src/lib/schedule/avatar";
 import type { Avatar, Schedule } from "@/src/lib/schedule/types";
 import { useEffect, useState } from "react";
@@ -104,16 +106,16 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
           </div>
         </div>
 
-        <label className="mt-4 flex flex-col gap-1">
+        <label htmlFor="schedule-profile-handle" className="mt-4 flex flex-col gap-1">
           <span className="text-muted text-xs font-medium">Handle</span>
-          <input
+          <TextInput
+            id="schedule-profile-handle"
             type="text"
             data-dialog-initial-focus
             value={handle}
             disabled={saving}
             maxLength={24}
             placeholder="e.g. max"
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 text-sm outline-none focus-visible:ring-2 disabled:opacity-55"
             onChange={(event) => {
               setHandle(event.target.value);
               setError("");
@@ -135,21 +137,12 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            disabled={saving}
-            onClick={onCancel}
-            className="neu-button text-on-surface-variant min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
-          >
+          <Button size="prominent" disabled={saving} onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="neu-primary-button bg-primary text-on-primary min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
-          >
+          </Button>
+          <Button type="submit" variant="primary" size="prominent" disabled={saving}>
             {saving ? "Saving…" : saveLabel}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

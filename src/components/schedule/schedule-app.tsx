@@ -2,6 +2,8 @@
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import { buildCalendar, expandBlocks } from "@/src/lib/schedule/calendar/buildCalendar";
 import {
@@ -344,15 +346,15 @@ function ScheduleAppInner({ groupCode }: Props) {
 
   const actions =
     groupView.status === "ready" ? (
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        size="prominent"
         aria-label={`Copy share link ${groupView.code}`}
         onClick={copyShareLink}
-        className="neu-primary-button bg-primary text-on-primary flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
       >
         <Icon name="externalLink" size={16} />
         Share <span className="text-xs opacity-80">{groupView.code}</span>
-      </button>
+      </Button>
     ) : undefined;
 
   const groupSelector =
@@ -361,11 +363,11 @@ function ScheduleAppInner({ groupCode }: Props) {
         <label id="schedule-groups-heading" htmlFor="schedule-group" className="text-on-surface text-sm font-medium">
           Group
         </label>
-        <select
+        <SelectInput
           id="schedule-group"
           value={activeCode ?? ""}
           onChange={(event) => switchGroup(event.target.value)}
-          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 mt-2 min-h-11 w-full rounded-lg px-3 text-sm outline-none focus-visible:ring-2"
+          className="mt-2"
         >
           {activeCode && !groups.some((item) => item.code === activeCode) ? (
             <option value={activeCode}>{groupLabel}</option>
@@ -375,7 +377,7 @@ function ScheduleAppInner({ groupCode }: Props) {
               {item.name} · {item.memberCount}
             </option>
           ))}
-        </select>
+        </SelectInput>
       </section>
     ) : null;
 
@@ -400,14 +402,10 @@ function ScheduleAppInner({ groupCode }: Props) {
             aria-label="Group management"
             className="border-border-subtle flex gap-2 border-t py-4"
           >
-            <button
-              type="button"
-              onClick={() => setShowCreate(true)}
-              className="neu-button text-on-surface flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-medium"
-            >
+            <Button size="prominent" onClick={() => setShowCreate(true)} className="flex-1">
               <Icon name="add" size={16} />
               New group
-            </button>
+            </Button>
             <button
               type="button"
               onClick={leaveActiveGroup}
@@ -642,13 +640,9 @@ function NoGroupControls({
       {!me ? (
         <UploadDropzone onParsed={onUpload} />
       ) : (
-        <button
-          type="button"
-          onClick={onCreate}
-          className="neu-primary-button bg-primary text-on-primary min-h-11 w-full rounded-xl px-4 text-sm font-medium"
-        >
+        <Button variant="primary" size="field" onClick={onCreate} className="w-full">
           Create a shared schedule
-        </button>
+        </Button>
       )}
 
       <form
@@ -662,22 +656,18 @@ function NoGroupControls({
           Join with a code
         </label>
         <div className="flex gap-2">
-          <input
+          <TextInput
             id="schedule-code"
             value={code}
             maxLength={6}
             placeholder="ABC123"
             aria-describedby="schedule-code-help"
             onChange={(event) => setCode(event.target.value.replace(/[^0-9A-Za-z]/g, ""))}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 min-w-0 flex-1 rounded-lg px-3 text-center text-sm uppercase outline-none focus-visible:ring-2"
+            className="min-w-0 flex-1 text-center uppercase"
           />
-          <button
-            type="submit"
-            disabled={!/^[0-9A-Za-z]{6}$/.test(code)}
-            className="neu-button text-on-surface min-h-11 rounded-xl px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-45"
-          >
+          <Button type="submit" size="field" disabled={!/^[0-9A-Za-z]{6}$/.test(code)}>
             Join
-          </button>
+          </Button>
         </div>
         <p id="schedule-code-help" className="text-muted text-xs">
           Enter the six-character code from a shared link.
@@ -812,34 +802,25 @@ export function CreateGroupModal({
       >
         <h2 className="text-on-surface text-base font-medium">Create a shared schedule</h2>
         <p className="text-on-surface-variant mt-1 text-sm">Name it for the group chat, club, or study crew.</p>
-        <label className="mt-4 flex flex-col gap-1">
+        <label htmlFor="schedule-group-name" className="mt-4 flex flex-col gap-1">
           <span className="text-muted text-xs font-medium">Group name</span>
-          <input
+          <TextInput
+            id="schedule-group-name"
             data-dialog-initial-focus
             value={name}
             disabled={creating}
             maxLength={80}
             placeholder="CPSC study crew"
             onChange={(event) => setName(event.target.value)}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 text-sm outline-none focus-visible:ring-2"
           />
         </label>
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            disabled={creating}
-            onClick={onClose}
-            className="neu-button text-on-surface-variant min-h-10 rounded-xl px-4 text-sm disabled:opacity-45"
-          >
+          <Button size="prominent" disabled={creating} onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!name.trim() || creating}
-            className="neu-primary-button bg-primary text-on-primary min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
-          >
+          </Button>
+          <Button type="submit" variant="primary" size="prominent" disabled={!name.trim() || creating}>
             {creating ? "Creating…" : "Create group"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

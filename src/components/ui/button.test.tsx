@@ -62,6 +62,7 @@ describe("Button", () => {
     ["compact", "sm:h-8"],
     ["default", "sm:h-9"],
     ["prominent", "sm:h-10"],
+    ["field", "h-11"],
     ["large", "h-12"],
     ["icon", "sm:size-9"],
   ] as const)("maps the %s size to documented geometry", (size, expectedClass) => {
