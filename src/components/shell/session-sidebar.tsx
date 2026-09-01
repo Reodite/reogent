@@ -211,10 +211,10 @@ function SessionItem({
         onClick={onOpen}
         aria-current={active ? "page" : undefined}
         title={session.title}
-        className={`focus-visible:ring-primary/40 flex h-11 w-full items-center gap-2 overflow-hidden rounded-lg border-l-2 px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
+        className={`focus-visible:ring-primary/40 flex h-11 w-full items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
           active
-            ? "neu-inset bg-surface-container text-on-surface border-transparent"
-            : "text-on-surface-variant group-hover:bg-surface-container-high group-hover:text-on-surface border-transparent"
+            ? "neu-inset bg-surface-container text-on-surface"
+            : "text-on-surface-variant group-hover:bg-surface-container-high group-hover:text-on-surface"
         }`}
       >
         <Icon name="chat1" size={16} className="shrink-0" />
