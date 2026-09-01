@@ -111,7 +111,7 @@ describe("Property 27 — days with k > 3 events indicate the overflow count (RE
 });
 
 describe("Property 28 — today's cell receives the 'today' style independent of event markers (REQ-17.4)", () => {
-  it("a today cell with no events still carries data-calendar-today + the filled primary date circle", async () => {
+  it("a today cell and neighboring dates use their readable state tokens", async () => {
     const { container, restore } = renderPane({ cursor: "2024-04" });
     await waitFor(() => expect(container.querySelector('[data-calendar-today="2024-04-15"]')).not.toBeNull());
     const todayCell = container.querySelector('[data-calendar-today="2024-04-15"]') as HTMLElement;
@@ -119,14 +119,6 @@ describe("Property 28 — today's cell receives the 'today' style independent of
     expect(numSpan?.className).toContain("bg-primary");
     expect(numSpan?.className).toContain("rounded-full");
     expect(todayCell.querySelectorAll("[data-calendar-marker]")).toHaveLength(0);
-    restore();
-  });
-});
-
-describe("calendar date contrast", () => {
-  it("uses readable tokens for current and adjacent month dates", async () => {
-    const { container, restore } = renderPane({ cursor: "2024-04" });
-    await waitFor(() => expect(container.querySelector('[data-calendar-day="2024-04-01"]')).not.toBeNull());
 
     const current = container.querySelector('[data-calendar-day="2024-04-01"] > span');
     const adjacent = container.querySelector('[data-calendar-day="2024-03-31"] > span');
