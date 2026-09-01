@@ -5,6 +5,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ScheduleGrid, type ScheduleGridDragConfig } from "@/src/components/schedule/schedule-grid";
 import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/schedule/schedule-workspace";
+import { TermSwitcher } from "@/src/components/schedule/term-switcher";
 import { ToastProvider } from "@/src/components/schedule/toast";
 import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
 import { useDialogFocus } from "@/src/components/schedule/use-dialog-focus";
@@ -539,28 +540,15 @@ function SchedulePlannerPaneInner() {
 
   const termToolbar = (
     <div className="flex min-w-max items-center justify-between gap-4">
-      <div role="tablist" aria-label="Academic term" className="flex gap-1">
-        {allTerms.length === 0 ? (
-          <span className="text-muted px-2 py-1.5 text-xs">Terms appear after you add a course.</span>
-        ) : (
-          allTerms.map((term) => (
-            <button
-              key={term}
-              type="button"
-              role="tab"
-              aria-selected={term === activeTerm}
-              onClick={() => setActiveTerm(term)}
-              className={`focus-visible:ring-primary/40 shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 ${
-                term === activeTerm
-                  ? "neu-inset bg-surface-container text-on-surface"
-                  : "text-on-surface-variant hover:bg-surface-container-low"
-              }`}
-            >
-              {termLabel(term)}
-            </button>
-          ))
-        )}
-      </div>
+      {allTerms.length === 0 ? (
+        <span className="text-muted px-2 py-1.5 text-xs">Terms appear after you add a course.</span>
+      ) : (
+        <TermSwitcher
+          terms={allTerms.map((term) => ({ key: term, label: termLabel(term) }))}
+          selected={activeTerm}
+          onSelect={setActiveTerm}
+        />
+      )}
       {visibleEntries.length > 0 ? (
         <div className="text-muted flex shrink-0 items-center gap-2 text-xs">
           <span>{pickedCodes.size} courses</span>

@@ -84,7 +84,7 @@ export function ScheduleWorkspace({
           <header data-schedule-header className="grid shrink-0 grid-cols-[18rem_minmax(0,1fr)] items-start gap-6">
             <div data-schedule-header-context className="min-w-0">
               <h1 className="text-on-surface text-xl leading-tight font-medium tracking-[-0.02em]">{title}</h1>
-              <p className="text-muted mt-1 text-sm leading-relaxed">{description}</p>
+              <p className="text-muted text-body-sm mt-1 leading-5">{description}</p>
             </div>
             {headerCanvas}
           </header>
