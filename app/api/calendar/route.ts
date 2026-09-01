@@ -55,10 +55,24 @@ export function projectCalendarEvents(docs: KeyDateDoc[], from?: string | null, 
 /** Project campus EventDoc rows into one `kind: "event"` entry per day the
  * event runs (Vancouver-local "yyyy-MM-dd HH:mm:ss" start/end), clipped to
  * [from, to] and capped at MAX_EVENT_DAYS. Rows without a start_date are
- * dropped; an end before the start counts as a single day. */
+ * dropped; an end before the start counts as a single day. Duplicate source
+ * rows with the same title, timing, location, and categories are emitted once. */
 export function projectCampusEvents(docs: EventDoc[], from?: string | null, to?: string | null): CalendarEvent[] {
   const events: CalendarEvent[] = [];
+  const seen = new Set<string>();
   for (const doc of docs) {
+    const identity = JSON.stringify([
+      doc.title,
+      doc.start_date,
+      doc.end_date,
+      doc.all_day,
+      doc.venue,
+      doc.venue_address,
+      [...doc.categories].sort(),
+    ]);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+
     const start = doc.start_date?.slice(0, 10);
     if (!start) continue;
     const endRaw = doc.end_date?.slice(0, 10);

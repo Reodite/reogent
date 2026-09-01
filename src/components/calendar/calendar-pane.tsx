@@ -249,7 +249,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                       <div className="flex flex-col gap-1">
                         {dayEvents.map((event) => (
                           <button
-                            key={`${event.date}-${event.label}`}
+                            key={`${event.date}-${event.label}-${event.source_url ?? "local"}`}
                             type="button"
                             data-upcoming-event
                             data-upcoming-date={event.date}
@@ -477,7 +477,7 @@ function MonthGrid({
                   <div className="calendar-event-labels flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
                     {dayEvents.slice(0, 3).map((event) => (
                       <button
-                        key={`${iso}-${event.label}`}
+                        key={`${iso}-${event.label}-${event.source_url ?? "local"}`}
                         type="button"
                         data-calendar-marker={event.kind}
                         onClick={() => onEventClick(event)}
@@ -502,7 +502,7 @@ function MonthGrid({
                     <span aria-hidden="true" className="flex items-center gap-1">
                       {dayEvents.slice(0, 3).map((event) => (
                         <span
-                          key={`${event.kind}-${event.label}`}
+                          key={`${event.kind}-${event.label}-${event.source_url ?? "local"}`}
                           className={`size-1.5 rounded-full ${styleOf(event).bar}`}
                         />
                       ))}
@@ -548,7 +548,7 @@ function DayAgendaDialog({
         <div className="flex min-h-0 flex-col gap-1 overflow-y-auto">
           {events.map((event) => (
             <Button
-              key={`${event.date}-${event.kind}-${event.label}`}
+              key={`${event.date}-${event.kind}-${event.label}-${event.source_url ?? "local"}`}
               variant="ghost"
               size="field"
               wrap

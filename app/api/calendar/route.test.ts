@@ -118,6 +118,14 @@ describe("projectCampusEvents — campus events as per-day event-kind entries", 
     expect(projectCampusEvents([{ ...base, end_date: "2026-09-01 00:00:00" }])).toHaveLength(1);
     expect(projectCampusEvents([{ ...base, start_date: null }])).toEqual([]);
   });
+
+  it("emits semantically duplicate source records once", () => {
+    const duplicate = { ...base, id: "2", url: "https://events.ubc.ca/event/talk-2" };
+
+    expect(projectCampusEvents([base, duplicate])).toEqual([
+      { kind: "event", date: "2026-09-03", label: "Talk", source_url: base.url, tags: ["Lectures & Talks"] },
+    ]);
+  });
 });
 
 describe("GET /api/calendar route — projected CalendarEvent[] shape and caching (REQ-16.1)", () => {
