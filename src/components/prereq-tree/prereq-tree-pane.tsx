@@ -6,6 +6,7 @@ import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
+import { TextInput } from "@/src/components/ui/form-controls";
 import { announce } from "@/src/components/ui/live-region";
 import { isOkanagan } from "@/src/shared/course-code";
 import {
@@ -682,7 +683,7 @@ export function PrereqTreePane({
           name="search"
           className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
         />
-        <input
+        <TextInput
           type="text"
           value={query}
           onChange={(e) => {
@@ -700,7 +701,8 @@ export function PrereqTreePane({
           aria-label="Root course code"
           aria-invalid={rejected ? "true" : undefined}
           aria-errormessage={rejected ? "code-error" : undefined}
-          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-9 w-full rounded-lg pr-3 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+          controlSize="compact"
+          adornment="start"
         />
         {suggestVisible && (
           <div

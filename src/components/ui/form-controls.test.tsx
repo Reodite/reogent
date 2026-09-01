@@ -30,14 +30,17 @@ describe("TextInput", () => {
     expect(input.className).toContain("max-w-80");
   });
 
-  it("supports compact geometry and another parent material", () => {
+  it("supports compact geometry, adornments, and another parent material", () => {
     const { getByRole } = render(
-      <TextInput aria-label="Search" controlSize="compact" shadowOn="surface-container-low" />,
+      <TextInput aria-label="Search" controlSize="compact" adornment="both" shadowOn="surface-container-low" />,
     );
     const input = getByRole("textbox", { name: "Search" });
 
     expect(input.className).toContain("h-11");
     expect(input.className).toContain("sm:h-9");
+    expect(input.className).toContain("pr-9");
+    expect(input.className).toContain("pl-9");
+    expect(input.className).not.toContain("px-2.5");
     expect(input.className).toContain("neu-shadow-on-surface-container-low");
   });
 });

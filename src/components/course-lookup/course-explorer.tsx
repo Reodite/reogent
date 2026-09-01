@@ -136,13 +136,13 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
             name="search"
             className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
           />
-          <input
+          <TextInput
             type="text"
             value={queryInput}
             onChange={(e) => setQueryInput(e.target.value)}
             placeholder="Search code, subject, or name"
             aria-label="Search courses"
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-11 w-full rounded-lg pr-3 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1"
+            adornment="start"
           />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">

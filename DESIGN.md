@@ -422,7 +422,7 @@ State changes through shadow transformation + press scale. Buttons never transla
 
 ### Inputs / Fields
 
-Use `TextInput` and `SelectInput` from `src/components/ui/form-controls.tsx` for ordinary native fields. They share inset material, 8px radius, focus, invalid, disabled, and parent-material shadow treatment. Search fields with embedded actions and compound upload controls keep their feature-specific structure.
+Use `TextInput` and `SelectInput` from `src/components/ui/form-controls.tsx` for native fields. They share inset material, 8px radius, focus, invalid, disabled, and parent-material shadow treatment. Feature-specific search wrappers keep their icons, popovers, and clear actions while `TextInput` reserves start or end adornment space. Compound upload controls keep their own structure.
 
 - **Chat composer** (`.neu-inset .chat-composer`): `bg-surface-container-low rounded-2xl p-1.5`. Recessed at rest via `--neu-inset-shadow`. Focus-within: inset shadow + 2px outline ring glow (primary at 28% opacity, -2px offset). Internal: textarea (transparent bg, `px-3 py-2 text-sm`, no outline) + send button (`.neu-primary-button rounded-xl size-11 sm:size-9`, right-aligned).
 - **Auth input** (`.neu-inset`): `bg-surface-container-low text-on-surface h-11 rounded-lg px-3 text-sm`. Focus: `ring-primary/40 ring-2 ring-offset-1`. Error: `ring-error/30 ring-2`.

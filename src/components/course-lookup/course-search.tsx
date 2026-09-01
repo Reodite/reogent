@@ -2,6 +2,7 @@
 
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { TextInput } from "@/src/components/ui/form-controls";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
 import { canonicalize, isOkanagan } from "@/src/shared/course-code";
@@ -349,7 +350,7 @@ export function CourseSearchField({
         name="search"
         className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
       />
-      <input
+      <TextInput
         ref={(node) => {
           inputRef.current = node;
           if (externalInputRef) externalInputRef.current = node;
@@ -370,7 +371,7 @@ export function CourseSearchField({
         aria-expanded={showOverlay}
         aria-controls={listboxId}
         aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg pr-9 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+        adornment="both"
       />
       {trimmed && (
         <button
@@ -486,7 +487,7 @@ export function CourseSearchField({
           name="search"
           className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
         />
-        <input
+        <TextInput
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -494,7 +495,7 @@ export function CourseSearchField({
           aria-label={ariaLabel}
           aria-invalid={rejected ? "true" : undefined}
           aria-errormessage={rejected ? "code-error" : undefined}
-          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg pr-9 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+          adornment="both"
         />
         {trimmed && (
           <button
