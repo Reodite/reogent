@@ -1,34 +1,23 @@
 "use client";
 
-import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
+import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-lookup/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
-import {
-  ScheduleGrid,
-  type ScheduleGridDragConfig,
-  type ScheduleGridDragOption,
-} from "@/src/components/schedule/schedule-grid";
+import { ScheduleGrid, type ScheduleGridDragConfig } from "@/src/components/schedule/schedule-grid";
 import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/schedule/schedule-workspace";
 import { ToastProvider } from "@/src/components/schedule/toast";
 import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
 import { useDialogFocus } from "@/src/components/schedule/use-dialog-focus";
-import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
-import {
-  conflictedIndices,
-  normalizeDays,
-  parseTime,
-  sectionComponent,
-  sectionGroup,
-  type ScheduledSection,
-  type SectionComponent,
-} from "@/src/lib/schedule";
+import type { CourseDoc } from "@/src/lib/api-types";
+import { normalizeDays, parseTime, sectionGroup, type ScheduledSection } from "@/src/lib/schedule";
 import { selectAutomaticSections } from "@/src/lib/schedule-planner";
 import { resolvePlannerImport, type PlannerImportReview } from "@/src/lib/schedule-planner-import";
-import { courseColor } from "@/src/lib/schedule/calendar/colors";
-import { buildScheduleGrid, type ScheduleGridItem } from "@/src/lib/schedule/grid";
-import { DAY_ORDER, type DayCode, type Schedule } from "@/src/lib/schedule/types";
+import { buildScheduleGrid } from "@/src/lib/schedule/grid";
+import type { DayCode, Schedule } from "@/src/lib/schedule/types";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PlannerCourseModule, type PlannerCourseFocusRequest } from "./planner-course-module";
+import { plannerConflictLabels, plannerDragOptions, plannerGridItems } from "./planner-grid-adapter";
 import {
   entryId,
   normalizeScheduleCode,
@@ -38,16 +27,6 @@ import {
   type ScheduleImportSelection,
 } from "./schedule-store";
 import { useScheduleSync } from "./use-schedule-sync";
-
-const COMPONENT_ORDER: SectionComponent[] = ["lecture", "laboratory", "tutorial", "discussion", "other"];
-const COMPONENT_LABELS: Record<SectionComponent, string> = {
-  lecture: "Lecture",
-  laboratory: "Laboratory",
-  tutorial: "Tutorial",
-  discussion: "Discussion",
-  other: "Other",
-};
-const DAY_CODES = new Set<string>(DAY_ORDER);
 
 function termLabel(term: string): string {
   const winter = term.match(/^(\d{4}-\d{2}) Winter Term ([12])$/);
@@ -63,32 +42,7 @@ function sortTerms(terms: Iterable<string>): string[] {
   });
 }
 
-function groupSections(sections: CourseSection[]): Map<string, CourseSection[]> {
-  const groups = new Map<string, CourseSection[]>();
-  for (const section of sections) {
-    const kind = sectionGroup(section.section);
-    const group = groups.get(kind) ?? [];
-    group.push(section);
-    groups.set(kind, group);
-  }
-  for (const group of groups.values()) group.sort((a, b) => a.section.localeCompare(b.section));
-  return groups;
-}
-
-function orderedSectionGroups(groups: Map<string, CourseSection[]>): string[] {
-  return [...groups.keys()].sort((a, b) => {
-    const aIndex = COMPONENT_ORDER.indexOf(a.startsWith("other:") ? "other" : (a as SectionComponent));
-    const bIndex = COMPONENT_ORDER.indexOf(b.startsWith("other:") ? "other" : (b as SectionComponent));
-    return aIndex - bIndex || a.localeCompare(b);
-  });
-}
-
-function sectionGroupLabel(group: string): string {
-  if (group.startsWith("other:")) return `Other · ${group.slice(6)}`;
-  return COMPONENT_LABELS[group as SectionComponent];
-}
-
-function sectionOption(section: CourseSection): string {
+function importSectionOption(section: CourseDoc["sections"][number]): string {
   const days = normalizeDays(section.days);
   const when =
     section.start_time && section.end_time
@@ -110,301 +64,6 @@ function toScheduled(entries: ScheduleEntry[]): ScheduledSection[] {
     endMinutes: parseTime(entry.snapshot.end_time),
     instructor: entry.snapshot.instructor ?? undefined,
   }));
-}
-
-/** Maps planner snapshots into the route-independent items consumed by the shared week grid. */
-export function plannerGridItems(entries: ScheduleEntry[]): ScheduleGridItem[] {
-  const scheduled = toScheduled(entries);
-  const conflicts = conflictedIndices(scheduled);
-  return entries.map((entry, index) => ({
-    id: entryId(entry),
-    courseKey: normalizeScheduleCode(entry.code),
-    code: normalizeScheduleCode(entry.code),
-    title: entry.snapshot.title,
-    section: entry.section,
-    component: sectionComponent(entry.section),
-    days: normalizeDays(entry.snapshot.days).filter((day): day is DayCode => DAY_CODES.has(day)),
-    startMin: parseTime(entry.snapshot.start_time),
-    endMin: parseTime(entry.snapshot.end_time),
-    meta: entry.snapshot.instructor ?? undefined,
-    conflict: conflicts.has(index),
-  }));
-}
-
-/** Builds alternate section slots for one selected planner component. */
-export function plannerDragOptions(
-  entries: ScheduleEntry[],
-  docs: Map<string, CourseDoc>,
-  blockId: string,
-): ScheduleGridDragOption[] {
-  const currentIndex = entries.findIndex((entry) => entryId(entry) === blockId);
-  const current = entries[currentIndex];
-  if (!current) return [];
-  const code = normalizeScheduleCode(current.code);
-  const doc = docs.get(code);
-  if (!doc) return [];
-  const group = sectionGroup(current.section);
-
-  return doc.sections.flatMap((section) => {
-    if (
-      section.term !== current.term ||
-      section.section === current.section ||
-      sectionGroup(section.section) !== group
-    ) {
-      return [];
-    }
-    const days = normalizeDays(section.days).filter((day): day is DayCode => DAY_CODES.has(day));
-    const startMin = parseTime(section.start_time);
-    const endMin = parseTime(section.end_time);
-    if (days.length === 0 || startMin < 0 || endMin <= startMin) return [];
-    const candidate: ScheduleEntry = {
-      code,
-      section: section.section,
-      term: current.term,
-      snapshot: {
-        title: doc.title,
-        instructor: section.instructor ?? null,
-        days,
-        start_time: section.start_time,
-        end_time: section.end_time,
-        status: section.status ?? null,
-      },
-    };
-    const resulting = entries.with(currentIndex, candidate);
-    const conflict = conflictedIndices(toScheduled(resulting)).has(currentIndex);
-    const id = entryId(candidate);
-    return [
-      {
-        id,
-        label: `${sectionOption(section)}${conflict ? " · creates a conflict" : ""}`,
-        item: {
-          id,
-          courseKey: code,
-          code,
-          title: doc.title,
-          section: section.section,
-          component: sectionComponent(section.section),
-          days,
-          startMin,
-          endMin,
-          meta: section.status,
-          conflict,
-        },
-      },
-    ];
-  });
-}
-
-function CourseDetailsDialog({
-  code,
-  doc,
-  term,
-  entries,
-  conflictingIds,
-  onClose,
-}: {
-  code: string;
-  doc?: CourseDoc;
-  term: string;
-  entries: ScheduleEntry[];
-  conflictingIds: Set<string>;
-  onClose: () => void;
-}) {
-  const addEntry = useSchedule((state) => state.addEntry);
-  const removeEntry = useSchedule((state) => state.removeEntry);
-  const removeCourse = useSchedule((state) => state.removeCourse);
-  const dialogRef = useDialogFocus<HTMLDivElement>();
-  const selected = entries.filter((entry) => normalizeScheduleCode(entry.code) === code && entry.term === term);
-  const sections = doc?.sections.filter((section) => section.term === term) ?? [];
-  const groups = groupSections(sections);
-  const title = doc?.title ?? selected[0]?.snapshot.title ?? "Course details";
-  const courseHasConflict = selected.some((entry) => conflictingIds.has(entryId(entry)));
-
-  useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
-      <button
-        type="button"
-        aria-label="Dismiss course details"
-        tabIndex={-1}
-        onClick={onClose}
-        className="bg-on-surface/20 absolute inset-0 cursor-default"
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="schedule-course-dialog-title"
-        className="neu-panel bg-surface relative flex max-h-[min(44rem,calc(100dvh-1.5rem))] w-full max-w-lg flex-col overflow-hidden rounded-2xl"
-      >
-        <header className="border-border-subtle flex shrink-0 items-start gap-3 border-b p-4 sm:p-5">
-          <span className="mt-1 size-3 shrink-0 rounded-full" style={{ backgroundColor: courseColor(code) }} />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 id="schedule-course-dialog-title" className="font-mono text-base font-medium">
-                {code}
-              </h2>
-              {courseHasConflict ? (
-                <span className="bg-error-container/70 text-on-error-container inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs">
-                  <Icon name="alert" className="size-3.5" /> Conflict
-                </span>
-              ) : null}
-            </div>
-            <p className="text-on-surface-variant mt-1 text-sm leading-relaxed">{title}</p>
-          </div>
-          <button
-            type="button"
-            data-dialog-initial-focus
-            onClick={onClose}
-            aria-label="Close course details"
-            className="neu-button text-on-surface-variant grid size-10 shrink-0 place-items-center rounded-xl"
-          >
-            <Icon name="close" className="size-4" />
-          </button>
-        </header>
-
-        <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
-          {sections.length > 0 ? (
-            <div className="flex flex-col gap-4">
-              <p className="text-muted text-sm leading-relaxed">
-                Choose one section for each course component. Changes save to this term when you make them.
-              </p>
-              {orderedSectionGroups(groups).map((kind) => {
-                const options = groups.get(kind);
-                if (!options?.length) return null;
-                const current = selected.find((entry) => sectionGroup(entry.section) === kind);
-                const hasConflict = current ? conflictingIds.has(entryId(current)) : false;
-                const label = sectionGroupLabel(kind);
-                return (
-                  <label key={kind} className="flex flex-col gap-1.5">
-                    <span className="text-on-surface text-sm font-medium">{label}</span>
-                    <select
-                      aria-label={`${label} section`}
-                      value={current?.section ?? ""}
-                      onChange={(event) => {
-                        const next = options.find((section) => section.section === event.target.value);
-                        if (next && doc) addEntry(doc, next);
-                        else if (current) removeEntry(current.code, current.section, current.term);
-                      }}
-                      className={`neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 ${
-                        hasConflict ? "ring-error/60 ring-2" : ""
-                      }`}
-                    >
-                      <option value="">Choose {label.toLowerCase()}</option>
-                      {options.map((section) => (
-                        <option key={section.section} value={section.section}>
-                          {sectionOption(section)}
-                        </option>
-                      ))}
-                    </select>
-                    {hasConflict ? (
-                      <span className="text-error inline-flex items-center gap-1 text-xs">
-                        <Icon name="alert" className="size-3.5" /> Conflicts with another selected section.
-                      </span>
-                    ) : null}
-                    {current?.snapshot.status && !/open|active|available/i.test(current.snapshot.status) ? (
-                      <span className="text-tertiary text-xs">Status: {current.snapshot.status}</span>
-                    ) : null}
-                  </label>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="bg-surface-container-low rounded-xl p-4">
-              <h3 className="text-sm font-medium">Section options unavailable</h3>
-              <p className="text-muted mt-1 text-sm leading-relaxed">
-                {selected.length > 0
-                  ? "This saved section is no longer offered in this term. Its cached time remains on your schedule."
-                  : "No sections are offered in this term."}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {selected.length > 0 ? (
-          <footer className="border-border-subtle flex shrink-0 justify-end border-t p-4 sm:px-5">
-            <button
-              type="button"
-              onClick={() => {
-                removeCourse(code, term);
-                onClose();
-              }}
-              className="neu-button text-error hover:bg-error/10 min-h-10 rounded-xl px-4 text-sm font-medium"
-            >
-              Remove course
-            </button>
-          </footer>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function CourseRailCard({
-  code,
-  title,
-  sectionCount,
-  conflict,
-  status,
-  removable,
-  term,
-  onOpen,
-}: {
-  code: string;
-  title: string;
-  sectionCount: number;
-  conflict: boolean;
-  status?: string;
-  removable: boolean;
-  term: string;
-  onOpen: () => void;
-}) {
-  const removeCourse = useSchedule((state) => state.removeCourse);
-
-  return (
-    <article className="bg-surface-container-low flex items-start gap-2 rounded-xl p-2">
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Open ${code} course details`}
-        className="hover:bg-surface-container focus-visible:ring-primary/40 flex min-h-14 min-w-0 flex-1 items-start gap-2 rounded-lg p-2 text-left focus-visible:ring-2"
-      >
-        <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ backgroundColor: courseColor(code) }} />
-        <span className="min-w-0 flex-1">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate font-mono text-sm font-medium">{code}</span>
-            {conflict ? (
-              <span className="bg-error-container/70 text-on-error-container inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-xs">
-                <Icon name="alert" className="size-3" /> Conflict
-              </span>
-            ) : null}
-          </span>
-          <span className="text-muted mt-0.5 block truncate text-xs">{title}</span>
-          <span className="text-on-surface-variant mt-1 block font-mono text-xs">
-            {status ?? `${sectionCount} selected ${sectionCount === 1 ? "section" : "sections"}`}
-          </span>
-        </span>
-      </button>
-      {removable ? (
-        <button
-          type="button"
-          onClick={() => removeCourse(code, term)}
-          aria-label={`Remove ${code} from ${term}`}
-          className="text-on-surface-variant hover:bg-error/10 hover:text-error focus-visible:ring-primary/40 grid size-10 shrink-0 place-items-center rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
-        >
-          <Icon name="trash" className="size-4" />
-        </button>
-      ) : null}
-    </article>
-  );
 }
 
 function PlannerImportDialog({
@@ -518,7 +177,7 @@ function PlannerImportDialog({
                         <option value="">Choose the section from Workday</option>
                         {match.candidates.map((candidate) => (
                           <option key={candidate.section} value={candidate.section}>
-                            {sectionOption(candidate)}
+                            {importSectionOption(candidate)}
                           </option>
                         ))}
                       </select>
@@ -585,6 +244,8 @@ function SchedulePlannerPaneInner() {
   const addEntry = useSchedule((state) => state.addEntry);
   const addCourseSections = useSchedule((state) => state.addCourseSections);
   const importSections = useSchedule((state) => state.importSections);
+  const removeEntry = useSchedule((state) => state.removeEntry);
+  const removeCourse = useSchedule((state) => state.removeCourse);
   const stale = useSchedule((state) => state.stale);
   const setStale = useSchedule((state) => state.setStale);
   const [query, setQuery] = useState("");
@@ -592,13 +253,53 @@ function SchedulePlannerPaneInner() {
   const [catalogError, setCatalogError] = useState(false);
   const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
   const [activeDay, setActiveDay] = useState<DayCode>("Mon");
-  const [detailCode, setDetailCode] = useState<string | null>(null);
   const [importReview, setImportReview] = useState<PlannerImportReview | null>(null);
   const [importLoading, setImportLoading] = useState(false);
-  const lastAutoRecord = useRef<CourseDoc | null>(null);
+  const [commitPendingCode, setCommitPendingCode] = useState<string | null>(null);
+  const [commitError, setCommitError] = useState<string | null>(null);
+  const [failedCommitCode, setFailedCommitCode] = useState<string | null>(null);
+  const [unavailableCodes, setUnavailableCodes] = useState<Set<string>>(new Set());
+  const [focusRequest, setFocusRequest] = useState<(PlannerCourseFocusRequest & { code: string }) | null>(null);
+  const [focusSearchOnControls, setFocusSearchOnControls] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const commitToken = useRef(0);
+  const focusToken = useRef(0);
+  const mounted = useRef(true);
+  const queryRef = useRef(query);
+  const invalidatedQueryRef = useRef(query);
+  queryRef.current = query;
 
   const resolveSingle = useCallback((code: string) => api.getCourse(code), [api]);
   const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(query, { resolveSingle });
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      commitToken.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (invalidatedQueryRef.current === query) return;
+    invalidatedQueryRef.current = query;
+    commitToken.current += 1;
+    setCommitPendingCode(null);
+    setCommitError(null);
+    setFailedCommitCode(null);
+  }, [query]);
+
+  useEffect(() => {
+    if (mobileView !== "controls" || !focusSearchOnControls) return;
+    searchInputRef.current?.focus();
+    setFocusSearchOnControls(false);
+  }, [focusSearchOnControls, mobileView]);
+
+  useEffect(() => {
+    if (!commitPendingCode && !commitError) return;
+    searchInputRef.current?.blur();
+    searchInputRef.current?.focus();
+  }, [commitError, commitPendingCode]);
 
   async function prepareImport(schedule: Schedule) {
     setImportLoading(true);
@@ -619,22 +320,6 @@ function SchedulePlannerPaneInner() {
     setImportReview(null);
     setMobileView("schedule");
   }
-
-  useEffect(() => {
-    if (!record || lastAutoRecord.current === record) return;
-    lastAutoRecord.current = record;
-    const code = normalizeScheduleCode(record.code);
-    setDocs((current) => new Map(current).set(code, record));
-    const offeredTerms = sortTerms(record.sections.flatMap((section) => (section.term ? [section.term] : [])));
-    const term = offeredTerms.includes(activeTerm) ? activeTerm : offeredTerms[0];
-    if (!term || entries.some((entry) => normalizeScheduleCode(entry.code) === code && entry.term === term)) return;
-    const selection = selectAutomaticSections(
-      record,
-      term,
-      toScheduled(entries.filter((entry) => entry.term === term)),
-    );
-    addCourseSections(record, selection.sections);
-  }, [activeTerm, addCourseSections, entries, record]);
 
   const storedCodeKey = useMemo(
     () => [...new Set(entries.map((entry) => normalizeScheduleCode(entry.code)))].sort().join("\u0000"),
@@ -665,9 +350,8 @@ function SchedulePlannerPaneInner() {
     const terms = entries.map((entry) => entry.term);
     const pickedCourseCodes = new Set(entries.map((entry) => normalizeScheduleCode(entry.code)));
     for (const code of pickedCourseCodes) terms.push(...(docs.get(code)?.terms ?? []));
-    if (record) terms.push(...record.terms);
     return sortTerms(terms);
-  }, [docs, entries, record]);
+  }, [docs, entries]);
 
   useEffect(() => {
     if (allTerms.length === 0) return;
@@ -678,13 +362,127 @@ function SchedulePlannerPaneInner() {
   const gridItems = useMemo(() => plannerGridItems(visibleEntries), [visibleEntries]);
   const gridModel = useMemo(() => buildScheduleGrid(gridItems), [gridItems]);
   const pickedCodes = new Set(visibleEntries.map((entry) => normalizeScheduleCode(entry.code)));
-  const shownCodes = new Set(pickedCodes);
-  if (record?.sections.some((section) => section.term === activeTerm)) {
-    shownCodes.add(normalizeScheduleCode(record.code));
-  }
   const conflictingIds = new Set(gridItems.filter((item) => item.conflict).map((item) => item.id));
+  const conflictLabels = useMemo(() => plannerConflictLabels(visibleEntries), [visibleEntries]);
   const conflictCount = conflictingIds.size;
   const credits = [...pickedCodes].reduce((sum, code) => sum + (docs.get(code)?.credits ?? 0), 0);
+
+  const requestCourseFocus = useCallback((code: string, group?: string) => {
+    focusToken.current += 1;
+    setFocusRequest({ code, group, token: focusToken.current });
+  }, []);
+
+  const clearCourseFocus = useCallback(() => setFocusRequest(null), []);
+
+  const commitCandidate = useCallback(
+    async (candidateCode: string) => {
+      const code = normalizeScheduleCode(candidateCode);
+      const expectedQuery = queryRef.current;
+      const token = ++commitToken.current;
+      setCommitPendingCode(code);
+      setCommitError(null);
+      setFailedCommitCode(null);
+
+      let doc: CourseDoc;
+      try {
+        doc = record && normalizeScheduleCode(record.code) === code ? record : await api.getCourse(code);
+      } catch {
+        if (!mounted.current || token !== commitToken.current || queryRef.current !== expectedQuery) return;
+        setCommitPendingCode(null);
+        setCommitError(`Could not add ${code}. Try again.`);
+        setFailedCommitCode(code);
+        return;
+      }
+      if (!mounted.current || token !== commitToken.current || queryRef.current !== expectedQuery) return;
+
+      const activeDuplicate = entries.some(
+        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === activeTerm,
+      );
+      setDocs((current) => new Map(current).set(code, doc));
+      if (activeDuplicate) {
+        setCommitPendingCode(null);
+        setQuery("");
+        requestCourseFocus(code);
+        return;
+      }
+
+      const offeredTerms = sortTerms(doc.sections.flatMap((section) => (section.term ? [section.term] : [])));
+      const targetTerm = offeredTerms.includes(activeTerm) ? activeTerm : offeredTerms[0];
+      if (!targetTerm) {
+        setUnavailableCodes((current) => new Set(current).add(code));
+        setCommitPendingCode(null);
+        return;
+      }
+
+      const duplicate = entries.some(
+        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === targetTerm,
+      );
+      if (duplicate) {
+        if (targetTerm !== activeTerm) setActiveTerm(targetTerm);
+        setCommitPendingCode(null);
+        setQuery("");
+        requestCourseFocus(code);
+        return;
+      }
+
+      const selection = selectAutomaticSections(
+        doc,
+        targetTerm,
+        toScheduled(entries.filter((entry) => entry.term === targetTerm)),
+      );
+      if (selection.sections.length === 0) {
+        setUnavailableCodes((current) => new Set(current).add(code));
+        setCommitPendingCode(null);
+        return;
+      }
+
+      if (targetTerm === activeTerm) addCourseSections(doc, selection.sections);
+      else addCourseSections(doc, selection.sections, { activateTerm: true });
+      setCommitPendingCode(null);
+      setQuery("");
+      requestCourseFocus(code);
+    },
+    [activeTerm, addCourseSections, api, entries, record, requestCourseFocus, setActiveTerm],
+  );
+
+  const getCandidatePresentation = useCallback(
+    (candidate: Candidate) => {
+      const code = normalizeScheduleCode(candidate.code);
+      const exactRecord = record && normalizeScheduleCode(record.code) === code ? record : null;
+      const offeredTerms = sortTerms(
+        exactRecord
+          ? exactRecord.sections.flatMap((section) => (section.term ? [section.term] : []))
+          : (candidate.terms ?? []),
+      );
+      const targetTerm = offeredTerms.includes(activeTerm) ? activeTerm : offeredTerms[0];
+      const activeDuplicate = entries.some(
+        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === activeTerm,
+      );
+      if (activeDuplicate) {
+        return {
+          annotation: commitPendingCode === code ? "Added — focus course · Focusing…" : "Added — focus course",
+          pending: commitPendingCode === code,
+        };
+      }
+      if (!targetTerm || unavailableCodes.has(code)) {
+        return { annotation: "No offered sections", disabled: true };
+      }
+      const duplicate = entries.some(
+        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === targetTerm,
+      );
+      const annotation = duplicate
+        ? `Added — switch to ${targetTerm}`
+        : targetTerm === activeTerm
+          ? `Add to ${targetTerm}`
+          : `Add and switch to ${targetTerm}`;
+      return {
+        annotation: commitPendingCode === code ? `${annotation} · ${duplicate ? "Switching…" : "Adding…"}` : annotation,
+        pending: commitPendingCode === code,
+      };
+    },
+    [activeTerm, commitPendingCode, entries, record, unavailableCodes],
+  );
+
   const dragConfig = useMemo<ScheduleGridDragConfig>(
     () => ({
       getOptions: (blockId) => plannerDragOptions(visibleEntries, docs, blockId),
@@ -730,7 +528,7 @@ function SchedulePlannerPaneInner() {
     <div className="flex min-w-max items-center justify-between gap-4">
       <div role="tablist" aria-label="Academic term" className="flex gap-1">
         {allTerms.length === 0 ? (
-          <span className="text-muted px-2 py-1.5 text-xs">Terms appear after you find a course.</span>
+          <span className="text-muted px-2 py-1.5 text-xs">Terms appear after you add a course.</span>
         ) : (
           allTerms.map((term) => (
             <button
@@ -770,69 +568,94 @@ function SchedulePlannerPaneInner() {
   );
 
   const controls = (
-    <div className="flex min-h-full flex-col gap-4 p-4">
-      <section>
+    <div data-planner-controls className="flex h-full min-h-0 flex-col overflow-visible">
+      <section data-planner-search className="relative z-20 shrink-0 p-4 pb-3">
         <h2 className="mb-2 text-sm font-medium">Find a course</h2>
         <CourseSearchField
           value={query}
           onChange={setQuery}
-          onSelect={setQuery}
-          onRetry={() => lookup(query)}
+          onSelect={(code) => void commitCandidate(code)}
+          onRetry={() => {
+            if (failedCommitCode) void commitCandidate(failedCommitCode);
+            else void lookup(query);
+          }}
           status={status}
           list={list}
-          error={error}
+          error={commitError ?? error}
           rejected={rejected}
           placeholder="CPSC 110, MATH 200, linear algebra"
           ariaLabel="Find a course to schedule"
+          presentation="overlay"
+          record={record}
+          getCandidatePresentation={getCandidatePresentation}
+          inputRef={searchInputRef}
         />
+        {!query.trim() && status === "idle" ? (
+          <p className="text-muted mt-2 text-xs leading-4">
+            Search by course code, subject, or title, then choose a result.
+          </p>
+        ) : null}
       </section>
 
-      <section className="border-border-subtle border-t pt-4">
-        <h2 className="text-on-surface text-sm font-medium">Import from Workday</h2>
-        <p className="text-muted mt-1 mb-2 text-xs leading-relaxed">
-          Add your registered sections from a Workday Excel export.
-        </p>
-        {importLoading ? (
-          <div role="status" className="bg-surface-container-low text-muted rounded-xl px-3 py-4 text-sm">
-            Matching Workday sections to the catalog…
-          </div>
-        ) : (
-          <UploadDropzone onParsed={(schedule) => void prepareImport(schedule)} />
-        )}
-      </section>
-
-      <section className="border-border-subtle border-t pt-4">
+      <section
+        data-planner-course-list
+        aria-labelledby="planner-course-list-title"
+        className="border-border-subtle min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-4 py-3"
+      >
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">Courses in this term</h2>
+          <h2 id="planner-course-list-title" className="text-sm font-medium">
+            Courses in this term
+          </h2>
           {visibleEntries.length > 0 ? (
             <span className="text-muted font-mono text-xs">{visibleEntries.length} sections</span>
           ) : null}
         </div>
         <div className="flex flex-col gap-2">
-          {[...shownCodes].map((code) => {
+          {[...pickedCodes].sort().map((code) => {
             const doc = docs.get(code);
             const selected = visibleEntries.filter((entry) => normalizeScheduleCode(entry.code) === code);
-            const unavailable = !!doc && doc.sections.every((section) => section.term !== activeTerm);
             return (
-              <CourseRailCard
+              <PlannerCourseModule
                 key={code}
                 code={code}
                 title={doc?.title ?? selected[0]?.snapshot.title ?? "Loading course details…"}
-                sectionCount={selected.length}
-                conflict={selected.some((entry) => conflictingIds.has(entryId(entry)))}
-                status={!doc ? "Loading section options…" : unavailable ? "Saved section unavailable" : undefined}
-                removable={selected.length > 0}
+                doc={doc}
                 term={activeTerm}
-                onOpen={() => setDetailCode(code)}
+                entries={selected}
+                conflictingIds={conflictingIds}
+                conflictLabels={conflictLabels}
+                focusRequest={focusRequest?.code === code ? focusRequest : undefined}
+                onSelectSection={(current, next) => {
+                  if (next && doc) addEntry(doc, next);
+                  else if (current) removeEntry(current.code, current.section, current.term);
+                }}
+                onRemove={() => removeCourse(code, activeTerm)}
+                onFocusHandled={clearCourseFocus}
               />
             );
           })}
-          {shownCodes.size === 0 && !record ? (
+          {pickedCodes.size === 0 ? (
             <p className="text-muted py-4 text-sm leading-relaxed">
-              Choose a search result to see its available sections.
+              Add a course from search to configure its lecture, lab, and tutorial here.
             </p>
           ) : null}
         </div>
+      </section>
+
+      <section data-planner-import className="border-border-subtle shrink-0 border-t p-4">
+        <h2 className="text-on-surface text-sm font-medium">Workday import</h2>
+        <p className="text-muted mt-1 mb-2 text-xs leading-relaxed">Add or replace registered sections from Excel.</p>
+        {importLoading ? (
+          <div role="status" className="bg-surface-container-low text-muted rounded-lg px-3 py-3 text-sm">
+            Matching Workday sections to the catalog…
+          </div>
+        ) : (
+          <UploadDropzone
+            presentation="button"
+            label="Import Workday schedule"
+            onParsed={(schedule) => void prepareImport(schedule)}
+          />
+        )}
       </section>
     </div>
   );
@@ -855,7 +678,9 @@ function SchedulePlannerPaneInner() {
           onActiveDayChange={setActiveDay}
           onBlockActivate={(id) => {
             const item = gridItems.find((candidate) => candidate.id === id);
-            if (item) setDetailCode(item.code);
+            if (!item) return;
+            setMobileView("controls");
+            requestCourseFocus(item.code, sectionGroup(item.section ?? ""));
           }}
           ariaLabel="Weekly course schedule"
           drag={dragConfig}
@@ -863,24 +688,16 @@ function SchedulePlannerPaneInner() {
             title: "Build your first timetable",
             description: "Search for a course, then choose its lecture, lab, or tutorial.",
             actionLabel: "Browse courses",
-            onAction: () => setMobileView("controls"),
+            onAction: () => {
+              setMobileView("controls");
+              setFocusSearchOnControls(true);
+            },
           }}
         />
       </ScheduleWorkspace>
 
       {importReview ? (
         <PlannerImportDialog review={importReview} onApply={applyImport} onClose={() => setImportReview(null)} />
-      ) : null}
-
-      {detailCode ? (
-        <CourseDetailsDialog
-          code={detailCode}
-          doc={docs.get(detailCode)}
-          term={activeTerm}
-          entries={visibleEntries}
-          conflictingIds={conflictingIds}
-          onClose={() => setDetailCode(null)}
-        />
       ) : null}
     </>
   );

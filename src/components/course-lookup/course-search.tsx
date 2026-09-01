@@ -234,6 +234,7 @@ export type CourseSearchFieldProps = {
   presentation?: "inline" | "overlay";
   record?: CourseDoc | null;
   getCandidatePresentation?: (candidate: Candidate) => CandidatePresentation;
+  inputRef?: { current: HTMLInputElement | null };
 };
 
 export function CourseSearchField({
@@ -250,6 +251,7 @@ export function CourseSearchField({
   presentation = "inline",
   record,
   getCandidatePresentation,
+  inputRef: externalInputRef,
 }: CourseSearchFieldProps) {
   const trimmed = value.trim();
   const overlay = presentation === "overlay";
@@ -339,7 +341,10 @@ export function CourseSearchField({
         className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
       />
       <input
-        ref={inputRef}
+        ref={(node) => {
+          inputRef.current = node;
+          if (externalInputRef) externalInputRef.current = node;
+        }}
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
