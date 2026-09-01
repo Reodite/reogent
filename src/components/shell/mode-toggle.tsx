@@ -76,7 +76,7 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
                 locked
                   ? "cursor-not-allowed opacity-40"
                   : active
-                    ? "bg-accent-subtle text-primary"
+                    ? "neu-inset bg-surface-container text-on-surface"
                     : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
             >
@@ -84,7 +84,7 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
               {!collapsed && tab.label}
             </button>
             {tooltip === tab.mode && (
-              <div className="bg-surface-container-high text-on-surface absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium shadow-lg">
+              <div className="bg-surface-container-high text-on-surface absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap shadow-lg">
                 Sign in to unlock this feature!
               </div>
             )}

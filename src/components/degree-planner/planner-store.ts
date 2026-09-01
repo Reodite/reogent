@@ -9,11 +9,38 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-export type TermSeason = "fall" | "spring" | "summer" | "term4";
-// Default 2-term year = Term 1 (Sep-Dec) + Term 2 (Jan-Apr). Additional
-// slots are Term 3 and Term 4. Keep the persisted `summer` key for
-// compatibility with existing saved plans.
-const SEASON_ORDER: TermSeason[] = ["fall", "spring", "summer", "term4"];
+// Seasons following the UBC calendar: Winter session terms 1/2, and the
+// optional Summer session (two half-length terms). A year always has the two
+// winter terms; summer terms are added per year on demand.
+export type Season = "w1" | "w2" | "s1" | "s2";
+
+// A term either holds courses ("study") or is a co-op work term. Work terms
+// hold no course blocks; they render as a distinct card and are excluded
+// from credit-load checks. Prereq validation still walks them so a work
+// term never counts its (empty) contents and simply passes time.
+export type TermKind = "study" | "coop";
+
+export interface SeasonMeta {
+  season: Season;
+  short: string;
+  months: string;
+}
+
+export const SEASON_META: Record<Season, SeasonMeta> = {
+  w1: { season: "w1", short: "Winter 1", months: "Sep–Dec" },
+  w2: { season: "w2", short: "Winter 2", months: "Jan–Apr" },
+  s1: { season: "s1", short: "Summer 1", months: "May–Jun" },
+  s2: { season: "s2", short: "Summer 2", months: "Jul–Aug" },
+};
+
+// Chronological season order: Summer 1 comes before Summer 2. Year terms
+// are always stored in this order (winters first, summers last).
+const SEASON_ORDER: Season[] = ["w1", "w2", "s1", "s2"];
+
+// Credit-load sanity bounds per season. Summer terms are half-length, so a
+// full summer term is ~6-8 credits; winter full-time is ~15.
+export const TERM_CREDIT_TARGET: Record<Season, number> = { w1: 15, w2: 15, s1: 7, s2: 7 };
+export const TERM_CREDIT_WARN: Record<Season, number> = { w1: 18, w2: 18, s1: 8, s2: 8 };
 
 export interface PlannedBlock {
   id: string;
@@ -21,8 +48,13 @@ export interface PlannedBlock {
 }
 
 export interface Term {
-  season: TermSeason;
+  season: Season;
+  kind: TermKind;
   blocks: PlannedBlock[];
+  // Transcript course code for a co-op work term (e.g. "ARTC 110"), shown as
+  // a label on the work-term card. Co-op credits don't count toward degree
+  // credits, so this is display-only — never a draggable block.
+  code?: string;
 }
 
 export interface Year {
@@ -31,39 +63,32 @@ export interface Year {
   terms: Term[];
 }
 
-export type PlannerSidebarTab = "preferences" | "progress" | "courses";
-
-// The undoable slice of the plan — everything an Action button touches.
-// Captured by reference (these fields are always replaced immutably) so
-// snapshots are cheap and safe to keep on the history stacks.
+// The undoable slice of the plan — everything an action touches. Captured
+// by reference (these fields are always replaced immutably) so snapshots
+// are cheap and safe to keep on the history stacks.
 export interface PlanSnapshot {
   years: Year[];
-  // Captured alongside `years` because setTermsPerYear changes both; without
-  // it an undo would restore the old term layout but leave the count field
-  // out of sync.
-  termsPerYear: number;
   ignoredBlocks: string[];
   checkedRequirements: string[];
 }
 
 interface PlannerState {
   years: Year[];
-  // Single global term count applied to every year column. Lives in the
-  // store (not derived from years[0].terms.length) so the persisted value
-  // survives a year-count change that would otherwise drop the signal.
-  termsPerYear: number;
   faculty: string | null;
   major: string | null;
   minor: string | null;
+  // Co-op participation flag. When true the structure panel offers the
+  // canonical work-term sequence for the selected faculty.
+  coop: boolean;
   sidebarCollapsed: boolean;
-  sidebarTab: PlannerSidebarTab;
-  // Mini-lookup search text — persisted so tab swaps keep the results list.
   lookupQuery: string;
+  // Block the UI is flashing after the user clicked an issue entry.
+  // Session-only, non-persisted, cleared after the pulse ends.
+  flashBlockId: string | null;
   // Block IDs whose prereq/coreq errors the user chose to suppress.
   ignoredBlocks: string[];
   // Program-requirement rows the user manually ticked (transfer credit, AP,
-  // courses they won't place on the board). Keyed per program so switching
-  // majors doesn't carry checks across. See toggleRequirement.
+  // courses they won't place on the board). See toggleRequirement.
   checkedRequirements: string[];
   // Undo / redo history of the plan slice. Session-only — excluded from
   // persistence via `partialize`, so a reload starts with empty history.
@@ -71,19 +96,25 @@ interface PlannerState {
   future: PlanSnapshot[];
 
   setYearCount: (n: number) => void;
-  setTermsPerYear: (n: number) => void;
+  replaceYears: (years: Year[]) => void;
   addBlock: (yearId: string, termIdx: number, code: string) => void;
   // Batch insert (used by autofill) so the whole fill is a single undo step.
   addBlocks: (items: { yearId: string; termIdx: number; code: string }[]) => void;
   moveBlock: (blockId: string, toYearId: string, toTermIdx: number, toPos: number) => void;
   removeBlock: (blockId: string) => void;
   clearAllBlocks: () => void;
+  // Toggle this year's Summer session (adds s1+s2 or removes them).
+  toggleSummer: (yearId: string) => void;
+  // Mark a term as a co-op work term (or back to study). Flipping to coop
+  // clears its blocks — done after UI confirmation.
+  setTermKind: (yearId: string, termIdx: number, kind: TermKind) => void;
+  setCoop: (enabled: boolean) => void;
   toggleIgnoreBlock: (blockId: string) => void;
   toggleRequirement: (key: string) => void;
   setProgram: (level: "faculty" | "major" | "minor", value: string | null) => void;
-  setSidebarTab: (tab: PlannerSidebarTab) => void;
   toggleSidebar: () => void;
   setLookupQuery: (q: string) => void;
+  setFlashBlockId: (id: string | null) => void;
   // Step the plan back / forward through the history stacks. No-ops when the
   // respective stack is empty.
   undo: () => void;
@@ -95,26 +126,25 @@ interface PlannerState {
 export type PersistedPlan = Pick<
   PlannerState,
   | "years"
-  | "termsPerYear"
   | "faculty"
   | "major"
   | "minor"
+  | "coop"
   | "sidebarCollapsed"
-  | "sidebarTab"
   | "lookupQuery"
   | "ignoredBlocks"
   | "checkedRequirements"
->;
+> & { schemaVersion: 2 };
 
 export function persistedSlice(s: PlannerState): PersistedPlan {
   return {
+    schemaVersion: 2,
     years: s.years,
-    termsPerYear: s.termsPerYear,
     faculty: s.faculty,
     major: s.major,
     minor: s.minor,
+    coop: s.coop,
     sidebarCollapsed: s.sidebarCollapsed,
-    sidebarTab: s.sidebarTab,
     lookupQuery: s.lookupQuery,
     ignoredBlocks: s.ignoredBlocks,
     checkedRequirements: s.checkedRequirements,
@@ -123,10 +153,7 @@ export function persistedSlice(s: PlannerState): PersistedPlan {
 
 export const MIN_YEARS = 3;
 export const MAX_YEARS = 6;
-export const MIN_TERMS = 1;
-export const MAX_TERMS = 4;
 export const DEFAULT_YEARS = 4;
-export const DEFAULT_TERMS = 2;
 
 function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -135,24 +162,28 @@ function newId(): string {
   return Math.random().toString(36).slice(2);
 }
 
-function buildYear(index: number, termCount: number): Year {
+function newTerm(season: Season): Term {
+  return { season, kind: "study", blocks: [] };
+}
+
+export function createPlannerYear(index: number): Year {
   return {
     id: newId(),
     label: `Year ${index + 1}`,
-    terms: SEASON_ORDER.slice(0, termCount).map((season) => ({ season, blocks: [] })),
+    terms: [newTerm("w1"), newTerm("w2")],
   };
 }
 
 function initialYears(): Year[] {
-  return Array.from({ length: DEFAULT_YEARS }, (_, i) => buildYear(i, DEFAULT_TERMS));
+  return Array.from({ length: DEFAULT_YEARS }, (_, i) => createPlannerYear(i));
 }
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
-// Walk every term and remove the block with the given id. Returns the
-// mutated years array (new object identity) so React re-renders.
+// Walk every term and remove the block with the given id. Returns a new
+// years array so React re-renders.
 function removeBlockEverywhere(years: Year[], blockId: string): Year[] {
   return years.map((y) => ({
     ...y,
@@ -169,7 +200,6 @@ const MAX_HISTORY = 100;
 function snapshot(s: PlannerState): PlanSnapshot {
   return {
     years: s.years,
-    termsPerYear: s.termsPerYear,
     ignoredBlocks: s.ignoredBlocks,
     checkedRequirements: s.checkedRequirements,
   };
@@ -187,17 +217,107 @@ function commit(s: PlannerState, patch: Partial<PlannerState> | null): PlannerSt
   };
 }
 
+export function isSummer(season: Season): boolean {
+  return season === "s1" || season === "s2";
+}
+
+/** Returns years with every co-op term reset to study, or null when there was nothing to disable. */
+export function disableCoopYears(years: Year[]): Year[] | null {
+  let changed = false;
+  const next = years.map((y) => ({
+    ...y,
+    terms: y.terms.map((t) => {
+      if (t.kind !== "coop") return t;
+      changed = true;
+      return { ...t, kind: "study" as const, code: undefined };
+    }),
+  }));
+  return changed ? next : null;
+}
+
+/** Normalizes local and server plans into the current seasonal term model. */
+export function migratePersistedPlan(persisted: unknown): PersistedPlan {
+  const raw = persisted && typeof persisted === "object" ? (persisted as Record<string, unknown>) : {};
+  const seasonMap: Record<string, Season> = {
+    fall: "w1",
+    spring: "w2",
+    summer: "s1",
+    term4: "s2",
+    w1: "w1",
+    w2: "w2",
+    s1: "s1",
+    s2: "s2",
+  };
+  const rawYears = Array.isArray(raw.years) ? raw.years : [];
+  const years = rawYears.map((value, yearIndex): Year => {
+    const rawYear = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+    const rawTerms = Array.isArray(rawYear.terms) ? rawYear.terms : [];
+    const terms: Term[] = [];
+    for (const termValue of rawTerms) {
+      if (!termValue || typeof termValue !== "object") continue;
+      const rawTerm = termValue as Record<string, unknown>;
+      const season = typeof rawTerm.season === "string" ? seasonMap[rawTerm.season] : undefined;
+      if (!season || terms.some((term) => term.season === season)) continue;
+      const blocks = Array.isArray(rawTerm.blocks)
+        ? rawTerm.blocks.flatMap((block): PlannedBlock[] => {
+            if (!block || typeof block !== "object") return [];
+            const rawBlock = block as Record<string, unknown>;
+            if (typeof rawBlock.code !== "string") return [];
+            return [{ id: typeof rawBlock.id === "string" ? rawBlock.id : newId(), code: rawBlock.code }];
+          })
+        : [];
+      const kind: TermKind = rawTerm.kind === "coop" ? "coop" : "study";
+      terms.push({
+        season,
+        kind,
+        blocks: kind === "coop" ? [] : blocks,
+        code: typeof rawTerm.code === "string" ? rawTerm.code : undefined,
+      });
+    }
+    for (const season of ["w1", "w2"] as Season[]) {
+      if (!terms.some((term) => term.season === season)) terms.push(newTerm(season));
+    }
+    if (terms.some((term) => isSummer(term.season))) {
+      for (const season of ["s1", "s2"] as Season[]) {
+        if (!terms.some((term) => term.season === season)) terms.push(newTerm(season));
+      }
+    }
+    terms.sort((a, b) => SEASON_ORDER.indexOf(a.season) - SEASON_ORDER.indexOf(b.season));
+    return {
+      id: typeof rawYear.id === "string" ? rawYear.id : newId(),
+      label: typeof rawYear.label === "string" ? rawYear.label : `Year ${yearIndex + 1}`,
+      terms,
+    };
+  });
+  return {
+    schemaVersion: 2,
+    years: years.length > 0 ? years : initialYears(),
+    faculty: typeof raw.faculty === "string" ? raw.faculty : null,
+    major: typeof raw.major === "string" ? raw.major : null,
+    minor: typeof raw.minor === "string" ? raw.minor : null,
+    coop: raw.coop === true,
+    sidebarCollapsed: raw.sidebarCollapsed === true,
+    lookupQuery: typeof raw.lookupQuery === "string" ? raw.lookupQuery : "",
+    ignoredBlocks: Array.isArray(raw.ignoredBlocks)
+      ? raw.ignoredBlocks.filter((id): id is string => typeof id === "string")
+      : [],
+    checkedRequirements: Array.isArray(raw.checkedRequirements)
+      ? raw.checkedRequirements.filter((key): key is string => typeof key === "string")
+      : [],
+  };
+}
+
 export const usePlanner = create<PlannerState>()(
   persist(
     (set) => ({
       years: initialYears(),
-      termsPerYear: DEFAULT_TERMS,
       faculty: null,
       major: null,
       minor: null,
+      coop: false,
       sidebarCollapsed: false,
-      sidebarTab: "preferences",
       lookupQuery: "",
+      flashBlockId: null,
       ignoredBlocks: [],
       checkedRequirements: [],
       past: [],
@@ -209,39 +329,28 @@ export const usePlanner = create<PlannerState>()(
           const current = s.years.length;
           if (target === current) return s;
           if (target > current) {
-            const extra = Array.from({ length: target - current }, (_, i) => buildYear(current + i, s.termsPerYear));
+            const extra = Array.from({ length: target - current }, (_, i) => createPlannerYear(current + i));
             return commit(s, { years: [...s.years, ...extra] });
           }
           // Shrinking: trim from the tail. Blocks in removed years are
-          // dropped silently — the planner shows a confirm before calling
-          // this, so by the time we get here the user has agreed.
+          // dropped — the UI confirms before calling when data would be lost.
           return commit(s, { years: s.years.slice(0, target) });
         }),
 
-      setTermsPerYear: (n) =>
-        set((s) => {
-          const target = clamp(n, MIN_TERMS, MAX_TERMS);
-          if (target === s.termsPerYear) return s;
-          const years = s.years.map((y) => {
-            const current = y.terms.length;
-            if (target === current) return y;
-            if (target > current) {
-              const extra = SEASON_ORDER.slice(current, target).map((season) => ({
-                season,
-                blocks: [] as PlannedBlock[],
-              }));
-              return { ...y, terms: [...y.terms, ...extra] };
-            }
-            // Shrink — blocks in dropped terms are discarded. The UI
-            // confirms first when the change would lose data, so by the
-            // time we land here the user has agreed.
-            return { ...y, terms: y.terms.slice(0, target) };
-          });
-          return commit(s, { years, termsPerYear: target });
-        }),
+      replaceYears: (years) => set((s) => commit(s, { years })),
 
       addBlock: (yearId, termIdx, code) =>
         set((s) => {
+          // Refuse exact duplicates: the same course code may live in the
+          // plan only once. The UI surfaces a duplicate-state via validation
+          // for legacy plans; new inserts are rejected here.
+          for (const y of s.years) {
+            for (const t of y.terms) {
+              if (t.blocks.some((b) => b.code === code)) return s;
+            }
+          }
+          const destination = s.years.find((y) => y.id === yearId)?.terms[termIdx];
+          if (destination?.kind !== "study") return s;
           const block: PlannedBlock = { id: newId(), code };
           const years = s.years.map((y) => {
             if (y.id !== yearId) return y;
@@ -254,18 +363,24 @@ export const usePlanner = create<PlannerState>()(
       addBlocks: (items) =>
         set((s) => {
           if (items.length === 0) return s;
-          // Work on a deep-enough copy (years → terms → blocks) and insert
-          // every item, so the whole batch lands as one tracked change.
           const next = s.years.map((y) => ({
             ...y,
             terms: y.terms.map((t) => ({ ...t, blocks: [...t.blocks] })),
           }));
+          const seen = new Set<string>();
+          for (const y of next) {
+            for (const t of y.terms) {
+              for (const b of t.blocks) seen.add(b.code);
+            }
+          }
           let changed = false;
           for (const { yearId, termIdx, code } of items) {
+            if (seen.has(code)) continue;
             const y = next.find((yy) => yy.id === yearId);
             const t = y?.terms[termIdx];
-            if (!t) continue;
+            if (t?.kind !== "study") continue;
             t.blocks.push({ id: newId(), code });
+            seen.add(code);
             changed = true;
           }
           return commit(s, changed ? { years: next } : null);
@@ -294,6 +409,8 @@ export const usePlanner = create<PlannerState>()(
             if (moved) break;
           }
           if (!moved) return s;
+          const destination = s.years.find((y) => y.id === toYearId)?.terms[toTermIdx];
+          if (destination?.kind !== "study") return s;
 
           const years = s.years.map((y) => ({
             ...y,
@@ -343,6 +460,49 @@ export const usePlanner = create<PlannerState>()(
           }),
         ),
 
+      toggleSummer: (yearId) =>
+        set((s) => {
+          const yeardata = s.years.find((y) => y.id === yearId);
+          if (!yeardata) return s;
+          const hasSummer = yeardata.terms.some((t) => isSummer(t.season));
+          let terms: Term[];
+          if (hasSummer) {
+            // Removal empties the summer terms (UI confirms first).
+            terms = yeardata.terms.filter((t) => !isSummer(t.season));
+          } else {
+            terms = [...yeardata.terms, newTerm("s1"), newTerm("s2")];
+          }
+          const years = s.years.map((y) => (y.id === yearId ? { ...y, terms } : y));
+          return commit(s, { years });
+        }),
+
+      setTermKind: (yearId, termIdx, kind) =>
+        set((s) => {
+          const years = s.years.map((y) => {
+            if (y.id !== yearId) return y;
+            const terms = y.terms.map((t, i) => {
+              if (i !== termIdx) return t;
+              return {
+                ...t,
+                kind,
+                blocks: kind === "coop" ? [] : t.blocks,
+                code: kind === "study" ? undefined : t.code,
+              };
+            });
+            return { ...y, terms };
+          });
+          return commit(s, { years });
+        }),
+
+      setCoop: (enabled) =>
+        set((s) => {
+          if (enabled) return { coop: true };
+          // Disabling co-op un-marks every work term so the board stops
+          // showing them. Undoable like other structure changes.
+          const years = disableCoopYears(s.years);
+          return years ? commit(s, { coop: false, years }) : { coop: false };
+        }),
+
       toggleIgnoreBlock: (blockId) =>
         set((s) =>
           commit(s, {
@@ -363,11 +523,11 @@ export const usePlanner = create<PlannerState>()(
 
       setProgram: (level, value) => set(() => ({ [level]: value }) as Partial<PlannerState>),
 
-      setSidebarTab: (tab) => set({ sidebarTab: tab }),
-
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
 
       setLookupQuery: (q) => set({ lookupQuery: q }),
+
+      setFlashBlockId: (id) => set({ flashBlockId: id }),
 
       undo: () =>
         set((s) => {
@@ -394,11 +554,12 @@ export const usePlanner = create<PlannerState>()(
     {
       name: "reodite-planner",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
       // The history stacks (past/future) are intentionally omitted so undo
       // state never bloats localStorage and a reload starts with a clean
       // history. Same slice the account sync sends to the server.
       partialize: persistedSlice,
+      migrate: (persisted) => migratePersistedPlan(persisted),
     },
   ),
 );

@@ -58,6 +58,8 @@ const ICON_MAP = {
   checkbox: "checkbox-line",
   circle: "round-line",
   file: "file-line",
+  briefcase: "briefcase-line",
+  warning: "warning-line",
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

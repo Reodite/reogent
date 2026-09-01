@@ -1,8 +1,8 @@
 "use client";
 
-// Portal-rendered course-detail popup. Anchored to a `?` button's bounding
-// rect so it can escape the planner's overflow-clip without being trapped
-// inside year columns or term scroll areas.
+// Portal-rendered course-detail popup. Anchored to the triggering icon
+// button's bounding rect so it can escape the planner's overflow-clip
+// without being trapped inside year columns or term scroll areas.
 //
 // Highlighting strategy:
 //   The popup shows UBC's *verbatim* prereq/coreq text and paints unmet
@@ -23,6 +23,7 @@ import { isSatisfied, type Expr } from "@/src/shared/prereq-ast";
 import Link from "next/link";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { describeIssue } from "./validation";
 
 const POPUP_WIDTH = 320;
 const POPUP_GAP = 8;
@@ -40,6 +41,8 @@ interface CourseInfoPopupProps {
   coreqAst?: Expr | null;
   completedBefore?: Set<string>;
   completedSameOrBefore?: Set<string>;
+  // Placement issues for this block, as internal tokens from validation.
+  issues?: string[];
   onClose?: () => void;
 }
 
@@ -50,6 +53,7 @@ export function CourseInfoPopup({
   coreqAst,
   completedBefore,
   completedSameOrBefore,
+  issues,
   onClose,
 }: CourseInfoPopupProps) {
   const api = useApi();
@@ -99,18 +103,26 @@ export function CourseInfoPopup({
 
   useEffect(() => {
     if (!onClose) return;
-    function handleClick(e: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onClose?.();
-      }
+    function handleClick(event: MouseEvent) {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) onClose?.();
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose?.();
     }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [onClose]);
 
   return createPortal(
     <div
       ref={popupRef}
+      role="dialog"
+      aria-label={`${course.code} details`}
+      onPointerDown={(event) => event.stopPropagation()}
       style={{
         position: "fixed",
         top: pos?.top ?? -9999,
@@ -119,12 +131,36 @@ export function CourseInfoPopup({
         opacity: pos ? 1 : 0,
         zIndex: 50,
       }}
-      className="neu-raised bg-surface border-border-subtle flex flex-col gap-2 rounded-lg border p-3 text-sm"
+      className="neu-panel bg-surface flex flex-col gap-2.5 rounded-2xl p-4 text-sm"
     >
-      <h4 className="text-on-surface font-semibold">
-        <span className="font-mono">{course.code}</span>
-        {course.title && <span className="text-on-surface-variant"> — {course.title}</span>}
-      </h4>
+      <div className="flex items-start gap-2">
+        <h4 className="text-on-surface min-w-0 flex-1 font-semibold">
+          <span className="font-mono">{course.code}</span>
+          {course.title && <span className="text-on-surface-variant"> — {course.title}</span>}
+        </h4>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted hover:bg-surface-container hover:text-on-surface -mt-1 -mr-1 rounded-lg p-1"
+            aria-label="Close course details"
+          >
+            <Icon name="close" size={15} />
+          </button>
+        )}
+      </div>
+      {issues && issues.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {issues.map((token) => (
+            <p
+              key={token}
+              className="border-error/30 bg-error-container text-on-error-container rounded-lg border px-2 py-1.5 text-xs leading-snug"
+            >
+              {describeIssue(token)}
+            </p>
+          ))}
+        </div>
+      )}
       {course.credits != null && (
         <p className="text-on-surface-variant text-xs">
           Credits: <span className="text-on-surface">{course.credits}</span>

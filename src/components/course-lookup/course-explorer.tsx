@@ -353,7 +353,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="neu-button bg-surface text-on-surface-variant h-9 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 hover:-translate-y-px active:translate-y-px active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
+                className="neu-button bg-surface text-on-surface-variant h-9 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
               >
                 Prev
               </button>
@@ -364,7 +364,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="neu-button bg-surface text-on-surface-variant h-9 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 hover:-translate-y-px active:translate-y-px active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
+                className="neu-button bg-surface text-on-surface-variant h-9 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
               >
                 Next
               </button>
