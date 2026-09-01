@@ -42,7 +42,7 @@ export function AvatarPicker({ handle, avatar, onChange }: Props) {
       </div>
 
       {tab === "emoji" && (
-        <div className="neu-inset bg-surface-container-low grid max-h-40 grid-cols-8 gap-1 overflow-y-auto rounded-xl p-2">
+        <div className="neu-inset bg-surface-container-low grid max-h-40 grid-cols-8 gap-1 overflow-y-auto rounded-lg p-2">
           {AVATAR_EMOJI.map((e) => (
             <button
               key={e}

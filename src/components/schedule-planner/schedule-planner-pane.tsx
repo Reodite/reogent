@@ -141,7 +141,7 @@ function PlannerImportDialog({
                 : "Time TBA";
               const code = normalizeScheduleCode(match.source.courseCode);
               return (
-                <article key={match.source.id} className="bg-surface-container-low rounded-xl p-3">
+                <article key={match.source.id} className="bg-surface-container-low rounded-lg p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-mono text-sm font-medium">{code || match.source.title}</h3>
@@ -516,7 +516,7 @@ function SchedulePlannerPaneInner() {
 
   const notice =
     stale || catalogError ? (
-      <div className="border-tertiary/20 bg-tertiary-container/40 text-on-tertiary-container flex shrink-0 items-start gap-2 rounded-xl border px-3 py-2 text-xs">
+      <div className="border-tertiary/20 bg-tertiary-container/40 text-on-tertiary-container flex shrink-0 items-start gap-2 rounded-lg border px-3 py-2 text-xs">
         <Icon name="alert" className="mt-0.5 size-4 shrink-0" />
         <span className="flex-1">
           {catalogError

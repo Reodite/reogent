@@ -439,7 +439,7 @@ function ScheduleAppInner({ groupCode }: Props) {
               />
             </label>
             {showFree ? (
-              <div className="bg-primary/5 mt-2 max-h-36 overflow-y-auto rounded-lg px-2.5 py-2">
+              <div className="bg-surface-container-low mt-2 max-h-36 overflow-y-auto rounded-lg px-2.5 py-2">
                 {enabledPeopleWithSchedules.length === 0 ? (
                   <p className="text-muted text-xs leading-5">
                     Show at least one person with a schedule to compare free time.
@@ -663,7 +663,7 @@ function NoGroupControls({
             placeholder="ABC123"
             aria-describedby="schedule-code-help"
             onChange={(event) => setCode(event.target.value.replace(/[^0-9A-Za-z]/g, ""))}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 min-w-0 flex-1 rounded-xl px-3 text-center font-mono text-sm uppercase outline-none focus-visible:ring-2"
+            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 min-w-0 flex-1 rounded-lg px-3 text-center font-mono text-sm uppercase outline-none focus-visible:ring-2"
           />
           <button
             type="submit"
@@ -815,7 +815,7 @@ export function CreateGroupModal({
             maxLength={80}
             placeholder="CPSC study crew"
             onChange={(event) => setName(event.target.value)}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-xl px-3 text-sm outline-none focus-visible:ring-2"
+            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 text-sm outline-none focus-visible:ring-2"
           />
         </label>
         <div className="mt-5 flex justify-end gap-2">

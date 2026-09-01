@@ -340,7 +340,7 @@ export function ScheduleGrid({
             tabIndex={day === selectedDay ? 0 : -1}
             onClick={() => onActiveDayChange(day)}
             onKeyDown={(event) => moveDayTab(event, index)}
-            className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-lg px-2 text-xs font-medium focus-visible:ring-2 ${
+            className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-md px-2 text-xs font-medium focus-visible:ring-2 ${
               day === selectedDay ? "neu-inset bg-surface-container text-on-surface" : "text-on-surface-variant"
             }`}
           >

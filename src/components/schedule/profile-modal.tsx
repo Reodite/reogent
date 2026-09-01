@@ -86,7 +86,7 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
       >
         <h2 className="text-on-surface text-base font-medium">{title}</h2>
 
-        <div className="bg-surface-container-low mt-3 flex items-center gap-3 rounded-xl p-3">
+        <div className="bg-surface-container-low mt-3 flex items-center gap-3 rounded-lg p-3">
           {handle.trim() ? (
             <AvatarChip avatar={liveAvatar} size={40} />
           ) : (
@@ -113,7 +113,7 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
             disabled={saving}
             maxLength={24}
             placeholder="e.g. max"
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-xl px-3 text-sm outline-none focus-visible:ring-2 disabled:opacity-55"
+            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 text-sm outline-none focus-visible:ring-2 disabled:opacity-55"
             onChange={(event) => {
               setHandle(event.target.value);
               setError("");
