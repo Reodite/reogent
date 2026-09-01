@@ -303,7 +303,10 @@ body {
 
 html[data-planner-dragging],
 html[data-planner-dragging] body,
-html[data-planner-dragging] body * {
+html[data-planner-dragging] body *,
+html[data-schedule-dragging],
+html[data-schedule-dragging] body,
+html[data-schedule-dragging] body * {
   cursor: grabbing;
 }
 

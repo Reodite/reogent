@@ -1,10 +1,32 @@
 "use client";
 
+import { DragOverlayFrame, useDragOverlayPhysics } from "@/src/components/dnd/drag-overlay-physics";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
-import type { ScheduleGridBand, ScheduleGridModel, ScheduleGridOccurrence } from "@/src/lib/schedule/grid";
+import {
+  buildScheduleGrid,
+  type ScheduleGridBand,
+  type ScheduleGridItem,
+  type ScheduleGridModel,
+  type ScheduleGridOccurrence,
+} from "@/src/lib/schedule/grid";
 import type { DayCode } from "@/src/lib/schedule/types";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
-import type { KeyboardEvent, ReactNode } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  pointerWithin,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 
 const PX_PER_MINUTE = 0.9;
 
@@ -23,6 +45,19 @@ export interface ScheduleGridEmptyState {
   onAction?: () => void;
 }
 
+/** One alternate catalog section exposed as a timetable drop target. */
+export interface ScheduleGridDragOption {
+  id: string;
+  label: string;
+  item: ScheduleGridItem;
+}
+
+/** Planner-owned section choices and mutation callback consumed by the shared drag mechanics. */
+export interface ScheduleGridDragConfig {
+  getOptions: (blockId: string) => ScheduleGridDragOption[];
+  onDrop: (blockId: string, optionId: string) => void;
+}
+
 interface ScheduleGridProps {
   model: ScheduleGridModel;
   activeDay: DayCode;
@@ -33,6 +68,7 @@ interface ScheduleGridProps {
   empty?: ScheduleGridEmptyState;
   renderBlockFooter?: (block: ScheduleGridOccurrence) => ReactNode;
   ariaLabel?: string;
+  drag?: ScheduleGridDragConfig;
 }
 
 function ScheduleBlock({
@@ -40,20 +76,31 @@ function ScheduleBlock({
   dayStartMin,
   onActivate,
   footer,
+  attributes,
+  dimmed = false,
+  listeners,
+  overlayWidth,
+  setNodeRef,
 }: {
   block: ScheduleGridOccurrence;
   dayStartMin: number;
   onActivate: () => void;
   footer?: ReactNode;
+  attributes?: DraggableAttributes;
+  dimmed?: boolean;
+  listeners?: DraggableSyntheticListeners;
+  overlayWidth?: number;
+  setNodeRef?: (node: HTMLElement | null) => void;
 }) {
   const color = courseColor(block.courseKey);
   const height = Math.max(28, (block.endMin - block.startMin) * PX_PER_MINUTE - 3);
   const compact = height < 58;
+  const overlay = overlayWidth !== undefined;
   const style = {
-    top: (block.startMin - dayStartMin) * PX_PER_MINUTE,
+    top: overlay ? undefined : (block.startMin - dayStartMin) * PX_PER_MINUTE,
     height,
-    left: `calc(${(100 / block.cols) * block.col}% + 3px)`,
-    width: `calc(${100 / block.cols}% - 6px)`,
+    left: overlay ? undefined : `calc(${(100 / block.cols) * block.col}% + 3px)`,
+    width: overlay ? overlayWidth : `calc(${100 / block.cols}% - 6px)`,
     zIndex: block.col + 1,
     borderColor: color,
     background: `color-mix(in srgb, ${color} 15%, var(--surface))`,
@@ -62,13 +109,21 @@ function ScheduleBlock({
 
   return (
     <button
+      ref={setNodeRef}
       type="button"
-      onClick={onActivate}
+      data-schedule-block
+      tabIndex={overlay ? -1 : undefined}
+      aria-hidden={overlay || undefined}
+      onClick={overlay ? undefined : onActivate}
+      {...attributes}
+      {...listeners}
       title={`${block.code} ${block.section} · ${block.title} · ${time}${block.meta ? ` · ${block.meta}` : ""}`}
       aria-label={`${block.code} ${block.section}, ${block.title}, ${time}${block.meta ? `, ${block.meta}` : ""}${
         block.conflict ? ", conflicts with another section" : ""
       }`}
-      className={`focus-visible:ring-primary/40 absolute flex min-w-0 flex-col overflow-hidden rounded-lg border px-2 py-1.5 text-left transition-[filter,transform] select-none hover:brightness-[0.98] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
+      className={`focus-visible:ring-primary/40 flex min-w-0 flex-col overflow-hidden rounded-lg border px-2 py-1.5 text-left transition-[filter,transform,opacity] select-none hover:brightness-[0.98] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
+        overlay ? "relative" : "absolute"
+      } ${listeners ? "cursor-grab touch-pan-y active:cursor-grabbing" : ""} ${dimmed ? "opacity-25" : ""} ${
         block.conflict ? "ring-error/70 ring-2" : ""
       }`}
       style={style}
@@ -91,6 +146,83 @@ function ScheduleBlock({
   );
 }
 
+function DraggableScheduleBlock({
+  block,
+  activeBlockId,
+  dayStartMin,
+  footer,
+  onActivate,
+}: {
+  block: ScheduleGridOccurrence;
+  activeBlockId: string | null;
+  dayStartMin: number;
+  footer?: ReactNode;
+  onActivate: () => void;
+}) {
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: `schedule-block:${block.occurrenceId}`,
+    data: { blockId: block.id },
+  });
+  return (
+    <ScheduleBlock
+      block={block}
+      dayStartMin={dayStartMin}
+      onActivate={onActivate}
+      footer={footer}
+      attributes={attributes}
+      listeners={listeners}
+      setNodeRef={setNodeRef}
+      dimmed={activeBlockId === block.id}
+    />
+  );
+}
+
+function ScheduleDropSlot({
+  block,
+  dayStartMin,
+  label,
+}: {
+  block: ScheduleGridOccurrence;
+  dayStartMin: number;
+  label: string;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `schedule-slot:${block.occurrenceId}`,
+    data: { optionId: block.id },
+  });
+  const color = courseColor(block.courseKey);
+  const style = {
+    top: (block.startMin - dayStartMin) * PX_PER_MINUTE,
+    height: Math.max(28, (block.endMin - block.startMin) * PX_PER_MINUTE - 3),
+    left: `calc(${(100 / block.cols) * block.col}% + 3px)`,
+    width: `calc(${100 / block.cols}% - 6px)`,
+    borderColor: color,
+    background: `color-mix(in srgb, ${color} ${isOver ? 28 : 10}%, var(--surface))`,
+  } as React.CSSProperties;
+
+  return (
+    <div
+      ref={setNodeRef}
+      aria-hidden="true"
+      data-drop-label={label}
+      className={`absolute z-20 overflow-hidden rounded-lg border border-dashed px-2 py-1.5 transition-[background-color,transform] ${
+        isOver ? "scale-[1.02]" : ""
+      } ${block.conflict ? "ring-error/60 ring-2" : ""}`}
+      style={style}
+    >
+      <span className="text-on-surface block truncate font-mono text-xs font-medium">
+        {block.code} {block.section}
+      </span>
+      <span className="text-on-surface-variant block truncate font-mono text-[10px]">
+        {minutesToFullLabel(block.startMin)}–{minutesToFullLabel(block.endMin)}
+      </span>
+      {block.conflict ? (
+        <span className="text-error block truncate text-[10px] font-medium">Creates conflict</span>
+      ) : null}
+    </div>
+  );
+}
+
 /** Renders the shared planner and sharer week from route-independent geometry. */
 export function ScheduleGrid({
   model,
@@ -102,7 +234,25 @@ export function ScheduleGrid({
   empty,
   renderBlockFooter,
   ariaLabel = "Weekly schedule",
+  drag,
 }: ScheduleGridProps) {
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  const { anchor, move, reducedMotion, rotate, settle, start } = useDragOverlayPhysics({
+    resolveSourceElement: (event) => {
+      const target = event.activatorEvent.target;
+      return target instanceof Element ? target.closest<HTMLElement>("[data-schedule-block]") : null;
+    },
+  });
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }),
+  );
+  const dragOptions = activeBlockId && drag ? drag.getOptions(activeBlockId) : [];
+  const optionModel = buildScheduleGrid(dragOptions.map((option) => option.item));
+  const optionLabels = new Map(dragOptions.map((option) => [option.id, option.label]));
+  const activeBlock = activeBlockId
+    ? [...model.occurrencesByDay.values()].flat().find((block) => block.id === activeBlockId)
+    : undefined;
   const selectedDay = model.days.includes(activeDay) ? activeDay : model.days[0];
   const hours: number[] = [];
   for (let minute = model.dayStartMin; minute <= model.dayEndMin; minute += 60) hours.push(minute);
@@ -110,6 +260,36 @@ export function ScheduleGrid({
   const hasBlocks = [...model.occurrencesByDay.values()].some((items) => items.length > 0);
   const showNow =
     now && model.days.includes(now.day) && now.minute >= model.dayStartMin && now.minute <= model.dayEndMin;
+
+  useEffect(
+    () => () => {
+      document.documentElement.removeAttribute("data-schedule-dragging");
+    },
+    [],
+  );
+
+  function beginDrag(event: DragStartEvent) {
+    const blockId = event.active.data.current?.blockId;
+    if (typeof blockId !== "string") return;
+    document.documentElement.setAttribute("data-schedule-dragging", "");
+    setActiveBlockId(blockId);
+    start(event);
+  }
+
+  function finishDrag(event: DragEndEvent) {
+    document.documentElement.removeAttribute("data-schedule-dragging");
+    const blockId = activeBlockId;
+    const optionId = event.over?.data.current?.optionId;
+    setActiveBlockId(null);
+    settle();
+    if (drag && blockId && typeof optionId === "string") drag.onDrop(blockId, optionId);
+  }
+
+  function cancelDrag() {
+    document.documentElement.removeAttribute("data-schedule-dragging");
+    setActiveBlockId(null);
+    settle();
+  }
 
   function moveDayTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     let next: number;
@@ -123,7 +303,7 @@ export function ScheduleGrid({
     event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
   }
 
-  return (
+  const content = (
     <section aria-label={ariaLabel} className="schedule-grid flex h-full min-h-0 flex-col">
       <div
         className="schedule-grid-day-tabs border-border-subtle bg-surface flex shrink-0 gap-1 border-b p-2"
@@ -195,6 +375,14 @@ export function ScheduleGrid({
                   style={{ top: (minute - model.dayStartMin) * PX_PER_MINUTE }}
                 />
               ))}
+              {(optionModel.occurrencesByDay.get(day) ?? []).map((block) => (
+                <ScheduleDropSlot
+                  key={block.occurrenceId}
+                  block={block}
+                  dayStartMin={model.dayStartMin}
+                  label={optionLabels.get(block.id) ?? `Switch to ${block.section}`}
+                />
+              ))}
               {bands
                 .filter((band) => band.day === day)
                 .map((band) => (
@@ -208,15 +396,26 @@ export function ScheduleGrid({
                     }}
                   />
                 ))}
-              {(model.occurrencesByDay.get(day) ?? []).map((block) => (
-                <ScheduleBlock
-                  key={block.occurrenceId}
-                  block={block}
-                  dayStartMin={model.dayStartMin}
-                  onActivate={() => onBlockActivate(block.id)}
-                  footer={renderBlockFooter?.(block)}
-                />
-              ))}
+              {(model.occurrencesByDay.get(day) ?? []).map((block) =>
+                drag ? (
+                  <DraggableScheduleBlock
+                    key={block.occurrenceId}
+                    block={block}
+                    activeBlockId={activeBlockId}
+                    dayStartMin={model.dayStartMin}
+                    onActivate={() => onBlockActivate(block.id)}
+                    footer={renderBlockFooter?.(block)}
+                  />
+                ) : (
+                  <ScheduleBlock
+                    key={block.occurrenceId}
+                    block={block}
+                    dayStartMin={model.dayStartMin}
+                    onActivate={() => onBlockActivate(block.id)}
+                    footer={renderBlockFooter?.(block)}
+                  />
+                ),
+              )}
               {showNow && now.day === day ? (
                 <div
                   className="bg-error pointer-events-none absolute inset-x-0 z-20 h-0.5"
@@ -248,5 +447,51 @@ export function ScheduleGrid({
       </div>
       {showNow ? <p className="sr-only">{now.label}</p> : null}
     </section>
+  );
+
+  if (!drag) return content;
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      accessibility={{
+        announcements: {
+          onDragStart: () => "Section picked up. Alternate sections are now visible.",
+          onDragOver: ({ over }) => {
+            const optionId = over?.data.current?.optionId;
+            return typeof optionId === "string"
+              ? `Section over ${optionLabels.get(optionId) ?? "an alternate section"}.`
+              : "Section outside an alternate slot.";
+          },
+          onDragEnd: ({ over }) => {
+            const optionId = over?.data.current?.optionId;
+            return typeof optionId === "string"
+              ? `Changed to ${optionLabels.get(optionId) ?? "the alternate section"}.`
+              : "Section drag cancelled.";
+          },
+          onDragCancel: () => "Section drag cancelled.",
+        },
+      }}
+      onDragStart={beginDrag}
+      onDragMove={move}
+      onDragEnd={finishDrag}
+      onDragCancel={cancelDrag}
+    >
+      {content}
+      <DragOverlay dropAnimation={{ duration: 260, easing: "cubic-bezier(0.34, 1.3, 0.64, 1)" }}>
+        {activeBlock ? (
+          <DragOverlayFrame anchor={anchor} reducedMotion={reducedMotion} rotate={rotate}>
+            <ScheduleBlock
+              block={activeBlock}
+              dayStartMin={model.dayStartMin}
+              onActivate={() => {}}
+              footer={renderBlockFooter?.(activeBlock)}
+              overlayWidth={anchor.width || 180}
+            />
+          </DragOverlayFrame>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }

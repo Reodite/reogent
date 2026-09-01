@@ -3,7 +3,11 @@
 import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
-import { ScheduleGrid } from "@/src/components/schedule/schedule-grid";
+import {
+  ScheduleGrid,
+  type ScheduleGridDragConfig,
+  type ScheduleGridDragOption,
+} from "@/src/components/schedule/schedule-grid";
 import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/schedule/schedule-workspace";
 import { useDialogFocus } from "@/src/components/schedule/use-dialog-focus";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
@@ -114,6 +118,70 @@ export function plannerGridItems(entries: ScheduleEntry[]): ScheduleGridItem[] {
     meta: entry.snapshot.instructor ?? undefined,
     conflict: conflicts.has(index),
   }));
+}
+
+/** Builds alternate section slots for one selected planner component. */
+export function plannerDragOptions(
+  entries: ScheduleEntry[],
+  docs: Map<string, CourseDoc>,
+  blockId: string,
+): ScheduleGridDragOption[] {
+  const currentIndex = entries.findIndex((entry) => entryId(entry) === blockId);
+  const current = entries[currentIndex];
+  if (!current) return [];
+  const code = normalizeScheduleCode(current.code);
+  const doc = docs.get(code);
+  if (!doc) return [];
+  const group = sectionGroup(current.section);
+
+  return doc.sections.flatMap((section) => {
+    if (
+      section.term !== current.term ||
+      section.section === current.section ||
+      sectionGroup(section.section) !== group
+    ) {
+      return [];
+    }
+    const days = normalizeDays(section.days).filter((day): day is DayCode => DAY_CODES.has(day));
+    const startMin = parseTime(section.start_time);
+    const endMin = parseTime(section.end_time);
+    if (days.length === 0 || startMin < 0 || endMin <= startMin) return [];
+    const candidate: ScheduleEntry = {
+      code,
+      section: section.section,
+      term: current.term,
+      snapshot: {
+        title: doc.title,
+        instructor: section.instructor ?? null,
+        days,
+        start_time: section.start_time,
+        end_time: section.end_time,
+        status: section.status ?? null,
+      },
+    };
+    const resulting = entries.with(currentIndex, candidate);
+    const conflict = conflictedIndices(toScheduled(resulting)).has(currentIndex);
+    const id = entryId(candidate);
+    return [
+      {
+        id,
+        label: `${sectionOption(section)}${conflict ? " · creates a conflict" : ""}`,
+        item: {
+          id,
+          courseKey: code,
+          code,
+          title: doc.title,
+          section: section.section,
+          component: sectionComponent(section.section),
+          days,
+          startMin,
+          endMin,
+          meta: section.status,
+          conflict,
+        },
+      },
+    ];
+  });
 }
 
 function CourseDetailsDialog({
@@ -334,6 +402,7 @@ export function SchedulePlannerPane() {
   const entries = useSchedule((state) => state.entries);
   const activeTerm = useSchedule((state) => state.activeTerm);
   const setActiveTerm = useSchedule((state) => state.setActiveTerm);
+  const addEntry = useSchedule((state) => state.addEntry);
   const addCourseSections = useSchedule((state) => state.addCourseSections);
   const stale = useSchedule((state) => state.stale);
   const setStale = useSchedule((state) => state.setStale);
@@ -413,6 +482,23 @@ export function SchedulePlannerPane() {
   const conflictingIds = new Set(gridItems.filter((item) => item.conflict).map((item) => item.id));
   const conflictCount = conflictingIds.size;
   const credits = [...pickedCodes].reduce((sum, code) => sum + (docs.get(code)?.credits ?? 0), 0);
+  const dragConfig = useMemo<ScheduleGridDragConfig>(
+    () => ({
+      getOptions: (blockId) => plannerDragOptions(visibleEntries, docs, blockId),
+      onDrop: (blockId, optionId) => {
+        const current = visibleEntries.find((entry) => entryId(entry) === blockId);
+        if (!current) return;
+        const doc = docs.get(normalizeScheduleCode(current.code));
+        const section = doc?.sections.find(
+          (candidate) =>
+            candidate.term === current.term &&
+            entryId({ code: current.code, section: candidate.section, term: current.term }) === optionId,
+        );
+        if (doc && section) addEntry(doc, section);
+      },
+    }),
+    [addEntry, docs, visibleEntries],
+  );
 
   const notice =
     stale || catalogError ? (
@@ -555,6 +641,7 @@ export function SchedulePlannerPane() {
             if (item) setDetailCode(item.code);
           }}
           ariaLabel="Weekly course schedule"
+          drag={dragConfig}
           empty={{
             title: "Build your first timetable",
             description: "Search for a course, then choose its lecture, lab, or tutorial.",

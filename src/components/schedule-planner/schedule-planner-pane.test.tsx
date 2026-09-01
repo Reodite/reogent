@@ -2,7 +2,7 @@
 import type { CourseDoc } from "@/src/lib/api-types";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { plannerGridItems, SchedulePlannerPane } from "./schedule-planner-pane";
+import { plannerDragOptions, plannerGridItems, SchedulePlannerPane } from "./schedule-planner-pane";
 
 const term = "2026-27 Winter Term 1";
 
@@ -154,6 +154,20 @@ describe("plannerGridItems", () => {
       conflict: true,
     });
     expect(items[1].conflict).toBe(true);
+  });
+
+  it("builds alternate slots with resulting conflict state", () => {
+    const entries = structuredClone(initialEntries);
+    entries[1].snapshot.days = ["Tue", "Thu"];
+    entries[1].snapshot.start_time = "11:00";
+    entries[1].snapshot.end_time = "12:00";
+    const options = plannerDragOptions(entries, new Map([["CPSC 110", courses["CPSC 110"]]]), `CPSC 110::101::${term}`);
+
+    expect(options).toHaveLength(1);
+    expect(options[0]).toMatchObject({
+      id: `CPSC 110::102::${term}`,
+      item: { section: "102", days: ["Tue", "Thu"], conflict: true },
+    });
   });
 });
 
