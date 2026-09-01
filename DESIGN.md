@@ -395,6 +395,8 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 ### Buttons
 
+Use `src/components/ui/button.tsx` for native action buttons. `Button` owns variant, size, focus, disabled, pressed, and parent-material shadow classes while feature code owns the label, icon, layout, and event handler. Keep links, tabs, radios, menu items, navigation rows, pills, and compound controls on their native contracts.
+
 State changes through shadow transformation + press scale. Buttons never translate on hover or active; the surface stays put and only the shadow, filter, or scale changes.
 
 - **Primary** (`.neu-primary-button`): `bg-primary text-on-primary rounded-xl h-9 px-4 text-sm font-medium`. Shadow: contextual dark and light pair for the parent material. Hover: brightness(1.03) with a wider contextual shadow. Active: contextual inset shadow, scale(0.985).
@@ -405,7 +407,7 @@ State changes through shadow transformation + press scale. Buttons never transla
 - **Ghost**: `bg-transparent text-on-surface-variant rounded-xl`. No shadow at rest (the one exception to whisper dimension). Hover: subtle surface background appears. Landing sign-in link uses `text-on-surface-variant hover:text-on-surface` for a softer secondary feel.
 - **Icon Button**: `size-9` (36px) standard. Uses `neu-button` or `neu-panel` shadow. Contains centered icon.
 - **Compact Pill** (inline tool cards): `border border-primary text-primary rounded-full px-3 py-1.5 text-xs font-medium min-h-[44px]`. Smaller padding than suggestion pills; used inside tool result cards where space is tight. Focus: `ring-primary/40 ring-2 ring-offset-2`. Active: `scale-95`.
-- **Sizes**: Standard 36px (h-9), Prominent 40px (h-10), Compact 32px (h-8), Large 48px (h-12, landing/auth only), Icon 36px.
+- **Sizes**: Standard 36px (h-9), Prominent 40px (h-10), Compact 32px (h-8), Large 48px (h-12, landing/auth only), Icon 36px. Below 640px, compact, standard, prominent, and icon controls expand to the 44px touch floor.
 - **Transitions**: `color`, `background-color`, `box-shadow`, `transform` at 150ms ease-out.
 - **Disabled**: `disabled:pointer-events-none disabled:opacity-45` (send) or `disabled:opacity-60` (forms). Cursor: `disabled:cursor-not-allowed` on form submits.
 
@@ -418,6 +420,8 @@ State changes through shadow transformation + press scale. Buttons never transla
 - **Tool result cards**: `bg-surface-container-low rounded-lg p-3`. Flat within the message bubble. Icon containers use `bg-secondary-container text-on-secondary-container size-9 rounded-lg` (or `size-8 rounded-md` for compact variants).
 
 ### Inputs / Fields
+
+Use `TextInput` and `SelectInput` from `src/components/ui/form-controls.tsx` for ordinary native fields. They share inset material, 8px radius, focus, invalid, disabled, and parent-material shadow treatment. Search fields with embedded actions and compound upload controls keep their feature-specific structure.
 
 - **Chat composer** (`.neu-inset .chat-composer`): `bg-surface-container-low rounded-2xl p-1.5`. Recessed at rest via `--neu-inset-shadow`. Focus-within: inset shadow + 2px outline ring glow (primary at 28% opacity, -2px offset). Internal: textarea (transparent bg, `px-3 py-2 text-sm`, no outline) + send button (`.neu-primary-button rounded-xl size-11 sm:size-9`, right-aligned).
 - **Auth input** (`.neu-inset`): `bg-surface-container-low text-on-surface h-11 rounded-lg px-3 text-sm`. Focus: `ring-primary/40 ring-2 ring-offset-1`. Error: `ring-error/30 ring-2`.

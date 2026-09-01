@@ -6,13 +6,13 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import { Button } from "@/src/components/ui/button";
+import { SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import type { StudentProfile } from "@/src/shared/profile";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
-const FIELD_CLASS =
-  "neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1";
 const LABEL_CLASS = "text-on-surface-variant flex flex-col gap-1 text-xs font-medium";
 
 type ProfileStatus = "loading" | "load-error" | "idle" | "saving" | "saved" | "error";
@@ -61,24 +61,24 @@ function ProfileForm() {
   const busy = status === "loading" || status === "saving";
   return (
     <form onSubmit={handleSubmit} aria-busy={busy} className="mt-4 flex flex-col gap-3">
-      <label className={LABEL_CLASS}>
+      <label htmlFor="settings-program" className={LABEL_CLASS}>
         Program
-        <input
+        <TextInput
+          id="settings-program"
           type="text"
           maxLength={120}
           placeholder="e.g. Computer Science"
           value={profile.program ?? ""}
           onChange={(e) => setProfile({ ...profile, program: e.target.value || undefined })}
-          className={FIELD_CLASS}
         />
       </label>
       <div className="grid grid-cols-2 gap-3">
-        <label className={LABEL_CLASS}>
+        <label htmlFor="settings-year" className={LABEL_CLASS}>
           Year
-          <select
+          <SelectInput
+            id="settings-year"
             value={profile.year ?? ""}
             onChange={(e) => setProfile({ ...profile, year: e.target.value ? Number(e.target.value) : undefined })}
-            className={FIELD_CLASS}
           >
             <option value="">Not set</option>
             {[1, 2, 3, 4, 5, 6, 7].map((year) => (
@@ -86,32 +86,28 @@ function ProfileForm() {
                 Year {year}
               </option>
             ))}
-          </select>
+          </SelectInput>
         </label>
-        <label className={LABEL_CLASS}>
+        <label htmlFor="settings-student-type" className={LABEL_CLASS}>
           Student type
-          <select
+          <SelectInput
+            id="settings-student-type"
             value={profile.student_type ?? ""}
             onChange={(e) =>
               setProfile({ ...profile, student_type: (e.target.value || undefined) as StudentProfile["student_type"] })
             }
-            className={FIELD_CLASS}
           >
             <option value="">Not set</option>
             <option value="domestic">Domestic</option>
             <option value="international">International</option>
-          </select>
+          </SelectInput>
         </label>
       </div>
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={busy}
-          className="neu-button bg-surface text-on-surface hover:text-primary flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-        >
+        <Button type="submit" size="prominent" disabled={busy}>
           <Icon name="check" size={16} />
           Save
-        </button>
+        </Button>
         <p
           role="status"
           className={`text-xs ${status === "error" || status === "load-error" ? "text-error" : "text-muted"}`}

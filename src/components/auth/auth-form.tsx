@@ -1,6 +1,8 @@
 "use client";
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
+import { Button } from "@/src/components/ui/button";
+import { TextInput } from "@/src/components/ui/form-controls";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -54,7 +56,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         <label htmlFor="auth-username" className="text-on-surface-variant text-xs font-medium">
           Username
         </label>
-        <input
+        <TextInput
           ref={usernameRef}
           id="auth-username"
           type="text"
@@ -67,14 +69,14 @@ export function AuthForm({ mode }: AuthFormProps) {
           required
           aria-invalid={!!error}
           aria-describedby={error ? "auth-error" : undefined}
-          className={`neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 ${error ? "ring-error/30 ring-2" : ""}`}
+          shadowOn="background"
         />
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor="auth-password" className="text-on-surface-variant text-xs font-medium">
           Password{mode === "signup" && <span className="text-muted ml-1">(6+ characters)</span>}
         </label>
-        <input
+        <TextInput
           id="auth-password"
           type="password"
           autoComplete={mode === "login" ? "current-password" : "new-password"}
@@ -85,7 +87,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           minLength={6}
           aria-invalid={!!error}
           aria-describedby={error ? "auth-error" : undefined}
-          className={`neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 h-11 w-full rounded-lg px-3 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 ${error ? "ring-error/30 ring-2" : ""}`}
+          shadowOn="background"
         />
       </div>
       <AnimatePresence>
@@ -104,11 +106,14 @@ export function AuthForm({ mode }: AuthFormProps) {
           </motion.p>
         )}
       </AnimatePresence>
-      <button
+      <Button
         type="submit"
+        variant="primary"
+        size="large"
+        shadowOn="background"
         disabled={pending}
         aria-busy={pending}
-        className="neu-primary-button bg-primary text-on-primary mt-1 flex h-12 w-full items-center justify-center rounded-xl text-base font-medium disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-1 w-full"
       >
         {pending
           ? mode === "login"
@@ -117,7 +122,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           : mode === "login"
             ? "Sign in"
             : "Create account"}
-      </button>
+      </Button>
       <p className="text-muted flex min-h-[44px] items-center justify-center text-sm">
         {mode === "login" ? (
           <>
