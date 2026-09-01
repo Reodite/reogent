@@ -5,6 +5,7 @@
 // presence is per-year — a co-op year may skip it while others keep it.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { isSummer, usePlanner, type Year } from "./planner-store";
 import { TermSection } from "./term-section";
 import type { BlockValidation } from "./validation";
@@ -17,7 +18,11 @@ interface YearColumnProps {
 
 export function YearColumn({ year, courseIndex, validations }: YearColumnProps) {
   const toggleSummer = usePlanner((s) => s.toggleSummer);
-  const hasSummer = year.terms.some((t) => isSummer(t.season));
+  const reduceMotion = useReducedMotion();
+  const indexedTerms = year.terms.map((term, index) => ({ term, index }));
+  const winterTerms = indexedTerms.filter(({ term }) => !isSummer(term.season));
+  const summerTerms = indexedTerms.filter(({ term }) => isSummer(term.season));
+  const hasSummer = summerTerms.length > 0;
   const yearCredits = year.terms.reduce(
     (sum, t) => sum + t.blocks.reduce((n, b) => n + (courseIndex.get(b.code)?.credits ?? 0), 0),
     0,
@@ -29,18 +34,43 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
         <h3 className="text-on-surface text-sm font-medium">{year.label}</h3>
         <span className="text-muted ml-auto w-12 text-right text-xs tabular-nums">{yearCredits} cr</span>
       </header>
-      <div className="grid min-h-0 flex-1 grid-rows-[repeat(4,minmax(0,1fr))_2.25rem] gap-2">
-        {year.terms.map((term, idx) => (
-          <TermSection
-            key={term.season}
-            yearId={year.id}
-            termIdx={idx}
-            term={term}
-            courseIndex={courseIndex}
-            validations={validations}
-          />
-        ))}
-        {!hasSummer && <div aria-hidden="true" className="row-span-2" />}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          {winterTerms.map(({ term, index }) => (
+            <TermSection
+              key={term.season}
+              yearId={year.id}
+              termIdx={index}
+              term={term}
+              courseIndex={courseIndex}
+              validations={validations}
+            />
+          ))}
+        </div>
+        <AnimatePresence initial={false}>
+          {hasSummer && (
+            <motion.div
+              key="summer-terms"
+              data-summer-terms
+              initial={reduceMotion ? false : { opacity: 0, flexGrow: 0, marginTop: 0 }}
+              animate={{ opacity: 1, flexGrow: 1, marginTop: 8 }}
+              exit={{ opacity: 0, flexGrow: 0, marginTop: 0 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="flex min-h-0 shrink basis-0 flex-col gap-2 overflow-hidden"
+            >
+              {summerTerms.map(({ term, index }) => (
+                <TermSection
+                  key={term.season}
+                  yearId={year.id}
+                  termIdx={index}
+                  term={term}
+                  courseIndex={courseIndex}
+                  validations={validations}
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
         <button
           type="button"
           onClick={() => {
@@ -57,7 +87,7 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
             }
             toggleSummer(year.id);
           }}
-          className="neu-button text-muted hover:text-on-surface flex h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg text-xs"
+          className="neu-button text-muted hover:text-on-surface mt-2 flex h-9 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg text-xs"
         >
           <Icon name={hasSummer ? "close" : "add"} size={13} />
           {hasSummer ? "Remove summer session" : "Add summer session"}
