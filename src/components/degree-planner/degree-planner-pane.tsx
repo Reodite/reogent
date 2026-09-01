@@ -507,8 +507,8 @@ export function DegreePlannerPane() {
               ))}
             </div>
             {activeDrag && (
-              <div className="pointer-events-none sticky bottom-2 z-20 mx-auto -mt-14 w-72">
-                <div className="pointer-events-auto">
+              <div className="pointer-events-none sticky bottom-2 z-20 mx-auto h-0 w-72">
+                <div className="pointer-events-auto -translate-y-14">
                   <TrashBin />
                 </div>
               </div>
