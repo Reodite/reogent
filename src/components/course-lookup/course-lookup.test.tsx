@@ -3,7 +3,7 @@ import { CourseDetailCard } from "@/src/components/course-lookup/course-detail-c
 import { CourseLookupPane } from "@/src/components/course-lookup/course-lookup-pane";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const setActiveChannel = vi.hoisted(() => vi.fn());
@@ -91,6 +91,7 @@ describe("CourseDetailCard — render with sections (13.6, REQ-2.1)", () => {
     expect(container.textContent).toContain("Mon Wed Fri");
     expect(container.textContent).toContain("09:00-10:00");
     expect(container.textContent).toContain("C. Karakus");
+    expect(screen.getByText("1 section").className).toContain("whitespace-nowrap");
   });
 });
 
@@ -126,6 +127,14 @@ describe("CourseDetailCard — Prereq Tree affordance (13.11, REQ-4.1)", () => {
     });
   });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 function makeCourse(code: string, subject: string, number: string, title?: string): CourseDoc {
   return {
@@ -313,6 +322,24 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
         expect.objectContaining({ subject: "CPSC", number: "320" }),
       ),
     );
+  });
+
+  it("ignores an older unfiltered response after an exact search settles", async () => {
+    shellState.mode = "tools";
+    const initial = deferred<{ courses: CourseDoc[]; subject_total: number }>();
+    const exact = deferred<{ courses: CourseDoc[]; subject_total: number }>();
+    apiState.searchCourses = vi.fn().mockReturnValueOnce(initial.promise).mockReturnValueOnce(exact.promise);
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: "CPSC 320" } });
+    await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalledTimes(2));
+    await act(async () => exact.resolve({ courses: [makeCourse("CPSC 320", "CPSC_V", "320")], subject_total: 1 }));
+    expect(await screen.findByRole("button", { name: "CPSC 320" })).not.toBeNull();
+
+    await act(async () => initial.resolve({ courses: [makeCourse("MATH 100", "MATH_V", "100")], subject_total: 1 }));
+    expect(screen.queryByRole("button", { name: "MATH 100" })).toBeNull();
+    expect(screen.getAllByRole("row")).toHaveLength(2);
   });
 
   it("reveals advanced filters without a separate workspace view", async () => {

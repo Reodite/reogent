@@ -396,7 +396,7 @@ export function CourseSearchField({
       aria-autocomplete={overlay ? "list" : undefined}
       aria-expanded={overlay ? showOverlay : undefined}
       aria-controls={overlay ? listboxId : undefined}
-      aria-activedescendant={overlay && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
+      aria-activedescendant={showOverlay && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
       density={density}
       shadowOn={shadowOn}
     />

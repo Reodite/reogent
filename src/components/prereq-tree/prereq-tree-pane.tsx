@@ -80,22 +80,35 @@ function useFitGraph() {
   );
 }
 
-/** Auto-fit on root-course change, so every course is framed. Bounds come from
- *  the layout's own bbox rather than ReactFlow's node rects, which lag a frame
- *  behind the measured relayout and would fit a partial graph. `fitKey` re-fires
- *  the fit on root change and once that relayout has settled; selection flips
- *  must not re-fit, so `bbox` rides a ref instead of being a dep. */
-function FitOnChange({ bbox, fitKey, onFitted }: { bbox: Graph["bbox"]; fitKey: string; onFitted: () => void }) {
+/** Centers the root when its measured layout settles so the primary course opens in view. */
+function FitOnChange({
+  bbox,
+  rootBounds,
+  fitKey,
+  onFitted,
+}: {
+  bbox: Graph["bbox"];
+  rootBounds: Rect | null;
+  fitKey: string;
+  onFitted: () => void;
+}) {
   const fitGraph = useFitGraph();
   // Readiness gate: nodes measured means the canvas has a size to fit into.
   const nodesInitialized = useNodesInitialized();
-  const bboxRef = useRef(bbox);
-  bboxRef.current = bbox;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fitKey deliberately re-fires the fit without depending on `bbox` (selection flips must not re-fit).
+  const boundsRef = useRef({ bbox, rootBounds });
+  boundsRef.current = { bbox, rootBounds };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fitKey re-fires without tracking bounds because branch changes must not move the camera.
   useEffect(() => {
-    const b = bboxRef.current;
-    if (!b || !nodesInitialized) return;
-    fitGraph({ x: b.minX, y: b.minY, width: b.maxX - b.minX, height: b.maxY - b.minY });
+    const current = boundsRef.current;
+    if (!current.bbox || !nodesInitialized) return;
+    fitGraph(
+      current.rootBounds ?? {
+        x: current.bbox.minX,
+        y: current.bbox.minY,
+        width: current.bbox.maxX - current.bbox.minX,
+        height: current.bbox.maxY - current.bbox.minY,
+      },
+    );
     // Reveal a frame later: setViewport lands in React Flow's own render pass,
     // so flipping `awaitingFit` in this one can paint the graph before the
     // camera moves — the flash this gate exists to prevent.
@@ -586,6 +599,15 @@ export function PrereqTreePane({
 
   const rootEntry = index && activeCode ? (index.get(activeCode) ?? null) : null;
   const noPrereqs = rootEntry && isNoneOrEmpty(rootEntry.prerequisite) && isNoneOrEmpty(rootEntry.corequisite);
+  const rootNode = graph.nodes.find((node) => node.id === activeCode);
+  const rootBounds: Rect | null = rootNode
+    ? {
+        x: rootNode.position.x,
+        y: rootNode.position.y,
+        width: Number(rootNode.style?.width) || rootNode.width || 300,
+        height: measuredHeights.get(rootNode.id) || rootNode.height || 120,
+      }
+    : null;
 
   // Re-fit the camera once per root after every node has a real measured
   // height (the measured relayout can shift the graph). Latched per root so
@@ -778,7 +800,7 @@ export function PrereqTreePane({
                 className={awaitingFit ? "opacity-0" : undefined}
               >
                 <Background color="var(--border)" gap={16} />
-                <FitOnChange bbox={graph.bbox} fitKey={fitKey} onFitted={onFitted} />
+                <FitOnChange bbox={graph.bbox} rootBounds={rootBounds} fitKey={fitKey} onFitted={onFitted} />
               </ReactFlow>
             </PaneErrorBoundary>
           ) : indexStatus === "ready" && !missingCode && !activeCode ? (

@@ -10,7 +10,7 @@ import type { CourseDoc } from "@/src/lib/api-types";
 import { usePersistentState } from "@/src/lib/use-persistent-state";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
 import { canonicalize } from "@/src/shared/course-code";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ExplorerCourse = CourseDoc & {
   session?: string;
@@ -108,6 +108,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const requestId = useRef(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(queryInput.trim()), 250);
@@ -115,6 +116,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
   }, [queryInput]);
 
   const fetchExplorer = useCallback(async () => {
+    const id = ++requestId.current;
     setLoading(true);
     setError(null);
     let result: { courses?: ExplorerCourse[]; subject_total?: number } | undefined;
@@ -126,10 +128,12 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
         faculty: faculty || undefined,
       });
     } catch (caught) {
+      if (id !== requestId.current) return;
       setError(caught instanceof Error ? caught.message : "Couldn't load courses.");
       setLoading(false);
       return;
     }
+    if (id !== requestId.current) return;
 
     let filtered = result?.courses ?? [];
     if (level !== undefined) filtered = filtered.filter((course) => course.level === level);
@@ -170,6 +174,13 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
   useEffect(() => {
     fetchExplorer();
   }, [fetchExplorer]);
+
+  useEffect(
+    () => () => {
+      requestId.current += 1;
+    },
+    [],
+  );
 
   const effectivePageSize = 100;
   const paged = courses.slice((page - 1) * effectivePageSize, page * effectivePageSize);

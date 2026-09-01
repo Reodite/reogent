@@ -35,8 +35,8 @@ function SectionTable({ sections }: { sections: CourseSection[] }) {
       {[...groups].map(([term, termSections]) => (
         <details key={term} className="border-border-subtle bg-surface-container-low rounded-lg border">
           <summary className="text-on-surface flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm font-medium">
-            <span>{term}</span>
-            <span className="text-muted text-xs tabular-nums">
+            <span className="min-w-0 truncate">{term}</span>
+            <span className="text-muted shrink-0 text-xs whitespace-nowrap tabular-nums">
               {termSections.length} section{termSections.length === 1 ? "" : "s"}
             </span>
           </summary>

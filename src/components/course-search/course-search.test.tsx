@@ -70,6 +70,7 @@ describe("CourseSearchField overlay", () => {
 
     expect(baseProps.onSelect).toHaveBeenCalledWith("CPSC 121");
     expect(input.getAttribute("aria-expanded")).toBe("false");
+    expect(input.getAttribute("aria-activedescendant")).toBeNull();
     expect(document.activeElement).toBe(input);
   });
 
