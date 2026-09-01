@@ -1,8 +1,8 @@
 "use client";
 
 // Degree Planner pane. Four+-column year canvas with per-term course
-// blocks, drag-and-drop reordering, prereq/coreq validation, and a right
-// sidebar holding the program selector + mini-lookup + trash zone.
+// blocks, drag-and-drop reordering, prereq/coreq validation, and a left rail
+// holding requirements and course search.
 //
 // DnD architecture: one DndContext for the whole pane. Three drag sources
 // (sortable course blocks, draggable lookup results, ghost overlay) and
@@ -477,15 +477,42 @@ export function DegreePlannerPane() {
         <div
           className="grid min-h-0 flex-1 gap-4 max-md:flex max-md:flex-none max-md:flex-col"
           style={{
-            gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) 20rem",
+            gridTemplateColumns: sidebarCollapsed ? "2.5rem minmax(0,1fr)" : "20rem minmax(0,1fr)",
           }}
         >
+          {sidebarCollapsed ? (
+            <CollapsedSidebar onToggle={toggleSidebar} />
+          ) : (
+            <aside className="grid min-h-0 min-w-0 grid-rows-2 gap-4 max-md:order-2 max-md:h-[44rem] max-md:shrink-0">
+              <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
+                <header className="flex h-12 shrink-0 items-center gap-2 px-4">
+                  <h3 className="text-on-surface flex-1 text-sm font-medium">Requirements</h3>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg p-1.5"
+                    aria-label="Collapse sidebar"
+                    title="Collapse sidebar"
+                  >
+                    <Icon name="left" size={16} />
+                  </button>
+                </header>
+                <div className="border-border-subtle min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-2 pb-2">
+                  <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
+                </div>
+              </section>
+              <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
+                <MiniCourseLookup courseIndex={courseIndex} plannedCodes={plannedCodes} />
+              </section>
+            </aside>
+          )}
+
           <section
             aria-label="Degree plan"
             aria-describedby="planner-scroll-hint"
             // biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable year board needs a keyboard focus target.
             tabIndex={0}
-            className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4 max-md:min-h-[36rem] max-md:shrink-0"
+            className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4 max-md:order-1 max-md:min-h-[36rem] max-md:shrink-0"
           >
             <p
               id="planner-scroll-hint"
@@ -514,33 +541,6 @@ export function DegreePlannerPane() {
               </div>
             )}
           </section>
-
-          {sidebarCollapsed ? (
-            <CollapsedSidebar onToggle={toggleSidebar} />
-          ) : (
-            <aside className="grid min-h-0 min-w-0 grid-rows-2 gap-4 max-md:h-[44rem] max-md:shrink-0">
-              <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
-                <header className="flex h-12 shrink-0 items-center gap-2 px-4">
-                  <h3 className="text-on-surface flex-1 text-sm font-medium">Requirements</h3>
-                  <button
-                    type="button"
-                    onClick={toggleSidebar}
-                    className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg p-1.5"
-                    aria-label="Collapse sidebar"
-                    title="Collapse sidebar"
-                  >
-                    <Icon name="right" size={16} />
-                  </button>
-                </header>
-                <div className="border-border-subtle min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-2 pb-2">
-                  <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
-                </div>
-              </section>
-              <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
-                <MiniCourseLookup courseIndex={courseIndex} plannedCodes={plannedCodes} />
-              </section>
-            </aside>
-          )}
         </div>
       </div>
 
@@ -587,7 +587,7 @@ export function DegreePlannerPane() {
 
 function CollapsedSidebar({ onToggle }: { onToggle: () => void }) {
   return (
-    <aside className="neu-panel border-border bg-surface-container-low flex flex-col items-center rounded-xl border p-1">
+    <aside className="neu-panel border-border bg-surface-container-low flex flex-col items-center rounded-xl border p-1 max-md:order-2">
       <button
         type="button"
         onClick={onToggle}
@@ -595,7 +595,7 @@ function CollapsedSidebar({ onToggle }: { onToggle: () => void }) {
         aria-label="Expand plan details"
         title="Expand plan details"
       >
-        <Icon name="left" size={16} />
+        <Icon name="right" size={16} />
       </button>
     </aside>
   );
