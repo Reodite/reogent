@@ -107,7 +107,7 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | `MEILI_ENV`         | Meilisearch environment (docker compose)            |
 | `AUTH_ENABLED`      | Set `false` in non-production to bypass auth        |
 | `JWT_SECRET`        | HMAC secret for signing tokens                      |
-| `DATA_PATH`         | Root of the raw dataset files                       |
+| `DATA_PATH`         | Raw data root (`./ubc-unified-data/data` on host)   |
 | `PORT`              | Dev-server port (docker compose)                    |
 
 ## Scripts
