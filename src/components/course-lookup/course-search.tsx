@@ -3,6 +3,7 @@
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { TextInput } from "@/src/components/ui/form-controls";
+import { InlineAction } from "@/src/components/ui/inline-action";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
 import { canonicalize, isOkanagan } from "@/src/shared/course-code";
@@ -414,14 +415,9 @@ export function CourseSearchField({
               <div role="alert" className="text-error flex min-h-11 items-center px-3 text-sm">
                 <span className="min-w-0 flex-1">{value} could not be reached.</span>
                 {onRetry && (
-                  <button
-                    type="button"
-                    onPointerDown={(event) => event.preventDefault()}
-                    onClick={onRetry}
-                    className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2"
-                  >
+                  <InlineAction onPointerDown={(event) => event.preventDefault()} onClick={onRetry}>
                     Retry
-                  </button>
+                  </InlineAction>
                 )}
               </div>
             ) : candidates.length > 0 ? (
@@ -524,16 +520,7 @@ export function CourseSearchField({
           role="alert"
           className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
         >
-          {value} could not be reached.{" "}
-          {onRetry && (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-            >
-              Retry
-            </button>
-          )}
+          {value} could not be reached. {onRetry && <InlineAction onClick={onRetry}>Retry</InlineAction>}
         </p>
       )}
 

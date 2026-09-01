@@ -126,6 +126,12 @@ describe("renderColorTokensCss", () => {
     }
     expect(css.match(/--neu-surface-shadow:/g)).toHaveLength(1);
     expect(css.match(/--neu-inset-shadow:/g)).toHaveLength(1);
+    expect(css).toContain("--neu-context-shadow-fallback: rgba(213, 213, 213, 0.17);");
+    expect(css).toContain("--neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);");
+    expect(css).toContain("--neu-context-shadow-fallback: rgba(22, 22, 26, 0.55);");
+    expect(css).toContain("@supports (color: color-mix(in srgb, black, transparent))");
+    expect(css).toContain("--neu-context-shadow-weight: 17%;");
+    expect(css).toContain("--neu-context-shadow-weight: 55%;");
     expect(css).not.toContain(".neu-shadow-on-scrim {");
     expect(css).not.toContain(".neu-shadow-on-border {");
   });
@@ -138,6 +144,12 @@ describe("renderColorTokensCss", () => {
 
     expect(generatedCss).toBe(renderColorTokensCss());
     expect(globalsCss).toContain('@import "./theme-colors.generated.css";');
+    expect(globalsCss).toContain(".neu-button:not(:disabled):hover");
+    expect(globalsCss).toContain(".neu-primary-button:not(:disabled):hover");
+    expect(globalsCss).toContain(".neu-button:not(:disabled):active");
+    expect(globalsCss).toContain(".neu-primary-button:not(:disabled):active");
+    expect(globalsCss).not.toContain(".neu-button:hover");
+    expect(globalsCss).not.toContain(".neu-primary-button:hover");
     for (const token of COLOR_TOKENS) {
       expect(globalsCss).not.toMatch(new RegExp(`^\\s*--${token.name}:`, "m"));
     }

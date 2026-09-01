@@ -313,7 +313,7 @@ Two tiers of shadow share one defining characteristic: extreme subtlety. Shadows
 
 Pair names follow `--neu-<parent-token>-dark` and `--neu-<parent-token>-light`. Choose the pair for the material under the element. For example, a panel raised above `--background` uses the `--neu-background-*` pair, while a control raised inside `--surface` uses the `--neu-surface-*` pair.
 
-The generated colors are raw tonal endpoints. Apply `.neu-shadow-on-<parent-token>` to select a pair for an element and its descendants. The utility blends that pair through `--neu-context-shadow-weight`, `--neu-context-highlight-weight`, and `--neu-context-deep-weight`, then the composed recipes below provide blur and offset. Unmarked elements retain the default shadow primitives. Translucent scrims, mixed course tints, borders, and text colors do not receive pairs because their visible backdrop depends on composition or they cannot host nested surfaces.
+The generated colors are raw tonal endpoints. Apply `.neu-shadow-on-<parent-token>` to select a pair for an element and its descendants. Each utility provides precomputed RGBA fallbacks, then replaces them with `color-mix()` inside a feature query. The utility blends the pair through `--neu-context-shadow-weight`, `--neu-context-highlight-weight`, and `--neu-context-deep-weight`, then the composed recipes below provide blur and offset. Unmarked elements retain the default shadow primitives. Translucent scrims, mixed course tints, borders, and text colors do not receive pairs because their visible backdrop depends on composition or they cannot host nested surfaces.
 
 ### Tier 1: Utility Elevation (Tailwind-mapped)
 
@@ -400,7 +400,7 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 ### Buttons
 
-Use `src/components/ui/button.tsx` for native action buttons. `Button` owns variant, size, focus, disabled, pressed, and parent-material shadow classes while feature code owns the label, icon, layout, and event handler. Keep links, tabs, radios, menu items, navigation rows, pills, and compound controls on their native contracts.
+Use `src/components/ui/button.tsx` for native action buttons. `Button` owns variant, size, focus, disabled, pressed, and parent-material shadow classes while feature code owns the label, icon, layout, and event handler. Use `InlineAction` for compact link-styled choices inside messages and error text; it reaches the 44px mobile touch floor and returns to inline height on larger screens. Keep links, tabs, radios, menu items, navigation rows, pills, and compound controls on their native contracts.
 
 State changes through shadow transformation + press scale. Buttons never translate on hover or active; the surface stays put and only the shadow, filter, or scale changes.
 
@@ -415,7 +415,7 @@ State changes through shadow transformation + press scale. Buttons never transla
 - **Compact Pill** (inline tool cards): `border border-primary text-primary rounded-full px-3 py-1.5 text-xs font-medium min-h-[44px]`. Smaller padding than suggestion pills; used inside tool result cards where space is tight. Focus: `ring-primary/40 ring-2 ring-offset-2`. Active: `scale-95`.
 - **Sizes**: Standard 36px (h-9), Toolbar 36px (h-9 with 8px radius and caption text), Prominent 40px (h-10), Field Companion 44px (h-11), Compact 32px (h-8), Large 48px (h-12, landing/auth only), Icon 36px. Field Companion aligns an action beside a 44px input. Below 640px, compact, toolbar, standard, prominent, and icon controls expand to the 44px touch floor.
 - **Transitions**: `color`, `background-color`, `box-shadow`, `transform` at 150ms ease-out.
-- **Disabled**: `disabled:pointer-events-none disabled:opacity-45` (send) or `disabled:opacity-60` (forms). Cursor: `disabled:cursor-not-allowed` on form submits.
+- **Disabled**: Shared buttons keep native disabled semantics, use 45% opacity with a not-allowed cursor, and suppress hover and active visual states.
 
 ### Cards / Containers
 

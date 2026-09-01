@@ -7,8 +7,8 @@ const BASE_CLASSES =
 const VARIANT_CLASSES = {
   primary: "neu-primary-button bg-primary text-on-primary",
   secondary: "neu-button bg-surface text-on-surface",
-  danger: "neu-button bg-surface text-on-surface-variant hover:bg-error/10 hover:text-error",
-  ghost: "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
+  danger: "neu-button bg-surface text-on-surface-variant enabled:hover:bg-error/10 enabled:hover:text-error",
+  ghost: "text-on-surface-variant enabled:hover:bg-surface-container-high enabled:hover:text-on-surface",
 } as const;
 
 const SIZE_CLASSES = {

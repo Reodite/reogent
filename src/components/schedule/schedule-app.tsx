@@ -400,13 +400,13 @@ function ScheduleAppInner({ groupCode }: Props) {
           <section
             data-control-section="management"
             aria-label="Group management"
-            className="border-border-subtle flex gap-2 border-t py-4"
+            className="border-border-subtle grid grid-cols-2 gap-2 border-t py-4"
           >
-            <Button size="prominent" onClick={() => setShowCreate(true)} className="flex-1">
+            <Button size="prominent" onClick={() => setShowCreate(true)}>
               <Icon name="add" size={16} />
               New group
             </Button>
-            <Button variant="danger" size="prominent" onClick={leaveActiveGroup} className="flex-1">
+            <Button variant="danger" size="prominent" onClick={leaveActiveGroup}>
               <Icon name="exit" size={16} />
               Leave
             </Button>

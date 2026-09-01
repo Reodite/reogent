@@ -82,6 +82,10 @@
   --neu-error-container-light: #fffbf6;
   --neu-accent-subtle-dark: #c9cad0;
   --neu-accent-subtle-light: #ffffff;
+
+  --neu-context-shadow-weight: 17%;
+  --neu-context-highlight-weight: 20%;
+  --neu-context-deep-weight: 25%;
 }
 
 [data-theme="dark"] {
@@ -163,6 +167,10 @@
   --neu-error-container-light: #a9000c;
   --neu-accent-subtle-dark: #1a1a24;
   --neu-accent-subtle-light: #232430;
+
+  --neu-context-shadow-weight: 55%;
+  --neu-context-highlight-weight: 55%;
+  --neu-context-deep-weight: 65%;
 }
 
 :where(
@@ -187,21 +195,9 @@
   .neu-shadow-on-error-container,
   .neu-shadow-on-accent-subtle
 ) {
-  --neu-shadow: color-mix(
-    in srgb,
-    var(--neu-context-dark) var(--neu-context-shadow-weight),
-    transparent
-  );
-  --neu-highlight: color-mix(
-    in srgb,
-    var(--neu-context-light) var(--neu-context-highlight-weight),
-    transparent
-  );
-  --neu-shadow-deep: color-mix(
-    in srgb,
-    var(--neu-context-dark) var(--neu-context-deep-weight),
-    transparent
-  );
+  --neu-shadow: var(--neu-context-shadow-fallback);
+  --neu-highlight: var(--neu-context-highlight-fallback);
+  --neu-shadow-deep: var(--neu-context-deep-fallback);
   --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
   --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
 }
@@ -209,99 +205,320 @@
 .neu-shadow-on-background {
   --neu-context-dark: var(--neu-background-dark);
   --neu-context-light: var(--neu-background-light);
+  --neu-context-shadow-fallback: rgba(210, 210, 208, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);
+  --neu-context-deep-fallback: rgba(210, 210, 208, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-background {
+  --neu-context-shadow-fallback: rgba(15, 15, 17, 0.55);
+  --neu-context-highlight-fallback: rgba(21, 21, 23, 0.55);
+  --neu-context-deep-fallback: rgba(15, 15, 17, 0.65);
 }
 
 .neu-shadow-on-surface-container-lowest {
   --neu-context-dark: var(--neu-surface-container-lowest-dark);
   --neu-context-light: var(--neu-surface-container-lowest-light);
+  --neu-context-shadow-fallback: rgba(217, 217, 217, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);
+  --neu-context-deep-fallback: rgba(217, 217, 217, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-surface-container-lowest {
+  --neu-context-shadow-fallback: rgba(12, 12, 14, 0.55);
+  --neu-context-highlight-fallback: rgba(16, 16, 18, 0.55);
+  --neu-context-deep-fallback: rgba(12, 12, 14, 0.65);
 }
 
 .neu-shadow-on-surface-container-low {
   --neu-context-dark: var(--neu-surface-container-low-dark);
   --neu-context-light: var(--neu-surface-container-low-light);
+  --neu-context-shadow-fallback: rgba(207, 207, 208, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);
+  --neu-context-deep-fallback: rgba(207, 207, 208, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-surface-container-low {
+  --neu-context-shadow-fallback: rgba(27, 27, 31, 0.55);
+  --neu-context-highlight-fallback: rgba(37, 37, 41, 0.55);
+  --neu-context-deep-fallback: rgba(27, 27, 31, 0.65);
 }
 
 .neu-shadow-on-surface-container {
   --neu-context-dark: var(--neu-surface-container-dark);
   --neu-context-light: var(--neu-surface-container-light);
+  --neu-context-shadow-fallback: rgba(201, 201, 203, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);
+  --neu-context-deep-fallback: rgba(201, 201, 203, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-surface-container {
+  --neu-context-shadow-fallback: rgba(32, 32, 37, 0.55);
+  --neu-context-highlight-fallback: rgba(44, 44, 49, 0.55);
+  --neu-context-deep-fallback: rgba(32, 32, 37, 0.65);
 }
 
 .neu-shadow-on-surface-container-high {
   --neu-context-dark: var(--neu-surface-container-high-dark);
   --neu-context-light: var(--neu-surface-container-high-light);
+  --neu-context-shadow-fallback: rgba(196, 196, 197, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);
+  --neu-context-deep-fallback: rgba(196, 196, 197, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-surface-container-high {
+  --neu-context-shadow-fallback: rgba(39, 39, 43, 0.55);
+  --neu-context-highlight-fallback: rgba(53, 53, 59, 0.55);
+  --neu-context-deep-fallback: rgba(39, 39, 43, 0.65);
 }
 
 .neu-shadow-on-surface {
   --neu-context-dark: var(--neu-surface-dark);
   --neu-context-light: var(--neu-surface-light);
+  --neu-context-shadow-fallback: rgba(213, 213, 213, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);
+  --neu-context-deep-fallback: rgba(213, 213, 213, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-surface {
+  --neu-context-shadow-fallback: rgba(22, 22, 26, 0.55);
+  --neu-context-highlight-fallback: rgba(30, 30, 35, 0.55);
+  --neu-context-deep-fallback: rgba(22, 22, 26, 0.65);
 }
 
 .neu-shadow-on-surface-bright {
   --neu-context-dark: var(--neu-surface-bright-dark);
   --neu-context-light: var(--neu-surface-bright-light);
+  --neu-context-shadow-fallback: rgba(217, 217, 217, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);
+  --neu-context-deep-fallback: rgba(217, 217, 217, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-surface-bright {
+  --neu-context-shadow-fallback: rgba(46, 46, 51, 0.55);
+  --neu-context-highlight-fallback: rgba(62, 62, 69, 0.55);
+  --neu-context-deep-fallback: rgba(46, 46, 51, 0.65);
 }
 
 .neu-shadow-on-primary {
   --neu-context-dark: var(--neu-primary-dark);
   --neu-context-light: var(--neu-primary-light);
+  --neu-context-shadow-fallback: rgba(63, 66, 104, 0.17);
+  --neu-context-highlight-fallback: rgba(85, 90, 140, 0.2);
+  --neu-context-deep-fallback: rgba(63, 66, 104, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-primary {
+  --neu-context-shadow-fallback: rgba(150, 153, 184, 0.55);
+  --neu-context-highlight-fallback: rgba(202, 207, 248, 0.55);
+  --neu-context-deep-fallback: rgba(150, 153, 184, 0.65);
 }
 
 .neu-shadow-on-primary-container {
   --neu-context-dark: var(--neu-primary-container-dark);
   --neu-context-light: var(--neu-primary-container-light);
+  --neu-context-shadow-fallback: rgba(104, 107, 143, 0.17);
+  --neu-context-highlight-fallback: rgba(140, 145, 193, 0.2);
+  --neu-context-deep-fallback: rgba(104, 107, 143, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-primary-container {
+  --neu-context-shadow-fallback: rgba(46, 49, 80, 0.55);
+  --neu-context-highlight-fallback: rgba(62, 67, 108, 0.55);
+  --neu-context-deep-fallback: rgba(46, 49, 80, 0.65);
 }
 
 .neu-shadow-on-secondary {
   --neu-context-dark: var(--neu-secondary-dark);
   --neu-context-light: var(--neu-secondary-light);
+  --neu-context-shadow-fallback: rgba(38, 91, 60, 0.17);
+  --neu-context-highlight-fallback: rgba(52, 123, 82, 0.2);
+  --neu-context-deep-fallback: rgba(38, 91, 60, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-secondary {
+  --neu-context-shadow-fallback: rgba(129, 180, 144, 0.55);
+  --neu-context-highlight-fallback: rgba(175, 244, 194, 0.55);
+  --neu-context-deep-fallback: rgba(129, 180, 144, 0.65);
 }
 
 .neu-shadow-on-secondary-container {
   --neu-context-dark: var(--neu-secondary-container-dark);
   --neu-context-light: var(--neu-secondary-container-light);
+  --neu-context-shadow-fallback: rgba(150, 203, 165, 0.17);
+  --neu-context-highlight-fallback: rgba(202, 255, 223, 0.2);
+  --neu-context-deep-fallback: rgba(150, 203, 165, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-secondary-container {
+  --neu-context-shadow-fallback: rgba(18, 69, 41, 0.55);
+  --neu-context-highlight-fallback: rgba(24, 93, 55, 0.55);
+  --neu-context-deep-fallback: rgba(18, 69, 41, 0.65);
 }
 
 .neu-shadow-on-tertiary {
   --neu-context-dark: var(--neu-tertiary-dark);
   --neu-context-light: var(--neu-tertiary-light);
+  --neu-context-shadow-fallback: rgba(104, 74, 43, 0.17);
+  --neu-context-highlight-fallback: rgba(140, 100, 59, 0.2);
+  --neu-context-deep-fallback: rgba(104, 74, 43, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-tertiary {
+  --neu-context-shadow-fallback: rgba(200, 162, 124, 0.55);
+  --neu-context-highlight-fallback: rgba(255, 219, 168, 0.55);
+  --neu-context-deep-fallback: rgba(200, 162, 124, 0.65);
 }
 
 .neu-shadow-on-tertiary-container {
   --neu-context-dark: var(--neu-tertiary-container-dark);
   --neu-context-light: var(--neu-tertiary-container-light);
+  --neu-context-shadow-fallback: rgba(207, 193, 176, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 238, 0.2);
+  --neu-context-deep-fallback: rgba(207, 193, 176, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-tertiary-container {
+  --neu-context-shadow-fallback: rgba(63, 46, 30, 0.55);
+  --neu-context-highlight-fallback: rgba(85, 62, 40, 0.55);
+  --neu-context-deep-fallback: rgba(63, 46, 30, 0.65);
 }
 
 .neu-shadow-on-event-academic {
   --neu-context-dark: var(--neu-event-academic-dark);
   --neu-context-light: var(--neu-event-academic-light);
+  --neu-context-shadow-fallback: rgba(38, 91, 60, 0.17);
+  --neu-context-highlight-fallback: rgba(52, 123, 82, 0.2);
+  --neu-context-deep-fallback: rgba(38, 91, 60, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-event-academic {
+  --neu-context-shadow-fallback: rgba(129, 180, 144, 0.55);
+  --neu-context-highlight-fallback: rgba(175, 244, 194, 0.55);
+  --neu-context-deep-fallback: rgba(129, 180, 144, 0.65);
 }
 
 .neu-shadow-on-event-academic-container {
   --neu-context-dark: var(--neu-event-academic-container-dark);
   --neu-context-light: var(--neu-event-academic-container-light);
+  --neu-context-shadow-fallback: rgba(150, 203, 165, 0.17);
+  --neu-context-highlight-fallback: rgba(202, 255, 223, 0.2);
+  --neu-context-deep-fallback: rgba(150, 203, 165, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-event-academic-container {
+  --neu-context-shadow-fallback: rgba(18, 69, 41, 0.55);
+  --neu-context-highlight-fallback: rgba(24, 93, 55, 0.55);
+  --neu-context-deep-fallback: rgba(18, 69, 41, 0.65);
 }
 
 .neu-shadow-on-event-holiday {
   --neu-context-dark: var(--neu-event-holiday-dark);
   --neu-context-light: var(--neu-event-holiday-light);
+  --neu-context-shadow-fallback: rgba(104, 74, 43, 0.17);
+  --neu-context-highlight-fallback: rgba(140, 100, 59, 0.2);
+  --neu-context-deep-fallback: rgba(104, 74, 43, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-event-holiday {
+  --neu-context-shadow-fallback: rgba(200, 162, 124, 0.55);
+  --neu-context-highlight-fallback: rgba(255, 219, 168, 0.55);
+  --neu-context-deep-fallback: rgba(200, 162, 124, 0.65);
 }
 
 .neu-shadow-on-event-holiday-container {
   --neu-context-dark: var(--neu-event-holiday-container-dark);
   --neu-context-light: var(--neu-event-holiday-container-light);
+  --neu-context-shadow-fallback: rgba(207, 193, 176, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 238, 0.2);
+  --neu-context-deep-fallback: rgba(207, 193, 176, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-event-holiday-container {
+  --neu-context-shadow-fallback: rgba(63, 46, 30, 0.55);
+  --neu-context-highlight-fallback: rgba(85, 62, 40, 0.55);
+  --neu-context-deep-fallback: rgba(63, 46, 30, 0.65);
 }
 
 .neu-shadow-on-error {
   --neu-context-dark: var(--neu-error-dark);
   --neu-context-light: var(--neu-error-light);
+  --neu-context-shadow-fallback: rgba(133, 54, 54, 0.17);
+  --neu-context-highlight-fallback: rgba(179, 74, 74, 0.2);
+  --neu-context-deep-fallback: rgba(133, 54, 54, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-error {
+  --neu-context-shadow-fallback: rgba(190, 139, 139, 0.55);
+  --neu-context-highlight-fallback: rgba(255, 187, 187, 0.55);
+  --neu-context-deep-fallback: rgba(190, 139, 139, 0.65);
 }
 
 .neu-shadow-on-error-container {
   --neu-context-dark: var(--neu-error-container-dark);
   --neu-context-light: var(--neu-error-container-light);
+  --neu-context-shadow-fallback: rgba(217, 185, 182, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 251, 246, 0.2);
+  --neu-context-deep-fallback: rgba(217, 185, 182, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-error-container {
+  --neu-context-shadow-fallback: rgba(125, 0, 9, 0.55);
+  --neu-context-highlight-fallback: rgba(169, 0, 12, 0.55);
+  --neu-context-deep-fallback: rgba(125, 0, 9, 0.65);
 }
 
 .neu-shadow-on-accent-subtle {
   --neu-context-dark: var(--neu-accent-subtle-dark);
   --neu-context-light: var(--neu-accent-subtle-light);
+  --neu-context-shadow-fallback: rgba(201, 202, 208, 0.17);
+  --neu-context-highlight-fallback: rgba(255, 255, 255, 0.2);
+  --neu-context-deep-fallback: rgba(201, 202, 208, 0.25);
+}
+
+[data-theme="dark"] .neu-shadow-on-accent-subtle {
+  --neu-context-shadow-fallback: rgba(26, 26, 36, 0.55);
+  --neu-context-highlight-fallback: rgba(35, 36, 48, 0.55);
+  --neu-context-deep-fallback: rgba(26, 26, 36, 0.65);
+}
+
+@supports (color: color-mix(in srgb, black, transparent)) {
+  :where(
+    .neu-shadow-on-background,
+    .neu-shadow-on-surface-container-lowest,
+    .neu-shadow-on-surface-container-low,
+    .neu-shadow-on-surface-container,
+    .neu-shadow-on-surface-container-high,
+    .neu-shadow-on-surface,
+    .neu-shadow-on-surface-bright,
+    .neu-shadow-on-primary,
+    .neu-shadow-on-primary-container,
+    .neu-shadow-on-secondary,
+    .neu-shadow-on-secondary-container,
+    .neu-shadow-on-tertiary,
+    .neu-shadow-on-tertiary-container,
+    .neu-shadow-on-event-academic,
+    .neu-shadow-on-event-academic-container,
+    .neu-shadow-on-event-holiday,
+    .neu-shadow-on-event-holiday-container,
+    .neu-shadow-on-error,
+    .neu-shadow-on-error-container,
+    .neu-shadow-on-accent-subtle
+  ) {
+    --neu-shadow: color-mix(
+      in srgb,
+      var(--neu-context-dark) var(--neu-context-shadow-weight),
+      transparent
+    );
+    --neu-highlight: color-mix(
+      in srgb,
+      var(--neu-context-light) var(--neu-context-highlight-weight),
+      transparent
+    );
+    --neu-shadow-deep: color-mix(
+      in srgb,
+      var(--neu-context-dark) var(--neu-context-deep-weight),
+      transparent
+    );
+  }
 }

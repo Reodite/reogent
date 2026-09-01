@@ -18,6 +18,7 @@ import {
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
+import { InlineAction } from "@/src/components/ui/inline-action";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
 import { getProgramIndex, getRequirementsFor } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
@@ -336,15 +337,11 @@ export function DegreePlannerPane() {
   if (indexError) {
     return (
       <div className="grid h-full place-items-center p-6">
-        <p role="alert" className="border-error/30 bg-error-container text-error rounded-lg border px-3 py-2 text-sm">
-          Couldn't load the course index.{" "}
-          <button
-            type="button"
-            className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2"
-            onClick={() => setLoadNonce((n) => n + 1)}
-          >
-            Retry
-          </button>
+        <p
+          role="alert"
+          className="border-error/30 bg-error-container text-on-error-container rounded-lg border px-3 py-2 text-sm"
+        >
+          Couldn't load the course index. <InlineAction onClick={() => setLoadNonce((n) => n + 1)}>Retry</InlineAction>
         </p>
       </div>
     );

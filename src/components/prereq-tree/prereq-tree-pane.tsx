@@ -7,6 +7,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
 import { TextInput } from "@/src/components/ui/form-controls";
+import { InlineAction } from "@/src/components/ui/inline-action";
 import { announce } from "@/src/components/ui/live-region";
 import { isOkanagan } from "@/src/shared/course-code";
 import {
@@ -270,24 +271,12 @@ class PaneErrorBoundary extends Component<{ children: ReactNode; fallback: React
 
 function NotFoundAlert({ code, onPick }: { code: string; onPick: (code: string) => void }) {
   return (
-    <p role="alert" className="border-error/30 bg-error-container text-error rounded-lg border px-3 py-2 text-sm">
-      {code} isn't in the catalog. Try{" "}
-      <button
-        type="button"
-        className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-        onClick={() => onPick("CPSC 110")}
-      >
-        CPSC 110
-      </button>{" "}
-      or{" "}
-      <button
-        type="button"
-        className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-        onClick={() => onPick("MATH 200")}
-      >
-        MATH 200
-      </button>
-      .
+    <p
+      role="alert"
+      className="border-error/30 bg-error-container text-on-error-container rounded-lg border px-3 py-2 text-sm"
+    >
+      {code} isn't in the catalog. Try <InlineAction onClick={() => onPick("CPSC 110")}>CPSC 110</InlineAction> or{" "}
+      <InlineAction onClick={() => onPick("MATH 200")}>MATH 200</InlineAction>.
     </p>
   );
 }
@@ -675,6 +664,7 @@ export function PrereqTreePane({
       rootRef.current?.closest("section[data-pane]")?.querySelector<HTMLElement>("[data-pane-titlebar-slot]") ?? null,
     );
   }, []);
+  const searchShadowOn = slotEl ? "surface" : "surface-container-low";
 
   const searchForm = (
     <form onSubmit={submit} className="mx-auto flex w-full max-w-md gap-2">
@@ -703,6 +693,7 @@ export function PrereqTreePane({
           aria-errormessage={rejected ? "code-error" : undefined}
           controlSize="compact"
           adornment="start"
+          shadowOn={searchShadowOn}
         />
         {suggestVisible && (
           <div
@@ -736,7 +727,7 @@ export function PrereqTreePane({
           </div>
         )}
       </div>
-      <Button type="submit" variant="primary">
+      <Button type="submit" variant="primary" shadowOn={searchShadowOn}>
         Show
       </Button>
     </form>
@@ -806,7 +797,7 @@ export function PrereqTreePane({
           <p
             id="code-error"
             role="alert"
-            className="border-error/30 bg-error-container text-error pointer-events-auto rounded-lg border px-3 py-2 text-xs"
+            className="border-error/30 bg-error-container text-on-error-container pointer-events-auto rounded-lg border px-3 py-2 text-xs"
           >
             Okanagan campus codes aren't in this catalog. Try a Vancouver course.
           </p>
@@ -823,16 +814,9 @@ export function PrereqTreePane({
         {indexStatus === "error" && (
           <p
             role="alert"
-            className="border-error/30 bg-error-container text-error pointer-events-auto rounded-lg border px-3 py-2 text-sm"
+            className="border-error/30 bg-error-container text-on-error-container pointer-events-auto rounded-lg border px-3 py-2 text-sm"
           >
-            Couldn't load the tree.{" "}
-            <button
-              type="button"
-              className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-              onClick={() => setLoadNonce((n) => n + 1)}
-            >
-              Retry
-            </button>
+            Couldn't load the tree. <InlineAction onClick={() => setLoadNonce((n) => n + 1)}>Retry</InlineAction>
           </p>
         )}
         {indexStatus === "ready" && missingCode && (

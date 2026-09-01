@@ -60,7 +60,21 @@ describe("PrereqTreePane", () => {
     apiState.getCourseIndex.mockReturnValue(new Promise(() => {}));
     render(<PrereqTreePane />);
     expect(screen.getByText(/Loading course index/)).toBeTruthy();
-    expect(screen.getByLabelText("Root course code")).toBeTruthy();
+    expect(screen.getByLabelText("Root course code").className).toContain("neu-shadow-on-surface-container-low");
+  });
+
+  it("uses the titlebar surface context when its search form is portaled", async () => {
+    apiState.getCourseIndex.mockReturnValue(new Promise(() => {}));
+    const { container } = render(
+      <section data-pane="prereq-tree">
+        <div data-pane-titlebar-slot />
+        <PrereqTreePane />
+      </section>,
+    );
+
+    await waitFor(() =>
+      expect(container.querySelector("[data-pane-titlebar-slot] input")?.className).toContain("neu-shadow-on-surface"),
+    );
   });
 
   it("suggests catalog codes by prefix as the user types (autofill)", async () => {
@@ -91,6 +105,7 @@ describe("PrereqTreePane", () => {
     fireEvent.change(screen.getByLabelText("Root course code"), { target: { value: "NOPE 999" } });
     fireEvent.click(screen.getByText("Show"));
     await waitFor(() => expect(screen.getByText(/isn't in the catalog/)).toBeTruthy());
+    expect(screen.getByRole("alert").className).toContain("text-on-error-container");
     expect(screen.getByText("CPSC 110")).toBeTruthy();
     expect(screen.getByText("MATH 200")).toBeTruthy();
   });

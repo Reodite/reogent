@@ -110,7 +110,7 @@ function MapFallback({ onRetry }: { onRetry?: () => void }) {
       <Icon name="wifiOff" size={32} className="text-muted" />
       <p className="text-body-sm text-on-surface-variant">Map couldn&apos;t load. Route details are shown below.</p>
       {onRetry && (
-        <Button onClick={onRetry} className="mt-2">
+        <Button onClick={onRetry} shadowOn="surface-container-low" className="mt-2">
           <Icon name="refresh2" size={14} />
           Retry
         </Button>

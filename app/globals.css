@@ -26,9 +26,6 @@
   --neu-highlight: rgba(255, 255, 255, 0.2);
   --neu-shadow: rgba(105, 112, 116, 0.045);
   --neu-shadow-deep: rgba(91, 99, 104, 0.06);
-  --neu-context-shadow-weight: 17%;
-  --neu-context-highlight-weight: 20%;
-  --neu-context-deep-weight: 25%;
   --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
   --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
 
@@ -50,9 +47,6 @@
   --neu-highlight: rgba(38, 38, 44, 0.55);
   --neu-shadow: rgba(16, 16, 19, 0.55);
   --neu-shadow-deep: rgba(10, 10, 12, 0.65);
-  --neu-context-shadow-weight: 55%;
-  --neu-context-highlight-weight: 55%;
-  --neu-context-deep-weight: 65%;
   --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
   --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
 }
@@ -415,13 +409,13 @@ html.vt-active *::after {
     transform 150ms ease-out;
 }
 
-.neu-button:hover {
+.neu-button:not(:disabled):hover {
   box-shadow:
     4px 4px 10px var(--neu-shadow),
     -2px -2px 7px var(--neu-highlight);
 }
 
-.neu-button:active,
+.neu-button:not(:disabled):active,
 .neu-button[aria-pressed="true"] {
   box-shadow: var(--neu-inset-shadow);
   transform: scale(0.98);
@@ -435,14 +429,14 @@ html.vt-active *::after {
     transform 150ms ease-out;
 }
 
-.neu-primary-button:hover {
+.neu-primary-button:not(:disabled):hover {
   box-shadow:
     4px 4px 10px var(--neu-shadow),
     -2px -2px 7px var(--neu-highlight);
   filter: brightness(1.03);
 }
 
-.neu-primary-button:active {
+.neu-primary-button:not(:disabled):active {
   box-shadow: var(--neu-inset-shadow);
   transform: scale(0.985);
 }

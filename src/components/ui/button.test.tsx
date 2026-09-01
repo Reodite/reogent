@@ -42,7 +42,8 @@ describe("Button", () => {
     rerender(<Button variant="danger">Delete</Button>);
     button = getByRole("button", { name: "Delete" });
     expect(button.className).toContain("neu-button");
-    expect(button.className).toContain("hover:text-error");
+    expect(button.className).toContain("enabled:hover:text-error");
+    expect(button.className).not.toMatch(/(?:^|\s)hover:text-error(?:\s|$)/);
   });
 
   it("passes native props, events, classes, and refs through", () => {

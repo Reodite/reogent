@@ -19,6 +19,11 @@ export type ColorToken = DirectColorToken | AliasColorToken;
 
 export const NEUMORPHIC_COLOR_DIFFERENCE = 0.15;
 
+const NEUMORPHIC_CONTEXT_WEIGHTS = {
+  light: { shadow: 0.17, highlight: 0.2, deep: 0.25 },
+  dark: { shadow: 0.55, highlight: 0.55, deep: 0.65 },
+} as const;
+
 export const COLOR_TOKENS = [
   { name: "background", light: "#f7f7f5", dark: "#121214", surface: true },
   { name: "surface-container-lowest", light: "#ffffff", dark: "#0e0e10", surface: true },
@@ -145,6 +150,7 @@ function resolveColor(
 
 function renderTheme(tokens: readonly ColorToken[], theme: ColorTheme, indexed: ReadonlyMap<string, ColorToken>) {
   const selector = theme === "light" ? ":root" : '[data-theme="dark"]';
+  const weights = NEUMORPHIC_CONTEXT_WEIGHTS[theme];
   const baseDeclarations = tokens.map((token) => {
     const value = "alias" in token ? `var(--${token.alias})` : resolveColor(token.name, theme, indexed);
     return `  --${token.name}: ${value};`;
@@ -161,44 +167,82 @@ function renderTheme(tokens: readonly ColorToken[], theme: ColorTheme, indexed: 
         `  --neu-${token.name}-light: ${adjustHexLuminance(value, NEUMORPHIC_COLOR_DIFFERENCE)};`,
       ];
     });
+  const weightDeclarations = [
+    `  --neu-context-shadow-weight: ${Math.round(weights.shadow * 100)}%;`,
+    `  --neu-context-highlight-weight: ${Math.round(weights.highlight * 100)}%;`,
+    `  --neu-context-deep-weight: ${Math.round(weights.deep * 100)}%;`,
+  ];
 
-  return `${selector} {\n${baseDeclarations.join("\n")}\n\n${pairDeclarations.join("\n")}\n}`;
+  return `${selector} {\n${baseDeclarations.join("\n")}\n\n${pairDeclarations.join("\n")}\n\n${weightDeclarations.join("\n")}\n}`;
 }
 
-function renderShadowUtilities(tokens: readonly ColorToken[]): string {
+function rgba(hex: string, alpha: number): string {
+  const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+  return `rgba(${channels.join(", ")}, ${alpha})`;
+}
+
+function renderShadowUtilities(tokens: readonly ColorToken[], indexed: ReadonlyMap<string, ColorToken>): string {
   const surfaceTokens = tokens.filter((token) => token.surface);
-  const selectors = surfaceTokens.map((token) => `  .neu-shadow-on-${token.name}`).join(",\n");
+  const selectorNames = surfaceTokens.map((token) => `.neu-shadow-on-${token.name}`);
+  const selectors = selectorNames.map((selector) => `  ${selector}`).join(",\n");
+  const supportedSelectors = selectorNames.map((selector) => `    ${selector}`).join(",\n");
   const sharedRecipe = `:where(
 ${selectors}
 ) {
-  --neu-shadow: color-mix(
-    in srgb,
-    var(--neu-context-dark) var(--neu-context-shadow-weight),
-    transparent
-  );
-  --neu-highlight: color-mix(
-    in srgb,
-    var(--neu-context-light) var(--neu-context-highlight-weight),
-    transparent
-  );
-  --neu-shadow-deep: color-mix(
-    in srgb,
-    var(--neu-context-dark) var(--neu-context-deep-weight),
-    transparent
-  );
+  --neu-shadow: var(--neu-context-shadow-fallback);
+  --neu-highlight: var(--neu-context-highlight-fallback);
+  --neu-shadow-deep: var(--neu-context-deep-fallback);
   --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
   --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
 }`;
+  const supportedRecipe = `@supports (color: color-mix(in srgb, black, transparent)) {
+  :where(
+${supportedSelectors}
+  ) {
+    --neu-shadow: color-mix(
+      in srgb,
+      var(--neu-context-dark) var(--neu-context-shadow-weight),
+      transparent
+    );
+    --neu-highlight: color-mix(
+      in srgb,
+      var(--neu-context-light) var(--neu-context-highlight-weight),
+      transparent
+    );
+    --neu-shadow-deep: color-mix(
+      in srgb,
+      var(--neu-context-dark) var(--neu-context-deep-weight),
+      transparent
+    );
+  }
+}`;
   const contexts = surfaceTokens
-    .map(
-      (token) => `.neu-shadow-on-${token.name} {
+    .map((token) => {
+      const light = resolveColor(token.name, "light", indexed);
+      const dark = resolveColor(token.name, "dark", indexed);
+      const lightDark = adjustHexLuminance(light, -NEUMORPHIC_COLOR_DIFFERENCE);
+      const lightHighlight = adjustHexLuminance(light, NEUMORPHIC_COLOR_DIFFERENCE);
+      const darkDark = adjustHexLuminance(dark, -NEUMORPHIC_COLOR_DIFFERENCE);
+      const darkHighlight = adjustHexLuminance(dark, NEUMORPHIC_COLOR_DIFFERENCE);
+      const lightWeights = NEUMORPHIC_CONTEXT_WEIGHTS.light;
+      const darkWeights = NEUMORPHIC_CONTEXT_WEIGHTS.dark;
+      return `.neu-shadow-on-${token.name} {
   --neu-context-dark: var(--neu-${token.name}-dark);
   --neu-context-light: var(--neu-${token.name}-light);
-}`,
-    )
+  --neu-context-shadow-fallback: ${rgba(lightDark, lightWeights.shadow)};
+  --neu-context-highlight-fallback: ${rgba(lightHighlight, lightWeights.highlight)};
+  --neu-context-deep-fallback: ${rgba(lightDark, lightWeights.deep)};
+}
+
+[data-theme="dark"] .neu-shadow-on-${token.name} {
+  --neu-context-shadow-fallback: ${rgba(darkDark, darkWeights.shadow)};
+  --neu-context-highlight-fallback: ${rgba(darkHighlight, darkWeights.highlight)};
+  --neu-context-deep-fallback: ${rgba(darkDark, darkWeights.deep)};
+}`;
+    })
     .join("\n\n");
 
-  return `${sharedRecipe}\n\n${contexts}`;
+  return `${sharedRecipe}\n\n${contexts}\n\n${supportedRecipe}`;
 }
 
 /** Renders deterministic theme variables and contextual neumorphic pairs. */
@@ -212,6 +256,6 @@ export function renderColorTokensCss(tokens: readonly ColorToken[] = COLOR_TOKEN
   }
 
   const themes = THEMES.map((theme) => renderTheme(tokens, theme, indexed)).join("\n\n");
-  const shadowUtilities = renderShadowUtilities(tokens);
+  const shadowUtilities = renderShadowUtilities(tokens, indexed);
   return `/*\n * Generated from src/shared/color-tokens.ts by npm run colors:generate.\n * Direct edits are overwritten.\n */\n\n${themes}\n\n${shadowUtilities}\n`;
 }

@@ -5,6 +5,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
 import { SelectInput, TextInput } from "@/src/components/ui/form-controls";
+import { InlineAction } from "@/src/components/ui/inline-action";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { usePersistentState } from "@/src/lib/use-persistent-state";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
@@ -246,14 +247,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
             role="alert"
             className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
           >
-            Couldn&apos;t load courses.{" "}
-            <button
-              type="button"
-              onClick={() => fetchExplorer()}
-              className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-            >
-              Retry
-            </button>
+            Couldn&apos;t load courses. <InlineAction onClick={() => fetchExplorer()}>Retry</InlineAction>
           </p>
         )}
 
