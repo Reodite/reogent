@@ -15,8 +15,11 @@ import { useApi } from "@/src/components/providers";
 import {
   getProgramIndex,
   getRequirementsFor,
+  getSubjectFaculties,
   optionMatches,
   type ProgramRequirements,
+  resolveProgram,
+  ruleMatches,
 } from "@/src/lib/program-requirements";
 import {
   autofillCodesForRequirement,
@@ -93,14 +96,19 @@ const blockFirstCollision: CollisionDetection = (args) => {
   });
 };
 
-function requirementCodesInPlan(req: ProgramRequirements | null, plannedCodes: Set<string>): Set<string> {
+function requirementCodesInPlan(
+  req: ProgramRequirements | null,
+  plannedCodes: Set<string>,
+  subjectFaculty: Record<string, string>,
+): Set<string> {
   const out = new Set<string>();
   if (!req) return out;
   if (req.kind === "structured") {
     for (const code of plannedCodes) {
-      if (req.categories.some((cat) => cat.options.some((opt) => optionMatches(opt, code)))) {
-        out.add(code);
-      }
+      const matches = req.categories.some((cat) =>
+        cat.options.some((opt) => optionMatches(opt, code) || (opt.rule && ruleMatches(opt.rule, code, subjectFaculty))),
+      );
+      if (matches) out.add(code);
     }
     return out;
   }
@@ -266,9 +274,20 @@ export function DegreePlannerPane() {
     return out;
   }, [years]);
 
+  const [subjectFaculty, setSubjectFaculty] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    getSubjectFaculties().then((map) => {
+      if (!cancelled) setSubjectFaculty(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const requirementCodes = useMemo(
-    () => requirementCodesInPlan(requirements, plannedCodes),
-    [requirements, plannedCodes],
+    () => requirementCodesInPlan(requirements, plannedCodes, subjectFaculty),
+    [requirements, plannedCodes, subjectFaculty],
   );
 
   function findBlockYearTerm(blockId: string): { year: Year; termIdx: number; pos: number } | null {
@@ -988,7 +1007,8 @@ function ActionsSection({
     const lines: string[] = [];
     if (major) {
       try {
-        const title = (await getProgramIndex()).byUrl.get(major)?.title;
+        const index = await getProgramIndex();
+        const title = resolveProgram(index, major)?.title;
         if (title) lines.push(`Program: ${title}`, "");
       } catch {
         // Program index unavailable — the table alone is still useful.
