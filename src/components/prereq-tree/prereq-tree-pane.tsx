@@ -3,13 +3,21 @@
 import "reactflow/dist/style.css";
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
+import { CourseSearchField, type Candidate } from "@/src/components/course-search/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { useWorkspaceHost } from "@/src/components/shell/workspace-host";
 import { Button } from "@/src/components/ui/button";
-import { RetryAlert } from "@/src/components/ui/feedback";
-import { TextInput } from "@/src/components/ui/form-controls";
+import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
 import { InlineAction } from "@/src/components/ui/inline-action";
 import { announce } from "@/src/components/ui/live-region";
+import {
+  WorkspaceCanvas,
+  WorkspacePage,
+  WorkspacePanel,
+  WorkspaceRail,
+  type WorkspaceView,
+} from "@/src/components/ui/workspace";
 import { isOkanagan } from "@/src/shared/course-code";
 import {
   Component,
@@ -20,7 +28,6 @@ import {
   useState,
   type ErrorInfo,
   type FormEvent,
-  type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from "react";
@@ -45,7 +52,6 @@ import {
   isNoneOrEmpty,
   MIN_ZOOM,
   normalize,
-  SUGGESTION_CAP,
   suggestionPrefix,
   type CourseIndex,
   type Graph,
@@ -346,13 +352,7 @@ export function PrereqTreePane({
   const [activeCode, setActiveCode] = useState<string | null>(initialRoot ? normalize(initialRoot) : null);
   // Last submitted code that wasn't in the catalog (drives the not-found alert).
   const [missingCode, setMissingCode] = useState<string | null>(null);
-  // Type-ahead dropdown state: `suggestOpen` gates visibility (typing/focus
-  // opens; Escape / outside click / pick / submit closes); `highlightIdx` is
-  // the keyboard cursor (-1 = none, Enter falls through to submit).
-  const [suggestOpen, setSuggestOpen] = useState(false);
-  const [highlightIdx, setHighlightIdx] = useState(-1);
-  const suggestBoxRef = useRef<HTMLDivElement | null>(null);
-  const suggestListRef = useRef<HTMLDivElement | null>(null);
+  const [mobileView, setMobileView] = useState<WorkspaceView>(initialRoot ? "main" : "rail");
   // Per-disjunction selections keyed `${ownerCode}::${path}` — stable across
   // re-renders and root switches; absent key = option 0. Hydrated from the
   // cached pane state so a rebuilt tree keeps its chosen branches.
@@ -418,59 +418,24 @@ export function PrereqTreePane({
   // under each subject.
   const codes = useMemo(() => (index ? [...index.keys()].sort() : []), [index]);
 
-  const suggestions = useMemo(() => {
+  const suggestions = useMemo<Candidate[]>(() => {
     if (!index) return [];
     const prefix = suggestionPrefix(query);
     if (!prefix) return [];
-    const out: { code: string; title: string }[] = [];
+    const matches: Candidate[] = [];
     for (const code of codes) {
       if (!code.startsWith(prefix)) continue;
-      out.push({ code, title: index.get(code)?.title ?? "" });
+      const [subject = "", number = ""] = code.split(/\s+/, 2);
+      matches.push({ code, subject, number, title: index.get(code)?.title ?? "" });
     }
-    return out;
+    return matches;
   }, [codes, index, query]);
-
-  const shownSuggestions = useMemo(() => suggestions.slice(0, SUGGESTION_CAP), [suggestions]);
-
-  // Hide the dropdown when its only row is the code already typed.
-  const suggestVisible =
-    suggestOpen &&
-    shownSuggestions.length > 0 &&
-    !(shownSuggestions.length === 1 && shownSuggestions[0].code === normalize(query));
-
-  // Outside click / Escape close the dropdown.
-  useEffect(() => {
-    if (!suggestOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      if (e.target instanceof globalThis.Node && suggestBoxRef.current?.contains(e.target)) return;
-      setSuggestOpen(false);
-      setHighlightIdx(-1);
-    }
-    function onKeyDown(e: globalThis.KeyboardEvent) {
-      if (e.key === "Escape") {
-        setSuggestOpen(false);
-        setHighlightIdx(-1);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [suggestOpen]);
-
-  // Keep the keyboard-highlighted row in view while arrowing through the list.
-  useEffect(() => {
-    if (highlightIdx < 0) return;
-    const el = suggestListRef.current?.querySelector(`[data-idx="${highlightIdx}"]`);
-    el?.scrollIntoView({ block: "nearest" });
-  }, [highlightIdx]);
 
   const activate = useCallback(
     (code: string) => {
       setActiveCode(code);
       setMissingCode(null);
+      setMobileView("main");
       onChangeRoot?.(code);
     },
     [onChangeRoot],
@@ -479,42 +444,16 @@ export function PrereqTreePane({
   const pickSuggestion = useCallback(
     (code: string) => {
       setQuery(code);
-      setSuggestOpen(false);
-      setHighlightIdx(-1);
       activate(code);
     },
     [activate],
   );
 
-  function onQueryKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      if (shownSuggestions.length === 0) return;
-      e.preventDefault();
-      setSuggestOpen(true);
-      setHighlightIdx((i) => {
-        const last = shownSuggestions.length - 1;
-        if (e.key === "ArrowDown") return i >= last ? 0 : i + 1;
-        return i <= 0 ? last : i - 1;
-      });
-      return;
-    }
-    if (e.key === "Enter") {
-      // With a highlighted row, Enter picks it; otherwise it falls through
-      // to the form's regular submit.
-      if (suggestVisible && highlightIdx >= 0 && highlightIdx < shownSuggestions.length) {
-        e.preventDefault();
-        pickSuggestion(shownSuggestions[highlightIdx].code);
-      }
-    }
-  }
-
   const rejected = isOkanagan(query.trim());
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
+  function submit(event: FormEvent) {
+    event.preventDefault();
     if (!index || rejected) return;
-    setSuggestOpen(false);
-    setHighlightIdx(-1);
     const code = normalize(query);
     if (index.has(code)) activate(code);
     else {
@@ -655,89 +594,55 @@ export function PrereqTreePane({
     });
   }, [shell, graph, activeCode]);
 
-  // The lookup bar portals into the Answer Canvas titlebar slot when hosted
-  // there, so the working area below keeps the full card height (same as the
-  // campus map). Hosts without the slot get the bar floated over the canvas.
+  const { host, titlebarOutlet } = useWorkspaceHost();
+  const toolsMode = host === "tools";
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [slotEl, setSlotEl] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setSlotEl(
-      rootRef.current?.closest("section[data-pane]")?.querySelector<HTMLElement>("[data-pane-titlebar-slot]") ?? null,
-    );
-  }, []);
-  const searchShadowOn = slotEl ? "surface" : "surface-container-low";
+  const searchShadowOn = titlebarOutlet ? "surface" : toolsMode ? "surface" : "surface-container-low";
 
   const searchForm = (
-    <form onSubmit={submit} className="mx-auto flex w-full max-w-md gap-2">
-      <div ref={suggestBoxRef} className="relative flex-1">
-        <Icon
-          name="search"
-          className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-        />
-        <TextInput
-          type="text"
+    <form onSubmit={submit} className="mx-auto flex w-full max-w-md items-start gap-2">
+      <div className="min-w-0 flex-1">
+        <CourseSearchField
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value.toUpperCase());
-            setSuggestOpen(true);
-            setHighlightIdx(-1);
-          }}
-          onFocus={() => setSuggestOpen(true)}
-          onKeyDown={onQueryKeyDown}
+          onChange={(value) => setQuery(value.toUpperCase())}
+          onSelect={pickSuggestion}
+          status={indexStatus === "loading" ? "loading" : "idle"}
+          list={query.trim() ? { candidates: suggestions, total: suggestions.length } : null}
+          error={null}
+          rejected={rejected}
           placeholder="e.g. CPSC 320"
-          role="combobox"
-          aria-expanded={suggestVisible}
-          aria-autocomplete="list"
-          aria-controls="prereq-suggestions"
-          aria-label="Root course code"
-          aria-invalid={rejected ? "true" : undefined}
-          aria-errormessage={rejected ? "code-error" : undefined}
-          controlSize="compact"
-          adornment="start"
+          ariaLabel="Root course code"
+          presentation="overlay"
+          density={toolsMode ? "primary" : "rail"}
           shadowOn={searchShadowOn}
         />
-        {suggestVisible && (
-          <div
-            ref={suggestListRef}
-            id="prereq-suggestions"
-            role="listbox"
-            className="neu-raised bg-surface absolute top-[calc(100%+0.25rem)] right-0 left-0 z-20 max-h-72 overflow-y-auto rounded-lg p-1"
-          >
-            {shownSuggestions.map((s, i) => (
-              <button
-                key={s.code}
-                type="button"
-                data-idx={i}
-                role="option"
-                aria-selected={i === highlightIdx}
-                onClick={() => pickSuggestion(s.code)}
-                onMouseEnter={() => setHighlightIdx(i)}
-                className={`flex w-full items-baseline gap-2 rounded px-3 py-1.5 text-left text-sm ${
-                  i === highlightIdx ? "bg-surface-container-high" : ""
-                }`}
-              >
-                <span className="text-on-surface shrink-0 font-mono">{s.code}</span>
-                <span className="text-on-surface-variant truncate text-xs">{s.title}</span>
-              </button>
-            ))}
-            {suggestions.length > SUGGESTION_CAP && (
-              <p className="text-muted border-border-subtle border-t px-3 py-1.5 text-xs">
-                +{(suggestions.length - SUGGESTION_CAP).toLocaleString()} more — keep typing to narrow
-              </p>
-            )}
-          </div>
-        )}
       </div>
-      <Button type="submit" variant="primary" shadowOn={searchShadowOn}>
+      <Button type="submit" variant="primary" size={toolsMode ? "field" : "toolbar"} shadowOn={searchShadowOn}>
         Show
       </Button>
     </form>
   );
 
-  return (
+  const feedback = (
+    <>
+      {indexStatus === "loading" ? <LoadingStatus>Loading course index…</LoadingStatus> : null}
+      {indexStatus === "error" ? (
+        <RetryAlert onRetry={() => setLoadNonce((nonce) => nonce + 1)}>Couldn't load the tree.</RetryAlert>
+      ) : null}
+      {indexStatus === "ready" && missingCode ? <NotFoundAlert code={missingCode} onPick={pickSuggestion} /> : null}
+      {indexStatus === "ready" && activeCode && !rootEntry ? (
+        <NotFoundAlert code={activeCode} onPick={pickSuggestion} />
+      ) : null}
+      {noPrereqs ? (
+        <p className="text-muted bg-surface rounded-lg px-3 py-1.5 text-sm">
+          {activeCode} has no prerequisites or corequisites listed in the calendar.
+        </p>
+      ) : null}
+    </>
+  );
+
+  const graphSurface = (
     <div ref={rootRef} data-pane="prereq-tree" className="relative h-full w-full overflow-hidden">
-      {/* Working area covers the whole card (like the campus map), on a
-          surface distinct from the card background. */}
       <ReactFlowProvider>
         <div data-prereq-canvas className="bg-surface-container-low absolute inset-0">
           {graph.nodes.length > 0 ? (
@@ -764,17 +669,13 @@ export function PrereqTreePane({
                 <FitOnChange bbox={graph.bbox} fitKey={fitKey} onFitted={onFitted} />
               </ReactFlow>
             </PaneErrorBoundary>
-          ) : (
-            indexStatus === "ready" &&
-            !missingCode &&
-            !activeCode && (
-              <div className="text-muted grid h-full place-items-center text-sm">
-                Enter a course code to render its prerequisite graph.
-              </div>
-            )
-          )}
+          ) : indexStatus === "ready" && !missingCode && !activeCode ? (
+            <div className="text-muted grid h-full place-items-center px-6 text-center text-sm">
+              Choose a course in Controls to render its prerequisite graph.
+            </div>
+          ) : null}
         </div>
-        {ctxMenu && (
+        {ctxMenu ? (
           <TreeContextMenu
             menu={ctxMenu}
             onClose={closeCtxMenu}
@@ -782,56 +683,52 @@ export function PrereqTreePane({
             onAskAi={askAiAboutTree}
             aiLocked={isGuest}
           />
-        )}
+        ) : null}
       </ReactFlowProvider>
+    </div>
+  );
 
-      {slotEl ? (
-        createPortal(searchForm, slotEl)
+  if (toolsMode) {
+    return (
+      <WorkspacePage
+        composition="split"
+        title="Prereq tree"
+        description="Trace prerequisites and corequisites from any course."
+        view={mobileView}
+        onViewChange={setMobileView}
+        mainLabel="Graph"
+        railLabel="Controls"
+        rail={
+          <WorkspaceRail>
+            <WorkspacePanel title="Find a course" description="Choose the graph root" padding="md">
+              <div className="flex flex-col gap-3">
+                {searchForm}
+                <p className="text-muted text-xs">Search a Vancouver course code, then choose a result or Show.</p>
+                {feedback}
+              </div>
+            </WorkspacePanel>
+          </WorkspaceRail>
+        }
+      >
+        <WorkspaceCanvas overflow="hidden">{graphSurface}</WorkspaceCanvas>
+      </WorkspacePage>
+    );
+  }
+
+  return (
+    <div className="relative h-full w-full overflow-hidden">
+      {graphSurface}
+      {titlebarOutlet ? (
+        createPortal(searchForm, titlebarOutlet)
       ) : (
         <div className="absolute top-3 right-3 left-3 z-20">{searchForm}</div>
       )}
-
       <div
-        className={`pointer-events-none absolute right-3 left-3 z-10 mx-auto flex max-w-md flex-col gap-2 ${slotEl ? "top-3" : "top-16"}`}
+        className={`pointer-events-none absolute right-3 left-3 z-10 mx-auto flex max-w-md flex-col gap-2 ${
+          titlebarOutlet ? "top-3" : "top-16"
+        } [&>*]:pointer-events-auto`}
       >
-        {rejected && (
-          <p
-            id="code-error"
-            role="alert"
-            className="border-error/30 bg-error-container text-on-error-container pointer-events-auto rounded-lg border px-3 py-2 text-xs"
-          >
-            Okanagan campus codes aren't in this catalog. Try a Vancouver course.
-          </p>
-        )}
-        {indexStatus === "loading" && (
-          <p
-            className="text-muted bg-surface pointer-events-auto inline-flex items-center gap-1.5 self-center rounded-lg px-3 py-1.5 text-xs"
-            aria-live="polite"
-          >
-            <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
-            Loading course index…
-          </p>
-        )}
-        {indexStatus === "error" && (
-          <RetryAlert onRetry={() => setLoadNonce((n) => n + 1)} className="pointer-events-auto">
-            Couldn't load the tree.
-          </RetryAlert>
-        )}
-        {indexStatus === "ready" && missingCode && (
-          <div className="pointer-events-auto">
-            <NotFoundAlert code={missingCode} onPick={pickSuggestion} />
-          </div>
-        )}
-        {indexStatus === "ready" && activeCode && !rootEntry && (
-          <div className="pointer-events-auto">
-            <NotFoundAlert code={activeCode} onPick={pickSuggestion} />
-          </div>
-        )}
-        {noPrereqs && (
-          <p className="text-muted bg-surface pointer-events-auto self-center rounded-lg px-3 py-1.5 text-sm">
-            {activeCode} has no prerequisites or corequisites listed in the calendar.
-          </p>
-        )}
+        {feedback}
       </div>
     </div>
   );

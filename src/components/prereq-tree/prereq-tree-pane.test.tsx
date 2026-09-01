@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
+import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -60,21 +61,23 @@ describe("PrereqTreePane", () => {
     apiState.getCourseIndex.mockReturnValue(new Promise(() => {}));
     render(<PrereqTreePane />);
     expect(screen.getByText(/Loading course index/)).toBeTruthy();
-    expect(screen.getByLabelText("Root course code").className).toContain("neu-shadow-on-surface-container-low");
+    expect(screen.getByRole("heading", { level: 1, name: "Prereq tree" })).toBeTruthy();
+    expect(screen.getByLabelText("Root course code").className).toContain("neu-shadow-on-surface");
   });
 
-  it("uses the titlebar surface context when its search form is portaled", async () => {
+  it("uses the explicit Answer Canvas titlebar outlet without DOM probing", async () => {
     apiState.getCourseIndex.mockReturnValue(new Promise(() => {}));
+    const outlet = document.createElement("div");
+    document.body.append(outlet);
     const { container } = render(
-      <section data-pane="prereq-tree">
-        <div data-pane-titlebar-slot />
+      <WorkspaceHostProvider host="answer-canvas" menuClearance={false} titlebarOutlet={outlet}>
         <PrereqTreePane />
-      </section>,
+      </WorkspaceHostProvider>,
     );
 
-    await waitFor(() =>
-      expect(container.querySelector("[data-pane-titlebar-slot] input")?.className).toContain("neu-shadow-on-surface"),
-    );
+    await waitFor(() => expect(outlet.querySelector("input")?.className).toContain("neu-shadow-on-surface"));
+    expect(container.querySelector("[data-workspace-page]")).toBeNull();
+    outlet.remove();
   });
 
   it("suggests catalog codes by prefix as the user types (autofill)", async () => {
@@ -95,6 +98,7 @@ describe("PrereqTreePane", () => {
     fireEvent.change(screen.getByLabelText("Root course code"), { target: { value: "CPSC 2" } });
     fireEvent.click(await screen.findByRole("option"));
     expect((screen.getByLabelText("Root course code") as HTMLInputElement).value).toBe("CPSC 210");
+    expect(document.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("main");
     expect(screen.getByTestId("rf-canvas")).toBeTruthy();
   });
 

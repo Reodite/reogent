@@ -445,6 +445,12 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 - **Detail composition**: List and detail routes keep the same title, rail, and canvas geometry. Course controls move into the rail while the record stays in the canvas. Loading skeletons render only during an active request; failures offer Retry, and missing codes show alternatives plus a clear return to the catalog.
 - **Compact flow**: Filters open first below 55rem. Every field and switch reaches 44px, Show courses moves to the still-mounted result canvas, and table overflow stays inside the canvas.
 
+### Prereq Tree
+
+- **Tools composition**: Prereq Tree uses the shared split workspace with a 20rem Find a course panel and the graph in the inset canvas. Controls open first without a root; choosing a suggestion or submitting an exact code switches to Graph. Loading, catalog failure, missing-code suggestions, and no-prerequisite feedback stay with the search rather than covering the graph.
+- **Shared search**: The controlled course combobox receives candidates from the already-loaded local index, retains uppercase queries and exact Show submission, and uses primary density in the Tools rail. It does not invoke the remote autocomplete hook. Arrow, Home, End, Enter, Escape, outside dismissal, active-descendant, and focus behavior match Schedule search.
+- **Answer Canvas**: Host context keeps the compact rail-density search in the stable titlebar outlet without DOM ancestor probing. The graph stays full-bleed inside the Answer Canvas while Tools receives the standard page header and rail.
+
 ### Degree Planner
 
 - **Composition**: Operate-mode workbench with 24px desktop padding, 16px region gaps, and 8px internal gaps. The top bar places the title above one shared toolbar row, with visible-label program selectors on the left and labeled actions on the right. The body places a fixed 320px Requirements and Find Courses rail to the left of the horizontally scrollable year board.
