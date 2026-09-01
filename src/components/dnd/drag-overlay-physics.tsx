@@ -18,6 +18,12 @@ type DragOverlayFrameProps = {
   rotate: MotionValue<number>;
 };
 
+/** Shared drop settle used by the degree and schedule planners. */
+export const DRAG_DROP_ANIMATION = {
+  duration: 260,
+  easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+};
+
 type DragOverlayPhysicsOptions = {
   resolveSourceElement?: (event: DragStartEvent) => HTMLElement | null;
 };

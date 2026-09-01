@@ -1,6 +1,10 @@
 "use client";
 
-import { DragOverlayFrame, useDragOverlayPhysics } from "@/src/components/dnd/drag-overlay-physics";
+import {
+  DRAG_DROP_ANIMATION,
+  DragOverlayFrame,
+  useDragOverlayPhysics,
+} from "@/src/components/dnd/drag-overlay-physics";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import {
   buildScheduleGrid,
@@ -93,8 +97,8 @@ function ScheduleBlock({
   setNodeRef?: (node: HTMLElement | null) => void;
 }) {
   const color = courseColor(block.courseKey);
-  const height = Math.max(28, (block.endMin - block.startMin) * PX_PER_MINUTE - 3);
-  const compact = height < 58;
+  const height = Math.max(36, (block.endMin - block.startMin) * PX_PER_MINUTE - 3);
+  const compact = height < 76;
   const overlay = overlayWidth !== undefined;
   const style = {
     top: overlay ? undefined : (block.startMin - dayStartMin) * PX_PER_MINUTE,
@@ -121,7 +125,7 @@ function ScheduleBlock({
       aria-label={`${block.code} ${block.section}, ${block.title}, ${time}${block.meta ? `, ${block.meta}` : ""}${
         block.conflict ? ", conflicts with another section" : ""
       }`}
-      className={`focus-visible:ring-primary/40 flex min-w-0 flex-col overflow-hidden rounded-lg border px-2 py-1.5 text-left transition-[filter,transform,opacity] select-none hover:brightness-[0.98] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
+      className={`focus-visible:ring-primary/40 flex min-w-0 flex-col overflow-hidden rounded-lg border px-2 py-1 text-left transition-[filter,transform,opacity] select-none hover:brightness-[0.98] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
         overlay ? "relative" : "absolute"
       } ${listeners ? "cursor-grab touch-pan-y active:cursor-grabbing" : ""} ${dimmed ? "opacity-25" : ""} ${
         block.conflict ? "ring-error/70 ring-2" : ""
@@ -130,16 +134,14 @@ function ScheduleBlock({
     >
       <span className="flex min-w-0 items-baseline gap-1.5">
         <span className="text-on-surface truncate font-mono text-xs leading-tight font-medium">{block.code}</span>
-        <span className="text-on-surface-variant shrink-0 font-mono text-[10px] leading-tight">{block.section}</span>
+        <span className="text-on-surface-variant shrink-0 font-mono text-xs leading-none">{block.section}</span>
       </span>
-      <span className="text-on-surface-variant mt-0.5 block w-full truncate font-mono text-[10px] leading-tight tabular-nums">
+      <span className="text-on-surface-variant mt-1 block w-full truncate font-mono text-xs leading-none tabular-nums">
         {time}
       </span>
-      {!compact && <span className="text-on-surface mt-1 line-clamp-2 text-[11px] leading-tight">{block.title}</span>}
+      {!compact && <span className="text-on-surface mt-1 line-clamp-2 text-xs leading-tight">{block.title}</span>}
       {!compact && block.meta && (
-        <span className="text-muted mt-0.5 block w-full truncate font-mono text-[10px] leading-tight">
-          {block.meta}
-        </span>
+        <span className="text-muted mt-0.5 block w-full truncate font-mono text-xs leading-tight">{block.meta}</span>
       )}
       {footer ? <span className="mt-auto flex min-h-4 items-end pt-1">{footer}</span> : null}
     </button>
@@ -193,7 +195,7 @@ function ScheduleDropSlot({
   const color = courseColor(block.courseKey);
   const style = {
     top: (block.startMin - dayStartMin) * PX_PER_MINUTE,
-    height: Math.max(28, (block.endMin - block.startMin) * PX_PER_MINUTE - 3),
+    height: Math.max(36, (block.endMin - block.startMin) * PX_PER_MINUTE - 3),
     left: `calc(${(100 / block.cols) * block.col}% + 3px)`,
     width: `calc(${100 / block.cols}% - 6px)`,
     borderColor: color,
@@ -205,7 +207,7 @@ function ScheduleDropSlot({
       ref={setNodeRef}
       aria-hidden="true"
       data-drop-label={label}
-      className={`absolute z-20 overflow-hidden rounded-lg border border-dashed px-2 py-1.5 transition-[background-color,transform] ${
+      className={`absolute z-20 overflow-hidden rounded-lg border border-dashed px-2 py-1 transition-[background-color,transform] ${
         isOver ? "scale-[1.02]" : ""
       } ${block.conflict ? "ring-error/60 ring-2" : ""}`}
       style={style}
@@ -213,11 +215,11 @@ function ScheduleDropSlot({
       <span className="text-on-surface block truncate font-mono text-xs font-medium">
         {block.code} {block.section}
       </span>
-      <span className="text-on-surface-variant block truncate font-mono text-[10px]">
+      <span className="text-on-surface-variant block truncate font-mono text-xs leading-none">
         {minutesToFullLabel(block.startMin)}–{minutesToFullLabel(block.endMin)}
       </span>
       {block.conflict ? (
-        <span className="text-error block truncate text-[10px] font-medium">Creates conflict</span>
+        <span className="text-error mt-1 block truncate text-xs font-medium">Creates conflict</span>
       ) : null}
     </div>
   );
@@ -319,7 +321,7 @@ export function ScheduleGrid({
             tabIndex={day === selectedDay ? 0 : -1}
             onClick={() => onActiveDayChange(day)}
             onKeyDown={(event) => moveDayTab(event, index)}
-            className={`focus-visible:ring-primary/40 min-h-9 flex-1 rounded-lg px-2 text-xs font-medium focus-visible:ring-2 ${
+            className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-lg px-2 text-xs font-medium focus-visible:ring-2 ${
               day === selectedDay ? "neu-inset bg-surface-container text-on-surface" : "text-on-surface-variant"
             }`}
           >
@@ -354,7 +356,7 @@ export function ScheduleGrid({
             {hours.map((minute) => (
               <span
                 key={minute}
-                className="text-muted absolute right-2 -translate-y-1/2 font-mono text-[10px] leading-none tabular-nums"
+                className="text-muted absolute right-2 -translate-y-1/2 font-mono text-xs leading-none tabular-nums"
                 style={{ top: (minute - model.dayStartMin) * PX_PER_MINUTE }}
               >
                 {minute === model.dayStartMin ? "" : minutesToFullLabel(minute).replace(":00", "")}
@@ -479,7 +481,7 @@ export function ScheduleGrid({
       onDragCancel={cancelDrag}
     >
       {content}
-      <DragOverlay dropAnimation={{ duration: 260, easing: "cubic-bezier(0.34, 1.3, 0.64, 1)" }}>
+      <DragOverlay dropAnimation={DRAG_DROP_ANIMATION}>
         {activeBlock ? (
           <DragOverlayFrame anchor={anchor} reducedMotion={reducedMotion} rotate={rotate}>
             <ScheduleBlock

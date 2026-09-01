@@ -33,6 +33,18 @@ colors:
   on-tertiary-container: "#4a3010"
   on-error-container: "#6e2c2c"
   scrim: "rgba(0, 0, 0, 0.3)"
+  course-cornflower: "#6ea8fe"
+  course-tangerine: "#ffb46b"
+  course-jade: "#62d2a2"
+  course-orchid: "#e886c9"
+  course-amber: "#ffd166"
+  course-ice: "#7ee0e6"
+  course-lavender: "#b69cff"
+  course-pear: "#9bd356"
+  course-salmon: "#ff8f8f"
+  course-lagoon: "#5fd0c0"
+  course-pink-quartz: "#f3a6ff"
+  course-sandstone: "#d9c79b"
 typography:
   body:
     fontFamily: "Aspekta, ui-sans-serif, system-ui, sans-serif"
@@ -204,6 +216,12 @@ Contrast between adjacent layers is part of the design, not an accident of it. V
 - Every card, chip, or inset well sits exactly one step away from its parent surface. Nested elements on the same step read as one blob.
 - `--border` must remain visible against `--surface` without squinting (dark: `#2c2c31` on `#1a1a1e`). `--border-subtle` is for interior hairlines only, never a card's outer edge.
 - Dark-theme shadows and highlights are tonal: darker and lighter shades of the surface color itself (e.g. `#141417` / `#26262c` around `#1a1a1e`), never pure black or white. A shadow you cannot see is not a shadow, and a white glow breaks the monochrome.
+
+### Course Identity Palette
+
+Schedules assign each normalized course code one stable color from a 12-color palette: Cornflower (`#6ea8fe`), Tangerine (`#ffb46b`), Jade (`#62d2a2`), Orchid (`#e886c9`), Amber (`#ffd166`), Ice (`#7ee0e6`), Lavender (`#b69cff`), Pear (`#9bd356`), Salmon (`#ff8f8f`), Lagoon (`#5fd0c0`), Pink Quartz (`#f3a6ff`), and Sandstone (`#d9c79b`). Planner and sharer adapters normalize campus suffixes before hashing, so `CPSC_V 221` and `CPSC 221` keep the same identity.
+
+Course colors appear as a 1px block edge and a low-opacity tint mixed with the active surface. Theme text tokens carry all labels; course color never carries status or required meaning. Conflict rings, participant avatars, and the current-time marker remain separate channels.
 
 ### Opacity Modifiers
 
@@ -406,6 +424,15 @@ State changes through shadow transformation + press scale. Buttons never transla
 - **Course details**: Placement issues lead the popup as direct sentences. Each issue owns a separate `bg-error-container text-on-error-container` box; no heading or bullet list delays the explanation.
 - **Requirements**: Manual, course, planned, and completed rows share one 36px checkbox geometry. Text captions distinguish automatic completion from manual completion instead of changing the checkmark style. Automatically planned checks retain the primary color at 50% opacity to read as disabled; manually checked requirements remain fully opaque and interactive. Each year heading uses 4px vertical padding and sticks to the top of the Requirements scroller until the next year replaces it. Degree progress owns a 16px top inset.
 - **Responsive flow**: Below 768px, the board and rail stack inside one vertical scroll. The board remains keyboard-scrollable, and the two rail cards stay equal height after stacking.
+
+### Schedule Workspaces
+
+- **Shared anatomy**: `/tools/schedule` and `/pulse/schedule` use one `ScheduleWorkspace`: a text-xl title and description, route controls, a fixed 304px contextual rail, and the shared week canvas separated by a 16px gap. The planner owns course search and section mutation; the sharer owns groups, people, free time, and sharing.
+- **Week canvas**: The grid renders Monday through Friday, adding both weekend columns when needed. A 56px time gutter anchors an 8 AM–10 PM minimum range at 54px per hour. Day headers and the time gutter stay visible while the canvas scrolls. The grid remains visible when empty; one centered prompt names the state and moves mobile users to the relevant controls.
+- **Block type**: Course codes, section identifiers, times, rooms, and counts use Commit Mono at the documented caption size. Course titles and interaction copy use Aspekta. Tinted course blocks keep normal theme text contrast and use error rings only for conflicts.
+- **Planner interaction**: Adding a course selects one scheduled section from each known component. The selector searches complete combinations for a conflict-free result and falls back deterministically when no combination fits. Dragging any occurrence dims every occurrence of that section and reveals full-section alternate slots. The overlay uses the degree planner’s anchored spring and velocity tilt; a details dialog retains native section selects for keyboard, touch, and precise changes.
+- **Import**: Both routes parse Workday Excel exports in the browser. Planner imports reconcile term, component, days, and times with catalog identifiers, require a choice for ambiguous matches, list skipped rows, and ask whether to merge or replace before one atomic update. Sharer imports remain read-only calendar data.
+- **Responsive flow**: At a 55rem container width, the rail and canvas become two explicit views. Schedule opens first, uses one day column with 44px day tabs, and preserves the selected day. Courses or Controls opens the same left-rail content without changing term or scroll state.
 
 ### Navigation
 

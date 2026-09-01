@@ -55,7 +55,7 @@ export function ScheduleWorkspace({
           type="button"
           aria-pressed={mobileView === "schedule"}
           onClick={() => onMobileViewChange("schedule")}
-          className={`focus-visible:ring-primary/40 min-h-10 flex-1 rounded-lg px-3 text-sm font-medium focus-visible:ring-2 ${
+          className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-lg px-3 text-sm font-medium focus-visible:ring-2 ${
             mobileView === "schedule" ? "neu-raised bg-surface text-on-surface" : "text-on-surface-variant"
           }`}
         >
@@ -65,7 +65,7 @@ export function ScheduleWorkspace({
           type="button"
           aria-pressed={mobileView === "controls"}
           onClick={() => onMobileViewChange("controls")}
-          className={`focus-visible:ring-primary/40 min-h-10 flex-1 rounded-lg px-3 text-sm font-medium focus-visible:ring-2 ${
+          className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-lg px-3 text-sm font-medium focus-visible:ring-2 ${
             mobileView === "controls" ? "neu-raised bg-surface text-on-surface" : "text-on-surface-variant"
           }`}
         >

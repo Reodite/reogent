@@ -10,7 +10,11 @@
 // active.id prefix and the over.id to route the move/add/delete.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
-import { DragOverlayFrame, useDragOverlayPhysics } from "@/src/components/dnd/drag-overlay-physics";
+import {
+  DRAG_DROP_ANIMATION,
+  DragOverlayFrame,
+  useDragOverlayPhysics,
+} from "@/src/components/dnd/drag-overlay-physics";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
@@ -446,16 +450,7 @@ export function DegreePlannerPane() {
         </div>
       </div>
 
-      <DragOverlay
-        dropAnimation={
-          activeDrag?.kind === "lookup"
-            ? null
-            : {
-                duration: 260,
-                easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
-              }
-        }
-      >
+      <DragOverlay dropAnimation={activeDrag?.kind === "lookup" ? null : DRAG_DROP_ANIMATION}>
         {activeDrag && (
           <DragOverlayFrame
             key={activeDrag.kind === "block" ? activeDrag.blockId : activeDrag.code}
