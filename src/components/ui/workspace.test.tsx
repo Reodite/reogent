@@ -69,6 +69,8 @@ describe("WorkspacePage", () => {
     expect(page?.querySelectorAll("main")).toHaveLength(0);
     expect(page?.querySelectorAll("[data-workspace-panel]")).toHaveLength(2);
     expect(page?.querySelector("[data-workspace-canvas]")?.className).toContain("p-4");
+    expect(page?.querySelector("[data-workspace-actions]")?.className).toContain("w-full");
+    expect(page?.querySelector("[data-workspace-actions]")?.className).toContain("@min-[55rem]:w-auto");
   });
 
   it("keeps both compact regions mounted while callers own the active view", () => {

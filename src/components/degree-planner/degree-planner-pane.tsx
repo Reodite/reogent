@@ -635,7 +635,7 @@ function ActionsSection({
   }
 
   return (
-    <div className="ml-auto flex flex-wrap items-center justify-end gap-2 max-md:ml-0 max-md:w-full max-md:justify-start">
+    <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2 max-md:ml-0 max-md:w-full max-md:justify-start">
       <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-xl p-1">
         <Button
           variant="ghost"

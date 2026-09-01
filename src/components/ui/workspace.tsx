@@ -195,7 +195,10 @@ function WorkspaceHeaderControls({
         <span className="min-w-0 flex-1" />
       )}
       {actions ? (
-        <div data-workspace-actions className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div
+          data-workspace-actions
+          className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 @min-[55rem]:w-auto @min-[55rem]:shrink-0"
+        >
           {actions}
         </div>
       ) : null}
