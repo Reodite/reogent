@@ -17,7 +17,7 @@ import type { Avatar, DayCode, Person, Schedule, Section } from "@/src/lib/sched
 import { dayCodeOf, minutesNow, minutesToFullLabel, toISODate } from "@/src/lib/schedule/util/time";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AvatarChip } from "./avatar-chip";
 import { BlockDetail } from "./block-detail";
 import { NowPanel } from "./now-panel";
@@ -36,6 +36,12 @@ interface Props {
   /** A 6-char group code from `/pulse/schedule/[code]`; opening it auto-joins the caller. */
   groupCode?: string;
 }
+
+type GroupViewState =
+  | { status: "empty"; code: null; generation: number }
+  | { status: "loading"; code: string; generation: number }
+  | { status: "ready"; code: string; generation: number; group: GroupDetail }
+  | { status: "error"; code: string; generation: number; message: string };
 
 function useNow(): Date {
   const [now, setNow] = useState(() => new Date());
@@ -66,12 +72,15 @@ function ScheduleAppInner({ groupCode }: Props) {
   const now = useNow();
 
   const [booting, setBooting] = useState(true);
-  const [groupLoading, setGroupLoading] = useState(false);
   const [me, setMe] = useState<WirePerson | null>(null);
   const [groups, setGroups] = useState<GroupSummary[]>([]);
-  const [activeCode, setActiveCode] = useState<string | null>(groupCode ?? null);
-  const [group, setGroup] = useState<GroupDetail | null>(null);
-  const [groupError, setGroupError] = useState("");
+  const initialCode = groupCode ?? null;
+  const selectionRef = useRef({ code: initialCode, generation: initialCode ? 1 : 0 });
+  const [groupView, setGroupView] = useState<GroupViewState>(() =>
+    initialCode
+      ? { status: "loading", code: initialCode, generation: 1 }
+      : { status: "empty", code: null, generation: 0 },
+  );
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
   const [termKey, setTermKey] = useState<string | null>(null);
   const [showFree, setShowFree] = useState(true);
@@ -95,6 +104,14 @@ function ScheduleAppInner({ groupCode }: Props) {
     return result.groups;
   }, [request]);
 
+  const selectGroup = useCallback((code: string | null) => {
+    const generation = selectionRef.current.generation + 1;
+    selectionRef.current = { code, generation };
+    setGroupView(code ? { status: "loading", code, generation } : { status: "empty", code: null, generation });
+    setTermKey(null);
+    setEnabled({});
+  }, []);
+
   const fetchGroup = useCallback(
     async (code: string) => {
       // POST is an idempotent join. It covers a shared-link visit and normal
@@ -116,7 +133,7 @@ function ScheduleAppInner({ groupCode }: Props) {
         if (cancelled) return;
         setMe(personResult.person);
         setGroups(groupResult.groups);
-        setActiveCode((current) => current ?? groupResult.groups[0]?.code ?? null);
+        if (!selectionRef.current.code) selectGroup(groupResult.groups[0]?.code ?? null);
       } catch (error) {
         if (!cancelled) toast(messageOf(error), "error");
       } finally {
@@ -127,22 +144,52 @@ function ScheduleAppInner({ groupCode }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [request, toast]);
+  }, [request, selectGroup, toast]);
 
   useEffect(() => {
-    if (groupCode) setActiveCode(groupCode);
-  }, [groupCode]);
+    if (groupCode && groupCode !== selectionRef.current.code) selectGroup(groupCode);
+  }, [groupCode, selectGroup]);
 
   useEffect(() => {
-    if (!activeCode) return;
+    if (groupView.status !== "loading") return;
+    const { code, generation } = groupView;
+    let cancelled = false;
+    Promise.all([fetchGroup(code), refreshGroups()])
+      .then(([nextGroup]) => {
+        if (cancelled) return;
+        const selected = selectionRef.current;
+        if (selected.code !== code || selected.generation !== generation) return;
+        setGroupView({ status: "ready", code, generation, group: nextGroup });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const selected = selectionRef.current;
+        if (selected.code !== code || selected.generation !== generation) return;
+        setGroupView({ status: "error", code, generation, message: messageOf(error) });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchGroup, groupView, refreshGroups]);
+
+  useEffect(() => {
+    if (groupView.status !== "ready") return;
+    const { code, generation } = groupView;
     let cancelled = false;
     const refreshVisibleGroup = async () => {
       if (document.visibilityState === "hidden") return;
       try {
-        const [nextGroup] = await Promise.all([fetchGroup(activeCode), refreshGroups()]);
-        if (!cancelled) setGroup(nextGroup);
+        const [nextGroup] = await Promise.all([fetchGroup(code), refreshGroups()]);
+        if (cancelled) return;
+        const selected = selectionRef.current;
+        if (selected.code !== code || selected.generation !== generation) return;
+        setGroupView((current) =>
+          current.status === "ready" && current.code === code && current.generation === generation
+            ? { ...current, group: nextGroup }
+            : current,
+        );
       } catch {
-        // Focus/poll refresh is best-effort; the visible data remains usable.
+        // Refresh failures leave the current, usable group in place.
       }
     };
     const timer = window.setInterval(() => void refreshVisibleGroup(), 30_000);
@@ -152,31 +199,11 @@ function ScheduleAppInner({ groupCode }: Props) {
       window.clearInterval(timer);
       window.removeEventListener("focus", refreshVisibleGroup);
     };
-  }, [activeCode, fetchGroup, refreshGroups]);
+  }, [fetchGroup, groupView, refreshGroups]);
 
-  useEffect(() => {
-    if (!activeCode) {
-      setGroup(null);
-      return;
-    }
-    let cancelled = false;
-    setGroupLoading(true);
-    Promise.all([fetchGroup(activeCode), refreshGroups()])
-      .then(([nextGroup]) => {
-        if (cancelled) return;
-        setGroup(nextGroup);
-        setGroupError("");
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setGroup(null);
-        setGroupError(messageOf(error));
-      })
-      .finally(() => !cancelled && setGroupLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [activeCode, fetchGroup, refreshGroups]);
+  const activeCode = groupView.code;
+  const group = groupView.status === "ready" ? groupView.group : null;
+  const groupError = groupView.status === "error" ? groupView.message : "";
 
   const people = useMemo(
     () => group?.members.map((person) => normalizePerson(person, enabled[person.id] ?? true)) ?? [],
@@ -201,9 +228,7 @@ function ScheduleAppInner({ groupCode }: Props) {
   const termIsLive = !!term && toISODate(now) >= term.start && toISODate(now) <= term.end;
 
   function switchGroup(code: string) {
-    setActiveCode(code);
-    setTermKey(null);
-    setEnabled({});
+    selectGroup(code);
     router.push(`/pulse/schedule/${code}`);
   }
 
@@ -216,10 +241,12 @@ function ScheduleAppInner({ groupCode }: Props) {
       });
       setMe(result.person);
       setDraftSchedule(null);
-      setGroup((current) => {
-        if (!current || current.code !== activeCode) return current;
-        const members = current.members.map((member) => (member.id === result.person.id ? result.person : member));
-        return { ...current, members };
+      setGroupView((current) => {
+        if (current.status !== "ready" || current.code !== activeCode) return current;
+        const members = current.group.members.map((member) =>
+          member.id === result.person.id ? result.person : member,
+        );
+        return { ...current, group: { ...current.group, members } };
       });
       toast(`Saved ${handle}'s schedule · ${draftSchedule.sections.length} sections`);
     } catch (error) {
@@ -249,8 +276,7 @@ function ScheduleAppInner({ groupCode }: Props) {
       await request(`/groups/${activeCode}`, { method: "DELETE" });
       const nextGroups = await refreshGroups();
       const next = nextGroups.find((candidate) => candidate.code !== activeCode);
-      setGroup(null);
-      setActiveCode(next?.code ?? null);
+      selectGroup(next?.code ?? null);
       if (next) router.replace(`/pulse/schedule/${next.code}`);
       else router.replace("/pulse/schedule");
       toast(`Left “${group.name}”`);
@@ -260,7 +286,8 @@ function ScheduleAppInner({ groupCode }: Props) {
   }
 
   async function copyShareLink() {
-    if (!activeCode) return;
+    if (groupView.status !== "ready") return;
+    const { code: activeCode } = groupView;
     const url = `${window.location.origin}/pulse/schedule/${activeCode}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -272,22 +299,39 @@ function ScheduleAppInner({ groupCode }: Props) {
 
   if (booting) return <ScheduleLoading />;
 
+  const selectedSummary = groups.find((summary) => summary.code === activeCode);
+  const groupLabel = group?.name ?? selectedSummary?.name ?? (activeCode ? `Group ${activeCode}` : "Shared schedule");
+  const mePerson = me ? normalizePerson(me) : null;
+  const meHasSchedule = !!me?.schedule;
   const nobodyImported = !!group && people.every((person) => !person.schedule);
   const allPeopleFiltered = !!group && people.length > 0 && people.every((person) => !person.enabled);
   const selectedSections = enabledPeopleWithSchedules
     .flatMap((person) => person.schedule?.sections ?? [])
     .filter((section) => sectionOverlapsTerm(section, term));
   const tbaOnly = selectedSections.length > 0 && selectedSections.every((section) => section.meetings.length === 0);
-  const empty = scheduleEmptyState({
-    group,
-    groupError,
-    me: me ? normalizePerson(me) : null,
-    nobodyImported,
-    allPeopleFiltered,
-    tbaOnly,
-    onImport: () => setMobileView("controls"),
-    onCreate: () => setShowCreate(true),
-  });
+  const empty =
+    groupView.status === "loading"
+      ? {
+          title: `Opening ${groupLabel}`,
+          description: `The empty week stays visible while group ${groupView.code} loads.`,
+        }
+      : groupView.status === "error"
+        ? {
+            title: `${groupLabel} is unavailable`,
+            description: `Group ${groupView.code} could not be opened. Check the code or choose another group in Controls.`,
+            actionLabel: "Open controls",
+            onAction: () => setMobileView("controls"),
+          }
+        : scheduleEmptyState({
+            group,
+            groupError,
+            me: mePerson,
+            nobodyImported,
+            allPeopleFiltered,
+            tbaOnly,
+            onImport: () => setMobileView("controls"),
+            onCreate: () => setShowCreate(true),
+          });
   const nowLine = termIsLive
     ? {
         day: dayCodeOf(now),
@@ -296,83 +340,96 @@ function ScheduleAppInner({ groupCode }: Props) {
       }
     : undefined;
 
-  const actions = (
-    <>
+  const actions =
+    groupView.status === "ready" ? (
       <button
         type="button"
-        aria-label="Create a new shared schedule"
-        onClick={() => setShowCreate(true)}
-        className="neu-button text-on-surface flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+        aria-label={`Copy share link ${groupView.code}`}
+        onClick={copyShareLink}
+        className="neu-primary-button bg-primary text-on-primary flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
       >
-        <Icon name="add" size={16} />
-        New group
+        <Icon name="externalLink" size={16} />
+        Share <span className="font-mono text-xs opacity-80">{groupView.code}</span>
       </button>
-      {activeCode ? (
-        <button
-          type="button"
-          aria-label={`Copy share link ${activeCode}`}
-          onClick={copyShareLink}
-          className="neu-primary-button bg-primary text-on-primary flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+    ) : undefined;
+
+  const groupSelector =
+    groups.length > 0 ? (
+      <section data-control-section="group" aria-labelledby="schedule-groups-heading" className="pb-4">
+        <label id="schedule-groups-heading" htmlFor="schedule-group" className="text-on-surface text-sm font-medium">
+          Group
+        </label>
+        <select
+          id="schedule-group"
+          value={activeCode ?? ""}
+          onChange={(event) => switchGroup(event.target.value)}
+          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 mt-2 min-h-11 w-full rounded-lg px-3 text-sm outline-none focus-visible:ring-2"
         >
-          <Icon name="externalLink" size={16} />
-          Share <span className="font-mono text-xs opacity-80">{activeCode}</span>
-        </button>
-      ) : null}
-      {group ? (
-        <button
-          type="button"
-          title={`Leave ${group.name}`}
-          aria-label={`Leave ${group.name}`}
-          onClick={leaveActiveGroup}
-          className="neu-button text-muted hover:text-error flex size-10 items-center justify-center rounded-xl"
-        >
-          <Icon name="exit" size={17} />
-        </button>
-      ) : null}
-    </>
+          {activeCode && !groups.some((item) => item.code === activeCode) ? (
+            <option value={activeCode}>{groupLabel}</option>
+          ) : null}
+          {groups.map((item) => (
+            <option key={item.code} value={item.code}>
+              {item.name} · {item.memberCount}
+            </option>
+          ))}
+        </select>
+      </section>
+    ) : null;
+
+  const importControl = (
+    <section data-control-section="import" aria-label="My schedule" className="border-border-subtle border-t py-4">
+      <h3 className="text-on-surface mb-2 text-sm font-medium">My schedule</h3>
+      <UploadDropzone
+        presentation="button"
+        label={meHasSchedule ? "Replace my schedule" : "Import my schedule"}
+        onParsed={(schedule) => setDraftSchedule(schedule)}
+      />
+    </section>
   );
 
   const controls = (
-    <div className="flex h-full min-h-0 [scrollbar-gutter:stable] flex-col gap-3 overflow-y-auto p-3">
-      {groups.length > 0 ? (
-        <section aria-labelledby="schedule-groups-heading">
-          <label id="schedule-groups-heading" htmlFor="schedule-group" className="text-on-surface text-sm font-medium">
-            Group
-          </label>
-          <select
-            id="schedule-group"
-            value={activeCode ?? ""}
-            onChange={(event) => switchGroup(event.target.value)}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 mt-2 min-h-11 w-full rounded-xl px-3 text-sm outline-none focus-visible:ring-2"
-          >
-            {groups.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.name} · {item.memberCount}
-              </option>
-            ))}
-          </select>
-        </section>
-      ) : null}
-
-      {!group ? (
-        <NoGroupControls
-          me={me ? normalizePerson(me) : null}
-          error={groupError}
-          onUpload={(schedule) => setDraftSchedule(schedule)}
-          onCreate={() => setShowCreate(true)}
-          onJoin={switchGroup}
-        />
-      ) : (
+    <div className="flex h-full min-h-0 [scrollbar-gutter:stable] flex-col overflow-y-auto px-3">
+      {groupSelector}
+      {group ? (
         <>
-          <UploadDropzone onParsed={(schedule) => setDraftSchedule(schedule)} />
-          <PeoplePanel
-            people={people}
-            meId={me?.id ?? auth.user?.userId ?? null}
-            onToggle={(id, value) => setEnabled((previous) => ({ ...previous, [id]: value }))}
-            onEnableAll={() => setEnabled({})}
-          />
-          <section className="neu-panel rounded-2xl p-3">
-            <label className="text-on-surface flex min-h-8 cursor-pointer items-center justify-between gap-3 text-sm font-medium">
+          <section
+            data-control-section="management"
+            aria-label="Group management"
+            className="border-border-subtle flex gap-2 border-t py-4"
+          >
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="neu-button text-on-surface flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+            >
+              <Icon name="add" size={16} />
+              New group
+            </button>
+            <button
+              type="button"
+              onClick={leaveActiveGroup}
+              className="neu-button text-on-surface-variant hover:text-error flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+            >
+              <Icon name="exit" size={16} />
+              Leave
+            </button>
+          </section>
+          {!meHasSchedule ? importControl : null}
+          <div data-control-section="people" className="border-border-subtle border-t py-4">
+            <PeoplePanel
+              people={people}
+              meId={me?.id ?? auth.user?.userId ?? null}
+              onToggle={(id, value) => setEnabled((previous) => ({ ...previous, [id]: value }))}
+              onEnableAll={() => setEnabled({})}
+            />
+          </div>
+          <section
+            data-control-section="free-time"
+            aria-label="Common free time"
+            className="border-border-subtle border-t py-4"
+          >
+            <label className="text-on-surface flex min-h-10 cursor-pointer items-center justify-between gap-3 text-sm font-medium">
               <span>Common free time</span>
               <input
                 type="checkbox"
@@ -381,24 +438,67 @@ function ScheduleAppInner({ groupCode }: Props) {
                 className="accent-primary size-4"
               />
             </label>
-            {showFree && freeBands.length > 0 ? (
-              <section
-                aria-label="Common free-time intervals"
-                className="text-on-surface-variant mt-2 flex flex-col gap-1 text-xs"
-              >
-                {freeBands.map((band) => (
-                  <div key={`${band.day}-${band.startMin}`} className="flex justify-between gap-2">
-                    <span>{band.day}</span>
-                    <span className="font-mono tabular-nums">
-                      {minutesToFullLabel(band.startMin)}–{minutesToFullLabel(band.endMin)}
-                    </span>
-                  </div>
-                ))}
-              </section>
+            {showFree ? (
+              <div className="bg-primary/5 mt-2 max-h-36 overflow-y-auto rounded-lg px-2.5 py-2">
+                {enabledPeopleWithSchedules.length === 0 ? (
+                  <p className="text-muted text-xs leading-5">
+                    Show at least one person with a schedule to compare free time.
+                  </p>
+                ) : freeBands.length === 0 ? (
+                  <p className="text-on-surface-variant text-xs leading-5">
+                    The enabled schedules have no common interval in this timetable.
+                  </p>
+                ) : (
+                  <ul
+                    aria-label="Common free-time intervals"
+                    className="text-on-surface-variant flex flex-col gap-1 text-xs"
+                  >
+                    {freeBands.map((band) => (
+                      <li key={`${band.day}-${band.startMin}`} className="flex justify-between gap-2">
+                        <span>{band.day}</span>
+                        <span className="font-mono tabular-nums">
+                          {minutesToFullLabel(band.startMin)}–{minutesToFullLabel(band.endMin)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             ) : null}
           </section>
-          {termIsLive ? <NowPanel people={enabledPeople} now={now} /> : null}
+          {termIsLive ? (
+            <div data-control-section="now" className="border-border-subtle border-t py-4">
+              <NowPanel people={enabledPeople} now={now} />
+            </div>
+          ) : null}
+          {meHasSchedule ? importControl : null}
         </>
+      ) : groupView.status === "loading" ? (
+        <section
+          data-control-section="group-status"
+          aria-busy="true"
+          aria-label={`Opening ${groupLabel}`}
+          className="border-border-subtle border-t py-4"
+        >
+          <div role="status" className="text-on-surface flex items-center gap-2 text-sm font-medium">
+            <span className="border-primary/25 border-t-primary size-4 animate-spin rounded-full border-2" />
+            Opening {groupLabel}…
+          </div>
+          <div className="mt-3 flex flex-col gap-2" aria-hidden="true">
+            <span className="bg-surface-container h-10 animate-pulse rounded-lg" />
+            <span className="bg-surface-container h-10 animate-pulse rounded-lg" />
+          </div>
+        </section>
+      ) : (
+        <NoGroupControls
+          me={mePerson}
+          error={groupError}
+          groupLabel={groupView.status === "error" ? groupLabel : undefined}
+          groupCode={groupView.status === "error" ? groupView.code : undefined}
+          onUpload={(schedule) => setDraftSchedule(schedule)}
+          onCreate={() => setShowCreate(true)}
+          onJoin={switchGroup}
+        />
       )}
     </div>
   );
@@ -406,21 +506,18 @@ function ScheduleAppInner({ groupCode }: Props) {
   return (
     <>
       <ScheduleWorkspace
-        title={group?.name ?? "Shared schedule"}
+        title={groupLabel}
         description={
           group
             ? "Compare everyone’s week, find common free time, and open a class for details."
-            : "Import your Workday schedule, then create or join a group to compare weeks."
+            : groupView.status === "loading"
+              ? `Loading group ${groupView.code} without hiding the weekly timetable.`
+              : groupView.status === "error"
+                ? `Group ${groupView.code} is unavailable. Choose another group or check the shared code.`
+                : "Import your Workday schedule, then create or join a group to compare weeks."
         }
         actions={actions}
         toolbar={<TermSwitcher terms={terms} selected={selectedTermKey} onSelect={setTermKey} />}
-        notice={
-          groupLoading ? (
-            <div role="status" className="text-muted px-1 text-sm">
-              Opening shared schedule…
-            </div>
-          ) : undefined
-        }
         controlsLabel="Controls"
         controls={controls}
         mobileView={mobileView}
@@ -450,7 +547,7 @@ function ScheduleAppInner({ groupCode }: Props) {
               </>
             );
           }}
-          ariaLabel={group ? `${group.name} weekly schedule` : "Weekly schedule preview"}
+          ariaLabel={group ? `${group.name} weekly schedule` : `${groupLabel} weekly schedule preview`}
         />
       </ScheduleWorkspace>
       {draftSchedule && (
@@ -506,28 +603,33 @@ function ScheduleLoading() {
 function NoGroupControls({
   me,
   error,
+  groupLabel,
+  groupCode,
   onUpload,
   onCreate,
   onJoin,
 }: {
   me: Person | null;
   error: string;
+  groupLabel?: string;
+  groupCode?: string;
   onUpload: (schedule: Schedule) => void;
   onCreate: () => void;
   onJoin: (code: string) => void;
 }) {
   const [code, setCode] = useState("");
   return (
-    <div className="flex flex-col gap-4">
-      <section>
+    <div className="border-border-subtle flex flex-col gap-4 border-t py-4">
+      <section data-control-section="group-status">
         <h2 className="text-on-surface text-sm font-medium">
-          {error ? "Group unavailable" : me ? "Start a group" : "Import from Workday"}
+          {error ? `${groupLabel ?? "Group"} unavailable` : me ? "Start a group" : "Import from Workday"}
         </h2>
         <p className="text-muted mt-1 text-xs leading-relaxed">
-          {error ||
-            (me
+          {error
+            ? `Group ${groupCode ?? "code"} could not be opened. ${error}`
+            : me
               ? "Create a group for your schedule, or join one with its six-character code."
-              : "Your Excel export is parsed in this browser before it is saved to Reodite.")}
+              : "Your Excel export is parsed in this browser before it is saved to Reodite."}
         </p>
       </section>
 
