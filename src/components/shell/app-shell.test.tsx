@@ -88,7 +88,7 @@ function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
 }
 
 describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
-  it("wide AI renders chat + Answer Canvas inline with the skip target on chat", () => {
+  it("inline AI renders chat + Answer Canvas with the skip target on chat", () => {
     const { container, getByTestId } = renderShell(true);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("chat");
     expect(container.querySelector("[data-workspace-surface]")).toBeNull();
@@ -98,13 +98,12 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[data-answer-sheet="closed"]')).not.toBeNull();
   });
 
-  it("wide AI right pane starts collapsed and has no re-expand in topbar", () => {
+  it("inline AI right pane starts collapsed and has no re-expand in topbar", () => {
     const { container } = renderShell(true);
 
-    // Pane is collapsed (zero-width, invisible) by default.
     const sheet = container.querySelector("[data-answer-sheet]");
-    expect(sheet?.classList.contains("lg:grow-0")).toBe(true);
-    expect(sheet?.classList.contains("lg:invisible")).toBe(true);
+    expect(sheet?.classList.contains("sm:grow-0")).toBe(true);
+    expect(sheet?.classList.contains("sm:invisible")).toBe(true);
 
     // There is no topbar expand button for the right pane.
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
@@ -117,13 +116,13 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
 
-  it("below-wide AI has no way to manually open the answer sheet — only show_widget can", () => {
+  it("mobile AI has no way to manually open the answer sheet — only show_widget can", () => {
     const { container } = renderShell(false);
     expect(container.querySelector('[data-answer-sheet="open"]')).toBeNull();
     expect(container.querySelector('[aria-label="Open answer canvas"]')).toBeNull();
   });
 
-  it("wide Tools renders the Full-Bleed Tool with the skip target on the tool", () => {
+  it("inline Tools renders the Full-Bleed Tool with the skip target on the tool", () => {
     const { container } = renderShell(true);
     fireEvent.click(modeLink(container, "Tools"));
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
@@ -147,7 +146,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector("[data-testid='chat-children']")).not.toBeNull();
   });
 
-  it("below-wide Tools lives in the left drawer, Full-Bleed Tool stays full-bleed", () => {
+  it("compact Tools lives in the left drawer and keeps the tool full-bleed", () => {
     const { container } = renderShell(false);
     fireEvent.click(modeLink(container, "Tools"));
     fireEvent.click(container.querySelector('[aria-label="Open sidebar"]') as HTMLElement);

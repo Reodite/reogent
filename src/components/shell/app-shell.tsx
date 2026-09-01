@@ -31,21 +31,19 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return null;
 }
 
-/** Wide viewport (≥1024px) for sheet auto-close and `inert` gating only. Layout
- *  itself is CSS-responsive, so the DOM is stable across this toggle — no
- *  hydration mismatch. Returns false until mounted (SSR-safe). */
-function useIsWide(): boolean {
-  const [wide, setWide] = useState(false);
+/** Tracks when the Answer Canvas is inline for sheet cleanup and inert gating. */
+function useIsCanvasInline(): boolean {
+  const [inline, setInline] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-    const m = window.matchMedia("(min-width: 1024px)");
-    setWide(m.matches);
-    const onChange = (e: MediaQueryListEvent) => setWide(e.matches);
-    m.addEventListener("change", onChange);
-    return () => m.removeEventListener("change", onChange);
+    const media = window.matchMedia("(min-width: 640px)");
+    setInline(media.matches);
+    const onChange = (event: MediaQueryListEvent) => setInline(event.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, []);
-  return mounted ? wide : false;
+  return mounted ? inline : false;
 }
 
 function SidebarDrawer() {
@@ -104,18 +102,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     setRightPaneCollapsed,
     setUserDismissedPane,
   } = useChatShell();
-  const wide = useIsWide();
+  const canvasInline = useIsCanvasInline();
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
 
-  // Crossing to wide closes a lingering Answer sheet (the button that opens it
-  // is hidden at wide); nothing else needs this, so a one-shot close suffices.
   useEffect(() => {
-    if (wide && answerSheetOpen) setAnswerSheetOpen(false);
-  }, [wide, answerSheetOpen, setAnswerSheetOpen]);
+    if (canvasInline && answerSheetOpen) setAnswerSheetOpen(false);
+  }, [canvasInline, answerSheetOpen, setAnswerSheetOpen]);
 
-  const sheetInert = mode === "ai" && answerSheetOpen && !wide;
+  const sheetInert = mode === "ai" && answerSheetOpen && !canvasInline;
 
   // Restore focus to the sidebar drawer trigger when it closes.
   const prevSidebarOpen = useRef(false);
