@@ -365,7 +365,6 @@ function SchedulePlannerPaneInner() {
   const conflictingIds = new Set(gridItems.filter((item) => item.conflict).map((item) => item.id));
   const conflictLabels = useMemo(() => plannerConflictLabels(visibleEntries), [visibleEntries]);
   const conflictCount = conflictingIds.size;
-  const credits = [...pickedCodes].reduce((sum, code) => sum + (docs.get(code)?.credits ?? 0), 0);
 
   const requestCourseFocus = useCallback((code: string, group?: string) => {
     focusToken.current += 1;
@@ -535,21 +534,15 @@ function SchedulePlannerPaneInner() {
           onSelect={setActiveTerm}
         />
       )}
-      {visibleEntries.length > 0 ? (
-        <div className="text-muted flex shrink-0 items-center gap-2 text-xs">
-          <span>{pickedCodes.size} courses</span>
-          {credits > 0 ? <span>· {credits} credits</span> : null}
-          {conflictCount > 0 ? (
-            <span
-              role="status"
-              aria-label={`${conflictCount} conflicting ${conflictCount === 1 ? "section" : "sections"}`}
-              className="bg-error-container/60 text-on-error-container inline-flex items-center gap-1 rounded-full px-2 py-1"
-            >
-              <Icon name="alert" className="size-3.5" />
-              {conflictCount} conflicting {conflictCount === 1 ? "section" : "sections"}
-            </span>
-          ) : null}
-        </div>
+      {conflictCount > 0 ? (
+        <span
+          role="status"
+          aria-label={`${conflictCount} conflicting ${conflictCount === 1 ? "section" : "sections"}`}
+          className="bg-error-container/60 text-on-error-container inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs"
+        >
+          <Icon name="alert" className="size-3.5" />
+          {conflictCount} conflicting {conflictCount === 1 ? "section" : "sections"}
+        </span>
       ) : null}
     </div>
   );

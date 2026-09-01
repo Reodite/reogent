@@ -295,6 +295,15 @@ describe("SchedulePlannerPane explicit course flow", () => {
     expect(scheduleMock.state.addCourseSections).not.toHaveBeenCalled();
   });
 
+  it("omits course and credit totals from the header", async () => {
+    scheduleMock.state.entries = [structuredClone(cpscEntry)];
+    const view = render(<SchedulePlannerPane />);
+    await view.findByRole("combobox", { name: "Lecture" });
+
+    expect(view.queryByText("1 courses")).toBeNull();
+    expect(view.queryByText("4 credits")).toBeNull();
+  });
+
   it("changes exactly one component with an inline section selector", async () => {
     scheduleMock.state.entries = [structuredClone(cpscEntry)];
     const view = render(<SchedulePlannerPane />);
