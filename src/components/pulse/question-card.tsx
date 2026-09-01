@@ -65,8 +65,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.9}
             style={reduce ? undefined : { x, rotate }}
-            whileHover={reduce ? undefined : { y: -3, scale: 1.01 }}
-            whileDrag={reduce ? undefined : { scale: 1.03 }}
+            whileDrag={reduce ? undefined : { scale: 1.01 }}
             onDragEnd={handleDragEnd}
             variants={{
               exit: (dir: React.RefObject<boolean>) => {
@@ -77,7 +76,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
             }}
             exit="exit"
             transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 28 }}
-            className={`bg-surface-container relative touch-pan-y rounded-2xl p-4 shadow-[0_4px_0_color-mix(in_srgb,var(--surface-container)_85%,black),0_10px_20px_var(--neu-shadow-deep)] select-none ${
+            className={`neu-panel bg-surface relative touch-pan-y rounded-2xl p-4 select-none ${
               reduce ? "" : "cursor-grab active:cursor-grabbing"
             }`}
           >
@@ -102,28 +101,24 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
             )}
             <p className="text-on-surface text-base">{card.text}</p>
             <div className="mt-3 flex items-center justify-between px-1">
-              <motion.span
-                role="button"
-                tabIndex={0}
+              <motion.button
+                type="button"
                 onClick={() => castVote(false)}
-                onKeyDown={(e) => e.key === "Enter" && castVote(false)}
                 aria-label={`Disagree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: -8, scale: 0.95 }}
-                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 cursor-pointer items-center px-2 py-3 text-sm transition-colors select-none"
+                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 items-center px-2 py-3 text-sm transition-colors select-none"
               >
                 disagree
-              </motion.span>
-              <motion.span
-                role="button"
-                tabIndex={0}
+              </motion.button>
+              <motion.button
+                type="button"
                 onClick={() => castVote(true)}
-                onKeyDown={(e) => e.key === "Enter" && castVote(true)}
                 aria-label={`Agree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: 8, scale: 0.95 }}
-                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 cursor-pointer items-center px-2 py-3 text-sm transition-colors select-none"
+                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 items-center px-2 py-3 text-sm transition-colors select-none"
               >
                 agree
-              </motion.span>
+              </motion.button>
             </div>
             {card.error && (
               <p role="alert" className="text-error mt-2 text-xs">
@@ -155,7 +150,7 @@ export function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: bool
       initial={reduce ? false : { opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: reduce ? 0 : 0.3, ease: "easeOut" }}
-      className="bg-surface-container-high rounded-2xl p-4 shadow-[inset_0_4px_0_color-mix(in_srgb,var(--surface-container-high)_75%,black),inset_1px_1px_3px_var(--neu-shadow),inset_-1px_-1px_3px_var(--neu-highlight)]"
+      className="neu-inset bg-surface-container rounded-2xl p-4"
     >
       <p className="text-on-surface-variant text-base">{card.text}</p>
       <div role="img" aria-label={label} className="mt-4 flex items-center gap-3">

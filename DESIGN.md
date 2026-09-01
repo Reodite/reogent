@@ -476,6 +476,12 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 - **Import**: Both routes parse Workday Excel exports in the browser. Planner imports reconcile term, component, days, and times with catalog identifiers, require a choice for ambiguous matches, list skipped rows, and ask whether to merge or replace before one atomic update. Sharer imports remain read-only calendar data.
 - **Responsive flow**: At the shared 55rem container width, the rail and canvas become explicit 44px Schedule and Controls views while both remain mounted. The workspace uses 16px padding and gaps, opens Schedule first, renders one day column with 44px day tabs, and preserves term, day, form, and scroll state across view changes.
 
+### Map, Pulse, and Creators
+
+- **Campus Map**: Tools renders the standard page title and one inset full canvas without inventing an empty rail. AI keeps the map full-bleed inside Answer Canvas. Building details remain a transient raised inspector. Layer, reset, and zoom controls keep their specialized map contract while reaching 44px on compact screens. Load failure uses the shared stacked recovery state and only promises route details when a highlight exists.
+- **Pulse**: Pulse uses the shared single workspace and inset scroll canvas. Question cards use the sanctioned raised surface; voted results use the sanctioned inset surface. Swipe remains the pointer shortcut, while native 44px Agree and Disagree buttons provide keyboard and reduced-motion operation. Custom hard-offset card shadows are not permitted.
+- **Creators**: Creators uses the same single workspace, title hierarchy, inset canvas, and shared link-button treatment. Its centered people content remains intentionally sparse.
+
 ### Navigation
 
 - **Session sidebar items**: `h-9 px-3 py-2 rounded-lg text-sm`. Active: `neu-inset bg-surface-container text-on-surface`; active navigation and mode controls never use accent-tinted fills. Inactive: `text-on-surface-variant`. Hover: `bg-surface-container-high text-on-surface`. Transition: all 150ms. Focus: `ring-primary/40 ring-2 ring-offset-1`.

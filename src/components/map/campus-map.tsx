@@ -20,6 +20,7 @@ import { formatMeters, formatMinutes } from "@/src/lib/format";
 import { featureCentroid, featuresBounds, findBuilding, type BuildingFeature, type LngLat } from "@/src/lib/geo";
 import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import type { FeatureCollection } from "geojson";
+import type { ErrorEvent as MapLibreErrorEvent } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 
 // MapLibre spawns its Web Worker via `new Worker(WORKER_URL)`. The default
@@ -522,7 +523,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           (window as unknown as { __campusMap?: unknown }).__campusMap = map;
         }
 
-        map.on("error", (event: { error?: Error }) => {
+        map.on("error", (event: MapLibreErrorEvent) => {
           // Style/tile failures (e.g. offline) → text fallback; transient tile
           // errors after load are ignored.
           if (!map.isStyleLoaded()) {

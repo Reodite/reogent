@@ -5,7 +5,8 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { CampusMap, type MapControls, type MapStatus } from "@/src/components/map/campus-map";
-import { Button } from "@/src/components/ui/button";
+import { RetryState } from "@/src/components/ui/feedback";
+import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
 import type { MapHighlight } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -54,7 +55,7 @@ function GlassButton({
       aria-label={label}
       title={label}
       aria-pressed={pressed}
-      className={`focus-visible:ring-primary/40 neu-panel flex size-10 items-center justify-center rounded-2xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
+      className={`focus-visible:ring-primary/40 neu-panel flex size-11 items-center justify-center rounded-2xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-10 ${
         pressed ? "text-primary" : "text-on-surface-variant hover:text-primary"
       }`}
     >
@@ -102,21 +103,20 @@ function RouteInfoCard() {
 
 function MapFallback({ onRetry }: { onRetry?: () => void }) {
   const { highlight } = useChatShell();
+  if (!onRetry) return null;
   return (
-    <div
-      role="status"
-      className="bg-surface-container-low flex h-full flex-col items-center justify-center gap-2 px-6 text-center"
+    <RetryState
+      icon="wifiOff"
+      title="Map unavailable"
+      message={
+        highlight ? "The map couldn't load. Route details remain available below." : "The campus map couldn't load."
+      }
+      onRetry={onRetry}
+      retryLabel="Retry"
+      className="bg-surface-container-low h-full justify-center px-6"
     >
-      <Icon name="wifiOff" size={32} className="text-muted" />
-      <p className="text-body-sm text-on-surface-variant">Map couldn&apos;t load. Route details are shown below.</p>
-      {onRetry && (
-        <Button onClick={onRetry} shadowOn="surface-container-low" className="mt-2">
-          <Icon name="refresh2" size={14} />
-          Retry
-        </Button>
-      )}
-      {highlight && <p className="text-on-surface max-w-60 text-sm">{highlightFallback(highlight)}</p>}
-    </div>
+      {highlight ? <p className="text-on-surface max-w-60 text-sm">{highlightFallback(highlight)}</p> : null}
+    </RetryState>
   );
 }
 
@@ -181,7 +181,7 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
               type="button"
               aria-label="Zoom in"
               onClick={() => controls.current?.zoomIn()}
-              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-11 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-10"
             >
               <Icon name="add" size={20} />
             </button>
@@ -190,7 +190,7 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
               type="button"
               aria-label="Zoom out"
               onClick={() => controls.current?.zoomOut()}
-              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-11 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-10"
             >
               <Icon name="minimize" size={20} />
             </button>
@@ -204,9 +204,20 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
 /** Registry-facing map pane. Shutdown of the active widget routes through the
  * shell's workspaceView + the Answer Canvas header collapse button. */
 export function MapArea() {
+  const { mode } = useChatShell();
+  if (mode !== "tools") {
+    return (
+      <div className="relative h-full w-full">
+        <MapSurface />
+      </div>
+    );
+  }
+
   return (
-    <div className="relative h-full w-full">
-      <MapSurface />
-    </div>
+    <WorkspacePage composition="canvas" title="Campus map" description="Explore buildings, routes, and campus places.">
+      <WorkspaceCanvas overflow="hidden">
+        <MapSurface />
+      </WorkspaceCanvas>
+    </WorkspacePage>
   );
 }

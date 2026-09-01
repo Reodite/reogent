@@ -2,6 +2,7 @@
 
 import { Icon } from "@/src/components/icons";
 import { ButtonLink } from "@/src/components/ui/button";
+import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 
 function CreatorAvatar({ name }: { name: string }) {
   return (
@@ -16,21 +17,24 @@ function CreatorAvatar({ name }: { name: string }) {
 
 export function CreatorsPage() {
   return (
-    <section aria-label="Creators" className="flex min-h-0 w-full flex-col p-4 sm:p-6">
-      <h1 className="text-on-surface text-base font-medium tracking-[-0.01em]">Creators</h1>
-      <div className="mt-6 flex items-center justify-center gap-8">
-        <CreatorAvatar name="Max" />
-        <CreatorAvatar name="Chakorn" />
-      </div>
-      <ButtonLink
-        href="https://buymeacoffee.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="hover:text-primary mt-6 self-center"
-      >
-        <Icon name="teacup" size={16} />
-        Buy us a coffee
-      </ButtonLink>
-    </section>
+    <WorkspacePage composition="single" title="Creators" description="The people building Reodite.">
+      <WorkspaceCanvas padding="md">
+        <div className="flex min-h-full flex-col items-center justify-center">
+          <div className="flex items-center justify-center gap-8">
+            <CreatorAvatar name="Max" />
+            <CreatorAvatar name="Chakorn" />
+          </div>
+          <ButtonLink
+            href="https://buymeacoffee.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-primary mt-6"
+          >
+            <Icon name="teacup" size={16} />
+            Buy us a coffee
+          </ButtonLink>
+        </div>
+      </WorkspaceCanvas>
+    </WorkspacePage>
   );
 }
