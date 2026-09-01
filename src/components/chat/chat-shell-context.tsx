@@ -234,7 +234,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
         if (!userDismissedPaneRef.current) setAnswerSheetOpen(true);
       }
     },
-    [setWorkspaceView],
+    [setWorkspaceView, setRightPaneCollapsed],
   );
 
   const setActiveChannel = useCallback(
