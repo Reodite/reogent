@@ -26,22 +26,22 @@ export function NowPanel({ people, now }: Props) {
   const names = displayHandles(people);
 
   return (
-    <section className="neu-panel rounded-2xl p-3" aria-label="Right now">
-      <h3 className="text-on-surface mb-2 flex items-baseline justify-between px-1 text-sm font-medium">
+    <section aria-label="Right now">
+      <h3 className="text-on-surface mb-2 flex min-h-9 items-center justify-between text-sm font-medium">
         Right now
         <span className="font-mono text-xs font-normal tabular-nums">
           {now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
         </span>
       </h3>
-      <ul className="flex flex-col gap-1.5">
+      <ul className="flex flex-col gap-1">
         {statuses.map(({ person, current, next, hasClassesToday }) => (
-          <li key={person.id} className="flex items-center gap-2 px-1">
+          <li key={person.id} className="flex min-h-11 items-center gap-2 rounded-lg px-2 py-1.5">
             <AvatarChip avatar={person.avatar} size={24} title={names.get(person.id)} />
             <div className="min-w-0 flex-1">
               <div className="text-on-surface truncate text-sm font-medium">{names.get(person.id)}</div>
               {current ? (
                 <div className="text-on-surface-variant truncate text-xs">
-                  <span className="font-mono">{shortLabel(current.section)}</span>
+                  In class · <span className="font-mono">{shortLabel(current.section)}</span>
                   {current.pattern.buildingCode ? (
                     <>
                       {" · "}
@@ -54,8 +54,8 @@ export function NowPanel({ people, now }: Props) {
                   <span className="font-mono">{minutesToFullLabel(current.pattern.endMin)}</span>
                 </div>
               ) : (
-                <div className="text-secondary truncate text-xs">
-                  free
+                <div className="text-on-surface-variant truncate text-xs">
+                  Free
                   {next ? (
                     <>
                       {" · "}
@@ -70,7 +70,6 @@ export function NowPanel({ people, now }: Props) {
                 </div>
               )}
             </div>
-            <span aria-hidden className={`size-2 shrink-0 rounded-full ${current ? "bg-error" : "bg-secondary"}`} />
           </li>
         ))}
       </ul>

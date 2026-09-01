@@ -182,18 +182,21 @@ function ScheduleAppInner({ groupCode }: Props) {
     () => group?.members.map((person) => normalizePerson(person, enabled[person.id] ?? true)) ?? [],
     [group, enabled],
   );
+  const enabledPeople = useMemo(() => people.filter((person) => person.enabled), [people]);
+  const enabledPeopleWithSchedules = useMemo(() => enabledPeople.filter((person) => person.schedule), [enabledPeople]);
   const terms = useMemo(() => deriveTerms(people), [people]);
   const selectedTermKey =
     termKey && terms.some((term) => term.key === termKey) ? termKey : defaultTermKey(terms, toISODate(now));
   const term = terms.find((candidate) => candidate.key === selectedTermKey) ?? null;
-  const calendar = useMemo(() => buildCalendar(people, term), [people, term]);
+  const calendar = useMemo(() => buildCalendar(enabledPeople, term), [enabledPeople, term]);
   const mergedBlocks = useMemo(() => [...calendar.blocksByDay.values()].flat(), [calendar.blocksByDay]);
   const grid = useMemo(() => buildSharerGrid(mergedBlocks), [mergedBlocks]);
   const freeBands = useMemo(() => {
     if (!showFree) return [];
-    const visible = people.filter((person) => person.enabled && person.schedule);
-    return visible.length > 0 ? commonFreeIntervals(expandBlocks(visible, term), calendar.days) : [];
-  }, [showFree, people, term, calendar.days]);
+    return enabledPeopleWithSchedules.length > 0
+      ? commonFreeIntervals(expandBlocks(enabledPeopleWithSchedules, term), calendar.days)
+      : [];
+  }, [showFree, enabledPeopleWithSchedules, term, calendar.days]);
   const gridBands = useMemo(() => buildSharerBands(freeBands), [freeBands]);
   const termIsLive = !!term && toISODate(now) >= term.start && toISODate(now) <= term.end;
 
@@ -271,8 +274,7 @@ function ScheduleAppInner({ groupCode }: Props) {
 
   const nobodyImported = !!group && people.every((person) => !person.schedule);
   const allPeopleFiltered = !!group && people.length > 0 && people.every((person) => !person.enabled);
-  const selectedSections = people
-    .filter((person) => person.enabled && person.schedule)
+  const selectedSections = enabledPeopleWithSchedules
     .flatMap((person) => person.schedule?.sections ?? [])
     .filter((section) => sectionOverlapsTerm(section, term));
   const tbaOnly = selectedSections.length > 0 && selectedSections.every((section) => section.meetings.length === 0);
@@ -395,7 +397,7 @@ function ScheduleAppInner({ groupCode }: Props) {
               </section>
             ) : null}
           </section>
-          {termIsLive ? <NowPanel people={people} now={now} /> : null}
+          {termIsLive ? <NowPanel people={enabledPeople} now={now} /> : null}
         </>
       )}
     </div>

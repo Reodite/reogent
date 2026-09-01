@@ -19,8 +19,8 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
   const allOn = people.every((p) => p.enabled);
 
   return (
-    <section className="neu-panel rounded-2xl p-3" aria-label="People in this schedule">
-      <div className="mb-2 flex items-center justify-between px-1">
+    <section aria-label="People in this schedule">
+      <div className="mb-2 flex min-h-9 items-center justify-between">
         <h3 className="text-on-surface text-sm font-medium">
           People <span className="text-muted ml-1 font-mono text-xs">{people.length}</span>
         </h3>
@@ -30,21 +30,19 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
           </button>
         )}
       </div>
-      <ul className="flex flex-col gap-0.5">
+      <ul className="flex flex-col gap-1">
         {people.map((p) => {
           const displayName = names.get(p.id) ?? p.handle;
           const courses = p.schedule ? new Set(p.schedule.sections.map((s) => s.courseCode || s.title)).size : 0;
           return (
             <li key={p.id}>
-              <div className={`flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 ${p.enabled ? "" : "opacity-50"}`}>
+              <label
+                className={`hover:bg-surface-container focus-within:ring-primary/40 flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 focus-within:ring-2 ${
+                  p.enabled ? "" : "opacity-60"
+                }`}
+              >
                 <AvatarChip avatar={p.avatar} size={30} title={displayName} />
-                <button
-                  type="button"
-                  title="Show/hide on the calendar"
-                  aria-pressed={p.enabled}
-                  onClick={() => onToggle(p.id, !p.enabled)}
-                  className="flex min-w-0 flex-1 cursor-pointer flex-col items-start text-left"
-                >
+                <span className="flex min-w-0 flex-1 flex-col">
                   <span className="text-on-surface truncate text-sm font-medium">
                     {displayName}
                     {p.id === meId && <span className="text-muted ml-1.5 text-xs font-medium">(you)</span>}
@@ -58,8 +56,15 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
                       "No schedule yet"
                     )}
                   </span>
-                </button>
-              </div>
+                </span>
+                <input
+                  type="checkbox"
+                  aria-label={`Show ${displayName} on the calendar`}
+                  checked={p.enabled}
+                  onChange={(event) => onToggle(p.id, event.target.checked)}
+                  className="accent-primary size-4 shrink-0"
+                />
+              </label>
             </li>
           );
         })}
