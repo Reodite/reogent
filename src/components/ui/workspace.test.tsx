@@ -34,6 +34,27 @@ function SplitWorkspace() {
   );
 }
 
+function ProgrammaticWorkspace() {
+  const [view, setView] = useState<WorkspaceView>("rail");
+  return (
+    <WorkspacePage
+      composition="split"
+      title="Course lookup"
+      mainLabel="Courses"
+      railLabel="Filters"
+      view={view}
+      onViewChange={setView}
+      rail={
+        <button type="button" onClick={() => setView("main")}>
+          Show courses
+        </button>
+      }
+    >
+      Results
+    </WorkspacePage>
+  );
+}
+
 describe("WorkspacePage", () => {
   it("owns one restrictive split structure without nesting a main landmark", () => {
     const { container } = render(
@@ -57,6 +78,16 @@ describe("WorkspacePage", () => {
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("rail");
     expect(container.querySelector("[data-workspace-region='main']")).not.toBeNull();
     expect(container.querySelector("[data-workspace-region='rail']")).not.toBeNull();
+  });
+
+  it("moves focus to the selected compact toggle when a focused region hides", () => {
+    const { container } = render(<ProgrammaticWorkspace />);
+    const trigger = screen.getByRole("button", { name: "Show courses" });
+    trigger.focus();
+    fireEvent.click(trigger);
+
+    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("main");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Courses" }));
   });
 
   it("suppresses duplicate titles immediately and portals only bounded titlebar actions", () => {

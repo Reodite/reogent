@@ -1,8 +1,8 @@
 "use client";
 
-import { SHELL_MODE_STORAGE_KEY, type ShellMode } from "@/src/lib/shell-mode";
+import { parseShellMode, SHELL_MODE_STORAGE_KEY, type ShellMode } from "@/src/lib/shell-mode";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 /**
  * Tracks routed shell modes without changing the current mode on Settings.
@@ -11,10 +11,27 @@ import { useCallback, useEffect, useState } from "react";
  */
 export function useShellMode(initial: ShellMode = "ai"): [ShellMode, (mode: ShellMode) => void] {
   const [mode, setModeState] = useState<ShellMode>(initial);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const pathname = usePathname();
+  const hydrateStoredModeOnSettings = useRef(pathname === "/settings" && initial === "ai");
+  const settingsHydrated = useRef(false);
 
-  useEffect(() => {
-    if (pathname === "/settings") return;
+  useLayoutEffect(() => {
+    if (pathname === "/settings") {
+      let settingsMode = modeRef.current;
+      if (hydrateStoredModeOnSettings.current && !settingsHydrated.current) {
+        settingsHydrated.current = true;
+        try {
+          settingsMode = parseShellMode(window.localStorage.getItem(SHELL_MODE_STORAGE_KEY));
+          setModeState(settingsMode);
+        } catch {
+          /* localStorage unavailable */
+        }
+      }
+      document.documentElement.dataset.shellMode = settingsMode;
+      return;
+    }
     const next: ShellMode = pathname?.startsWith("/tools") ? "tools" : pathname?.startsWith("/pulse") ? "unity" : "ai";
     setModeState(next);
     // Dataset mirrors the URL so pre-paint chrome matches the active route.

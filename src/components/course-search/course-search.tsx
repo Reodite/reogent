@@ -269,6 +269,7 @@ export function CourseSearchField({
   const overlay = presentation === "overlay";
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
   const restoringFocus = useRef(false);
   const listboxId = useId();
   const [open, setOpen] = useState(false);
@@ -302,6 +303,12 @@ export function CourseSearchField({
     document.addEventListener("pointerdown", dismiss);
     return () => document.removeEventListener("pointerdown", dismiss);
   }, [overlay]);
+
+  useLayoutEffect(() => {
+    if (!showOverlay || activeIndex < 0) return;
+    const option = document.getElementById(`${listboxId}-option-${activeIndex}`);
+    if (option && listboxRef.current?.contains(option)) option.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex, listboxId, showOverlay]);
 
   const restoreInputFocus = () => {
     if (document.activeElement === inputRef.current) return;
@@ -390,6 +397,7 @@ export function CourseSearchField({
         {input}
         {showOverlay && (
           <div
+            ref={listboxRef}
             id={listboxId}
             role={status === "idle" && candidates.length > 0 && !error && !rejected ? "listbox" : undefined}
             data-course-list

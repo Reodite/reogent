@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -16,6 +17,50 @@ function SheetHarness() {
       <AnswerSheet open={open} onClose={() => setOpen(false)} view={{ paneId: "map", state: {} }}>
         <button type="button">First action</button>
         <button type="button">Last action</button>
+      </AnswerSheet>
+    </>
+  );
+}
+
+function UpdatingSheetHarness() {
+  const [open, setOpen] = useState(false);
+  const [revision, setRevision] = useState(0);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open updating canvas
+      </button>
+      <AnswerSheet open={open} onClose={() => setOpen(false)} view={{ paneId: "calendar", state: {} }}>
+        <button type="button">First canvas action</button>
+        <button type="button" onClick={() => setRevision((value) => value + 1)}>
+          Update canvas {revision}
+        </button>
+      </AnswerSheet>
+    </>
+  );
+}
+
+function NestedDialogHarness() {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setSheetOpen(true)}>
+        Open nested canvas
+      </button>
+      <AnswerSheet open={sheetOpen} onClose={() => setSheetOpen(false)} view={{ paneId: "calendar", state: {} }}>
+        <button type="button" onClick={() => setDialogOpen(true)}>
+          Open event details
+        </button>
+        {dialogOpen ? (
+          <DialogRoot onDismiss={() => setDialogOpen(false)} backdropLabel="Close event details">
+            <DialogPanel aria-label="Event details">
+              <button type="button" data-dialog-initial-focus>
+                Event action
+              </button>
+            </DialogPanel>
+          </DialogRoot>
+        ) : null}
       </AnswerSheet>
     </>
   );
@@ -60,6 +105,31 @@ describe("AnswerSheet", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Answer canvas" })).toBeNull());
     expect(document.activeElement).toBe(trigger);
     expect(document.body.style.overflow).toBe("");
+  });
+
+  it("keeps focus in place when canvas state rerenders with a new close callback", async () => {
+    render(<UpdatingSheetHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "Open updating canvas" }));
+    const update = await screen.findByRole("button", { name: "Update canvas 0" });
+    update.focus();
+    fireEvent.click(update);
+
+    const updated = await screen.findByRole("button", { name: "Update canvas 1" });
+    expect(document.activeElement).toBe(updated);
+  });
+
+  it("lets a nested dialog handle Escape without dismissing the sheet", async () => {
+    render(<NestedDialogHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "Open nested canvas" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open event details" }));
+    const action = await screen.findByRole("button", { name: "Event action" });
+    await waitFor(() => expect(document.activeElement).toBe(action));
+
+    fireEvent.keyDown(action, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Event details" })).toBeNull());
+    expect(screen.getByRole("dialog", { name: "Answer canvas" })).not.toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Open event details" }));
   });
 
   it("dismisses from the handle after crossing twenty percent of its height", async () => {

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-search/course-search";
 import type { CourseDoc } from "@/src/lib/api-types";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiState = vi.hoisted(() => ({
@@ -118,17 +118,32 @@ describe("CourseSearchField overlay", () => {
     expect(baseProps.onSelect).toHaveBeenCalledWith("CPSC 210");
   });
 
-  it("caps broad overlays and asks the user to narrow the query", async () => {
+  it("caps broad overlays, narrows the query, and scrolls keyboard selection into view", async () => {
     const many = Array.from({ length: 25 }, (_, index) => ({
       code: `CPSC ${100 + index}`,
       subject: "CPSC",
       number: String(100 + index),
       title: `Course ${index + 1}`,
     }));
-    render(<CourseSearchField {...baseProps} presentation="overlay" list={{ candidates: many, total: many.length }} />);
+    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
 
-    expect(await screen.findAllByRole("option")).toHaveLength(20);
-    expect(screen.getByText("Keep typing to narrow 25 results.")).toBeTruthy();
+    try {
+      render(
+        <CourseSearchField {...baseProps} presentation="overlay" list={{ candidates: many, total: many.length }} />,
+      );
+
+      expect(await screen.findAllByRole("option")).toHaveLength(20);
+      expect(screen.getByText("Keep typing to narrow 25 results.")).toBeTruthy();
+      const input = screen.getByRole("combobox");
+      fireEvent.keyDown(input, { key: "End" });
+      expect(input.getAttribute("aria-activedescendant")).toMatch(/option-19$/);
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" }));
+    } finally {
+      if (original) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", original);
+      else delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
   });
 
   it("keeps the default Course Lookup presentation inline", () => {

@@ -102,6 +102,29 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(toolsLink.getAttribute("aria-current")).toBe("page");
   });
 
+  it("allows the retained mode link to leave Settings", () => {
+    const view = render(
+      <ChatShellProvider>
+        <ModeToggle />
+        <Capture />
+      </ChatShellProvider>,
+    );
+    fireEvent.click(modeLink(view.container, "Tools"));
+    expect(shellRef.current?.mode).toBe("tools");
+
+    pathname.value = "/settings";
+    view.rerender(
+      <ChatShellProvider>
+        <ModeToggle />
+        <Capture />
+      </ChatShellProvider>,
+    );
+    localStorage.removeItem(SHELL_MODE_STORAGE_KEY);
+    fireEvent.click(modeLink(view.container, "Tools"));
+
+    expect(localStorage.getItem(SHELL_MODE_STORAGE_KEY)).toBe("tools");
+  });
+
   it("LeftSidebar shows SessionList in AI mode and ToolList in Tools mode", () => {
     const { container } = render(
       <ChatShellProvider>

@@ -10,12 +10,14 @@ import { useEffect } from "react";
 
 export default function ShellLayout({ children }: React.PropsWithChildren) {
   const pathname = usePathname();
-  const { isGuest } = useAppAuth();
+  const { isGuest, status } = useAppAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (isGuest && (pathname?.startsWith("/chat") || pathname?.startsWith("/pulse"))) router.replace("/tools");
   }, [isGuest, pathname, router]);
+
+  if (status === "initializing") return null;
 
   const initialMode =
     pathname?.startsWith("/tools") || isGuest ? "tools" : pathname?.startsWith("/pulse") ? "unity" : "ai";

@@ -6,7 +6,7 @@ import { Icon, type IconName } from "@/src/components/icons";
 import { paneIdToSlug } from "@/src/lib/pane-route";
 import { LAST_CHAT_PATH_KEY, type ShellMode } from "@/src/lib/shell-mode";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type MouseEvent } from "react";
 
 const DESTINATIONS: { mode: ShellMode; label: string; icon: IconName; guestLocked?: boolean }[] = [
@@ -15,10 +15,16 @@ const DESTINATIONS: { mode: ShellMode; label: string; icon: IconName; guestLocke
   { mode: "unity", label: "Unity", icon: "group", guestLocked: true },
 ];
 
+function pathnameMatchesMode(pathname: string, mode: ShellMode): boolean {
+  const base = mode === "tools" ? "/tools" : mode === "unity" ? "/pulse" : "/chat";
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
 export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
   const { mode, setMode, workspaceView } = useChatShell();
   const { isGuest } = useAppAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [tooltip, setTooltip] = useState<string | null>(null);
 
   function hrefFor(next: ShellMode): string {
@@ -30,7 +36,7 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
 
   function navigate(event: MouseEvent<HTMLAnchorElement>, next: ShellMode) {
     const locked = isGuest && DESTINATIONS.find((destination) => destination.mode === next)?.guestLocked;
-    if (locked || next === mode) {
+    if (locked || (next === mode && pathnameMatchesMode(pathname, next))) {
       event.preventDefault();
       return;
     }

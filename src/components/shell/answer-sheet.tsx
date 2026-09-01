@@ -27,6 +27,8 @@ export function AnswerSheet({
   children: ReactNode;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const dragStart = useRef<{ pointerId: number; y: number; time: number } | null>(null);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -47,9 +49,11 @@ export function AnswerSheet({
     activeSheet.querySelector<HTMLElement>(FOCUSABLE)?.focus();
 
     function onKeyDown(event: KeyboardEvent) {
+      const target = event.target;
+      if (target instanceof Element && !activeSheet.contains(target) && target.closest("[data-dialog-root]")) return;
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -77,7 +81,7 @@ export function AnswerSheet({
       document.body.style.overflow = previousOverflow;
       if (previous?.isConnected) previous.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   function beginDrag(event: PointerEvent<HTMLDivElement>) {
     dragStart.current = { pointerId: event.pointerId, y: event.clientY, time: event.timeStamp };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useWorkspaceHost } from "@/src/components/shell/workspace-host";
-import { useId, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 export type WorkspaceView = "main" | "rail";
@@ -43,8 +43,35 @@ export function WorkspacePage(props: WorkspacePageProps) {
   const mainId = useId();
   const railId = useId();
   const split = props.composition === "split";
+  const activeView = split ? props.view : null;
+  const toggleRef = useRef<HTMLFieldSetElement>(null);
+  const mainToggleRef = useRef<HTMLButtonElement>(null);
+  const railToggleRef = useRef<HTMLButtonElement>(null);
+  const mainRegionRef = useRef<HTMLDivElement>(null);
+  const railRegionRef = useRef<HTMLElement>(null);
+  const previousViewRef = useRef(activeView);
+  const lastFocusedRegionRef = useRef<WorkspaceView | null>(null);
   const internalActions = embedded && props.titlebarActions ? null : props.actions;
   const controls = props.toolbar || internalActions;
+
+  useEffect(() => {
+    const previousView = previousViewRef.current;
+    previousViewRef.current = activeView;
+    if (!split || !activeView || !previousView || previousView === activeView) return;
+    const toggle = toggleRef.current;
+    if (!toggle || window.getComputedStyle(toggle).display === "none") return;
+
+    const hiddenRegion = previousView === "main" ? mainRegionRef.current : railRegionRef.current;
+    const activeElement = document.activeElement;
+    const focusWasHidden = !!hiddenRegion && activeElement instanceof Node && hiddenRegion.contains(activeElement);
+    const focusWasDropped =
+      (activeElement === document.body || activeElement === document.documentElement) &&
+      lastFocusedRegionRef.current === previousView;
+    if (!focusWasHidden && !focusWasDropped) return;
+
+    lastFocusedRegionRef.current = null;
+    (activeView === "main" ? mainToggleRef.current : railToggleRef.current)?.focus();
+  }, [activeView, split]);
 
   return (
     <section
@@ -53,7 +80,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
       data-workspace-composition={props.composition}
       data-workspace-host={host}
       data-menu-clearance={menuClearance || undefined}
-      data-workspace-view={split ? props.view : undefined}
+      data-workspace-view={activeView ?? undefined}
       className="workspace-page h-full min-h-0 w-full min-w-0 overflow-hidden"
     >
       {embedded && titlebarOutlet && props.titlebarActions
@@ -82,11 +109,13 @@ export function WorkspacePage(props: WorkspacePageProps) {
 
         {split ? (
           <fieldset
+            ref={toggleRef}
             data-workspace-view-toggle
             className="workspace-page-toggle neu-inset bg-surface-container-low shrink-0 gap-1 rounded-lg p-1"
           >
             <legend className="sr-only">{props.title} view</legend>
             <button
+              ref={mainToggleRef}
               type="button"
               aria-pressed={props.view === "main"}
               aria-controls={mainId}
@@ -98,6 +127,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
               {props.mainLabel}
             </button>
             <button
+              ref={railToggleRef}
               type="button"
               aria-pressed={props.view === "rail"}
               aria-controls={railId}
@@ -114,15 +144,27 @@ export function WorkspacePage(props: WorkspacePageProps) {
         <div className="workspace-page-body grid min-h-0 min-w-0 flex-1 gap-4">
           {split ? (
             <aside
+              ref={railRegionRef}
               id={railId}
               aria-label={props.railLabel}
               data-workspace-region="rail"
+              onFocusCapture={() => {
+                lastFocusedRegionRef.current = "rail";
+              }}
               className="workspace-page-region min-h-0 min-w-0"
             >
               {props.rail}
             </aside>
           ) : null}
-          <div id={mainId} data-workspace-region="main" className="workspace-page-region min-h-0 min-w-0">
+          <div
+            ref={mainRegionRef}
+            id={mainId}
+            data-workspace-region="main"
+            onFocusCapture={() => {
+              lastFocusedRegionRef.current = "main";
+            }}
+            className="workspace-page-region min-h-0 min-w-0"
+          >
             {props.children}
           </div>
         </div>
