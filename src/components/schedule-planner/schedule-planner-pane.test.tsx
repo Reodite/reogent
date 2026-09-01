@@ -130,6 +130,12 @@ afterEach(() => {
 });
 
 describe("SchedulePlannerPane", () => {
+  it("keeps term controls clear of the compact shell menu", () => {
+    const view = render(<SchedulePlannerPane />);
+
+    expect(view.getByRole("tablist", { name: "Academic term" }).parentElement?.className).toContain("max-xl:pl-12");
+  });
+
   it("renders selected sections, component pickers, and conflicts", async () => {
     apiMock.getCourse.mockImplementation(async (code: string) => courses[code]);
     const view = render(<SchedulePlannerPane />);

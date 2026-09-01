@@ -281,7 +281,7 @@ export function SchedulePlannerPane() {
 
   return (
     <div data-mobile-view={mobileView} className="schedule-planner flex h-full min-h-[34rem] flex-col overflow-hidden">
-      <div className="border-border-subtle flex shrink-0 items-center gap-2 border-b px-3 pb-3">
+      <div className="border-border-subtle flex shrink-0 items-center gap-2 border-b px-3 pb-3 max-xl:pl-12">
         <div role="tablist" aria-label="Academic term" className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
           {allTerms.length === 0 ? (
             <span className="text-muted px-2 py-1.5 text-xs">Terms appear after you find a course.</span>
