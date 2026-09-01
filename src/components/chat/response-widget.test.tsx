@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
-import { ResponseWidget } from "@/src/components/chat/tool-renderers";
+import { renderers, ResponseWidget } from "@/src/components/chat/tool-renderers";
 import type { ToolCall } from "@/src/lib/api-types";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -158,5 +158,24 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     const { container } = renderWidget(walkingLoadingCall);
     const widget = container.querySelector('[data-widget="walking_distance"]') as HTMLElement;
     expect(widget.getAttribute("role")).toBeNull();
+  });
+
+  it("keeps raw evidence visible when a rich renderer crashes", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    renderers.exploding_widget = () => {
+      throw new Error("renderer failed");
+    };
+    const call = {
+      name: "exploding_widget",
+      input: {},
+      result: { course: "CPSC 110" },
+      status: "ok",
+    } as unknown as ToolCall;
+
+    const { getByRole, getByText } = renderWidget(call);
+    expect(getByRole("alert").textContent).toContain("couldn't be displayed");
+    expect(getByText(/CPSC 110/)).not.toBeNull();
+    delete renderers.exploding_widget;
+    error.mockRestore();
   });
 });

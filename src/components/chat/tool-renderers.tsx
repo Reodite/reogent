@@ -5,8 +5,16 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { GradeDistributionChart } from "@/src/components/course-lookup/grade-distribution-chart";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
-import { ToolResultCard } from "@/src/components/ui/tool-result-card";
+import { InfoChip } from "@/src/components/ui/info-chip";
+import {
+  ToolResultCard,
+  ToolResultFailure,
+  ToolResultList,
+  toolResultRowClasses,
+  ToolResultRowContent,
+} from "@/src/components/ui/tool-result-card";
 import {
   isToolError,
   type CourseDoc,
@@ -103,11 +111,7 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
     <article className="bg-surface-container-low rounded-lg p-3">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-body-sm text-primary font-mono font-medium">{course.code.replace("_V", "")}</span>
-        {course.credits !== null && (
-          <span className="bg-surface-container text-on-surface-variant shrink-0 rounded-full px-2 py-0.5 text-xs">
-            {course.credits} cr
-          </span>
-        )}
+        {course.credits !== null ? <InfoChip className="shrink-0">{course.credits} cr</InfoChip> : null}
       </div>
       <h4 className="text-on-surface mt-0.5 line-clamp-2 text-sm font-medium">{course.title}</h4>
       {detailed && course.description && (
@@ -118,23 +122,24 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
         {course.prerequisite ? `Prereq: ${course.prerequisite}` : "No prerequisites"}
         {detailed && course.corequisite ? ` · Coreq: ${course.corequisite}` : ""}
       </p>
-      {course.prerequisite && (
-        <button
+      {course.prerequisite ? (
+        <Button
           data-action="open-prereq-tree"
           data-code={course.code}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
+          variant="outline"
+          size="pill"
+          onClick={(event) => {
+            event.stopPropagation();
             setUserDismissedPane(false);
             setAnswerSheetOpen(true);
             setRightPaneCollapsed(false);
             setWorkspaceView({ paneId: "prereq-tree", state: { root: course.code, selections: {} } });
           }}
-          className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-95"
+          className="mt-2"
         >
           <Icon name="tree" size={12} /> Prereq Tree
-        </button>
-      )}
+        </Button>
+      ) : null}
     </article>
   );
 }
@@ -228,47 +233,47 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       if (courses.length === 0) return null;
       const shown = coursesExpanded ? courses : courses.slice(0, 4);
       return (
-        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
-          <div className="flex flex-col">
-            {shown.map((course) => (
-              <button
-                key={`${course.code}-${course.title}`}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setUserDismissedPane(false);
-                  setAnswerSheetOpen(true);
-                  setRightPaneCollapsed(false);
-                  setWorkspaceView({ paneId: "course-lookup", state: { code: course.code } });
-                }}
-                className="hover:bg-surface-container-high focus-visible:ring-primary/40 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2"
+        <ToolResultList
+          footer={
+            courses.length > 4 ? (
+              <Button
+                variant="ghost"
+                size="field"
+                onClick={() => setCoursesExpanded((expanded) => !expanded)}
+                className="w-full"
               >
-                <div className="flex min-w-0 flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-primary font-mono text-xs font-medium">{course.code.replace("_V", "")}</span>
-                    {course.credits !== null && (
-                      <span className="bg-surface-container text-on-surface-variant rounded-full px-2 py-0.5 text-xs">
-                        {course.credits} cr
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-body-sm text-on-surface-variant truncate">{course.title}</span>
-                </div>
-                <Icon name="right" size={16} className="text-muted shrink-0" />
-              </button>
-            ))}
-          </div>
-          {courses.length > 4 && (
+                <Icon name={coursesExpanded ? "down" : "add"} size={14} />
+                {coursesExpanded ? "Show fewer" : `Show all (${courses.length})`}
+              </Button>
+            ) : null
+          }
+        >
+          {shown.map((course) => (
             <button
+              key={`${course.code}-${course.title}`}
               type="button"
-              onClick={() => setCoursesExpanded((expanded) => !expanded)}
-              className="border-border text-primary hover:bg-surface-container-high flex min-h-[44px] items-center justify-center gap-1 border-t px-3 py-2 text-xs transition-colors"
+              onClick={(event) => {
+                event.stopPropagation();
+                setUserDismissedPane(false);
+                setAnswerSheetOpen(true);
+                setRightPaneCollapsed(false);
+                setWorkspaceView({ paneId: "course-lookup", state: { code: course.code } });
+              }}
+              className={toolResultRowClasses(true)}
             >
-              <Icon name={coursesExpanded ? "down" : "add"} size={14} />
-              {coursesExpanded ? "Show fewer" : `Show all (${courses.length})`}
+              <ToolResultRowContent
+                title={
+                  <span className="flex items-center gap-2">
+                    <span className="text-primary font-mono text-xs">{course.code.replace("_V", "")}</span>
+                    {course.credits !== null ? <InfoChip>{course.credits} cr</InfoChip> : null}
+                  </span>
+                }
+                description={course.title}
+                trailing={<Icon name="right" size={16} className="text-muted shrink-0" />}
+              />
             </button>
-          )}
-        </div>
+          ))}
+        </ToolResultList>
       );
     }
     case "course":
@@ -387,10 +392,11 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
             )}
           </div>
           <div className="mt-0.5 flex gap-2">
-            <button
-              type="button"
-              onClick={(ev) => {
-                ev.stopPropagation();
+            <Button
+              variant="primary"
+              size="field"
+              onClick={(event) => {
+                event.stopPropagation();
                 setActiveChannel("calendar", {
                   cursor: startDate
                     ? `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}`
@@ -398,21 +404,20 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                   kinds: ["academic", "holiday"],
                 });
               }}
-              className="bg-primary text-on-primary h-9 min-h-[44px] flex-1 rounded-xl px-4 text-sm font-medium transition-all hover:brightness-105 active:brightness-95"
+              className="flex-1"
             >
               Add to Calendar
-            </button>
-            <button
-              type="button"
-              onClick={(ev) => {
-                ev.stopPropagation();
+            </Button>
+            <Button
+              size="fieldIcon"
+              onClick={(event) => {
+                event.stopPropagation();
                 setActiveChannel("map", {});
               }}
-              className="bg-surface text-on-surface border-border-subtle hover:bg-surface-container-high flex size-9 min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border transition-colors"
               aria-label="Show on map"
             >
               <Icon name="map" size={18} />
-            </button>
+            </Button>
           </div>
         </div>
       );
@@ -422,9 +427,9 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       if (Array.isArray(bookable) && bookable.length > 0) {
         const shown = bookable.slice(0, 5);
         return (
-          <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
-            {shown.map((r, i) => {
-              const room = r as {
+          <ToolResultList>
+            {shown.map((result, index) => {
+              const room = result as {
                 room?: string;
                 title?: string;
                 location?: string;
@@ -434,69 +439,60 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
               };
               return (
                 <button
-                  key={room.eid ?? i}
+                  key={room.eid ?? index}
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={(event) => {
+                    event.stopPropagation();
                     setUserDismissedPane(false);
                     if (workspaceView !== null) {
                       setAnswerSheetOpen(true);
                       setRightPaneCollapsed(false);
                     }
                   }}
-                  className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
+                  className={toolResultRowClasses(true)}
                 >
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-on-surface truncate text-sm font-medium">{room.room ?? room.title}</span>
-                    <span className="text-muted truncate text-xs">{room.location ?? "—"}</span>
-                  </div>
-                  {room.capacity != null && (
-                    <span className="bg-surface-container text-on-surface-variant shrink-0 rounded-full px-2 py-0.5 text-xs">
-                      {room.capacity} seats
-                    </span>
-                  )}
+                  <ToolResultRowContent
+                    title={room.room ?? room.title}
+                    description={room.location ?? "—"}
+                    trailing={
+                      room.capacity != null ? <InfoChip className="shrink-0">{room.capacity} seats</InfoChip> : null
+                    }
+                  />
                 </button>
               );
             })}
-          </div>
+          </ToolResultList>
         );
       }
       const spaces = (data as { spaces?: unknown[] } | undefined)?.spaces;
       if (!Array.isArray(spaces) || spaces.length === 0) return null;
       const shown = (spaces as StudySpace[]).slice(0, 5);
       return (
-        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
-          {shown.map((s) => (
+        <ToolResultList footer={spaces.length > shown.length ? `+${spaces.length - shown.length} more` : null}>
+          {shown.map((space) => (
             <button
-              key={s.id}
+              key={space.id}
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={(event) => {
+                event.stopPropagation();
                 setUserDismissedPane(false);
                 if (workspaceView !== null) {
                   setAnswerSheetOpen(true);
                   setRightPaneCollapsed(false);
                 }
               }}
-              className="hover:bg-surface-container-high focus-visible:ring-primary/40 border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 focus-visible:ring-2 focus-visible:ring-offset-1"
+              className={toolResultRowClasses(true)}
             >
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-on-surface truncate text-sm font-medium">{s.name ?? s.title}</span>
-                <span className="text-muted truncate text-xs">
-                  {[s.building_name ?? s.building_code, s.space_type].filter(Boolean).join(" · ")}
-                </span>
-              </div>
-              {s.capacity != null && (
-                <span className="bg-surface-container text-on-surface-variant shrink-0 rounded-full px-2 py-0.5 text-xs">
-                  {s.capacity} seats
-                </span>
-              )}
+              <ToolResultRowContent
+                title={space.name ?? space.title}
+                description={[space.building_name ?? space.building_code, space.space_type].filter(Boolean).join(" · ")}
+                trailing={
+                  space.capacity != null ? <InfoChip className="shrink-0">{space.capacity} seats</InfoChip> : null
+                }
+              />
             </button>
           ))}
-          {spaces.length > shown.length && (
-            <div className="text-muted px-3 py-2 text-xs">+{spaces.length - shown.length} more</div>
-          )}
-        </div>
+        </ToolResultList>
       );
     }
     case "free_rooms": {
@@ -505,28 +501,26 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       if (!Array.isArray(rooms) || rooms.length === 0) return null;
       const shown = (rooms as FreeRoom[]).slice(0, 5);
       return (
-        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
-          {shown.map((r) => (
-            <div
-              key={`${r.room}-${r.start}`}
-              className="border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
-            >
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-on-surface truncate text-sm font-medium">{r.room}</span>
-                <span className="text-muted truncate text-xs">{r.location ?? "—"}</span>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {r.capacity != null && <span className="text-on-surface-variant text-xs">{r.capacity} seats</span>}
-                {typeof r.minutes === "number" && (
-                  <span className="bg-secondary-container text-on-secondary-container rounded-full px-2 py-0.5 text-xs">
-                    free {formatMinutes(r.minutes)}
+        <ToolResultList footer={asOf ? `as of ${new Date(asOf).toLocaleString()}` : null}>
+          {shown.map((room) => (
+            <div key={`${room.room}-${room.start}`} className={toolResultRowClasses()}>
+              <ToolResultRowContent
+                title={room.room}
+                description={room.location ?? "—"}
+                trailing={
+                  <span className="flex shrink-0 items-center gap-2">
+                    {room.capacity != null ? <InfoChip>{room.capacity} seats</InfoChip> : null}
+                    {typeof room.minutes === "number" ? (
+                      <span className="bg-secondary-container text-on-secondary-container rounded-full px-2 py-0.5 text-xs">
+                        free {formatMinutes(room.minutes)}
+                      </span>
+                    ) : null}
                   </span>
-                )}
-              </div>
+                }
+              />
             </div>
           ))}
-          {asOf && <div className="text-muted px-3 py-2 text-xs">as of {new Date(asOf).toLocaleString()}</div>}
-        </div>
+        </ToolResultList>
       );
     }
     case "grades": {
@@ -574,25 +568,23 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       if (!Array.isArray(lots) || lots.length === 0) return null;
       const shown = (lots as ParkingLot[]).slice(0, 5);
       return (
-        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
-          {near && <div className="text-muted border-border-subtle border-b px-3 py-2 text-xs">near {near}</div>}
+        <ToolResultList header={near ? `near ${near}` : null}>
           {shown.map((lot) => (
-            <div
-              key={lot.id}
-              className="border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
-            >
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-on-surface truncate text-sm font-medium">{lot.name}</span>
-                {lot.rate && <span className="text-muted truncate text-xs">{lot.rate}</span>}
-              </div>
-              {lot.ev_charging && (
-                <span className="bg-secondary-container text-on-secondary-container shrink-0 rounded-full px-2 py-0.5 text-xs">
-                  EV
-                </span>
-              )}
+            <div key={lot.id} className={toolResultRowClasses()}>
+              <ToolResultRowContent
+                title={lot.name}
+                description={lot.rate}
+                trailing={
+                  lot.ev_charging ? (
+                    <span className="bg-secondary-container text-on-secondary-container shrink-0 rounded-full px-2 py-0.5 text-xs">
+                      EV
+                    </span>
+                  ) : null
+                }
+              />
             </div>
           ))}
-        </div>
+        </ToolResultList>
       );
     }
     case "program": {
@@ -600,26 +592,23 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       if (!Array.isArray(programs) || programs.length === 0) return null;
       const shown = (programs as ProgramDoc[]).slice(0, 5);
       return (
-        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
-          {shown.map((p) => (
+        <ToolResultList footer={programs.length > shown.length ? `+${programs.length - shown.length} more` : null}>
+          {shown.map((program) => (
             <a
-              key={p.id}
-              href={p.url || undefined}
-              target={p.url ? "_blank" : undefined}
-              rel={p.url ? "noreferrer" : undefined}
-              onClick={(e) => e.stopPropagation()}
-              className="border-border-subtle hover:bg-surface-container-high flex flex-col gap-0.5 border-b px-3 py-2.5 transition-colors last:border-b-0"
+              key={program.id}
+              href={program.url || undefined}
+              target={program.url ? "_blank" : undefined}
+              rel={program.url ? "noreferrer" : undefined}
+              onClick={(event) => event.stopPropagation()}
+              className={toolResultRowClasses(true)}
             >
-              <span className="text-on-surface truncate text-sm font-medium">{p.name}</span>
-              {Array.isArray(p.degrees) && p.degrees.length > 0 && (
-                <span className="text-muted truncate text-xs">{p.degrees.join(", ")}</span>
-              )}
+              <ToolResultRowContent
+                title={program.name}
+                description={Array.isArray(program.degrees) ? program.degrees.join(", ") : undefined}
+              />
             </a>
           ))}
-          {programs.length > shown.length && (
-            <div className="text-muted px-3 py-2 text-xs">+{programs.length - shown.length} more</div>
-          )}
-        </div>
+        </ToolResultList>
       );
     }
     case "key_dates": {
@@ -627,21 +616,22 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       if (!Array.isArray(dates) || dates.length === 0) return null;
       const shown = (dates as KeyDate[]).slice(0, 6);
       return (
-        <div className="bg-surface-container-low flex flex-col overflow-hidden rounded-lg">
-          {shown.map((d, i) => (
+        <ToolResultList footer={dates.length > shown.length ? `+${dates.length - shown.length} more` : null}>
+          {shown.map((date, index) => (
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: static append-only list
-              key={`${d.name}-${i}`}
-              className="border-border-subtle flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
+              key={`${date.name}-${index}`}
+              className={toolResultRowClasses()}
             >
-              <span className="text-on-surface min-w-0 truncate text-sm">{d.name}</span>
-              <span className="text-muted shrink-0 font-mono text-xs">{d.date_text ?? d.start ?? "—"}</span>
+              <ToolResultRowContent
+                title={date.name}
+                trailing={
+                  <span className="text-muted shrink-0 font-mono text-xs">{date.date_text ?? date.start ?? "—"}</span>
+                }
+              />
             </div>
           ))}
-          {dates.length > shown.length && (
-            <div className="text-muted px-3 py-2 text-xs">+{dates.length - shown.length} more</div>
-          )}
-        </div>
+        </ToolResultList>
       );
     }
     default:
@@ -711,7 +701,7 @@ export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: st
       }
     >
       {loaded ? (
-        <ErrorBoundary>
+        <ErrorBoundary fallback={<ToolResultFailure name={call.name} result={call.result} />}>
           <Renderer call={call} />
         </ErrorBoundary>
       ) : null}
