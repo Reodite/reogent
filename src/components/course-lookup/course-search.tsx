@@ -26,6 +26,7 @@ export type Candidate = {
 
 const LEVEL_OP: Record<string, "eq" | "plus" | "minus"> = { "=": "eq", "+": "plus", "-": "minus" };
 const DEBOUNCE_MS = 250;
+const OVERLAY_RESULT_LIMIT = 20;
 
 function parseLevel(input: string): { subject: string; level: "eq" | "plus" | "minus"; digit: number } | null {
   const m = input.trim().match(/^([A-Za-z]{2,4})\s*([=+-])\s*([1-5])$/);
@@ -261,7 +262,8 @@ export function CourseSearchField({
   const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const candidates = record ? [toCandidate(record)] : (list?.candidates ?? []);
+  const candidatePool = record ? [toCandidate(record)] : (list?.candidates ?? []);
+  const candidates = overlay ? candidatePool.slice(0, OVERLAY_RESULT_LIMIT) : candidatePool;
   const presentations = candidates.map((candidate) => getCandidatePresentation?.(candidate) ?? {});
   const selectableIndexes = presentations
     .map((candidatePresentation, index) =>
@@ -415,34 +417,49 @@ export function CourseSearchField({
                 )}
               </div>
             ) : candidates.length > 0 ? (
-              candidates.map((candidate, index) => {
-                const candidatePresentation = presentations[index];
-                const unavailable = candidatePresentation.disabled || candidatePresentation.pending;
-                return (
-                  <button
-                    id={`${listboxId}-option-${index}`}
-                    key={candidate.code}
-                    type="button"
-                    role="option"
-                    aria-selected={activeIndex === index}
-                    aria-disabled={unavailable || undefined}
-                    aria-busy={candidatePresentation.pending || undefined}
-                    disabled={unavailable}
-                    onPointerDown={(event) => event.preventDefault()}
-                    onPointerMove={() => {
-                      if (!unavailable) setActiveIndex(index);
-                    }}
-                    onClick={() => selectCandidate(index)}
-                    className="hover:bg-surface-container-low aria-selected:bg-primary/10 focus-visible:ring-primary/40 flex h-11 w-full items-center gap-3 px-3 text-left focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span className="shrink-0 font-mono text-sm font-medium tracking-tight">{candidate.code}</span>
-                    <span className="text-on-surface-variant min-w-0 flex-1 truncate text-xs">{candidate.title}</span>
-                    {candidatePresentation.annotation && (
-                      <span className="text-muted shrink-0 text-xs">{candidatePresentation.annotation}</span>
-                    )}
-                  </button>
-                );
-              })
+              <>
+                {candidates.map((candidate, index) => {
+                  const candidatePresentation = presentations[index];
+                  const unavailable = candidatePresentation.disabled || candidatePresentation.pending;
+                  return (
+                    <button
+                      id={`${listboxId}-option-${index}`}
+                      key={candidate.code}
+                      type="button"
+                      role="option"
+                      aria-selected={activeIndex === index}
+                      aria-disabled={unavailable || undefined}
+                      aria-busy={candidatePresentation.pending || undefined}
+                      disabled={unavailable}
+                      onPointerDown={(event) => event.preventDefault()}
+                      onPointerMove={() => {
+                        if (!unavailable) setActiveIndex(index);
+                      }}
+                      onClick={() => selectCandidate(index)}
+                      className="hover:bg-surface-container-low aria-selected:bg-primary/10 focus-visible:ring-primary/40 flex min-h-12 w-full items-center px-3 py-1.5 text-left focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 items-baseline gap-2">
+                          <span className="text-on-surface text-body-sm shrink-0 font-mono font-medium">
+                            {candidate.code}
+                          </span>
+                          <span className="text-on-surface-variant truncate text-xs">{candidate.title}</span>
+                        </span>
+                        {candidatePresentation.annotation ? (
+                          <span className="text-muted mt-0.5 block truncate text-xs">
+                            {candidatePresentation.annotation}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+                {candidatePool.length > candidates.length ? (
+                  <p className="border-border-subtle text-muted border-t px-3 py-2 text-xs">
+                    Keep typing to narrow {list?.total ?? candidatePool.length} results.
+                  </p>
+                ) : null}
+              </>
             ) : (
               <div className="text-muted flex min-h-11 items-center px-3 text-sm">No courses matching {trimmed}.</div>
             )}

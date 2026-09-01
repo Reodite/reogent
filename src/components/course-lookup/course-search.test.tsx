@@ -110,6 +110,19 @@ describe("CourseSearchField overlay", () => {
     expect(baseProps.onSelect).toHaveBeenCalledWith("CPSC 210");
   });
 
+  it("caps broad overlays and asks the user to narrow the query", async () => {
+    const many = Array.from({ length: 25 }, (_, index) => ({
+      code: `CPSC ${100 + index}`,
+      subject: "CPSC",
+      number: String(100 + index),
+      title: `Course ${index + 1}`,
+    }));
+    render(<CourseSearchField {...baseProps} presentation="overlay" list={{ candidates: many, total: many.length }} />);
+
+    expect(await screen.findAllByRole("option")).toHaveLength(20);
+    expect(screen.getByText("Keep typing to narrow 25 results.")).toBeTruthy();
+  });
+
   it("keeps the default Course Lookup presentation inline", () => {
     const { container } = render(<CourseSearchField {...baseProps} />);
 

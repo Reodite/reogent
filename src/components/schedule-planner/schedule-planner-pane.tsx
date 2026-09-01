@@ -271,6 +271,19 @@ function SchedulePlannerPaneInner() {
 
   const resolveSingle = useCallback((code: string) => api.getCourse(code), [api]);
   const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(query, { resolveSingle });
+  const plannerList = useMemo(
+    () =>
+      list
+        ? {
+            ...list,
+            candidates: list.candidates.map((candidate) => ({
+              ...candidate,
+              code: normalizeScheduleCode(candidate.code),
+            })),
+          }
+        : null,
+    [list],
+  );
 
   useEffect(() => {
     mounted.current = true;
@@ -580,7 +593,7 @@ function SchedulePlannerPaneInner() {
             else void lookup(query);
           }}
           status={status}
-          list={list}
+          list={plannerList}
           error={commitError ?? error}
           rejected={rejected}
           placeholder="CPSC 110, MATH 200, linear algebra"

@@ -309,7 +309,7 @@ describe("SchedulePlannerPane explicit course flow", () => {
     scheduleMock.state.entries = [structuredClone(cpscEntry)];
     const view = render(<SchedulePlannerPane />);
     const lecture = await view.findByRole("combobox", { name: "Lecture" });
-    const block = view.getAllByRole("button", { name: /CPSC 110 101/ })[0];
+    const block = view.getAllByRole("button", { name: /CPSC 110.*101/ })[0];
 
     fireEvent.click(block);
     await waitFor(() => expect(document.activeElement).toBe(lecture));
