@@ -22,7 +22,7 @@ function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <SidebarListNav label="Community" collapsed={collapsed}>
       {UNITY_ITEMS.map((item, i) => {
-        const active = pathname === item.path;
+        const active = pathname === item.path || (item.path !== "/pulse" && pathname.startsWith(`${item.path}/`));
         return (
           <SidebarListItem key={item.path} index={i}>
             <button

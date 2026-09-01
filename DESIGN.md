@@ -33,6 +33,18 @@ colors:
   on-tertiary-container: "#4a3010"
   on-error-container: "#6e2c2c"
   scrim: "rgba(0, 0, 0, 0.3)"
+  course-cornflower: "#6ea8fe"
+  course-tangerine: "#ffb46b"
+  course-jade: "#62d2a2"
+  course-orchid: "#e886c9"
+  course-amber: "#ffd166"
+  course-ice: "#7ee0e6"
+  course-lavender: "#b69cff"
+  course-pear: "#9bd356"
+  course-salmon: "#ff8f8f"
+  course-lagoon: "#5fd0c0"
+  course-pink-quartz: "#f3a6ff"
+  course-sandstone: "#d9c79b"
 typography:
   body:
     fontFamily: "Aspekta, ui-sans-serif, system-ui, sans-serif"
@@ -204,6 +216,12 @@ Contrast between adjacent layers is part of the design, not an accident of it. V
 - Every card, chip, or inset well sits exactly one step away from its parent surface. Nested elements on the same step read as one blob.
 - `--border` must remain visible against `--surface` without squinting (dark: `#2c2c31` on `#1a1a1e`). `--border-subtle` is for interior hairlines only, never a card's outer edge.
 - Dark-theme shadows and highlights are tonal: darker and lighter shades of the surface color itself (e.g. `#141417` / `#26262c` around `#1a1a1e`), never pure black or white. A shadow you cannot see is not a shadow, and a white glow breaks the monochrome.
+
+### Course Identity Palette
+
+Schedules assign each normalized course code one stable color from a 12-color palette: Cornflower (`#6ea8fe`), Tangerine (`#ffb46b`), Jade (`#62d2a2`), Orchid (`#e886c9`), Amber (`#ffd166`), Ice (`#7ee0e6`), Lavender (`#b69cff`), Pear (`#9bd356`), Salmon (`#ff8f8f`), Lagoon (`#5fd0c0`), Pink Quartz (`#f3a6ff`), and Sandstone (`#d9c79b`). Planner and sharer adapters normalize campus suffixes before hashing, so `CPSC_V 221` and `CPSC 221` keep the same identity.
+
+Course colors appear as a 1px block edge and a low-opacity tint mixed with the active surface. Theme text tokens carry all labels; course color never carries status or required meaning. Conflict rings, participant avatars, and the current-time marker remain separate channels.
 
 ### Opacity Modifiers
 
@@ -385,7 +403,8 @@ State changes through shadow transformation + press scale. Buttons never transla
 
 ### Cards / Containers
 
-- **Standard panel** (`.neu-panel`): `bg-surface rounded-2xl` + surface shadow. No border, no blur. Padding: 12-16px. Used for: chat panel, map panel, sidebar, building popup, map controls.
+- **Standard panel** (`.neu-panel`): `bg-surface rounded-2xl` + surface shadow. No border, no blur. Padding: 12-16px. Used for: chat panel, sidebar, building popup, and map controls.
+- **Workspace surface** (`.workspace-surface`): The App Shell wraps every Tools and Pulse route in one `bg-surface rounded-2xl` panel with the standard neumorphic surface shadow and clipped overflow. Route components own layout and scrolling inside it; they do not repeat the outer material.
 - **Chat panel**: `.neu-panel rounded-2xl`. Internal: title bar (transparent bg, `px-4 py-3`), message well (`.chat-message-well`, recessed with deep inset shadows at `inset 0 10px 24px -22px`, 72% surface-container-low mixed with background), composer area at bottom.
 - **Sidebar** (`.neu-panel rounded-2xl p-2`): Standard panel material. Anatomy, top to bottom: brand header (logo tile `size-9` + `Reodite` wordmark on the left; collapse chevron, and the close button in the mobile drawer, on the right; collapsed rail shows the tile only), mode content (session list in AI, tool list in Tools, community links in Unity) in a recessed well (`bg-surface-container-low/60 rounded-xl p-2`), then a footer stack with the AI/Tools/Unity mode toggle and account row (avatar + username, full width). The footer has no divider; spacing separates it from the rounded content well. The account menu portals out of the sidebar's `overflow-hidden` card and anchors 8px above the trigger, spanning the trigger's full width (collapsed rail: flyout to the right, 224px). It contains username, the theme radiogroup, sign out, and the version badge. The shell has no top bar. The Tools sidebar becomes a drawer below 1280px to preserve working width; other modes switch at 1024px.
 - **Tool result cards**: `bg-surface-container-low rounded-lg p-3`. Flat within the message bubble. Icon containers use `bg-secondary-container text-on-secondary-container size-9 rounded-lg` (or `size-8 rounded-md` for compact variants).
@@ -406,6 +425,20 @@ State changes through shadow transformation + press scale. Buttons never transla
 - **Course details**: Placement issues lead the popup as direct sentences. Each issue owns a separate `bg-error-container text-on-error-container` box; no heading or bullet list delays the explanation.
 - **Requirements**: Manual, course, planned, and completed rows share one 36px checkbox geometry. Text captions distinguish automatic completion from manual completion instead of changing the checkmark style. Automatically planned checks retain the primary color at 50% opacity to read as disabled; manually checked requirements remain fully opaque and interactive. Each year heading uses 4px vertical padding and sticks to the top of the Requirements scroller until the next year replaces it. Degree progress owns a 16px top inset.
 - **Responsive flow**: Below 768px, the board and rail stack inside one vertical scroll. The board remains keyboard-scrollable, and the two rail cards stay equal height after stacking.
+
+### Schedule Workspaces
+
+- **Calendar alignment**: `/tools/schedule` and `/pulse/schedule` use Calendar’s 24px desktop padding, plain 288px contextual aside, 24px region gap, and flexible data canvas. The App Shell provides the shared outer workspace surface; the aside has no separate background, border, radius, shadow, or shared scrolling. Route content owns its scroll regions. The planner timetable owns its canvas boundary: a 10px `border-subtle` frame with a 2px gutter and 8px surface fields. The sharer also places that frame inside a 12px `surface` card.
+- **Host-aware header**: In Answer Canvas, schedule controls portal into the existing titlebar and suppress the duplicate internal title. Full-bleed Tools and Unity use an internal header aligned to the same 288px/24px columns as the body. Tools reserves compact-menu clearance below 1280px; Unity reserves it below 1024px.
+- **Planner discovery**: Search is discovery only. Partial and full-code results use one 12px floating combobox overlay; typing never changes terms, courses, or the week. Click or Enter explicitly adds. Off-term results name the switch before commit. Search stays fixed, course modules scroll, and the compact Workday action stays fixed below them.
+- **Planner modules**: Selected courses use flat surface modules with 8px radius and a standard 1px border. Known component selectors remain visible. Unrecognized prefixes stay independent under “Additional component types” with a visible count when automatic selection skipped them. A timetable activation focuses the matching selector; drag remains the spatial shortcut.
+- **Week canvas**: The grid renders Monday through Friday, adding both weekend columns when needed. A 56px time gutter anchors an 8 AM–10 PM minimum range at 54px per hour. Day headers and the time gutter stay visible while the canvas scrolls. The grid remains visible in loading and empty states.
+- **Block anatomy**: Planner blocks center the course code and `section · type` on both axes; meetings below the tall threshold place all three on one line without changing time geometry. Sharer blocks keep course and component at the top left because Workday data carries no section identifier, while avatar footers sit at the bottom right on tall blocks. Full title, time, location, status, and people remain in accessible labels or read-only details. Blocks retain the documented course-color edge and surface mix; conflicts use the error ring.
+- **Sharer flow**: Sharer controls remain read-only and follow one order: group, management, people, common free time, Right now, then personal import. People and live status use flat 44px rows without nested panels. Grid, common-free calculations, and Right now share the same enabled-person set. Keyed loading clears old group content before a new selector value appears; Share is the sole header action.
+- **Radius hierarchy**: 16px is reserved for protected modals and mobile sheets; 12px for actions and floating search; 10px for the timetable frame; 8px for course modules, fields, rows, and blocks; 6px for selected term/view cells and compact subcontrols; full radius for status pills, avatars, and identity dots only.
+- **Typography**: Schedule titles use the 20px title step; section headings and buttons use 14px; helper copy uses 13px; labels and metadata use 12px. Planner and sharer surfaces use Aspekta throughout, including course codes, section identifiers, times, rooms, and counts. Schedule controls use no tracked uppercase labels and no text below 12px.
+- **Import**: Both routes parse Workday Excel exports in the browser. Planner imports reconcile term, component, days, and times with catalog identifiers, require a choice for ambiguous matches, list skipped rows, and ask whether to merge or replace before one atomic update. Sharer imports remain read-only calendar data.
+- **Responsive flow**: At a 55rem container width, the header stacks and the aside/canvas become explicit Schedule and Controls views. The layout uses 12px padding and gaps, hides the descriptive subtitle, opens Schedule first, renders one day column with 44px tabs, and preserves term, day, and scroll state across view changes.
 
 ### Navigation
 

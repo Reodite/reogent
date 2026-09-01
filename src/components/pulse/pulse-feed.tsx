@@ -84,7 +84,7 @@ export function PulseFeed() {
   const empty = feed && (!feed.round || feed.questions.length === 0);
 
   return (
-    <section aria-label="Pulse" className="neu-panel flex min-h-0 w-full flex-col overflow-hidden rounded-2xl">
+    <section aria-label="Pulse" className="flex min-h-0 w-full flex-col overflow-hidden">
       <div className="flex shrink-0 items-baseline gap-3 bg-transparent px-4 py-3">
         <h1 className="text-on-surface min-w-0 truncate text-base font-medium tracking-[-0.01em]">Pulse</h1>
         {feed?.round?.title && <span className="text-muted min-w-0 truncate text-sm">{feed.round.title}</span>}

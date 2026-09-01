@@ -5,12 +5,28 @@ import { useApi } from "@/src/components/providers";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
 import { canonicalize, isOkanagan } from "@/src/shared/course-code";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
-export type Candidate = { code: string; subject: string; number: string; title: string };
+export type Candidate = {
+  code: string;
+  subject: string;
+  number: string;
+  title: string;
+  terms?: string[];
+};
 
 const LEVEL_OP: Record<string, "eq" | "plus" | "minus"> = { "=": "eq", "+": "plus", "-": "minus" };
 const DEBOUNCE_MS = 250;
+const OVERLAY_RESULT_LIMIT = 20;
 
 function parseLevel(input: string): { subject: string; level: "eq" | "plus" | "minus"; digit: number } | null {
   const m = input.trim().match(/^([A-Za-z]{2,4})\s*([=+-])\s*([1-5])$/);
@@ -19,7 +35,7 @@ function parseLevel(input: string): { subject: string; level: "eq" | "plus" | "m
 }
 
 function toCandidate(doc: CourseDoc): Candidate {
-  return { code: doc.code, subject: doc.subject, number: doc.number, title: doc.title };
+  return { code: doc.code, subject: doc.subject, number: doc.number, title: doc.title, terms: doc.terms };
 }
 
 export type UseCourseAutocompleteOptions = {
@@ -87,7 +103,12 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
               setStatus("idle");
               return;
             }
-            throw e;
+            if (my !== reqToken.current) return;
+            setRecord(null);
+            setList(null);
+            setError(e instanceof Error ? e.message : "Lookup failed");
+            setStatus("idle");
+            return;
           }
         }
         // No resolver: clear the list and settle idle.
@@ -179,14 +200,26 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
     [api, opts.resolveSingle],
   );
 
-  // Live debounced search on `value`.
-  useEffect(() => {
+  // Clear prior results and invalidate requests before starting the debounce for a new value.
+  useLayoutEffect(() => {
+    reqToken.current += 1;
+    setRecord(null);
+    setList(null);
+    setError(null);
+    setRejected(false);
+    setStatus(value.trim() ? "loading" : "idle");
     const t = setTimeout(() => lookup(value), DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [value, lookup]);
 
   return { list, status, error, rejected, record, lookup };
 }
+
+export type CandidatePresentation = {
+  annotation?: ReactNode;
+  disabled?: boolean;
+  pending?: boolean;
+};
 
 export type CourseSearchFieldProps = {
   value: string;
@@ -199,6 +232,11 @@ export type CourseSearchFieldProps = {
   rejected: boolean;
   placeholder?: string;
   ariaLabel?: string;
+  presentation?: "inline" | "overlay";
+  record?: CourseDoc | null;
+  getCandidatePresentation?: (candidate: Candidate) => CandidatePresentation;
+  inputRef?: { current: HTMLInputElement | null };
+  monospaceCodes?: boolean;
 };
 
 export function CourseSearchField({
@@ -212,8 +250,235 @@ export function CourseSearchField({
   rejected,
   placeholder = "Search a course code or subject — CPSC, MATH 200, CPSC+1",
   ariaLabel = "Course code",
+  presentation = "inline",
+  record,
+  getCandidatePresentation,
+  inputRef: externalInputRef,
+  monospaceCodes = true,
 }: CourseSearchFieldProps) {
   const trimmed = value.trim();
+  const overlay = presentation === "overlay";
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const restoringFocus = useRef(false);
+  const listboxId = useId();
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const candidatePool = record ? [toCandidate(record)] : (list?.candidates ?? []);
+  const candidates = overlay ? candidatePool.slice(0, OVERLAY_RESULT_LIMIT) : candidatePool;
+  const presentations = candidates.map((candidate) => getCandidatePresentation?.(candidate) ?? {});
+  const hasPendingCandidate = presentations.some((candidatePresentation) => candidatePresentation.pending);
+  const selectableIndexes = presentations
+    .map((candidatePresentation, index) =>
+      candidatePresentation.disabled || candidatePresentation.pending ? -1 : index,
+    )
+    .filter((index) => index >= 0);
+  const showOverlay = overlay && open && !!trimmed;
+
+  useEffect(() => {
+    if (presentation !== "overlay") return;
+    setActiveIndex(-1);
+    if (value.trim()) setOpen(true);
+  }, [presentation, value]);
+
+  useEffect(() => {
+    if (overlay && trimmed && (status === "loading" || !!error || rejected || hasPendingCandidate)) setOpen(true);
+  }, [error, hasPendingCandidate, overlay, rejected, status, trimmed]);
+
+  useEffect(() => {
+    if (!overlay) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", dismiss);
+    return () => document.removeEventListener("pointerdown", dismiss);
+  }, [overlay]);
+
+  const restoreInputFocus = () => {
+    if (document.activeElement === inputRef.current) return;
+    restoringFocus.current = true;
+    inputRef.current?.focus();
+    restoringFocus.current = false;
+  };
+
+  const selectCandidate = (index: number) => {
+    const candidate = candidates[index];
+    const candidatePresentation = presentations[index];
+    if (!candidate || candidatePresentation?.disabled || candidatePresentation?.pending) return;
+    onSelect?.(candidate.code);
+    setOpen(false);
+    restoreInputFocus();
+  };
+
+  const moveActive = (direction: 1 | -1) => {
+    if (selectableIndexes.length === 0) return;
+    const current = selectableIndexes.indexOf(activeIndex);
+    const next = current < 0 ? (direction === 1 ? 0 : selectableIndexes.length - 1) : current + direction;
+    setActiveIndex(selectableIndexes[(next + selectableIndexes.length) % selectableIndexes.length]);
+  };
+
+  const handleOverlayKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      restoreInputFocus();
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpen(true);
+      moveActive(event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    if (event.key === "Home" || event.key === "End") {
+      if (selectableIndexes.length === 0) return;
+      event.preventDefault();
+      setOpen(true);
+      setActiveIndex(selectableIndexes[event.key === "Home" ? 0 : selectableIndexes.length - 1]);
+      return;
+    }
+    if (event.key === "Enter" && open && activeIndex >= 0) {
+      event.preventDefault();
+      selectCandidate(activeIndex);
+    }
+  };
+
+  const input = (
+    <div className="relative">
+      <Icon
+        name="search"
+        className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+      />
+      <input
+        ref={(node) => {
+          inputRef.current = node;
+          if (externalInputRef) externalInputRef.current = node;
+        }}
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => {
+          if (trimmed && !restoringFocus.current) setOpen(true);
+        }}
+        onKeyDown={handleOverlayKeyDown}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        aria-invalid={rejected ? "true" : undefined}
+        aria-errormessage={rejected ? "code-error" : undefined}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={showOverlay}
+        aria-controls={listboxId}
+        aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
+        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg pr-9 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+      />
+      {trimmed && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Clear search"
+          className="text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+        >
+          <Icon name="close" className="size-4" />
+        </button>
+      )}
+    </div>
+  );
+
+  if (overlay) {
+    return (
+      <div ref={rootRef} className="relative">
+        {input}
+        {showOverlay && (
+          <div
+            id={listboxId}
+            role={status === "idle" && candidates.length > 0 && !error && !rejected ? "listbox" : undefined}
+            data-course-list
+            className="border-border-subtle bg-surface absolute top-full z-30 mt-2 max-h-[320px] w-full overflow-y-auto rounded-xl border shadow-lg"
+          >
+            {status === "loading" ? (
+              <div role="status" aria-busy="true">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="flex h-11 items-center gap-3 px-3">
+                    <span className="bg-surface-container h-3 w-16 animate-pulse rounded" />
+                    <span className="bg-surface-container h-3 flex-1 animate-pulse rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : rejected ? (
+              <div id="code-error" role="alert" className="text-error flex min-h-11 items-center px-3 text-sm">
+                Okanagan campus codes aren't in this catalog. Try a Vancouver course.
+              </div>
+            ) : error ? (
+              <div role="alert" className="text-error flex min-h-11 items-center px-3 text-sm">
+                <span className="min-w-0 flex-1">{value} could not be reached.</span>
+                {onRetry && (
+                  <button
+                    type="button"
+                    onPointerDown={(event) => event.preventDefault()}
+                    onClick={onRetry}
+                    className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            ) : candidates.length > 0 ? (
+              <>
+                {candidates.map((candidate, index) => {
+                  const candidatePresentation = presentations[index];
+                  const unavailable = candidatePresentation.disabled || candidatePresentation.pending;
+                  return (
+                    <button
+                      id={`${listboxId}-option-${index}`}
+                      key={candidate.code}
+                      type="button"
+                      role="option"
+                      tabIndex={-1}
+                      aria-selected={activeIndex === index}
+                      aria-disabled={unavailable || undefined}
+                      aria-busy={candidatePresentation.pending || undefined}
+                      disabled={unavailable}
+                      onPointerDown={(event) => event.preventDefault()}
+                      onPointerMove={() => {
+                        if (!unavailable) setActiveIndex(index);
+                      }}
+                      onClick={() => selectCandidate(index)}
+                      className="hover:bg-surface-container-low aria-selected:bg-primary/10 focus-visible:ring-primary/40 flex min-h-12 w-full items-center px-3 py-1.5 text-left focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 items-baseline gap-2">
+                          <span
+                            className={`text-on-surface text-body-sm shrink-0 font-medium ${monospaceCodes ? "font-mono" : ""}`}
+                          >
+                            {candidate.code}
+                          </span>
+                          <span className="text-on-surface-variant truncate text-xs">{candidate.title}</span>
+                        </span>
+                        {candidatePresentation.annotation ? (
+                          <span className="text-muted mt-0.5 block truncate text-xs">
+                            {candidatePresentation.annotation}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+                {candidatePool.length > candidates.length ? (
+                  <p className="border-border-subtle text-muted border-t px-3 py-2 text-xs">
+                    Keep typing to narrow {list?.total ?? candidatePool.length} results.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <div className="text-muted flex min-h-11 items-center px-3 text-sm">No courses matching {trimmed}.</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="relative">
@@ -299,7 +564,9 @@ export function CourseSearchField({
                 onClick={() => onSelect?.(c.code)}
                 className="neu-raised bg-surface hover:bg-surface-container-low focus-visible:ring-primary/40 flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-left focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99]"
               >
-                <span className="font-mono text-sm font-medium tracking-tight">{c.code}</span>
+                <span className={`${monospaceCodes ? "font-mono" : ""} text-sm font-medium tracking-tight`}>
+                  {c.code}
+                </span>
                 <span className="text-on-surface-variant truncate text-xs">{c.title}</span>
               </button>
             ))}

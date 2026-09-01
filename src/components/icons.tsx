@@ -38,6 +38,7 @@ const ICON_MAP = {
   check: "check-line",
   computer: "computer-line",
   calendar: "calendar-2-line",
+  calendarWeek: "calendar-week-line",
   tree: "tree-line",
   pencil: "pencil-line",
   externalLink: "external-link-line",
