@@ -69,16 +69,19 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
 
   if (term.kind === "coop") {
     return (
-      <div className="neu-inset bg-surface-container-low flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl p-3 text-center">
-        <Icon name="briefcase" size={18} className="text-on-surface-variant" />
-        <p className="text-on-surface text-sm font-medium">Co-op work term</p>
-        <p className="text-muted text-xs">
-          {meta.months} · {term.code ?? "Full-time placement"}
-        </p>
+      <div className="neu-inset bg-surface-container-low flex min-w-0 flex-1 flex-col rounded-xl px-4 py-3 text-center">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1">
+          <Icon name="briefcase" size={18} className="text-on-surface-variant" />
+          <p className="text-on-surface text-sm font-medium">Co-op work term</p>
+          <p className="text-muted text-xs">
+            {meta.months}
+            {term.code ? ` · ${term.code}` : ""}
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setTermKind(yearId, termIdx, "study")}
-          className="neu-button text-on-surface-variant hover:text-on-surface mt-auto h-9 w-full rounded-lg text-xs"
+          className="neu-button text-on-surface-variant hover:text-on-surface mt-2 h-9 w-full shrink-0 rounded-lg text-xs"
         >
           Switch to study term
         </button>
