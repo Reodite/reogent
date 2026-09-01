@@ -123,6 +123,20 @@ describe("Property 28 — today's cell receives the 'today' style independent of
   });
 });
 
+describe("calendar date contrast", () => {
+  it("uses readable tokens for current and adjacent month dates", async () => {
+    const { container, restore } = renderPane({ cursor: "2024-04" });
+    await waitFor(() => expect(container.querySelector('[data-calendar-day="2024-04-01"]')).not.toBeNull());
+
+    const current = container.querySelector('[data-calendar-day="2024-04-01"] > span');
+    const adjacent = container.querySelector('[data-calendar-day="2024-03-31"] > span');
+    expect(current?.className).toContain("text-on-surface-variant");
+    expect(adjacent?.className).toContain("text-muted");
+    expect(adjacent?.className).not.toContain("text-muted/40");
+    restore();
+  });
+});
+
 describe("Property 29 — cursors beyond futureHorizonMonths disable the next-month affordance (REQ-17.5)", () => {
   it("next-month is enabled at April 2024 and disabled past the 24-month horizon", async () => {
     const near = renderPane({ cursor: "2024-04" });

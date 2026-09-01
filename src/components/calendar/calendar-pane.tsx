@@ -513,7 +513,7 @@ function MonthGrid({
               }`}
             >
               <span
-                className={`mx-0.5 text-xs ${isToday ? "bg-primary text-on-primary flex size-6 items-center justify-center rounded-full font-semibold" : isCurrentMonth ? "text-muted" : "text-muted/40"}`}
+                className={`mx-0.5 text-xs ${isToday ? "bg-primary text-on-primary flex size-6 items-center justify-center rounded-full font-semibold" : isCurrentMonth ? "text-on-surface-variant" : "text-muted"}`}
               >
                 {d.getUTCDate()}
               </span>
