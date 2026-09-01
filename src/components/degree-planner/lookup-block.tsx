@@ -18,7 +18,7 @@ interface LookupBlockProps {
 
 export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
   const code = entry.code;
-  const { listeners, setNodeRef } = useDraggable({
+  const { listeners, setNodeRef, isDragging } = useDraggable({
     id: `lookup:${code}`,
     data: { kind: "lookup", code },
     disabled: ghost,
@@ -34,10 +34,11 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
   return (
     <div
       ref={ghost ? undefined : setNodeRef}
+      data-lookup-code={code}
       onPointerDown={ghost ? undefined : startDrag}
       className={`group flex min-h-11 cursor-grab touch-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${
         ghost ? "neu-raised bg-surface-container scale-[1.03]" : "hover:bg-surface-container-low"
-      }`}
+      } ${isDragging ? "opacity-0" : ""}`}
     >
       <div className="min-w-0 flex-1 leading-tight">
         <span className="text-on-surface block truncate font-mono text-xs">{code}</span>

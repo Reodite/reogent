@@ -1,7 +1,7 @@
 "use client";
 
 // Course search for the planner rail. It accepts Course Finder syntax and
-// title substrings, then exposes draggable results for the year columns.
+// title substrings, then exposes unplanned courses as draggable results.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { searchCourses } from "@/src/lib/planner-search";
 import { useMemo } from "react";
@@ -12,17 +12,18 @@ const RESULT_LIMIT = 20;
 
 interface MiniCourseLookupProps {
   courseIndex: Map<string, CourseIndexEntry>;
+  plannedCodes: ReadonlySet<string>;
 }
 
-export function MiniCourseLookup({ courseIndex }: MiniCourseLookupProps) {
+export function MiniCourseLookup({ courseIndex, plannedCodes }: MiniCourseLookupProps) {
   // The persisted query survives planner remounts.
   const query = usePlanner((s) => s.lookupQuery);
   const setQuery = usePlanner((s) => s.setLookupQuery);
 
   const results = useMemo(() => {
     if (!query.trim()) return [] as CourseIndexEntry[];
-    return searchCourses(courseIndex, query, RESULT_LIMIT);
-  }, [query, courseIndex]);
+    return searchCourses(courseIndex, query, RESULT_LIMIT, plannedCodes);
+  }, [query, courseIndex, plannedCodes]);
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -43,7 +44,9 @@ export function MiniCourseLookup({ courseIndex }: MiniCourseLookupProps) {
           <p className="text-muted px-2 py-6 text-center text-xs">Search above, then drag a course onto the board.</p>
         )}
         {query.trim() && results.length === 0 && (
-          <p className="text-muted px-2 py-6 text-center text-xs">No courses match &ldquo;{query.trim()}&rdquo;.</p>
+          <p className="text-muted px-2 py-6 text-center text-xs">
+            No unplanned courses match &ldquo;{query.trim()}&rdquo;.
+          </p>
         )}
         {results.map((entry) => (
           <LookupBlock key={entry.code} entry={entry} />

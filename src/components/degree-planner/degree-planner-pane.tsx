@@ -483,7 +483,7 @@ export function DegreePlannerPane() {
                 </div>
               </section>
               <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
-                <MiniCourseLookup courseIndex={courseIndex} />
+                <MiniCourseLookup courseIndex={courseIndex} plannedCodes={plannedCodes} />
               </section>
             </aside>
           )}
@@ -491,10 +491,14 @@ export function DegreePlannerPane() {
       </div>
 
       <DragOverlay
-        dropAnimation={{
-          duration: 260,
-          easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
-        }}
+        dropAnimation={
+          activeDrag?.kind === "lookup"
+            ? null
+            : {
+                duration: 260,
+                easing: "cubic-bezier(0.34, 1.3, 0.64, 1)",
+              }
+        }
       >
         <motion.div style={reducedMotion ? undefined : { rotate: dragRotate, x: dragLagX, transformOrigin: "50% 0%" }}>
           {activeDrag?.kind === "block" && (
