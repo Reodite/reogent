@@ -13,7 +13,9 @@ vi.mock("@/src/components/map/map-panel", () => ({
   MapArea: () => <div data-testid="map-area" />,
 }));
 vi.mock("@/src/components/prereq-tree/prereq-tree-pane", () => ({ PrereqTreePane: () => null }));
-vi.mock("@/src/components/calendar/calendar-pane", () => ({ CalendarPane: () => null }));
+vi.mock("@/src/components/calendar/calendar-pane", () => ({
+  CalendarPane: () => <div data-testid="calendar-pane" />,
+}));
 vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({ CourseLookupPane: () => null }));
 vi.mock("@/src/components/shell/session-sidebar", () => ({
   useSidebarCollapsed: () => [false, () => {}],
@@ -113,6 +115,17 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
     // There is no topbar expand button for the right pane.
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
+  });
+
+  it("renders pathname-owned tool content without a post-paint activator", () => {
+    pathname.value = "/tools/map";
+    const view = renderShell(true);
+    expect(view.getByTestId("map-area")).not.toBeNull();
+
+    pathname.value = "/tools/calendar";
+    view.rerender(<ShellFixture />);
+    expect(view.queryByTestId("map-area")).toBeNull();
+    expect(view.getByTestId("calendar-pane")).not.toBeNull();
   });
 
   it("Tools mode renders no right pane collapse button", () => {

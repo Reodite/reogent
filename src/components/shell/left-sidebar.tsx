@@ -4,11 +4,11 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
 import { ModeToggle } from "@/src/components/shell/mode-toggle";
 import { BrandHeader, SessionSidebar } from "@/src/components/shell/session-sidebar";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
 import { ToolList } from "@/src/components/shell/tool-list";
 import { UserMenu } from "@/src/components/shell/user-menu";
 import { Button } from "@/src/components/ui/button";
-import { usePathname, useRouter } from "next/navigation";
 
 const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
   { path: "/pulse", label: "Pulse", icon: "group" },
@@ -17,8 +17,8 @@ const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
 ];
 
 function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const navigation = useShellNavigation();
+  const pathname = navigation.displayPathname;
 
   return (
     <SidebarListNav label="Community" collapsed={collapsed}>
@@ -29,7 +29,7 @@ function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
             <button
               type="button"
               aria-current={active ? "page" : undefined}
-              onClick={() => router.push(item.path)}
+              onClick={() => navigation.push(item.path)}
               className={`focus-visible:ring-primary/40 flex h-11 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
                 collapsed ? "w-11 justify-center sm:w-9" : "w-full gap-2.5 px-3"
               } ${

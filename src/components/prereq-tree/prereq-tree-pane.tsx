@@ -6,6 +6,7 @@ import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { CourseSearchField, type Candidate } from "@/src/components/course-search/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { useWorkspaceHost } from "@/src/components/shell/workspace-host";
 import { Button } from "@/src/components/ui/button";
 import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
@@ -14,7 +15,6 @@ import { announce } from "@/src/components/ui/live-region";
 import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { isOkanagan } from "@/src/shared/course-code";
-import { useRouter } from "next/navigation";
 import {
   Component,
   useCallback,
@@ -395,7 +395,7 @@ export function PrereqTreePane({
   const api = useApi();
   const { host, titlebarOutlet } = useWorkspaceHost();
   const toolsMode = host === "tools";
-  const router = useRouter();
+  const { push: navigate } = useShellNavigation();
   const shell = useChatShellOptional();
   const { isGuest } = useAppAuth();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -499,9 +499,9 @@ export function PrereqTreePane({
       setActiveCode(code);
       setMissingCode(null);
       onChangeRoot?.(code);
-      if (toolsMode) router.push(`/tools/prereq/${courseCodeToSlug(code)}`);
+      if (toolsMode) navigate(`/tools/prereq/${courseCodeToSlug(code)}`);
     },
-    [onChangeRoot, router, toolsMode],
+    [navigate, onChangeRoot, toolsMode],
   );
 
   const pickSuggestion = useCallback(
@@ -520,17 +520,17 @@ export function PrereqTreePane({
       setActiveCode(null);
       setMissingCode(null);
       onChangeRoot?.("");
-      if (toolsMode) router.push("/tools/prereq");
+      if (toolsMode) navigate("/tools/prereq");
     },
-    [activeCode, onChangeRoot, router, toolsMode],
+    [activeCode, navigate, onChangeRoot, toolsMode],
   );
 
   const openInFinder = useCallback(
     (code: string) => {
-      if (toolsMode) router.push(`/tools/courses/${courseCodeToSlug(code)}`);
+      if (toolsMode) navigate(`/tools/courses/${courseCodeToSlug(code)}`);
       else shell?.setActiveChannel("course-lookup", { code });
     },
-    [router, shell, toolsMode],
+    [navigate, shell, toolsMode],
   );
 
   const rejected = isOkanagan(query.trim());

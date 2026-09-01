@@ -7,13 +7,13 @@ import { CourseSearchField, useCourseAutocomplete } from "@/src/components/cours
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { Button } from "@/src/components/ui/button";
 import { RetryState } from "@/src/components/ui/feedback";
 import { SelectInput } from "@/src/components/ui/form-controls";
 import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function SessionPicker({ session, onChange }: { session: string; onChange: (session: string) => void }) {
@@ -58,7 +58,7 @@ export function CourseLookupPane({
 }) {
   const api = useApi();
   const { mode, setActiveChannel } = useChatShell();
-  const router = useRouter();
+  const { push: navigate } = useShellNavigation();
   const [code, setCode] = useState(((state.code as string | undefined) ?? "") as string);
   const [session, setSession] = useState<string>((state.session as string | undefined) ?? defaultSession());
 
@@ -92,15 +92,15 @@ export function CourseLookupPane({
   const propCode = typeof state.code === "string" ? state.code.trim() : "";
   const toolsDetail = toolsMode && propCode !== "";
   const openFromList = useCallback(
-    (courseCode: string) => router.push(`/tools/courses/${courseCodeToSlug(courseCode)}`),
-    [router],
+    (courseCode: string) => navigate(`/tools/courses/${courseCodeToSlug(courseCode)}`),
+    [navigate],
   );
   const openPrereqs = useCallback(
     (courseCode: string) => {
-      if (toolsMode) router.push(`/tools/prereq/${courseCodeToSlug(courseCode)}`);
+      if (toolsMode) navigate(`/tools/prereq/${courseCodeToSlug(courseCode)}`);
       else setActiveChannel("prereq-tree", { root: courseCode, query: courseCode, selections: {} });
     },
-    [router, setActiveChannel, toolsMode],
+    [navigate, setActiveChannel, toolsMode],
   );
 
   if (toolsMode && !toolsDetail) return <CourseExplorer onSelect={openFromList} />;
@@ -117,7 +117,7 @@ export function CourseLookupPane({
             <Button
               onClick={() => {
                 setCode("");
-                router.push("/tools/courses");
+                navigate("/tools/courses");
               }}
             >
               <Icon name="left" size={14} /> Back to results

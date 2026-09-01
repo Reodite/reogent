@@ -5,6 +5,7 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { ChatShellProvider } from "@/src/components/chat/chat-shell-context";
 import { AppShell } from "@/src/components/shell/app-shell";
+import { ShellNavigationProvider } from "@/src/components/shell/shell-navigation";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -22,8 +23,10 @@ export default function ShellLayout({ children }: React.PropsWithChildren) {
   const initialMode =
     pathname?.startsWith("/tools") || isGuest ? "tools" : pathname?.startsWith("/pulse") ? "unity" : "ai";
   return (
-    <ChatShellProvider initialMode={initialMode}>
-      <AppShell>{children}</AppShell>
-    </ChatShellProvider>
+    <ShellNavigationProvider>
+      <ChatShellProvider initialMode={initialMode}>
+        <AppShell>{children}</AppShell>
+      </ChatShellProvider>
+    </ShellNavigationProvider>
   );
 }

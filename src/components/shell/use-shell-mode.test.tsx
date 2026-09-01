@@ -42,6 +42,17 @@ describe("useShellMode", () => {
     expect(result.current[0]).toBe("unity");
   });
 
+  it("renders the latest navigation intent before the committed pathname", () => {
+    const { result, rerender } = renderHook(
+      ({ displayPathname }) => useShellMode("ai", { committedPathname: "/chat", displayPathname }),
+      { initialProps: { displayPathname: "/tools/map" } },
+    );
+    expect(result.current[0]).toBe("tools");
+
+    rerender({ displayPathname: "/pulse" });
+    expect(result.current[0]).toBe("unity");
+  });
+
   it("hydrates the stored mode on a direct Settings load", async () => {
     pathname.value = "/settings";
     memory.set(SHELL_MODE_STORAGE_KEY, "unity");

@@ -3,6 +3,7 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { VersionBadge } from "@/src/components/shell/session-sidebar";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -17,6 +18,7 @@ import { createPortal } from "react-dom";
  */
 export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
   const auth = useAppAuth();
+  const navigation = useShellNavigation();
   const [open, setOpen] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -137,6 +139,10 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
               href="/settings"
               role="menuitem"
               onClick={() => setOpen(false)}
+              onNavigate={(event) => {
+                event.preventDefault();
+                navigation.push("/settings");
+              }}
               className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
             >
               <Icon name="settings" size={16} className="text-on-surface-variant" />

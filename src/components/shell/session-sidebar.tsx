@@ -3,6 +3,7 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { SidebarListItem, SidebarStaggerContext } from "@/src/components/shell/sidebar-list";
 import { Button } from "@/src/components/ui/button";
 import { RetryState } from "@/src/components/ui/feedback";
@@ -10,7 +11,7 @@ import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 const SIDEBAR_KEY = "reogent.sidebar.collapsed";
@@ -105,7 +106,7 @@ function SessionItem({
   onDelete: () => void;
 }) {
   const api = useApi();
-  const router = useRouter();
+  const navigation = useShellNavigation();
   type Mode = "idle" | "editing" | "confirming-delete";
   const [mode, setMode] = useState<Mode>("idle");
   const [editValue, setEditValue] = useState("");
@@ -141,7 +142,7 @@ function SessionItem({
     } catch {
       /* best effort */
     }
-    if (active) router.push("/chat");
+    if (active) navigation.push("/chat");
   }
 
   // Editing: inline text input with checkmark/x
@@ -287,9 +288,9 @@ export function BrandHeader({ collapsed = false, trailing }: { collapsed?: boole
 }
 
 export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarProps = {}) {
-  const router = useRouter();
+  const navigation = useShellNavigation();
   const params = useParams<{ session_id?: string }>();
-  const pathname = usePathname();
+  const pathname = navigation.displayPathname;
   const {
     sessions,
     sessionsLoading,
@@ -317,7 +318,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
 
   function openSession(id: string) {
     setSidebarOpen(false);
-    router.push(`/chat/${id}`);
+    navigation.push(`/chat/${id}`);
   }
 
   function newConversation() {
@@ -326,7 +327,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
     // locally-minted URL the router still thinks it's on /chat, so push is a
     // no-op — reset the panel via context instead.
     if (params.session_id) {
-      router.push("/chat");
+      navigation.push("/chat");
     } else {
       window.history.replaceState(null, "", "/chat");
       startNewChat();

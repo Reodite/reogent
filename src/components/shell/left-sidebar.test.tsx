@@ -89,19 +89,28 @@ function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
 }
 
 describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
-  it("ModeToggle navigates by link and persists the selected mode", () => {
-    const { container } = render(
+  it("ModeToggle persists intent and follows the committed route", () => {
+    const view = render(
       <ChatShellProvider>
         <ModeToggle />
         <Capture />
       </ChatShellProvider>,
     );
-    const toolsLink = modeLink(container, "Tools");
+    const toolsLink = modeLink(view.container, "Tools");
     expect(toolsLink.getAttribute("href")).toBe("/tools/map");
     act(() => fireEvent.click(toolsLink));
-    expect(shellRef.current?.mode).toBe("tools");
+    expect(routerPush).toHaveBeenCalledWith("/tools/map");
     expect(localStorage.getItem(SHELL_MODE_STORAGE_KEY)).toBe("tools");
-    expect(toolsLink.getAttribute("aria-current")).toBe("page");
+
+    pathname.value = "/tools/map";
+    view.rerender(
+      <ChatShellProvider>
+        <ModeToggle />
+        <Capture />
+      </ChatShellProvider>,
+    );
+    expect(shellRef.current?.mode).toBe("tools");
+    expect(modeLink(view.container, "Tools").getAttribute("aria-current")).toBe("page");
   });
 
   it("allows the retained mode link to leave Settings", () => {
@@ -112,6 +121,13 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
       </ChatShellProvider>,
     );
     fireEvent.click(modeLink(view.container, "Tools"));
+    pathname.value = "/tools/map";
+    view.rerender(
+      <ChatShellProvider>
+        <ModeToggle />
+        <Capture />
+      </ChatShellProvider>,
+    );
     expect(shellRef.current?.mode).toBe("tools");
 
     pathname.value = "/settings";
@@ -127,31 +143,44 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(localStorage.getItem(SHELL_MODE_STORAGE_KEY)).toBe("tools");
   });
 
-  it("LeftSidebar shows SessionList in AI mode and ToolList in Tools mode", () => {
-    const { container } = render(
+  it("LeftSidebar shows SessionList in AI mode and ToolList on the Tools route", () => {
+    const view = render(
       <ChatShellProvider>
         <LeftSidebar />
         <Capture />
       </ChatShellProvider>,
     );
-    expect(container.querySelector('[data-testid="session-list"]')).not.toBeNull();
-    expect(container.querySelector("[data-tool-list]")).toBeNull();
-    act(() => fireEvent.click(modeLink(container, "Tools")));
-    expect(container.querySelector('[data-testid="session-list"]')).toBeNull();
-    expect(container.querySelector("[data-tool-list]")).not.toBeNull();
+    expect(view.container.querySelector('[data-testid="session-list"]')).not.toBeNull();
+    expect(view.container.querySelector("[data-tool-list]")).toBeNull();
+
+    pathname.value = "/tools/map";
+    view.rerender(
+      <ChatShellProvider>
+        <LeftSidebar />
+        <Capture />
+      </ChatShellProvider>,
+    );
+    expect(view.container.querySelector('[data-testid="session-list"]')).toBeNull();
+    expect(view.container.querySelector("[data-tool-list]")).not.toBeNull();
   });
 
   it("ToolList selection navigates by URL and closes its host drawer", () => {
     const onClose = vi.fn();
-    const { container } = render(
+    const view = render(
       <ChatShellProvider>
         <LeftSidebar onClose={onClose} />
         <Capture />
       </ChatShellProvider>,
     );
-    act(() => fireEvent.click(modeLink(container, "Tools")));
+    pathname.value = "/tools/map";
+    view.rerender(
+      <ChatShellProvider>
+        <LeftSidebar onClose={onClose} />
+        <Capture />
+      </ChatShellProvider>,
+    );
     routerPush.mockClear();
-    act(() => fireEvent.click(container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement));
+    act(() => fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement));
     expect(routerPush).toHaveBeenCalledWith("/tools/prereq");
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -169,14 +198,19 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
   });
 
   it("the ModeToggle is reachable from both modes", () => {
-    const { container } = render(
+    const view = render(
       <ChatShellProvider>
         <LeftSidebar />
       </ChatShellProvider>,
     );
-    expect(modeLink(container, "AI").getAttribute("aria-current")).toBe("page");
-    act(() => fireEvent.click(modeLink(container, "Tools")));
-    expect(modeLink(container, "Tools").getAttribute("aria-current")).toBe("page");
+    expect(modeLink(view.container, "AI").getAttribute("aria-current")).toBe("page");
+    pathname.value = "/tools/map";
+    view.rerender(
+      <ChatShellProvider>
+        <LeftSidebar />
+      </ChatShellProvider>,
+    );
+    expect(modeLink(view.container, "Tools").getAttribute("aria-current")).toBe("page");
   });
 
   it("marks shared schedule links as part of Schedule", () => {

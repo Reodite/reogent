@@ -1,14 +1,13 @@
 "use client";
 
 import { PANE_REGISTRY } from "@/src/components/shell/pane-registry";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
 import { paneIdToSlug, parseToolPath } from "@/src/lib/pane-route";
-import { usePathname, useRouter } from "next/navigation";
 
 export function ToolList({ collapsed = false, onSelect }: { collapsed?: boolean; onSelect?: () => void }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const activePane = parseToolPath(pathname ?? "")?.paneId;
+  const navigation = useShellNavigation();
+  const activePane = parseToolPath(navigation.displayPathname)?.paneId;
   return (
     <SidebarListNav label="Tools" collapsed={collapsed} toolList>
       {PANE_REGISTRY.map((entry, i) => {
@@ -24,7 +23,7 @@ export function ToolList({ collapsed = false, onSelect }: { collapsed?: boolean;
               disabled={!slug}
               onClick={() => {
                 if (!slug) return;
-                router.push(`/tools/${slug}`);
+                navigation.push(`/tools/${slug}`);
                 onSelect?.();
               }}
               className={`focus-visible:ring-primary/40 flex h-11 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${

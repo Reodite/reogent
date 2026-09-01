@@ -3,10 +3,10 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { paneIdToSlug } from "@/src/lib/pane-route";
 import { LAST_CHAT_PATH_KEY, type ShellMode } from "@/src/lib/shell-mode";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
 import { useState, type MouseEvent } from "react";
 
 const DESTINATIONS: { mode: ShellMode; label: string; icon: IconName; guestLocked?: boolean }[] = [
@@ -23,8 +23,8 @@ function pathnameMatchesMode(pathname: string, mode: ShellMode): boolean {
 export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
   const { mode, setMode, workspaceView } = useChatShell();
   const { isGuest } = useAppAuth();
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigation = useShellNavigation();
+  const pathname = navigation.displayPathname;
   const [tooltip, setTooltip] = useState<string | null>(null);
 
   function hrefFor(next: ShellMode): string {
@@ -35,6 +35,7 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
   }
 
   function navigate(event: MouseEvent<HTMLAnchorElement>, next: ShellMode) {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     const locked = isGuest && DESTINATIONS.find((destination) => destination.mode === next)?.guestLocked;
     if (locked || (next === mode && pathnameMatchesMode(pathname, next))) {
       event.preventDefault();
@@ -48,16 +49,17 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
       } catch {}
     }
 
-    setMode(next);
-    if (next !== "ai") return;
+    let target = hrefFor(next);
+    if (next === "ai") {
+      try {
+        const last = sessionStorage.getItem(LAST_CHAT_PATH_KEY);
+        if (last?.startsWith("/chat")) target = last;
+      } catch {}
+    }
 
-    try {
-      const last = sessionStorage.getItem(LAST_CHAT_PATH_KEY);
-      if (last?.startsWith("/chat")) {
-        event.preventDefault();
-        router.push(last);
-      }
-    } catch {}
+    event.preventDefault();
+    setMode(next);
+    navigation.push(target);
   }
 
   return (
