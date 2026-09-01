@@ -37,13 +37,13 @@ export interface BlockValidation {
 /** Turns an internal `missing` token into a sentence the user can act on. */
 export function describeIssue(token: string): string {
   if (token === "duplicate course in plan") {
-    return "Duplicate — this course already appears elsewhere in your plan.";
+    return "Duplicate course: it already appears elsewhere in your plan.";
   }
   if (token.startsWith("prereq ")) {
-    return `Missing prerequisite: ${token.slice("prereq ".length)} must be completed in an earlier term.`;
+    return `Prerequisite: complete ${token.slice("prereq ".length)} in an earlier term.`;
   }
   if (token.startsWith("coreq ")) {
-    return `Missing corequisite: ${token.slice("coreq ".length)} must be taken no later than this term.`;
+    return `Corequisite: take ${token.slice("coreq ".length)} in this term or an earlier term.`;
   }
   return token;
 }

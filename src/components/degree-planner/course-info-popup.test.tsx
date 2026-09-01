@@ -36,4 +36,21 @@ describe("CourseInfoPopup pointer handling", () => {
 
     expect(parentPointerDown).not.toHaveBeenCalled();
   });
+
+  it("renders each placement issue as a direct error box", () => {
+    render(
+      <CourseInfoPopup
+        course={course}
+        anchorRect={new DOMRect(100, 100, 28, 28)}
+        issues={["duplicate course in plan", "prereq CPSC 210"]}
+      />,
+    );
+
+    const duplicate = screen.getByText("Duplicate course: it already appears elsewhere in your plan.");
+    const prerequisite = screen.getByText("Prerequisite: complete CPSC 210 in an earlier term.");
+    expect(duplicate.className).toContain("bg-error-container");
+    expect(prerequisite.className).toContain("bg-error-container");
+    expect(screen.queryByText("Why it’s flagged")).toBeNull();
+    expect(screen.queryByRole("list")).toBeNull();
+  });
 });

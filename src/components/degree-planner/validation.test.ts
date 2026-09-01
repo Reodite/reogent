@@ -14,11 +14,12 @@ describe("findDuplicateCourseCodes", () => {
 });
 
 describe("describeIssue", () => {
-  it("renders internal tokens as sentences", () => {
-    expect(describeIssue("duplicate course in plan")).toContain("Duplicate");
-    expect(describeIssue("prereq CPSC 210")).toContain("prerequisite");
-    expect(describeIssue("prereq CPSC 210")).toContain("CPSC 210");
-    expect(describeIssue("coreq MATH 221")).toContain("corequisite");
+  it("renders internal tokens as direct sentences", () => {
+    expect(describeIssue("duplicate course in plan")).toBe(
+      "Duplicate course: it already appears elsewhere in your plan.",
+    );
+    expect(describeIssue("prereq CPSC 210")).toBe("Prerequisite: complete CPSC 210 in an earlier term.");
+    expect(describeIssue("coreq MATH 221")).toBe("Corequisite: take MATH 221 in this term or an earlier term.");
     expect(describeIssue("custom token")).toBe("custom token");
   });
 });

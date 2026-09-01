@@ -150,13 +150,15 @@ export function CourseInfoPopup({
         )}
       </div>
       {issues && issues.length > 0 && (
-        <div className="border-error/30 bg-error-container/50 flex flex-col gap-1 rounded-lg border px-2 py-1.5">
-          <p className="text-error text-xs font-semibold">Why it&rsquo;s flagged</p>
-          <ul className="text-on-surface list-disc pl-4 text-xs">
-            {issues.map((token) => (
-              <li key={token}>{describeIssue(token)}</li>
-            ))}
-          </ul>
+        <div className="flex flex-col gap-1.5">
+          {issues.map((token) => (
+            <p
+              key={token}
+              className="border-error/30 bg-error-container text-on-error-container rounded-lg border px-2 py-1.5 text-xs leading-snug"
+            >
+              {describeIssue(token)}
+            </p>
+          ))}
         </div>
       )}
       {course.credits != null && (
