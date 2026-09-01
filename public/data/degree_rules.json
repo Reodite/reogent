@@ -1,0 +1,2123 @@
+{
+ "BA": {
+  "total_credits": 120,
+  "categories": [
+   {
+    "name": "Arts Credit Minimum Requirement",
+    "credits_required": 72,
+    "notes": "At least 72 of the 120 credits must be Arts credit (subject areas offered by the Faculty of Arts, including transfer credit in those subjects), except when the student's specialization(s) require more than 48 credits outside Arts, in which case the minimum is relaxed to the maximum Arts credit possible and no non-Arts elective credit is permitted. MUSC exception: music history, theory, technology, ethnomusicology and composition courses all count, but a maximum of 12 credits of ensemble/musical-performance courses may be applied, and individual lessons, aural skills, conducting and repertoire courses are not B.A.-eligible at all. Arts Co-op Search/Work Term credit is not applicable. Applies to all cohorts.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/credit-requirements-and-regulations",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Arts",
+       "caps": [
+        {
+         "credits": 12,
+         "subjects": [
+          "MUSC"
+         ],
+         "note": "maximum 12 credits from MUSC ensemble (musical performance) courses; MUSC individual lessons, aural skills, conducting and repertoire courses carry no B.A. credit at all"
+        }
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Non-Arts Credit Maximum",
+    "credits_required": 48,
+    "notes": "MAXIMUM, not a minimum: at most 48 of the 120 credits may come from outside the Faculty of Arts. Relaxed for programs requiring more than 48 non-Arts credits (e.g. Major in Mathematics or Computer Science, Interdisciplinary Studies with a Science primary category), up to the amount needed to complete program requirements. Applies to all cohorts.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/credit-requirements-and-regulations",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Arts"
+      }
+     }
+    ]
+   },
+   {
+    "name": "Upper-level Requirement",
+    "credits_required": 48,
+    "notes": "Minimum upper-level credits (courses numbered 300 and above). Varies by degree program option: Major 48; Honours 54; Combined/Double Major 60; Major+Honours 66; Double Honours 84. Adding a Minor does not increase the requirement. Double-counting between specializations does not necessarily reduce this minimum. Same rule in both the 2023/24-or-earlier and 2024/25-or-later degree requirements.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": [
+     {
+      "rule": {
+       "kind": "level_credit",
+       "min_level": 300
+      }
+     }
+    ]
+   },
+   {
+    "name": "Outside Requirement",
+    "credits_required": 24,
+    "notes": "Not machine-checkable per-course: qualifying depends on which specialization(s) the student has declared, since all courses normally accepted or designated as applicable to that field of study (including cross-listed courses) count as inside it, even when taken as electives. Credits required by program option: Major 60; Combined Major and Honours 48; Major+Minor, Double Major, Major/Honours, Double Honours 24 (and for dual specializations the credits must be outside BOTH fields). 2024/25+ cohort: Majors in Cognitive Systems and Interdisciplinary Studies satisfy it within their program. 2023/24-or-earlier cohort: Interdisciplinary Studies satisfies it. credits_required shown as the 24 floor.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": []
+   },
+   {
+    "name": "Writing and Research Requirement - Writing Component",
+    "credits_required": 3,
+    "notes": "3 credits of research/writing instruction from an approved course; must be complete before Year 3 standing (attempt within first 30 credits, complete before 54 credits; transfer students attempt in their first Winter Session). Arts One also satisfies it (a program, not a single course code, so not listed). Same course list for both cohorts. 2024/25+ cohort only: a course used for the Writing Component cannot also count toward the Ways of Knowing Breadth Requirement. Approved transfer writing courses may be applied by appeal.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "ASTU 100",
+        "ASTU 101",
+        "CAP 100",
+        "ENGL 100",
+        "WRDS 150",
+        "WRDS 151",
+        "WRDS 350"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Writing and Research Requirement - Research Component",
+    "credits_required": 3,
+    "notes": "A research-intensive experience, normally a 400-level course specified for the student's major; the qualifying set is major-specific (the list below is the union of all approved research-intensive courses, so a planner must still filter by declared major). Many have prerequisites and are restricted to Majors. Political Science: ALL POLI 400-level courses qualify. Interdisciplinary Studies: any approved research-intensive course the student qualifies to register in. International Relations and United States Studies allow further departmentally-approved courses. All B.F.A.-approved research-intensive courses also count. Same requirement for both cohorts (minor list differences: 2023/24-or-earlier lists GMST 420/424/440/448/475/490/492 for German Studies and GRSJ 401, CPSC 427/455, ASIA 447; 2024/25+ lists GERM 403/404/406/408/420/439/449 instead and drops those).",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "AMNE 420",
+        "AMNE 440",
+        "AMNE 441",
+        "AMNE 470",
+        "AMNE 471",
+        "AMNE 472",
+        "AMNE 480",
+        "AMNE 499",
+        "ANTH 317",
+        "ANTH 407",
+        "ANTH 408",
+        "ANTH 417",
+        "ANTH 418",
+        "ANTH 428",
+        "ANTH 431",
+        "ANTH 449",
+        "ANTH 452",
+        "ANTH 478",
+        "ARCL 306",
+        "ARCL 405",
+        "ARCL 406",
+        "ARCL 419",
+        "ARTH 410",
+        "ARTH 432",
+        "ARTH 436",
+        "ARTH 437",
+        "ARTH 439",
+        "ARTH 440",
+        "ARTH 442",
+        "ARTH 443",
+        "ARTH 445",
+        "ARTH 448",
+        "ARTH 450",
+        "ARTH 455",
+        "ARTH 458",
+        "ARTH 459",
+        "ARTH 464",
+        "ARTH 471",
+        "ARTH 476",
+        "ARTH 479",
+        "ARTH 480",
+        "ASIA 402",
+        "ASIA 407",
+        "ASIA 408",
+        "ASIA 427",
+        "ASIA 440",
+        "ASIA 442",
+        "ASIA 445",
+        "ASIA 447",
+        "ASIA 451",
+        "ASIA 453",
+        "ASIA 468",
+        "ASIA 477",
+        "ASIA 491",
+        "ASIA 495",
+        "ASIA 498",
+        "ASIA 499",
+        "CHIN 482",
+        "JAPN 453",
+        "JAPN 462",
+        "KORN 410",
+        "CDST 450",
+        "CINE 445",
+        "CINE 449",
+        "COGS 402",
+        "CPSC 319",
+        "CPSC 410",
+        "CPSC 427",
+        "CPSC 444",
+        "CPSC 448",
+        "CPSC 449",
+        "CPSC 455",
+        "CPSC 491",
+        "CSIS 450",
+        "GRSJ 401",
+        "GRSJ 422",
+        "GRSJ 480",
+        "ECON 390",
+        "ECON 457",
+        "ECON 490",
+        "ECON 495",
+        "ECON 499",
+        "ENGL 489",
+        "ENGL 490",
+        "ENGL 491",
+        "ENGL 496",
+        "ENGL 499",
+        "FNEL 389",
+        "FNEL 448",
+        "FNEL 481",
+        "FNEL 482",
+        "FNIS 400",
+        "LING 431",
+        "LING 432",
+        "LING 447",
+        "LING 449",
+        "FREN 495",
+        "GEOG 312",
+        "GEOG 315",
+        "GEOG 345",
+        "GEOG 371",
+        "GEOG 379",
+        "GEOG 395",
+        "GEOG 410",
+        "GEOG 412",
+        "GEOG 419",
+        "GEOG 424",
+        "GEOG 429",
+        "GEOG 446",
+        "GEOG 447",
+        "GEOG 448",
+        "GEOG 450",
+        "GEOG 453",
+        "GEOG 495",
+        "GEOG 498",
+        "GEOS 309",
+        "GEOS 405",
+        "GEOS 406",
+        "GEOS 407",
+        "GEOS 472",
+        "GEOS 479",
+        "URST 400",
+        "GMST 420",
+        "GMST 424",
+        "GMST 440",
+        "GMST 448",
+        "GMST 475",
+        "GMST 490",
+        "GMST 492",
+        "HIST 403",
+        "HIST 449",
+        "HIST 466",
+        "HIST 467",
+        "HIST 479",
+        "HIST 490",
+        "PHIL 418",
+        "PHIL 426",
+        "PHIL 431",
+        "PHIL 432",
+        "PHIL 440",
+        "PHIL 450",
+        "PHIL 452",
+        "PHIL 455",
+        "PHIL 469",
+        "PHIL 490",
+        "PHIL 491",
+        "ITAL 495",
+        "LAST 303",
+        "MATH 441",
+        "MATH 444",
+        "MATH 448",
+        "MATH 461",
+        "MATH 462",
+        "MDVL 449",
+        "MDVL 490",
+        "CENS 404",
+        "MUSC 207",
+        "MUSC 320",
+        "MUSC 402",
+        "MUSC 403",
+        "MUSC 409",
+        "MUSC 412",
+        "MUSC 413",
+        "MUSC 449",
+        "MUSC 469",
+        "PSYC 217",
+        "RGST 400",
+        "RMST 495",
+        "RMST 499",
+        "SOCI 380",
+        "SOCI 381",
+        "SOCI 382",
+        "SOCI 383",
+        "SOCI 449",
+        "SPAN 411",
+        "SPAN 495",
+        "THTR 417",
+        "THTR 439",
+        "THTR 445",
+        "THTR 449",
+        "VISA 401",
+        "VISA 410",
+        "VISA 411",
+        "VISA 430",
+        "VISA 431",
+        "VISA 440",
+        "VISA 441",
+        "VISA 450",
+        "VISA 451",
+        "VISA 470",
+        "VISA 471",
+        "VISA 479",
+        "VISA 480",
+        "VISA 481"
+       ]
+      }
+     },
+     {
+      "subject_pattern": "POLI 4"
+     }
+    ]
+   },
+   {
+    "name": "Ways of Knowing - Place and Power",
+    "credits_required": 3,
+    "notes": "2024/25+ cohort only. 3 credits from a Faculty-approved Place and Power course list; the list is not reproduced in the Calendar record (it links out), so no options can be encoded. May double-count with the Breadth areas or the student's major. Must be taken at UBC Vancouver - transfer credit articulated with the same subject code and course number does NOT count. Completable at any point in the degree. Together with the 18 Breadth credits this makes Ways of Knowing 21 credits.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": []
+   },
+   {
+    "name": "Ways of Knowing Breadth - Humanities and Creative Arts",
+    "credits_required": 3,
+    "notes": "2024/25+ cohort only. One of four Ways of Knowing breadth areas. The area containing the student's major/Honours is exempt; across the three remaining areas the student takes 9 + 6 + 3 credits (student chooses which area gets which), 18 credits total. All credits within an area must be from a SINGLE course code. ENGL and WRDS credits count here EXCEPT courses used to satisfy the Writing Component. credits_required is the 3-credit floor for any one non-major area; it can be 6 or 9 depending on the student's chosen distribution.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": [
+     {
+      "subject_pattern": "ACAM"
+     },
+     {
+      "subject_pattern": "AFST"
+     },
+     {
+      "subject_pattern": "AMNE"
+     },
+     {
+      "subject_pattern": "ARTH"
+     },
+     {
+      "subject_pattern": "ASIA"
+     },
+     {
+      "subject_pattern": "ASIX"
+     },
+     {
+      "subject_pattern": "CDST"
+     },
+     {
+      "subject_pattern": "CENS"
+     },
+     {
+      "subject_pattern": "CINE"
+     },
+     {
+      "subject_pattern": "CRWR"
+     },
+     {
+      "subject_pattern": "CSIS"
+     },
+     {
+      "subject_pattern": "ENGL"
+     },
+     {
+      "subject_pattern": "FIPR"
+     },
+     {
+      "subject_pattern": "FNIS"
+     },
+     {
+      "subject_pattern": "GMST"
+     },
+     {
+      "subject_pattern": "GRSJ"
+     },
+     {
+      "subject_pattern": "HIST"
+     },
+     {
+      "subject_pattern": "ITST"
+     },
+     {
+      "subject_pattern": "JRNL"
+     },
+     {
+      "subject_pattern": "LAST"
+     },
+     {
+      "subject_pattern": "MDIA"
+     },
+     {
+      "subject_pattern": "MDVL"
+     },
+     {
+      "subject_pattern": "MES"
+     },
+     {
+      "subject_pattern": "MUSC"
+     },
+     {
+      "subject_pattern": "NORD"
+     },
+     {
+      "subject_pattern": "PHIL"
+     },
+     {
+      "subject_pattern": "RGST"
+     },
+     {
+      "subject_pattern": "RMST"
+     },
+     {
+      "subject_pattern": "SCAN"
+     },
+     {
+      "subject_pattern": "SLAV"
+     },
+     {
+      "subject_pattern": "THFL"
+     },
+     {
+      "subject_pattern": "THTR"
+     },
+     {
+      "subject_pattern": "VISA"
+     },
+     {
+      "subject_pattern": "WRDS"
+     }
+    ]
+   },
+   {
+    "name": "Ways of Knowing Breadth - Language as Meaning",
+    "credits_required": 3,
+    "notes": "2024/25+ cohort only. One of four Ways of Knowing breadth areas. The major's area is exempt; the three remaining areas take 9 + 6 + 3 credits (18 total), all credits within an area from a SINGLE course code. credits_required is the 3-credit floor for any one non-major area; may be 6 or 9 by the student's chosen distribution.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": [
+     {
+      "subject_pattern": "ARBC"
+     },
+     {
+      "subject_pattern": "ARBM"
+     },
+     {
+      "subject_pattern": "ASL"
+     },
+     {
+      "subject_pattern": "ASLA"
+     },
+     {
+      "subject_pattern": "CHIN"
+     },
+     {
+      "subject_pattern": "CNTO"
+     },
+     {
+      "subject_pattern": "CTLN"
+     },
+     {
+      "subject_pattern": "DANI"
+     },
+     {
+      "subject_pattern": "FNEL"
+     },
+     {
+      "subject_pattern": "FREN"
+     },
+     {
+      "subject_pattern": "GERN"
+     },
+     {
+      "subject_pattern": "GREK"
+     },
+     {
+      "subject_pattern": "HEBR"
+     },
+     {
+      "subject_pattern": "HINU"
+     },
+     {
+      "subject_pattern": "INDO"
+     },
+     {
+      "subject_pattern": "ITAL"
+     },
+     {
+      "subject_pattern": "JAPN"
+     },
+     {
+      "subject_pattern": "KORN"
+     },
+     {
+      "subject_pattern": "LATN"
+     },
+     {
+      "subject_pattern": "NEPL"
+     },
+     {
+      "subject_pattern": "PERS"
+     },
+     {
+      "subject_pattern": "POLS"
+     },
+     {
+      "subject_pattern": "PORT"
+     },
+     {
+      "subject_pattern": "PUNJ"
+     },
+     {
+      "subject_pattern": "RUSS"
+     },
+     {
+      "subject_pattern": "SANS"
+     },
+     {
+      "subject_pattern": "SEAL"
+     },
+     {
+      "subject_pattern": "SOAL"
+     },
+     {
+      "subject_pattern": "SPAN"
+     },
+     {
+      "subject_pattern": "SWAH"
+     },
+     {
+      "subject_pattern": "SWED"
+     },
+     {
+      "subject_pattern": "TIBT"
+     },
+     {
+      "subject_pattern": "UKRN"
+     },
+     {
+      "subject_pattern": "YDSH"
+     }
+    ]
+   },
+   {
+    "name": "Ways of Knowing Breadth - Natural and Physical Sciences",
+    "credits_required": 3,
+    "notes": "2024/25+ cohort only. One of four Ways of Knowing breadth areas. The major's area is exempt; the three remaining areas take 9 + 6 + 3 credits (18 total), all credits within an area from a SINGLE course code. credits_required is the 3-credit floor for any one non-major area; may be 6 or 9 by the student's chosen distribution. Note: this area replaces the old Science Requirement for the 2024/25+ cohort.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": [
+     {
+      "subject_pattern": "ASTR"
+     },
+     {
+      "subject_pattern": "ATSC"
+     },
+     {
+      "subject_pattern": "BIOC"
+     },
+     {
+      "subject_pattern": "BIOL"
+     },
+     {
+      "subject_pattern": "BIOT"
+     },
+     {
+      "subject_pattern": "CAPS"
+     },
+     {
+      "subject_pattern": "CHEM"
+     },
+     {
+      "subject_pattern": "COGS"
+     },
+     {
+      "subject_pattern": "CPSC"
+     },
+     {
+      "subject_pattern": "DSCI"
+     },
+     {
+      "subject_pattern": "ENPH"
+     },
+     {
+      "subject_pattern": "ENVR"
+     },
+     {
+      "subject_pattern": "EOSC"
+     },
+     {
+      "subject_pattern": "FSCT"
+     },
+     {
+      "subject_pattern": "GEOS"
+     },
+     {
+      "subject_pattern": "ISCI"
+     },
+     {
+      "subject_pattern": "MRNE"
+     },
+     {
+      "subject_pattern": "MATH"
+     },
+     {
+      "subject_pattern": "MICB"
+     },
+     {
+      "subject_pattern": "NSCI"
+     },
+     {
+      "subject_pattern": "PCTH"
+     },
+     {
+      "subject_pattern": "PHYS"
+     },
+     {
+      "subject_pattern": "STAT"
+     }
+    ]
+   },
+   {
+    "name": "Ways of Knowing Breadth - Social and Behavioural Systems",
+    "credits_required": 3,
+    "notes": "2024/25+ cohort only. One of four Ways of Knowing breadth areas. The major's area is exempt; the three remaining areas take 9 + 6 + 3 credits (18 total), all credits within an area from a SINGLE course code. credits_required is the 3-credit floor for any one non-major area; may be 6 or 9 by the student's chosen distribution.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202425-or-later",
+    "options": [
+     {
+      "subject_pattern": "ANTH"
+     },
+     {
+      "subject_pattern": "ARCL"
+     },
+     {
+      "subject_pattern": "ECON"
+     },
+     {
+      "subject_pattern": "ENST"
+     },
+     {
+      "subject_pattern": "FMST"
+     },
+     {
+      "subject_pattern": "GEOG"
+     },
+     {
+      "subject_pattern": "INFO"
+     },
+     {
+      "subject_pattern": "LASO"
+     },
+     {
+      "subject_pattern": "LING"
+     },
+     {
+      "subject_pattern": "POLI"
+     },
+     {
+      "subject_pattern": "PPGA"
+     },
+     {
+      "subject_pattern": "PSYC"
+     },
+     {
+      "subject_pattern": "SOCI"
+     },
+     {
+      "subject_pattern": "SOWK"
+     },
+     {
+      "subject_pattern": "URST"
+     }
+    ]
+   },
+   {
+    "name": "Science Requirement",
+    "credits_required": 6,
+    "notes": "2023/24-or-earlier cohort ONLY (replaced by Ways of Knowing for 2024/25+). 6 credits from any combination of: all Faculty of Science courses EXCEPT SCIE 113, SCIE 300 and CHEM 300; listed Arts courses (ARCL 140/203/228/235/325/326/345, ASIC 200, ASIC 220, ALL GEOB/GEOS courses, GRSJ 201, LING 209, and the listed science-credit PSYC courses); APSC 366; CONS 127, FRST 303, FRST 304; APBI 100/200/244/260/311/327/328, FNH 200, FNH 250, LFS 340; CAPS 210/390/391, SPPH 200, SPPH 301. GEOB is the legacy code for GEOS. PSYC codes 263, 270, 360, 364, 366, 463, 465, 466, 467, 469 appear in the Calendar text but are not in the current valid course list, so are omitted. Credit-exclusion rules apply (see Science Credit Exclusion Lists); a course may serve this requirement and the Upper-level Requirement and a specialization simultaneously - that is not double-counting.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202324-or-earlier",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Science",
+       "exclude_courses": [
+        "SCIE 113",
+        "SCIE 300",
+        "CHEM 300"
+       ]
+      }
+     },
+     {
+      "subject_pattern": "GEOS"
+     },
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "ARCL 140",
+        "ARCL 203",
+        "ARCL 228",
+        "ARCL 235",
+        "ARCL 325",
+        "ARCL 326",
+        "ARCL 345",
+        "ASIC 200",
+        "ASIC 220",
+        "GRSJ 201",
+        "LING 209",
+        "PSYC 361",
+        "PSYC 363",
+        "PSYC 365",
+        "PSYC 367",
+        "PSYC 368",
+        "PSYC 370",
+        "PSYC 371",
+        "PSYC 460",
+        "PSYC 461",
+        "PSYC 462",
+        "PSYC 472",
+        "APSC 366",
+        "CONS 127",
+        "FRST 303",
+        "FRST 304",
+        "APBI 100",
+        "APBI 200",
+        "APBI 244",
+        "APBI 260",
+        "APBI 311",
+        "APBI 327",
+        "APBI 328",
+        "FNH 200",
+        "FNH 250",
+        "LFS 340",
+        "CAPS 210",
+        "CAPS 390",
+        "CAPS 391",
+        "SPPH 200",
+        "SPPH 301"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Literature Requirement",
+    "credits_required": 6,
+    "notes": "2023/24-or-earlier cohort ONLY (removed for 2024/25+). 6 credits of literary study from the approved list. Cap: a maximum of 3 credits from ARTS 001, ASTU 100, or ENGL 110-121 (except ENGL 112) may count. FREN qualifies at 220, 221, 280, 311, 328-331, 341, 371 and all 400-level FREN except 401, 402, 427, 451-477 and 499. SOAL 440 requires permission of the Department of Asian Studies. Codes listed in the Calendar but absent from the current valid course list (e.g. ARBC 400, GERM 206/301-305/360/370/380/390/402/404-407/426, ITAL 231-421, CHIN 411-434, PORT 392/405, RUSS 206-412, SLAV 307, POLS 424/426, some ENGL/ASIA/NORD/SPAN numbers) are omitted.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202324-or-earlier",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "AFST 351",
+        "AFST 370",
+        "AMNE 251",
+        "AMNE 260",
+        "AMNE 261",
+        "AMNE 341",
+        "AMNE 345",
+        "AMNE 346",
+        "AMNE 347",
+        "AMNE 348",
+        "AMNE 392",
+        "AMNE 440",
+        "AMNE 441",
+        "ARBC 420",
+        "ARTS 001",
+        "ASIA 212",
+        "ASIA 213",
+        "ASIA 254",
+        "ASIA 308",
+        "ASIA 324",
+        "ASIA 326",
+        "ASIA 334",
+        "ASIA 336",
+        "ASIA 341",
+        "ASIA 342",
+        "ASIA 347",
+        "ASIA 348",
+        "ASIA 349",
+        "ASIA 350",
+        "ASIA 351",
+        "ASIA 352",
+        "ASIA 357",
+        "ASIA 358",
+        "ASIA 359",
+        "ASIA 360",
+        "ASIA 361",
+        "ASIA 363",
+        "ASIA 364",
+        "ASIA 368",
+        "ASIA 380",
+        "ASIA 392",
+        "ASIA 395",
+        "ASIA 398",
+        "ASIA 412",
+        "ASIA 413",
+        "ASIA 431",
+        "ASIA 441",
+        "ASIA 444",
+        "ASIA 447",
+        "ASIA 451",
+        "ASIA 452",
+        "ASIA 453",
+        "ASIA 454",
+        "ASIA 455",
+        "ASIA 457",
+        "ASIA 460",
+        "ASIA 461",
+        "ASIA 464",
+        "ASTU 100",
+        "CENS 202",
+        "CENS 303",
+        "CENS 304",
+        "CENS 307",
+        "CHIN 451",
+        "CHIN 453",
+        "CHIN 455",
+        "CHIN 457",
+        "CHIN 461",
+        "CHIN 463",
+        "CHIN 464",
+        "CHIN 465",
+        "CHIN 466",
+        "CHIN 467",
+        "CHIN 468",
+        "CHIN 470",
+        "CHIN 471",
+        "CHIN 473",
+        "CHIN 474",
+        "CHIN 481",
+        "CHIN 483",
+        "CHIN 484",
+        "CHIN 485",
+        "CHIN 486",
+        "CHIN 489",
+        "CHIN 491",
+        "CHIN 493",
+        "CHIN 494",
+        "ENGL 110",
+        "ENGL 111",
+        "ENGL 120",
+        "ENGL 121",
+        "ENGL 200",
+        "ENGL 220",
+        "ENGL 221",
+        "ENGL 222",
+        "ENGL 223",
+        "ENGL 224",
+        "ENGL 225",
+        "ENGL 226",
+        "ENGL 227",
+        "ENGL 228",
+        "ENGL 230",
+        "ENGL 231",
+        "ENGL 232",
+        "ENGL 241",
+        "ENGL 242",
+        "ENGL 243",
+        "ENGL 244",
+        "ENGL 245",
+        "ENGL 246",
+        "ENGL 247",
+        "ENGL 248",
+        "ENGL 249",
+        "ENGL 332",
+        "ENGL 333",
+        "ENGL 334",
+        "ENGL 335",
+        "ENGL 336",
+        "ENGL 337",
+        "ENGL 338",
+        "ENGL 339",
+        "ENGL 342",
+        "ENGL 343",
+        "ENGL 344",
+        "ENGL 346",
+        "ENGL 347",
+        "ENGL 348",
+        "ENGL 349",
+        "ENGL 350",
+        "ENGL 351",
+        "ENGL 353",
+        "ENGL 355",
+        "ENGL 360",
+        "ENGL 361",
+        "ENGL 362",
+        "ENGL 364",
+        "ENGL 365",
+        "ENGL 366",
+        "ENGL 368",
+        "ENGL 369",
+        "ENGL 370",
+        "ENGL 371",
+        "ENGL 372",
+        "ENGL 373",
+        "ENGL 374",
+        "ENGL 375",
+        "ENGL 376",
+        "ENGL 377",
+        "ENGL 378",
+        "ENGL 379",
+        "ENGL 380",
+        "ENGL 381",
+        "ENGL 382",
+        "ENGL 384",
+        "ENGL 386",
+        "ENGL 387",
+        "ENGL 388",
+        "ENGL 390",
+        "ENGL 392",
+        "ENGL 393",
+        "ENGL 394",
+        "ENGL 395",
+        "ENGL 396",
+        "ENGL 397",
+        "FNIS 454",
+        "FREN 311",
+        "FREN 330",
+        "FREN 331",
+        "FREN 341",
+        "FREN 407",
+        "FREN 408",
+        "FREN 409",
+        "FREN 410",
+        "FREN 413",
+        "FREN 414",
+        "FREN 415",
+        "FREN 416",
+        "FREN 417",
+        "FREN 418",
+        "FREN 419",
+        "FREN 420",
+        "FREN 428",
+        "FREN 430",
+        "FREN 431",
+        "FREN 440",
+        "FREN 441",
+        "FREN 442",
+        "FREN 443",
+        "FREN 450",
+        "FREN 480",
+        "FREN 484",
+        "FREN 485",
+        "FREN 495",
+        "FREN 496",
+        "FREN 498",
+        "GRSJ 224",
+        "GERN 344",
+        "GERN 347",
+        "GMST 229",
+        "GMST 325",
+        "GMST 335",
+        "GMST 341",
+        "GMST 342",
+        "GMST 343",
+        "GMST 346",
+        "GMST 347",
+        "GMST 433",
+        "GMST 440",
+        "GMST 445",
+        "GMST 448",
+        "GREK 351",
+        "GREK 352",
+        "GREK 401",
+        "GREK 402",
+        "HEBR 479",
+        "HINU 400",
+        "JAPN 342",
+        "JAPN 422",
+        "JAPN 423",
+        "JAPN 452",
+        "JAPN 453",
+        "KORN 410",
+        "LATN 301",
+        "LATN 350",
+        "MDVL 301",
+        "MDVL 302",
+        "NORD 333",
+        "NORD 334",
+        "NORD 336",
+        "NORD 338",
+        "NORD 339",
+        "NORD 411",
+        "NORD 412",
+        "NORD 413",
+        "NORD 414",
+        "NORD 415",
+        "PERS 451",
+        "PHIL 375",
+        "POLS 345",
+        "PUNJ 300",
+        "PUNJ 401",
+        "PUNJ 402",
+        "PUNJ 403",
+        "PUNJ 404",
+        "RMST 201",
+        "RMST 202",
+        "RMST 280",
+        "RMST 301",
+        "RMST 302",
+        "RMST 303",
+        "RMST 304",
+        "RMST 321",
+        "RMST 322",
+        "RMST 324",
+        "RMST 340",
+        "RMST 341",
+        "RMST 342",
+        "RMST 343",
+        "RMST 345",
+        "RMST 355",
+        "RMST 361",
+        "RMST 372",
+        "RMST 373",
+        "RMST 375",
+        "RMST 402",
+        "RMST 420",
+        "RMST 453",
+        "RMST 454",
+        "RMST 455",
+        "RMST 456",
+        "RMST 457",
+        "RMST 458",
+        "RMST 459",
+        "RMST 460",
+        "SANS 300",
+        "SANS 450",
+        "SOAL 440",
+        "SPAN 221",
+        "SPAN 222",
+        "SPAN 410",
+        "SPAN 420",
+        "SPAN 430",
+        "SPAN 470",
+        "SPAN 490",
+        "THTR 210",
+        "THTR 211",
+        "THTR 245",
+        "THTR 310",
+        "THTR 311",
+        "THTR 410"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Language Requirement",
+    "credits_required": 0,
+    "notes": "2023/24-or-earlier cohort ONLY (removed for 2024/25+). No credits are assigned - it is a proficiency level, satisfiable three ways: (a) a Grade-12-equivalent secondary-school language course other than English, (b) passing a proficiency test (no course credit awarded), or (c) reaching or exceeding the listed level in a language taught at UBC. Only route (c) is machine-checkable; the courses below are the listed levels (and any higher course in the same language also satisfies it). Codes named in the Calendar but absent from the current valid course list (ARBC 202/400, CHIN 107/108/117/118, FREN 112, GREK 200, HEBR 202/405, ITAL 203, JAPN 103/151, LATN 200/202, POLS 300, PORT 210, RUSS 200, SANS 200/202, SPAN 112, UKRN 225) are omitted. FNEL levels are language-family specific (202 Salish, 212 Algonquian, 222 Dene, 232 Tsimshianic, 242 Wakashan, 252 Haida, 262 Ktunaxa, 292 other Indigenous languages).",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/degree-requirements-students-who-enter-program-202324-or-earlier",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "ARBC 302",
+        "ARBM 202",
+        "ASLA 400",
+        "CNTO 301",
+        "CNTO 311",
+        "CHIN 233",
+        "CHIN 234",
+        "CHIN 243",
+        "CHIN 244",
+        "DANI 210",
+        "FNEL 202",
+        "FNEL 212",
+        "FNEL 222",
+        "FNEL 232",
+        "FNEL 242",
+        "FNEL 252",
+        "FNEL 262",
+        "FNEL 292",
+        "FREN 202",
+        "GERN 202",
+        "GREK 202",
+        "HEBR 302",
+        "HINU 200",
+        "HINU 202",
+        "INDO 200",
+        "INDO 202",
+        "ITAL 202",
+        "ITAL 206",
+        "JAPN 201",
+        "JAPN 260",
+        "KORN 200",
+        "KORN 202",
+        "LATN 301",
+        "PERS 104",
+        "PERS 201",
+        "PORT 202",
+        "PUNJ 200",
+        "PUNJ 202",
+        "RUSS 202",
+        "SANS 400",
+        "SANS 401",
+        "SPAN 202",
+        "SPAN 203",
+        "SWED 210"
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "BFA": {
+  "total_credits": 120,
+  "categories": [
+   {
+    "name": "Writing and Research Requirement - Writing Component",
+    "credits_required": 3,
+    "notes": "3 credits of instruction on research and writing in the disciplines. Must be satisfied prior to attaining Year 3 standing (before reaching 54 credits); direct-entry students should attempt it in their first 30 credits. ARTS 001 is Arts One (18-credit program that satisfies the Writing Component). Credit/D/Fail grading may not be applied to this requirement. Approved transfer writing courses may be appealed to Arts Advising.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-fine-arts/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "ARTS 001",
+        "ASTU 100",
+        "ASTU 101",
+        "CAP 100",
+        "ENGL 100",
+        "WRDS 150",
+        "WRDS 151",
+        "WRDS 350"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Writing and Research Requirement - Research Component",
+    "credits_required": 3,
+    "notes": "A research-intensive experience, normally one 400-level course specified for the student's major; credit value varies by course (typically 3). Listed courses are the B.F.A. research-intensive list by specialization: Creative Writing (all 400-level CRWR except CRWR 430), Film Production, Theatre Acting, Theatre Design and Production, Visual Arts. All research-intensive courses approved for the Bachelor of Arts are ALSO accepted toward the B.F.A. Research Component (that B.A. list is not enumerated here). The calendar also lists FIPR 335, which is not a valid course code in the current catalogue. These courses often have prerequisites and are frequently restricted to Majors. Credit/D/Fail grading may not be applied to this requirement.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-fine-arts/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "CRWR 401",
+        "CRWR 402",
+        "CRWR 403",
+        "CRWR 404",
+        "CRWR 405",
+        "CRWR 406",
+        "CRWR 407",
+        "CRWR 408",
+        "CRWR 409",
+        "CRWR 410",
+        "CRWR 411",
+        "CRWR 415",
+        "CRWR 416",
+        "CRWR 417",
+        "CRWR 419",
+        "CRWR 420",
+        "CRWR 423",
+        "CRWR 425",
+        "CRWR 431",
+        "CRWR 440",
+        "CRWR 451",
+        "CRWR 452",
+        "CRWR 453",
+        "CRWR 454",
+        "CRWR 455",
+        "CRWR 456",
+        "CRWR 457",
+        "CRWR 458",
+        "CRWR 459",
+        "CRWR 460",
+        "CRWR 461",
+        "CRWR 466",
+        "CRWR 470",
+        "CRWR 471",
+        "CRWR 473",
+        "CRWR 474",
+        "CRWR 475",
+        "CRWR 476",
+        "CRWR 477",
+        "CRWR 479",
+        "CRWR 480",
+        "CRWR 490",
+        "FIPR 333",
+        "FIPR 337",
+        "FIPR 338",
+        "FIPR 339",
+        "FIPR 399",
+        "FIPR 433",
+        "FIPR 434",
+        "FIPR 435",
+        "FIPR 436",
+        "FIPR 437",
+        "FIPR 469",
+        "THTR 391",
+        "THTR 417",
+        "THTR 439",
+        "THTR 491",
+        "THTR 399",
+        "THTR 405",
+        "THTR 406",
+        "THTR 407",
+        "THTR 408",
+        "THTR 448",
+        "THTR 454",
+        "THTR 456",
+        "THTR 499",
+        "VISA 401",
+        "VISA 410",
+        "VISA 411",
+        "VISA 430",
+        "VISA 431",
+        "VISA 440",
+        "VISA 441",
+        "VISA 450",
+        "VISA 451",
+        "VISA 470",
+        "VISA 471",
+        "VISA 479",
+        "VISA 480",
+        "VISA 481"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Outside Requirement",
+    "credits_required": 30,
+    "notes": "Minimum 30 credits outside the student's B.F.A. specialization, for students completing a single Major or Honours. Not machine-checkable without knowing the chosen specialization: any course normally accepted or designated as applicable toward that specialization (including cross-listed courses) counts as INSIDE the specialization, even when taken as elective credit. May include credits used for a Minor. Students completing two Majors, two Honours, or a Major/Honours combination are exempt (breadth is deemed satisfied by the combination), except as needed to satisfy the Writing Component. For Honours specializations exceeding 90 credits the Outside requirement is reduced to fit 120 total credits. Credit/D/Fail grading may not be applied to this requirement.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-fine-arts/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Upper-level Requirement",
+    "credits_required": 48,
+    "notes": "Minimum credits in courses numbered 300 and above. 48 shown here is the single-Major minimum. Varies by degree program option: Major 48; Major+Minor 48; Honours 54; Honours+Minor 54; Double Major 60; Honours+Major 66; Double Honours 84. Adding a Minor does not increase the requirement. Double-counting between specializations does not reduce this minimum. Credit/D/Fail grading may not be applied to this requirement.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-fine-arts/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "level_credit",
+       "min_level": 300
+      }
+     }
+    ]
+   },
+   {
+    "name": "Arts Credit Minimum Requirement",
+    "credits_required": 72,
+    "notes": "At least 72 of the 120 credits must be Arts credit, i.e. credit in subject areas identified in the Calendar as offered by the Faculty of Arts (including transfer credit in those subjects). Equivalently, a maximum of 48 credits from outside the Faculty of Arts may be applied. Exception: the 72-credit minimum is relaxed when completion of the student's specialization(s) requires more than 48 credits outside of Arts. MUSC exceptions: all music history, theory, technology, ethnomusicology, and composition courses count, but a maximum of 12 credits from ensemble courses in musical performance (roughly MUSC 150-165) may be applied, and credit from individual lessons, aural skills, conducting, and repertoire courses is not applicable to the B.F.A. at all. Arts Co-op Search Term and Work Term course credit is not applicable.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-fine-arts/credit-requirements-and-regulations",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Arts",
+       "caps": [
+        {
+         "credits": 12,
+         "subjects": [
+          "MUSC"
+         ],
+         "note": "Max 12 credits from MUSC ensemble courses in musical performance (approx. MUSC 150-165). MUSC individual lessons, aural skills, conducting, and repertoire courses are not B.F.A.-eligible at all; music history, theory, technology, ethnomusicology, and composition courses are fully acceptable."
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "BSc": {
+  "total_credits": 120,
+  "categories": [
+   {
+    "name": "Communication Requirement: SCIE 113 (First-Year Seminar in Science)",
+    "credits_required": 3,
+    "notes": "All B.Sc. students must receive credit for SCIE 113. May not be earned via Credit/D/Fail. Exemptions: students in Science One (SCIE 001); students admitted after a prior undergraduate degree; transfer students with SCIE 113 transfer credit or with credit for LFS 150 or FRST 150. Direct-entry students must take it in their first Winter session.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/communication-requirements",
+    "options": [
+     {
+      "code": "SCIE 113"
+     },
+     {
+      "code": "SCIE 001"
+     },
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "SCIE 113",
+        "SCIE 001"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Additional Communication Requirement",
+    "credits_required": 3,
+    "notes": "Three credits of approved communications courses, in addition to SCIE 113. May not be earned via Credit/D/Fail. Some specializations mandate a specific course from the list: SCIE 300 for Combined Major in Science, CHEM 300 for Chemistry specializations, ENVR 200 for Environmental Sciences specializations. Transfer-student equivalents also accepted: WRCM 1st-year transfer credit, ARTS 001 (Arts One), ASTU 100 (CAP seminar, Arts students only), ENGL 100 (Arts students only). Arts credits used here may NOT also count toward the 12-credit Arts Requirement. Students with more than 108 attempted credits who have not completed the Communication Requirement are required to discontinue.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/communication-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "WRDS 150",
+        "ENGL 110",
+        "ENGL 111",
+        "SCIE 300",
+        "CHEM 300",
+        "ENVR 200",
+        "ARTS 001",
+        "ASTU 100",
+        "ENGL 100"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Laboratory Science Requirement",
+    "credits_required": 3,
+    "notes": "One course from the approved lab list (lower-level requirement). Advance/transfer credit for an equivalent may satisfy it. SCIE 001 (Science One) satisfies it.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/lower-level-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "ASTR 101",
+        "ASTR 102",
+        "BIOL 140",
+        "CHEM 111",
+        "CHEM 115",
+        "CHEM 121",
+        "CHEM 123",
+        "CHEM 135",
+        "EOSC 111",
+        "PHYS 101",
+        "PHYS 107",
+        "PHYS 109",
+        "PHYS 119",
+        "PHYS 159",
+        "SCIE 001"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Foundational Requirement (Biology / Chemistry / Physics)",
+    "credits_required": 0,
+    "notes": "Conditional on secondary-school background, so not checkable from the transcript alone: students admitted with credit for neither Biology 11 nor Biology 12 must complete 3 credits of 100-level BIOL (usually BIOL 111); students without Chemistry 12 must complete 3 credits of 100-level CHEM (usually CHEM 100, 110, or 111); students without Physics 12 must complete 3 credits of 100-level PHYS (usually PHYS 100). Each conditional branch is 3 credits when triggered.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/lower-level-requirements",
+    "options": [
+     {
+      "subject_pattern": "BIOL 1"
+     },
+     {
+      "subject_pattern": "CHEM 1"
+     },
+     {
+      "subject_pattern": "PHYS 1"
+     }
+    ]
+   },
+   {
+    "name": "Science Requirement",
+    "credits_required": 72,
+    "notes": "At least 72 credits must be in science courses, for every B.Sc. option (major, combined major, double major, General Science, honours, combined honours). Science credit = all Faculty of Science courses, plus: only GEOS (formerly GEOB) Geography courses; PSYC 348 and 448 plus all PSYC courses whose last two digits are 60-89; only FNH 350, 351, 450, 451 in Land and Food Systems; in Medicine, all BIOC, CAPS and PCTH courses and MEDG 410-421. ASIC 200/220 count as Arts, not Science, for B.Sc. students. Courses in faculties other than Science or Arts never count here. Co-op placement courses numbered 298/299/398/399/498/499 do not fulfill academic requirements. FNH 450 and MEDG 411-418 are listed in the calendar prose but are not in the current course catalogue.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-and-arts-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Science",
+       "exclude_subjects": [
+        "ASIC"
+       ],
+       "include_subjects": [
+        "GEOS",
+        "GEOB",
+        "BIOC",
+        "CAPS",
+        "PCTH"
+       ],
+       "include_courses": [
+        "PSYC 277",
+        "PSYC 278",
+        "PSYC 348",
+        "PSYC 361",
+        "PSYC 363",
+        "PSYC 365",
+        "PSYC 367",
+        "PSYC 368",
+        "PSYC 370",
+        "PSYC 371",
+        "PSYC 388",
+        "PSYC 448",
+        "PSYC 460",
+        "PSYC 461",
+        "PSYC 462",
+        "PSYC 472",
+        "PSYC 488",
+        "FNH 350",
+        "FNH 351",
+        "FNH 450",
+        "FNH 451",
+        "MEDG 410",
+        "MEDG 411",
+        "MEDG 412",
+        "MEDG 413",
+        "MEDG 414",
+        "MEDG 415",
+        "MEDG 416",
+        "MEDG 417",
+        "MEDG 418",
+        "MEDG 419",
+        "MEDG 420",
+        "MEDG 421"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Arts Requirement",
+    "credits_required": 12,
+    "notes": "At least 12 credits in courses offered by the Faculty of Arts, for every B.Sc. option. Excludes GEOS (formerly GEOB) courses and PSYC courses that carry science credit (PSYC 348, 448, and all PSYC courses with last two digits 60-89). ASIC 200 and ASIC 220, jointly offered by Science and Arts, count as Arts credit for Science students. All MUSC courses in music history, music theory, ethnomusicology or music composition count; at most 8 credits from MUSC ensemble/musical-performance courses may count. Arts credits used to satisfy the Communication Requirement may NOT be double-counted here.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-and-arts-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Arts",
+       "exclude_subjects": [
+        "GEOS",
+        "GEOB"
+       ],
+       "exclude_courses": [
+        "PSYC 277",
+        "PSYC 278",
+        "PSYC 348",
+        "PSYC 361",
+        "PSYC 363",
+        "PSYC 365",
+        "PSYC 367",
+        "PSYC 368",
+        "PSYC 370",
+        "PSYC 371",
+        "PSYC 388",
+        "PSYC 448",
+        "PSYC 460",
+        "PSYC 461",
+        "PSYC 462",
+        "PSYC 472",
+        "PSYC 488"
+       ],
+       "include_courses": [
+        "ASIC 200",
+        "ASIC 220"
+       ],
+       "caps": [
+        {
+         "credits": 8,
+         "subjects": [
+          "MUSC"
+         ],
+         "note": "Maximum 8 credits from MUSC ensemble courses in musical performance; MUSC courses in music history, music theory, ethnomusicology, or music composition are not capped."
+        }
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Science Breadth: Mathematics",
+    "credits_required": 3,
+    "notes": "One of 7 Science Breadth categories. Major or honours specializations need at least 3 credits from any 6 of the 7 categories; combined major or combined honours need any 5 of the 7. Courses may be at any level. Science One (SCIE 001) is credited with satisfying Mathematics, Chemistry, Physics and Life Science. Failing to satisfy all but one of the required categories before 108 attempted credits forces withdrawal from Science. Excludes MATH 302 (counts as Statistics instead). Credits from faculties other than Science or Arts cannot count toward Science Breadth.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-breadth-requirement",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Science",
+       "include_subjects": [
+        "MATH"
+       ],
+       "exclude_courses": [
+        "MATH 302"
+       ]
+      }
+     },
+     {
+      "code": "SCIE 001"
+     }
+    ]
+   },
+   {
+    "name": "Science Breadth: Chemistry",
+    "credits_required": 3,
+    "notes": "One of 7 Science Breadth categories (any 6 of 7 for major/honours; any 5 of 7 for combined major/combined honours). All CHEM courses except CHEM 100 and CHEM 300. SCIE 001 (Science One) satisfies this category.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-breadth-requirement",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Science",
+       "include_subjects": [
+        "CHEM"
+       ],
+       "exclude_courses": [
+        "CHEM 100",
+        "CHEM 300"
+       ]
+      }
+     },
+     {
+      "code": "SCIE 001"
+     }
+    ]
+   },
+   {
+    "name": "Science Breadth: Physics",
+    "credits_required": 3,
+    "notes": "One of 7 Science Breadth categories (any 6 of 7 for major/honours; any 5 of 7 for combined major/combined honours). All PHYS courses except PHYS 100. SCIE 001 (Science One) satisfies this category.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-breadth-requirement",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Science",
+       "include_subjects": [
+        "PHYS"
+       ],
+       "exclude_courses": [
+        "PHYS 100"
+       ]
+      }
+     },
+     {
+      "code": "SCIE 001"
+     }
+    ]
+   },
+   {
+    "name": "Science Breadth: Life Science",
+    "credits_required": 3,
+    "notes": "One of 7 Science Breadth categories (any 6 of 7 for major/honours; any 5 of 7 for combined major/combined honours). All BIOL courses except BIOL 140 and BIOL 300; all BIOC and MICB courses; PSYC courses numbered 60-89 in the last two digits; GEOS (formerly GEOB) 207. SCIE 001 (Science One) satisfies this category.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-breadth-requirement",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Science",
+       "include_subjects": [
+        "BIOL",
+        "BIOC",
+        "MICB"
+       ],
+       "exclude_courses": [
+        "BIOL 140",
+        "BIOL 300"
+       ],
+       "include_courses": [
+        "GEOS 207",
+        "GEOB 207",
+        "PSYC 277",
+        "PSYC 278",
+        "PSYC 361",
+        "PSYC 363",
+        "PSYC 365",
+        "PSYC 367",
+        "PSYC 368",
+        "PSYC 370",
+        "PSYC 371",
+        "PSYC 388",
+        "PSYC 460",
+        "PSYC 461",
+        "PSYC 462",
+        "PSYC 472",
+        "PSYC 488"
+       ]
+      }
+     },
+     {
+      "code": "SCIE 001"
+     }
+    ]
+   },
+   {
+    "name": "Science Breadth: Statistics",
+    "credits_required": 3,
+    "notes": "One of 7 Science Breadth categories (any 6 of 7 for major/honours; any 5 of 7 for combined major/combined honours). BIOL 300, DSCI 100, MATH 302, and all STAT courses. Not covered by Science One.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-breadth-requirement",
+    "options": [
+     {
+      "subject_pattern": "STAT"
+     },
+     {
+      "code": "BIOL 300"
+     },
+     {
+      "code": "DSCI 100"
+     },
+     {
+      "code": "MATH 302"
+     }
+    ]
+   },
+   {
+    "name": "Science Breadth: Computer Science",
+    "credits_required": 3,
+    "notes": "One of 7 Science Breadth categories (any 6 of 7 for major/honours; any 5 of 7 for combined major/combined honours). All CPSC courses and all AI courses. Not covered by Science One.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-breadth-requirement",
+    "options": [
+     {
+      "subject_pattern": "CPSC"
+     },
+     {
+      "subject_pattern": "AI"
+     }
+    ]
+   },
+   {
+    "name": "Science Breadth: Earth & Planetary Science",
+    "credits_required": 3,
+    "notes": "One of 7 Science Breadth categories (any 6 of 7 for major/honours; any 5 of 7 for combined major/combined honours). All ASTR, ATSC, ENVR, EOSC, and GEOS (formerly GEOB) courses except EOSC 111 and GEOS/GEOB 207. Not covered by Science One.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/science-breadth-requirement",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": []
+      }
+     },
+     {
+      "subject_pattern": "ASTR"
+     },
+     {
+      "subject_pattern": "ATSC"
+     },
+     {
+      "subject_pattern": "ENVR"
+     },
+     {
+      "subject_pattern": "EOSC"
+     },
+     {
+      "subject_pattern": "GEOS"
+     },
+     {
+      "subject_pattern": "GEOB"
+     }
+    ]
+   },
+   {
+    "name": "Upper-level Requirement (300+ credits)",
+    "credits_required": 48,
+    "notes": "48 credits numbered 300 or above for a major, combined major, General Science, honours, or combined honours; 60 credits for a double major or an honours specialization requiring 132 credits. At most 6 credits numbered 500 or above may count, and only with prior written permission (instructor, specialization advisor, Dean of Science, and G+PS) plus the stated GPA/progress thresholds. Only courses numbered 100-499 are normally eligible for credit. Upper-level transfer credit is capped at 12 credits and needs prior written permission; a B.Sc. must include at least 30 upper-level UBC Vancouver science credits required by the specialization. Double-counting between two specializations is capped at 6 upper-level credits.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/upper-level-requirement",
+    "options": [
+     {
+      "rule": {
+       "kind": "level_credit",
+       "min_level": 300
+      }
+     }
+    ]
+   },
+   {
+    "name": "Upper-level Science Requirement (300+ science credits)",
+    "credits_required": 30,
+    "notes": "Of the 48 upper-level credits, 30 must be in science courses numbered 300+ for a B.Sc. major. Higher for other options: 42 of 48 for major+minor in Science, honours, or combined honours; 54 of 60 for double major or honours+minor in Science. Requires the intersection of two conditions (science credit AND level >= 300); encoded here as the Science-Requirement qualifying rule with min_level 300 attached. Remaining upper-level credits may be from other faculties subject to the 24-credit non-Science/Arts cap.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/upper-level-requirement",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "faculty": "Faculty of Science",
+       "min_level": 300,
+       "exclude_subjects": [
+        "ASIC"
+       ],
+       "include_subjects": [
+        "GEOS",
+        "GEOB",
+        "BIOC",
+        "CAPS",
+        "PCTH"
+       ],
+       "include_courses": [
+        "PSYC 348",
+        "PSYC 361",
+        "PSYC 363",
+        "PSYC 365",
+        "PSYC 367",
+        "PSYC 368",
+        "PSYC 370",
+        "PSYC 371",
+        "PSYC 388",
+        "PSYC 448",
+        "PSYC 460",
+        "PSYC 461",
+        "PSYC 462",
+        "PSYC 472",
+        "PSYC 488",
+        "FNH 350",
+        "FNH 351",
+        "FNH 450",
+        "FNH 451",
+        "MEDG 410",
+        "MEDG 411",
+        "MEDG 412",
+        "MEDG 413",
+        "MEDG 414",
+        "MEDG 415",
+        "MEDG 416",
+        "MEDG 417",
+        "MEDG 418",
+        "MEDG 419",
+        "MEDG 420",
+        "MEDG 421"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Maximum Credits Outside Science and Arts",
+    "credits_required": 24,
+    "notes": "This is a MAXIMUM, not a minimum: at most 24 of the credits used toward the B.Sc. may be in faculties other than Science or Arts. Those credits may not replace specific courses in a science program, and may not count toward the 72-credit Science Requirement, the 12-credit Arts Requirement, or the Science Breadth Requirement. They may count toward the upper-level credit requirement if numbered 300+. Not expressible as a positive qualifying rule with the available option kinds (it requires negation across two faculties); the planner should compute it as total credits whose subject maps to neither the Faculty of Science nor the Faculty of Arts.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/general-degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Maximum Graduate-Level (500+) Credits",
+    "credits_required": 6,
+    "notes": "This is a MAXIMUM, not a minimum: normally no more than 6 credits numbered 500 or higher may be used to fulfill B.Sc. requirements, and only with prior written permission from the instructor, the specialization advisor, the Dean of Science, and the Faculty of Graduate and Postdoctoral Studies. Eligibility for a first degree requires completing at least 75% of the required upper-level credits for the specialization and a 76% average in completed third- and fourth-year courses.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/upper-level-requirement",
+    "options": [
+     {
+      "rule": {
+       "kind": "level_credit",
+       "min_level": 500
+      }
+     }
+    ]
+   },
+   {
+    "name": "Credits Outside the Specialization",
+    "credits_required": 0,
+    "notes": "The B.Sc. faculty-wide regulations do not state a separate outside-the-specialization credit minimum; the only related faculty-wide rules are the 12-credit Arts Requirement, the Science Breadth Requirement, and the 24-credit cap on non-Science/Arts credit. Any remaining outside-the-specialization allowance depends entirely on the chosen specialization's own course list, so it is not machine-checkable at the faculty level.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-science/bachelor-science/general-degree-requirements",
+    "options": []
+   }
+  ]
+ },
+ "BASc": {
+  "categories": [
+   {
+    "name": "First-Year English / Writing Requirement",
+    "credits_required": 3,
+    "notes": "To qualify for the B.A.Sc. a student must complete WRDS_V 150 (or equivalent). The Chemical and Biological Engineering page names the equivalents as ENGL_V 100, 110, 111 or 112 (ENGL 112 is no longer an active course code, so it is omitted). Students admitted directly from secondary school must take English in first year if eligible; once at UBC students are not normally permitted to satisfy this at another institution. Advancement rule: must pass WRDS 150 or equivalent before continuing into third year (Engineering Physics: also ENPH_V 259).",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "WRDS 150",
+        "ENGL 100",
+        "ENGL 110",
+        "ENGL 111"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Technical Communication Requirement",
+    "credits_required": 3,
+    "notes": "Must complete an approved technical communication course; the specific course is set by each engineering specialization (e.g. APSC 201 in the typical transfer program; CHBE 201 Integrated Technical Communications for Chemical and Biological Engineering). The full approved list is not in the Calendar, so this option list is illustrative rather than exhaustive. Advancement rule: must pass it before continuing into fourth year.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "APSC 201",
+        "CHBE 201"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Complementary Studies (total)",
+    "credits_required": 20,
+    "notes": "Accreditation requirement: all students complete seven elements of complementary studies, including a minimum of 20 credits of complementary studies courses. Some of the 20 credits may be integrated into core courses of some programs. Not machine-checkable at the faculty level: the approved course lists per area of study live on the Applied Science Engineering Academic Services Electives web page, not in the Calendar. Sub-elements are emitted as separate categories below.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Complementary Studies: Engineering Economics and Project Management",
+    "credits_required": 3,
+    "notes": "Minimum 3 credits. Approved course list is maintained by Engineering Academic Services, not in the Calendar, so no machine-checkable option set. Minor in Commerce note: the engineering economics course meets this component.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Complementary Studies: Humanities and Social Sciences Electives",
+    "credits_required": 6,
+    "notes": "Minimum 6 credits. Approved list is external (Engineering Academic Services Electives page), so not machine-checkable. Med-school caveat: students need 6 credits of ENGL_V to apply to medical school and may need an additional ENGL_V course as one of these electives; Biomedical Engineering students applying to medicine should take a first-year English course as a complementary studies elective, in addition to the required WRDS 150. Minor in Commerce note: ECON_V 310 (or 101) and ECON_V 311 (or 102) meet this 6-credit component.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Complementary Studies: Oral and Written Communication",
+    "credits_required": 6,
+    "notes": "Minimum 6 credits. Normally satisfied by WRDS 150 (or equivalent first-year English) plus the program's approved technical communication course; the Calendar publishes no full approved list, so it is left unenumerated to avoid double-counting the two communication categories above.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Complementary Studies: Professionalism, Ethics, Equity and Law",
+    "credits_required": 2,
+    "notes": "Minimum 2 credits. Approved courses are program-specific and listed by Engineering Academic Services, not the Calendar; e.g. Civil Engineering notes one of its core courses counts toward the professional development requirement within Complementary Studies.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Complementary Studies: Impact of Technology on Society + Sustainable Development and Environmental Stewardship",
+    "credits_required": 3,
+    "notes": "Two of the seven elements, with a minimum of 3 credits for the two combined. Often satisfied by program core courses (a Civil Engineering core course satisfies the impact-of-technology element; as of 2025W BMEG students must take BMEG_V 402 to satisfy this combined requirement). No faculty-wide course list in the Calendar.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Complementary Studies: Health and Safety",
+    "credits_required": 0,
+    "notes": "One of the seven complementary studies elements, with no separate credit minimum: content is integrated into the core courses of each program, so it is not separately checkable.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Program of Study Completion (total degree credits)",
+    "credits_required": 0,
+    "notes": "The Calendar states no faculty-wide total credit number for the B.A.Sc.: the degree is granted after obtaining credit for all courses listed in the program of study for the given engineering program, normally four Winter Sessions at full load (five for Engineering Physics, nine academic terms for Biomedical Engineering). Historical average load is 33 credits per session; the degree should normally be completed within 7 years of admission. Promotion thresholds (cumulative credits, not a degree total): 27 credits to 2nd year, 63 to 3rd year (47 + ENPH_V 259 for Engineering Physics), 99 to 4th year (90 + ENPH_V 253 for ENPH), 107 to 5th year for ENPH. Total is program-specific, so not machine-checkable faculty-wide. Note also: no faculty-wide Arts-credit, Science-credit, breadth/Ways-of-Knowing, upper-level-credit, or outside-the-specialization rule exists for the BASc in the Calendar.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-applied-science/bachelor-applied-science/academic-regulations",
+    "options": []
+   }
+  ]
+ },
+ "BCom": {
+  "total_credits": 121,
+  "categories": [
+   {
+    "name": "Business Communications Requirement",
+    "credits_required": 6,
+    "notes": "To qualify for the B.Com. students must obtain credit for COMM 196 and COMM 396 with a minimum grade of 60% in each (the normal Commerce passing grade of 50% is not sufficient for these two). Both courses are required core, not a choice.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "COMM 196",
+        "COMM 396"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Electives (total)",
+    "credits_required": 42,
+    "notes": "Total elective credits vary by specialization: 39 credits for Global Supply Chain and Logistics Management, 42 credits for Accounting / Business Technology Management / Entrepreneurship / Finance / General Business Management / Marketing / Organizational Behaviour and Human Resources / Real Estate, 45 credits for Operations & Logistics. 42 is the most common value and is used here. Electives may be Commerce or non-Commerce subject to the sub-requirements below. Courses on the 'Courses Not Eligible for Credit for the Bachelor of Commerce Degree' list earn no degree credit.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Non-Commerce Electives",
+    "credits_required": 27,
+    "notes": "At least 27 of the elective credits must be non-Commerce (any subject other than COMM). This minimum is 27 for every specialization regardless of whether the total elective block is 39, 42, or 45 credits. Encoded as any subject except COMM; the rule carries no faculty because 'non-Commerce' is defined by subject, not by faculty. Excluded courses are those on the B.Com. not-eligible-for-credit list (Okanagan-campus codes EAP_O 103/104, MATH_O 125, STAT_O 121, STAT_O 203 and the discontinued KIN 371 / PSYC 366 from the calendar list are omitted because they are not valid Vancouver course codes).",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "exclude_subjects": [
+        "COMM"
+       ],
+       "exclude_courses": [
+        "BIOL 300",
+        "ECON 226",
+        "ECON 325",
+        "ECON 327",
+        "ECON 466",
+        "ENGL 301",
+        "EPSE 482",
+        "EPSE 483",
+        "FRST 231",
+        "GEOG 374",
+        "MATH 190",
+        "MATH 230",
+        "MATH 335",
+        "POLI 380",
+        "PSYC 218",
+        "PSYC 278",
+        "SOCI 328",
+        "STAT 203",
+        "STAT 251"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Non-Commerce Upper-Level Electives",
+    "credits_required": 12,
+    "notes": "Of the 27 required non-Commerce elective credits, at least 12 must be at the 300- or 400-level. Same 12-credit minimum for all specializations. Encoded as one rule combining the non-Commerce subject restriction with min_level 300 (both conditions must hold for a course to qualify).",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "faculty_credit",
+       "min_level": 300,
+       "exclude_subjects": [
+        "COMM"
+       ],
+       "exclude_courses": [
+        "BIOL 300",
+        "ECON 325",
+        "ECON 327",
+        "ECON 466",
+        "ENGL 301",
+        "EPSE 482",
+        "EPSE 483",
+        "GEOG 374",
+        "MATH 335",
+        "POLI 380",
+        "PSYC 366",
+        "SOCI 328"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Upper-Level Electives (Commerce or Non-Commerce)",
+    "credits_required": 15,
+    "notes": "At least 15 elective credits, whether Commerce or non-Commerce, must be at the 300-level or higher. Varies by specialization: 12 credits for Global Supply Chain and Logistics Management, 15 for Accounting / Business Technology Management / Entrepreneurship / Finance / General Business Management / Marketing / Organizational Behaviour and Human Resources / Real Estate, 18 for Operations & Logistics. 15 is used here as the most common value. Overlaps with, and is partly satisfied by, the 12 non-Commerce upper-level credits.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "level_credit",
+       "min_level": 300
+      }
+     }
+    ]
+   },
+   {
+    "name": "Humanities Requirement",
+    "credits_required": 3,
+    "notes": "The non-Commerce electives must include at least 3 credits in the humanities. Language courses are NOT eligible for the humanities requirement, but literature courses ARE. Not machine-checkable from the Calendar: the authoritative list of eligible departments and/or courses lives on the Sauder Faculty website rather than in the Calendar, and the language-vs-literature distinction is not derivable from subject code alone (subjects such as FREN and SPAN carry both language and literature courses). options left empty for that reason.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Science or Social Science Requirement",
+    "credits_required": 3,
+    "notes": "The non-Commerce electives must include at least 3 credits in science or social science. Not machine-checkable from the Calendar: the eligible departments and/or courses are published on the Sauder Faculty website rather than the Calendar, and 'social science' spans subjects across multiple faculties (Arts and Science both), so no single faculty or subject rule reproduces it faithfully. options left empty for that reason.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Courses Not Eligible for Credit for the B.Com.",
+    "credits_required": 0,
+    "notes": "EXCLUSION LIST, not a requirement: these courses overlap so heavily with required COMM courses that they earn no credit toward the total credits required for the B.Com., though their grades still count in the sessional average. The options list here enumerates the DISQUALIFIED courses (invert before applying). Omitted because they are not valid Vancouver course codes: EAP_O 103, EAP_O 104, MATH_O 125, STAT_O 121, STAT_O 203, KIN 371, PSYC 366. COMM 220/320/321/420/421 are excluded except as requirements of the Undergraduate Program-Master of Management Dual Degree Option. Additional duplicate-credit rules: only one of COMM 337 or CPSC 103; only one of COMM 437, COEC 437, CPSC 304, CPSC 368 (BUCS students must take CPSC 304); only one of COMM 439 or CPSC 317; credit for only one of COMM 295, ECON 301, ECON 304.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "BIOL 300",
+        "COMM 220",
+        "COMM 320",
+        "COMM 321",
+        "COMM 420",
+        "COMM 421",
+        "ECON 226",
+        "ECON 325",
+        "ECON 327",
+        "ECON 466",
+        "ENGL 301",
+        "EPSE 482",
+        "EPSE 483",
+        "FRST 231",
+        "GEOG 374",
+        "MATH 190",
+        "MATH 230",
+        "MATH 335",
+        "POLI 380",
+        "PSYC 218",
+        "PSYC 278",
+        "SOCI 328",
+        "STAT 203",
+        "STAT 251"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Option (Specialization) Requirements",
+    "credits_required": 15,
+    "notes": "Students must select one option (specialization) by the end of Term 1 of Winter Session in third year and complete its specific requirements: 6 credits in third year plus 9 credits in fourth year under the standard 42-credit elective structure. Options are Accounting, Business Technology Management, Entrepreneurship, Finance, General Business Management, Global Supply Chain and Logistics Management, Marketing, Operations and Logistics, Organizational Behaviour and Human Resources, Real Estate, or the Business and Computer Science Combined Major. Not machine-checkable at faculty level: the qualifying course list depends entirely on which option the student declares, so it must be resolved from the per-option records. Some options are competitive and gated on minimum grades in specific first- and second-year courses.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-commerce-and-business-administration/bachelor-commerce/degree-requirements",
+    "options": []
+   }
+  ]
+ },
+ "BKin": {
+  "total_credits": 120,
+  "categories": [
+   {
+    "name": "Writing Requirement",
+    "credits_required": 3,
+    "notes": "All BKin students must complete WRDS 150 (WRDS_V 150), or an approved equivalent arranged in consultation with the Undergraduate Advising Centre. The equivalent is not enumerated in the Calendar, so only WRDS 150 is machine-checkable. WRDS 150 is also listed as a First Year lower-level requirement in all three Options.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/school-kinesiology/bachelor-kinesiology/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "course_list",
+       "courses": [
+        "WRDS 150"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Upper-level Credits",
+    "credits_required": 48,
+    "notes": "Minimum 48 upper-level (300-/400-level) credits overall. Courses taken while studying at another institution on a Senate-approved exchange program satisfy this requirement. Also applies to second-degree students (at least 48 upper-level credits in total, met through a combination of first- and second-degree credits).",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/school-kinesiology/bachelor-kinesiology/degree-requirements",
+    "options": [
+     {
+      "rule": {
+       "kind": "level_credit",
+       "min_level": 300
+      }
+     }
+    ]
+   },
+   {
+    "name": "Upper-level Kinesiology Credits",
+    "credits_required": 36,
+    "notes": "Minimum 36 upper-level credits in KIN_V (300-/400-level kinesiology courses). Restated in each Option page: 'Students in this Option must take a minimum of 36 credits in 300- or 400-level kinesiology courses.' Within these 36, 21 credits must come from the Option-specific lists (Neuromechanical and Physiological Sciences, Social and Behavioural Sciences, or Multi-disciplinary Science) — that portion is specialization-dependent and encoded separately.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/school-kinesiology/bachelor-kinesiology/degree-requirements",
+    "options": [
+     {
+      "subject_pattern": "KIN 3"
+     },
+     {
+      "subject_pattern": "KIN 4"
+     }
+    ]
+   },
+   {
+    "name": "Lower-level Kinesiology Core",
+    "credits_required": 36,
+    "notes": "Common to all three BKin Options. 100-level Kinesiology Core: KIN 110, 120, 131, 132, 150, 160 (18 credits). 200-level Kinesiology Core: KIN 205, 206, 211, 216, 232, 235, 262 (21 credits). Total with core KIN courses is 39 credits; the Calendar's second-degree text cites '39 lower-level Kinesiology credits', which counts all 13 core KIN courses at 3 credits each. Credits_required set to 36 would understate it — see options list, all 13 courses are required individually (39 credits). Credit exclusion lists apply (e.g. KIN 206 excludes STAT 200/203/241/251, PSYC 218/278/366, COMM 290/291, ECON 325/327, BIOL 300, and others; KIN 150 excludes KIN 231 and PSYC 311; KIN 205 excludes KIN 373 and SOCI 217).",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/school-kinesiology/bachelor-kinesiology/degree-requirements",
+    "options": [
+     {
+      "code": "KIN 110"
+     },
+     {
+      "code": "KIN 120"
+     },
+     {
+      "code": "KIN 131"
+     },
+     {
+      "code": "KIN 132"
+     },
+     {
+      "code": "KIN 150"
+     },
+     {
+      "code": "KIN 160"
+     },
+     {
+      "code": "KIN 205"
+     },
+     {
+      "code": "KIN 206"
+     },
+     {
+      "code": "KIN 211"
+     },
+     {
+      "code": "KIN 216"
+     },
+     {
+      "code": "KIN 232"
+     },
+     {
+      "code": "KIN 235"
+     },
+     {
+      "code": "KIN 262"
+     }
+    ]
+   },
+   {
+    "name": "Residency (Credits Completed While Registered in the Program)",
+    "credits_required": 60,
+    "notes": "Not machine-checkable from course records alone: requires knowing where/when each credit was earned. Students must satisfy at least 50% of the credits for the program (60 of 120) while registered in the BKin program; courses taken at another institution on a Senate-approved exchange program satisfy this requirement. Second-degree students must complete a minimum of 60 NEW credits while registered in the BKin program (more if BKin requirements were not completed in the first degree). Options intentionally empty.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/school-kinesiology/bachelor-kinesiology/degree-requirements",
+    "options": []
+   },
+   {
+    "name": "Upper-level Option (Specialization) Requirement",
+    "credits_required": 21,
+    "notes": "Not machine-checkable faculty-wide: the qualifying course list depends on the declared Option. Neuromechanical and Physiological Sciences: select 7 courses (21 credits) from KIN 311, 313, 316, 318, 320, 335, 411, 413, 415, 418, 419, 420, 422, 424, 432, 434, 435, 438. Social and Behavioural Sciences: select 7 from KIN 342, 344, 345, 351, 353, 355, 360, 363, 368, 442, 444, 450, 453, 457, 459, 460, 463, 464, 465, 468, 469. Multi-disciplinary Science: at least 6 credits from 3 of the 6 themed lists (Neuromechanics; Leadership Education for Pedagogy and Physical Activity; Psychology of Movement; Sociocultural Studies; Systems Biology, Exercise & Health; Indigenous Perspectives in Kinesiology), then 3 credits from one of the remaining 3 lists, for 21 credits total. Options intentionally empty — encode per-Option elsewhere.",
+    "source_url": "https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/school-kinesiology/bachelor-kinesiology/degree-requirements",
+    "options": []
+   }
+  ]
+ }
+}

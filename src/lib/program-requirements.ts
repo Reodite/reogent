@@ -1,10 +1,17 @@
 // Loads UBC degree-program metadata for the Degree Planner's program
-// selector + requirements panel. Reads the static scraper output at
-// /data/degree_programs.json and, when present, an optional structured
-// overlay at /data/program_requirements.json. When the overlay is absent
-// the loader falls back to prose-mode requirements (referenced_courses
-// checklist + raw text).
-
+// selector + requirements panel.
+//
+// Data files (all static scraper/curation output under /data):
+//   program_registry.json    — curated list of selectable programs (one entry
+//                              per credential variant, stable `id` per entry)
+//   degree_programs.json     — raw scraped calendar records (prose fallback)
+//   program_requirements.json— structured requirements overlay, keyed by
+//                              registry id or calendar URL
+//   degree_rules.json        — faculty-wide rules per degree container (BA,
+//                              BSc, …): breadth, arts/science credit, upper-
+//                              level minimums, communication requirements
+//   subject_faculties.json   — subject code → owning faculty display name,
+//                              used to evaluate faculty_credit rules
 export interface DegreeRecord {
   url: string;
   title: string;
@@ -16,12 +23,45 @@ export interface DegreeRecord {
   text: string;
 }
 
+export type RegistryKind =
+  "major" | "honours" | "combined_major" | "minor" | "stream" | "certificate" | "diploma" | "degree";
+
+export interface RegistryEntry {
+  id: string;
+  url: string;
+  title: string;
+  faculty: string;
+  degree: string;
+  kind: RegistryKind;
+  // Calendar URLs whose scraped text holds this program's requirements.
+  source_urls: string[];
+  notes?: string;
+}
+
+// Machine-checkable qualification rule for courses that satisfy a category
+// without being individually enumerated ("12 Arts credits", "48 upper-level
+// credits", the communication-requirement course list).
+export interface CreditRule {
+  kind: "faculty_credit" | "level_credit" | "course_list";
+  faculty?: string;
+  min_level?: number;
+  include_courses?: string[];
+  exclude_courses?: string[];
+  include_subjects?: string[];
+  exclude_subjects?: string[];
+  courses?: string[];
+  // Bound how many credits from the listed subjects may count toward the
+  // category (e.g. max 8 credits of MUSC ensembles as BSc Arts credit).
+  caps?: { credits: number; subjects: string[]; note?: string }[];
+}
+
 export interface CategoryOption {
   // Exact course code (e.g. "ENGL 100") OR subject_pattern (e.g. "ENGL 3"
-  // = any 3xx ENGL course). One of the two must be present.
+  // = any 3xx ENGL course) OR a CreditRule. One of the three must be present.
   code?: string;
   subject_pattern?: string;
   credit_value?: number;
+  rule?: CreditRule;
 }
 
 export interface RequirementCategory {
@@ -29,6 +69,7 @@ export interface RequirementCategory {
   credits_required: number;
   options: CategoryOption[];
   notes?: string;
+  source_url?: string;
 }
 
 export interface StructuredRequirements {
@@ -47,150 +88,55 @@ export interface ProseRequirements {
 
 export type ProgramRequirements = StructuredRequirements | ProseRequirements;
 
-// Faculty → list of programs (degree_overview / major / minor records grouped
-// by `program` string so the user picks "BSc (Computer Science)" rather than
-// raw URLs).
+export interface DegreeRules {
+  total_credits?: number;
+  categories: RequirementCategory[];
+}
+
 export interface ProgramOption {
+  id: string;
   url: string;
   title: string;
-  // Display label for the selector. Equals `title` for the common case;
-  // disambiguated to `${title} (${program})` when two programs in the same
-  // faculty share a title (e.g. Creative Writing under both BA and BFA).
+  // Display label; equals `title` unless two entries in the same faculty
+  // share a title, in which case the degree container is appended.
   label: string;
-  program: string | null;
-  kind: string;
-  level: string;
+  degree: string;
+  kind: RegistryKind;
 }
 
 export interface ProgramIndex {
   faculties: string[];
   majorsByFaculty: Map<string, ProgramOption[]>;
   minorsByFaculty: Map<string, ProgramOption[]>;
+  byId: Map<string, RegistryEntry>;
   byUrl: Map<string, DegreeRecord>;
 }
 
 let indexPromise: Promise<ProgramIndex> | null = null;
 let overlayPromise: Promise<Map<string, StructuredRequirements>> | null = null;
+let rulesPromise: Promise<Map<string, DegreeRules>> | null = null;
+let subjectFacultyPromise: Promise<Record<string, string>> | null = null;
 
-// Policy / page-meta titles that share `kind: 'other'` with the actual
-// majors UBC didn't tag explicitly (UBC's calendar has subject hubs
-// titled just "Anthropology" / "Biology" mixed in with sub-pages titled
-// "Introduction" / "Credit Exclusion Lists" / "Communication Requirements"
-// — same kind, very different meaning). Anything matching this regex is
-// dropped from the majors selector so users see discipline names, not
-// policy boilerplate.
-const POLICY_TITLE_RE =
-  /^(introduction(\s+to\b|$)|credit[/]d[/]fail|credit at\b|credit requirements|credit exclusion|registration$|examinations?$|academic\s+(concession|leave|policies|performance|standing|advancement)|readmission|second.degree\s+studies|science\s+credit\s+exclusion|degree\s+program\s+options|recognition\s+of\s+academic|application$|communication\s+requirements?|science\s+and\s+arts\s+requirements?|science\s+breadth\s+requirement|lower.level\s+requirements?|upper.level\s+requirements?|breadth\s+requirement|outside\s+requirement|study\s+abroad|student\s+exchange|general\s+degree\s+requirements?|graduation|co.?op\b|cooperative\s+education|transfer\s+credit|advising|admission(s)?|regulations?|degree\s+requirements?|credit\s+requirements\s+and\s+regulations)/i;
-
-// Admin / boilerplate pages that carry a "real" kind (major / specialization
-// / degree_overview) or sit mid-title, so POLICY_TITLE_RE's start-anchored
-// pass misses them. These phrases never occur in a genuine discipline name,
-// so an UNANCHORED search is safe here.
-const ADMIN_TITLE_RE =
-  /(adding\s+(a|an)\s+special|specialization[-\s]specific|specialization\s+approval|dual\s+degree\s+option|program\s+of\s+study\s+guide|students?\s+who\s+started|return\s+to\s+studies|regulators\s+consortium|^degree\s+options?$)/i;
-
-// URL-path → faculty mapping. UBC's scraped `record.faculty` is often
-// wrong: the URL slug is the authoritative signal — every program lives
-// under a `/faculty-X/...` or `/school-X/...` prefix in the canonical
-// calendar layout — so we derive the faculty from that when the URL has a
-// recognized prefix, and fall back to the scraped value otherwise.
-const URL_FACULTY_PATTERNS: Array<{ slug: string; faculty: string }> = [
-  { slug: "/faculty-arts/", faculty: "The Faculty of Arts" },
-  { slug: "/faculty-science/", faculty: "The Faculty of Science" },
-  { slug: "/faculty-applied-science/", faculty: "The Faculty of Applied Science" },
-  {
-    slug: "/faculty-commerce-and-business-administration/",
-    faculty: "The Faculty of Commerce and Business Administration",
-  },
-  { slug: "/faculty-education/", faculty: "The Faculty of Education" },
-  {
-    slug: "/faculty-forestry-and-environmental-stewardship/",
-    faculty: "The Faculty of Forestry and Environmental Stewardship",
-  },
-  { slug: "/faculty-land-and-food-systems/", faculty: "The Faculty of Land and Food Systems" },
-  { slug: "/faculty-medicine/", faculty: "The Faculty of Medicine" },
-  { slug: "/faculty-pharmaceutical-sciences/", faculty: "The Faculty of Pharmaceutical Sciences" },
-  { slug: "/school-biomedical-engineering/", faculty: "The School of Biomedical Engineering" },
-  { slug: "/school-music/", faculty: "The School of Music" },
-  {
-    slug: "/school-architecture-and-landscape-architecture/",
-    faculty: "The School of Architecture and Landscape Architecture",
-  },
-  { slug: "/school-population-and-public-health/", faculty: "The School of Population and Public Health" },
-  { slug: "/school-kinesiology/", faculty: "The School of Kinesiology" },
-  { slug: "/vancouver-school-economics/", faculty: "The Vancouver School of Economics" },
-  {
-    slug: "/faculty-graduate-and-postdoctoral-studies/",
-    faculty: "The Faculty of Graduate and Postdoctoral Studies",
-  },
-];
-
-function effectiveFaculty(r: DegreeRecord): string | null {
-  for (const { slug, faculty } of URL_FACULTY_PATTERNS) {
-    if (r.url.includes(slug)) return faculty;
+async function fetchJson<T>(path: string): Promise<T | null> {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
   }
-  return r.faculty;
 }
 
-// An umbrella degree (Bachelor of Arts / Science / Applied Science / …) is a
-// container the student does NOT pick directly — they pick a major *inside*
-// it. We detect one structurally: a `degree_overview` whose URL is the path
-// prefix of pages that are themselves selectable majors. We require either
-// one explicit major child or ≥2 discipline children, so a standalone
-// program whose only sub-pages are a lone option/specialization stays
-// selectable instead of vanishing.
-function buildUmbrellaDetector(records: DegreeRecord[]): (degreeUrl: string) => boolean {
-  const majorChildUrls: string[] = [];
-  const disciplineChildUrls: string[] = [];
-  for (const r of records) {
-    const t = r.title.trim();
-    if (ADMIN_TITLE_RE.test(t)) continue;
-    const u = r.url.replace(/\/+$/, "");
-    if (r.kind === "major") majorChildUrls.push(u);
-    else if (r.kind === "other" && !POLICY_TITLE_RE.test(t)) disciplineChildUrls.push(u);
-  }
-  return (degreeUrl: string): boolean => {
-    const prefix = `${degreeUrl.replace(/\/+$/, "")}/`;
-    if (majorChildUrls.some((u) => u.startsWith(prefix))) return true;
-    let disciplines = 0;
-    for (const u of disciplineChildUrls) {
-      if (u.startsWith(prefix) && ++disciplines >= 2) return true;
-    }
-    return false;
-  };
-}
-
-function isMajorEligible(r: DegreeRecord, isUmbrella: (degreeUrl: string) => boolean): boolean {
-  // Planner targets undergrad / certificate programs. Faculty buckets
-  // pull in stray masters / doctoral entries, so gate by level too.
-  if (r.level !== "undergraduate" && r.level !== "certificate") return false;
-  // Admin / boilerplate pages leak in under "real" kinds — drop them first,
-  // regardless of kind, so the selector lists programs, not procedures.
-  if (ADMIN_TITLE_RE.test(r.title.trim())) return false;
-  if (r.kind === "major" || r.kind === "honours" || r.kind === "specialization") {
-    return true;
-  }
-  if (r.kind === "degree_overview") {
-    // Keep terminal/standalone degrees; drop the broad umbrellas whose
-    // majors are listed as separate options.
-    return !isUmbrella(r.url);
-  }
-  if (r.kind === "other") {
-    return !POLICY_TITLE_RE.test(r.title.trim());
-  }
-  return false;
-}
-
-// Within one faculty bucket the same discipline can appear under more than
-// one parent degree (e.g. "Creative Writing" exists under both the BA and
-// the BFA). For any title that repeats in the list, append the parent
-// program so each option is distinguishable; unique titles are left clean.
+// Within one faculty bucket two entries can share a title (rare after
+// curation, but e.g. a certificate and a diploma of the same name). Append
+// the degree container to any repeated title so the selector never shows
+// two identical labels.
 function disambiguateLabels(list: ProgramOption[]): void {
   const counts = new Map<string, number>();
   for (const o of list) counts.set(o.title, (counts.get(o.title) ?? 0) + 1);
   for (const o of list) {
-    if ((counts.get(o.title) ?? 0) > 1 && o.program) {
-      o.label = `${o.title} (${o.program})`;
+    if ((counts.get(o.title) ?? 0) > 1 && o.degree) {
+      o.label = `${o.title} — ${o.degree}`;
     }
   }
 }
@@ -198,45 +144,34 @@ function disambiguateLabels(list: ProgramOption[]): void {
 export function getProgramIndex(): Promise<ProgramIndex> {
   if (!indexPromise) {
     indexPromise = (async () => {
-      const res = await fetch("/data/degree_programs.json");
-      if (!res.ok) {
-        throw new Error(`degree_programs.json: ${res.status}`);
-      }
-      const records = (await res.json()) as DegreeRecord[];
+      const [registry, records] = await Promise.all([
+        fetchJson<RegistryEntry[]>("/data/program_registry.json"),
+        fetchJson<DegreeRecord[]>("/data/degree_programs.json"),
+      ]);
+      if (!registry) throw new Error("program_registry.json failed to load");
       const byUrl = new Map<string, DegreeRecord>();
+      for (const r of records ?? []) byUrl.set(r.url, r);
+
+      const byId = new Map<string, RegistryEntry>();
       const majors = new Map<string, ProgramOption[]>();
       const minors = new Map<string, ProgramOption[]>();
       const facultySet = new Set<string>();
-      const isUmbrella = buildUmbrellaDetector(records);
-      for (const r of records) {
-        byUrl.set(r.url, r);
-        // Trust the URL over the scraped faculty field — see comment on
-        // URL_FACULTY_PATTERNS for why.
-        const faculty = effectiveFaculty(r);
-        if (!faculty) continue;
-        facultySet.add(faculty);
+      for (const e of registry) {
+        byId.set(e.id, e);
+        facultySet.add(e.faculty);
         const opt: ProgramOption = {
-          url: r.url,
-          title: r.title,
-          label: r.title,
-          program: r.program,
-          kind: r.kind,
-          level: r.level,
+          id: e.id,
+          url: e.url,
+          title: e.title,
+          label: e.title,
+          degree: e.degree,
+          kind: e.kind,
         };
-        if (isMajorEligible(r, isUmbrella)) {
-          const arr = majors.get(faculty) ?? [];
-          arr.push(opt);
-          majors.set(faculty, arr);
-        }
-        if (r.kind === "minor" && !ADMIN_TITLE_RE.test(r.title.trim())) {
-          const arr = minors.get(faculty) ?? [];
-          arr.push(opt);
-          minors.set(faculty, arr);
-        }
+        const bucket = e.kind === "minor" ? minors : majors;
+        const arr = bucket.get(e.faculty) ?? [];
+        arr.push(opt);
+        bucket.set(e.faculty, arr);
       }
-      // Sort the buckets alphabetically by title, then disambiguate any
-      // title that repeats within a faculty so the selector never shows two
-      // identical labels.
       for (const list of majors.values()) {
         list.sort((a, b) => a.title.localeCompare(b.title));
         disambiguateLabels(list);
@@ -249,6 +184,7 @@ export function getProgramIndex(): Promise<ProgramIndex> {
         faculties: Array.from(facultySet).sort(),
         majorsByFaculty: majors,
         minorsByFaculty: minors,
+        byId,
         byUrl,
       };
     })();
@@ -256,55 +192,169 @@ export function getProgramIndex(): Promise<ProgramIndex> {
   return indexPromise;
 }
 
-// Optional structured overlay. The endpoint may 404 — that's fine; we
-// return an empty map and the UI falls back to prose mode. Cached as a
-// resolved promise either way so we don't re-fetch on every selection.
 export function getRequirementsOverlay(): Promise<Map<string, StructuredRequirements>> {
   if (!overlayPromise) {
     overlayPromise = (async () => {
-      try {
-        const res = await fetch("/data/program_requirements.json");
-        if (!res.ok) return new Map();
-        const json = (await res.json()) as Record<string, Omit<StructuredRequirements, "kind">>;
-        const out = new Map<string, StructuredRequirements>();
-        for (const [url, body] of Object.entries(json)) {
-          out.set(url, { kind: "structured", ...body });
-        }
-        return out;
-      } catch {
-        return new Map();
+      const json = await fetchJson<Record<string, Omit<StructuredRequirements, "kind">>>(
+        "/data/program_requirements.json",
+      );
+      const out = new Map<string, StructuredRequirements>();
+      for (const [key, body] of Object.entries(json ?? {})) {
+        out.set(key, { kind: "structured", ...body });
       }
+      return out;
     })();
   }
   return overlayPromise;
 }
 
-/**
- * Look up the requirements for a selected program URL. Returns structured
- * categories when the overlay has an entry for that URL, otherwise falls
- * back to prose mode (raw text + flat referenced_courses list).
- */
-export async function getRequirementsFor(url: string): Promise<ProgramRequirements | null> {
-  const [index, overlay] = await Promise.all([getProgramIndex(), getRequirementsOverlay()]);
-  const structured = overlay.get(url);
-  if (structured) return structured;
-  const record = index.byUrl.get(url);
-  if (!record) return null;
-  return {
-    kind: "prose",
-    program_url: url,
-    text: record.text,
-    referenced_courses: record.referenced_courses ?? [],
-  };
+/** Faculty-wide rules per degree container ("BA", "BSc", …). */
+export function getDegreeRules(): Promise<Map<string, DegreeRules>> {
+  if (!rulesPromise) {
+    rulesPromise = (async () => {
+      const json = await fetchJson<Record<string, DegreeRules>>("/data/degree_rules.json");
+      return new Map(Object.entries(json ?? {}));
+    })();
+  }
+  return rulesPromise;
+}
+
+/** Subject code ("ENGL") → owning faculty display name ("Faculty of Arts"). */
+export function getSubjectFaculties(): Promise<Record<string, string>> {
+  if (!subjectFacultyPromise) {
+    subjectFacultyPromise = fetchJson<Record<string, string>>("/data/subject_faculties.json").then((j) => j ?? {});
+  }
+  return subjectFacultyPromise;
 }
 
 /**
- * Match a single course code against a category option. Exact code wins;
- * a subject_pattern is a literal prefix match against the canonical
+ * Resolve a stored program value to a registry entry. Accepts a registry id
+ * or a legacy calendar URL (plans saved before the registry existed stored
+ * the URL; the first registry entry on that URL wins).
+ */
+export function resolveProgram(index: ProgramIndex, value: string | null): RegistryEntry | null {
+  if (!value) return null;
+  const byId = index.byId.get(value);
+  if (byId) return byId;
+  if (value.startsWith("http")) {
+    for (const e of index.byId.values()) {
+      if (e.url === value) return e;
+    }
+  }
+  return null;
+}
+
+/**
+ * Look up the requirements for a program. Accepts a registry id or legacy
+ * URL. Structured overlay wins (keyed by id, then by the entry's URLs);
+ * otherwise falls back to prose mode from the scraped record text.
+ */
+export async function getRequirementsFor(idOrUrl: string): Promise<ProgramRequirements | null> {
+  const [index, overlay] = await Promise.all([getProgramIndex(), getRequirementsOverlay()]);
+  const entry = resolveProgram(index, idOrUrl);
+  const keys = entry ? [entry.id, entry.url, ...entry.source_urls] : [idOrUrl];
+  for (const key of keys) {
+    const structured = overlay.get(key);
+    if (structured) return structured;
+  }
+  const urls = entry ? [entry.url, ...entry.source_urls] : [idOrUrl];
+  for (const url of urls) {
+    const record = index.byUrl.get(url);
+    if (record) {
+      return {
+        kind: "prose",
+        program_url: url,
+        text: record.text,
+        referenced_courses: record.referenced_courses ?? [],
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Match a single course code against a plain category option. Exact code
+ * wins; a subject_pattern is a literal prefix match against the canonical
  * "SUBJ NUM" form ("ENGL 3" matches "ENGL 300" through "ENGL 399").
+ * Rule options need context — see evaluateCategory.
  */
 export function optionMatches(opt: CategoryOption, code: string): boolean {
   if (opt.code && opt.code === code) return true;
   if (opt.subject_pattern && code.startsWith(opt.subject_pattern)) return true;
   return false;
+}
+
+function courseLevel(code: string): number {
+  const m = code.match(/\s(\d{3})/);
+  return m ? Number(m[1]) : 0;
+}
+
+function subjectOf(code: string): string {
+  return code.split(" ")[0] ?? "";
+}
+
+function facultyEq(a: string | undefined, b: string | undefined): boolean {
+  if (!a || !b) return false;
+  const norm = (s: string) => s.replace(/^the\s+/i, "").toLowerCase();
+  return norm(a) === norm(b);
+}
+
+/** Whether a course qualifies under a CreditRule, given the subject→faculty table. */
+export function ruleMatches(rule: CreditRule, code: string, subjectFaculty: Record<string, string>): boolean {
+  const subject = subjectOf(code);
+  switch (rule.kind) {
+    case "course_list":
+      return (rule.courses ?? []).includes(code);
+    case "level_credit":
+      return courseLevel(code) >= (rule.min_level ?? 300);
+    case "faculty_credit": {
+      if (rule.include_courses?.includes(code)) return true;
+      if (rule.exclude_courses?.includes(code)) return false;
+      if (rule.exclude_subjects?.includes(subject)) return false;
+      if (rule.include_subjects?.length) return rule.include_subjects.includes(subject);
+      return facultyEq(subjectFaculty[subject], rule.faculty);
+    }
+  }
+}
+
+export interface PlannedCourse {
+  code: string;
+  credits: number;
+}
+
+export interface CategoryProgress {
+  earned: number;
+  matched: string[];
+}
+
+/**
+ * Credits earned toward a category from the planned courses. Handles exact
+ * codes, subject patterns, and CreditRules (including per-subject caps).
+ * A category with no options earns nothing — it renders as advisory text.
+ */
+export function evaluateCategory(
+  cat: RequirementCategory,
+  planned: PlannedCourse[],
+  subjectFaculty: Record<string, string>,
+): CategoryProgress {
+  const matched: { course: PlannedCourse; credit: number }[] = [];
+  for (const course of planned) {
+    const opt = cat.options.find(
+      (o) => optionMatches(o, course.code) || (o.rule && ruleMatches(o.rule, course.code, subjectFaculty)),
+    );
+    if (opt) matched.push({ course, credit: opt.credit_value ?? course.credits });
+  }
+  // Apply subject caps from any rule option: clamp the total contribution of
+  // each cap's subject set. ponytail: caps are per-category, first-match; no
+  // cross-category double-count arbitration.
+  let earned = matched.reduce((sum, m) => sum + m.credit, 0);
+  for (const opt of cat.options) {
+    for (const cap of opt.rule?.caps ?? []) {
+      const capped = matched
+        .filter((m) => cap.subjects.includes(subjectOf(m.course.code)))
+        .reduce((sum, m) => sum + m.credit, 0);
+      if (capped > cap.credits) earned -= capped - cap.credits;
+    }
+  }
+  return { earned, matched: matched.map((m) => m.course.code) };
 }

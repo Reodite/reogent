@@ -2,16 +2,24 @@
 
 // Program selection and requirement progress for the planner rail. Structured
 // requirements show category credit bars; prose requirements show a parsed
-// year-by-year checklist or a flat course fallback.
+// year-by-year checklist or a flat course fallback. The progress view also
+// shows degree-wide rules and the selected minor's requirements.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import {
+  evaluateCategory,
+  getDegreeRules,
   getProgramIndex,
   getRequirementsFor,
-  optionMatches,
+  getSubjectFaculties,
+  resolveProgram,
+  type DegreeRules,
+  type PlannedCourse,
   type ProgramIndex,
   type ProgramOption,
   type ProgramRequirements,
+  type RegistryEntry,
+  type RequirementCategory,
 } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
@@ -52,6 +60,17 @@ export function ProgramSelectors() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!index) return;
+    for (const level of ["major", "minor"] as const) {
+      const value = level === "major" ? major : minor;
+      if (value?.startsWith("http")) {
+        const entry = resolveProgram(index, value);
+        setProgram(level, entry ? entry.id : null);
+      }
+    }
+  }, [index, major, minor, setProgram]);
+
   const majorOptions: ProgramOption[] = useMemo(() => {
     if (!index || !faculty) return [];
     return index.majorsByFaculty.get(faculty) ?? [];
@@ -61,6 +80,11 @@ export function ProgramSelectors() {
     if (!index || !faculty) return [];
     return index.minorsByFaculty.get(faculty) ?? [];
   }, [index, faculty]);
+
+  const majorUrl = useMemo(() => {
+    if (!index || !major) return null;
+    return resolveProgram(index, major)?.url ?? null;
+  }, [index, major]);
 
   if (loadError) {
     return <div className="text-error text-sm">Couldn’t load program index: {loadError}</div>;
@@ -87,9 +111,9 @@ export function ProgramSelectors() {
         label="Major / program"
         className="w-52"
         labelExtra={
-          major ? (
+          majorUrl ? (
             <a
-              href={major}
+              href={majorUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary flex items-center gap-0.5 text-[11px] hover:underline"
@@ -101,7 +125,7 @@ export function ProgramSelectors() {
         }
         placeholder={faculty ? "Search programs" : "Select a faculty first"}
         value={major}
-        options={majorOptions.map((option) => ({ value: option.url, label: option.label }))}
+        options={majorOptions.map((option) => ({ value: option.id, label: option.label }))}
         onChange={(value) => setProgram("major", value)}
         disabled={!faculty}
       />
@@ -110,7 +134,7 @@ export function ProgramSelectors() {
         className="w-40"
         placeholder={faculty ? "Search minors" : "Select a faculty first"}
         value={minor}
-        options={minorOptions.map((option) => ({ value: option.url, label: option.label }))}
+        options={minorOptions.map((option) => ({ value: option.id, label: option.label }))}
         onChange={(value) => setProgram("minor", value)}
         disabled={!faculty}
       />
@@ -192,46 +216,144 @@ function ProgramCombobox({
   );
 }
 
-// Resolves the selected program into progress bars and requirement rows.
+interface ResolvedPrograms {
+  majorEntry: RegistryEntry | null;
+  minorEntry: RegistryEntry | null;
+  majorReq: ProgramRequirements | null;
+  minorReq: ProgramRequirements | null;
+  rules: DegreeRules | null;
+  subjectFaculty: Record<string, string>;
+}
+
+// Resolves the selected programs into progress bars and requirement rows.
 export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequirementsProps) {
   const major = usePlanner((s) => s.major);
-  const [requirements, setRequirements] = useState<ProgramRequirements | null>(null);
+  const minor = usePlanner((s) => s.minor);
+  const [resolved, setResolved] = useState<ResolvedPrograms | null>(null);
 
-  // Re-resolve requirements whenever major changes.
   useEffect(() => {
     let cancelled = false;
-    if (!major) {
-      // Defer the clear off the render path; the user-visible effect is
-      // identical since we run before paint.
+    if (!major && !minor) {
       queueMicrotask(() => {
-        if (!cancelled) setRequirements(null);
+        if (!cancelled) setResolved(null);
       });
       return () => {
         cancelled = true;
       };
     }
-    getRequirementsFor(major).then((req) => {
-      if (!cancelled) setRequirements(req);
-    });
+    (async () => {
+      const [index, rulesMap, subjectFaculty] = await Promise.all([
+        getProgramIndex(),
+        getDegreeRules(),
+        getSubjectFaculties(),
+      ]);
+      const majorEntry = resolveProgram(index, major);
+      const minorEntry = resolveProgram(index, minor);
+      const [majorReq, minorReq] = await Promise.all([
+        major ? getRequirementsFor(major) : Promise.resolve(null),
+        minor ? getRequirementsFor(minor) : Promise.resolve(null),
+      ]);
+      const rules = majorEntry ? (rulesMap.get(majorEntry.degree) ?? null) : null;
+      if (!cancelled) setResolved({ majorEntry, minorEntry, majorReq, minorReq, rules, subjectFaculty });
+    })();
     return () => {
       cancelled = true;
     };
-  }, [major]);
+  }, [major, minor]);
 
-  if (!major) {
+  const planned: PlannedCourse[] = useMemo(
+    () => Array.from(plannedCodes).map((code) => ({ code, credits: creditValue(courseIndex.get(code)) })),
+    [plannedCodes, courseIndex],
+  );
+
+  if (!major && !minor) {
     return (
       <p className="text-muted px-4 py-6 text-center text-xs">
-        Pick a faculty and major in the top bar to see your checklist.
+        Pick a faculty and program in the top bar to see your checklist.
       </p>
     );
   }
-  if (!requirements) {
+  if (!resolved) {
     return <div className="text-muted text-sm">Loading requirements…</div>;
   }
   return (
-    <div className="flex min-h-0 min-w-0 flex-col gap-2">
-      <RequirementsPanel req={requirements} courseIndex={courseIndex} plannedCodes={plannedCodes} />
+    <div className="flex min-h-0 min-w-0 flex-col gap-3">
+      {resolved.majorReq && (
+        <RequirementsPanel
+          req={resolved.majorReq}
+          courseIndex={courseIndex}
+          plannedCodes={plannedCodes}
+          planned={planned}
+          subjectFaculty={resolved.subjectFaculty}
+        />
+      )}
+      {resolved.rules && (
+        <section className="flex flex-col gap-2">
+          <h4 className="text-on-surface text-xs font-semibold tracking-wide uppercase">
+            {resolved.majorEntry?.degree} degree-wide requirements
+          </h4>
+          {typeof resolved.rules.total_credits === "number" && (
+            <TotalCreditsBar
+              earned={planned.reduce((sum, course) => sum + course.credits, 0)}
+              required={resolved.rules.total_credits}
+            />
+          )}
+          <CategoryList
+            categories={resolved.rules.categories}
+            planned={planned}
+            subjectFaculty={resolved.subjectFaculty}
+          />
+        </section>
+      )}
+      {resolved.minorReq && (
+        <section className="flex flex-col gap-2">
+          <h4 className="text-on-surface text-xs font-semibold tracking-wide uppercase">
+            {resolved.minorEntry?.title ?? "Minor"}
+          </h4>
+          <RequirementsPanel
+            req={resolved.minorReq}
+            courseIndex={courseIndex}
+            plannedCodes={plannedCodes}
+            planned={planned}
+            subjectFaculty={resolved.subjectFaculty}
+          />
+        </section>
+      )}
     </div>
+  );
+}
+
+function CategoryList({
+  categories,
+  planned,
+  subjectFaculty,
+}: {
+  categories: RequirementCategory[];
+  planned: PlannedCourse[];
+  subjectFaculty: Record<string, string>;
+}) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {categories.map((category) => {
+        const { earned, matched } = evaluateCategory(category, planned, subjectFaculty);
+        return (
+          <li
+            key={category.name}
+            className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2"
+          >
+            <div className="flex items-baseline justify-between text-sm">
+              <span className="text-on-surface">{category.name}</span>
+              <span className="text-on-surface-variant text-xs">
+                {earned}/{category.credits_required} cr
+              </span>
+            </div>
+            <ProgressBar earned={earned} required={category.credits_required} />
+            {category.notes && <p className="text-muted text-xs">{category.notes}</p>}
+            {matched.length > 0 && <p className="text-on-surface-variant text-xs">{matched.join(", ")}</p>}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -239,49 +361,25 @@ function RequirementsPanel({
   req,
   courseIndex,
   plannedCodes,
+  planned,
+  subjectFaculty,
 }: {
   req: ProgramRequirements;
   courseIndex: Map<string, CourseIndexEntry>;
   plannedCodes: Set<string>;
+  planned: PlannedCourse[];
+  subjectFaculty: Record<string, string>;
 }) {
   if (req.kind === "structured") {
     return (
       <div className="flex flex-col gap-3">
         {typeof req.total_credits === "number" && (
           <TotalCreditsBar
-            earned={Array.from(plannedCodes).reduce((sum, c) => sum + creditValue(courseIndex.get(c)), 0)}
+            earned={planned.reduce((sum, course) => sum + course.credits, 0)}
             required={req.total_credits}
           />
         )}
-        <ul className="flex flex-col gap-2">
-          {req.categories.map((cat) => {
-            const matchingCodes = Array.from(plannedCodes).filter((c) =>
-              cat.options.some((opt) => optionMatches(opt, c)),
-            );
-            const earned = matchingCodes.reduce((sum, c) => {
-              const opt = cat.options.find((o) => optionMatches(o, c));
-              return sum + (opt?.credit_value ?? creditValue(courseIndex.get(c)) ?? 0);
-            }, 0);
-            return (
-              <li
-                key={cat.name}
-                className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2"
-              >
-                <div className="flex items-baseline justify-between text-sm">
-                  <span className="text-on-surface">{cat.name}</span>
-                  <span className="text-on-surface-variant text-xs">
-                    {earned}/{cat.credits_required} cr
-                  </span>
-                </div>
-                <ProgressBar earned={earned} required={cat.credits_required} />
-                {cat.notes && <p className="text-muted text-xs">{cat.notes}</p>}
-                {matchingCodes.length > 0 && (
-                  <p className="text-on-surface-variant text-xs">{matchingCodes.join(", ")}</p>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <CategoryList categories={req.categories} planned={planned} subjectFaculty={subjectFaculty} />
       </div>
     );
   }
