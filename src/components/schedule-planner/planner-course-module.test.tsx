@@ -82,7 +82,8 @@ describe("PlannerCourseModule", () => {
   it("keeps known selectors visible and independent additional groups disclosed", () => {
     const view = render(<PlannerCourseModule {...baseProps} />);
 
-    expect(view.getByLabelText("Lecture")).toBeTruthy();
+    const lectureSelect = view.getByLabelText<HTMLSelectElement>("Lecture");
+    expect(Array.from(lectureSelect.options, (option) => option.textContent)).toEqual(["Choose section", "101", "102"]);
     expect(view.getByLabelText("Laboratory")).toBeTruthy();
     expect(view.getByText("2 not selected automatically")).toBeTruthy();
     expect(view.getByLabelText("R sections")).toBeTruthy();

@@ -65,12 +65,6 @@ export function sectionMeetingLabel(section: {
   return `${days.join("/")} · ${section.start_time}–${section.end_time}`;
 }
 
-/** Formats one compact native-select option. */
-export function sectionOptionLabel(section: CourseSection): string {
-  const status = section.status ? ` · ${section.status}` : "";
-  return `${section.section} · ${sectionMeetingLabel(section)}${status}`;
-}
-
 function PlannerSectionRow({
   group,
   options,
@@ -122,10 +116,10 @@ function PlannerSectionRow({
           }`}
         >
           <option value="">Choose section</option>
-          {unavailable ? <option value={current.section}>{current.section} · Unavailable</option> : null}
+          {unavailable ? <option value={current.section}>{current.section}</option> : null}
           {options.map((section) => (
             <option key={section.section} value={section.section}>
-              {sectionOptionLabel(section)}
+              {section.section}
             </option>
           ))}
         </select>
