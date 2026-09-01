@@ -17,6 +17,7 @@ vi.mock("@/src/components/calendar/calendar-pane", () => ({ CalendarPane: () => 
 vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({ CourseLookupPane: () => null }));
 vi.mock("@/src/components/shell/session-sidebar", () => ({
   useSidebarCollapsed: () => [false, () => {}],
+  BrandHeader: () => null,
   SessionSidebar: ({ footer }: { footer?: ReactNode }) => <div data-testid="session-list">{footer}</div>,
 }));
 vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => null }));
@@ -82,6 +83,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("wide AI renders chat + Answer Canvas inline with the skip target on chat", () => {
     const { container, getByTestId } = renderShell(true);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("chat");
+    expect(container.querySelector("[data-workspace-surface]")).toBeNull();
     expect(getByTestId("chat-children")).toBeDefined();
     expect(container.querySelector('[data-testid="session-list"]')).not.toBeNull();
     expect(container.querySelector("[data-mode-toggle]")).not.toBeNull();
@@ -91,9 +93,10 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("wide AI right pane starts collapsed and has no re-expand in topbar", () => {
     const { container } = renderShell(true);
 
-    // Pane is hidden with `lg:hidden` by default.
+    // Pane is collapsed (zero-width, invisible) by default.
     const sheet = container.querySelector("[data-answer-sheet]");
-    expect(sheet?.classList.contains("lg:hidden")).toBe(true);
+    expect(sheet?.classList.contains("lg:grow-0")).toBe(true);
+    expect(sheet?.classList.contains("lg:invisible")).toBe(true);
 
     // There is no topbar expand button for the right pane.
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
@@ -116,12 +119,27 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     const { container } = renderShell(true);
     fireEvent.click(container.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
+    const surface = container.querySelector("[data-workspace-surface]");
+    expect(surface?.className).toContain("workspace-surface");
+    expect(surface?.className).toContain("overflow-hidden");
     // No view activated yet → children (not-found) renders instead of the tool.
     // This matches the real app: navigating to an unknown /tools/<slug> shows the
     // not-found page in the workspace, while a valid tool activates via the
     // ToolRouteActivator effect.
     expect(container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
+  });
+
+  it("Unity uses the same shell-owned workspace surface", () => {
+    const { container } = renderShell(true);
+    const unityTab = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find((tab) =>
+      tab.textContent?.includes("Unity"),
+    );
+    fireEvent.click(unityTab as HTMLElement);
+
+    expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("unity");
+    expect(container.querySelector("[data-workspace-surface]")?.className).toContain("workspace-surface");
+    expect(container.querySelector("[data-testid='chat-children']")).not.toBeNull();
   });
 
   it("below-wide Tools lives in the left drawer, Full-Bleed Tool stays full-bleed", () => {

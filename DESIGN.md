@@ -22,8 +22,8 @@ colors:
   muted: "#5a6066"
   outline: "#6e747a"
   outline-variant: "#bfc4c9"
-  border: "#e6e6e2"
-  border-subtle: "#efefeb"
+  border: "#d9d9dd"
+  border-subtle: "#e8e8ea"
   accent-subtle: "#edeef5"
   surface-tint: "#4a4e7a"
   on-primary: "#ffffff"
@@ -33,6 +33,18 @@ colors:
   on-tertiary-container: "#4a3010"
   on-error-container: "#6e2c2c"
   scrim: "rgba(0, 0, 0, 0.3)"
+  course-cornflower: "#6ea8fe"
+  course-tangerine: "#ffb46b"
+  course-jade: "#62d2a2"
+  course-orchid: "#e886c9"
+  course-amber: "#ffd166"
+  course-ice: "#7ee0e6"
+  course-lavender: "#b69cff"
+  course-pear: "#9bd356"
+  course-salmon: "#ff8f8f"
+  course-lagoon: "#5fd0c0"
+  course-pink-quartz: "#f3a6ff"
+  course-sandstone: "#d9c79b"
 typography:
   body:
     fontFamily: "Aspekta, ui-sans-serif, system-ui, sans-serif"
@@ -133,12 +145,11 @@ components:
     padding: "8px 12px"
     height: "36px"
   nav-item-active:
-    backgroundColor: "{colors.accent-subtle}"
-    textColor: "{colors.primary}"
+    backgroundColor: "{colors.surface-container}"
+    textColor: "{colors.on-surface}"
     rounded: "{rounded.lg}"
     padding: "8px 12px"
     height: "36px"
-    borderLeft: "2px solid {colors.primary}"
 ---
 
 # Design System: Reodite
@@ -169,12 +180,12 @@ A cool-neutral palette anchored by muted indigo. Warmth comes from the off-white
 
 ### Primary
 
-- **Muted Indigo** (`#4a4e7a`): Primary actions, active navigation, focus rings, links, surface tint. Appears on interactive elements only. Its rarity carries the meaning.
+- **Muted Indigo** (`#4a4e7a`): Primary actions, focus rings, links, and state indicators. Appears on interactive elements only. Its rarity carries the meaning.
 - **Indigo Container** (`#7a7ea8`): Avatar backgrounds, accent surfaces, badge backgrounds. Softer carrier for primary identity in larger areas.
 
 ### Secondary
 
-- **Campus Verdant** (`#2d6b47`): Success states, route confirmation, positive feedback, tool result icons. Appears when the system confirms something went right.
+- **Campus Verdant** (`#2d6b47`): Success states, route confirmation, positive feedback, tool result icons. Appears when the system confirms something went right. Reserved for transient confirmations (toasts, route completion) — never used as decorative state on persistent list items, cards, or borders; requirement/progress surfaces use primary and neutral treatments instead.
 - **Verdant Container** (`#b0efc2`): Success backgrounds, route info cards, positive notification surfaces.
 
 ### Tertiary
@@ -193,9 +204,24 @@ A cool-neutral palette anchored by muted indigo. Warmth comes from the off-white
 - **On Surface** (`#18191b`): Primary text. Near-black with warm undertone. >=7:1 on all surfaces.
 - **On Surface Variant** (`#3e4348`): Secondary text, labels, descriptions, tool call summaries. >=4.5:1 on all light surfaces.
 - **Muted** (`#5a6066`): Meta text, timestamps, placeholders, thinking block text, disclaimers. >=4.5:1 on all surfaces.
-- **Border** (`#e6e6e2`): Standard dividers, section separators, hairlines between content, inline code borders.
-- **Border Subtle** (`#efefeb`): Softest separators, button borders, `.glass-neu` edges, pre block borders.
+- **Border** (`#d9d9dd`): Standard dividers, section separators, hairlines between content, inline code borders.
+- **Border Subtle** (`#e8e8ea`): Softest separators, button borders, `.glass-neu` edges, pre block borders.
 - **Accent Subtle** (`#edeef5`): Active nav item background, user message bubble background. Palest indigo tint.
+
+### Surface separation floors
+
+Contrast between adjacent layers is part of the design, not an accident of it. Violating these floors makes cards dissolve into the page:
+
+- Adjacent surface steps (background → surface → container-low → container → container-high) must stay visually distinct. Never assign two steps the same value; in dark theme each step differs by at least #05 per channel, and every step stays neutral gray — no hue drift.
+- Every card, chip, or inset well sits exactly one step away from its parent surface. Nested elements on the same step read as one blob.
+- `--border` must remain visible against `--surface` without squinting (dark: `#2c2c31` on `#1a1a1e`). `--border-subtle` is for interior hairlines only, never a card's outer edge.
+- Dark-theme shadows and highlights are tonal: darker and lighter shades of the surface color itself (e.g. `#141417` / `#26262c` around `#1a1a1e`), never pure black or white. A shadow you cannot see is not a shadow, and a white glow breaks the monochrome.
+
+### Course Identity Palette
+
+Schedules assign each normalized course code one stable color from a 12-color palette: Cornflower (`#6ea8fe`), Tangerine (`#ffb46b`), Jade (`#62d2a2`), Orchid (`#e886c9`), Amber (`#ffd166`), Ice (`#7ee0e6`), Lavender (`#b69cff`), Pear (`#9bd356`), Salmon (`#ff8f8f`), Lagoon (`#5fd0c0`), Pink Quartz (`#f3a6ff`), and Sandstone (`#d9c79b`). Planner and sharer adapters normalize campus suffixes before hashing, so `CPSC_V 221` and `CPSC 221` keep the same identity.
+
+Course colors appear as a 1px block edge and a low-opacity tint mixed with the active surface. Theme text tokens carry all labels; course color never carries status or required meaning. Conflict rings, participant avatars, and the current-time marker remain separate channels.
 
 ### Opacity Modifiers
 
@@ -230,7 +256,7 @@ Color tokens accept Tailwind opacity modifiers for layered effects:
 ### In-App Hierarchy
 
 - **Title** (500, 1.25rem/text-xl, -0.02em): Page titles, panel headers, greeting text. One per visible viewport. Line-height varies by context: Tailwind default for text-xl or `leading-tight` (1.25) in compact headings.
-- **Brand Title** (500, text-base sm:text-xl, -0.025em): The "Reodite" text in the header. Uses tighter tracking than standard Title.
+- **Brand Title** (500, text-base, -0.025em): The "Reodite" wordmark in the sidebar brand header. Uses tighter tracking than standard Title.
 - **Heading** (500, 1rem/text-base, -0.01em): Card titles, session names, route info primary values. Uses `leading-tight` (1.25) or `leading-snug` (1.375) in space-constrained contexts.
 - **Body** (400, 0.875rem/text-sm, 1.5): Chat messages, descriptions, button labels. Base size. 14px for information density. Uses `leading-relaxed` (1.625) in chat bubbles and descriptions for extra breathing room.
 - **Body Small** (400, 0.8125rem/text-body-sm, 1.5): Secondary info, timestamps, tool badge content, sidebar session previews.
@@ -268,7 +294,7 @@ Flexbox with spring-driven width animations:
 
 **Mobile (<640px):** Single column. Chat full-width. Sidebar is a slide-over drawer with `bg-scrim` backdrop at z-40/z-50. Map becomes an 80vh bottom sheet (`fixed inset-x-0 bottom-0`) with touch drag-to-dismiss (20% of height threshold). Safe-area inset padding via `env(safe-area-inset-bottom)`.
 
-**Spacing rhythm:** 8px grid with 6px sub-grid for tight icon gaps. Common values: `gap-1.5` (6px icon-to-label), `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px inter-panel), `gap-6` (24px message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) workspace gaps around all panels, `px-4 py-3` (16/12px) header sections, `p-4 sm:p-6` (16/24px) chat message well. Header height: 56px (h-14). Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
+**Spacing rhythm:** 8px grid with 6px sub-grid for tight icon gaps. Common values: `gap-1.5` (6px icon-to-label), `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px inter-panel), `gap-6` (24px message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) workspace gaps around all panels, `px-4 py-3` (16/12px) header sections, `p-4 sm:p-6` (16/24px) chat message well. Panel and section headers (chat title, answer-canvas titlebar, sidebar top row) share one height: `h-15` (60px), `items-center px-4` on panels, `px-2` inside the sidebar, flush with the panel top edge so all header baselines align. Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
 
 **Canvas treatment:** `app-shell-canvas` sets flat `var(--background)` color. No gradients in the production app shell.
 
@@ -294,11 +320,11 @@ Single unified shadow recipe applied through `.neu-*` classes. All composed surf
 
 **Primitives:**
 
-| Primitive           | Light                     | Dark                 |
-| ------------------- | ------------------------- | -------------------- |
-| `--neu-highlight`   | `rgba(255,255,255,0.2)`   | `rgba(65,66,72,0.1)` |
-| `--neu-shadow`      | `rgba(105,112,116,0.045)` | `rgba(0,0,0,0.11)`   |
-| `--neu-shadow-deep` | `rgba(91,99,104,0.06)`    | `rgba(0,0,0,0.16)`   |
+| Primitive           | Light                     | Dark                  |
+| ------------------- | ------------------------- | --------------------- |
+| `--neu-highlight`   | `rgba(255,255,255,0.2)`   | `rgba(38,38,44,0.55)` |
+| `--neu-shadow`      | `rgba(105,112,116,0.045)` | `rgba(16,16,19,0.55)` |
+| `--neu-shadow-deep` | `rgba(91,99,104,0.06)`    | `rgba(10,10,12,0.65)` |
 
 **Composed shadows:**
 
@@ -339,7 +365,7 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 **Form language:** Rounded, consistent per element size. Radius increases with element size.
 
-- **Major panels** (header, chat panel, map panel, sidebar, bottom sheets): `rounded-2xl` (16px)
+- **Major panels** (chat panel, map panel, sidebar, bottom sheets): `rounded-2xl` (16px)
 - **Action buttons, icon buttons, collapse/expand controls**: `rounded-xl` (12px)
 - **Inner controls** (session items, details blocks, tool cards, nav items, thinking blocks): `rounded-lg` (8px)
 - **Small elements** (inline code, small badges, icon containers in tool results): `rounded-md` (6px)
@@ -361,12 +387,12 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 ### Buttons
 
-State changes through shadow transformation + micro-translate.
+State changes through shadow transformation + press scale. Buttons never translate on hover or active; the surface stays put and only the shadow, filter, or scale changes.
 
-- **Primary** (`.neu-primary-button`): `bg-primary text-on-primary rounded-xl h-9 px-4 text-sm font-medium`. Shadow: colored glow underneath (primary at 10%) + highlight behind. Hover: brightness(1.03), translateY(-1px), slightly expanded glow. Active: inset shadow (dark + light), translateY(1px), scale(0.985).
+- **Primary** (`.neu-primary-button`): `bg-primary text-on-primary rounded-xl h-9 px-4 text-sm font-medium`. Shadow: colored glow underneath (primary at 10%) + highlight behind. Hover: brightness(1.03), slightly expanded glow. Active: inset shadow (dark + light), scale(0.985).
 - **Primary Large**: Same as primary but `h-12 px-8 text-base`. Used on landing CTAs and auth submit.
 - **Primary Prominent**: `h-10 px-4` — slightly taller than standard for emphasis in error recovery states. Same shadow recipe.
-- **Secondary** (`.neu-button`): `bg-surface text-on-surface rounded-xl h-9 px-4 border-subtle text-sm font-medium`. Shadow: surface shadow. Hover: expanded shadow, translateY(-1px). Active: inset shadow, translateY(1px), scale(0.98).
+- **Secondary** (`.neu-button`): `bg-surface text-on-surface rounded-xl h-9 px-4 border-subtle text-sm font-medium`. Shadow: surface shadow. Hover: expanded shadow. Active: inset shadow, scale(0.98).
 - **Secondary Compact**: `h-9 px-3` — reduced horizontal padding for tight layouts (retry buttons, inline actions).
 - **Ghost**: `bg-transparent text-on-surface-variant rounded-xl`. No shadow at rest (the one exception to whisper dimension). Hover: subtle surface background appears. Landing sign-in link uses `text-on-surface-variant hover:text-on-surface` for a softer secondary feel.
 - **Icon Button**: `size-9` (36px) standard. Uses `neu-button` or `neu-panel` shadow. Contains centered icon.
@@ -377,9 +403,10 @@ State changes through shadow transformation + micro-translate.
 
 ### Cards / Containers
 
-- **Standard panel** (`.neu-panel`): `bg-surface rounded-2xl` + surface shadow. No border, no blur. Padding: 12-16px. Used for: header, chat panel, map panel, sidebar, building popup, map controls.
+- **Standard panel** (`.neu-panel`): `bg-surface rounded-2xl` + surface shadow. No border, no blur. Padding: 12-16px. Used for: chat panel, sidebar, building popup, and map controls.
+- **Workspace surface** (`.workspace-surface`): The App Shell wraps every Tools and Pulse route in one `bg-surface rounded-2xl` panel with the standard neumorphic surface shadow and clipped overflow. Route components own layout and scrolling inside it; they do not repeat the outer material.
 - **Chat panel**: `.neu-panel rounded-2xl`. Internal: title bar (transparent bg, `px-4 py-3`), message well (`.chat-message-well`, recessed with deep inset shadows at `inset 0 10px 24px -22px`, 72% surface-container-low mixed with background), composer area at bottom.
-- **Sidebar** (`.neu-panel rounded-2xl p-2`): Standard panel material. Contains a secondary recessed well (`bg-surface-container-low/60 rounded-xl p-2`) for the session list.
+- **Sidebar** (`.neu-panel rounded-2xl p-2`): Standard panel material. Anatomy, top to bottom: brand header (logo tile `size-9` + `Reodite` wordmark on the left; collapse chevron, and the close button in the mobile drawer, on the right; collapsed rail shows the tile only), mode content (session list in AI, tool list in Tools, community links in Unity) in a recessed well (`bg-surface-container-low/60 rounded-xl p-2`), then a footer stack with the AI/Tools/Unity mode toggle and account row (avatar + username, full width). The footer has no divider; spacing separates it from the rounded content well. The account menu portals out of the sidebar's `overflow-hidden` card and anchors 8px above the trigger, spanning the trigger's full width (collapsed rail: flyout to the right, 224px). It contains username, the theme radiogroup, sign out, and the version badge. The shell has no top bar. The Tools sidebar becomes a drawer below 1280px to preserve working width; other modes switch at 1024px.
 - **Tool result cards**: `bg-surface-container-low rounded-lg p-3`. Flat within the message bubble. Icon containers use `bg-secondary-container text-on-secondary-container size-9 rounded-lg` (or `size-8 rounded-md` for compact variants).
 
 ### Inputs / Fields
@@ -388,11 +415,36 @@ State changes through shadow transformation + micro-translate.
 - **Auth input** (`.neu-inset`): `bg-surface-container-low text-on-surface h-11 rounded-lg px-3 text-sm`. Focus: `ring-primary/40 ring-2 ring-offset-1`. Error: `ring-error/30 ring-2`.
 - **Thinking state**: Animated conic-gradient border mask (2px pseudo-element with mask-composite) at 2.4s linear infinite. Send button replaced by a stop button (`.neu-button bg-surface text-on-surface-variant rounded-xl`) during generation, allowing the user to abort.
 
+### Degree Planner
+
+- **Composition**: Operate-mode workbench with 24px desktop padding, 16px region gaps, and 8px internal gaps. The top bar places the title above one shared toolbar row, with visible-label program selectors on the left and labeled actions on the right. The body places a fixed 320px Requirements and Find Courses rail to the left of the horizontally scrollable year board.
+- **Rail**: Requirements and Find Courses are separate `.neu-panel bg-surface rounded-2xl` cards in equal grid rows. Both use `min-w-0 min-h-0`, stable scrollbar gutters, and internal scrolling; neither card shrinks to make room for the other. The rail stays visible and has no collapse control. Find Courses lists only courses not already planned. Its source row hides during drag, a successful drop removes it from the results, and lookup drags never animate back to the source.
+- **Material**: Planner surfaces use neutral background, surface, and container tokens only. Primary color is limited to true affordances and state indicators such as Ask AI, focus, links, add controls, progress, and checkbox completion; errors use the error family. Study terms use tonal inset depth, course chips use tonal raised depth, and drag ghosts reuse that same elevation rather than `shadow-xl`.
+- **Terms**: Every study term keeps one anatomy: header, scrollable course region, and optional full-width `Mark as co-op work term` action. Co-op cards center the icon, title, and months inside the available body with 16px side padding, omit generic placement copy, and use the inverse full-width `Switch to study term` action. Without summer, the two winter terms split all available height. Adding summer grows a second equal flex region from zero while fading in over 300ms with `--neu-ease`; removal reverses the transition. Reduced-motion users switch immediately. Summer controls remain full-width at the bottom of each year.
+- **Course chips**: A fixed top row holds the course code and two 28px actions; a fixed bottom row holds the full title zone and credits. Actions never overlay or mask the course identity. On pointer drag, the overlay starts at the picked-up position, then its top-center springs under the cursor; velocity tilt pivots from that fixed top anchor. The document cursor stays `grabbing` until drop or cancel so crossing tilted surfaces never changes it. Reduced-motion users receive the anchored position immediately.
+- **Course details**: Placement issues lead the popup as direct sentences. Each issue owns a separate `bg-error-container text-on-error-container` box; no heading or bullet list delays the explanation.
+- **Requirements**: Manual, course, planned, and completed rows share one 36px checkbox geometry. Text captions distinguish automatic completion from manual completion instead of changing the checkmark style. Automatically planned checks retain the primary color at 50% opacity to read as disabled; manually checked requirements remain fully opaque and interactive. Each year heading uses 4px vertical padding and sticks to the top of the Requirements scroller until the next year replaces it. Degree progress owns a 16px top inset.
+- **Responsive flow**: Below 768px, the board and rail stack inside one vertical scroll. The board remains keyboard-scrollable, and the two rail cards stay equal height after stacking.
+
+### Schedule Workspaces
+
+- **Calendar alignment**: `/tools/schedule` and `/pulse/schedule` use Calendar’s 24px desktop padding, plain 288px contextual aside, 24px region gap, and flexible data canvas. The App Shell provides the shared outer workspace surface; the aside has no separate background, border, radius, shadow, or shared scrolling. Route content owns its scroll regions. The planner timetable owns its canvas boundary: a 10px `border-subtle` frame with a 2px gutter and 8px surface fields. The sharer also places that frame inside a 12px `surface` card.
+- **Host-aware header**: In Answer Canvas, schedule controls portal into the existing titlebar and suppress the duplicate internal title. Full-bleed Tools and Unity use an internal header aligned to the same 288px/24px columns as the body. Tools reserves compact-menu clearance below 1280px; Unity reserves it below 1024px.
+- **Planner discovery**: Search is discovery only. Partial and full-code results use one 12px floating combobox overlay; typing never changes terms, courses, or the week. Click or Enter explicitly adds. Off-term results name the switch before commit. Search stays fixed, course modules scroll, and the compact Workday action stays fixed below them.
+- **Planner modules**: Selected courses use flat surface modules with 8px radius and a standard 1px border. Known component selectors remain visible. Unrecognized prefixes stay independent under “Additional component types” with a visible count when automatic selection skipped them. A timetable activation focuses the matching selector; drag remains the spatial shortcut.
+- **Week canvas**: The grid renders Monday through Friday, adding both weekend columns when needed. A 56px time gutter anchors an 8 AM–10 PM minimum range at 54px per hour. Day headers and the time gutter stay visible while the canvas scrolls. The grid remains visible in loading and empty states.
+- **Block anatomy**: Planner blocks center the course code and `section · type` on both axes; meetings below the tall threshold place all three on one line without changing time geometry. Sharer blocks keep course and component at the top left because Workday data carries no section identifier, while avatar footers sit at the bottom right on tall blocks. Full title, time, location, status, and people remain in accessible labels or read-only details. Blocks retain the documented course-color edge and surface mix; conflicts use the error ring.
+- **Sharer flow**: Sharer controls remain read-only and follow one order: group, management, people, common free time, Right now, then personal import. People and live status use flat 44px rows without nested panels. Grid, common-free calculations, and Right now share the same enabled-person set. Keyed loading clears old group content before a new selector value appears; Share is the sole header action.
+- **Radius hierarchy**: 16px is reserved for protected modals and mobile sheets; 12px for actions and floating search; 10px for the timetable frame; 8px for course modules, fields, rows, and blocks; 6px for selected term/view cells and compact subcontrols; full radius for status pills, avatars, and identity dots only.
+- **Typography**: Schedule titles use the 20px title step; section headings and buttons use 14px; helper copy uses 13px; labels and metadata use 12px. Planner and sharer surfaces use Aspekta throughout, including course codes, section identifiers, times, rooms, and counts. Schedule controls use no tracked uppercase labels and no text below 12px.
+- **Import**: Both routes parse Workday Excel exports in the browser. Planner imports reconcile term, component, days, and times with catalog identifiers, require a choice for ambiguous matches, list skipped rows, and ask whether to merge or replace before one atomic update. Sharer imports remain read-only calendar data.
+- **Responsive flow**: At a 55rem container width, the header stacks and the aside/canvas become explicit Schedule and Controls views. The layout uses 12px padding and gaps, hides the descriptive subtitle, opens Schedule first, renders one day column with 44px tabs, and preserves term, day, and scroll state across view changes.
+
 ### Navigation
 
-- **Session sidebar items**: `h-9 px-3 py-2 rounded-lg text-sm`. Active: `bg-accent-subtle text-primary border-l-2 border-primary`. Inactive: `text-on-surface-variant`. Hover: `bg-surface-container-high text-on-surface`. Transition: all 150ms. Focus: `ring-primary/40 ring-2 ring-offset-1`.
+- **Session sidebar items**: `h-9 px-3 py-2 rounded-lg text-sm`. Active: `neu-inset bg-surface-container text-on-surface`; active navigation and mode controls never use accent-tinted fills. Inactive: `text-on-surface-variant`. Hover: `bg-surface-container-high text-on-surface`. Transition: all 150ms. Focus: `ring-primary/40 ring-2 ring-offset-1`.
 - **Session group headers**: `text-muted uppercase text-xs tracking-[0.05em] font-medium px-2 pb-1.5`. Categories: Today, Yesterday, This Week, This Month, Older.
-- **Header** (`.neu-panel`): `rounded-2xl h-14 mx-2 sm:mx-3 mt-3`. Solid panel, not glass. Contains: menu trigger (mobile), app title with logo icon (`bg-surface-container-low text-primary size-8 rounded-lg`), theme toggle + user menu. Title text: `text-base sm:text-xl font-medium tracking-[-0.025em]`.
+- **Header**: The app shell has no persistent top header. Brand lives in the sidebar (`bg-surface-container-low text-primary size-9 rounded-lg` logo tile + `text-base font-medium tracking-[-0.025em]` wordmark). Panel headers (answer canvas, drawer sections) use `px-4 py-3` flex rows.
 - **Collapsed rail** (`.neu-panel`): `w-[3.75rem] rounded-2xl py-3`. Vertical label with `[writing-mode:vertical-rl] text-xs font-medium tracking-[0.06em]`. Expand button: `neu-panel size-9 rounded-xl`.
 
 ### Chat Messages
@@ -402,6 +454,7 @@ State changes through shadow transformation + micro-translate.
 - **Assistant avatar**: `bg-primary-container text-on-primary-container size-7 rounded-lg text-[0.6875rem] font-medium`. Placed beside the label row, not inside the bubble.
 - **Tool call blocks**: `bg-surface-container-low rounded-lg`. Summary: `px-3 py-2 text-xs font-medium` with icon, text, and chevron/spinner. Collapsible `<details>` element. Result content: `text-muted max-h-40 overflow-auto text-xs` in pre tag.
 - **Tool badges** (inline, post-message): `rounded-lg px-2 py-1 font-mono text-xs`. Success: `bg-secondary-container/15 text-on-surface-variant`. Error: `bg-error-container/40 text-on-surface-variant`.
+- **Clickable tool widgets** (answer widgets in chat): hover shows `bg-surface-container-high` plus a `ring-primary/40 ring-1` affordance, so the card reads as clickable without moving. Active (the chip that opened the current pane) keeps `bg-accent-subtle ring-primary ring-2`.
 - **Suggestion pills** (empty state): `border border-primary text-primary rounded-full text-xs px-4 py-3 min-h-[44px] font-medium`. Hover: `bg-accent-subtle`. Focus: `ring-primary/40 ring-2 ring-offset-2`. Staggered entrance via `animationDelay`.
 - **Inline action pills** ("Show on map"): `border border-primary text-primary rounded-full px-3 py-1.5 text-xs font-medium min-h-[44px]`. Compact padding for use within tool result cards. Focus: `ring-primary/40 ring-2 ring-offset-2`. Active: `scale-95`.
 - **Warning cards**: `bg-tertiary-container text-on-tertiary-container rounded-xl px-3 py-2 text-body-sm`. Icon + text in flex row.
@@ -467,11 +520,12 @@ Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + op
 - **Spring physics**: Layout state changes (sidebar collapse/expand, map panel collapse/expand) use `type: "spring"` with `stiffness: 300, damping: 30` via the `motion` library. Slightly underdamped for a natural settle.
 - **Message entrance**: Spring (stiffness: 400, damping: 25) — opacity 0→1, translateY(6px→0). Quicker than panels, gentle overshoot.
 - **Tool badge stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.05`. Snappy, minimal overshoot.
-- **Session list stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.03` capped at 0.3s total.
+- **Sidebar list stagger** (session items, tool rows, Unity links): opacity fade with spring timing (stiffness: 500, damping: 30) and `delay: min(i * 0.03, 0.3)` — shared component, plays once per list mount. No translate: rows never move, so nothing can read as a layout shift.
 - **Suggestion pills / error banners**: CSS `animate-message-in` (200ms ease-out, opacity + translateY) with `animationDelay` for stagger. CSS rather than spring because staggered delay is cleaner for static lists.
-- **Button states**: translateY(-1px) on hover, translateY(1px) + scale(0.98) on press. 150ms ease-out.
-- **Menu entrance**: scale(0.97) + opacity(0) + blur(2px) + translateY(-6px) → scale(1) + opacity(1) + blur(0) + translateY(0). Opacity/filter: 180ms ease-out. Transform: 240ms `--neu-ease`.
+- **Button states**: shadow change on hover, inset shadow + scale(0.98) on press. No translate — buttons never shift position on hover or active. 150ms ease-out.
+- **Menu entrance**: Anchored menus (account menu) enter with `menu-in` (opacity 0→1, translateY(4px)→0, scale(0.97)→1, 180ms ease-out) from the anchor side. Other popovers: scale(0.97) + opacity(0) + blur(2px) → open. 150-250ms.
 - **Details expand**: opacity 0→1, translateY(-4px→0), 200ms `--neu-ease`.
+- **Data panel (answer canvas) collapse/entry**: CSS transition (300ms `--neu-ease`) animating `flex-grow`, `margin-left`, `opacity`, and `visibility` from a zero-width, invisible state to a `flex-1` pane, so it slides/fades in and out like the sidebar width animation. The inter-panel gap belongs to the pane's animating margin, so no leftover gap when collapsed.
 - **Sidebar/map content crossfade**: CSS opacity transitions (200ms) with 75ms delay on reveal, immediate on hide. Coordinates with the spring settle.
 - **Easing fallback**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions (mobile drawer, bottom sheet, profile menu, button micro-interactions). Duration: 150ms for micro-interactions, 250-300ms for mobile panel slides.
 

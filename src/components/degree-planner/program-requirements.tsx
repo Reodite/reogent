@@ -1,33 +1,28 @@
 "use client";
 
-// Right-sidebar program selector + requirements progress. Requirements render
-// in two modes driven by src/lib/program-requirements:
-//   - structured (overlay):  per-category credit progress bars
-//   - prose (default):       year-by-year checklist when the calendar page
-//                            has parseable requirement tables, else a flat
-//                            checklist of referenced courses
-// On top of the major's requirements, the Progress tab also shows the
-// faculty-wide degree rules (breadth / arts credit / upper-level minimums)
-// for the major's degree container, and the selected minor's requirements.
+// Program selection and requirement progress for the planner rail. Structured
+// requirements show category credit bars; prose requirements show a parsed
+// year-by-year checklist or a flat course fallback. The progress view also
+// shows degree-wide rules and the selected minor's requirements.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import {
-  type DegreeRules,
   evaluateCategory,
   getDegreeRules,
   getProgramIndex,
   getRequirementsFor,
   getSubjectFaculties,
+  resolveProgram,
+  type DegreeRules,
   type PlannedCourse,
   type ProgramIndex,
   type ProgramOption,
   type ProgramRequirements,
   type RegistryEntry,
   type RequirementCategory,
-  resolveProgram,
 } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { usePlanner } from "./planner-store";
 import { YearRequirements } from "./year-requirements";
 
@@ -36,16 +31,12 @@ interface ProgramRequirementsProps {
   plannedCodes: Set<string>;
 }
 
-const SELECT_CLASS =
-  "neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 rounded-lg px-2 py-1 text-sm focus-visible:ring-2 disabled:opacity-50";
-
 function creditValue(entry: CourseIndexEntry | undefined): number {
   return entry?.credits ?? 0;
 }
 
-// Program selectors (Faculty / Major / Minor) — lives in the Info tab. Writes
-// the selection to the planner store; the Progress tab (ProgramProgress) reads
-// it to resolve and render the requirements.
+// Program selectors write the faculty, major, and minor to the planner store.
+// `toolbar` renders the compact row used in the pane header.
 export function ProgramSelectors() {
   const faculty = usePlanner((s) => s.faculty);
   const major = usePlanner((s) => s.major);
@@ -69,8 +60,6 @@ export function ProgramSelectors() {
     };
   }, []);
 
-  // Plans saved before the program registry existed stored calendar URLs.
-  // Migrate them to registry ids in place once the index is available.
   useEffect(() => {
     if (!index) return;
     for (const level of ["major", "minor"] as const) {
@@ -105,74 +94,125 @@ export function ProgramSelectors() {
   }
 
   return (
-    <div className="flex min-h-0 flex-col gap-2">
-      <h3 className="text-on-surface text-sm font-semibold">Program</h3>
-      <div className="flex flex-col gap-2 text-sm">
-        <label className="flex flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Faculty</span>
-          <select
-            value={faculty ?? ""}
-            onChange={(e) => {
-              const value = e.target.value || null;
-              setProgram("faculty", value);
-              setProgram("major", null);
-              setProgram("minor", null);
-            }}
-            className={SELECT_CLASS}
-          >
-            <option value="">— Select faculty —</option>
-            {index.faculties.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Major / program</span>
-          <select
-            value={major ?? ""}
-            onChange={(e) => setProgram("major", e.target.value || null)}
-            disabled={!faculty}
-            className={SELECT_CLASS}
-          >
-            <option value="">— Select major —</option>
-            {majorOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {majorUrl && (
+    <div className="flex flex-wrap items-end gap-x-3 gap-y-2 max-md:w-full">
+      <ProgramCombobox
+        label="Faculty"
+        className="w-44"
+        placeholder="Search faculties"
+        value={faculty}
+        options={index.faculties.map((name) => ({ value: name, label: name }))}
+        onChange={(value) => {
+          setProgram("faculty", value);
+          setProgram("major", null);
+          setProgram("minor", null);
+        }}
+      />
+      <ProgramCombobox
+        label="Major / program"
+        className="w-52"
+        labelExtra={
+          majorUrl ? (
             <a
               href={majorUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary flex items-center gap-1 text-xs hover:underline"
+              className="text-primary flex items-center gap-0.5 text-[11px] hover:underline"
             >
-              <Icon name="externalLink" size={14} />
-              UBC Calendar page
+              UBC Calendar
+              <Icon name="externalLink" size={11} />
             </a>
-          )}
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Minor (optional)</span>
-          <select
-            value={minor ?? ""}
-            onChange={(e) => setProgram("minor", e.target.value || null)}
-            disabled={!faculty}
-            className={SELECT_CLASS}
-          >
-            <option value="">— Select minor —</option>
-            {minorOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+          ) : undefined
+        }
+        placeholder={faculty ? "Search programs" : "Select a faculty first"}
+        value={major}
+        options={majorOptions.map((option) => ({ value: option.id, label: option.label }))}
+        onChange={(value) => setProgram("major", value)}
+        disabled={!faculty}
+      />
+      <ProgramCombobox
+        label="Minor (optional)"
+        className="w-40"
+        placeholder={faculty ? "Search minors" : "Select a faculty first"}
+        value={minor}
+        options={minorOptions.map((option) => ({ value: option.id, label: option.label }))}
+        onChange={(value) => setProgram("minor", value)}
+        disabled={!faculty}
+      />
     </div>
+  );
+}
+
+function ProgramCombobox({
+  label,
+  labelExtra,
+  className,
+  placeholder,
+  value,
+  options,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+  labelExtra?: ReactNode;
+  className?: string;
+  placeholder: string;
+  value: string | null;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string | null) => void;
+  disabled?: boolean;
+}) {
+  const listId = useId();
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
+  const [query, setQuery] = useState(selectedLabel);
+
+  useEffect(() => setQuery(selectedLabel), [selectedLabel]);
+
+  function apply(value: string): boolean {
+    const normalized = value.trim().toLowerCase();
+    const match = options.find(
+      (option) => option.label.toLowerCase() === normalized || option.value.toLowerCase() === normalized,
+    );
+    if (!match) return false;
+    setQuery(match.label);
+    if (match.value !== value) onChange(match.value);
+    return true;
+  }
+
+  return (
+    <label className={`flex flex-col gap-1 ${className ?? ""}`}>
+      <span className="text-muted flex items-baseline justify-between gap-2 text-[11px]">
+        {label}
+        {labelExtra}
+      </span>
+      <input
+        type="text"
+        list={listId}
+        value={query}
+        disabled={disabled}
+        placeholder={placeholder}
+        autoComplete="off"
+        onFocus={(event) => event.currentTarget.select()}
+        onChange={(event) => {
+          const next = event.target.value;
+          setQuery(next);
+          if (!next) onChange(null);
+          else apply(next);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && apply(event.currentTarget.value)) event.preventDefault();
+        }}
+        onBlur={(event) => {
+          if (!event.currentTarget.value) return;
+          if (!apply(event.currentTarget.value)) setQuery(selectedLabel);
+        }}
+        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-full rounded-lg px-3 text-sm focus-visible:ring-2 disabled:opacity-50"
+      />
+      <datalist id={listId}>
+        {options.map((option) => (
+          <option key={option.value} value={option.label} />
+        ))}
+      </datalist>
+    </label>
   );
 }
 
@@ -185,9 +225,7 @@ interface ResolvedPrograms {
   subjectFaculty: Record<string, string>;
 }
 
-// Requirements display (progress bars + checklists) — lives in the Progress
-// tab. Shows, in order: the major's requirements, the degree container's
-// faculty-wide rules, and the minor's requirements.
+// Resolves the selected programs into progress bars and requirement rows.
 export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequirementsProps) {
   const major = usePlanner((s) => s.major);
   const minor = usePlanner((s) => s.minor);
@@ -196,8 +234,6 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
   useEffect(() => {
     let cancelled = false;
     if (!major && !minor) {
-      // Defer the clear off the render path; the user-visible effect is
-      // identical since we run before paint.
       queueMicrotask(() => {
         if (!cancelled) setResolved(null);
       });
@@ -231,13 +267,17 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
   );
 
   if (!major && !minor) {
-    return <div className="text-muted text-sm">Select a major in the Info tab to see program requirements.</div>;
+    return (
+      <p className="text-muted px-4 py-6 text-center text-xs">
+        Pick a faculty and program in the top bar to see your checklist.
+      </p>
+    );
   }
   if (!resolved) {
     return <div className="text-muted text-sm">Loading requirements…</div>;
   }
   return (
-    <div className="flex min-h-0 flex-col gap-3">
+    <div className="flex min-h-0 min-w-0 flex-col gap-3">
       {resolved.majorReq && (
         <RequirementsPanel
           req={resolved.majorReq}
@@ -249,22 +289,26 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
       )}
       {resolved.rules && (
         <section className="flex flex-col gap-2">
-          <h4 className="text-on-surface text-xs font-semibold uppercase tracking-wide">
+          <h4 className="text-on-surface text-xs font-semibold tracking-wide uppercase">
             {resolved.majorEntry?.degree} degree-wide requirements
           </h4>
           {typeof resolved.rules.total_credits === "number" && (
             <TotalCreditsBar
-              earned={planned.reduce((sum, c) => sum + c.credits, 0)}
+              earned={planned.reduce((sum, course) => sum + course.credits, 0)}
               required={resolved.rules.total_credits}
             />
           )}
-          <CategoryList categories={resolved.rules.categories} planned={planned} subjectFaculty={resolved.subjectFaculty} />
+          <CategoryList
+            categories={resolved.rules.categories}
+            planned={planned}
+            subjectFaculty={resolved.subjectFaculty}
+          />
         </section>
       )}
       {resolved.minorReq && (
         <section className="flex flex-col gap-2">
-          <h4 className="text-on-surface text-xs font-semibold uppercase tracking-wide">
-            {resolved.minorEntry ? resolved.minorEntry.title : "Minor"}
+          <h4 className="text-on-surface text-xs font-semibold tracking-wide uppercase">
+            {resolved.minorEntry?.title ?? "Minor"}
           </h4>
           <RequirementsPanel
             req={resolved.minorReq}
@@ -290,18 +334,21 @@ function CategoryList({
 }) {
   return (
     <ul className="flex flex-col gap-2">
-      {categories.map((cat) => {
-        const { earned, matched } = evaluateCategory(cat, planned, subjectFaculty);
+      {categories.map((category) => {
+        const { earned, matched } = evaluateCategory(category, planned, subjectFaculty);
         return (
-          <li key={cat.name} className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
+          <li
+            key={category.name}
+            className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2"
+          >
             <div className="flex items-baseline justify-between text-sm">
-              <span className="text-on-surface">{cat.name}</span>
+              <span className="text-on-surface">{category.name}</span>
               <span className="text-on-surface-variant text-xs">
-                {earned}/{cat.credits_required} cr
+                {earned}/{category.credits_required} cr
               </span>
             </div>
-            <ProgressBar earned={earned} required={cat.credits_required} />
-            {cat.notes && <p className="text-muted text-xs">{cat.notes}</p>}
+            <ProgressBar earned={earned} required={category.credits_required} />
+            {category.notes && <p className="text-muted text-xs">{category.notes}</p>}
             {matched.length > 0 && <p className="text-on-surface-variant text-xs">{matched.join(", ")}</p>}
           </li>
         );
@@ -327,7 +374,10 @@ function RequirementsPanel({
     return (
       <div className="flex flex-col gap-3">
         {typeof req.total_credits === "number" && (
-          <TotalCreditsBar earned={planned.reduce((sum, c) => sum + c.credits, 0)} required={req.total_credits} />
+          <TotalCreditsBar
+            earned={planned.reduce((sum, course) => sum + course.credits, 0)}
+            required={req.total_credits}
+          />
         )}
         <CategoryList categories={req.categories} planned={planned} subjectFaculty={subjectFaculty} />
       </div>
@@ -339,7 +389,14 @@ function RequirementsPanel({
   // is fine (no hook needed — keeps RequirementsPanel hook-free).
   const parsedYears = parseProgramYears(req.text);
   if (hasYearRequirements(parsedYears)) {
-    return <YearRequirements programUrl={req.program_url} parsed={parsedYears} plannedCodes={plannedCodes} />;
+    return (
+      <YearRequirements
+        programUrl={req.program_url}
+        parsed={parsedYears}
+        plannedCodes={plannedCodes}
+        courseIndex={courseIndex}
+      />
+    );
   }
   // Fallback: checklist of referenced courses.
   return <ProseRequirements req={req} courseIndex={courseIndex} plannedCodes={plannedCodes} />;

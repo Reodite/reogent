@@ -15,7 +15,7 @@ function CreatorAvatar({ name }: { name: string }) {
 
 export function CreatorsPage() {
   return (
-    <section aria-label="Creators" className="neu-panel flex min-h-0 w-full flex-col rounded-2xl p-4 sm:p-6">
+    <section aria-label="Creators" className="flex min-h-0 w-full flex-col p-4 sm:p-6">
       <h1 className="text-on-surface text-base font-medium tracking-[-0.01em]">Creators</h1>
       <div className="mt-6 flex items-center justify-center gap-8">
         <CreatorAvatar name="Max" />

@@ -4,15 +4,17 @@
 // title/credits against the live course index at render time (we persist
 // only the code), so a refreshed catalog flows through to existing plans.
 //
-// The error border + popup is the planner's only signal that prereqs
-// aren't met — see degree-planner-pane.tsx for the cumulative-completed-set
+// The error border, alert icon, Issues popover, and popup flag unmet
+// prereqs — see degree-planner-pane.tsx for the cumulative-completed-set
 // logic that fills `validation`.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
+import { Icon } from "@/src/components/icons";
 import { parsePrereq } from "@/src/shared/prereq-ast";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { CourseInfoPopup } from "./course-info-popup";
+import { usePlanner } from "./planner-store";
 import type { BlockValidation } from "./validation";
 
 interface CourseBlockProps {
@@ -20,22 +22,20 @@ interface CourseBlockProps {
   code: string;
   entry: CourseIndexEntry | undefined;
   validation: BlockValidation;
-  fulfillsRequirement?: boolean;
   ghost?: boolean;
 }
 
-export function CourseBlock({
-  blockId,
-  code,
-  entry,
-  validation,
-  fulfillsRequirement = false,
-  ghost = false,
-}: CourseBlockProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+export function CourseBlock({ blockId, code, entry, validation, ghost = false }: CourseBlockProps) {
+  const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `block:${blockId}`,
     data: { kind: "block", blockId },
   });
+
+  // The whole chip is draggable; interactive controls opt out.
+  function startDrag(e: React.PointerEvent) {
+    if ((e.target as HTMLElement).closest("button, a, select, input")) return;
+    listeners?.onPointerDown?.(e);
+  }
 
   const title = entry?.title || code;
   const style = {
@@ -44,11 +44,7 @@ export function CourseBlock({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const borderClass = !validation.ok
-    ? "border-error"
-    : fulfillsRequirement
-      ? "border-secondary hover:border-secondary"
-      : "border-border hover:border-outline-variant";
+  const borderClass = !validation.ok ? "border-error" : "border-transparent";
 
   // Parse prereq/coreq trees once per block so the popup can render
   // them with clause-level highlighting against the snapshot completed
@@ -58,6 +54,8 @@ export function CourseBlock({
   const coreqAst = useMemo(() => parsePrereq(entry?.corequisite), [entry?.corequisite]);
 
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const removeBlock = usePlanner((state) => state.removeBlock);
+  const flashing = usePlanner((state) => state.flashBlockId === blockId);
 
   function togglePopup(e: React.MouseEvent | React.FocusEvent) {
     e.stopPropagation();
@@ -69,30 +67,56 @@ export function CourseBlock({
     <div
       ref={ghost ? undefined : setNodeRef}
       style={ghost ? undefined : style}
-      {...(ghost ? {} : attributes)}
-      {...(ghost ? {} : listeners)}
-      className={`group bg-surface flex w-full shrink-0 cursor-grab items-baseline gap-2 rounded-lg border px-2 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
-        ghost ? "shadow-lg" : "neu-raised"
-      }`}
+      onPointerDown={ghost ? undefined : startDrag}
+      className={`group bg-surface-container relative flex min-h-14 w-full min-w-0 shrink-0 cursor-grab touch-none flex-col items-stretch gap-0.5 rounded-lg border px-2 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
+        ghost ? "neu-raised scale-[1.03]" : "neu-raised"
+      } ${flashing ? "planner-flash" : ""}`}
+      data-block-id={blockId}
     >
-      <span className="text-on-surface shrink-0 font-mono">{code}</span>
-      <span className="text-on-surface-variant flex-1 truncate">{title}</span>
-      {!ghost && entry && (
-        <button
-          type="button"
-          aria-label="Show course details"
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={togglePopup}
-          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-xs leading-none transition-colors ${
-            anchorRect
-              ? "border-on-surface-variant text-on-surface bg-surface-container"
-              : "border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-on-surface-variant"
-          }`}
-        >
-          ?
-        </button>
-      )}
+      <div className="flex h-7 min-w-0 items-center gap-1">
+        <span className="text-on-surface min-w-0 flex-1 truncate font-mono text-xs">{code}</span>
+        {!ghost && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            {entry && (
+              <button
+                type="button"
+                aria-label={
+                  validation.ok
+                    ? `Show ${code} details`
+                    : `Show ${code} details (${validation.missing.length} placement issue${validation.missing.length === 1 ? "" : "s"})`
+                }
+                onClick={togglePopup}
+                className={`flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+                  anchorRect
+                    ? "bg-surface-container-high text-on-surface"
+                    : validation.ok
+                      ? "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                      : "text-error hover:bg-error-container"
+                }`}
+              >
+                <Icon name={validation.ok ? "info" : "alert"} size={14} />
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label={`Remove ${code}`}
+              title={`Remove ${code}`}
+              onClick={() => removeBlock(blockId)}
+              className="text-muted hover:bg-error-container hover:text-error flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="flex min-w-0 items-center gap-2 leading-tight">
+        <span className="text-on-surface-variant min-w-0 flex-1 truncate text-[11px]" title={title}>
+          {title}
+        </span>
+        <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">
+          {entry?.credits != null ? `${entry.credits} cr` : ""}
+        </span>
+      </div>
       {anchorRect && entry && (
         <CourseInfoPopup
           course={entry}
@@ -101,6 +125,7 @@ export function CourseBlock({
           coreqAst={coreqAst}
           completedBefore={validation.completedBefore}
           completedSameOrBefore={validation.completedSameOrBefore}
+          issues={validation.missing}
           onClose={() => setAnchorRect(null)}
         />
       )}

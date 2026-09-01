@@ -70,9 +70,14 @@ export function parseQuery(raw: string): ParsedQuery {
  *   - filter → subject filtered by level
  *   - anything else → substring match on code + title
  *
- * Returns at most `limit` entries.
+ * Skips codes in `excludedCodes` and returns at most `limit` entries.
  */
-export function searchCourses(index: Map<string, CourseIndexEntry>, rawQuery: string, limit = 25): CourseIndexEntry[] {
+export function searchCourses(
+  index: Map<string, CourseIndexEntry>,
+  rawQuery: string,
+  limit = 25,
+  excludedCodes?: ReadonlySet<string>,
+): CourseIndexEntry[] {
   const trimmed = rawQuery.trim();
   if (!trimmed) return [];
   const parsed = parseQuery(trimmed);
@@ -80,7 +85,7 @@ export function searchCourses(index: Map<string, CourseIndexEntry>, rawQuery: st
   const out: CourseIndexEntry[] = [];
   const seen = new Set<string>();
   const push = (entry: CourseIndexEntry | undefined) => {
-    if (!entry) return;
+    if (!entry || excludedCodes?.has(entry.code)) return;
     if (seen.has(entry.code)) return;
     seen.add(entry.code);
     out.push(entry);

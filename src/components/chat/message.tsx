@@ -195,6 +195,22 @@ function ThinkingBlock({ content, compact = false }: { content: string; compact?
   );
 }
 
+/** Consecutive thinking blocks merge into one; tool calls interleave in order.
+ *  Shared with chat-panel.tsx, which needs the same block indexing to key tool
+ *  call chips (`${message.id}:tc-${condensedIdx}`) for highlight identity. */
+export function condenseActivity(activity: ActivityBlock[]): ActivityBlock[] {
+  const out: ActivityBlock[] = [];
+  for (const block of activity) {
+    const last = out[out.length - 1];
+    if (block.type === "thinking" && last?.type === "thinking") {
+      last.content = `${last.content}\n\n${block.content}`;
+    } else {
+      out.push({ ...block });
+    }
+  }
+  return out;
+}
+
 export const AssistantMessage = memo(function AssistantMessage({
   message,
   showAvatar = true,
@@ -204,20 +220,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 }) {
   const reduce = useReducedMotion();
   const activity = message.activity ?? [];
-  // Consecutive thinking blocks merge into one; interleaving with tool calls
-  // is preserved so the sequence of actions stays readable.
-  const condensed = useMemo(() => {
-    const out: ActivityBlock[] = [];
-    for (const block of activity) {
-      const last = out[out.length - 1];
-      if (block.type === "thinking" && last?.type === "thinking") {
-        last.content = `${last.content}\n\n${block.content}`;
-      } else {
-        out.push({ ...block });
-      }
-    }
-    return out;
-  }, [activity]);
+  const condensed = useMemo(() => condenseActivity(activity), [activity]);
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 6 }}
@@ -251,7 +254,7 @@ export const AssistantMessage = memo(function AssistantMessage({
               const call = { name: block.content, input: block.input ?? {}, result: block.result };
               return (
                 // biome-ignore lint/suspicious/noArrayIndexKey: append-only list
-                <ResponseWidget key={`tc-${idx}`} call={call} />
+                <ResponseWidget key={`tc-${idx}`} call={call} callKey={`${message.id}:tc-${idx}`} />
               );
             })}
           </div>

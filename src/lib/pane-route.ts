@@ -8,6 +8,7 @@ export const TOOL_SLUG_TO_PANE_ID: Record<string, PaneId> = {
   courses: "course-lookup",
   prereq: "prereq-tree",
   planner: "degree-planner",
+  schedule: "schedule",
   calendar: "calendar",
 };
 

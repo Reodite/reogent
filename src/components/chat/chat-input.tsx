@@ -7,7 +7,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 
 const PLACEHOLDER = "Ask about courses, routes, tuition...";
 // Unsent composer text survives tab swaps and reloads; cleared on send.
-// ponytail: one global draft, not per-conversation — split the key by session
+// one global draft, not per-conversation — split the key by session
 // id if per-chat drafts ever matter.
 const DRAFT_KEY = "reodite.chat-draft";
 

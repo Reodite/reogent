@@ -62,11 +62,11 @@ function Capture() {
   return null;
 }
 
-function renderCanvas(view: CanvasView | null) {
+function renderCanvas(view: CanvasView | null, titlebar = true) {
   shellRef.current = null;
   return render(
     <ChatShellProvider>
-      <AnswerCanvas view={view} />
+      <AnswerCanvas view={view} titlebar={titlebar} />
       <Capture />
     </ChatShellProvider>,
   );
@@ -83,6 +83,15 @@ describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
     const section = container.querySelector('[data-pane="course-lookup"]');
     expect(section).not.toBeNull();
     expect(section?.querySelector("h2")?.textContent).toBe("Course lookup");
+  });
+
+  it("leaves Tools panes flat for the shell-owned surface", () => {
+    const { container } = renderCanvas({ paneId: "course-lookup", state: { code: "" } }, false);
+    const section = container.querySelector('[data-pane="course-lookup"]');
+
+    expect(section?.className).not.toContain("neu-panel");
+    expect(section?.className).not.toContain("rounded-2xl");
+    expect(section?.className).toContain("overflow-hidden");
   });
 
   it("pane setState merges back into workspaceView state (fixes the noopSetState bug)", () => {
