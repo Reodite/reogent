@@ -7,16 +7,19 @@
 // so the pane's onDragEnd switches to the addBlock branch.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { useDraggable } from "@dnd-kit/core";
 import { useState } from "react";
 import { CourseInfoPopup } from "./course-info-popup";
+import { CoursePlacementSelect } from "./course-placement-select";
 
 interface LookupBlockProps {
   entry: CourseIndexEntry;
   ghost?: boolean;
+  onPlaced?: () => void;
 }
 
-export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
+export function LookupBlock({ entry, ghost = false, onPlaced }: LookupBlockProps) {
   const code = entry.code;
   const { listeners, setNodeRef, isDragging } = useDraggable({
     id: `lookup:${code}`,
@@ -24,6 +27,7 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
     disabled: ghost,
   });
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [placing, setPlacing] = useState(false);
 
   // Whole row is the drag surface; interactive controls opt out.
   function startDrag(e: React.PointerEvent) {
@@ -36,7 +40,7 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
       ref={ghost ? undefined : setNodeRef}
       data-lookup-code={code}
       onPointerDown={ghost ? undefined : startDrag}
-      className={`group flex min-h-11 cursor-grab touch-none items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${
+      className={`group flex min-h-11 cursor-grab touch-none flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${
         ghost ? "neu-raised bg-surface-container scale-[1.03]" : "hover:bg-surface-container-low"
       } ${isDragging ? "opacity-0" : ""}`}
     >
@@ -49,20 +53,44 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
       <span className="text-muted w-9 shrink-0 text-right text-xs tabular-nums">
         {entry.credits != null ? `${entry.credits} cr` : ""}
       </span>
-      {!ghost && (
-        <button
-          type="button"
-          aria-label={`Show ${code} details`}
-          onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect();
-            setAnchorRect((current) => (current ? null : rect));
-          }}
-          className="text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex size-7 shrink-0 items-center justify-center rounded-md opacity-60 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-        >
-          <Icon name="info" size={14} />
-        </button>
-      )}
-      {anchorRect && <CourseInfoPopup course={entry} anchorRect={anchorRect} onClose={() => setAnchorRect(null)} />}
+      {!ghost ? (
+        <>
+          <Button
+            variant="outline"
+            size="pill"
+            aria-expanded={placing}
+            onClick={() => setPlacing((current) => !current)}
+          >
+            Add
+          </Button>
+          <Button
+            variant="ghost"
+            size="denseIcon"
+            aria-label={`Show ${code} details`}
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              setAnchorRect((current) => (current ? null : rect));
+            }}
+          >
+            <Icon name="info" size={14} />
+          </Button>
+          {placing ? (
+            <div className="w-full">
+              <CoursePlacementSelect
+                mode="add"
+                code={code}
+                onPlaced={() => {
+                  setPlacing(false);
+                  onPlaced?.();
+                }}
+              />
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {anchorRect ? (
+        <CourseInfoPopup course={entry} anchorRect={anchorRect} onClose={() => setAnchorRect(null)} />
+      ) : null}
     </div>
   );
 }

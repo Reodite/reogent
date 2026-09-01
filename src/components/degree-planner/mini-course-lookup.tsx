@@ -14,9 +14,10 @@ const RESULT_LIMIT = 20;
 interface MiniCourseLookupProps {
   courseIndex: Map<string, CourseIndexEntry>;
   plannedCodes: ReadonlySet<string>;
+  onPlaced?: () => void;
 }
 
-export function MiniCourseLookup({ courseIndex, plannedCodes }: MiniCourseLookupProps) {
+export function MiniCourseLookup({ courseIndex, plannedCodes, onPlaced }: MiniCourseLookupProps) {
   // The persisted query survives planner remounts.
   const query = usePlanner((s) => s.lookupQuery);
   const setQuery = usePlanner((s) => s.setLookupQuery);
@@ -28,11 +29,7 @@ export function MiniCourseLookup({ courseIndex, plannedCodes }: MiniCourseLookup
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
-      <header className="flex h-12 min-w-0 shrink-0 items-center gap-2 px-4">
-        <h3 className="text-on-surface text-sm font-medium">Find courses</h3>
-        <span className="text-muted text-xs">Drag a result onto any term.</span>
-      </header>
-      <div className="min-w-0 shrink-0 px-4 pb-3">
+      <div className="min-w-0 shrink-0 p-3">
         <SearchInput
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -44,7 +41,7 @@ export function MiniCourseLookup({ courseIndex, plannedCodes }: MiniCourseLookup
       </div>
       <div className="border-border-subtle flex min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] flex-col gap-1 overflow-y-auto border-t px-2 py-2">
         {!query.trim() && (
-          <p className="text-muted px-2 py-6 text-center text-xs">Search above, then drag a course onto the board.</p>
+          <p className="text-muted px-2 py-6 text-center text-xs">Search above, then drag a course or use Add.</p>
         )}
         {query.trim() && results.length === 0 && (
           <p className="text-muted px-2 py-6 text-center text-xs">
@@ -52,7 +49,7 @@ export function MiniCourseLookup({ courseIndex, plannedCodes }: MiniCourseLookup
           </p>
         )}
         {results.map((entry) => (
-          <LookupBlock key={entry.code} entry={entry} />
+          <LookupBlock key={entry.code} entry={entry} onPlaced={onPlaced} />
         ))}
       </div>
     </div>

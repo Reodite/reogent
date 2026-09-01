@@ -9,11 +9,13 @@
 // logic that fills `validation`.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { parsePrereq } from "@/src/shared/prereq-ast";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { CourseInfoPopup } from "./course-info-popup";
+import { CoursePlacementSelect } from "./course-placement-select";
 import { usePlanner } from "./planner-store";
 import type { BlockValidation } from "./validation";
 
@@ -54,6 +56,7 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
   const coreqAst = useMemo(() => parsePrereq(entry?.corequisite), [entry?.corequisite]);
 
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [placing, setPlacing] = useState(false);
   const removeBlock = usePlanner((state) => state.removeBlock);
   const flashing = usePlanner((state) => state.flashBlockId === blockId);
 
@@ -73,41 +76,48 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
       } ${flashing ? "planner-flash" : ""}`}
       data-block-id={blockId}
     >
-      <div className="flex h-7 min-w-0 items-center gap-1">
-        <span className="text-on-surface min-w-0 flex-1 truncate font-mono text-xs">{code}</span>
-        {!ghost && (
+      <div className="flex min-w-0 items-center gap-1">
+        {entry && !ghost ? (
+          <Button
+            variant="ghost"
+            size="compact"
+            aria-label={
+              validation.ok
+                ? `Show ${code} details`
+                : `Show ${code} details (${validation.missing.length} placement issue${validation.missing.length === 1 ? "" : "s"})`
+            }
+            onClick={togglePopup}
+            className={`min-w-0 flex-1 justify-start px-1 font-mono ${validation.ok ? "" : "text-error"}`}
+          >
+            <span className="truncate">{code}</span>
+            <Icon name={validation.ok ? "info" : "alert"} size={12} className="shrink-0" />
+          </Button>
+        ) : (
+          <span className="text-on-surface min-w-0 flex-1 truncate font-mono text-xs">{code}</span>
+        )}
+        {!ghost ? (
           <div className="flex shrink-0 items-center gap-0.5">
-            {entry && (
-              <button
-                type="button"
-                aria-label={
-                  validation.ok
-                    ? `Show ${code} details`
-                    : `Show ${code} details (${validation.missing.length} placement issue${validation.missing.length === 1 ? "" : "s"})`
-                }
-                onClick={togglePopup}
-                className={`flex size-7 shrink-0 items-center justify-center rounded-md transition-colors ${
-                  anchorRect
-                    ? "bg-surface-container-high text-on-surface"
-                    : validation.ok
-                      ? "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                      : "text-error hover:bg-error-container"
-                }`}
-              >
-                <Icon name={validation.ok ? "info" : "alert"} size={14} />
-              </button>
-            )}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="compact"
+              aria-expanded={placing}
+              onClick={() => setPlacing((current) => !current)}
+              className="px-1.5"
+            >
+              Move
+            </Button>
+            <Button
+              variant="ghost"
+              size="denseIcon"
               aria-label={`Remove ${code}`}
               title={`Remove ${code}`}
               onClick={() => removeBlock(blockId)}
-              className="text-muted hover:bg-error-container hover:text-error flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+              className="text-muted enabled:hover:bg-error-container enabled:hover:text-error"
             >
               <Icon name="close" size={14} />
-            </button>
+            </Button>
           </div>
-        )}
+        ) : null}
       </div>
       <div className="flex min-w-0 items-center gap-2 leading-tight">
         <span className="text-on-surface-variant min-w-0 flex-1 truncate text-xs" title={title}>
@@ -117,6 +127,15 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
           {entry?.credits != null ? `${entry.credits} cr` : ""}
         </span>
       </div>
+      {placing && !ghost ? (
+        <CoursePlacementSelect
+          mode="move"
+          code={code}
+          blockId={blockId}
+          shadowOn="surface-container"
+          onPlaced={() => setPlacing(false)}
+        />
+      ) : null}
       {anchorRect && entry && (
         <CourseInfoPopup
           course={entry}

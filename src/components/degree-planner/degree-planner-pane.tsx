@@ -18,7 +18,14 @@ import {
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
-import { RetryAlert } from "@/src/components/ui/feedback";
+import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
+import {
+  WorkspaceCanvas,
+  WorkspacePage,
+  WorkspacePanel,
+  WorkspaceRail,
+  type WorkspaceView,
+} from "@/src/components/ui/workspace";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
 import { getProgramIndex, getRequirementsFor } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
@@ -130,6 +137,7 @@ export function DegreePlannerPane() {
   const [courseIndex, setCourseIndex] = useState<Map<string, CourseIndexEntry> | null>(null);
   const [indexError, setIndexError] = useState(false);
   const [loadNonce, setLoadNonce] = useState(0);
+  const [mobileView, setMobileView] = useState<WorkspaceView>("main");
   const [activeDrag, setActiveDrag] = useState<
     { kind: "block"; blockId: string; code: string } | { kind: "lookup"; code: string } | null
   >(null);
@@ -336,17 +344,24 @@ export function DegreePlannerPane() {
 
   if (indexError) {
     return (
-      <div className="grid h-full place-items-center p-6">
-        <RetryAlert onRetry={() => setLoadNonce((n) => n + 1)}>Couldn't load the course index.</RetryAlert>
-      </div>
+      <WorkspacePage composition="canvas" title="Degree Planner" description="Plan your UBC degree, term by term.">
+        <WorkspaceCanvas overflow="hidden" padding="md">
+          <div className="grid h-full place-items-center">
+            <RetryAlert onRetry={() => setLoadNonce((nonce) => nonce + 1)}>Couldn't load the course index.</RetryAlert>
+          </div>
+        </WorkspaceCanvas>
+      </WorkspacePage>
     );
   }
   if (!courseIndex) {
     return (
-      <div className="text-muted flex h-full items-center justify-center gap-1.5 p-6 text-sm" aria-live="polite">
-        <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
-        Loading course index…
-      </div>
+      <WorkspacePage composition="canvas" title="Degree Planner" description="Plan your UBC degree, term by term.">
+        <WorkspaceCanvas overflow="hidden" padding="md">
+          <div className="grid h-full place-items-center">
+            <LoadingStatus>Loading course index…</LoadingStatus>
+          </div>
+        </WorkspaceCanvas>
+      </WorkspacePage>
     );
   }
 
@@ -377,71 +392,69 @@ export function DegreePlannerPane() {
         settle();
       }}
     >
-      <div
-        data-pane-root="degree-planner"
-        className="flex h-full min-h-0 flex-col gap-4 p-6 max-md:overflow-y-auto max-sm:p-4"
-      >
-        <header className="relative z-30 flex shrink-0 flex-col gap-3 max-xl:pl-12">
-          <div>
-            <h2 className="text-on-surface text-xl font-medium tracking-[-0.02em]">Degree Planner</h2>
-            <p className="text-muted text-xs">Plan your UBC degree, term by term.</p>
-          </div>
-          <div className="flex w-full flex-wrap items-end justify-between gap-3">
-            <ProgramSelectors />
-            <ActionsSection
-              years={years}
-              validations={validations}
-              courseIndex={courseIndex}
-              onClearAll={() => {
-                const total = years.reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
-                if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
-              }}
-            />
-          </div>
-        </header>
-
-        <div className="grid min-h-0 flex-1 grid-cols-[20rem_minmax(0,1fr)] gap-4 max-md:flex max-md:flex-none max-md:flex-col">
-          <aside className="grid min-h-0 min-w-0 grid-rows-2 gap-4 max-md:order-2 max-md:h-[44rem] max-md:shrink-0">
-            <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
-              <header className="flex h-12 shrink-0 items-center gap-2 px-4">
-                <h3 className="text-on-surface text-sm font-medium">Requirements</h3>
-              </header>
-              <div className="border-border-subtle min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-2 pb-2">
-                <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
-              </div>
-            </section>
-            <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
-              <MiniCourseLookup courseIndex={courseIndex} plannedCodes={plannedCodes} />
-            </section>
-          </aside>
-
-          <section
-            aria-label="Degree plan"
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable year board needs a keyboard focus target.
-            tabIndex={0}
-            className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4 max-md:order-1 max-md:min-h-[36rem] max-md:shrink-0"
-          >
-            <div
-              className="grid min-h-0 flex-1 gap-4"
-              style={{
-                gridTemplateColumns: `repeat(${years.length}, minmax(10.5rem, 1fr))`,
-                minWidth: `${years.length * 10.5 + Math.max(0, years.length - 1)}rem`,
-              }}
+      <WorkspacePage
+        composition="split"
+        title="Degree Planner"
+        description="Plan your UBC degree, term by term."
+        toolbar={<ProgramSelectors />}
+        actions={
+          <ActionsSection
+            years={years}
+            validations={validations}
+            courseIndex={courseIndex}
+            onClearAll={() => {
+              const total = years.reduce((count, year) => {
+                return count + year.terms.reduce((termCount, term) => termCount + term.blocks.length, 0);
+              }, 0);
+              if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
+            }}
+          />
+        }
+        view={mobileView}
+        onViewChange={setMobileView}
+        mainLabel="Plan"
+        railLabel="Requirements and courses"
+        rail={
+          <WorkspaceRail>
+            <WorkspacePanel title="Requirements" padding="sm">
+              <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
+            </WorkspacePanel>
+            <WorkspacePanel
+              title="Find courses"
+              description="Drag a result or use Add"
+              bodyMode="contained"
+              padding="none"
             >
-              {years.map((year) => (
-                <YearColumn key={year.id} year={year} courseIndex={courseIndex} validations={validations} />
-              ))}
-            </div>
-            {activeDrag && (
-              <div className="pointer-events-none sticky bottom-2 z-20 mx-auto h-0 w-72">
-                <div className="pointer-events-auto -translate-y-14">
-                  <TrashBin />
-                </div>
+              <MiniCourseLookup
+                courseIndex={courseIndex}
+                plannedCodes={plannedCodes}
+                onPlaced={() => setMobileView("main")}
+              />
+            </WorkspacePanel>
+          </WorkspaceRail>
+        }
+      >
+        <WorkspaceCanvas aria-label="Degree plan" tabIndex={0} padding="md">
+          <div
+            className="grid min-h-0 flex-1 gap-4"
+            style={{
+              gridTemplateColumns: `repeat(${years.length}, minmax(10.5rem, 1fr))`,
+              minWidth: `${years.length * 10.5 + Math.max(0, years.length - 1)}rem`,
+            }}
+          >
+            {years.map((year) => (
+              <YearColumn key={year.id} year={year} courseIndex={courseIndex} validations={validations} />
+            ))}
+          </div>
+          {activeDrag ? (
+            <div className="pointer-events-none sticky bottom-2 z-20 mx-auto h-0 w-72">
+              <div className="pointer-events-auto -translate-y-14">
+                <TrashBin />
               </div>
-            )}
-          </section>
-        </div>
-      </div>
+            </div>
+          ) : null}
+        </WorkspaceCanvas>
+      </WorkspacePage>
 
       <DragOverlay dropAnimation={activeDrag?.kind === "lookup" ? null : DRAG_DROP_ANIMATION}>
         {activeDrag && (
@@ -624,32 +637,32 @@ function ActionsSection({
   return (
     <div className="ml-auto flex flex-wrap items-center justify-end gap-2 max-md:ml-0 max-md:w-full max-md:justify-start">
       <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-xl p-1">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="compact"
           onClick={() => {
             setAutofillResult(null);
             undo();
           }}
           disabled={!canUndo}
           title="Undo (Ctrl+Z)"
-          className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40"
         >
           <Icon name="undo" size={13} />
           Undo
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="ghost"
+          size="compact"
           onClick={() => {
             setAutofillResult(null);
             redo();
           }}
           disabled={!canRedo}
           title="Redo (Ctrl+Shift+Z)"
-          className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40"
         >
           <Icon name="redo" size={13} />
           Redo
-        </button>
+        </Button>
       </div>
 
       <Button size="toolbar" onClick={handleAutofill} disabled={filling}>
@@ -784,14 +797,16 @@ function AutofillSummary({ result, onClose }: { result: AutofillResult; onClose:
             </p>
           )}
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="denseIcon"
           onClick={onClose}
-          className="text-muted hover:bg-surface-container-high hover:text-on-surface rounded-lg p-1"
           aria-label="Dismiss autofill summary"
+          className="text-muted -mt-1 -mr-1"
         >
           <Icon name="close" size={14} />
-        </button>
+        </Button>
       </div>
     </div>
   );
