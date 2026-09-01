@@ -189,6 +189,7 @@ function CourseRequirementRow({
   return (
     <li
       ref={setNodeRef}
+      data-requirement-key={rowKey}
       style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1 }}
       onPointerDown={(e) => {
         // The row is draggable anywhere except its interactive controls.

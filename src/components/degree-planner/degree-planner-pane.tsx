@@ -119,6 +119,7 @@ export function DegreePlannerPane() {
   const [activeDrag, setActiveDrag] = useState<
     { kind: "block"; blockId: string; code: string } | { kind: "lookup"; code: string } | null
   >(null);
+  const [dragAnchor, setDragAnchor] = useState({ x: 0, y: 0, width: 0 });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: loadNonce re-triggers the fetch from the Retry button.
   useEffect(() => {
@@ -168,14 +169,29 @@ export function DegreePlannerPane() {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
-  // Drag physics: horizontal velocity tilts the overlay (clamped to ±12°)
-  // and shifts it against the travel direction; the spring settles it level
-  // on pause or drop. Reduced-motion keeps it flat.
+  // Drag physics: the overlay's top-center springs to the cursor, then stays
+  // fixed there while horizontal velocity tilts the card around that anchor.
+  // The rotation spring settles level on pause or drop.
   const reducedMotion = useReducedMotion();
   const dragRotate = useSpring(0, { stiffness: 260, damping: 14, mass: 0.7 });
-  const dragLagX = useSpring(0, { stiffness: 260, damping: 14, mass: 0.7 });
   const dragSample = useRef({ x: 0, t: 0 });
   const dragIdleTimer = useRef<number | null>(null);
+  const dragPointer = useRef<{ x: number; y: number } | null>(null);
+  const dragSteadyAnchor = useRef<{ x: number; y: number } | null>(null);
+
+  // PointerSensor keeps the original pointerdown event, so track the movement
+  // that crosses its activation threshold to anchor at the live cursor.
+  useEffect(() => {
+    function trackPointer(event: PointerEvent) {
+      dragPointer.current = { x: event.clientX, y: event.clientY };
+    }
+    window.addEventListener("pointerdown", trackPointer, true);
+    window.addEventListener("pointermove", trackPointer, true);
+    return () => {
+      window.removeEventListener("pointerdown", trackPointer, true);
+      window.removeEventListener("pointermove", trackPointer, true);
+    };
+  }, []);
 
   useEffect(
     () => () => {
@@ -186,10 +202,14 @@ export function DegreePlannerPane() {
 
   function settleOverlay() {
     dragRotate.set(0);
-    dragLagX.set(0);
   }
 
   function onDragMove(event: DragMoveEvent) {
+    if (dragSteadyAnchor.current && (event.delta.x !== 0 || event.delta.y !== 0)) {
+      const steady = dragSteadyAnchor.current;
+      dragSteadyAnchor.current = null;
+      setDragAnchor((current) => ({ ...current, x: steady.x, y: steady.y }));
+    }
     if (reducedMotion) return;
     const now = performance.now();
     const dt = Math.max(1, now - dragSample.current.t) / 1000;
@@ -197,7 +217,6 @@ export function DegreePlannerPane() {
     dragSample.current = { x: event.delta.x, t: now };
     const swing = Math.max(-12, Math.min(12, vx * 0.01));
     dragRotate.set(swing);
-    dragLagX.set(-swing * 1.6);
     if (dragIdleTimer.current !== null) window.clearTimeout(dragIdleTimer.current);
     dragIdleTimer.current = window.setTimeout(settleOverlay, 120);
   }
@@ -276,6 +295,33 @@ export function DegreePlannerPane() {
   function onDragStart(event: DragStartEvent) {
     dragSample.current = { x: 0, t: performance.now() };
     settleOverlay();
+    const activator = event.activatorEvent;
+    const sourceElement =
+      activator.target instanceof Element
+        ? activator.target.closest<HTMLElement>("[data-block-id], [data-lookup-code], [data-requirement-key]")
+        : null;
+    // This dnd-kit version can omit the initial rect at activation.
+    const rect =
+      event.active.rect.current.initial ??
+      sourceElement?.getBoundingClientRect() ??
+      event.active.rect.current.translated;
+    const originX = "clientX" in activator && typeof activator.clientX === "number" ? activator.clientX : null;
+    const originY = "clientY" in activator && typeof activator.clientY === "number" ? activator.clientY : null;
+    const clientX = dragPointer.current?.x ?? originX;
+    const clientY = dragPointer.current?.y ?? originY;
+    if (rect && clientX !== null && clientY !== null) {
+      setDragAnchor({
+        x: clientX - rect.left - rect.width / 2,
+        y: clientY - rect.top,
+        width: rect.width,
+      });
+      dragSteadyAnchor.current =
+        originX !== null && originY !== null
+          ? { x: originX - rect.left - rect.width / 2, y: originY - rect.top }
+          : null;
+    } else {
+      setDragAnchor({ x: 0, y: 0, width: rect?.width ?? 0 });
+    }
     const id = String(event.active.id);
     if (id.startsWith(ACTIVE_BLOCK_PREFIX)) {
       const blockId = id.slice(ACTIVE_BLOCK_PREFIX.length);
@@ -500,22 +546,32 @@ export function DegreePlannerPane() {
               }
         }
       >
-        <motion.div style={reducedMotion ? undefined : { rotate: dragRotate, x: dragLagX, transformOrigin: "50% 0%" }}>
-          {activeDrag?.kind === "block" && (
-            <CourseBlock
-              blockId={activeDrag.blockId}
-              code={activeDrag.code}
-              entry={courseIndex.get(activeDrag.code)}
-              validation={validations.get(activeDrag.blockId) ?? EMPTY_VALIDATION}
-              ghost
-            />
-          )}
-          {activeDrag?.kind === "lookup" && courseIndex.get(activeDrag.code) && (
-            <div style={{ width: "18rem" }}>
-              <LookupBlock entry={courseIndex.get(activeDrag.code) as CourseIndexEntry} ghost />
-            </div>
-          )}
-        </motion.div>
+        {activeDrag && (
+          <motion.div
+            key={activeDrag.kind === "block" ? activeDrag.blockId : activeDrag.code}
+            data-drag-anchor
+            initial={reducedMotion ? false : { x: 0, y: 0 }}
+            animate={{ x: dragAnchor.x, y: dragAnchor.y }}
+            transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34, mass: 0.55 }}
+          >
+            <motion.div style={reducedMotion ? undefined : { rotate: dragRotate, transformOrigin: "50% 0%" }}>
+              {activeDrag.kind === "block" && (
+                <CourseBlock
+                  blockId={activeDrag.blockId}
+                  code={activeDrag.code}
+                  entry={courseIndex.get(activeDrag.code)}
+                  validation={validations.get(activeDrag.blockId) ?? EMPTY_VALIDATION}
+                  ghost
+                />
+              )}
+              {activeDrag.kind === "lookup" && courseIndex.get(activeDrag.code) && (
+                <div style={{ width: dragAnchor.width || 288 }}>
+                  <LookupBlock entry={courseIndex.get(activeDrag.code) as CourseIndexEntry} ghost />
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
       </DragOverlay>
     </DndContext>
   );
