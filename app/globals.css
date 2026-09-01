@@ -474,6 +474,67 @@ html.vt-active *::after {
   display: flex;
 }
 
+.workspace-page {
+  container-type: inline-size;
+}
+
+.workspace-page-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-page[data-workspace-composition="split"] .workspace-page-body {
+  grid-template-columns: 20rem minmax(0, 1fr);
+}
+
+.workspace-page-toggle {
+  display: none;
+}
+
+.workspace-rail > [data-workspace-panel] {
+  flex: 1 1 0%;
+}
+
+.workspace-page[data-workspace-composition="single"] [data-workspace-region="main"] {
+  overflow-y: auto;
+}
+
+@media (max-width: 1279px) {
+  [data-workspace-host="tools"][data-menu-clearance] [data-workspace-header] {
+    padding-left: 3rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  [data-workspace-host="unity"][data-menu-clearance] [data-workspace-header] {
+    padding-left: 3rem;
+  }
+}
+
+@container (max-width: 55rem) {
+  .workspace-page-layout {
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .workspace-page-toggle {
+    display: flex;
+  }
+
+  .workspace-page[data-workspace-composition="split"] .workspace-page-body {
+    display: block;
+  }
+
+  .workspace-page[data-workspace-composition="split"] .workspace-page-region {
+    display: none;
+    height: 100%;
+  }
+
+  .workspace-page[data-workspace-composition="split"][data-workspace-view="main"] [data-workspace-region="main"],
+  .workspace-page[data-workspace-composition="split"][data-workspace-view="rail"] [data-workspace-region="rail"] {
+    display: block;
+  }
+}
+
 .schedule-workspace,
 .schedule-planner {
   container-type: inline-size;
