@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/src/components/ui/button";
+
 function sanitizeMessage(raw?: string): string {
   if (!raw) return "An unexpected error occurred.";
   return (
@@ -25,13 +27,9 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <p className="text-muted mb-2 text-xs">This usually resolves on refresh.</p>
         {error.digest && <p className="text-muted/60 mb-4 text-xs">Error ID: {error.digest}</p>}
         <div className="flex w-full flex-col gap-3">
-          <button
-            type="button"
-            onClick={reset}
-            className="neu-primary-button bg-primary text-on-primary rounded-xl px-4 py-2.5 text-sm font-medium"
-          >
+          <Button variant="primary" size="prominent" onClick={reset}>
             Try again
-          </button>
+          </Button>
           <a href="/" className="neu-button bg-surface text-on-surface rounded-xl px-4 py-2.5 text-sm font-medium">
             Go home
           </a>

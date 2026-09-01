@@ -5,6 +5,7 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { CampusMap, type MapControls, type MapStatus } from "@/src/components/map/campus-map";
+import { Button } from "@/src/components/ui/button";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
 import type { MapHighlight } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -109,14 +110,10 @@ function MapFallback({ onRetry }: { onRetry?: () => void }) {
       <Icon name="wifiOff" size={32} className="text-muted" />
       <p className="text-body-sm text-on-surface-variant">Map couldn&apos;t load. Route details are shown below.</p>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="neu-button bg-surface text-on-surface mt-2 flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
-        >
+        <Button onClick={onRetry} className="mt-2">
           <Icon name="refresh2" size={14} />
           Retry
-        </button>
+        </Button>
       )}
       {highlight && <p className="text-on-surface max-w-60 text-sm">{highlightFallback(highlight)}</p>}
     </div>

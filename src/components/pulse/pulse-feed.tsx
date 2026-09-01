@@ -1,6 +1,7 @@
 "use client";
 
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
 import { announce } from "@/src/components/ui/live-region";
 import { ApiError } from "@/src/lib/api-types";
 import { useCallback, useEffect, useState } from "react";
@@ -97,13 +98,7 @@ export function PulseFeed() {
           {error && (
             <div className="flex flex-col items-center gap-3 py-8">
               <p className="text-on-surface-variant text-sm">{error}</p>
-              <button
-                type="button"
-                onClick={() => void fetchFeed()}
-                className="neu-button bg-surface text-on-surface min-h-11 rounded-xl px-4 text-sm font-medium"
-              >
-                Try again
-              </button>
+              <Button onClick={() => void fetchFeed()}>Try again</Button>
             </div>
           )}
           {empty && <p className="text-muted py-8 text-center text-sm">No active round right now. Check back soon.</p>}

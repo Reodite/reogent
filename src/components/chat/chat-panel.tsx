@@ -17,6 +17,7 @@ import {
 } from "@/src/components/chat/message";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
@@ -632,21 +633,13 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
               <p className="text-on-surface-variant mt-1 text-sm">Try again, or start with a fresh chat.</p>
             </div>
             <div className="flex flex-wrap justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setHistoryNonce((n) => n + 1)}
-                className="neu-button bg-surface text-on-surface flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
-              >
+              <Button size="prominent" onClick={() => setHistoryNonce((n) => n + 1)}>
                 <Icon name="refresh2" size={16} />
                 Try again
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/chat")}
-                className="neu-primary-button bg-primary text-on-primary flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
-              >
+              </Button>
+              <Button variant="primary" size="prominent" onClick={() => router.push("/chat")}>
                 Start new chat
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -729,24 +722,13 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                   {sendError}
                 </p>
                 <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={retry}
-                    disabled={sending}
-                    aria-describedby="send-error-msg"
-                    className="neu-button bg-surface text-on-surface flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-medium disabled:pointer-events-none disabled:opacity-60"
-                  >
+                  <Button onClick={retry} disabled={sending} aria-describedby="send-error-msg">
                     <Icon name="refresh2" size={14} />
                     Retry
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSendError(null)}
-                    aria-label="Dismiss error"
-                    className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
-                  >
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => setSendError(null)} aria-label="Dismiss error">
                     <Icon name="close" size={16} />
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
 import type { PulseHistory as PulseHistoryData } from "@/src/lib/api-types";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
@@ -36,13 +37,7 @@ export function PulseHistory() {
       {error && (
         <div className="flex flex-col items-center gap-3 py-4">
           <p className="text-on-surface-variant text-sm">{error}</p>
-          <button
-            type="button"
-            onClick={() => void fetchHistory()}
-            className="neu-button bg-surface text-on-surface min-h-11 rounded-xl px-4 text-sm font-medium"
-          >
-            Try again
-          </button>
+          <Button onClick={() => void fetchHistory()}>Try again</Button>
         </div>
       )}
       {rounds?.length === 0 && <p className="text-muted py-4 text-center text-sm">No previous rounds yet.</p>}

@@ -11,6 +11,7 @@
 // placeholder shows until load and stays on failure.
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
 import type { BuildingDetails } from "@/src/lib/api-types";
 import { useEffect, useRef, useState } from "react";
 
@@ -196,14 +197,9 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close building details"
-          className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-        >
+        <Button onClick={onClose} aria-label="Close building details" variant="ghost" size="icon">
           <Icon name="close" size={16} />
-        </button>
+        </Button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [overscroll-behavior-y:contain] px-3.5 py-3">
@@ -216,14 +212,10 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
         {failed && (
           <div className="flex flex-col items-start gap-2">
             <p className="text-on-surface-variant text-sm">Couldn&apos;t load details for this building.</p>
-            <button
-              type="button"
-              onClick={() => setFetchNonce((n) => n + 1)}
-              className="neu-button bg-surface text-on-surface flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
-            >
+            <Button onClick={() => setFetchNonce((n) => n + 1)}>
               <Icon name="refresh2" size={14} />
               Retry
-            </button>
+            </Button>
           </div>
         )}
         {details && (

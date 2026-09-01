@@ -5,6 +5,7 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
 import { announce } from "@/src/components/ui/live-region";
 import { isOkanagan } from "@/src/shared/course-code";
 import {
@@ -733,12 +734,9 @@ export function PrereqTreePane({
           </div>
         )}
       </div>
-      <button
-        type="submit"
-        className="neu-button bg-primary text-on-primary h-9 shrink-0 rounded-lg px-3 text-sm font-medium"
-      >
+      <Button type="submit" variant="primary">
         Show
-      </button>
+      </Button>
     </form>
   );
 
