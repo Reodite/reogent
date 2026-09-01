@@ -195,6 +195,34 @@ function ProgramCombobox({
   );
 }
 
+function RequirementProgressCard({
+  label,
+  value,
+  earned,
+  required,
+  children,
+  listItem = false,
+}: {
+  label: string;
+  value: ReactNode;
+  earned: number;
+  required: number;
+  children?: ReactNode;
+  listItem?: boolean;
+}) {
+  const Component = listItem ? "li" : "div";
+  return (
+    <Component className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
+      <div className="flex items-baseline justify-between text-sm">
+        <span className="text-on-surface">{label}</span>
+        <span className="text-on-surface-variant text-xs">{value}</span>
+      </div>
+      <ProgressBar earned={earned} required={required} />
+      {children}
+    </Component>
+  );
+}
+
 // Resolves the selected program into progress bars and requirement rows.
 export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequirementsProps) {
   const major = usePlanner((s) => s.major);
@@ -266,22 +294,19 @@ function RequirementsPanel({
               return sum + (opt?.credit_value ?? creditValue(courseIndex.get(c)) ?? 0);
             }, 0);
             return (
-              <li
+              <RequirementProgressCard
                 key={cat.name}
-                className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2"
+                listItem
+                label={cat.name}
+                value={`${earned}/${cat.credits_required} cr`}
+                earned={earned}
+                required={cat.credits_required}
               >
-                <div className="flex items-baseline justify-between text-sm">
-                  <span className="text-on-surface">{cat.name}</span>
-                  <span className="text-on-surface-variant text-xs">
-                    {earned}/{cat.credits_required} cr
-                  </span>
-                </div>
-                <ProgressBar earned={earned} required={cat.credits_required} />
-                {cat.notes && <p className="text-muted text-xs">{cat.notes}</p>}
-                {matchingCodes.length > 0 && (
+                {cat.notes ? <p className="text-muted text-xs">{cat.notes}</p> : null}
+                {matchingCodes.length > 0 ? (
                   <p className="text-on-surface-variant text-xs">{matchingCodes.join(", ")}</p>
-                )}
-              </li>
+                ) : null}
+              </RequirementProgressCard>
             );
           })}
         </ul>
@@ -328,20 +353,18 @@ function ProseRequirements({
   const totalReferencedCredits = referenced.reduce((sum, c) => sum + creditValue(courseIndex.get(c)), 0);
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <div className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
-        <div className="flex items-baseline justify-between">
-          <span className="text-on-surface">Referenced courses</span>
-          <span className="text-on-surface-variant text-xs">
-            {completedRefs.length}/{referenced.length} planned
-          </span>
-        </div>
-        <ProgressBar earned={earned} required={totalReferencedCredits || 1} />
-        {totalReferencedCredits > 0 && (
+      <RequirementProgressCard
+        label="Referenced courses"
+        value={`${completedRefs.length}/${referenced.length} planned`}
+        earned={earned}
+        required={totalReferencedCredits || 1}
+      >
+        {totalReferencedCredits > 0 ? (
           <p className="text-muted text-xs">
             {earned}/{totalReferencedCredits} referenced credits planned
           </p>
-        )}
-        {referenced.length > 0 && (
+        ) : null}
+        {referenced.length > 0 ? (
           <ul className="mt-1 flex max-h-40 flex-col gap-0.5 overflow-y-auto text-xs">
             {referenced.map((code) => {
               const planned = referencedSet.has(code) && plannedCodes.has(code);
@@ -351,19 +374,19 @@ function ProseRequirements({
                   key={code}
                   className={`flex items-baseline gap-2 ${planned ? "text-on-surface" : "text-on-surface-variant"}`}
                 >
-                  {planned ? (
-                    <Icon name="check" size={14} className="text-primary shrink-0 self-center" />
-                  ) : (
-                    <Icon name="circle" size={14} className="text-muted shrink-0 self-center" />
-                  )}
+                  <Icon
+                    name={planned ? "check" : "circle"}
+                    size={14}
+                    className={`${planned ? "text-primary" : "text-muted"} shrink-0 self-center`}
+                  />
                   <span className="shrink-0 font-mono">{code}</span>
-                  {title && <span className="text-muted truncate">— {title}</span>}
+                  {title ? <span className="text-muted truncate">— {title}</span> : null}
                 </li>
               );
             })}
           </ul>
-        )}
-      </div>
+        ) : null}
+      </RequirementProgressCard>
     </div>
   );
 }
@@ -379,14 +402,11 @@ function ProgressBar({ earned, required }: { earned: number; required: number })
 
 function TotalCreditsBar({ earned, required }: { earned: number; required: number }) {
   return (
-    <div className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
-      <div className="flex items-baseline justify-between text-sm">
-        <span className="text-on-surface">Total credits</span>
-        <span className="text-on-surface-variant text-xs">
-          {earned}/{required} cr
-        </span>
-      </div>
-      <ProgressBar earned={earned} required={required} />
-    </div>
+    <RequirementProgressCard
+      label="Total credits"
+      value={`${earned}/${required} cr`}
+      earned={earned}
+      required={required}
+    />
   );
 }

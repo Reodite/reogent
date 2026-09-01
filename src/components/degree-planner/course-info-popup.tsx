@@ -18,6 +18,7 @@
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { isSatisfied, type Expr } from "@/src/shared/prereq-ast";
 import Link from "next/link";
@@ -138,16 +139,18 @@ export function CourseInfoPopup({
           <span className="font-mono">{course.code}</span>
           {course.title && <span className="text-on-surface-variant"> — {course.title}</span>}
         </h4>
-        {onClose && (
-          <button
+        {onClose ? (
+          <Button
             type="button"
+            variant="ghost"
+            size="denseIcon"
             onClick={onClose}
-            className="text-muted hover:bg-surface-container hover:text-on-surface -mt-1 -mr-1 rounded-lg p-1"
+            className="text-muted -mt-1 -mr-1"
             aria-label="Close course details"
           >
             <Icon name="close" size={15} />
-          </button>
-        )}
+          </Button>
+        ) : null}
       </div>
       {issues && issues.length > 0 && (
         <div className="flex flex-col gap-1.5">

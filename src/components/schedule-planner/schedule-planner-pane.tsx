@@ -492,17 +492,17 @@ function SchedulePlannerPaneInner() {
             ? "Some course details could not be refreshed. Cached times remain visible."
             : "The catalog changed since your last visit. Review highlighted course details before registering."}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="denseIcon"
           onClick={() => {
             setStale(false);
             setCatalogError(false);
           }}
           aria-label="Dismiss notice"
-          className="focus-visible:ring-primary/40 rounded-md p-1 focus-visible:ring-2"
         >
           <Icon name="close" className="size-3.5" />
-        </button>
+        </Button>
       </div>
     ) : undefined;
 

@@ -133,18 +133,17 @@ function FollowUpChips({ onSend, followUps }: { onSend: (text: string) => void; 
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-wrap gap-2 pt-2"
     >
-      {followUps.map((chip, i) => (
-        <motion.button
+      {followUps.map((chip) => (
+        <Button
           key={chip}
-          initial={reduce ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={reduce ? { duration: 0 } : { delay: i * 0.06, duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          type="button"
+          variant="outline"
+          size="pill"
+          wrap
           onClick={() => onSend(chip)}
-          className="focus-visible:ring-primary/40 border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] max-w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-medium break-words transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="max-w-full text-left"
         >
           {chip}
-        </motion.button>
+        </Button>
       ))}
     </motion.div>
   );
@@ -657,17 +656,19 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                   Courses, tuition, walking routes, study spaces, grades, events, parking — all from real UBC data.
                 </p>
                 <nav aria-label="Suggested questions" className="mt-5 flex w-full flex-wrap justify-center gap-2">
-                  {randomSuggestions.map((suggestion, i) => (
-                    <button
+                  {randomSuggestions.map((suggestion, index) => (
+                    <Button
                       key={suggestion}
-                      type="button"
+                      variant="outline"
+                      size="pill"
+                      wrap
                       onClick={() => send(suggestion)}
                       disabled={sending}
-                      style={{ animationDelay: `${i * 60}ms` }}
-                      className="animate-message-in border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] rounded-2xl border px-3.5 py-2.5 text-center text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                      style={{ animationDelay: `${index * 60}ms` }}
+                      className="animate-message-in text-center"
                     >
                       {suggestion}
-                    </button>
+                    </Button>
                   ))}
                 </nav>
               </div>
