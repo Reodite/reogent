@@ -1,12 +1,12 @@
 "use client";
 
-import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { RetryAlert } from "@/src/components/ui/feedback";
-import { TextInput } from "@/src/components/ui/form-controls";
+import { SearchInput, type SearchDensity } from "@/src/components/ui/form-controls";
 import { InlineAction } from "@/src/components/ui/inline-action";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
+import type { NeumorphicSurfaceToken } from "@/src/shared/color-tokens";
 import { canonicalize, isOkanagan } from "@/src/shared/course-code";
 import {
   useCallback,
@@ -240,6 +240,9 @@ export type CourseSearchFieldProps = {
   getCandidatePresentation?: (candidate: Candidate) => CandidatePresentation;
   inputRef?: { current: HTMLInputElement | null };
   monospaceCodes?: boolean;
+  density?: SearchDensity;
+  shadowOn?: NeumorphicSurfaceToken;
+  clearable?: boolean;
 };
 
 export function CourseSearchField({
@@ -258,6 +261,9 @@ export function CourseSearchField({
   getCandidatePresentation,
   inputRef: externalInputRef,
   monospaceCodes = true,
+  density = "primary",
+  shadowOn = "surface",
+  clearable = true,
 }: CourseSearchFieldProps) {
   const trimmed = value.trim();
   const overlay = presentation === "overlay";
@@ -347,45 +353,35 @@ export function CourseSearchField({
   };
 
   const input = (
-    <div className="relative">
-      <Icon
-        name="search"
-        className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-      />
-      <TextInput
-        ref={(node) => {
-          inputRef.current = node;
-          if (externalInputRef) externalInputRef.current = node;
-        }}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => {
-          if (trimmed && !restoringFocus.current) setOpen(true);
-        }}
-        onKeyDown={handleOverlayKeyDown}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        aria-invalid={rejected ? "true" : undefined}
-        aria-errormessage={rejected ? "code-error" : undefined}
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded={showOverlay}
-        aria-controls={listboxId}
-        aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
-        adornment="both"
-      />
-      {trimmed && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          aria-label="Clear search"
-          className="text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
-        >
-          <Icon name="close" className="size-4" />
-        </button>
-      )}
-    </div>
+    <SearchInput
+      ref={(node) => {
+        inputRef.current = node;
+        if (externalInputRef) externalInputRef.current = node;
+      }}
+      type="text"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onFocus={
+        overlay
+          ? () => {
+              if (trimmed && !restoringFocus.current) setOpen(true);
+            }
+          : undefined
+      }
+      onKeyDown={overlay ? handleOverlayKeyDown : undefined}
+      onClear={clearable && trimmed ? () => onChange("") : undefined}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      aria-invalid={rejected ? "true" : undefined}
+      aria-errormessage={rejected ? "code-error" : undefined}
+      role={overlay ? "combobox" : undefined}
+      aria-autocomplete={overlay ? "list" : undefined}
+      aria-expanded={overlay ? showOverlay : undefined}
+      aria-controls={overlay ? listboxId : undefined}
+      aria-activedescendant={overlay && activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
+      density={density}
+      shadowOn={shadowOn}
+    />
   );
 
   if (overlay) {
@@ -479,32 +475,7 @@ export function CourseSearchField({
 
   return (
     <>
-      <div className="relative">
-        <Icon
-          name="search"
-          className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-        />
-        <TextInput
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          aria-label={ariaLabel}
-          aria-invalid={rejected ? "true" : undefined}
-          aria-errormessage={rejected ? "code-error" : undefined}
-          adornment="both"
-        />
-        {trimmed && (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            aria-label="Clear search"
-            className="text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
-          >
-            <Icon name="close" className="size-4" />
-          </button>
-        )}
-      </div>
+      {input}
 
       {rejected && (
         <p

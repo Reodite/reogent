@@ -3,7 +3,7 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { CourseDetailCard } from "@/src/components/course-lookup/course-detail-card";
 import { CourseExplorer } from "@/src/components/course-lookup/course-explorer";
-import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
+import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-search/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";

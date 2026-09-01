@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-lookup/course-search";
+import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-search/course-search";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -138,6 +138,16 @@ describe("CourseSearchField overlay", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(container.querySelector("[data-course-list]")?.className).not.toContain("absolute");
     expect(screen.getByRole("button", { name: /CPSC 110/ })).not.toBeNull();
+  });
+
+  it("exposes named rail density and clearability without changing search behavior", () => {
+    const { rerender } = render(<CourseSearchField {...baseProps} presentation="overlay" density="rail" />);
+    const input = screen.getByRole("combobox");
+    expect(input.className).toContain("sm:h-9");
+    expect(screen.getByRole("button", { name: "Clear search" }).className).toContain("sm:size-8");
+
+    rerender(<CourseSearchField {...baseProps} presentation="overlay" clearable={false} />);
+    expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
   });
 });
 

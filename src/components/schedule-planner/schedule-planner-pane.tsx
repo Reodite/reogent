@@ -1,6 +1,6 @@
 "use client";
 
-import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-lookup/course-search";
+import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-search/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ScheduleGrid, type ScheduleGridDragConfig } from "@/src/components/schedule/schedule-grid";
@@ -566,6 +566,7 @@ function SchedulePlannerPaneInner() {
           placeholder="CPSC 110, MATH 200, linear algebra"
           ariaLabel="Find a course to schedule"
           presentation="overlay"
+          density="rail"
           record={record}
           getCandidatePresentation={getCandidatePresentation}
           inputRef={searchInputRef}

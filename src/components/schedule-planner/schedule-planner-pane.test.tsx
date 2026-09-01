@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { Candidate } from "@/src/components/course-lookup/course-search";
+import type { Candidate } from "@/src/components/course-search/course-search";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -123,8 +123,8 @@ const autocompleteMock = vi.hoisted(() => ({
   lookup: vi.fn(),
 }));
 
-vi.mock("@/src/components/course-lookup/course-search", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/src/components/course-lookup/course-search")>();
+vi.mock("@/src/components/course-search/course-search", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/src/components/course-search/course-search")>();
   return {
     ...original,
     useCourseAutocomplete: () => autocompleteMock,
