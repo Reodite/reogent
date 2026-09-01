@@ -1,40 +1,32 @@
 "use client";
 
 import { Button, ButtonLink } from "@/src/components/ui/button";
+import { FullPageState, sanitizePublicErrorMessage } from "@/src/components/ui/feedback";
 
-function sanitizeMessage(raw?: string): string {
-  if (!raw) return "An unexpected error occurred.";
-  return (
-    raw
-      .replace(/\/[\w./-]+/g, "")
-      .replace(/at .+:\d+:\d+/g, "")
-      .trim()
-      .slice(0, 120) || "An unexpected error occurred."
-  );
-}
-
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function RouteError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   if (error.digest) console.error("[ErrorBoundary]", error.digest, error.message);
 
   return (
-    <div className="bg-background flex min-h-svh items-center justify-center px-4">
-      <div
-        role="alert"
-        className="neu-panel bg-surface flex w-full max-w-sm flex-col items-center rounded-2xl p-8 text-center"
-      >
-        <h1 className="text-on-surface mb-2 text-2xl font-medium tracking-[-0.02em]">Something went wrong</h1>
-        <p className="text-muted mb-1 text-sm">{sanitizeMessage(error.message)}</p>
-        <p className="text-muted mb-2 text-xs">This usually resolves on refresh.</p>
-        {error.digest && <p className="text-muted/60 mb-4 text-xs">Error ID: {error.digest}</p>}
-        <div className="flex w-full flex-col gap-3">
+    <FullPageState
+      alert
+      title="Something went wrong"
+      description={
+        <>
+          <p>{sanitizePublicErrorMessage(error.message)}</p>
+          <p className="mt-1 text-xs">This usually resolves on refresh.</p>
+        </>
+      }
+      meta={error.digest ? <>Error ID: {error.digest}</> : null}
+      actions={
+        <>
           <Button variant="primary" size="prominent" onClick={reset}>
             Try again
           </Button>
           <ButtonLink href="/" size="prominent">
             Go home
           </ButtonLink>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }

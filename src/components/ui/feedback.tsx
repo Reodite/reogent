@@ -8,6 +8,53 @@ const ALERT_VARIANT_CLASSES = {
   soft: "bg-error-container/30 text-error",
 } as const;
 
+export function sanitizePublicErrorMessage(raw?: string): string {
+  if (!raw) return "An unexpected error occurred.";
+  return (
+    raw
+      .replace(/\/[\w./-]+/g, "")
+      .replace(/at .+:\d+:\d+/g, "")
+      .trim()
+      .slice(0, 120) || "An unexpected error occurred."
+  );
+}
+
+interface FullPageStateProps {
+  title: string;
+  description: ReactNode;
+  meta?: ReactNode;
+  actions: ReactNode;
+  fill?: "viewport" | "parent";
+  alert?: boolean;
+}
+
+/** Renders the shared full-page state card for recoverable route boundaries. */
+export function FullPageState({
+  title,
+  description,
+  meta,
+  actions,
+  fill = "viewport",
+  alert = false,
+}: FullPageStateProps) {
+  return (
+    <div
+      className={`bg-background flex items-center justify-center px-4 ${fill === "viewport" ? "min-h-svh" : "h-full"}`}
+    >
+      <section
+        role={alert ? "alert" : undefined}
+        aria-label={title}
+        className="neu-panel bg-surface flex w-full max-w-sm flex-col items-center rounded-2xl p-8 text-center"
+      >
+        <h1 className="text-on-surface text-2xl font-medium tracking-[-0.02em]">{title}</h1>
+        <div className="text-muted mt-2 text-sm">{description}</div>
+        {meta ? <div className="text-muted/60 mt-2 text-xs">{meta}</div> : null}
+        <div className="mt-6 flex w-full flex-col gap-3">{actions}</div>
+      </section>
+    </div>
+  );
+}
+
 type RetryAlertProps = Omit<ComponentPropsWithoutRef<"p">, "children"> & {
   children: ReactNode;
   onRetry?: () => void;

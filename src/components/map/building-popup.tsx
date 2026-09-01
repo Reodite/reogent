@@ -1,17 +1,12 @@
 "use client";
 
-// Building popup for the campus map: click a footprint → header card with the
-// building's vitals plus swipeable carousels of rooms (Find a Space), bookable
-// study rooms (LibCal availability snapshot), and food & services (POIs).
-// Ported from the LLM-VIZ-PRACTICE popup, restyled to this app's tokens.
-//
-// Card images: when a card has a link, the image comes from /api/preview?url=
-// (server-side og:image resolution — stored thumbnails are signed URLs that go
-// stale); otherwise the stored photo. The image slot is always reserved: a
-// placeholder shows until load and stays on failure.
+// Shows building details plus carousels for rooms, study spaces, food, and
+// services. Linked cards resolve preview images through `/api/preview`; other
+// cards use stored photos and preserve the image slot on load failure.
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
+import { RetryState } from "@/src/components/ui/feedback";
 import type { BuildingDetails } from "@/src/lib/api-types";
 import { useEffect, useRef, useState } from "react";
 
@@ -209,15 +204,15 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
             <div className="bg-surface-container h-4 w-2/3 animate-pulse rounded" />
           </div>
         )}
-        {failed && (
-          <div className="flex flex-col items-start gap-2">
-            <p className="text-on-surface-variant text-sm">Couldn&apos;t load details for this building.</p>
-            <Button onClick={() => setFetchNonce((n) => n + 1)}>
-              <Icon name="refresh2" size={14} />
-              Retry
-            </Button>
-          </div>
-        )}
+        {failed ? (
+          <RetryState
+            message="Couldn't load details for this building."
+            onRetry={() => setFetchNonce((nonce) => nonce + 1)}
+            retryLabel="Retry"
+            align="start"
+            compact
+          />
+        ) : null}
         {details && (
           <>
             {details.rooms.length > 0 && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useApi } from "@/src/components/providers";
-import { Button } from "@/src/components/ui/button";
+import { RetryState } from "@/src/components/ui/feedback";
 import type { PulseHistory as PulseHistoryData } from "@/src/lib/api-types";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
@@ -34,12 +34,7 @@ export function PulseHistory() {
       <h2 id="pulse-history-heading" className="text-on-surface text-base font-medium tracking-[-0.01em]">
         Previous rounds
       </h2>
-      {error && (
-        <div className="flex flex-col items-center gap-3 py-4">
-          <p className="text-on-surface-variant text-sm">{error}</p>
-          <Button onClick={() => void fetchHistory()}>Try again</Button>
-        </div>
-      )}
+      {error ? <RetryState message={error} onRetry={() => void fetchHistory()} compact className="py-4" /> : null}
       {rounds?.length === 0 && <p className="text-muted py-4 text-center text-sm">No previous rounds yet.</p>}
       {rounds?.map((round) => (
         <div key={round.id} className="flex flex-col gap-3">

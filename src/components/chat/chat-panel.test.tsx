@@ -3,7 +3,44 @@ import { ChatPanel } from "@/src/components/chat/chat-panel";
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import type { ChatMessage, ToolCall } from "@/src/lib/api-types";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("motion/react", async (importOriginal) => {
+  const original = await importOriginal<typeof import("motion/react")>();
+  const React = await import("react");
+  const motionProps = new Set([
+    "animate",
+    "custom",
+    "exit",
+    "initial",
+    "layout",
+    "layoutId",
+    "onAnimationComplete",
+    "transition",
+    "variants",
+    "whileDrag",
+    "whileHover",
+    "whileTap",
+  ]);
+  const staticElement = (tag: string) =>
+    function StaticMotionElement({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) {
+      const domProps = Object.fromEntries(Object.entries(props).filter(([key]) => !motionProps.has(key)));
+      return React.createElement(tag, domProps, children);
+    };
+
+  return {
+    ...original,
+    AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    motion: {
+      button: staticElement("button"),
+      div: staticElement("div"),
+      li: staticElement("li"),
+      span: staticElement("span"),
+    },
+    useReducedMotion: () => true,
+  };
+});
 
 // Hoisted mutable API so each test can program `chat`/`getSession` independently.
 const api = vi.hoisted(() => ({
@@ -66,8 +103,8 @@ beforeAll(() => {
   Object.defineProperty(window, "sessionStorage", { value: storage, configurable: true, writable: true });
   Object.defineProperty(window, "localStorage", { value: storage, configurable: true, writable: true });
   Object.defineProperty(window, "matchMedia", {
-    value: () => ({
-      matches: false,
+    value: (query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
       addListener() {},
       removeListener() {},
       addEventListener() {},

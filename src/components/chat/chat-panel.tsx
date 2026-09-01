@@ -19,6 +19,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
+import { RetryState } from "@/src/components/ui/feedback";
 import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
@@ -623,26 +624,19 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           </div>
         )}
 
-        {historyState === "failed" && (
-          <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
-            <span className="bg-surface text-error flex size-16 items-center justify-center rounded-2xl">
-              <Icon name="alert" size={30} />
-            </span>
-            <div>
-              <p className="text-on-surface text-xl font-medium">Couldn&apos;t load this conversation</p>
-              <p className="text-on-surface-variant mt-1 text-sm">Try again, or start with a fresh chat.</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button size="prominent" onClick={() => setHistoryNonce((n) => n + 1)}>
-                <Icon name="refresh2" size={16} />
-                Try again
-              </Button>
-              <Button variant="primary" size="prominent" onClick={() => router.push("/chat")}>
+        {historyState === "failed" ? (
+          <RetryState
+            title="Couldn't load this conversation"
+            message="Try again, or start with a fresh chat."
+            onRetry={() => setHistoryNonce((nonce) => nonce + 1)}
+            secondaryAction={
+              <Button variant="primary" onClick={() => router.push("/chat")}>
                 Start new chat
               </Button>
-            </div>
-          </div>
-        )}
+            }
+            className="h-full justify-center px-4"
+          />
+        ) : null}
 
         <AnimatePresence>
           {historyState === "ready" && messages.length === 0 && !sending && (

@@ -5,6 +5,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { SidebarListItem, SidebarStaggerContext } from "@/src/components/shell/sidebar-list";
 import { Button } from "@/src/components/ui/button";
+import { RetryState } from "@/src/components/ui/feedback";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { useReducedMotion } from "motion/react";
@@ -379,15 +380,15 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
             </div>
           )}
 
-          {!sessionsLoading && sessionsError && (
-            <div role="alert" className="text-body-sm text-on-surface-variant px-1 py-2">
-              <p>Couldn&apos;t load your conversations. Check your connection and try again.</p>
-              <Button onClick={refreshSessions} className="mt-3">
-                <Icon name="refresh2" size={14} />
-                Try again
-              </Button>
-            </div>
-          )}
+          {!sessionsLoading && sessionsError ? (
+            <RetryState
+              message="Couldn't load your conversations. Check your connection and try again."
+              onRetry={refreshSessions}
+              align="start"
+              compact
+              className="px-1 py-2"
+            />
+          ) : null}
 
           {!sessionsLoading && !sessionsError && sessions.length === 0 && (
             <p className="text-body-sm text-muted px-2 py-3">Your conversations will appear here.</p>

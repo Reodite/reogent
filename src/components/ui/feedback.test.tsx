@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { LoadingStatus, RetryAlert, RetryState } from "./feedback";
+import { FullPageState, LoadingStatus, RetryAlert, RetryState, sanitizePublicErrorMessage } from "./feedback";
 
 describe("RetryAlert", () => {
   it("renders a semantic solid alert and delegates retry", () => {
@@ -34,6 +34,22 @@ describe("RetryAlert", () => {
 });
 
 describe("shared feedback states", () => {
+  it("renders a bounded full-page state and sanitizes public errors", () => {
+    const { getByRole } = render(
+      <FullPageState
+        alert
+        fill="parent"
+        title="Something went wrong"
+        description={sanitizePublicErrorMessage("boom at /srv/app.ts:10:2")}
+        actions={<a href="/">Go home</a>}
+      />,
+    );
+    const alert = getByRole("alert", { name: "Something went wrong" });
+    expect(alert.parentElement?.className).toContain("h-full");
+    expect(alert.textContent).not.toContain("/srv/app.ts");
+    expect(getByRole("link", { name: "Go home" })).not.toBeNull();
+  });
+
   it("announces one loading label with the requested spinner size", () => {
     const { getByRole } = render(<LoadingStatus size="md">Loading calendar…</LoadingStatus>);
     const status = getByRole("status");
