@@ -334,7 +334,7 @@ export function DegreePlannerPane() {
 
   if (indexError) {
     return (
-      <div className="workspace-surface grid h-full place-items-center p-6">
+      <div className="grid h-full place-items-center p-6">
         <p role="alert" className="border-error/30 bg-error-container text-error rounded-lg border px-3 py-2 text-sm">
           Couldn't load the course index.{" "}
           <button
@@ -350,10 +350,7 @@ export function DegreePlannerPane() {
   }
   if (!courseIndex) {
     return (
-      <div
-        className="workspace-surface text-muted flex h-full items-center justify-center gap-1.5 p-6 text-sm"
-        aria-live="polite"
-      >
+      <div className="text-muted flex h-full items-center justify-center gap-1.5 p-6 text-sm" aria-live="polite">
         <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
         Loading course index…
       </div>
@@ -389,7 +386,7 @@ export function DegreePlannerPane() {
     >
       <div
         data-pane-root="degree-planner"
-        className="workspace-surface flex h-full min-h-0 flex-col gap-4 p-6 max-md:overflow-y-auto max-sm:p-4"
+        className="flex h-full min-h-0 flex-col gap-4 p-6 max-md:overflow-y-auto max-sm:p-4"
       >
         <header className="relative z-30 flex shrink-0 flex-col gap-3 max-xl:pl-12">
           <div>

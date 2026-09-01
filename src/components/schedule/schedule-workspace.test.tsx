@@ -54,7 +54,8 @@ describe("ScheduleWorkspace", () => {
     const canvas = header?.querySelector("[data-schedule-header-canvas]");
 
     expect(root?.dataset.scheduleHost).toBe("tools");
-    expect(root?.className).toContain("workspace-surface");
+    expect(root?.className).not.toContain("workspace-surface");
+    expect(root?.className).toContain("overflow-hidden");
     expect(header?.className).toContain("grid-cols-[18rem_minmax(0,1fr)]");
     expect(header?.className).toContain("gap-6");
     expect(context?.querySelector("h1")?.textContent).toBe("Course schedule");

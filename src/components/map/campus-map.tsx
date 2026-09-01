@@ -1029,10 +1029,9 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   }, [buildings, highlight, focusNonce, status, routePath]);
 
   return (
+    // The outer workspace surface clips the full-bleed map. A second radius
+    // would show a double curve where the map meets its header.
     // biome-ignore lint/a11y/noStaticElementInteractions: mouseleave clears tooltip
-    // No border-radius here: the hosting card (AnswerCanvas `neu-panel`) already
-    // clips with rounded corners; a second radius would show a double curve
-    // where the map meets the titlebar.
     <div className="relative h-full w-full overflow-hidden" onMouseLeave={() => setPicked(null)}>
       <div
         ref={containerRef}

@@ -83,6 +83,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("wide AI renders chat + Answer Canvas inline with the skip target on chat", () => {
     const { container, getByTestId } = renderShell(true);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("chat");
+    expect(container.querySelector("[data-workspace-surface]")).toBeNull();
     expect(getByTestId("chat-children")).toBeDefined();
     expect(container.querySelector('[data-testid="session-list"]')).not.toBeNull();
     expect(container.querySelector("[data-mode-toggle]")).not.toBeNull();
@@ -118,12 +119,27 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     const { container } = renderShell(true);
     fireEvent.click(container.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
+    const surface = container.querySelector("[data-workspace-surface]");
+    expect(surface?.className).toContain("workspace-surface");
+    expect(surface?.className).toContain("overflow-hidden");
     // No view activated yet → children (not-found) renders instead of the tool.
     // This matches the real app: navigating to an unknown /tools/<slug> shows the
     // not-found page in the workspace, while a valid tool activates via the
     // ToolRouteActivator effect.
     expect(container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
+  });
+
+  it("Unity uses the same shell-owned workspace surface", () => {
+    const { container } = renderShell(true);
+    const unityTab = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find((tab) =>
+      tab.textContent?.includes("Unity"),
+    );
+    fireEvent.click(unityTab as HTMLElement);
+
+    expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("unity");
+    expect(container.querySelector("[data-workspace-surface]")?.className).toContain("workspace-surface");
+    expect(container.querySelector("[data-testid='chat-children']")).not.toBeNull();
   });
 
   it("below-wide Tools lives in the left drawer, Full-Bleed Tool stays full-bleed", () => {

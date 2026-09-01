@@ -196,17 +196,17 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <AnswerCanvas view={workspaceView} />
                 </AnswerSheet>
               </div>
-            ) : mode === "unity" ? (
-              <main id="main-content" data-pane="unity" className="sidebar-content-offset flex min-h-0 min-w-0 flex-1">
-                {children}
-              </main>
             ) : (
               <main
                 id="main-content"
-                data-pane="tool"
-                className="tool-sidebar-content-offset flex min-h-0 min-w-0 flex-1"
+                data-pane={mode === "tools" ? "tool" : "unity"}
+                className={`flex min-h-0 min-w-0 flex-1 ${
+                  mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
+                }`}
               >
-                {workspaceView ? <FullBleedTool view={workspaceView} /> : children}
+                <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                  {mode === "tools" && workspaceView ? <FullBleedTool view={workspaceView} /> : children}
+                </div>
               </main>
             )}
           </div>

@@ -473,6 +473,7 @@ html.vt-active *::after {
 .workspace-surface {
   background-color: var(--surface);
   border-radius: 1rem;
+  box-shadow: var(--neu-surface-shadow);
 }
 
 .neu-panel {

@@ -70,7 +70,7 @@ export function ScheduleWorkspace({
       aria-label={title}
       data-mobile-view={mobileView}
       data-schedule-host={host}
-      className="schedule-workspace workspace-surface h-full min-h-[34rem] w-full min-w-0 flex-1 overflow-hidden"
+      className="schedule-workspace h-full min-h-[34rem] w-full min-w-0 flex-1 overflow-hidden"
     >
       <div data-schedule-layout className="schedule-workspace-layout flex h-full min-h-0 flex-col gap-6 p-6">
         {titlebarSlot ? (
