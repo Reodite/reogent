@@ -37,7 +37,7 @@ export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | nul
       titlebarOutlet={titlebarOutlet}
     >
       <section
-        aria-label={titlebar ? "Answer canvas" : label}
+        aria-label={titlebar ? "Answer canvas" : undefined}
         data-pane={paneId}
         className={`flex h-full w-full flex-col overflow-hidden ${titlebar ? "neu-panel rounded-2xl" : ""}`}
       >

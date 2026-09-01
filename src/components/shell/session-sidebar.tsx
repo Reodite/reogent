@@ -268,7 +268,7 @@ export function BrandHeader({ collapsed = false, trailing }: { collapsed?: boole
       <Link
         href="/"
         aria-label="Go to Reodite homepage"
-        className="group focus-visible:ring-primary/40 flex min-w-0 items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
+        className="group focus-visible:ring-primary/40 flex min-h-11 min-w-0 items-center gap-2.5 rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
       >
         <span className="bg-surface-container-low text-primary group-hover:text-on-surface flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150">
           <Icon name="school" size={18} />

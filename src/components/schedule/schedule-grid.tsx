@@ -463,7 +463,7 @@ export function ScheduleGrid({
           {!hasBlocks && empty ? (
             <div className="pointer-events-none absolute inset-x-4 top-20 z-20 flex justify-center sm:top-28">
               <div className="bg-surface/95 pointer-events-auto max-w-sm rounded-lg px-5 py-4 text-center">
-                <h3 className="text-on-surface text-base font-medium">{empty.title}</h3>
+                <h2 className="text-on-surface text-base font-medium">{empty.title}</h2>
                 <p className="text-muted mt-1 text-sm leading-relaxed">{empty.description}</p>
                 {empty.actionLabel && empty.onAction ? (
                   <Button variant="primary" size="prominent" onClick={empty.onAction} className="mt-4">

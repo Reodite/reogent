@@ -434,7 +434,7 @@ export function DegreePlannerPane() {
           </WorkspaceRail>
         }
       >
-        <WorkspaceCanvas aria-label="Degree plan" tabIndex={0} padding="md">
+        <WorkspaceCanvas role="region" aria-label="Degree plan" tabIndex={0} padding="md">
           <div
             className="grid min-h-0 flex-1 gap-4"
             style={{

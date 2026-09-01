@@ -32,7 +32,7 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-col gap-2">
       <header className="flex h-8 shrink-0 items-baseline px-1">
-        <h3 className="text-on-surface text-sm font-medium">{year.label}</h3>
+        <h2 className="text-on-surface text-sm font-medium">{year.label}</h2>
         <span className="text-muted ml-auto w-12 text-right text-xs tabular-nums">{yearCredits} cr</span>
       </header>
       <div className="flex min-h-0 flex-1 flex-col">

@@ -122,14 +122,9 @@ export function WorkspacePage(props: WorkspacePageProps) {
               {props.rail}
             </aside>
           ) : null}
-          <section
-            id={mainId}
-            aria-label={split ? props.mainLabel : props.title}
-            data-workspace-region="main"
-            className="workspace-page-region min-h-0 min-w-0"
-          >
+          <div id={mainId} data-workspace-region="main" className="workspace-page-region min-h-0 min-w-0">
             {props.children}
-          </section>
+          </div>
         </div>
       </div>
     </section>
