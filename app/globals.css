@@ -570,8 +570,48 @@ html.vt-active *::after {
   display: flex;
 }
 
+.schedule-workspace,
 .schedule-planner {
   container-type: inline-size;
+}
+
+.schedule-workspace-toggle,
+.schedule-grid-day-tabs {
+  display: none;
+}
+
+.schedule-grid-columns {
+  grid-template-columns: 3.5rem repeat(var(--schedule-day-count), minmax(0, 1fr));
+}
+
+@container (max-width: 55rem) {
+  .schedule-workspace-toggle,
+  .schedule-grid-day-tabs {
+    display: flex;
+  }
+
+  .schedule-workspace-body {
+    display: block;
+  }
+
+  .schedule-workspace-controls,
+  .schedule-workspace-canvas {
+    display: none;
+    height: 100%;
+  }
+
+  .schedule-workspace[data-mobile-view="controls"] .schedule-workspace-controls,
+  .schedule-workspace[data-mobile-view="schedule"] .schedule-workspace-canvas {
+    display: block;
+  }
+
+  .schedule-grid-columns {
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+  }
+
+  [data-schedule-day][data-active="false"] {
+    display: none;
+  }
 }
 
 .schedule-view-toggle {

@@ -20,7 +20,18 @@ const COURSE_COLORS = [
   "#d9c79b", // sandstone
 ];
 
-export function courseColor(section: { courseCode: string; title: string }): string {
-  const idx = parseInt(fnv1a(section.courseCode || section.title), 16) % COURSE_COLORS.length;
+/** Normalizes catalog and Workday codes before assigning a stable course color. */
+export function normalizeCourseColorKey(value: string): string {
+  return value
+    .toUpperCase()
+    .replace(/_V(?=\s)/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Returns the shared accent color for a course identity. */
+export function courseColor(identity: string | { courseCode: string; title: string }): string {
+  const value = typeof identity === "string" ? identity : identity.courseCode || identity.title;
+  const idx = parseInt(fnv1a(normalizeCourseColorKey(value)), 16) % COURSE_COLORS.length;
   return COURSE_COLORS[idx];
 }
