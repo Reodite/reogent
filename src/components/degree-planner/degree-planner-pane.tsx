@@ -47,6 +47,10 @@ const ACTIVE_LOOKUP_PREFIX = "lookup:";
 const ACTIVE_REQUIREMENT_PREFIX = "requirement:";
 const TERM_PREFIX = "term:";
 
+function setPlannerDragCursor(dragging: boolean) {
+  document.documentElement.toggleAttribute("data-planner-dragging", dragging);
+}
+
 // Resolve drop targets in priority order:
 //  1. Trash — only when the pointer is literally inside the trash drop
 //     zone (pointerWithin).
@@ -190,6 +194,7 @@ export function DegreePlannerPane() {
     return () => {
       window.removeEventListener("pointerdown", trackPointer, true);
       window.removeEventListener("pointermove", trackPointer, true);
+      setPlannerDragCursor(false);
     };
   }, []);
 
@@ -293,6 +298,7 @@ export function DegreePlannerPane() {
   }
 
   function onDragStart(event: DragStartEvent) {
+    setPlannerDragCursor(true);
     dragSample.current = { x: 0, t: performance.now() };
     settleOverlay();
     const activator = event.activatorEvent;
@@ -347,6 +353,7 @@ export function DegreePlannerPane() {
   }
 
   function onDragEnd(event: DragEndEvent) {
+    setPlannerDragCursor(false);
     setActiveDrag(null);
     settleOverlay();
     const { active, over } = event;
@@ -441,6 +448,7 @@ export function DegreePlannerPane() {
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
       onDragCancel={() => {
+        setPlannerDragCursor(false);
         setActiveDrag(null);
         settleOverlay();
       }}

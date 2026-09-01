@@ -301,6 +301,12 @@ body {
   outline-offset: 2px;
 }
 
+html[data-planner-dragging],
+html[data-planner-dragging] body,
+html[data-planner-dragging] body * {
+  cursor: grabbing;
+}
+
 .maplibregl-map {
   font: inherit;
 }
