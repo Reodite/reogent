@@ -4,6 +4,7 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { SidebarListItem, SidebarStaggerContext } from "@/src/components/shell/sidebar-list";
+import { Button } from "@/src/components/ui/button";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
 import { useReducedMotion } from "motion/react";
@@ -210,7 +211,7 @@ function SessionItem({
         onClick={onOpen}
         aria-current={active ? "page" : undefined}
         title={session.title}
-        className={`focus-visible:ring-primary/40 flex h-9 w-full items-center gap-2 overflow-hidden rounded-lg border-l-2 px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
+        className={`focus-visible:ring-primary/40 flex h-11 w-full items-center gap-2 overflow-hidden rounded-lg border-l-2 px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
           active
             ? "neu-inset bg-surface-container text-on-surface border-transparent"
             : "text-on-surface-variant group-hover:bg-surface-container-high group-hover:text-on-surface border-transparent"
@@ -337,40 +338,31 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
         trailing={
           <>
             {onCollapse && (
-              <button
+              <Button
                 id="desktop-session-collapse"
-                type="button"
                 onClick={onCollapse}
                 aria-label="Collapse session history"
                 title="Collapse sessions"
-                className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+                variant="ghost"
+                size="icon"
               >
                 <Icon name="left" size={18} />
-              </button>
+              </Button>
             )}
             {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close sessions"
-                className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-              >
+              <Button onClick={onClose} aria-label="Close sessions" variant="ghost" size="icon">
                 <Icon name="close" size={18} />
-              </button>
+              </Button>
             )}
           </>
         }
       />
 
       <div className="pb-3">
-        <button
-          type="button"
-          onClick={newConversation}
-          className="neu-primary-button bg-primary text-on-primary flex h-9 w-full items-center justify-center gap-2 rounded-xl text-sm font-medium"
-        >
+        <Button variant="primary" onClick={newConversation} className="w-full">
           <Icon name="add" size={18} />
           New conversation
-        </button>
+        </Button>
       </div>
 
       <nav
@@ -390,14 +382,10 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
           {!sessionsLoading && sessionsError && (
             <div role="alert" className="text-body-sm text-on-surface-variant px-1 py-2">
               <p>Couldn&apos;t load your conversations. Check your connection and try again.</p>
-              <button
-                type="button"
-                onClick={refreshSessions}
-                className="neu-button bg-surface text-on-surface mt-3 flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
-              >
+              <Button onClick={refreshSessions} className="mt-3">
                 <Icon name="refresh2" size={14} />
                 Try again
-              </button>
+              </Button>
             </div>
           )}
 
@@ -434,13 +422,14 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
               );
             })}
           {!sessionsLoading && !sessionsError && sessions.length > renderLimit && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="compact"
               onClick={() => setRenderLimit((n) => n + 100)}
-              className="text-primary hover:bg-surface-container-high hover:text-on-surface mt-2 w-full rounded-lg px-2 py-2 text-center text-xs font-medium"
+              className="mt-2 w-full"
             >
               Show more ({sessions.length - renderLimit} remaining)
-            </button>
+            </Button>
           )}
         </SidebarStaggerContext.Provider>
       </nav>

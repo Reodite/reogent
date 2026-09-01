@@ -7,6 +7,7 @@ import { BrandHeader, SessionSidebar } from "@/src/components/shell/session-side
 import { SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
 import { ToolList } from "@/src/components/shell/tool-list";
 import { UserMenu } from "@/src/components/shell/user-menu";
+import { Button } from "@/src/components/ui/button";
 import { usePathname, useRouter } from "next/navigation";
 
 const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
@@ -29,8 +30,8 @@ function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
               type="button"
               aria-current={active ? "page" : undefined}
               onClick={() => router.push(item.path)}
-              className={`focus-visible:ring-primary/40 flex h-9 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
-                collapsed ? "w-9 justify-center" : "w-full gap-2.5 px-3"
+              className={`focus-visible:ring-primary/40 flex h-11 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
+                collapsed ? "w-11 justify-center sm:w-9" : "w-full gap-2.5 px-3"
               } ${
                 active
                   ? "neu-inset bg-surface-container text-on-surface"
@@ -67,13 +68,13 @@ function CollapseExpandButton({
   const toggle = collapsed ? onExpand : onCollapse;
   if (!toggle) return null;
   return (
-    <button
+    <Button
       id="desktop-session-collapse"
-      type="button"
       onClick={toggle}
       aria-label={collapsed ? "Expand sidebar" : `Collapse ${label.toLowerCase()}`}
       title={collapsed ? "Expand sidebar" : `Collapse ${label.toLowerCase()}`}
-      className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+      variant="ghost"
+      size="icon"
     >
       <span
         className="inline-flex transition-transform duration-300 ease-[var(--neu-ease)]"
@@ -81,7 +82,7 @@ function CollapseExpandButton({
       >
         <Icon name="left" size={18} />
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -132,14 +133,9 @@ export function LeftSidebar({
             <>
               <CollapseExpandButton collapsed={false} onCollapse={onCollapse} label={label} />
               {onClose && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  aria-label={`Close ${label.toLowerCase()}`}
-                  className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-                >
+                <Button onClick={onClose} aria-label={`Close ${label.toLowerCase()}`} variant="ghost" size="icon">
                   <Icon name="close" size={18} />
-                </button>
+                </Button>
               )}
             </>
           ) : undefined

@@ -70,8 +70,8 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
               onMouseLeave={() => setTooltip(null)}
               onFocus={() => locked && setTooltip(tab.mode)}
               onBlur={() => setTooltip(null)}
-              className={`focus-visible:ring-primary/40 flex h-9 items-center rounded-lg text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
-                collapsed ? "w-9 justify-center" : "w-full justify-center gap-1.5"
+              className={`focus-visible:ring-primary/40 flex h-11 items-center rounded-lg text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
+                collapsed ? "w-11 justify-center sm:w-9" : "w-full justify-center gap-1.5"
               } ${
                 locked
                   ? "cursor-not-allowed opacity-40"

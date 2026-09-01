@@ -4,6 +4,7 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PANE_BY_ID, type CanvasView, type PaneState } from "@/src/components/shell/pane-registry";
+import { Button } from "@/src/components/ui/button";
 import { useCallback, useRef, type ComponentType } from "react";
 
 /**
@@ -67,14 +68,9 @@ function AnswerCanvasTitlebar({
       {/* Panes may portal toolbar content (e.g. the prereq tree's course lookup)
           into this slot so the working area below keeps the full card height. */}
       <div data-pane-titlebar-slot className="relative z-30 min-w-0 flex-1" />
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={onClose}
-        className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-      >
+      <Button aria-label="Close" onClick={onClose} variant="ghost" size="icon">
         <Icon name="close" size={18} />
-      </button>
+      </Button>
     </header>
   );
 }

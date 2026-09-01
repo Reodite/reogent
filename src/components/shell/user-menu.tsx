@@ -89,8 +89,8 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        className={`focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex h-9 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
-          collapsed ? "w-9 justify-center" : "w-full gap-2.5 px-3"
+        className={`focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex h-11 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
+          collapsed ? "w-11 justify-center sm:w-9" : "w-full gap-2.5 px-3"
         }`}
       >
         <span className="bg-primary-container text-on-primary-container flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-medium">
@@ -137,7 +137,7 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
               href="/settings"
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
+              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
             >
               <Icon name="settings" size={16} className="text-on-surface-variant" />
               Settings
@@ -147,7 +147,7 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
               type="button"
               role="menuitem"
               onClick={handleSignOut}
-              className="text-on-surface hover:bg-error/10 hover:text-error flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
+              className="text-on-surface hover:bg-error/10 hover:text-error flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
             >
               <Icon name="exit" size={16} className="text-on-surface-variant" />
               Sign out

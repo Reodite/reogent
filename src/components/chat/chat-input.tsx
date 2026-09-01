@@ -3,6 +3,7 @@
 // The recessed chat composer. Enter sends; Shift+Enter adds a line;
 // Cmd/Ctrl+Enter always sends. Submit locks while a request is in flight.
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 
 const PLACEHOLDER = "Ask about courses, routes, tuition...";
@@ -112,23 +113,27 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           className="text-on-surface placeholder:text-muted relative z-10 block max-h-24 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-3 py-3 text-sm outline-none disabled:opacity-60"
         />
         {onStop ? (
-          <button
-            type="button"
+          <Button
             onClick={onStop}
             aria-label="Stop generating"
-            className="neu-button bg-surface text-on-surface-variant relative z-10 flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-9"
+            size="icon"
+            shadowOn="surface-container-low"
+            className="relative z-10"
           >
             <Icon name="stop" size={16} />
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            size="icon"
+            shadowOn="surface-container-low"
             disabled={!canSend}
             aria-label="Send message"
-            className="neu-primary-button bg-primary text-on-primary relative z-10 flex size-11 shrink-0 items-center justify-center rounded-xl disabled:pointer-events-none disabled:opacity-45 sm:size-9"
+            className="relative z-10"
           >
             <Icon name="arrowUp" size={18} />
-          </button>
+          </Button>
         )}
       </form>
       <div className="mt-2 flex items-center justify-between px-1">

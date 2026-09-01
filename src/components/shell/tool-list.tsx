@@ -28,8 +28,8 @@ export function ToolList({ collapsed = false }: { collapsed?: boolean }) {
                 setActiveChannel(entry.id);
                 router.push(`/tools/${slug}`);
               }}
-              className={`focus-visible:ring-primary/40 flex h-9 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
-                collapsed ? "w-9 justify-center" : "w-full gap-2.5 px-3"
+              className={`focus-visible:ring-primary/40 flex h-11 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
+                collapsed ? "w-11 justify-center sm:w-9" : "w-full gap-2.5 px-3"
               } ${
                 active
                   ? "neu-inset bg-surface-container text-on-surface"
