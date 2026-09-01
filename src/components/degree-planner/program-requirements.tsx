@@ -93,7 +93,7 @@ export function ProgramSelectors() {
               href={major}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary flex items-center gap-0.5 text-[11px] hover:underline"
+              className="text-primary flex items-center gap-0.5 text-xs hover:underline"
             >
               UBC Calendar
               <Icon name="externalLink" size={11} />
@@ -158,7 +158,7 @@ function ProgramCombobox({
 
   return (
     <label htmlFor={inputId} className={`flex flex-col gap-1 ${className ?? ""}`}>
-      <span className="text-muted flex items-baseline justify-between gap-2 text-[11px]">
+      <span className="text-muted flex items-baseline justify-between gap-2 text-xs">
         {label}
         {labelExtra}
       </span>

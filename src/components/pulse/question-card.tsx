@@ -165,7 +165,7 @@ export function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: bool
           >
             {known ? `${disagreePct}%` : "—"}
           </span>
-          <span className="text-muted text-[11px]">Disagree</span>
+          <span className="text-muted text-xs">Disagree</span>
         </span>
         <span className="bg-surface-container-high flex h-2 min-w-0 flex-1 overflow-hidden rounded-full">
           {known && total > 0 && (
@@ -185,7 +185,7 @@ export function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: bool
           <span className={`text-sm tabular-nums ${card.myAgree === true ? "text-primary font-medium" : "text-muted"}`}>
             {known ? `${agreePct}%` : "—"}
           </span>
-          <span className="text-muted text-[11px]">Agree</span>
+          <span className="text-muted text-xs">Agree</span>
         </span>
       </div>
       <p className="text-muted mt-2 text-center text-xs">

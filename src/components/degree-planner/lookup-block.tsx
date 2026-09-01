@@ -42,11 +42,11 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
     >
       <div className="min-w-0 flex-1 leading-tight">
         <span className="text-on-surface block truncate font-mono text-xs">{code}</span>
-        <span className="text-on-surface-variant block truncate text-[11px]" title={entry.title}>
+        <span className="text-on-surface-variant block truncate text-xs" title={entry.title}>
           {entry.title}
         </span>
       </div>
-      <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">
+      <span className="text-muted w-9 shrink-0 text-right text-xs tabular-nums">
         {entry.credits != null ? `${entry.credits} cr` : ""}
       </span>
       {!ghost && (

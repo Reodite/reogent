@@ -30,7 +30,7 @@ export function MiniCourseLookup({ courseIndex, plannedCodes }: MiniCourseLookup
     <div className="flex h-full min-h-0 min-w-0 flex-col">
       <header className="flex h-12 min-w-0 shrink-0 items-center gap-2 px-4">
         <h3 className="text-on-surface text-sm font-medium">Find courses</h3>
-        <span className="text-muted text-[11px]">Drag a result onto any term.</span>
+        <span className="text-muted text-xs">Drag a result onto any term.</span>
       </header>
       <div className="min-w-0 shrink-0 px-4 pb-3">
         <TextInput

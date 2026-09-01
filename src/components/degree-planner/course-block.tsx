@@ -110,10 +110,10 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
         )}
       </div>
       <div className="flex min-w-0 items-center gap-2 leading-tight">
-        <span className="text-on-surface-variant min-w-0 flex-1 truncate text-[11px]" title={title}>
+        <span className="text-on-surface-variant min-w-0 flex-1 truncate text-xs" title={title}>
           {title}
         </span>
-        <span className="text-muted w-9 shrink-0 text-right text-[11px] tabular-nums">
+        <span className="text-muted w-9 shrink-0 text-right text-xs tabular-nums">
           {entry?.credits != null ? `${entry.credits} cr` : ""}
         </span>
       </div>

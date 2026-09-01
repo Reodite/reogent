@@ -74,13 +74,13 @@ export function PlanStructure() {
           <PlannerCheckboxMark checked={coop} />
           <span className="text-on-surface text-xs">Co-op program</span>
         </label>
-        {faculty == null && <p className="text-muted text-[11px]">Select a faculty to check co-op availability.</p>}
+        {faculty == null && <p className="text-muted text-xs">Select a faculty to check co-op availability.</p>}
         {faculty != null && coopInfo == null && (
-          <p className="text-muted text-[11px]">This faculty has no co-op program.</p>
+          <p className="text-muted text-xs">This faculty has no co-op program.</p>
         )}
         {faculty != null && coopInfo != null && coop && (
           <>
-            <p className="text-muted text-[11px]">{coopInfo.blurb}</p>
+            <p className="text-muted text-xs">{coopInfo.blurb}</p>
             <button
               type="button"
               onClick={() => {
@@ -96,7 +96,7 @@ export function PlanStructure() {
               Apply typical {coopInfo.shortLabel} sequence
             </button>
             {sequenceMessage && (
-              <p className="text-on-surface-variant text-[11px]" role="status">
+              <p className="text-on-surface-variant text-xs" role="status">
                 {sequenceMessage}
               </p>
             )}
@@ -104,7 +104,7 @@ export function PlanStructure() {
         )}
       </div>
 
-      <p className="text-muted text-[11px]">
+      <p className="text-muted text-xs">
         Add summer sessions beneath a year. Use “Mark as co-op work term” inside any study term to customize the
         sequence.
       </p>

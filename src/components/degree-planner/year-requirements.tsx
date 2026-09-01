@@ -215,12 +215,12 @@ function CourseRequirementRow({
           {cleanLabel(item.label)}
         </p>
         {(choices.length > 1 || partial) && (
-          <div className="text-muted mt-0.5 flex items-center gap-1 text-[11px]">
+          <div className="text-muted mt-0.5 flex items-center gap-1 text-xs">
             {choices.length > 1 && (
               <select
                 value={selectedCode}
                 onChange={(event) => setChosenCode(event.target.value)}
-                className="neu-inset bg-surface-container-low text-on-surface h-6 max-w-full rounded-md px-1 font-mono text-[11px]"
+                className="neu-inset bg-surface-container-low text-on-surface h-6 max-w-full rounded-md px-1 font-mono text-xs"
                 aria-label="Course alternative"
               >
                 {choices.map((code) => (
@@ -235,7 +235,7 @@ function CourseRequirementRow({
         )}
       </div>
       {item.credits != null && (
-        <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
+        <span className="text-muted w-9 shrink-0 pt-2 text-right text-xs tabular-nums">{item.credits} cr</span>
       )}
       <button
         type="button"
@@ -274,7 +274,7 @@ function ManualRequirementRow({
           {cleanLabel(item.label)}
         </span>
         {item.credits != null && (
-          <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
+          <span className="text-muted w-9 shrink-0 pt-2 text-right text-xs tabular-nums">{item.credits} cr</span>
         )}
       </button>
     </li>
@@ -296,9 +296,9 @@ function CompletedRequirementRow({
       <span className="text-muted min-w-0 flex-1 pt-2 text-xs leading-snug line-through decoration-current/30">
         {cleanLabel(item.label)}
       </span>
-      <span className="text-muted shrink-0 pt-2 text-[10px]">{met ? "Planned" : "Marked done"}</span>
+      <span className="text-muted shrink-0 pt-2 text-xs">{met ? "Planned" : "Marked done"}</span>
       {item.credits != null && (
-        <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
+        <span className="text-muted w-9 shrink-0 pt-2 text-right text-xs tabular-nums">{item.credits} cr</span>
       )}
     </>
   );

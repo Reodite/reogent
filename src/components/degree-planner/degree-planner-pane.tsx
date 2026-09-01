@@ -689,7 +689,7 @@ function ActionsSection({
           <Icon name="eyeOff" size={14} className={erroredBlocks.length > 0 ? "text-error" : undefined} />
           <span>Issues</span>
           {erroredBlocks.length > 0 && (
-            <span className="bg-error-container text-on-error-container rounded-full px-1.5 text-[11px] tabular-nums">
+            <span className="bg-error-container text-on-error-container rounded-full px-1.5 text-xs tabular-nums">
               {erroredBlocks.length}
             </span>
           )}
@@ -700,7 +700,7 @@ function ActionsSection({
               {erroredBlocks.length === 0 ? "No placement issues" : `${erroredBlocks.length} placement issue(s)`}
             </p>
             {erroredBlocks.length > 0 && (
-              <p className="text-muted px-2 pb-1 text-[11px]">Select an issue to highlight the course on the board.</p>
+              <p className="text-muted px-2 pb-1 text-xs">Select an issue to highlight the course on the board.</p>
             )}
             {erroredBlocks.map((block) => (
               <div
@@ -717,7 +717,7 @@ function ActionsSection({
                     <span className="text-on-surface font-mono font-medium">{block.code}</span>
                     <span className="text-muted"> · {block.place}</span>
                   </p>
-                  <p className="text-on-surface-variant mt-0.5 text-[11px] leading-snug">
+                  <p className="text-on-surface-variant mt-0.5 text-xs leading-snug">
                     {block.issues.map(describeIssue).join(" ")}
                   </p>
                 </button>

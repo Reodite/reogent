@@ -107,9 +107,9 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
     >
       <div className="flex h-6 shrink-0 items-baseline gap-2 text-xs">
         <span className="text-on-surface shrink-0 font-medium">{meta.short}</span>
-        <span className="text-muted min-w-0 truncate text-[11px]">{meta.months}</span>
+        <span className="text-muted min-w-0 truncate text-xs">{meta.months}</span>
         <span
-          className={`ml-auto shrink-0 text-right text-[11px] tabular-nums ${creditOverload ? "text-error" : "text-muted"}`}
+          className={`ml-auto shrink-0 text-right text-xs tabular-nums ${creditOverload ? "text-error" : "text-muted"}`}
           title={creditOverload ? "Over the usual credit load for this term" : undefined}
         >
           {creditTotal} cr
