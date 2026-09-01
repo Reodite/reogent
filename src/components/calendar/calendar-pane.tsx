@@ -3,6 +3,7 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { announce } from "@/src/components/ui/live-region";
 import {
   addMonths,
@@ -175,26 +176,13 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
         )}
       </div>
       <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          data-calendar-nav="prev"
-          aria-label="Previous month"
-          onClick={goPrev}
-          className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2"
-        >
+        <Button data-calendar-nav="prev" aria-label="Previous month" onClick={goPrev} size="icon">
           <Icon name="left" size={18} />
-        </button>
+        </Button>
         <MonthYearPicker cursorDate={cursorDate} horizon={horizon} onPick={goMonth} />
-        <button
-          type="button"
-          data-calendar-nav="next"
-          aria-label="Next month"
-          disabled={beyondHorizon}
-          onClick={goNext}
-          className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-40"
-        >
+        <Button data-calendar-nav="next" aria-label="Next month" disabled={beyondHorizon} onClick={goNext} size="icon">
           <Icon name="right" size={18} />
-        </button>
+        </Button>
       </div>
       <ul
         aria-label="Legend"
@@ -389,19 +377,18 @@ function MonthYearPicker({
 
   return (
     <div ref={rootRef} className="relative shrink-0">
-      <button
+      <Button
         ref={triggerRef}
-        type="button"
         data-calendar-heading
         data-calendar-month-picker
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 w-40 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-medium tracking-[-0.01em] focus-visible:ring-2"
+        className="w-40 tracking-[-0.01em]"
       >
         {formatMonthHeading(cursorDate)}
         <Icon name="down" size={14} />
-      </button>
+      </Button>
 
       {open && (
         <div
