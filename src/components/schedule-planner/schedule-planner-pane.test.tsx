@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import type { CourseDoc } from "@/src/lib/api-types";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { SchedulePlannerPane } from "./schedule-planner-pane";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { plannerGridItems, SchedulePlannerPane } from "./schedule-planner-pane";
 
 const term = "2026-27 Winter Term 1";
 
@@ -63,36 +63,38 @@ const courses: Record<string, CourseDoc> = {
   },
 };
 
+const initialEntries = [
+  {
+    code: "CPSC 110",
+    section: "101",
+    term,
+    snapshot: {
+      title: "Computation, Programs, and Programming",
+      instructor: null,
+      days: ["m", "Wed", "Fri"],
+      start_time: "09:00",
+      end_time: "10:00",
+      status: null,
+    },
+  },
+  {
+    code: "MATH 100",
+    section: "201",
+    term,
+    snapshot: {
+      title: "Differential Calculus",
+      instructor: null,
+      days: ["Mon", "Wed", "Fri"],
+      start_time: "09:30",
+      end_time: "10:30",
+      status: null,
+    },
+  },
+];
+
 const scheduleMock = vi.hoisted(() => ({
   state: {
-    entries: [
-      {
-        code: "CPSC 110",
-        section: "101",
-        term: "2026-27 Winter Term 1",
-        snapshot: {
-          title: "Computation, Programs, and Programming",
-          instructor: null,
-          days: ["Mon", "Wed", "Fri"],
-          start_time: "09:00",
-          end_time: "10:00",
-          status: null,
-        },
-      },
-      {
-        code: "MATH 100",
-        section: "201",
-        term: "2026-27 Winter Term 1",
-        snapshot: {
-          title: "Differential Calculus",
-          instructor: null,
-          days: ["Mon", "Wed", "Fri"],
-          start_time: "09:30",
-          end_time: "10:30",
-          status: null,
-        },
-      },
-    ],
+    entries: [] as typeof initialEntries,
     activeTerm: "2026-27 Winter Term 1",
     stale: false,
     addEntry: vi.fn(),
@@ -124,58 +126,92 @@ vi.mock("@/src/components/course-lookup/course-search", () => ({
 const apiMock = vi.hoisted(() => ({ getCourse: vi.fn() }));
 vi.mock("@/src/components/providers", () => ({ useApi: () => apiMock }));
 
+beforeEach(() => {
+  scheduleMock.state.entries = structuredClone(initialEntries);
+  scheduleMock.state.activeTerm = term;
+  scheduleMock.state.stale = false;
+  apiMock.getCourse.mockImplementation(async (code: string) => courses[code]);
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
 
+describe("plannerGridItems", () => {
+  it("normalizes planner snapshots and marks both sides of a conflict", () => {
+    const items = plannerGridItems(initialEntries);
+
+    expect(items[0]).toMatchObject({
+      id: `CPSC 110::101::${term}`,
+      courseKey: "CPSC 110",
+      days: ["Mon", "Wed", "Fri"],
+      startMin: 540,
+      endMin: 600,
+      conflict: true,
+    });
+    expect(items[1].conflict).toBe(true);
+  });
+});
+
 describe("SchedulePlannerPane", () => {
-  it("keeps term controls clear of the compact shell menu", () => {
+  it("uses the shared week-first workspace with Schedule selected on mobile", async () => {
     const view = render(<SchedulePlannerPane />);
 
-    expect(view.getByRole("tablist", { name: "Academic term" }).parentElement?.className).toContain("max-xl:pl-12");
+    await waitFor(() => expect(view.getAllByText("CPSC 110").length).toBeGreaterThan(0));
+    expect(view.getByRole("heading", { name: "Course schedule" }).closest("header")?.className).toContain(
+      "max-xl:pl-12",
+    );
+    expect(view.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
+    expect(view.getByRole("button", { name: "Courses" }).getAttribute("aria-pressed")).toBe("false");
+    expect(view.getByRole("region", { name: "Weekly course schedule" })).toBeTruthy();
   });
 
-  it("renders selected sections, component pickers, and conflicts", async () => {
-    apiMock.getCourse.mockImplementation(async (code: string) => courses[code]);
+  it("opens the fixed section picker from a rail card and a timetable occurrence", async () => {
     const view = render(<SchedulePlannerPane />);
 
-    await waitFor(() => {
-      expect(view.getAllByText("CPSC 110").length).toBeGreaterThan(0);
-      expect(view.getAllByText("MATH 100").length).toBeGreaterThan(0);
-    });
-
-    expect(view.getAllByText("Lecture").length).toBe(2);
-    expect(view.getByText("Laboratory")).toBeTruthy();
+    await waitFor(() => expect(view.getAllByText("CPSC 110").length).toBeGreaterThan(0));
+    expect(view.queryByRole("combobox", { name: "Lecture section" })).toBeNull();
     expect(view.getByText("2 conflicting sections")).toBeTruthy();
     expect(view.getByText("· 7 credits")).toBeTruthy();
-    expect(view.getAllByText("Conflicts with another selected section.").length).toBe(2);
-    expect(view.getAllByText("Mon").length).toBeGreaterThan(0);
 
-    fireEvent.change(view.getAllByRole("combobox", { name: /^Lecture/ })[0], { target: { value: "102" } });
+    fireEvent.click(view.getByRole("button", { name: "Open CPSC 110 course details" }));
+    expect(view.getByRole("dialog", { name: /CPSC 110/ })).toBeTruthy();
+    expect(view.getByText("Laboratory")).toBeTruthy();
+    expect(view.getByText("Conflicts with another selected section.")).toBeTruthy();
+
+    fireEvent.change(view.getByRole("combobox", { name: "Lecture section" }), { target: { value: "102" } });
     expect(scheduleMock.state.addEntry).toHaveBeenCalledWith(courses["CPSC 110"], courses["CPSC 110"].sections[1]);
 
-    const timetableToggle = view.getByRole("button", { name: /Timetable/ });
-    fireEvent.click(timetableToggle);
-    expect(timetableToggle.getAttribute("aria-pressed")).toBe("true");
-
+    fireEvent.click(view.getByRole("button", { name: "Close course details" }));
     const conflictBlock = view.getAllByRole("button", {
       name: /CPSC 110 101.*conflicts with another section/,
     })[0];
     fireEvent.click(conflictBlock);
-    expect(conflictBlock.getAttribute("aria-expanded")).toBe("true");
+    expect(view.getByRole("dialog", { name: /CPSC 110/ })).toBeTruthy();
   });
 
-  it("lets the user remove a saved section that disappeared from its term", async () => {
+  it("keeps the hour and day grid visible in the actionable empty state", () => {
+    scheduleMock.state.entries = [];
+    scheduleMock.state.activeTerm = "";
+    const view = render(<SchedulePlannerPane />);
+
+    expect(view.getAllByText("Mon").length).toBeGreaterThan(0);
+    expect(view.getByText("9 AM")).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "Browse courses" }));
+    expect(view.getByRole("button", { name: "Courses" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("surfaces and removes a saved section that disappeared from its term", async () => {
     apiMock.getCourse.mockImplementation(async (code: string) =>
       code === "CPSC 110" ? { ...courses[code], sections: [] } : courses[code],
     );
     const view = render(<SchedulePlannerPane />);
 
-    await waitFor(() => {
-      expect(view.getByText("This saved section is no longer offered in this term.")).toBeTruthy();
-    });
-    fireEvent.click(view.getByRole("button", { name: `Remove CPSC 110 from ${term}` }));
+    await waitFor(() => expect(view.getByText("Saved section unavailable")).toBeTruthy());
+    fireEvent.click(view.getByRole("button", { name: "Open CPSC 110 course details" }));
+    expect(view.getByText(/This saved section is no longer offered in this term/)).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "Remove course" }));
     expect(scheduleMock.state.removeCourse).toHaveBeenCalledWith("CPSC 110", term);
   });
 });
