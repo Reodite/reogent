@@ -165,7 +165,7 @@ body {
 
 *::-webkit-scrollbar-thumb {
   background-color: var(--outline-variant);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 *::-webkit-scrollbar-thumb:hover {

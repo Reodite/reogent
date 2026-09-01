@@ -78,6 +78,11 @@ typography:
     fontSize: "0.75rem"
     fontWeight: 450
     lineHeight: 1.4
+  avatar:
+    fontFamily: "Aspekta, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 500
+    lineHeight: 1.4
   mono:
     fontFamily: "Commit Mono, ui-monospace, SF Mono, Menlo, Consolas, monospace"
     fontSize: "0.8125rem"
