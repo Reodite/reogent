@@ -53,9 +53,10 @@ export function LookupBlock({ entry, ghost = false }: LookupBlockProps) {
         <button
           type="button"
           aria-label={`Show ${code} details`}
-          onClick={(event) =>
-            setAnchorRect((current) => (current ? null : event.currentTarget.getBoundingClientRect()))
-          }
+          onClick={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            setAnchorRect((current) => (current ? null : rect));
+          }}
           className="text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex size-7 shrink-0 items-center justify-center rounded-md opacity-60 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
         >
           <Icon name="info" size={14} />
