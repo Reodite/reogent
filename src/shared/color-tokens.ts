@@ -65,6 +65,16 @@ export const COLOR_TOKENS = [
   { name: "scrim", light: "rgba(0, 0, 0, 0.3)", dark: "rgba(0, 0, 0, 0.5)" },
 ] as const satisfies readonly ColorToken[];
 
+type SurfaceTokenName<Token> = Token extends {
+  readonly name: infer Name extends string;
+  readonly surface: true;
+}
+  ? Name
+  : never;
+
+/** Names an opaque theme material that can sit beneath a neumorphic surface. */
+export type NeumorphicSurfaceToken = SurfaceTokenName<(typeof COLOR_TOKENS)[number]>;
+
 const COLOR_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i;
 const THEMES: readonly ColorTheme[] = ["light", "dark"];
@@ -155,6 +165,42 @@ function renderTheme(tokens: readonly ColorToken[], theme: ColorTheme, indexed: 
   return `${selector} {\n${baseDeclarations.join("\n")}\n\n${pairDeclarations.join("\n")}\n}`;
 }
 
+function renderShadowUtilities(tokens: readonly ColorToken[]): string {
+  const surfaceTokens = tokens.filter((token) => token.surface);
+  const selectors = surfaceTokens.map((token) => `  .neu-shadow-on-${token.name}`).join(",\n");
+  const sharedRecipe = `:where(
+${selectors}
+) {
+  --neu-shadow: color-mix(
+    in srgb,
+    var(--neu-context-dark) var(--neu-context-shadow-weight),
+    transparent
+  );
+  --neu-highlight: color-mix(
+    in srgb,
+    var(--neu-context-light) var(--neu-context-highlight-weight),
+    transparent
+  );
+  --neu-shadow-deep: color-mix(
+    in srgb,
+    var(--neu-context-dark) var(--neu-context-deep-weight),
+    transparent
+  );
+  --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
+  --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
+}`;
+  const contexts = surfaceTokens
+    .map(
+      (token) => `.neu-shadow-on-${token.name} {
+  --neu-context-dark: var(--neu-${token.name}-dark);
+  --neu-context-light: var(--neu-${token.name}-light);
+}`,
+    )
+    .join("\n\n");
+
+  return `${sharedRecipe}\n\n${contexts}`;
+}
+
 /** Renders deterministic theme variables and contextual neumorphic pairs. */
 export function renderColorTokensCss(tokens: readonly ColorToken[] = COLOR_TOKENS): string {
   const indexed = indexColorTokens(tokens);
@@ -166,5 +212,6 @@ export function renderColorTokensCss(tokens: readonly ColorToken[] = COLOR_TOKEN
   }
 
   const themes = THEMES.map((theme) => renderTheme(tokens, theme, indexed)).join("\n\n");
-  return `/*\n * Generated from src/shared/color-tokens.ts by npm run colors:generate.\n * Direct edits are overwritten.\n */\n\n${themes}\n`;
+  const shadowUtilities = renderShadowUtilities(tokens);
+  return `/*\n * Generated from src/shared/color-tokens.ts by npm run colors:generate.\n * Direct edits are overwritten.\n */\n\n${themes}\n\n${shadowUtilities}\n`;
 }

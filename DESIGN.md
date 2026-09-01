@@ -308,7 +308,7 @@ Two tiers of shadow share one defining characteristic: extreme subtlety. Shadows
 
 Pair names follow `--neu-<parent-token>-dark` and `--neu-<parent-token>-light`. Choose the pair for the material under the element. For example, a panel raised above `--background` uses the `--neu-background-*` pair, while a control raised inside `--surface` uses the `--neu-surface-*` pair.
 
-The generated colors are raw tonal endpoints. Keep the composed recipe's opacity, blur, and offset at the whisper-level values documented below. Translucent scrims, mixed course tints, borders, and text colors do not receive pairs because their visible backdrop depends on composition or they cannot host nested surfaces.
+The generated colors are raw tonal endpoints. Apply `.neu-shadow-on-<parent-token>` to select a pair for an element and its descendants. The utility blends that pair through `--neu-context-shadow-weight`, `--neu-context-highlight-weight`, and `--neu-context-deep-weight`, then the composed recipes below provide blur and offset. Unmarked elements retain the default shadow primitives. Translucent scrims, mixed course tints, borders, and text colors do not receive pairs because their visible backdrop depends on composition or they cannot host nested surfaces.
 
 ### Tier 1: Utility Elevation (Tailwind-mapped)
 
@@ -347,7 +347,7 @@ Single unified shadow recipe applied through `.neu-*` classes. All composed surf
 | -------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `.chat-message-well` | `inset 0 10px 24px -22px var(--neu-shadow-deep)` (top + bottom) | Chat scroll well — deep directional inset that reads as a recessed channel. Background: `color-mix(in srgb, var(--surface-container-low) 72%, var(--background))`. |
 
-The `.neu-primary-button` rest shadow (`0 3px 8px rgba(74,78,122,0.1), -2px -2px 6px var(--neu-highlight)`) is its own inline recipe rather than referencing `--elevation-glow`. The two values differ by 1px Y-offset; they serve the same visual intent but the button recipe is authoritative.
+`.neu-primary-button` uses the same inherited dark and light primitives at rest, hover, and active. Context utilities therefore keep primary and secondary controls aligned with the material beneath them.
 
 ### Glass Material
 
@@ -397,7 +397,7 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 State changes through shadow transformation + press scale. Buttons never translate on hover or active; the surface stays put and only the shadow, filter, or scale changes.
 
-- **Primary** (`.neu-primary-button`): `bg-primary text-on-primary rounded-xl h-9 px-4 text-sm font-medium`. Shadow: colored glow underneath (primary at 10%) + highlight behind. Hover: brightness(1.03), slightly expanded glow. Active: inset shadow (dark + light), scale(0.985).
+- **Primary** (`.neu-primary-button`): `bg-primary text-on-primary rounded-xl h-9 px-4 text-sm font-medium`. Shadow: contextual dark and light pair for the parent material. Hover: brightness(1.03) with a wider contextual shadow. Active: contextual inset shadow, scale(0.985).
 - **Primary Large**: Same as primary but `h-12 px-8 text-base`. Used on landing CTAs and auth submit.
 - **Primary Prominent**: `h-10 px-4` — slightly taller than standard for emphasis in error recovery states. Same shadow recipe.
 - **Secondary** (`.neu-button`): `bg-surface text-on-surface rounded-xl h-9 px-4 border-subtle text-sm font-medium`. Shadow: surface shadow. Hover: expanded shadow. Active: inset shadow, scale(0.98).

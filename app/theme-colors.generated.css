@@ -164,3 +164,144 @@
   --neu-accent-subtle-dark: #1a1a24;
   --neu-accent-subtle-light: #232430;
 }
+
+:where(
+  .neu-shadow-on-background,
+  .neu-shadow-on-surface-container-lowest,
+  .neu-shadow-on-surface-container-low,
+  .neu-shadow-on-surface-container,
+  .neu-shadow-on-surface-container-high,
+  .neu-shadow-on-surface,
+  .neu-shadow-on-surface-bright,
+  .neu-shadow-on-primary,
+  .neu-shadow-on-primary-container,
+  .neu-shadow-on-secondary,
+  .neu-shadow-on-secondary-container,
+  .neu-shadow-on-tertiary,
+  .neu-shadow-on-tertiary-container,
+  .neu-shadow-on-event-academic,
+  .neu-shadow-on-event-academic-container,
+  .neu-shadow-on-event-holiday,
+  .neu-shadow-on-event-holiday-container,
+  .neu-shadow-on-error,
+  .neu-shadow-on-error-container,
+  .neu-shadow-on-accent-subtle
+) {
+  --neu-shadow: color-mix(
+    in srgb,
+    var(--neu-context-dark) var(--neu-context-shadow-weight),
+    transparent
+  );
+  --neu-highlight: color-mix(
+    in srgb,
+    var(--neu-context-light) var(--neu-context-highlight-weight),
+    transparent
+  );
+  --neu-shadow-deep: color-mix(
+    in srgb,
+    var(--neu-context-dark) var(--neu-context-deep-weight),
+    transparent
+  );
+  --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
+  --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
+}
+
+.neu-shadow-on-background {
+  --neu-context-dark: var(--neu-background-dark);
+  --neu-context-light: var(--neu-background-light);
+}
+
+.neu-shadow-on-surface-container-lowest {
+  --neu-context-dark: var(--neu-surface-container-lowest-dark);
+  --neu-context-light: var(--neu-surface-container-lowest-light);
+}
+
+.neu-shadow-on-surface-container-low {
+  --neu-context-dark: var(--neu-surface-container-low-dark);
+  --neu-context-light: var(--neu-surface-container-low-light);
+}
+
+.neu-shadow-on-surface-container {
+  --neu-context-dark: var(--neu-surface-container-dark);
+  --neu-context-light: var(--neu-surface-container-light);
+}
+
+.neu-shadow-on-surface-container-high {
+  --neu-context-dark: var(--neu-surface-container-high-dark);
+  --neu-context-light: var(--neu-surface-container-high-light);
+}
+
+.neu-shadow-on-surface {
+  --neu-context-dark: var(--neu-surface-dark);
+  --neu-context-light: var(--neu-surface-light);
+}
+
+.neu-shadow-on-surface-bright {
+  --neu-context-dark: var(--neu-surface-bright-dark);
+  --neu-context-light: var(--neu-surface-bright-light);
+}
+
+.neu-shadow-on-primary {
+  --neu-context-dark: var(--neu-primary-dark);
+  --neu-context-light: var(--neu-primary-light);
+}
+
+.neu-shadow-on-primary-container {
+  --neu-context-dark: var(--neu-primary-container-dark);
+  --neu-context-light: var(--neu-primary-container-light);
+}
+
+.neu-shadow-on-secondary {
+  --neu-context-dark: var(--neu-secondary-dark);
+  --neu-context-light: var(--neu-secondary-light);
+}
+
+.neu-shadow-on-secondary-container {
+  --neu-context-dark: var(--neu-secondary-container-dark);
+  --neu-context-light: var(--neu-secondary-container-light);
+}
+
+.neu-shadow-on-tertiary {
+  --neu-context-dark: var(--neu-tertiary-dark);
+  --neu-context-light: var(--neu-tertiary-light);
+}
+
+.neu-shadow-on-tertiary-container {
+  --neu-context-dark: var(--neu-tertiary-container-dark);
+  --neu-context-light: var(--neu-tertiary-container-light);
+}
+
+.neu-shadow-on-event-academic {
+  --neu-context-dark: var(--neu-event-academic-dark);
+  --neu-context-light: var(--neu-event-academic-light);
+}
+
+.neu-shadow-on-event-academic-container {
+  --neu-context-dark: var(--neu-event-academic-container-dark);
+  --neu-context-light: var(--neu-event-academic-container-light);
+}
+
+.neu-shadow-on-event-holiday {
+  --neu-context-dark: var(--neu-event-holiday-dark);
+  --neu-context-light: var(--neu-event-holiday-light);
+}
+
+.neu-shadow-on-event-holiday-container {
+  --neu-context-dark: var(--neu-event-holiday-container-dark);
+  --neu-context-light: var(--neu-event-holiday-container-light);
+}
+
+.neu-shadow-on-error {
+  --neu-context-dark: var(--neu-error-dark);
+  --neu-context-light: var(--neu-error-light);
+}
+
+.neu-shadow-on-error-container {
+  --neu-context-dark: var(--neu-error-container-dark);
+  --neu-context-light: var(--neu-error-container-light);
+}
+
+.neu-shadow-on-accent-subtle {
+  --neu-context-dark: var(--neu-accent-subtle-dark);
+  --neu-context-light: var(--neu-accent-subtle-light);
+}

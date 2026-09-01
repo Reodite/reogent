@@ -9,3 +9,4 @@ ubc-unified-data
 .kiro
 .opencode
 public/maplibre-gl-*.mjs
+app/theme-colors.generated.css

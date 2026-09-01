@@ -116,6 +116,20 @@ describe("renderColorTokensCss", () => {
     expect(css).toContain("--neu-background-light: #151517;");
   });
 
+  it("generates a contextual shadow utility for every surface token", () => {
+    const css = renderColorTokensCss();
+
+    for (const name of EXPECTED_SURFACE_TOKENS) {
+      expect(css.match(new RegExp(`^\\.neu-shadow-on-${name} \\{`, "gm"))).toHaveLength(1);
+      expect(css).toContain(`--neu-context-dark: var(--neu-${name}-dark);`);
+      expect(css).toContain(`--neu-context-light: var(--neu-${name}-light);`);
+    }
+    expect(css.match(/--neu-surface-shadow:/g)).toHaveLength(1);
+    expect(css.match(/--neu-inset-shadow:/g)).toHaveLength(1);
+    expect(css).not.toContain(".neu-shadow-on-scrim {");
+    expect(css).not.toContain(".neu-shadow-on-border {");
+  });
+
   it("keeps the committed stylesheet and import in sync", async () => {
     const [generatedCss, globalsCss] = await Promise.all([
       readFile(new URL("../../app/theme-colors.generated.css", import.meta.url), "utf8"),
