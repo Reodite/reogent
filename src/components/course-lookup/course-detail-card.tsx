@@ -4,6 +4,8 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { GradeDistributionChart } from "@/src/components/course-lookup/grade-distribution-chart";
 import { SectionRow } from "@/src/components/course-lookup/section-row";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { InfoChip } from "@/src/components/ui/info-chip";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
 
 function FieldRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
@@ -84,39 +86,33 @@ export function CourseDetailCard({
   const buckets = (record as { buckets?: Record<string, number> }).buckets;
   const hasDistribution = buckets != null;
   return (
-    <article className="bg-surface-container-low flex flex-col gap-2.5 rounded-lg p-3">
+    <article className="neu-panel bg-surface flex flex-col gap-3 rounded-xl p-4">
       <header className="flex flex-wrap items-baseline gap-1.5">
         {/* Catalog codes carry a _V campus suffix after the subject; display strips it. */}
         <h3 className="font-mono text-base leading-tight font-medium">{record.code.replace(/_V(?=\b|$)/, "")}</h3>
-        {sess && (
-          <span className="bg-surface-container text-on-surface-variant rounded-full px-2 py-0.5 text-xs">{sess}</span>
-        )}
-        {record.credits != null && (
-          <span className="bg-surface-container text-on-surface-variant rounded-full px-2 py-0.5 text-xs">
-            {record.credits} cr
-          </span>
-        )}
+        {sess ? <InfoChip>{sess}</InfoChip> : null}
+        {record.credits != null ? <InfoChip>{record.credits} cr</InfoChip> : null}
         {record.prerequisite && (
-          <button
+          <Button
             data-action="open-prereq-tree"
             data-code={record.code}
-            type="button"
+            variant="outline"
+            size="pill"
             onClick={() => setActiveChannel("prereq-tree", { root: record.code, selections: {} })}
-            className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 inline-flex min-h-[44px] items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
           >
             <Icon name="tree" size={14} /> Prereq Tree
-          </button>
+          </Button>
         )}
       </header>
       <p className="text-sm font-medium">{record.title}</p>
       {record.description && <p className="text-on-surface-variant text-sm leading-relaxed">{record.description}</p>}
       {hasDistribution && <CourseStatsBand record={record as unknown as Record<string, unknown>} isRecent={isRecent} />}
-      {hasDistribution && (
+      {buckets ? (
         <GradeDistributionChart
-          buckets={buckets!}
+          buckets={buckets}
           highlightBucket={(record as { highlightBucket?: string }).highlightBucket}
         />
-      )}
+      ) : null}
       <dl className="flex flex-col gap-1.5">
         {record.prerequisite && <FieldRow label="Prerequisite" value={record.prerequisite} mono />}
         {record.corequisite && <FieldRow label="Corequisite" value={record.corequisite} mono />}

@@ -8,7 +8,15 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";
 import { Button } from "@/src/components/ui/button";
+import { RetryState } from "@/src/components/ui/feedback";
 import { SelectInput } from "@/src/components/ui/form-controls";
+import {
+  WorkspaceCanvas,
+  WorkspacePage,
+  WorkspacePanel,
+  WorkspaceRail,
+  type WorkspaceView,
+} from "@/src/components/ui/workspace";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
 import { useRouter } from "next/navigation";
@@ -37,12 +45,23 @@ function SessionPicker({ session, onChange }: { session: string; onChange: (s: s
   );
 }
 
+function CourseDetailSkeleton() {
+  return (
+    <div role="status" aria-label="Loading course details" className="flex flex-col gap-2 p-3">
+      <span className="bg-surface-container h-5 w-32 animate-pulse rounded" />
+      <span className="bg-surface-container h-3 w-64 max-w-full animate-pulse rounded" />
+      <span className="bg-surface-container h-24 w-full animate-pulse rounded" />
+    </div>
+  );
+}
+
 export function CourseLookupPane({ state, setState }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
   const api = useApi();
   const { mode } = useChatShell();
   const router = useRouter();
   const [code, setCode] = useState(((state.code as string | undefined) ?? "") as string);
   const [session, setSession] = useState<string>((state.session as string | undefined) ?? defaultSession());
+  const [mobileView, setMobileView] = useState<WorkspaceView>("main");
   // Sync when a widget or the map drives the pane to a different course code.
   // Compares against the last-seen state.code so typing locally never gets
   // clobbered back to the prop (in tests, setState is mocked and state.code
@@ -84,45 +103,80 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
 
   const openFromList = useCallback((c: string) => router.push(`/tools/courses/${courseCodeToSlug(c)}`), [router]);
 
-  if (toolsMode && !toolsDetail) {
-    return (
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col p-3">
-        <CourseExplorer onSelect={openFromList} />
-      </div>
-    );
-  }
+  if (toolsMode && !toolsDetail) return <CourseExplorer onSelect={openFromList} />;
 
   if (toolsDetail) {
+    const alternatives = list?.candidates ?? [];
     return (
-      <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-3 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            onClick={() => {
-              setCode("");
-              router.push("/tools/courses");
-            }}
-          >
-            <Icon name="left" size={14} /> All courses
-          </Button>
-          <SessionPicker session={session} onChange={setSession} />
-        </div>
-        {record ? (
-          <div className="min-h-0 flex-1">
+      <WorkspacePage
+        composition="split"
+        title="Course lookup"
+        description={`Review ${propCode} catalog details, grades, prerequisites, and sections.`}
+        view={mobileView}
+        onViewChange={setMobileView}
+        mainLabel="Course details"
+        railLabel="Course controls"
+        rail={
+          <WorkspaceRail>
+            <WorkspacePanel title="Course controls" padding="md">
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={() => {
+                    setCode("");
+                    router.push("/tools/courses");
+                  }}
+                >
+                  <Icon name="left" size={14} /> All courses
+                </Button>
+                <SessionPicker session={session} onChange={setSession} />
+              </div>
+            </WorkspacePanel>
+          </WorkspaceRail>
+        }
+      >
+        <WorkspaceCanvas padding="md">
+          {status === "loading" ? (
+            <CourseDetailSkeleton />
+          ) : record ? (
             <CourseDetailCard record={record} session={session} />
-          </div>
-        ) : (
-          <div role="status" aria-busy="true" className="bg-surface-container-low flex flex-col gap-2 rounded-lg p-3">
-            <span className="bg-surface-container h-5 w-32 animate-pulse rounded" />
-            <span className="bg-surface-container h-3 w-64 animate-pulse rounded" />
-            <span className="bg-surface-container h-24 w-full animate-pulse rounded" />
-          </div>
-        )}
-      </div>
+          ) : error ? (
+            <RetryState
+              title="Course unavailable"
+              message={`${propCode} could not be loaded from the catalog.`}
+              onRetry={() => lookup(code)}
+              className="m-auto"
+            />
+          ) : (
+            <div className="m-auto flex max-w-md flex-col items-center gap-3 text-center">
+              <div>
+                <h2 className="text-on-surface text-base font-medium">Course not found</h2>
+                <p className="text-on-surface-variant mt-1 text-sm">
+                  {rejected
+                    ? "Okanagan course codes are not in this catalog."
+                    : `${propCode} is not available in this session.`}
+                </p>
+              </div>
+              {alternatives.length > 0 ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {alternatives.slice(0, 4).map((candidate) => (
+                    <Button key={candidate.code} size="compact" onClick={() => openFromList(candidate.code)}>
+                      {candidate.code}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+              <Button variant="outline" size="pill" onClick={() => router.push("/tools/courses")}>
+                Browse all courses
+              </Button>
+            </div>
+          )}
+        </WorkspaceCanvas>
+      </WorkspacePage>
     );
   }
 
   return (
-    <div className="flex h-full flex-col gap-3 p-3">
+    <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
       <SessionPicker session={session} onChange={setSession} />
       <CourseSearchField
         value={code}
@@ -135,11 +189,7 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
         rejected={rejected}
       />
       {status === "loading" ? (
-        <div role="status" aria-busy="true" className="bg-surface-container-low flex flex-col gap-2 rounded-lg p-3">
-          <span className="bg-surface-container h-5 w-32 animate-pulse rounded" />
-          <span className="bg-surface-container h-3 w-64 animate-pulse rounded" />
-          <span className="bg-surface-container h-24 w-full animate-pulse rounded" />
-        </div>
+        <CourseDetailSkeleton />
       ) : record ? (
         <CourseDetailCard record={record} session={session} />
       ) : null}

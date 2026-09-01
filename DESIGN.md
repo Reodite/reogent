@@ -439,6 +439,12 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 - **Compact month**: Upcoming opens first below the 55rem threshold. The Calendar view retains a horizontally scrollable seven-day month at a 36rem minimum width. Individual event labels become noninteractive color indicators, and each event day exposes one 44px agenda action. The agenda lists 44px event rows before opening shared event details.
 - **Request states**: Calendar data is cached per cursor and kind set. Initial loading, successful empty, refreshing, stale-with-data, and failed-without-data remain distinct. Refresh and Retry start real requests, stale responses cannot replace a newer month, and failure never reads as an empty calendar.
 
+### Course Lookup
+
+- **Browse composition**: Course Lookup uses the shared split workspace. A 20rem Filters panel owns the rail-density search, visible labels, session, sort, year, average, enrollment, credits, faculty, and explicit Show/Clear actions. The inset canvas owns the course table, horizontal overflow below its readable width, loading/error/empty states, and a fixed results footer.
+- **Detail composition**: List and detail routes keep the same title, rail, and canvas geometry. Course controls move into the rail while the record stays in the canvas. Loading skeletons render only during an active request; failures offer Retry, and missing codes show alternatives plus a clear return to the catalog.
+- **Compact flow**: Filters open first below 55rem. Every field and switch reaches 44px, Show courses moves to the still-mounted result canvas, and table overflow stays inside the canvas.
+
 ### Degree Planner
 
 - **Composition**: Operate-mode workbench with 24px desktop padding, 16px region gaps, and 8px internal gaps. The top bar places the title above one shared toolbar row, with visible-label program selectors on the left and labeled actions on the right. The body places a fixed 320px Requirements and Find Courses rail to the left of the horizontally scrollable year board.

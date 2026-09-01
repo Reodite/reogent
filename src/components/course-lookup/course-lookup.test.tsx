@@ -280,6 +280,9 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     });
     render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
     await waitFor(() => expect(screen.getByRole("table")).not.toBeNull());
+    expect(screen.getByRole("heading", { level: 1, name: "Course lookup" })).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Filters" })).not.toBeNull();
+    expect(document.querySelector("[data-workspace-canvas]")).not.toBeNull();
     expect(apiState.searchCourses).toHaveBeenCalledWith(expect.objectContaining({ sort: "students_desc" }));
   });
 
@@ -310,6 +313,28 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     render(<CourseLookupPane state={{ code: "MATH 100" }} setState={vi.fn()} />);
     const back = await screen.findByText("All courses");
     fireEvent.click(back);
+    expect(routerPush).toHaveBeenCalledWith("/tools/courses");
+  });
+
+  it("replaces a settled network failure skeleton with recovery", async () => {
+    shellState.mode = "tools";
+    apiState.getCourse.mockRejectedValue(new Error("offline"));
+    render(<CourseLookupPane state={{ code: "MATH 100" }} setState={vi.fn()} />);
+
+    expect(screen.getByRole("status", { name: "Loading course details" })).not.toBeNull();
+    expect(await screen.findByText("Course unavailable")).not.toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading course details" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" })).not.toBeNull();
+  });
+
+  it("shows a clear not-found exit after an exact 404 settles", async () => {
+    shellState.mode = "tools";
+    apiState.getCourse.mockRejectedValue(new ApiError(404, "missing"));
+    apiState.searchCourses.mockResolvedValue({ courses: [], subject_total: 0 });
+    render(<CourseLookupPane state={{ code: "MATH 999" }} setState={vi.fn()} />);
+
+    expect(await screen.findByText("Course not found")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Browse all courses" }));
     expect(routerPush).toHaveBeenCalledWith("/tools/courses");
   });
 });
