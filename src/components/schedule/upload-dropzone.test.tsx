@@ -7,6 +7,17 @@ import { UploadDropzone } from "./upload-dropzone";
 afterEach(cleanup);
 
 describe("UploadDropzone", () => {
+  it("renders the compact routine import action", () => {
+    render(
+      <ToastProvider>
+        <UploadDropzone presentation="button" label="Replace my schedule" onParsed={vi.fn()} />
+      </ToastProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: /Replace my schedule/ })).toBeTruthy();
+    expect(screen.getByText("Workday Excel (.xlsx)")).toBeTruthy();
+  });
+
   it("rejects oversized files before parsing them", async () => {
     const onParsed = vi.fn();
     const { container } = render(

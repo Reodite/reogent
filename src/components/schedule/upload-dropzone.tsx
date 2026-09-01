@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/src/components/icons";
 import type { Schedule } from "@/src/lib/schedule/types";
 import { useRef, useState } from "react";
 import { useToast } from "./toast";
@@ -7,12 +8,19 @@ import { useToast } from "./toast";
 interface Props {
   onParsed: (schedule: Schedule, fileName: string) => void;
   hero?: boolean;
+  presentation?: "dropzone" | "button";
+  label?: string;
 }
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 /** Drop target + file picker for the Workday .xlsx export. */
-export function UploadDropzone({ onParsed, hero }: Props) {
+export function UploadDropzone({
+  onParsed,
+  hero,
+  presentation = "dropzone",
+  label = "Import Workday schedule",
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const toast = useToast();
@@ -54,13 +62,25 @@ export function UploadDropzone({ onParsed, hero }: Props) {
           setOver(false);
           void handleFile(e.dataTransfer.files[0]);
         }}
-        className={`flex w-full items-center justify-center rounded-2xl border-2 border-dashed text-center text-sm transition-colors ${
-          over
-            ? "border-primary bg-primary/5 text-on-surface"
-            : "border-outline-variant text-on-surface-variant hover:border-primary/50"
-        } ${hero ? "min-h-40 px-6" : "min-h-16 px-4"}`}
+        className={
+          presentation === "button"
+            ? "neu-button text-on-surface focus-visible:ring-primary/40 flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left text-sm font-medium focus-visible:ring-2"
+            : `flex w-full items-center justify-center rounded-lg border border-dashed text-center text-sm transition-colors ${
+                over
+                  ? "border-primary bg-primary/5 text-on-surface"
+                  : "border-border text-on-surface-variant hover:border-primary/50"
+              } ${hero ? "min-h-40 px-6" : "min-h-16 px-4"}`
+        }
       >
-        {hero ? (
+        {presentation === "button" ? (
+          <>
+            <Icon name="file" className="text-primary size-4 shrink-0" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{label}</span>
+              <span className="text-muted block text-xs font-normal">Workday Excel (.xlsx)</span>
+            </span>
+          </>
+        ) : hero ? (
           <span>
             <strong className="text-on-surface font-medium">Drop your Workday schedule here</strong>
             <br />
