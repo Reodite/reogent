@@ -570,6 +570,69 @@ html.vt-active *::after {
   display: flex;
 }
 
+.schedule-planner {
+  container-type: inline-size;
+}
+
+.schedule-view-toggle {
+  display: flex;
+}
+
+.schedule-courses,
+.schedule-timetable {
+  display: none;
+}
+
+.schedule-planner[data-mobile-view="courses"] .schedule-courses {
+  display: flex;
+}
+
+.schedule-planner[data-mobile-view="timetable"] .schedule-timetable {
+  display: block;
+}
+
+.schedule-wide-meta,
+.schedule-conflict-long {
+  display: none;
+}
+
+.schedule-conflict-short {
+  display: inline;
+}
+
+@container (min-width: 40rem) {
+  .schedule-wide-meta,
+  .schedule-conflict-long {
+    display: inline;
+  }
+
+  .schedule-conflict-short {
+    display: none;
+  }
+}
+
+@container (min-width: 56rem) {
+  .schedule-view-toggle,
+  .schedule-single-view-only {
+    display: none;
+  }
+
+  .schedule-layout {
+    display: grid;
+    grid-template-columns: 20rem minmax(0, 1fr);
+  }
+
+  .schedule-courses {
+    display: flex;
+    border-right: 1px solid var(--border-subtle);
+    border-bottom: 0;
+  }
+
+  .schedule-timetable {
+    display: block;
+  }
+}
+
 @media (min-width: 1024px) {
   .sidebar-content-offset {
     padding-left: var(--sidebar-offset, 0px);

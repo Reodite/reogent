@@ -67,6 +67,12 @@ CREATE TABLE IF NOT EXISTS pulse_votes (
 
 CREATE INDEX IF NOT EXISTS idx_pulse_questions_round ON pulse_questions(round_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_rounds_one_active ON pulse_rounds(status) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS schedules (
+  user_id UUID PRIMARY KEY REFERENCES users(id),
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 `;
 
 // Reshapes pre-existing installs onto the current message columns: the legacy

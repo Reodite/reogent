@@ -84,6 +84,10 @@ export interface ChatApi {
   getPulseHistory(): Promise<PulseHistory>;
   /** GET /api/plan — the caller's saved degree plan, or null. Opaque to this layer; the planner store owns the shape. */
   getPlan(): Promise<{ plan: unknown | null }>;
+  /** GET /api/schedule — the caller's saved timetable, or null. Entries carry section identifiers only. */
+  getSchedule(): Promise<{ schedule: unknown | null }>;
+  /** PUT /api/schedule — replaces the caller's saved timetable. */
+  saveSchedule(schedule: unknown): Promise<void>;
   /** PUT /api/plan — replaces the caller's saved degree plan. */
   savePlan(plan: unknown): Promise<void>;
   /** GET /api/profile — the caller's student profile, or null. */
@@ -283,6 +287,8 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     getPulseHistory: () => request<PulseHistory>("/pulse/history"),
     getPlan: () => request<{ plan: unknown | null }>("/plan"),
     savePlan: (plan) => request<void>("/plan", { method: "PUT", body: JSON.stringify(plan) }),
+    getSchedule: () => request<{ schedule: unknown | null }>("/schedule"),
+    saveSchedule: (schedule) => request<void>("/schedule", { method: "PUT", body: JSON.stringify(schedule) }),
     getProfile: () => request<{ profile: StudentProfile | null }>("/profile"),
     saveProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
   };
