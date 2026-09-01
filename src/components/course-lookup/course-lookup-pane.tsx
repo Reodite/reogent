@@ -7,6 +7,8 @@ import { CourseSearchField, useCourseAutocomplete } from "@/src/components/cours
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";
+import { Button } from "@/src/components/ui/button";
+import { SelectInput } from "@/src/components/ui/form-controls";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
 import { useRouter } from "next/navigation";
@@ -18,18 +20,19 @@ function SessionPicker({ session, onChange }: { session: string; onChange: (s: s
       <label htmlFor="course-session" className="text-muted text-xs font-medium">
         Session
       </label>
-      <select
+      <SelectInput
         id="course-session"
         value={session}
         onChange={(e) => onChange(e.target.value)}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-offset-1"
+        controlSize="compact"
+        width="auto"
       >
         {SESSIONS.map((s) => (
           <option key={s} value={s}>
             {s}
           </option>
         ))}
-      </select>
+      </SelectInput>
     </div>
   );
 }
@@ -93,16 +96,14 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
     return (
       <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-3 p-3">
         <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
+          <Button
             onClick={() => {
               setCode("");
               router.push("/tools/courses");
             }}
-            className="neu-button bg-surface text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
           >
             <Icon name="left" size={14} /> All courses
-          </button>
+          </Button>
           <SessionPicker session={session} onChange={setSession} />
         </div>
         {record ? (

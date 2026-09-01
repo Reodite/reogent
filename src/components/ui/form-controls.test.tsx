@@ -64,10 +64,15 @@ describe("SelectInput", () => {
 
   it("supports compact desktop density", () => {
     const { getByRole } = render(
-      <SelectInput aria-label="Session" controlSize="compact">
+      <SelectInput aria-label="Session" controlSize="compact" width="auto">
         <option>Winter</option>
       </SelectInput>,
     );
-    expect(getByRole("combobox").className).toContain("sm:h-9");
+    const select = getByRole("combobox");
+    expect(select.className).toContain("sm:h-9");
+    expect(select.className).toContain("px-2.5");
+    expect(select.className).toContain("text-xs");
+    expect(select.className).toContain("w-auto");
+    expect(select.className).not.toContain("w-full");
   });
 });

@@ -3,6 +3,8 @@
 import { averageColorClass } from "@/src/components/course-lookup/grade-distribution-chart";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
+import { SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { usePersistentState } from "@/src/lib/use-persistent-state";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
@@ -40,10 +42,6 @@ const ENROLL_BANDS = [
   { value: "50", label: "50\u201399" },
   { value: "0", label: "<50" },
 ];
-
-// Matches the CourseSearchField input recipe at a compact control height.
-const controlCls =
-  "neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-auto rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-offset-1";
 
 export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void }) {
   const api = useApi();
@@ -148,30 +146,38 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
           />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <select
+          <SelectInput
             aria-label="Session"
             value={session}
             onChange={(e) => setSession(e.target.value)}
-            className={controlCls}
+            controlSize="compact"
+            width="auto"
           >
             {SESSIONS.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
-          <select aria-label="Sort by" value={sort} onChange={(e) => setSort(e.target.value)} className={controlCls}>
+          </SelectInput>
+          <SelectInput
+            aria-label="Sort by"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            controlSize="compact"
+            width="auto"
+          >
             {SORTS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
-          <select
+          </SelectInput>
+          <SelectInput
             aria-label="Year level"
             value={level ?? ""}
             onChange={(e) => setLevel(e.target.value ? Number(e.target.value) : undefined)}
-            className={controlCls}
+            controlSize="compact"
+            width="auto"
           >
             <option value="">All years</option>
             {[100, 200, 300, 400, 500, 600].map((n) => (
@@ -179,12 +185,13 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                 {n}s
               </option>
             ))}
-          </select>
-          <select
+          </SelectInput>
+          <SelectInput
             aria-label="Average band"
             value={avgBand}
             onChange={(e) => setAvgBand(e.target.value)}
-            className={controlCls}
+            controlSize="compact"
+            width="auto"
           >
             <option value="">Any average</option>
             {AVG_BANDS.map((b) => (
@@ -192,12 +199,13 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                 {b.label}
               </option>
             ))}
-          </select>
-          <select
+          </SelectInput>
+          <SelectInput
             aria-label="Enrollment band"
             value={studentBand}
             onChange={(e) => setStudentBand(e.target.value)}
-            className={controlCls}
+            controlSize="compact"
+            width="auto"
           >
             <option value="">Any size</option>
             {ENROLL_BANDS.map((b) => (
@@ -205,26 +213,29 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                 {b.label}
               </option>
             ))}
-          </select>
-          <select
+          </SelectInput>
+          <SelectInput
             aria-label="Credits"
             value={credits ?? ""}
             onChange={(e) => setCredits(e.target.value ? Number(e.target.value) : undefined)}
-            className={controlCls}
+            controlSize="compact"
+            width="auto"
           >
             <option value="">Any credits</option>
             <option value="4">4 cr</option>
             <option value="3">3 cr</option>
             <option value="2">2 cr</option>
             <option value="1">1 cr</option>
-          </select>
-          <input
+          </SelectInput>
+          <TextInput
             type="text"
             value={faculty}
             onChange={(e) => setFaculty(e.target.value)}
             placeholder="Faculty of Science"
             aria-label="Faculty"
-            className={`${controlCls} min-w-[10rem] flex-1`}
+            controlSize="compact"
+            width="auto"
+            className="min-w-[10rem] flex-1"
           />
         </div>
       </div>
@@ -349,25 +360,19 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
           </span>
           {courses.length > effectivePageSize && (
             <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="neu-button bg-surface text-on-surface-variant h-9 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
-              >
+              <Button size="compact" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                 Prev
-              </button>
+              </Button>
               <span className="text-muted min-w-14 text-center text-xs">
                 Page {page} / {totalPages}
               </span>
-              <button
-                type="button"
+              <Button
+                size="compact"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="neu-button bg-surface text-on-surface-variant h-9 rounded-lg px-2.5 text-xs font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
               >
                 Next
-              </button>
+              </Button>
             </div>
           )}
         </div>
