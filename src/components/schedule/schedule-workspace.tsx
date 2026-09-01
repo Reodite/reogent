@@ -35,7 +35,7 @@ export function ScheduleWorkspace({
     <section
       aria-label={title}
       data-mobile-view={mobileView}
-      className="schedule-workspace flex h-full min-h-[34rem] min-w-0 flex-col gap-4 overflow-hidden p-6 max-sm:gap-3 max-sm:p-3"
+      className="schedule-workspace flex h-full min-h-[34rem] w-full min-w-0 flex-1 flex-col gap-4 overflow-hidden p-6 max-sm:gap-3 max-sm:p-3"
     >
       <header className="flex shrink-0 flex-col gap-3 max-xl:pl-12">
         <div className="flex min-w-0 items-start justify-between gap-4 max-sm:flex-col max-sm:gap-2">
