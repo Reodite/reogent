@@ -4,6 +4,7 @@
 // click-add; manual checks cover transfer credit and non-course requirements.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { CheckboxMark as PlannerCheckboxMark } from "@/src/components/ui/form-controls";
 import { findCourseTarget } from "@/src/lib/planner-placement";
 import {
   isRequirementMet,
@@ -14,7 +15,6 @@ import {
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
-import { PlannerCheckboxMark } from "./planner-checkbox";
 import { usePlanner } from "./planner-store";
 
 interface YearRequirementsProps {

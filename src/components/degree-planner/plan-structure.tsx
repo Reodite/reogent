@@ -3,10 +3,10 @@
 // Plan-wide structure controls: year count, co-op participation, and a
 // faculty-specific co-op sequence helper. Summer sessions and work terms
 // remain editable on the board.
-import { SelectInput } from "@/src/components/ui/form-controls";
+import { Button } from "@/src/components/ui/button";
+import { Checkbox, SelectInput } from "@/src/components/ui/form-controls";
 import { applyCoopSequence, COOP_SUPPORT } from "@/src/lib/coop";
 import { useState } from "react";
-import { PlannerCheckboxMark } from "./planner-checkbox";
 import { MAX_YEARS, MIN_YEARS, usePlanner } from "./planner-store";
 
 export function PlanStructure() {
@@ -57,13 +57,13 @@ export function PlanStructure() {
 
       <div className="flex flex-col gap-1">
         <label
+          htmlFor="planner-coop"
           className={`hover:bg-surface-container-low flex min-h-11 items-center gap-1 rounded-lg px-1 text-left ${
             !coopInfo && !coop ? "cursor-not-allowed opacity-50" : "cursor-pointer"
           }`}
         >
-          <input
-            type="checkbox"
-            className="peer sr-only"
+          <Checkbox
+            id="planner-coop"
             checked={coop}
             disabled={!coopInfo && !coop}
             onChange={(event) => {
@@ -71,7 +71,6 @@ export function PlanStructure() {
               setSequenceMessage(null);
             }}
           />
-          <PlannerCheckboxMark checked={coop} />
           <span className="text-on-surface text-xs">Co-op program</span>
         </label>
         {faculty == null && <p className="text-muted text-xs">Select a faculty to check co-op availability.</p>}
@@ -81,8 +80,9 @@ export function PlanStructure() {
         {faculty != null && coopInfo != null && coop && (
           <>
             <p className="text-muted text-xs">{coopInfo.blurb}</p>
-            <button
-              type="button"
+            <Button
+              size="compact"
+              wrap
               onClick={() => {
                 const result = applyCoopSequence(faculty);
                 setSequenceMessage(
@@ -91,10 +91,10 @@ export function PlanStructure() {
                     : "Applied the co-op sequence. You can edit each work term on the board.",
                 );
               }}
-              className="neu-button bg-surface text-on-surface-variant hover:text-on-surface rounded-lg px-2 py-1 text-left text-xs"
+              className="h-auto min-h-11 justify-start py-2 text-left sm:h-auto"
             >
               Apply typical {coopInfo.shortLabel} sequence
-            </button>
+            </Button>
             {sequenceMessage && (
               <p className="text-on-surface-variant text-xs" role="status">
                 {sequenceMessage}

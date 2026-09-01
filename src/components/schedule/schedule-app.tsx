@@ -4,7 +4,7 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
-import { Field, SelectInput, TextInput } from "@/src/components/ui/form-controls";
+import { Checkbox, Field, SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import { buildCalendar, expandBlocks } from "@/src/lib/schedule/calendar/buildCalendar";
 import {
@@ -425,13 +425,15 @@ function ScheduleAppInner({ groupCode }: Props) {
             aria-label="Common free time"
             className="border-border-subtle border-t py-4"
           >
-            <label className="text-on-surface flex min-h-10 cursor-pointer items-center justify-between gap-3 text-sm font-medium">
+            <label
+              htmlFor="schedule-common-free-time"
+              className="text-on-surface flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm font-medium"
+            >
               <span>Common free time</span>
-              <input
-                type="checkbox"
+              <Checkbox
+                id="schedule-common-free-time"
                 checked={showFree}
                 onChange={(event) => setShowFree(event.target.checked)}
-                className="accent-primary size-4"
               />
             </label>
             {showFree ? (

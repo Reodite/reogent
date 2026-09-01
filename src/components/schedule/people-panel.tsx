@@ -1,5 +1,6 @@
 "use client";
 
+import { Checkbox } from "@/src/components/ui/form-controls";
 import { displayHandles } from "@/src/lib/schedule/display";
 import type { Person } from "@/src/lib/schedule/types";
 import { AvatarChip } from "./avatar-chip";
@@ -37,6 +38,7 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
           return (
             <li key={p.id}>
               <label
+                htmlFor={`schedule-person-${p.id}`}
                 className={`hover:bg-surface-container focus-within:ring-primary/40 flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 focus-within:ring-2 ${
                   p.enabled ? "" : "opacity-60"
                 }`}
@@ -57,12 +59,11 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
                     )}
                   </span>
                 </span>
-                <input
-                  type="checkbox"
-                  aria-label={`Show ${displayName} on the calendar`}
+                <Checkbox
+                  id={`schedule-person-${p.id}`}
+                  label={`Show ${displayName} on the calendar`}
                   checked={p.enabled}
                   onChange={(event) => onToggle(p.id, event.target.checked)}
-                  className="accent-primary size-4 shrink-0"
                 />
               </label>
             </li>
