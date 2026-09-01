@@ -9,6 +9,7 @@ import { Button } from "@/src/components/ui/button";
 import { TextInput } from "@/src/components/ui/form-controls";
 import { InlineAction } from "@/src/components/ui/inline-action";
 import { announce } from "@/src/components/ui/live-region";
+import { RetryAlert } from "@/src/components/ui/retry-alert";
 import { isOkanagan } from "@/src/shared/course-code";
 import {
   Component,
@@ -812,12 +813,9 @@ export function PrereqTreePane({
           </p>
         )}
         {indexStatus === "error" && (
-          <p
-            role="alert"
-            className="border-error/30 bg-error-container text-on-error-container pointer-events-auto rounded-lg border px-3 py-2 text-sm"
-          >
-            Couldn't load the tree. <InlineAction onClick={() => setLoadNonce((n) => n + 1)}>Retry</InlineAction>
-          </p>
+          <RetryAlert onRetry={() => setLoadNonce((n) => n + 1)} className="pointer-events-auto">
+            Couldn't load the tree.
+          </RetryAlert>
         )}
         {indexStatus === "ready" && missingCode && (
           <div className="pointer-events-auto">

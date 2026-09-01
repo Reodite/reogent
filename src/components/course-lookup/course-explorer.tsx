@@ -5,7 +5,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
 import { SelectInput, TextInput } from "@/src/components/ui/form-controls";
-import { InlineAction } from "@/src/components/ui/inline-action";
+import { RetryAlert } from "@/src/components/ui/retry-alert";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { usePersistentState } from "@/src/lib/use-persistent-state";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
@@ -243,12 +243,9 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
 
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
         {error && (
-          <p
-            role="alert"
-            className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
-          >
-            Couldn&apos;t load courses. <InlineAction onClick={() => fetchExplorer()}>Retry</InlineAction>
-          </p>
+          <RetryAlert variant="soft" onRetry={() => fetchExplorer()}>
+            Couldn&apos;t load courses.
+          </RetryAlert>
         )}
 
         {loading && courses.length === 0 && !error && (

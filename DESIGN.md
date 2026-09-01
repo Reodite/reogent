@@ -400,7 +400,7 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 ### Buttons
 
-Use `src/components/ui/button.tsx` for native action buttons. `Button` owns variant, size, focus, disabled, pressed, and parent-material shadow classes while feature code owns the label, icon, layout, and event handler. Use `InlineAction` for compact link-styled choices inside messages and error text; it reaches the 44px mobile touch floor and returns to inline height on larger screens. Keep links, tabs, radios, menu items, navigation rows, pills, and compound controls on their native contracts.
+Use `src/components/ui/button.tsx` for native action buttons. `Button` owns variant, size, focus, disabled, pressed, and parent-material shadow classes while feature code owns the label, icon, layout, and event handler. Use `InlineAction` for compact link-styled choices inside messages and error text; it reaches the 44px mobile touch floor and returns to inline height on larger screens. `RetryAlert` combines the semantic error surface and inline retry action for load failures. Keep links, tabs, radios, menu items, navigation rows, pills, and compound controls on their native contracts.
 
 State changes through shadow transformation + press scale. Buttons never translate on hover or active; the surface stays put and only the shadow, filter, or scale changes.
 

@@ -4,6 +4,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { TextInput } from "@/src/components/ui/form-controls";
 import { InlineAction } from "@/src/components/ui/inline-action";
+import { RetryAlert } from "@/src/components/ui/retry-alert";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
 import { canonicalize, isOkanagan } from "@/src/shared/course-code";
@@ -516,12 +517,9 @@ export function CourseSearchField({
       )}
 
       {error && (
-        <p
-          role="alert"
-          className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
-        >
-          {value} could not be reached. {onRetry && <InlineAction onClick={onRetry}>Retry</InlineAction>}
-        </p>
+        <RetryAlert variant="soft" onRetry={onRetry}>
+          {value} could not be reached.
+        </RetryAlert>
       )}
 
       {status === "loading" && (
