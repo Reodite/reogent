@@ -78,7 +78,7 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
 
         return (
           <section key={year.label} className="flex flex-col gap-2">
-            <div className="flex items-baseline px-2 pt-3 pb-1">
+            <div className="bg-surface sticky top-0 z-10 flex min-h-9 items-baseline px-2 pt-3 pb-1">
               <h4 className="text-muted text-xs font-medium tracking-[0.05em] uppercase">{year.label}</h4>
               {year.totalCredits != null && (
                 <span className="text-muted ml-auto text-xs tabular-nums">{year.totalCredits} cr</span>
