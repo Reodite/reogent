@@ -8,8 +8,9 @@ import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/
 import { TermSwitcher } from "@/src/components/schedule/term-switcher";
 import { ToastProvider } from "@/src/components/schedule/toast";
 import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
-import { useDialogFocus } from "@/src/components/schedule/use-dialog-focus";
 import { Button } from "@/src/components/ui/button";
+import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
+import { Field, SelectInput } from "@/src/components/ui/form-controls";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { normalizeDays, sectionGroup } from "@/src/lib/schedule";
 import { selectAutomaticSections } from "@/src/lib/schedule-planner";
@@ -69,7 +70,6 @@ function PlannerImportDialog({
   onClose: () => void;
 }) {
   const [choices, setChoices] = useState<Record<string, string>>({});
-  const dialogRef = useDialogFocus<HTMLDivElement>();
   const unresolved = review.matches.filter((match) => match.status === "ambiguous" && !choices[match.source.id]);
   const selections = review.matches.flatMap((match): ScheduleImportSelection[] => {
     const section =
@@ -79,30 +79,12 @@ function PlannerImportDialog({
     return match.doc && section ? [{ doc: match.doc, section }] : [];
   });
 
-  useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
-      <button
-        type="button"
-        aria-label="Cancel Workday import"
-        tabIndex={-1}
-        onClick={onClose}
-        className="bg-on-surface/20 absolute inset-0 cursor-default"
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-        aria-modal="true"
+    <DialogRoot onDismiss={onClose} backdropLabel="Cancel Workday import" placement="mobile-sheet">
+      <DialogPanel
         aria-labelledby="schedule-import-title"
-        className="neu-panel bg-surface relative flex max-h-[min(48rem,calc(100dvh-1.5rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl"
+        size="lg"
+        className="flex max-h-[min(48rem,calc(100dvh-1.5rem))] flex-col overflow-hidden"
       >
         <header className="border-border-subtle flex shrink-0 items-start gap-3 border-b p-4 sm:p-5">
           <div className="min-w-0 flex-1">
@@ -119,7 +101,7 @@ function PlannerImportDialog({
             onClick={onClose}
             aria-label="Close Workday import review"
             variant="ghost"
-            size="icon"
+            size="denseIcon"
           >
             <Icon name="close" className="size-4" />
           </Button>
@@ -133,6 +115,7 @@ function PlannerImportDialog({
                 ? `${meeting.days.join("/")} · ${minutesToFullLabel(meeting.startMin)}–${minutesToFullLabel(meeting.endMin)}`
                 : "Time TBA";
               const code = normalizeScheduleCode(match.source.courseCode);
+              const selectId = `schedule-import-${match.source.id}`;
               return (
                 <article key={match.source.id} className="bg-surface-container-low rounded-lg p-3">
                   <div className="flex items-start justify-between gap-3">
@@ -158,14 +141,14 @@ function PlannerImportDialog({
                     </span>
                   </div>
                   {match.status === "ambiguous" ? (
-                    <label className="mt-3 flex flex-col gap-1.5">
-                      <span className="text-on-surface text-xs font-medium">Catalog section</span>
-                      <select
+                    <Field label="Catalog section" htmlFor={selectId} className="mt-3">
+                      <SelectInput
+                        id={selectId}
                         value={choices[match.source.id] ?? ""}
                         onChange={(event) =>
                           setChoices((current) => ({ ...current, [match.source.id]: event.target.value }))
                         }
-                        className="neu-inset bg-surface text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 text-sm focus-visible:ring-2"
+                        shadowOn="surface-container-low"
                       >
                         <option value="">Choose the section from Workday</option>
                         {match.candidates.map((candidate) => (
@@ -173,8 +156,8 @@ function PlannerImportDialog({
                             {importSectionOption(candidate)}
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </SelectInput>
+                    </Field>
                   ) : null}
                   {match.reason ? <p className="text-muted mt-2 text-xs leading-relaxed">{match.reason}</p> : null}
                   {match.candidates[0]?.status && !/open|active|available/i.test(match.candidates[0].status) ? (
@@ -213,8 +196,8 @@ function PlannerImportDialog({
             </Button>
           </div>
         </footer>
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogRoot>
   );
 }
 

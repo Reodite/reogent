@@ -1,13 +1,12 @@
 "use client";
 
 import { Button } from "@/src/components/ui/button";
+import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
-import { useEffect } from "react";
 import { AvatarChip } from "./avatar-chip";
 import { displayCode } from "./block-format";
-import { useDialogFocus } from "./use-dialog-focus";
 
 interface Props {
   block: MergedBlock;
@@ -23,13 +22,6 @@ function fmtDate(iso: string): string {
 export function BlockDetail({ block, onClose }: Props) {
   const s = block.section;
   const color = courseColor(s);
-  const dialogRef = useDialogFocus<HTMLDivElement>();
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   // A meeting listed in two rooms shows up as two same-day/time patterns; show
   // each weekly slot once (rooms are surfaced in the "Where" row).
@@ -39,22 +31,8 @@ export function BlockDetail({ block, onClose }: Props) {
   });
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Close course details"
-        tabIndex={-1}
-        onClick={onClose}
-        className="bg-on-surface/20 absolute inset-0 cursor-default"
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-        aria-modal="true"
-        aria-label={displayCode(s)}
-        className="neu-panel relative w-full max-w-md rounded-2xl p-5"
-      >
+    <DialogRoot onDismiss={onClose} backdropLabel="Close course details">
+      <DialogPanel aria-label={displayCode(s)} size="md" className="p-5">
         <div className="flex items-center gap-2.5">
           <span className="size-3 shrink-0 rounded-full" style={{ background: color }} />
           <h2 className="text-on-surface text-base font-medium">
@@ -128,7 +106,7 @@ export function BlockDetail({ block, onClose }: Props) {
             Close
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogRoot>
   );
 }

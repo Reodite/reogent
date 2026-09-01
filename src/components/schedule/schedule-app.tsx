@@ -3,7 +3,8 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
-import { SelectInput, TextInput } from "@/src/components/ui/form-controls";
+import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
+import { Field, SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import { buildCalendar, expandBlocks } from "@/src/lib/schedule/calendar/buildCalendar";
 import {
@@ -30,7 +31,6 @@ import { ScheduleWorkspace, type ScheduleWorkspaceView } from "./schedule-worksp
 import { TermSwitcher } from "./term-switcher";
 import { ToastProvider, useToast } from "./toast";
 import { UploadDropzone } from "./upload-dropzone";
-import { useDialogFocus } from "./use-dialog-focus";
 
 const ProfileModal = dynamic(() => import("./profile-modal").then((module) => module.ProfileModal));
 
@@ -759,32 +759,15 @@ export function CreateGroupModal({
 }) {
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
-  const dialogRef = useDialogFocus<HTMLFormElement>();
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !creating && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [creating, onClose]);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cancel new shared schedule"
-        tabIndex={-1}
-        disabled={creating}
-        onClick={onClose}
-        className="bg-on-surface/20 absolute inset-0 cursor-default"
-      />
-      <form
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-        aria-modal="true"
+    <DialogRoot onDismiss={onClose} dismissDisabled={creating} backdropLabel="Cancel new shared schedule">
+      <DialogPanel
+        as="form"
         aria-label="Create shared schedule"
         aria-busy={creating}
-        className="neu-panel relative w-full max-w-sm rounded-2xl p-5"
+        size="sm"
+        className="p-5"
         onSubmit={async (event) => {
           event.preventDefault();
           if (!name.trim() || creating) return;
@@ -798,8 +781,7 @@ export function CreateGroupModal({
       >
         <h2 className="text-on-surface text-base font-medium">Create a shared schedule</h2>
         <p className="text-on-surface-variant mt-1 text-sm">Name it for the group chat, club, or study crew.</p>
-        <label htmlFor="schedule-group-name" className="mt-4 flex flex-col gap-1">
-          <span className="text-muted text-xs font-medium">Group name</span>
+        <Field label="Group name" htmlFor="schedule-group-name" className="mt-4">
           <TextInput
             id="schedule-group-name"
             data-dialog-initial-focus
@@ -809,7 +791,7 @@ export function CreateGroupModal({
             placeholder="CPSC study crew"
             onChange={(event) => setName(event.target.value)}
           />
-        </label>
+        </Field>
         <div className="mt-5 flex justify-end gap-2">
           <Button size="prominent" disabled={creating} onClick={onClose}>
             Cancel
@@ -818,7 +800,7 @@ export function CreateGroupModal({
             {creating ? "Creating…" : "Create group"}
           </Button>
         </div>
-      </form>
-    </div>
+      </DialogPanel>
+    </DialogRoot>
   );
 }

@@ -2,13 +2,13 @@
 
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
-import { TextInput } from "@/src/components/ui/form-controls";
+import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
+import { Field, TextInput } from "@/src/components/ui/form-controls";
 import { colorFor, initialsFor } from "@/src/lib/schedule/avatar";
 import type { Avatar, Schedule } from "@/src/lib/schedule/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AvatarChip } from "./avatar-chip";
 import { AvatarPicker } from "./avatar-picker";
-import { useDialogFocus } from "./use-dialog-focus";
 
 interface Props {
   /** present when editing an existing record; a fresh upload passes schedule */
@@ -31,7 +31,6 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
   const [touched, setTouched] = useState(editing);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const dialogRef = useDialogFocus<HTMLFormElement>();
 
   // Until the user explicitly picks an avatar, initials track the handle.
   const liveAvatar: Avatar =
@@ -57,30 +56,14 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
     }
   }
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && !saving && onCancel();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, saving]);
-
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Cancel schedule profile"
-        tabIndex={-1}
-        disabled={saving}
-        onClick={onCancel}
-        className="bg-on-surface/20 absolute inset-0 cursor-default"
-      />
-      <form
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-        aria-modal="true"
+    <DialogRoot onDismiss={onCancel} dismissDisabled={saving} backdropLabel="Cancel schedule profile">
+      <DialogPanel
+        as="form"
         aria-label={title}
         aria-busy={saving}
-        className="neu-panel relative w-full max-w-md rounded-2xl p-5"
+        size="md"
+        className="p-5"
         onSubmit={(event) => {
           event.preventDefault();
           void save();
@@ -106,8 +89,7 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
           </div>
         </div>
 
-        <label htmlFor="schedule-profile-handle" className="mt-4 flex flex-col gap-1">
-          <span className="text-muted text-xs font-medium">Handle</span>
+        <Field label="Handle" htmlFor="schedule-profile-handle" className="mt-4">
           <TextInput
             id="schedule-profile-handle"
             type="text"
@@ -121,7 +103,7 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
               setError("");
             }}
           />
-        </label>
+        </Field>
 
         {error && <p className="text-error mt-2 text-sm">{error}</p>}
 
@@ -144,7 +126,7 @@ export function ProfileModal({ schedule, currentHandle, currentAvatar, title, sa
             {saving ? "Saving…" : saveLabel}
           </Button>
         </div>
-      </form>
-    </div>
+      </DialogPanel>
+    </DialogRoot>
   );
 }
