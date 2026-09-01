@@ -225,7 +225,7 @@ export function routeOnGraph(
 
 /** Closest pair between two entrance sets by straight-line distance — the
  *  doors a person would actually walk between. Null when either side is empty. */
-// ponytail: straight-line pair pick, ~n*m haversines; if a courtyard wall ever misroutes, switch to multi-source Dijkstra over all door pairs
+// Straight-line pair pick over all entrance pairs; if a courtyard wall ever misroutes, switch to multi-source Dijkstra over all door pairs.
 export function nearestEntrancePair(fromEntrances: LngLat[], toEntrances: LngLat[]): [LngLat, LngLat] | null {
   let best: [LngLat, LngLat] | null = null;
   let bestDist = Infinity;

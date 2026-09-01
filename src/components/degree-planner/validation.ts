@@ -1,3 +1,5 @@
+import type { Year } from "./planner-store";
+
 // Shared type for the per-block prereq/coreq evaluation result. Computed
 // once per planner render in degree-planner-pane.tsx (memoized) and passed
 // down to each CourseBlock so the error border + tooltip stays in sync with
@@ -10,11 +12,40 @@
 // granularity (the whole "either A or B" if all branches are unmet, only
 // the unmet half of "A and B", and so on).
 
+/** Returns every course code placed more than once. */
+export function findDuplicateCourseCodes(years: Year[]): Set<string> {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const year of years) {
+    for (const term of year.terms) {
+      for (const block of term.blocks) {
+        if (seen.has(block.code)) duplicates.add(block.code);
+        seen.add(block.code);
+      }
+    }
+  }
+  return duplicates;
+}
+
 export interface BlockValidation {
   ok: boolean;
   missing: string[];
   completedBefore: Set<string>;
   completedSameOrBefore: Set<string>;
+}
+
+/** Turns an internal `missing` token into a sentence the user can act on. */
+export function describeIssue(token: string): string {
+  if (token === "duplicate course in plan") {
+    return "Duplicate course: it already appears elsewhere in your plan.";
+  }
+  if (token.startsWith("prereq ")) {
+    return `Prerequisite: complete ${token.slice("prereq ".length)} in an earlier term.`;
+  }
+  if (token.startsWith("coreq ")) {
+    return `Corequisite: take ${token.slice("coreq ".length)} in this term or an earlier term.`;
+  }
+  return token;
 }
 
 // Neutral fallback for rare cases where a block id isn't in the

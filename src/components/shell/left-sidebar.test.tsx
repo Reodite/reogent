@@ -24,6 +24,7 @@ vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({ CourseLook
 // swap logic (and the footer-pinned ModeToggle) are what we assert, not the heavy
 // session list internals.
 vi.mock("@/src/components/shell/session-sidebar", () => ({
+  BrandHeader: () => null,
   SessionSidebar: ({ footer }: { footer?: ReactNode }) => (
     <div data-testid="session-list" data-source="SessionList">
       {footer}

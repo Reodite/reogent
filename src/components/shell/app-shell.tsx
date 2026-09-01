@@ -3,8 +3,8 @@
 // The dashboard shell: TopBar + LeftSidebar + a mode-dependent workspace
 // (AI: Chat Surface + Answer Canvas; Tools: a single Full-Bleed Tool). The Answer
 // Canvas is hosted here, not inside ChatPanel, so the map survives session swaps
-// (REQ-9.4). Below wide, the AI canvas surfaces as a Bottom Sheet and the Tools
-// Tool List lives in the left drawer.
+// (REQ-9.4). Below each mode's desktop breakpoint, the AI canvas surfaces as a
+// Bottom Sheet and the Tools list lives in the left drawer.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
@@ -13,11 +13,8 @@ import { AnswerSheet } from "@/src/components/shell/answer-sheet";
 import { FullBleedTool } from "@/src/components/shell/full-bleed-tool";
 import { LeftSidebar } from "@/src/components/shell/left-sidebar";
 import { useSidebarCollapsed } from "@/src/components/shell/session-sidebar";
-import { UserMenu } from "@/src/components/shell/user-menu";
-import { ThemeToggle } from "@/src/components/theme-toggle";
 import { LiveRegion } from "@/src/components/ui/live-region";
-import { motion, useReducedMotion } from "motion/react";
-import Link from "next/link";
+import { useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -68,21 +65,22 @@ function SidebarDrawer() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [sidebarOpen, setSidebarOpen]);
+  const desktopHidden = mode === "tools" ? "xl:hidden" : "lg:hidden";
   return (
-    <div inert={!sidebarOpen} className={sidebarOpen ? "lg:hidden" : "pointer-events-none lg:hidden"}>
+    <div inert={!sidebarOpen} className={sidebarOpen ? desktopHidden : `pointer-events-none ${desktopHidden}`}>
       <button
         type="button"
         tabIndex={-1}
         aria-hidden="true"
         onClick={() => setSidebarOpen(false)}
-        className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-250 lg:hidden ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        className={`bg-scrim fixed inset-0 z-40 transition-opacity duration-250 ${desktopHidden} ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
       />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
-        className="fixed inset-y-0 left-0 z-50 w-[min(18.5rem,calc(100vw-3rem))] p-3 transition-transform duration-250 [transition-timing-function:var(--neu-ease)] lg:hidden"
+        className={`fixed inset-y-0 left-0 z-50 w-[min(18.5rem,calc(100vw-3rem))] p-3 transition-transform duration-250 [transition-timing-function:var(--neu-ease)] ${desktopHidden}`}
         style={{ transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)" }}
       >
         <div className="h-full">
@@ -92,7 +90,6 @@ function SidebarDrawer() {
     </div>
   );
 }
-
 
 export function AppShell({ children }: { children: ReactNode }) {
   const {
@@ -147,41 +144,18 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           Skip to main content
         </a>
-        <motion.header
-          initial={reduce ? false : { opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          inert={sidebarOpen || sheetInert || undefined}
-          className="neu-panel relative z-30 mx-2 mt-3 flex h-14 shrink-0 items-center justify-between rounded-2xl px-2 sm:mx-3 sm:px-4"
+        {/* Mobile-only drawer trigger: the former top bar's duties (brand,
+            theme, account) live in the sidebar now. */}
+        <button
+          ref={sidebarOpenRef}
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open sidebar"
+          inert={sidebarOpen || undefined}
+          className={`neu-panel bg-surface text-on-surface-variant hover:text-primary fixed top-3 left-3 z-30 flex size-11 items-center justify-center rounded-xl transition-colors duration-150 ${mode === "tools" ? "xl:hidden" : "lg:hidden"}`}
         >
-          <div className="flex min-w-0 items-center gap-2">
-            <button
-              ref={sidebarOpenRef}
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open sidebar"
-              className="neu-button bg-surface text-on-surface-variant hover:text-primary flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-9 lg:hidden"
-            >
-              <Icon name="menu" size={21} />
-            </button>
-            <Link
-              href="/"
-              aria-label="Go to Reodite homepage"
-              className="group flex min-w-0 items-center gap-2 rounded-xl py-1 pr-2 focus-visible:outline-offset-4"
-            >
-              <span className="bg-surface-container-low text-primary group-hover:text-on-surface hidden size-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 sm:flex">
-                <Icon name="school" size={17} />
-              </span>
-              <span className="text-primary group-hover:text-on-surface truncate text-base font-medium tracking-[-0.025em] transition-colors duration-150 sm:text-xl">
-                Reodite
-              </span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle className="hidden sm:grid" />
-            <UserMenu />
-          </div>
-        </motion.header>
+          <Icon name="menu" size={21} />
+        </button>
 
         <SidebarDrawer />
 
@@ -193,18 +167,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <aside
               aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
               style={{ width: sessionsCollapsed ? "3rem" : "17rem" }}
-              className={`sessions-aside absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 overflow-hidden lg:block ${reduce ? "" : "transition-[width] duration-300 ease-[var(--neu-ease)]"}`}
+              className={`sessions-aside absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 overflow-hidden ${mode === "tools" ? "xl:block" : "lg:block"} ${reduce ? "" : "transition-[width] duration-300 ease-[var(--neu-ease)]"}`}
             >
               <div className="h-full">
-                <LeftSidebar
-                  collapsed={sessionsCollapsed}
-                  onCollapse={collapseSessions}
-                  onExpand={expandSessions}
-                />
+                <LeftSidebar collapsed={sessionsCollapsed} onCollapse={collapseSessions} onExpand={expandSessions} />
               </div>
             </aside>
             {mode === "ai" ? (
-              <div className="chat-map-area flex min-h-0 min-w-0 flex-1 gap-3">
+              <div className="chat-map-area flex min-h-0 min-w-0 flex-1">
                 <main
                   id="main-content"
                   data-pane="chat"
@@ -234,7 +204,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <main
                 id="main-content"
                 data-pane="tool"
-                className="sidebar-content-offset flex min-h-0 min-w-0 flex-1"
+                className="tool-sidebar-content-offset flex min-h-0 min-w-0 flex-1"
               >
                 {workspaceView ? <FullBleedTool view={workspaceView} /> : children}
               </main>
