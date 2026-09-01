@@ -470,6 +470,11 @@ html.vt-active *::after {
 
 /* ---- Neumorphic surface classes (Tier 2: composed, multi-property) ---- */
 
+.workspace-surface {
+  background-color: var(--surface);
+  border-radius: 1rem;
+}
+
 .neu-panel {
   background-color: var(--surface);
   box-shadow: var(--neu-surface-shadow);
