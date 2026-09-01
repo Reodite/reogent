@@ -169,7 +169,7 @@ describe("23.10 — raised-to-recessed pressed-state token present on ported int
     } as never;
     const { container } = render(
       <ChatShellProvider>
-        <CourseDetailCard record={record} />
+        <CourseDetailCard record={record} onOpenPrereqs={() => {}} />
       </ChatShellProvider>,
     );
     const afford = container.querySelector('[data-action="open-prereq-tree"]');

@@ -1,12 +1,12 @@
 "use client";
 
-import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { GradeDistributionChart } from "@/src/components/course-lookup/grade-distribution-chart";
 import { SectionRow } from "@/src/components/course-lookup/section-row";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { InfoChip } from "@/src/components/ui/info-chip";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
+import { useId } from "react";
 
 function FieldRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -18,23 +18,49 @@ function FieldRow({ label, value, mono }: { label: string; value: string; mono?:
 }
 
 function SectionTable({ sections }: { sections: CourseSection[] }) {
+  const headingId = useId();
+  const groups = new Map<string, CourseSection[]>();
+  for (const section of sections) {
+    const term = section.term?.trim() || "Other sections";
+    const group = groups.get(term);
+    if (group) group.push(section);
+    else groups.set(term, [section]);
+  }
+
   return (
-    <table className="w-full text-sm">
-      <caption className="sr-only">Course sections</caption>
-      <thead className="sr-only">
-        <tr>
-          <th>Term</th>
-          <th>Days</th>
-          <th>Time</th>
-          <th>Instructor</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sections.map((s) => (
-          <SectionRow key={`${s.section}-${s.term ?? ""}`} section={s} />
-        ))}
-      </tbody>
-    </table>
+    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+      <h3 id={headingId} className="text-on-surface text-sm font-medium">
+        Sections
+      </h3>
+      {[...groups].map(([term, termSections]) => (
+        <details key={term} className="border-border-subtle bg-surface-container-low rounded-lg border">
+          <summary className="text-on-surface flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm font-medium">
+            <span>{term}</span>
+            <span className="text-muted text-xs tabular-nums">
+              {termSections.length} section{termSections.length === 1 ? "" : "s"}
+            </span>
+          </summary>
+          <div className="border-border-subtle overflow-x-auto border-t px-3">
+            <table className="w-full min-w-[36rem] text-sm">
+              <caption className="sr-only">{term} course sections</caption>
+              <thead className="sr-only">
+                <tr>
+                  <th>Term</th>
+                  <th>Days</th>
+                  <th>Time</th>
+                  <th>Instructor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {termSections.map((section) => (
+                  <SectionRow key={`${section.section}-${section.term ?? ""}`} section={section} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      ))}
+    </section>
   );
 }
 
@@ -62,6 +88,7 @@ function DefinedStat({ label, value }: { label: string; value: string | null | u
 export function CourseDetailCard({
   record,
   session,
+  onOpenPrereqs,
 }: {
   record: CourseDoc & {
     session?: string;
@@ -79,8 +106,8 @@ export function CourseDetailCard({
     highlightBucket?: string;
   };
   session?: string;
+  onOpenPrereqs?: (code: string) => void;
 }) {
-  const { setActiveChannel } = useChatShell();
   const sess = (session ?? (record as { session?: string }).session) as string | undefined;
   const isRecent = sess ? ["2024W", "2024S", "2025W", "2025S"].includes(sess) : false;
   const buckets = (record as { buckets?: Record<string, number> }).buckets;
@@ -89,20 +116,20 @@ export function CourseDetailCard({
     <article className="neu-panel bg-surface flex flex-col gap-3 rounded-xl p-4">
       <header className="flex flex-wrap items-baseline gap-1.5">
         {/* Catalog codes carry a _V campus suffix after the subject; display strips it. */}
-        <h3 className="font-mono text-base leading-tight font-medium">{record.code.replace(/_V(?=\b|$)/, "")}</h3>
+        <h2 className="font-mono text-base leading-tight font-medium">{record.code.replace(/_V(?=\b|$)/, "")}</h2>
         {sess ? <InfoChip>{sess}</InfoChip> : null}
         {record.credits != null ? <InfoChip>{record.credits} cr</InfoChip> : null}
-        {record.prerequisite && (
+        {record.prerequisite && onOpenPrereqs ? (
           <Button
             data-action="open-prereq-tree"
             data-code={record.code}
             variant="outline"
             size="pill"
-            onClick={() => setActiveChannel("prereq-tree", { root: record.code, selections: {} })}
+            onClick={() => onOpenPrereqs(record.code)}
           >
             <Icon name="tree" size={14} /> Prereq Tree
           </Button>
-        )}
+        ) : null}
       </header>
       <p className="text-sm font-medium">{record.title}</p>
       {record.description && <p className="text-on-surface-variant text-sm leading-relaxed">{record.description}</p>}

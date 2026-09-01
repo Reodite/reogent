@@ -73,6 +73,7 @@ beforeEach(() => {
   apiState.searchCourses.mockReset();
   routerPush.mockReset();
   shellState.mode = "ai";
+  window.localStorage?.clear();
 });
 
 afterEach(() => cleanup());
@@ -108,12 +109,21 @@ describe("CourseDetailCard — null-or-empty field omission (13.7, REQ-2.2)", ()
 
 describe("CourseDetailCard — Prereq Tree affordance (13.11, REQ-4.1)", () => {
   it("opens the prereq tree pane rooted at the record's code on click", () => {
-    const { container } = render(<CourseDetailCard record={fullRecord} />);
+    const { container } = render(
+      <CourseDetailCard
+        record={fullRecord}
+        onOpenPrereqs={(code) => setActiveChannel("prereq-tree", { root: code, query: code, selections: {} })}
+      />,
+    );
     const affordance = container.querySelector('[data-action="open-prereq-tree"]') as HTMLButtonElement;
     expect(affordance).not.toBeNull();
     expect(affordance.getAttribute("data-code")).toBe("CPSC 110");
     fireEvent.click(affordance);
-    expect(setActiveChannel).toHaveBeenCalledWith("prereq-tree", { root: "CPSC 110", selections: {} });
+    expect(setActiveChannel).toHaveBeenCalledWith("prereq-tree", {
+      root: "CPSC 110",
+      query: "CPSC 110",
+      selections: {},
+    });
   });
 });
 
@@ -281,9 +291,40 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
     await waitFor(() => expect(screen.getByRole("table")).not.toBeNull());
     expect(screen.getByRole("heading", { level: 1, name: "Course lookup" })).not.toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: "Filters" })).not.toBeNull();
+    expect(screen.getByLabelText("Find a course")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Filters" })).not.toBeNull();
+    expect(document.querySelector("[data-workspace-region='rail']")).toBeNull();
+    expect(document.querySelector("[data-workspace-view-toggle]")).toBeNull();
     expect(document.querySelector("[data-workspace-canvas]")).not.toBeNull();
     expect(apiState.searchCourses).toHaveBeenCalledWith(expect.objectContaining({ sort: "students_desc" }));
+  });
+
+  it("tools mode exact-code search narrows by subject and number", async () => {
+    shellState.mode = "tools";
+    apiState.searchCourses.mockResolvedValue({
+      courses: [makeCourse("CPSC 320", "CPSC_V", "320")],
+      subject_total: 1,
+    });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: "CPSC 320" } });
+
+    await waitFor(() =>
+      expect(apiState.searchCourses).toHaveBeenLastCalledWith(
+        expect.objectContaining({ subject: "CPSC", number: "320" }),
+      ),
+    );
+  });
+
+  it("reveals advanced filters without a separate workspace view", async () => {
+    shellState.mode = "tools";
+    apiState.searchCourses.mockResolvedValue({ courses: [], subject_total: 0 });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByRole("region", { name: "Advanced course filters" })).not.toBeNull();
+    fireEvent.change(screen.getByLabelText("Year"), { target: { value: "300" } });
+    expect(screen.getByRole("button", { name: "Filters (1)" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Show courses" })).toBeNull();
   });
 
   it("tools mode row click navigates to the course detail URL", async () => {
@@ -311,7 +352,7 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     shellState.mode = "tools";
     apiState.getCourse.mockResolvedValue(fullRecord);
     render(<CourseLookupPane state={{ code: "MATH 100" }} setState={vi.fn()} />);
-    const back = await screen.findByText("All courses");
+    const back = await screen.findByText("Back to results");
     fireEvent.click(back);
     expect(routerPush).toHaveBeenCalledWith("/tools/courses");
   });
@@ -334,7 +375,7 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     render(<CourseLookupPane state={{ code: "MATH 999" }} setState={vi.fn()} />);
 
     expect(await screen.findByText("Course not found")).not.toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Browse all courses" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to results" }));
     expect(routerPush).toHaveBeenCalledWith("/tools/courses");
   });
 });
