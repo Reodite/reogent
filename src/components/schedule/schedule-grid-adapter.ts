@@ -2,7 +2,7 @@ import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import type { FreeInterval } from "@/src/lib/schedule/features/freeTime";
 import { buildScheduleGrid, type ScheduleGridBand, type ScheduleGridModel } from "@/src/lib/schedule/grid";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
-import { componentAbbrev, displayCode } from "./block-format";
+import { displayCode } from "./block-format";
 
 /** Shared geometry plus the sharer blocks retained for detail lookup. */
 export interface SharerGridAdapter {
@@ -23,7 +23,6 @@ export function buildSharerGrid(blocks: MergedBlock[]): SharerGridAdapter {
         courseKey: displayCode(block.section),
         code: displayCode(block.section),
         title: block.section.title,
-        section: componentAbbrev(block.section.component),
         component: block.section.component,
         days: [block.day],
         startMin: block.startMin,

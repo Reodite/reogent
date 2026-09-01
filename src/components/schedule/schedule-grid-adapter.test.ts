@@ -51,9 +51,10 @@ describe("buildSharerGrid", () => {
       courseKey: "CPSC 110",
       code: "CPSC 110",
       title: section.title,
-      section: "lec",
+      component: "Lecture",
       meta: "ICCS X150",
     });
+    expect(occurrence).not.toHaveProperty("section");
     expect(occurrence).not.toHaveProperty("people");
     expect(adapter.blocksById.get(block.key)).toBe(block);
   });

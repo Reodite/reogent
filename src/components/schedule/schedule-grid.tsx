@@ -98,7 +98,8 @@ function ScheduleBlock({
 }) {
   const color = courseColor(block.courseKey);
   const height = Math.max(36, (block.endMin - block.startMin) * PX_PER_MINUTE - 3);
-  const compact = height < 76;
+  const compact = height < 48;
+  const showFooter = height >= 72;
   const overlay = overlayWidth !== undefined;
   const style = {
     top: overlay ? undefined : (block.startMin - dayStartMin) * PX_PER_MINUTE,
@@ -110,19 +111,23 @@ function ScheduleBlock({
     background: `color-mix(in srgb, ${color} 15%, var(--surface))`,
   } as React.CSSProperties;
   const time = `${minutesToFullLabel(block.startMin)}–${minutesToFullLabel(block.endMin)}`;
+  const section = block.section?.trim();
+  const component = block.component?.trim();
+  const identity = [block.code, section, component].filter(Boolean).join(" · ");
 
   return (
     <button
       ref={setNodeRef}
       type="button"
       data-schedule-block
+      data-block-layout={compact ? "compact" : "tall"}
       tabIndex={overlay ? -1 : undefined}
       aria-hidden={overlay || undefined}
       onClick={overlay ? undefined : onActivate}
       {...attributes}
       {...listeners}
-      title={`${block.code} ${block.section} · ${block.title} · ${time}${block.meta ? ` · ${block.meta}` : ""}`}
-      aria-label={`${block.code} ${block.section}, ${block.title}, ${time}${block.meta ? `, ${block.meta}` : ""}${
+      title={`${identity} · ${block.title} · ${time}${block.meta ? ` · ${block.meta}` : ""}`}
+      aria-label={`${identity}, ${block.title}, ${time}${block.meta ? `, ${block.meta}` : ""}${
         block.conflict ? ", conflicts with another section" : ""
       }`}
       className={`focus-visible:ring-primary/40 flex min-w-0 flex-col overflow-hidden rounded-lg border px-2 py-1 text-left transition-[filter,transform,opacity] select-none hover:brightness-[0.98] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
@@ -132,18 +137,27 @@ function ScheduleBlock({
       }`}
       style={style}
     >
-      <span className="flex min-w-0 items-baseline gap-1.5">
-        <span className="text-on-surface truncate font-mono text-xs leading-tight font-medium">{block.code}</span>
-        <span className="text-on-surface-variant shrink-0 font-mono text-xs leading-none">{block.section}</span>
-      </span>
-      <span className="text-on-surface-variant mt-1 block w-full truncate font-mono text-xs leading-none tabular-nums">
-        {time}
-      </span>
-      {!compact && <span className="text-on-surface mt-1 line-clamp-2 text-xs leading-tight">{block.title}</span>}
-      {!compact && block.meta && (
-        <span className="text-muted mt-0.5 block w-full truncate font-mono text-xs leading-tight">{block.meta}</span>
+      {compact ? (
+        <span className="flex min-w-0 items-baseline gap-1 truncate text-xs leading-4">
+          <span className="text-on-surface truncate font-mono font-medium">{block.code}</span>
+          {section ? <span className="text-on-surface-variant shrink-0 font-mono">· {section}</span> : null}
+          {component ? <span className="text-on-surface-variant shrink-0">· {component}</span> : null}
+        </span>
+      ) : (
+        <>
+          <span className="text-on-surface text-body-sm block truncate font-mono leading-4 font-medium">
+            {block.code}
+          </span>
+          {section || component ? (
+            <span className="text-on-surface-variant mt-1 flex min-w-0 items-baseline gap-1 truncate text-xs leading-4">
+              {section ? <span className="shrink-0 font-mono">{section}</span> : null}
+              {section && component ? <span aria-hidden>·</span> : null}
+              {component ? <span className="truncate">{component}</span> : null}
+            </span>
+          ) : null}
+        </>
       )}
-      {footer ? <span className="mt-auto flex min-h-4 items-end pt-1">{footer}</span> : null}
+      {footer && showFooter ? <span className="mt-auto flex min-h-4 items-end pt-1">{footer}</span> : null}
     </button>
   );
 }
@@ -193,9 +207,10 @@ function ScheduleDropSlot({
     data: { optionId: block.id },
   });
   const color = courseColor(block.courseKey);
+  const height = Math.max(36, (block.endMin - block.startMin) * PX_PER_MINUTE - 3);
   const style = {
     top: (block.startMin - dayStartMin) * PX_PER_MINUTE,
-    height: Math.max(36, (block.endMin - block.startMin) * PX_PER_MINUTE - 3),
+    height,
     left: `calc(${(100 / block.cols) * block.col}% + 3px)`,
     width: `calc(${100 / block.cols}% - 6px)`,
     borderColor: color,
@@ -212,13 +227,13 @@ function ScheduleDropSlot({
       } ${block.conflict ? "ring-error/60 ring-2" : ""}`}
       style={style}
     >
-      <span className="text-on-surface block truncate font-mono text-xs font-medium">
-        {block.code} {block.section}
+      <span className="text-on-surface block truncate font-mono text-xs leading-4 font-medium">{block.code}</span>
+      <span className="text-on-surface-variant flex min-w-0 items-baseline gap-1 truncate text-xs leading-4">
+        {block.section ? <span className="shrink-0 font-mono">{block.section}</span> : null}
+        {block.section && block.component ? <span aria-hidden>·</span> : null}
+        {block.component ? <span className="truncate">{block.component}</span> : null}
       </span>
-      <span className="text-on-surface-variant block truncate font-mono text-xs leading-none">
-        {minutesToFullLabel(block.startMin)}–{minutesToFullLabel(block.endMin)}
-      </span>
-      {block.conflict ? (
+      {block.conflict && height >= 72 ? (
         <span className="text-error mt-1 block truncate text-xs font-medium">Creates conflict</span>
       ) : null}
     </div>
@@ -306,9 +321,13 @@ export function ScheduleGrid({
   }
 
   const content = (
-    <section aria-label={ariaLabel} className="schedule-grid flex h-full min-h-0 flex-col">
+    <section
+      aria-label={ariaLabel}
+      data-schedule-grid-frame
+      className="schedule-grid bg-border-subtle flex h-full min-h-0 flex-col overflow-hidden rounded-[0.625rem] p-0.5"
+    >
       <div
-        className="schedule-grid-day-tabs border-border-subtle bg-surface flex shrink-0 gap-1 border-b p-2"
+        className="schedule-grid-day-tabs bg-surface mb-0.5 flex shrink-0 gap-1 rounded-lg p-1"
         role="tablist"
         aria-label="Day"
       >
@@ -329,7 +348,7 @@ export function ScheduleGrid({
           </button>
         ))}
       </div>
-      <div className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-auto">
+      <div className="bg-surface min-h-0 flex-1 [scrollbar-gutter:stable] overflow-auto rounded-lg">
         <div
           className="schedule-grid-columns border-border-subtle bg-surface sticky top-0 z-30 grid border-b"
           style={{ ["--schedule-day-count" as string]: model.days.length }}
@@ -430,7 +449,7 @@ export function ScheduleGrid({
           ))}
           {!hasBlocks && empty ? (
             <div className="pointer-events-none absolute inset-x-4 top-20 z-20 flex justify-center sm:top-28">
-              <div className="border-border-subtle bg-surface/95 pointer-events-auto max-w-sm rounded-xl border px-5 py-4 text-center">
+              <div className="bg-surface/95 pointer-events-auto max-w-sm rounded-lg px-5 py-4 text-center">
                 <h3 className="text-on-surface text-base font-medium">{empty.title}</h3>
                 <p className="text-muted mt-1 text-sm leading-relaxed">{empty.description}</p>
                 {empty.actionLabel && empty.onAction ? (

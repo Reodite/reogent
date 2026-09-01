@@ -7,7 +7,7 @@ export interface ScheduleGridItem {
   courseKey: string;
   code: string;
   title: string;
-  section: string;
+  section?: string;
   component?: string;
   days: DayCode[];
   startMin: number;
