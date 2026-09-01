@@ -155,7 +155,7 @@ function ProgramCombobox({
   }
 
   return (
-    <label className="flex flex-col gap-1">
+    <label className={`flex flex-col gap-1 ${className ?? ""}`}>
       <span className="text-muted flex items-baseline justify-between gap-2 text-[11px]">
         {label}
         {labelExtra}
@@ -181,7 +181,7 @@ function ProgramCombobox({
           if (!event.currentTarget.value) return;
           if (!apply(event.currentTarget.value)) setQuery(selectedLabel);
         }}
-        className={`neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-full rounded-lg px-3 text-sm focus-visible:ring-2 disabled:opacity-50 ${className ?? ""}`}
+        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-full rounded-lg px-3 text-sm focus-visible:ring-2 disabled:opacity-50"
       />
       <datalist id={listId}>
         {options.map((option) => (

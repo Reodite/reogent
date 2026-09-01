@@ -455,21 +455,23 @@ export function DegreePlannerPane() {
         data-pane-root="degree-planner"
         className="flex h-full min-h-0 flex-col gap-4 p-6 max-md:overflow-y-auto max-sm:p-4"
       >
-        <header className="relative z-30 flex shrink-0 flex-wrap items-end gap-x-4 gap-y-3 max-xl:pl-12">
-          <div className="w-56 shrink-0">
+        <header className="relative z-30 flex shrink-0 flex-col gap-3 max-xl:pl-12">
+          <div>
             <h2 className="text-on-surface text-xl font-medium tracking-[-0.02em]">Degree Planner</h2>
             <p className="text-muted text-xs">Plan your UBC degree, term by term.</p>
           </div>
-          <ProgramSelectors />
-          <ActionsSection
-            years={years}
-            validations={validations}
-            courseIndex={courseIndex}
-            onClearAll={() => {
-              const total = years.reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
-              if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
-            }}
-          />
+          <div className="flex w-full flex-wrap items-end justify-between gap-3">
+            <ProgramSelectors />
+            <ActionsSection
+              years={years}
+              validations={validations}
+              courseIndex={courseIndex}
+              onClearAll={() => {
+                const total = years.reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
+                if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
+              }}
+            />
+          </div>
         </header>
 
         <div className="grid min-h-0 flex-1 grid-cols-[20rem_minmax(0,1fr)] gap-4 max-md:flex max-md:flex-none max-md:flex-col">
