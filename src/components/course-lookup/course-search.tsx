@@ -265,6 +265,7 @@ export function CourseSearchField({
   const candidatePool = record ? [toCandidate(record)] : (list?.candidates ?? []);
   const candidates = overlay ? candidatePool.slice(0, OVERLAY_RESULT_LIMIT) : candidatePool;
   const presentations = candidates.map((candidate) => getCandidatePresentation?.(candidate) ?? {});
+  const hasPendingCandidate = presentations.some((candidatePresentation) => candidatePresentation.pending);
   const selectableIndexes = presentations
     .map((candidatePresentation, index) =>
       candidatePresentation.disabled || candidatePresentation.pending ? -1 : index,
@@ -277,6 +278,10 @@ export function CourseSearchField({
     setActiveIndex(-1);
     if (value.trim()) setOpen(true);
   }, [presentation, value]);
+
+  useEffect(() => {
+    if (overlay && trimmed && (status === "loading" || !!error || rejected || hasPendingCandidate)) setOpen(true);
+  }, [error, hasPendingCandidate, overlay, rejected, status, trimmed]);
 
   useEffect(() => {
     if (!overlay) return;
@@ -385,7 +390,7 @@ export function CourseSearchField({
         {showOverlay && (
           <div
             id={listboxId}
-            role="listbox"
+            role={status === "idle" && candidates.length > 0 && !error && !rejected ? "listbox" : undefined}
             data-course-list
             className="border-border-subtle bg-surface absolute top-full z-30 mt-2 max-h-[320px] w-full overflow-y-auto rounded-xl border shadow-lg"
           >
@@ -427,6 +432,7 @@ export function CourseSearchField({
                       key={candidate.code}
                       type="button"
                       role="option"
+                      tabIndex={-1}
                       aria-selected={activeIndex === index}
                       aria-disabled={unavailable || undefined}
                       aria-busy={candidatePresentation.pending || undefined}

@@ -60,6 +60,7 @@ describe("CourseSearchField overlay", () => {
     expect(input.getAttribute("aria-autocomplete")).toBe("list");
     expect(input.getAttribute("aria-controls")).toBe(listbox.id);
     expect(input.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getAllByRole("option").every((option) => option.getAttribute("tabindex") === "-1")).toBe(true);
 
     fireEvent.keyDown(input, { key: "ArrowDown" });
     expect(input.getAttribute("aria-activedescendant")).toBe(screen.getAllByRole("option")[0].id);

@@ -44,10 +44,18 @@ describe("ScheduleGrid", () => {
       },
     ]);
     const view = render(
-      <ScheduleGrid model={model} activeDay="Tue" onActiveDayChange={vi.fn()} onBlockActivate={onBlockActivate} />,
+      <ScheduleGrid
+        model={model}
+        activeDay="Tue"
+        onActiveDayChange={vi.fn()}
+        onBlockActivate={onBlockActivate}
+        drag={{ getOptions: () => [], onDrop: vi.fn() }}
+      />,
     );
 
     const blocks = view.getAllByRole("button", { name: /CPSC 110.*101/ });
+    expect(blocks[0].getAttribute("aria-roledescription")).toBeNull();
+    expect(blocks[0].getAttribute("aria-describedby")).toBeNull();
     expect(blocks).toHaveLength(2);
     fireEvent.click(blocks[1]);
     expect(onBlockActivate).toHaveBeenCalledWith("cpsc-110-101");
@@ -101,6 +109,7 @@ describe("ScheduleGrid", () => {
         code: "CPSC 210",
         title: "Software Construction",
         component: "Laboratory",
+        accessibleDetails: ["People: ada, grace"],
         days: ["Thu"],
         startMin: 780,
         endMin: 900,
@@ -113,6 +122,7 @@ describe("ScheduleGrid", () => {
 
     expect(block.textContent).toBe("CPSC 210Laboratory");
     expect(block.textContent).not.toContain("lab · Laboratory");
+    expect(block.getAttribute("aria-label")).toContain("People: ada, grace");
   });
 
   it("shows block footer content only when the meeting is tall enough", () => {

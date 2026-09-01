@@ -53,6 +53,7 @@ describe("buildSharerGrid", () => {
       title: section.title,
       component: "Lecture",
       meta: "ICCS X150",
+      accessibleDetails: ["People: ada"],
     });
     expect(occurrence).not.toHaveProperty("section");
     expect(occurrence).not.toHaveProperty("people");

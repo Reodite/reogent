@@ -15,7 +15,8 @@ import { entryId, normalizeScheduleCode, type ScheduleEntry } from "./schedule-s
 
 const DAY_CODES = new Set<string>(DAY_ORDER);
 
-function toScheduled(entries: ScheduleEntry[]): ScheduledSection[] {
+/** Converts persisted planner entries into the shared conflict-checking shape. */
+export function plannerScheduledSections(entries: ScheduleEntry[]): ScheduledSection[] {
   return entries.map((entry) => ({
     code: normalizeScheduleCode(entry.code),
     title: entry.snapshot.title,
@@ -48,7 +49,7 @@ function optionLabel(section: CourseDoc["sections"][number]): string {
 
 /** Maps planner snapshots into the route-independent items consumed by the shared week grid. */
 export function plannerGridItems(entries: ScheduleEntry[]): ScheduleGridItem[] {
-  const scheduled = toScheduled(entries);
+  const scheduled = plannerScheduledSections(entries);
   const conflictSet = conflictedIndices(scheduled);
   return entries.map((entry, index) => ({
     id: entryId(entry),
@@ -61,13 +62,14 @@ export function plannerGridItems(entries: ScheduleEntry[]): ScheduleGridItem[] {
     startMin: parseTime(entry.snapshot.start_time),
     endMin: parseTime(entry.snapshot.end_time),
     meta: entry.snapshot.instructor ?? undefined,
+    accessibleDetails: entry.snapshot.status ? [`Catalog status: ${entry.snapshot.status}`] : undefined,
     conflict: conflictSet.has(index),
   }));
 }
 
 /** Names the selected sections that overlap each planner entry. */
 export function plannerConflictLabels(entries: ScheduleEntry[]): Map<string, string[]> {
-  const scheduled = toScheduled(entries);
+  const scheduled = plannerScheduledSections(entries);
   const labels = new Map<string, string[]>();
   for (let left = 0; left < scheduled.length; left++) {
     for (let right = left + 1; right < scheduled.length; right++) {
@@ -121,7 +123,7 @@ export function plannerDragOptions(
       },
     };
     const resulting = entries.with(currentIndex, candidate);
-    const conflict = conflictedIndices(toScheduled(resulting)).has(currentIndex);
+    const conflict = conflictedIndices(plannerScheduledSections(resulting)).has(currentIndex);
     const id = entryId(candidate);
     return [
       {
@@ -137,7 +139,7 @@ export function plannerDragOptions(
           days,
           startMin,
           endMin,
-          meta: section.status,
+          accessibleDetails: section.status ? [`Catalog status: ${section.status}`] : undefined,
           conflict,
         },
       },

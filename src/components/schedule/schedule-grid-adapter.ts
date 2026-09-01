@@ -28,6 +28,8 @@ export function buildSharerGrid(blocks: MergedBlock[]): SharerGridAdapter {
         startMin: block.startMin,
         endMin: block.endMin,
         meta: location || undefined,
+        accessibleDetails:
+          block.people.length > 0 ? [`People: ${block.people.map((person) => person.handle).join(", ")}`] : undefined,
       };
     }),
   );

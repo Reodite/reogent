@@ -13,6 +13,8 @@ export interface ScheduleGridItem {
   startMin: number;
   endMin: number;
   meta?: string;
+  /** Adapter-owned facts included in accessible labels without adding visible block copy. */
+  accessibleDetails?: string[];
   conflict?: boolean;
 }
 

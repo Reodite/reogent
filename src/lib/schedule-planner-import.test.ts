@@ -93,6 +93,20 @@ describe("resolvePlannerImport", () => {
     ]);
   });
 
+  it("matches unknown Workday component types to catalog additional groups", async () => {
+    const workshop = source({
+      component: "Workshop",
+      meetings: [{ days: ["Tue"], startMin: 900, endMin: 960, raw: "" }],
+    });
+    const course = doc([catalogSection("W-L", { days: ["t"], start_time: "15:00", end_time: "16:00" })]);
+    const review = await resolvePlannerImport(
+      schedule([workshop]),
+      vi.fn(async () => course),
+    );
+
+    expect(review.matches[0]).toMatchObject({ status: "exact", candidates: [course.sections[0]] });
+  });
+
   it("keeps a missing catalog course as an unmatched review row", async () => {
     const review = await resolvePlannerImport(
       schedule([source()]),

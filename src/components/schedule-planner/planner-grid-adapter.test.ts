@@ -42,6 +42,7 @@ describe("planner grid adapter", () => {
       id: `CPSC 110::101::${term}`,
       days: ["Mon", "Wed", "Fri"],
       component: "Lecture",
+      accessibleDetails: ["Catalog status: Open"],
       conflict: true,
     });
     expect(items[1].conflict).toBe(true);

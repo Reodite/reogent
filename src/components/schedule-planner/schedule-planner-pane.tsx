@@ -10,7 +10,7 @@ import { ToastProvider } from "@/src/components/schedule/toast";
 import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
 import { useDialogFocus } from "@/src/components/schedule/use-dialog-focus";
 import type { CourseDoc } from "@/src/lib/api-types";
-import { normalizeDays, parseTime, sectionGroup, type ScheduledSection } from "@/src/lib/schedule";
+import { normalizeDays, sectionGroup } from "@/src/lib/schedule";
 import { selectAutomaticSections } from "@/src/lib/schedule-planner";
 import { resolvePlannerImport, type PlannerImportReview } from "@/src/lib/schedule-planner-import";
 import { buildScheduleGrid } from "@/src/lib/schedule/grid";
@@ -18,12 +18,16 @@ import type { DayCode, Schedule } from "@/src/lib/schedule/types";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlannerCourseModule, type PlannerCourseFocusRequest } from "./planner-course-module";
-import { plannerConflictLabels, plannerDragOptions, plannerGridItems } from "./planner-grid-adapter";
+import {
+  plannerConflictLabels,
+  plannerDragOptions,
+  plannerGridItems,
+  plannerScheduledSections,
+} from "./planner-grid-adapter";
 import {
   entryId,
   normalizeScheduleCode,
   useSchedule,
-  type ScheduleEntry,
   type ScheduleImportMode,
   type ScheduleImportSelection,
 } from "./schedule-store";
@@ -52,19 +56,6 @@ function importSectionOption(section: CourseDoc["sections"][number]): string {
   const instructor = section.instructor ? ` · ${section.instructor}` : "";
   const status = section.status ? ` · ${section.status}` : "";
   return `${section.section} · ${when}${instructor}${status}`;
-}
-
-function toScheduled(entries: ScheduleEntry[]): ScheduledSection[] {
-  return entries.map((entry) => ({
-    code: normalizeScheduleCode(entry.code),
-    title: entry.snapshot.title,
-    section: entry.section,
-    term: entry.term,
-    days: normalizeDays(entry.snapshot.days),
-    startMinutes: parseTime(entry.snapshot.start_time),
-    endMinutes: parseTime(entry.snapshot.end_time),
-    instructor: entry.snapshot.instructor ?? undefined,
-  }));
 }
 
 function PlannerImportDialog({
@@ -309,12 +300,6 @@ function SchedulePlannerPaneInner() {
     setFocusSearchOnControls(false);
   }, [focusSearchOnControls, mobileView]);
 
-  useEffect(() => {
-    if (!commitPendingCode && !commitError) return;
-    searchInputRef.current?.blur();
-    searchInputRef.current?.focus();
-  }, [commitError, commitPendingCode]);
-
   async function prepareImport(schedule: Schedule) {
     setImportLoading(true);
     try {
@@ -342,7 +327,8 @@ function SchedulePlannerPaneInner() {
 
   useEffect(() => {
     if (!storedCodeKey) return;
-    const codes = storedCodeKey.split("\u0000");
+    const codes = storedCodeKey.split("\u0000").filter((code) => !docs.has(code));
+    if (codes.length === 0) return;
     let cancelled = false;
     Promise.allSettled(codes.map((code) => api.getCourse(code))).then((results) => {
       if (cancelled) return;
@@ -358,7 +344,7 @@ function SchedulePlannerPaneInner() {
     return () => {
       cancelled = true;
     };
-  }, [api, storedCodeKey]);
+  }, [api, docs, storedCodeKey]);
 
   const allTerms = useMemo(() => {
     const terms = entries.map((entry) => entry.term);
@@ -442,7 +428,7 @@ function SchedulePlannerPaneInner() {
       const selection = selectAutomaticSections(
         doc,
         targetTerm,
-        toScheduled(entries.filter((entry) => entry.term === targetTerm)),
+        plannerScheduledSections(entries.filter((entry) => entry.term === targetTerm)),
       );
       if (selection.sections.length === 0) {
         setUnavailableCodes((current) => new Set(current).add(code));

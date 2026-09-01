@@ -26,7 +26,6 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DraggableAttributes,
   type DraggableSyntheticListeners,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -80,7 +79,6 @@ function ScheduleBlock({
   dayStartMin,
   onActivate,
   footer,
-  attributes,
   dimmed = false,
   listeners,
   overlayWidth,
@@ -90,7 +88,6 @@ function ScheduleBlock({
   dayStartMin: number;
   onActivate: () => void;
   footer?: ReactNode;
-  attributes?: DraggableAttributes;
   dimmed?: boolean;
   listeners?: DraggableSyntheticListeners;
   overlayWidth?: number;
@@ -114,6 +111,7 @@ function ScheduleBlock({
   const section = block.section?.trim();
   const component = block.component?.trim();
   const identity = [block.code, section, component].filter(Boolean).join(" · ");
+  const accessibleDetails = [block.title, time, block.meta, ...(block.accessibleDetails ?? [])].filter(Boolean);
 
   return (
     <button
@@ -124,10 +122,9 @@ function ScheduleBlock({
       tabIndex={overlay ? -1 : undefined}
       aria-hidden={overlay || undefined}
       onClick={overlay ? undefined : onActivate}
-      {...attributes}
       {...listeners}
-      title={`${identity} · ${block.title} · ${time}${block.meta ? ` · ${block.meta}` : ""}`}
-      aria-label={`${identity}, ${block.title}, ${time}${block.meta ? `, ${block.meta}` : ""}${
+      title={`${identity} · ${accessibleDetails.join(" · ")}`}
+      aria-label={`${identity}, ${accessibleDetails.join(", ")}${
         block.conflict ? ", conflicts with another section" : ""
       }`}
       className={`focus-visible:ring-primary/40 flex min-w-0 flex-col overflow-hidden rounded-lg border px-2 py-1 text-left transition-[filter,transform,opacity] select-none hover:brightness-[0.98] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
@@ -175,7 +172,7 @@ function DraggableScheduleBlock({
   footer?: ReactNode;
   onActivate: () => void;
 }) {
-  const { attributes, listeners, setNodeRef } = useDraggable({
+  const { listeners, setNodeRef } = useDraggable({
     id: `schedule-block:${block.occurrenceId}`,
     data: { blockId: block.id },
   });
@@ -185,7 +182,6 @@ function DraggableScheduleBlock({
       dayStartMin={dayStartMin}
       onActivate={onActivate}
       footer={footer}
-      attributes={attributes}
       listeners={listeners}
       setNodeRef={setNodeRef}
       dimmed={activeBlockId === block.id}

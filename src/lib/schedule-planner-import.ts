@@ -1,5 +1,5 @@
 import type { CourseDoc, CourseSection } from "./api-types";
-import { normalizeDays, parseTime, sectionComponent } from "./schedule";
+import { normalizeDays, parseTime, sectionComponent, type SectionComponent } from "./schedule";
 import type { Schedule, Section } from "./schedule/types";
 
 export type PlannerImportMatchStatus = "exact" | "ambiguous" | "unmatched";
@@ -37,12 +37,13 @@ function expectedTermPrefix(iso: string | undefined): string | null {
   return `${year - 1}-${String(year).slice(-2)} Winter Term 2`;
 }
 
-function importedComponent(section: Section): ReturnType<typeof sectionComponent> {
+function importedComponent(section: Section): SectionComponent | null {
   const component = section.component.toLowerCase();
   if (component.includes("lab")) return "laboratory";
   if (component.includes("tutorial")) return "tutorial";
   if (component.includes("discussion")) return "discussion";
-  return "lecture";
+  if (component.includes("lecture") || component.includes("seminar")) return "lecture";
+  return null;
 }
 
 function sameDays(left: string[], right: string[]): boolean {
@@ -58,7 +59,9 @@ function candidatesFor(source: Section, doc: CourseDoc): CourseSection[] {
   return doc.sections.filter(
     (candidate) =>
       candidate.term?.startsWith(termPrefix) &&
-      sectionComponent(candidate.section) === component &&
+      (component
+        ? sectionComponent(candidate.section) === component
+        : sectionComponent(candidate.section) === "other") &&
       sameDays(candidate.days, meeting.days) &&
       parseTime(candidate.start_time) === meeting.startMin &&
       parseTime(candidate.end_time) === meeting.endMin,
