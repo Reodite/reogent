@@ -88,17 +88,29 @@ describe("ScheduleGrid", () => {
       },
     ]);
     const view = render(
-      <ScheduleGrid model={model} activeDay="Mon" onActiveDayChange={vi.fn()} onBlockActivate={vi.fn()} />,
+      <ScheduleGrid
+        model={model}
+        activeDay="Mon"
+        onActiveDayChange={vi.fn()}
+        onBlockActivate={vi.fn()}
+        blockContentAlignment="center"
+      />,
     );
     const short = view.getByRole("button", { name: /CPSC 110.*L1A.*Lab/ });
     const tall = view.getByRole("button", { name: /MATH 100.*101.*Lecture/ });
 
     expect(short.getAttribute("data-block-layout")).toBe("compact");
+    expect(short.getAttribute("data-block-content-alignment")).toBe("center");
+    expect(short.className).toContain("items-center");
+    expect(short.className).toContain("justify-center");
+    expect(short.className).toContain("text-center");
     expect(short.textContent).toBe("CPSC 110· L1A· Lab");
     expect(short.textContent).not.toContain("9:30");
     expect(short.textContent).not.toContain("Computation");
     expect(tall.getAttribute("data-block-layout")).toBe("tall");
+    expect(tall.getAttribute("data-block-content-alignment")).toBe("center");
     expect(tall.textContent).toBe("MATH 100101·Lecture");
+    expect(view.container.querySelector(".font-mono")).toBeNull();
   });
 
   it("does not fabricate a section code for sharer blocks", () => {
@@ -121,6 +133,8 @@ describe("ScheduleGrid", () => {
     const block = view.getByRole("button", { name: /CPSC 210.*Laboratory/ });
 
     expect(block.textContent).toBe("CPSC 210Laboratory");
+    expect(block.getAttribute("data-block-content-alignment")).toBe("start");
+    expect(block.className).toContain("text-left");
     expect(block.textContent).not.toContain("lab · Laboratory");
     expect(block.getAttribute("aria-label")).toContain("People: ada, grace");
   });
@@ -161,7 +175,9 @@ describe("ScheduleGrid", () => {
     );
 
     expect(view.queryByText("short-footer avatar")).toBeNull();
-    expect(view.getByText("tall-footer avatar")).toBeTruthy();
+    const tallFooter = view.getByText("tall-footer avatar");
+    expect(tallFooter).toBeTruthy();
+    expect(tallFooter.parentElement?.className).toContain("justify-end");
     expect(view.container.querySelector("[data-schedule-grid-frame]")?.className).toContain("rounded-[0.625rem]");
   });
 });

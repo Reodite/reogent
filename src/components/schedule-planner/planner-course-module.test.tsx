@@ -40,7 +40,7 @@ const doc: CourseDoc = {
   sections,
 };
 
-function entry(sectionCode: string): ScheduleEntry {
+function entry(sectionCode: string, instructor: string | null = null): ScheduleEntry {
   const candidate = sections.find((section) => section.section === sectionCode)!;
   return {
     code: "CPSC 110",
@@ -48,7 +48,7 @@ function entry(sectionCode: string): ScheduleEntry {
     term,
     snapshot: {
       title: doc.title,
-      instructor: null,
+      instructor,
       days: candidate.days,
       start_time: candidate.start_time,
       end_time: candidate.end_time,
@@ -89,6 +89,17 @@ describe("PlannerCourseModule", () => {
     expect(view.getByLabelText("R sections")).toBeTruthy();
     expect(view.getByLabelText("W sections")).toBeTruthy();
     expect(view.container.querySelector("details")?.open).toBe(false);
+  });
+
+  it("puts meeting time and instructor on separate sans-serif lines", () => {
+    const view = render(<PlannerCourseModule {...baseProps} entries={[entry("101", "Danica Sutherland")]} />);
+
+    const meeting = view.getByText("Mon/Wed/Fri · 09:00–10:00");
+    const instructor = view.getByText("Danica Sutherland");
+    expect(meeting.tagName).toBe("P");
+    expect(instructor.tagName).toBe("P");
+    expect(meeting).not.toBe(instructor);
+    expect(view.container.querySelector(".font-mono")).toBeNull();
   });
 
   it("changes one inline component selector", () => {

@@ -71,6 +71,7 @@ interface ScheduleGridProps {
   empty?: ScheduleGridEmptyState;
   renderBlockFooter?: (block: ScheduleGridOccurrence) => ReactNode;
   ariaLabel?: string;
+  blockContentAlignment?: "start" | "center";
   drag?: ScheduleGridDragConfig;
 }
 
@@ -83,6 +84,7 @@ function ScheduleBlock({
   listeners,
   overlayWidth,
   setNodeRef,
+  contentAlignment,
 }: {
   block: ScheduleGridOccurrence;
   dayStartMin: number;
@@ -92,6 +94,7 @@ function ScheduleBlock({
   listeners?: DraggableSyntheticListeners;
   overlayWidth?: number;
   setNodeRef?: (node: HTMLElement | null) => void;
+  contentAlignment: "start" | "center";
 }) {
   const color = courseColor(block.courseKey);
   const height = Math.max(36, (block.endMin - block.startMin) * PX_PER_MINUTE - 3);
@@ -119,6 +122,7 @@ function ScheduleBlock({
       type="button"
       data-schedule-block
       data-block-layout={compact ? "compact" : "tall"}
+      data-block-content-alignment={contentAlignment}
       tabIndex={overlay ? -1 : undefined}
       aria-hidden={overlay || undefined}
       onClick={overlay ? undefined : onActivate}
@@ -127,34 +131,40 @@ function ScheduleBlock({
       aria-label={`${identity}, ${accessibleDetails.join(", ")}${
         block.conflict ? ", conflicts with another section" : ""
       }`}
-      className={`focus-visible:ring-primary/40 flex min-w-0 flex-col overflow-hidden rounded-lg border px-2 py-1 text-left transition-[filter,transform,opacity] select-none hover:brightness-[0.98] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
-        overlay ? "relative" : "absolute"
-      } ${listeners ? "cursor-grab touch-pan-y active:cursor-grabbing" : ""} ${dimmed ? "opacity-25" : ""} ${
-        block.conflict ? "ring-error/70 ring-2" : ""
-      }`}
+      className={`focus-visible:ring-primary/40 flex min-w-0 flex-col overflow-hidden rounded-lg border px-2 py-1 transition-[filter,transform,opacity] select-none hover:brightness-[0.98] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99] ${
+        contentAlignment === "center" ? "items-center justify-center text-center" : "text-left"
+      } ${overlay ? "relative" : "absolute"} ${
+        listeners ? "cursor-grab touch-pan-y active:cursor-grabbing" : ""
+      } ${dimmed ? "opacity-25" : ""} ${block.conflict ? "ring-error/70 ring-2" : ""}`}
       style={style}
     >
       {compact ? (
-        <span className="flex min-w-0 items-baseline gap-1 truncate text-xs leading-4">
-          <span className="text-on-surface truncate font-mono font-medium">{block.code}</span>
-          {section ? <span className="text-on-surface-variant shrink-0 font-mono">· {section}</span> : null}
+        <span
+          className={`flex max-w-full min-w-0 items-baseline gap-1 truncate text-xs leading-4 ${contentAlignment === "center" ? "justify-center" : ""}`}
+        >
+          <span className="text-on-surface truncate font-medium">{block.code}</span>
+          {section ? <span className="text-on-surface-variant shrink-0">· {section}</span> : null}
           {component ? <span className="text-on-surface-variant shrink-0">· {component}</span> : null}
         </span>
       ) : (
         <>
-          <span className="text-on-surface text-body-sm block truncate font-mono leading-4 font-medium">
+          <span className="text-on-surface text-body-sm block max-w-full truncate leading-4 font-medium">
             {block.code}
           </span>
           {section || component ? (
-            <span className="text-on-surface-variant mt-1 flex min-w-0 items-baseline gap-1 truncate text-xs leading-4">
-              {section ? <span className="shrink-0 font-mono">{section}</span> : null}
+            <span
+              className={`text-on-surface-variant mt-1 flex max-w-full min-w-0 items-baseline gap-1 truncate text-xs leading-4 ${contentAlignment === "center" ? "justify-center" : ""}`}
+            >
+              {section ? <span className="shrink-0">{section}</span> : null}
               {section && component ? <span aria-hidden>·</span> : null}
               {component ? <span className="truncate">{component}</span> : null}
             </span>
           ) : null}
         </>
       )}
-      {footer && showFooter ? <span className="mt-auto flex min-h-4 items-end pt-1">{footer}</span> : null}
+      {footer && showFooter ? (
+        <span className="mt-auto flex min-h-4 w-full items-end justify-end pt-1">{footer}</span>
+      ) : null}
     </button>
   );
 }
@@ -165,12 +175,14 @@ function DraggableScheduleBlock({
   dayStartMin,
   footer,
   onActivate,
+  contentAlignment,
 }: {
   block: ScheduleGridOccurrence;
   activeBlockId: string | null;
   dayStartMin: number;
   footer?: ReactNode;
   onActivate: () => void;
+  contentAlignment: "start" | "center";
 }) {
   const { listeners, setNodeRef } = useDraggable({
     id: `schedule-block:${block.occurrenceId}`,
@@ -182,6 +194,7 @@ function DraggableScheduleBlock({
       dayStartMin={dayStartMin}
       onActivate={onActivate}
       footer={footer}
+      contentAlignment={contentAlignment}
       listeners={listeners}
       setNodeRef={setNodeRef}
       dimmed={activeBlockId === block.id}
@@ -218,14 +231,14 @@ function ScheduleDropSlot({
       ref={setNodeRef}
       aria-hidden="true"
       data-drop-label={label}
-      className={`absolute z-20 overflow-hidden rounded-lg border border-dashed px-2 py-1 transition-[background-color,transform] ${
+      className={`absolute z-20 flex flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed px-2 py-1 text-center transition-[background-color,transform] ${
         isOver ? "scale-[1.02]" : ""
       } ${block.conflict ? "ring-error/60 ring-2" : ""}`}
       style={style}
     >
-      <span className="text-on-surface block truncate font-mono text-xs leading-4 font-medium">{block.code}</span>
-      <span className="text-on-surface-variant flex min-w-0 items-baseline gap-1 truncate text-xs leading-4">
-        {block.section ? <span className="shrink-0 font-mono">{block.section}</span> : null}
+      <span className="text-on-surface block max-w-full truncate text-xs leading-4 font-medium">{block.code}</span>
+      <span className="text-on-surface-variant flex max-w-full min-w-0 items-baseline justify-center gap-1 truncate text-xs leading-4">
+        {block.section ? <span className="shrink-0">{block.section}</span> : null}
         {block.section && block.component ? <span aria-hidden>·</span> : null}
         {block.component ? <span className="truncate">{block.component}</span> : null}
       </span>
@@ -247,6 +260,7 @@ export function ScheduleGrid({
   empty,
   renderBlockFooter,
   ariaLabel = "Weekly schedule",
+  blockContentAlignment = "start",
   drag,
 }: ScheduleGridProps) {
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
@@ -371,7 +385,7 @@ export function ScheduleGrid({
             {hours.map((minute) => (
               <span
                 key={minute}
-                className="text-muted absolute right-2 -translate-y-1/2 font-mono text-xs leading-none tabular-nums"
+                className="text-muted absolute right-2 -translate-y-1/2 text-xs leading-none tabular-nums"
                 style={{ top: (minute - model.dayStartMin) * PX_PER_MINUTE }}
               >
                 {minute === model.dayStartMin ? "" : minutesToFullLabel(minute).replace(":00", "")}
@@ -422,6 +436,7 @@ export function ScheduleGrid({
                     dayStartMin={model.dayStartMin}
                     onActivate={() => onBlockActivate(block.id)}
                     footer={renderBlockFooter?.(block)}
+                    contentAlignment={blockContentAlignment}
                   />
                 ) : (
                   <ScheduleBlock
@@ -430,6 +445,7 @@ export function ScheduleGrid({
                     dayStartMin={model.dayStartMin}
                     onActivate={() => onBlockActivate(block.id)}
                     footer={renderBlockFooter?.(block)}
+                    contentAlignment={blockContentAlignment}
                   />
                 ),
               )}
@@ -504,6 +520,7 @@ export function ScheduleGrid({
               dayStartMin={model.dayStartMin}
               onActivate={() => {}}
               footer={renderBlockFooter?.(activeBlock)}
+              contentAlignment={blockContentAlignment}
               overlayWidth={anchor.width || 180}
             />
           </DragOverlayFrame>

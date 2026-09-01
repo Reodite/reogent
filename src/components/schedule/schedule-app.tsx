@@ -351,7 +351,7 @@ function ScheduleAppInner({ groupCode }: Props) {
         className="neu-primary-button bg-primary text-on-primary flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
       >
         <Icon name="externalLink" size={16} />
-        Share <span className="font-mono text-xs opacity-80">{groupView.code}</span>
+        Share <span className="text-xs opacity-80">{groupView.code}</span>
       </button>
     ) : undefined;
 
@@ -458,7 +458,7 @@ function ScheduleAppInner({ groupCode }: Props) {
                     {freeBands.map((band) => (
                       <li key={`${band.day}-${band.startMin}`} className="flex justify-between gap-2">
                         <span>{band.day}</span>
-                        <span className="font-mono tabular-nums">
+                        <span className="tabular-nums">
                           {minutesToFullLabel(band.startMin)}–{minutesToFullLabel(band.endMin)}
                         </span>
                       </li>
@@ -544,7 +544,7 @@ function ScheduleAppInner({ groupCode }: Props) {
                   <AvatarChip key={person.id} avatar={person.avatar} size={16} title={person.handle} />
                 ))}
                 {peopleForBlock.length > 4 ? (
-                  <span className="text-on-surface-variant ml-0.5 font-mono text-xs">+{peopleForBlock.length - 4}</span>
+                  <span className="text-on-surface-variant ml-0.5 text-xs">+{peopleForBlock.length - 4}</span>
                 ) : null}
               </>
             );
@@ -665,7 +665,7 @@ function NoGroupControls({
             placeholder="ABC123"
             aria-describedby="schedule-code-help"
             onChange={(event) => setCode(event.target.value.replace(/[^0-9A-Za-z]/g, ""))}
-            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 min-w-0 flex-1 rounded-lg px-3 text-center font-mono text-sm uppercase outline-none focus-visible:ring-2"
+            className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 min-h-11 min-w-0 flex-1 rounded-lg px-3 text-center text-sm uppercase outline-none focus-visible:ring-2"
           />
           <button
             type="submit"

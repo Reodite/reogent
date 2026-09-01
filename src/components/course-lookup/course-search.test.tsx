@@ -73,6 +73,13 @@ describe("CourseSearchField overlay", () => {
     expect(document.activeElement).toBe(input);
   });
 
+  it("allows schedule surfaces to use sans-serif course codes", async () => {
+    render(<CourseSearchField {...baseProps} presentation="overlay" monospaceCodes={false} />);
+
+    await screen.findByRole("listbox");
+    expect(screen.getByText("CPSC 110").className).not.toContain("font-mono");
+  });
+
   it("retains the query on Escape and dismisses on an outside pointer", async () => {
     render(<CourseSearchField {...baseProps} presentation="overlay" />);
     const input = screen.getByRole("combobox") as HTMLInputElement;

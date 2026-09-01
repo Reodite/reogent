@@ -111,7 +111,7 @@ function PlannerSectionRow({
           value={current?.section ?? ""}
           aria-describedby={warning ? `${fieldId}-warning` : undefined}
           onChange={(event) => onSelect(options.find((section) => section.section === event.target.value) ?? null)}
-          className={`border-border bg-surface text-on-surface focus-visible:ring-primary/40 min-h-9 max-w-[11rem] min-w-0 rounded-md border px-2 font-mono text-xs focus-visible:ring-2 focus-visible:ring-offset-1 ${
+          className={`border-border bg-surface text-on-surface focus-visible:ring-primary/40 min-h-9 max-w-[11rem] min-w-0 rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-1 ${
             conflict ? "ring-error/60 ring-2" : ""
           }`}
         >
@@ -125,10 +125,10 @@ function PlannerSectionRow({
         </select>
       </div>
       {summary ? (
-        <p className="text-muted mt-1 text-xs leading-4">
-          <span className="font-mono">{sectionMeetingLabel(summary)}</span>
-          {current?.snapshot.instructor ? ` · ${current.snapshot.instructor}` : ""}
-        </p>
+        <div className="text-muted mt-1 text-xs leading-4">
+          <p>{sectionMeetingLabel(summary)}</p>
+          {current?.snapshot.instructor ? <p className="mt-0.5">{current.snapshot.instructor}</p> : null}
+        </div>
       ) : (
         <p className="text-muted mt-1 text-xs leading-4">Not selected</p>
       )}
@@ -192,7 +192,7 @@ export function PlannerCourseModule({
         <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ backgroundColor: courseColor(code) }} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-on-surface text-body-sm truncate font-mono leading-5 font-medium">{code}</h3>
+            <h3 className="text-on-surface text-body-sm truncate leading-5 font-medium">{code}</h3>
             {hasCourseConflict ? (
               <span className="bg-error-container/60 text-on-error-container shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium">
                 Conflict

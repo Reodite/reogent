@@ -236,6 +236,7 @@ export type CourseSearchFieldProps = {
   record?: CourseDoc | null;
   getCandidatePresentation?: (candidate: Candidate) => CandidatePresentation;
   inputRef?: { current: HTMLInputElement | null };
+  monospaceCodes?: boolean;
 };
 
 export function CourseSearchField({
@@ -253,6 +254,7 @@ export function CourseSearchField({
   record,
   getCandidatePresentation,
   inputRef: externalInputRef,
+  monospaceCodes = true,
 }: CourseSearchFieldProps) {
   const trimmed = value.trim();
   const overlay = presentation === "overlay";
@@ -446,7 +448,9 @@ export function CourseSearchField({
                     >
                       <span className="min-w-0 flex-1">
                         <span className="flex min-w-0 items-baseline gap-2">
-                          <span className="text-on-surface text-body-sm shrink-0 font-mono font-medium">
+                          <span
+                            className={`text-on-surface text-body-sm shrink-0 font-medium ${monospaceCodes ? "font-mono" : ""}`}
+                          >
                             {candidate.code}
                           </span>
                           <span className="text-on-surface-variant truncate text-xs">{candidate.title}</span>
@@ -560,7 +564,9 @@ export function CourseSearchField({
                 onClick={() => onSelect?.(c.code)}
                 className="neu-raised bg-surface hover:bg-surface-container-low focus-visible:ring-primary/40 flex min-h-[44px] items-center gap-3 rounded-lg px-3 text-left focus-visible:ring-2 focus-visible:ring-offset-1 active:scale-[0.99]"
               >
-                <span className="font-mono text-sm font-medium tracking-tight">{c.code}</span>
+                <span className={`${monospaceCodes ? "font-mono" : ""} text-sm font-medium tracking-tight`}>
+                  {c.code}
+                </span>
                 <span className="text-on-surface-variant truncate text-xs">{c.title}</span>
               </button>
             ))}

@@ -22,7 +22,7 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
     <section aria-label="People in this schedule">
       <div className="mb-2 flex min-h-9 items-center justify-between">
         <h3 className="text-on-surface text-sm font-medium">
-          People <span className="text-muted ml-1 font-mono text-xs">{people.length}</span>
+          People <span className="text-muted ml-1 text-xs">{people.length}</span>
         </h3>
         {!allOn && (
           <button type="button" onClick={onEnableAll} className="text-primary text-xs font-medium hover:underline">
@@ -50,7 +50,7 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
                   <span className="text-on-surface-variant text-xs">
                     {p.schedule ? (
                       <>
-                        <span className="font-mono">{courses}</span> {courses === 1 ? "course" : "courses"}
+                        {courses} {courses === 1 ? "course" : "courses"}
                       </>
                     ) : (
                       "No schedule yet"

@@ -136,9 +136,9 @@ function PlannerImportDialog({
                 <article key={match.source.id} className="bg-surface-container-low rounded-lg p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-mono text-sm font-medium">{code || match.source.title}</h3>
+                      <h3 className="text-sm font-medium">{code || match.source.title}</h3>
                       <p className="text-muted mt-0.5 truncate text-xs">{match.source.title}</p>
-                      <p className="text-on-surface-variant mt-1 font-mono text-xs">{meetingLabel}</p>
+                      <p className="text-on-surface-variant mt-1 text-xs">{meetingLabel}</p>
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
@@ -576,6 +576,7 @@ function SchedulePlannerPaneInner() {
           record={record}
           getCandidatePresentation={getCandidatePresentation}
           inputRef={searchInputRef}
+          monospaceCodes={false}
         />
         <p className="text-muted mt-2 min-h-8 text-xs leading-4">
           {!query.trim() && status === "idle"
@@ -594,7 +595,7 @@ function SchedulePlannerPaneInner() {
             Courses in this term
           </h2>
           {visibleEntries.length > 0 ? (
-            <span className="text-muted font-mono text-xs">{visibleEntries.length} sections</span>
+            <span className="text-muted text-xs">{visibleEntries.length} sections</span>
           ) : null}
         </div>
         <div className="flex flex-col gap-2">
@@ -670,6 +671,7 @@ function SchedulePlannerPaneInner() {
             requestCourseFocus(item.code, sectionGroup(item.section ?? ""));
           }}
           ariaLabel="Weekly course schedule"
+          blockContentAlignment="center"
           drag={dragConfig}
           empty={{
             title: "Build your first timetable",

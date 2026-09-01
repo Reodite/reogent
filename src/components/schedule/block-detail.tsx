@@ -59,7 +59,7 @@ export function BlockDetail({ block, onClose }: Props) {
           <h2 className="text-on-surface text-base font-medium">
             {s.courseCode ? (
               <>
-                <span className="font-mono">{displayCode(s)}</span> — {s.title}
+                {displayCode(s)} — {s.title}
               </>
             ) : (
               s.title
@@ -68,12 +68,7 @@ export function BlockDetail({ block, onClose }: Props) {
         </div>
         <p className="text-on-surface-variant mt-1 text-sm">
           {s.component}
-          {s.termStart && s.termEnd ? (
-            <span className="font-mono">
-              {" "}
-              · {fmtDate(s.termStart)} → {fmtDate(s.termEnd)}
-            </span>
-          ) : null}
+          {s.termStart && s.termEnd ? ` · ${fmtDate(s.termStart)} → ${fmtDate(s.termEnd)}` : null}
         </p>
 
         <dl className="mt-4 flex flex-col gap-3 text-sm">
@@ -87,7 +82,7 @@ export function BlockDetail({ block, onClose }: Props) {
             <dt className="text-muted w-16 shrink-0">Meets</dt>
             <dd className="text-on-surface">
               {meetingSlots.map((m) => (
-                <div key={`${m.days.join("")}-${m.startMin}`} className="font-mono tabular-nums">
+                <div key={`${m.days.join("")}-${m.startMin}`} className="tabular-nums">
                   {m.days.join(" ")} {minutesToFullLabel(m.startMin)}–{minutesToFullLabel(m.endMin)}
                 </div>
               ))}
@@ -98,17 +93,17 @@ export function BlockDetail({ block, onClose }: Props) {
               <dt className="text-muted w-16 shrink-0">Where</dt>
               <dd className="text-on-surface">
                 {block.pattern.buildingName}
-                {block.pattern.buildingCode ? <span className="font-mono"> ({block.pattern.buildingCode})</span> : null}
+                {block.pattern.buildingCode ? <span> ({block.pattern.buildingCode})</span> : null}
                 {block.pattern.floor ? (
                   <>
                     {" "}
-                    · floor <span className="font-mono">{block.pattern.floor}</span>
+                    · floor <span>{block.pattern.floor}</span>
                   </>
                 ) : null}
                 {block.rooms.length > 0 ? (
                   <>
                     {` · room${block.rooms.length > 1 ? "s" : ""} `}
-                    <span className="font-mono">{block.rooms.join(", ")}</span>
+                    <span>{block.rooms.join(", ")}</span>
                   </>
                 ) : null}
               </dd>
