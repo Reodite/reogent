@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/src/components/ui/button";
+import { Button, ButtonLink } from "@/src/components/ui/button";
 
 function sanitizeMessage(raw?: string): string {
   if (!raw) return "An unexpected error occurred.";
@@ -30,9 +30,9 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <Button variant="primary" size="prominent" onClick={reset}>
             Try again
           </Button>
-          <a href="/" className="neu-button bg-surface text-on-surface rounded-xl px-4 py-2.5 text-sm font-medium">
+          <ButtonLink href="/" size="prominent">
             Go home
-          </a>
+          </ButtonLink>
         </div>
       </div>
     </div>

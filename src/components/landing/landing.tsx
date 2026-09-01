@@ -5,6 +5,8 @@ import { Icon } from "@/src/components/icons";
 import { ProductMock } from "@/src/components/landing/product-mock";
 import { TopoTexture } from "@/src/components/landing/topo-texture";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import { ButtonLink } from "@/src/components/ui/button";
+import { InlineAction } from "@/src/components/ui/inline-action";
 import { motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -65,13 +67,9 @@ export function Landing() {
 function GuestLink({ className }: { className?: string }) {
   const { continueAsGuest } = useAppAuth();
   return (
-    <button
-      type="button"
-      className={className}
-      onClick={() => continueAsGuest()}
-    >
+    <InlineAction className={className} onClick={() => continueAsGuest()}>
       Continue as guest
-    </button>
+    </InlineAction>
   );
 }
 
@@ -143,7 +141,7 @@ function LandingContent() {
               scrolled ? "neu-panel" : ""
             }`}
           >
-            <Link href="/" className="flex items-center gap-2" aria-label="Reodite home">
+            <Link href="/" className="flex min-h-11 items-center gap-2" aria-label="Reodite home">
               <span className="bg-primary-container text-on-primary-container flex size-8 items-center justify-center rounded-xl">
                 <Icon name="school" size={16} />
               </span>
@@ -151,12 +149,7 @@ function LandingContent() {
             </Link>
             <div className="flex items-center gap-2">
               <ThemeToggle />
-              <Link
-                href="/login"
-                className="neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-9 items-center rounded-xl px-4 text-sm font-medium"
-              >
-                Sign in
-              </Link>
+              <ButtonLink href="/login">Sign in</ButtonLink>
             </div>
           </motion.nav>
         </div>
@@ -220,24 +213,18 @@ function LandingContent() {
                   animate={heroCTAVariant.visible}
                   transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.32 }}
                 >
-                  <Link
-                    href="/signup"
-                    className="neu-primary-button bg-primary text-on-primary flex h-12 items-center rounded-xl px-8 text-base font-medium"
-                  >
+                  <ButtonLink href="/signup" variant="primary" size="large">
                     Get started
-                  </Link>
+                  </ButtonLink>
                 </motion.div>
                 <motion.div
                   initial={skipAnim ? false : heroCTAVariant.hidden}
                   animate={heroCTAVariant.visible}
                   transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.36 }}
                 >
-                  <Link
-                    href="/login"
-                    className="neu-button bg-surface text-on-surface flex h-12 items-center rounded-xl px-8 text-base font-medium"
-                  >
+                  <ButtonLink href="/login" size="large">
                     Sign in
-                  </Link>
+                  </ButtonLink>
                 </motion.div>
               </motion.div>
               <motion.div
@@ -353,18 +340,12 @@ function LandingContent() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Link
-              href="/signup"
-              className="neu-primary-button bg-primary text-on-primary flex h-12 items-center rounded-xl px-8 text-base font-medium"
-            >
+            <ButtonLink href="/signup" variant="primary" size="large">
               Get started free
-            </Link>
-            <Link
-              href="/login"
-              className="neu-button bg-surface text-on-surface flex h-12 items-center rounded-xl px-8 text-base font-medium"
-            >
+            </ButtonLink>
+            <ButtonLink href="/login" size="large">
               Sign in
-            </Link>
+            </ButtonLink>
           </motion.div>
           <motion.div
             initial={skipAnim ? false : featureItemVariant.hidden}

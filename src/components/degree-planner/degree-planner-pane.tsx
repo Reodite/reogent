@@ -18,7 +18,7 @@ import {
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
-import { RetryAlert } from "@/src/components/ui/retry-alert";
+import { RetryAlert } from "@/src/components/ui/feedback";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
 import { getProgramIndex, getRequirementsFor } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";

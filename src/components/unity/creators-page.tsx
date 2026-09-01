@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
+import { ButtonLink } from "@/src/components/ui/button";
 
 function CreatorAvatar({ name }: { name: string }) {
   return (
@@ -21,15 +22,15 @@ export function CreatorsPage() {
         <CreatorAvatar name="Max" />
         <CreatorAvatar name="Chakorn" />
       </div>
-      <a
+      <ButtonLink
         href="https://buymeacoffee.com"
         target="_blank"
         rel="noopener noreferrer"
-        className="neu-button bg-surface text-on-surface hover:text-primary mt-6 flex min-h-11 items-center justify-center gap-2 self-center rounded-xl px-5 text-sm font-medium transition-colors"
+        className="hover:text-primary mt-6 self-center"
       >
         <Icon name="teacup" size={16} />
         Buy us a coffee
-      </a>
+      </ButtonLink>
     </section>
   );
 }

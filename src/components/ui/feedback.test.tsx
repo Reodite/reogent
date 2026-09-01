@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { RetryAlert } from "./retry-alert";
+import { LoadingStatus, RetryAlert, RetryState } from "./feedback";
 
 describe("RetryAlert", () => {
   it("renders a semantic solid alert and delegates retry", () => {
@@ -30,5 +30,30 @@ describe("RetryAlert", () => {
     expect(alert.className).toContain("text-error");
     expect(alert.className).toContain("pointer-events-auto");
     expect(queryByRole("button")).toBeNull();
+  });
+});
+
+describe("shared feedback states", () => {
+  it("announces one loading label with the requested spinner size", () => {
+    const { getByRole } = render(<LoadingStatus size="md">Loading calendar…</LoadingStatus>);
+    const status = getByRole("status");
+    expect(status.textContent).toContain("Loading calendar…");
+    expect(status.querySelector("[aria-hidden='true']")?.className).toContain("size-4");
+  });
+
+  it("renders a stacked retry action and optional secondary action", () => {
+    const onRetry = vi.fn();
+    const { getByRole } = render(
+      <RetryState
+        title="Calendar unavailable"
+        message="The latest dates could not be loaded."
+        onRetry={onRetry}
+        secondaryAction={<a href="/tools">Open tools</a>}
+      />,
+    );
+    expect(getByRole("alert").textContent).toContain("Calendar unavailable");
+    expect(getByRole("link", { name: "Open tools" })).not.toBeNull();
+    fireEvent.click(getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
   });
 });

@@ -2,9 +2,9 @@
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Button } from "@/src/components/ui/button";
-import { TextInput } from "@/src/components/ui/form-controls";
+import { Field, TextInput } from "@/src/components/ui/form-controls";
+import { InlineLink } from "@/src/components/ui/inline-action";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 
@@ -52,10 +52,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <form onSubmit={handleSubmit} aria-busy={pending} className="flex w-full max-w-80 flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <label htmlFor="auth-username" className="text-on-surface-variant text-xs font-medium">
-          Username
-        </label>
+      <Field label="Username" htmlFor="auth-username">
         <TextInput
           ref={usernameRef}
           id="auth-username"
@@ -71,11 +68,11 @@ export function AuthForm({ mode }: AuthFormProps) {
           aria-describedby={error ? "auth-error" : undefined}
           shadowOn="background"
         />
-      </div>
-      <div className="flex flex-col gap-2">
-        <label htmlFor="auth-password" className="text-on-surface-variant text-xs font-medium">
-          Password{mode === "signup" && <span className="text-muted ml-1">(6+ characters)</span>}
-        </label>
+      </Field>
+      <Field
+        label={<>Password{mode === "signup" && <span className="text-muted ml-1">(6+ characters)</span>}</>}
+        htmlFor="auth-password"
+      >
         <TextInput
           id="auth-password"
           type="password"
@@ -89,7 +86,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           aria-describedby={error ? "auth-error" : undefined}
           shadowOn="background"
         />
-      </div>
+      </Field>
       <AnimatePresence>
         {error && (
           <motion.p
@@ -127,16 +124,16 @@ export function AuthForm({ mode }: AuthFormProps) {
         {mode === "login" ? (
           <>
             Don&apos;t have an account?{" "}
-            <Link href={oppositeHref} className="text-primary ml-1 font-medium underline">
+            <InlineLink href={oppositeHref} className="ml-1 font-medium">
               Sign up
-            </Link>
+            </InlineLink>
           </>
         ) : (
           <>
             Already have an account?{" "}
-            <Link href={oppositeHref} className="text-primary ml-1 font-medium underline">
+            <InlineLink href={oppositeHref} className="ml-1 font-medium">
               Sign in
-            </Link>
+            </InlineLink>
           </>
         )}
       </p>

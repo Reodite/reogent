@@ -3,7 +3,7 @@
 // Course search for the planner rail. It accepts Course Finder syntax and
 // title substrings, then exposes unplanned courses as draggable results.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
-import { TextInput } from "@/src/components/ui/form-controls";
+import { SearchInput } from "@/src/components/ui/form-controls";
 import { searchCourses } from "@/src/lib/planner-search";
 import { useMemo } from "react";
 import { LookupBlock } from "./lookup-block";
@@ -33,13 +33,13 @@ export function MiniCourseLookup({ courseIndex, plannedCodes }: MiniCourseLookup
         <span className="text-muted text-xs">Drag a result onto any term.</span>
       </header>
       <div className="min-w-0 shrink-0 px-4 pb-3">
-        <TextInput
+        <SearchInput
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(event) => setQuery(event.target.value)}
+          onClear={() => setQuery("")}
           placeholder="Search by code or title (e.g. CPSC 110)"
           aria-label="Search courses"
-          controlSize="compact"
-          className="min-w-0"
+          density="rail"
         />
       </div>
       <div className="border-border-subtle flex min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] flex-col gap-1 overflow-y-auto border-t px-2 py-2">

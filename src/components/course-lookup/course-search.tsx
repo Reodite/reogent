@@ -2,9 +2,9 @@
 
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { RetryAlert } from "@/src/components/ui/feedback";
 import { TextInput } from "@/src/components/ui/form-controls";
 import { InlineAction } from "@/src/components/ui/inline-action";
-import { RetryAlert } from "@/src/components/ui/retry-alert";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
 import { canonicalize, isOkanagan } from "@/src/shared/course-code";

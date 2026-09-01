@@ -2,7 +2,7 @@
 import { fireEvent, render } from "@testing-library/react";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { Button } from "./button";
+import { Button, ButtonLink } from "./button";
 
 describe("Button", () => {
   it("renders the shared secondary action by default", () => {
@@ -72,6 +72,9 @@ describe("Button", () => {
     ["field", "h-11"],
     ["large", "h-12"],
     ["icon", "sm:size-9"],
+    ["denseIcon", "sm:size-8"],
+    ["fieldIcon", "size-11"],
+    ["pill", "sm:min-h-8"],
   ] as const)("maps the %s size to documented geometry", (size, expectedClass) => {
     const { getByRole } = render(
       <Button size={size} aria-label={size === "icon" ? "Open" : undefined}>
@@ -79,5 +82,38 @@ describe("Button", () => {
       </Button>,
     );
     expect(getByRole("button").className).toContain(expectedClass);
+  });
+
+  it("shares primary and secondary geometry with navigation links", () => {
+    const { getByRole, rerender } = render(
+      <ButtonLink href="/signup" variant="primary" size="large">
+        Get started
+      </ButtonLink>,
+    );
+    let link = getByRole("link", { name: "Get started" });
+    expect(link.getAttribute("href")).toBe("/signup");
+    expect(link.className).toContain("neu-primary-button");
+    expect(link.className).toContain("h-12");
+
+    rerender(
+      <ButtonLink href="/login" size="default">
+        Sign in
+      </ButtonLink>,
+    );
+    link = getByRole("link", { name: "Sign in" });
+    expect(link.className).toContain("neu-button");
+    expect(link.className).toContain("sm:h-9");
+  });
+
+  it("provides the shared outline pill contract", () => {
+    const { getByRole } = render(
+      <Button variant="outline" size="pill">
+        Clear filters
+      </Button>,
+    );
+    const button = getByRole("button", { name: "Clear filters" });
+    expect(button.className).toContain("border-primary");
+    expect(button.className).toContain("rounded-full");
+    expect(button.className).toContain("min-h-11");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/src/components/ui/button";
+import { Button, ButtonLink } from "@/src/components/ui/button";
 
 function sanitizeMessage(raw?: string): string {
   if (!raw) return "An unexpected error occurred.";
@@ -29,12 +29,9 @@ export default function ChatError({ error, reset }: { error: Error & { digest?: 
           <Button variant="primary" size="prominent" onClick={reset}>
             Try again
           </Button>
-          <a
-            href="/chat"
-            className="neu-button bg-surface text-on-surface inline-block rounded-xl px-4 py-2.5 text-sm font-medium"
-          >
+          <ButtonLink href="/chat" size="prominent">
             New conversation
-          </a>
+          </ButtonLink>
         </div>
       </div>
     </div>

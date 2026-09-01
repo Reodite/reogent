@@ -6,10 +6,10 @@ import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
+import { RetryAlert } from "@/src/components/ui/feedback";
 import { TextInput } from "@/src/components/ui/form-controls";
 import { InlineAction } from "@/src/components/ui/inline-action";
 import { announce } from "@/src/components/ui/live-region";
-import { RetryAlert } from "@/src/components/ui/retry-alert";
 import { isOkanagan } from "@/src/shared/course-code";
 import {
   Component,

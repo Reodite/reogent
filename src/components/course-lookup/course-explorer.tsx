@@ -1,11 +1,10 @@
 "use client";
 
 import { averageColorClass } from "@/src/components/course-lookup/grade-distribution-chart";
-import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
-import { SelectInput, TextInput } from "@/src/components/ui/form-controls";
-import { RetryAlert } from "@/src/components/ui/retry-alert";
+import { RetryAlert } from "@/src/components/ui/feedback";
+import { SearchInput, SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { usePersistentState } from "@/src/lib/use-persistent-state";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
@@ -132,20 +131,14 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-col gap-2.5 pb-2.5">
-        <div className="relative">
-          <Icon
-            name="search"
-            className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-          />
-          <TextInput
-            type="text"
-            value={queryInput}
-            onChange={(e) => setQueryInput(e.target.value)}
-            placeholder="Search code, subject, or name"
-            aria-label="Search courses"
-            adornment="start"
-          />
-        </div>
+        <SearchInput
+          type="text"
+          value={queryInput}
+          onChange={(event) => setQueryInput(event.target.value)}
+          onClear={() => setQueryInput("")}
+          placeholder="Search code, subject, or name"
+          aria-label="Search courses"
+        />
         <div className="flex flex-wrap items-center gap-1.5">
           <SelectInput
             aria-label="Session"
