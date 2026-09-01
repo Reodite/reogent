@@ -433,6 +433,12 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 - **Auth input** (`.neu-inset`): `bg-surface-container-low text-on-surface h-11 rounded-lg px-3 text-sm`. Focus: `ring-primary/40 ring-2 ring-offset-1`. Error: `ring-error/30 ring-2`.
 - **Thinking state**: Animated conic-gradient border mask (2px pseudo-element with mask-composite) at 2.4s linear infinite. Send button replaced by a stop button (`.neu-button bg-surface text-on-surface-variant rounded-xl`) during generation, allowing the user to abort.
 
+### Calendar
+
+- **Composition**: Calendar uses the shared split workspace with a 20rem Upcoming panel and the month inside the inset canvas. The header owns month navigation, legend filters, and the bounded Ask AI action. Upcoming rows and header controls reach the 44px compact touch floor.
+- **Compact month**: Upcoming opens first below the 55rem threshold. The Calendar view retains a horizontally scrollable seven-day month at a 36rem minimum width. Individual event labels become noninteractive color indicators, and each event day exposes one 44px agenda action. The agenda lists 44px event rows before opening shared event details.
+- **Request states**: Calendar data is cached per cursor and kind set. Initial loading, successful empty, refreshing, stale-with-data, and failed-without-data remain distinct. Refresh and Retry start real requests, stale responses cannot replace a newer month, and failure never reads as an empty calendar.
+
 ### Degree Planner
 
 - **Composition**: Operate-mode workbench with 24px desktop padding, 16px region gaps, and 8px internal gaps. The top bar places the title above one shared toolbar row, with visible-label program selectors on the left and labeled actions on the right. The body places a fixed 320px Requirements and Find Courses rail to the left of the horizontally scrollable year board.

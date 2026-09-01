@@ -4,7 +4,17 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
+import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
+import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
+import { InfoChip } from "@/src/components/ui/info-chip";
 import { announce } from "@/src/components/ui/live-region";
+import {
+  WorkspaceCanvas,
+  WorkspacePage,
+  WorkspacePanel,
+  WorkspaceRail,
+  type WorkspaceView,
+} from "@/src/components/ui/workspace";
 import {
   addMonths,
   buildMonthGrid,
@@ -17,9 +27,7 @@ import {
   toISODate,
 } from "@/src/shared/calendar/date-math";
 import type { CalendarEvent } from "@/src/shared/calendar/event";
-import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useCalendarEvents } from "./use-calendar-events";
 
 const FUTURE_HORIZON_MONTHS = 24;
@@ -64,8 +72,9 @@ function getToday(): Date {
 export function CalendarPane({ state, setState }: { state: Partial<State>; setState: (s: Partial<State>) => void }) {
   const cursor = state.cursor ?? formatMonthBadge(new Date());
   const hidden = state.hidden ?? NONE;
-  const { events, error } = useCalendarEvents(cursor, KINDS);
-  const visible = useMemo(() => (events ?? []).filter((e) => !hidden.includes(e.kind)), [events, hidden]);
+  const { state: eventsState, retry } = useCalendarEvents(cursor, KINDS);
+  const events = eventsState.events;
+  const visible = useMemo(() => events.filter((event) => !hidden.includes(event.kind)), [events, hidden]);
   const toggleKind = (kind: string) => {
     const nowHidden = !hidden.includes(kind);
     setState({ hidden: nowHidden ? [...hidden, kind] : hidden.filter((k) => k !== kind) });
@@ -75,7 +84,6 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   const today = useMemo(() => getToday(), []);
   const todayISO = toISODate(today);
   const cursorDate = parseISODate(`${cursor}-01`);
-  const reduce = useReducedMotion() ?? false;
   const horizon = addMonths(startOfMonth(today), FUTURE_HORIZON_MONTHS);
   const beyondHorizon = addMonths(cursorDate, 1) > horizon;
 
@@ -98,19 +106,19 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   const eventsByDate = useMemo(() => groupByDate(monthEvents), [monthEvents]);
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [mobileView, setMobileView] = useState<"calendar" | "list">("calendar");
+  const [selectedDayEvents, setSelectedDayEvents] = useState<CalendarEvent[] | null>(null);
+  const [mobileView, setMobileView] = useState<WorkspaceView>("rail");
 
-  const openEvent = (event: CalendarEvent) => setSelectedEvent(event);
+  const openEvent = (event: CalendarEvent) => {
+    setSelectedDayEvents(null);
+    setSelectedEvent(event);
+  };
   const closeEvent = () => setSelectedEvent(null);
 
   const upcoming = visible
     .filter((e) => e.date >= todayISO)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .slice(0, 20);
-  const upcomingRows = useMemo(
-    () => upcoming.map((e, i) => ({ key: `u-${e.date}-${e.label}`, row: i, event: e })),
-    [upcoming],
-  );
   const upcomingByDate = useMemo(() => groupByDate(upcoming), [upcoming]);
 
   const goPrev = () => {
@@ -144,37 +152,22 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     });
   };
 
-  // The toolbar portals into the Answer Canvas titlebar slot when hosted there
-  // so nav, month picker and Ask AI share the header line; hosts without the
-  // slot get it inline above the grid.
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const [slotEl, setSlotEl] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setSlotEl(
-      rootRef.current?.closest("section[data-pane]")?.querySelector<HTMLElement>("[data-pane-titlebar-slot]") ?? null,
-    );
-  }, []);
+  const askAiAction = shell ? (
+    <Button
+      data-calendar-ask-ai
+      disabled={isGuest}
+      title={isGuest ? "Sign in to use AI chat" : "Ask AI about upcoming events"}
+      onClick={askAiAboutCalendar}
+      size="toolbar"
+    >
+      <Icon name="chat1" size={14} />
+      Ask AI
+      {isGuest ? <Icon name="lock" size={12} /> : null}
+    </Button>
+  ) : null;
 
-  // Three columns with equal flexible sides so the month nav stays centered
-  // regardless of how wide Ask AI or the legend are.
   const toolbar = (
-    <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1.5">
-      <div className="flex justify-start">
-        {shell && (
-          <button
-            type="button"
-            data-calendar-ask-ai
-            disabled={isGuest}
-            title={isGuest ? "Sign in to use AI chat" : "Ask AI about upcoming events"}
-            onClick={askAiAboutCalendar}
-            className="neu-button focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-medium tracking-wide focus-visible:ring-2 disabled:pointer-events-auto disabled:opacity-40"
-          >
-            <Icon name="chat1" size={14} />
-            Ask AI
-            {isGuest && <Icon name="lock" size={12} />}
-          </button>
-        )}
-      </div>
+    <div className="flex w-full flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-1.5">
         <Button data-calendar-nav="prev" aria-label="Previous month" onClick={goPrev} size="icon">
           <Icon name="left" size={18} />
@@ -184,27 +177,25 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           <Icon name="right" size={18} />
         </Button>
       </div>
-      <ul
-        aria-label="Legend"
-        className="col-span-3 flex flex-wrap items-center justify-center gap-1 lg:col-span-1 lg:justify-end"
-      >
+      <ul aria-label="Legend" className="flex flex-wrap items-center justify-end gap-1">
         {Object.entries(STYLES).map(([key, style]) => {
           const shown = !hidden.includes(key);
           return (
             <li key={key}>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="toolbar"
                 data-calendar-legend={key}
                 aria-pressed={shown}
                 onClick={() => toggleKind(key)}
-                className={`focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs transition-colors focus-visible:ring-2 ${shown ? "text-on-surface-variant" : "text-muted/60"}`}
+                className={shown ? "text-on-surface-variant" : "text-muted/60"}
               >
                 <span
                   aria-hidden
                   className={`size-2 shrink-0 rounded-full ${shown ? style.bar : "ring-1 ring-current ring-inset"}`}
                 />
                 {style.label}
-              </button>
+              </Button>
             </li>
           );
         })}
@@ -212,118 +203,100 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
     </div>
   );
 
+  const notice =
+    eventsState.status === "stale" ? (
+      <RetryAlert variant="soft" onRetry={retry}>
+        Couldn't refresh the calendar. Showing the last saved dates.
+      </RetryAlert>
+    ) : eventsState.status === "failed" ? (
+      <RetryAlert onRetry={retry}>Couldn't load calendar dates.</RetryAlert>
+    ) : eventsState.status === "refreshing" ? (
+      <LoadingStatus announce={false}>Refreshing calendar…</LoadingStatus>
+    ) : null;
+
   return (
-    <div ref={rootRef} data-calendar-pane className="flex h-full w-full flex-col overflow-y-auto p-3 lg:p-6">
-      {slotEl ? createPortal(toolbar, slotEl) : <div className="mb-4">{toolbar}</div>}
-
-      <div className="mb-4 flex justify-end lg:hidden">
-        <div className="neu-inset bg-surface-container-low rounded-lg p-0.5" role="tablist" aria-label="View">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileView === "calendar"}
-            onClick={() => setMobileView("calendar")}
-            className={`focus-visible:ring-primary/40 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-offset-1 ${
-              mobileView === "calendar"
-                ? "neu-raised bg-surface text-primary"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            Calendar
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileView === "list"}
-            onClick={() => setMobileView("list")}
-            className={`focus-visible:ring-primary/40 rounded-md px-3 py-1.5 text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-offset-1 ${
-              mobileView === "list"
-                ? "neu-raised bg-surface text-primary"
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            List
-          </button>
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1 gap-6">
-        <aside
-          data-calendar-upcoming
-          className={`flex w-72 shrink-0 flex-col gap-3 ${mobileView === "list" ? "flex" : "hidden"} lg:flex`}
-        >
-          <h3 className="text-muted text-xs tracking-wide uppercase">Upcoming</h3>
-          {upcomingRows.length === 0 ? (
-            <p className="text-muted text-xs">No events upcoming.</p>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2">
-              {Object.entries(upcomingByDate).map(([date, dayEvents]) => (
-                <div key={date}>
-                  <div className="mb-1.5 flex items-center gap-2">
-                    <span className="text-on-surface text-xs font-medium">
-                      {isSameDay(parseISODate(date), today) ? "Today" : formatDayLabel(parseISODate(date))}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    {dayEvents.map((e) => (
-                      <button
-                        key={`${e.date}-${e.label}`}
-                        type="button"
-                        data-upcoming-event
-                        data-upcoming-date={e.date}
-                        onClick={() => openEvent(e)}
-                        className="focus-visible:ring-primary/40 hover:bg-surface-container flex items-start gap-2 rounded-lg p-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
-                      >
-                        <span
-                          className={`mt-0.5 block h-full min-h-[1.5rem] w-1 shrink-0 rounded-full ${styleOf(e).bar}`}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-on-surface truncate text-xs font-medium">{e.label}</p>
-                          <p className="text-muted truncate text-xs">
-                            {styleOf(e).label}
-                            {e.tags.length > 0 && ` · ${e.tags[0]}`}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </aside>
-
-        <section
-          aria-label="Calendar"
-          className={`flex min-h-0 flex-1 flex-col ${mobileView === "list" ? "hidden" : "flex"} lg:flex`}
+    <>
+      <WorkspacePage
+        composition="split"
+        title="Calendar"
+        description="Browse academic dates, holidays, and campus events."
+        toolbar={toolbar}
+        actions={askAiAction}
+        titlebarActions={askAiAction}
+        notice={notice}
+        view={mobileView}
+        onViewChange={setMobileView}
+        mainLabel="Calendar"
+        railLabel="Upcoming"
+        rail={
+          <WorkspaceRail>
+            <WorkspacePanel title="Upcoming" padding="sm">
+              <div data-calendar-upcoming className="flex min-h-0 flex-col gap-3">
+                {eventsState.status === "loading" ? (
+                  <LoadingStatus>Loading upcoming events…</LoadingStatus>
+                ) : eventsState.status === "failed" ? (
+                  <p className="text-muted text-xs">Upcoming events are unavailable.</p>
+                ) : upcoming.length === 0 ? (
+                  <p className="text-muted text-xs">No events upcoming.</p>
+                ) : (
+                  Object.entries(upcomingByDate).map(([date, dayEvents]) => (
+                    <div key={date}>
+                      <div className="mb-1.5 flex items-center gap-2">
+                        <span className="text-on-surface text-xs font-medium">
+                          {isSameDay(parseISODate(date), today) ? "Today" : formatDayLabel(parseISODate(date))}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {dayEvents.map((event) => (
+                          <button
+                            key={`${event.date}-${event.label}`}
+                            type="button"
+                            data-upcoming-event
+                            data-upcoming-date={event.date}
+                            onClick={() => openEvent(event)}
+                            className="focus-visible:ring-primary/40 hover:bg-surface-container flex min-h-11 items-start gap-2 rounded-lg p-2 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
+                          >
+                            <span
+                              className={`mt-0.5 block h-full min-h-[1.5rem] w-1 shrink-0 rounded-full ${styleOf(event).bar}`}
+                            />
+                            <span className="min-w-0">
+                              <span className="text-on-surface block truncate text-xs font-medium">{event.label}</span>
+                              <span className="text-muted block truncate text-xs">
+                                {styleOf(event).label}
+                                {event.tags.length > 0 ? ` · ${event.tags[0]}` : ""}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </WorkspacePanel>
+          </WorkspaceRail>
+        }
+      >
+        <WorkspaceCanvas
+          aria-busy={eventsState.status === "loading" || eventsState.status === "refreshing"}
+          padding="md"
         >
           <MonthGrid
             cells={cells}
             eventsByDate={eventsByDate}
             todayISO={todayISO}
             cursorDate={cursorDate}
-            cursor={cursor}
-            reduce={reduce}
             onEventClick={openEvent}
+            onDayAgenda={setSelectedDayEvents}
           />
-        </section>
-      </div>
+        </WorkspaceCanvas>
+      </WorkspacePage>
 
-      {error && (
-        <div className="text-error mt-3 text-xs" role="alert">
-          {error.message}
-        </div>
-      )}
-
-      {selectedEvent && (
-        <EventModal
-          event={selectedEvent}
-          onClose={closeEvent}
-          formatDate={formatFullDate}
-          parseISODateFn={parseISODate}
-        />
-      )}
-    </div>
+      {selectedDayEvents ? (
+        <DayAgendaDialog events={selectedDayEvents} onSelect={openEvent} onClose={() => setSelectedDayEvents(null)} />
+      ) : null}
+      {selectedEvent ? <EventModal event={selectedEvent} onClose={closeEvent} /> : null}
+    </>
   );
 }
 
@@ -452,33 +425,28 @@ function MonthGrid({
   eventsByDate,
   todayISO,
   cursorDate,
-  cursor,
-  reduce,
   onEventClick,
+  onDayAgenda,
 }: {
   cells: { date: Date | null; iso: string | null; key: string }[];
   eventsByDate: Record<string, CalendarEvent[]>;
   todayISO: string;
   cursorDate: Date;
-  cursor: string;
-  reduce: boolean;
   onEventClick: (event: CalendarEvent) => void;
+  onDayAgenda: (events: CalendarEvent[]) => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="text-muted mb-1 grid grid-cols-7 text-center font-mono text-xs tracking-wide uppercase">
+      <div className="calendar-month-width text-muted mb-1 grid grid-cols-7 text-center font-mono text-xs tracking-wide uppercase">
         {WEEKDAY_HEADERS.map((d) => (
           <div key={d} className="py-1" aria-hidden>
             {d[0]}
           </div>
         ))}
       </div>
-      <motion.div
-        key={cursor}
-        initial={reduce ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-0.5 overflow-hidden rounded-[0.625rem] p-0.5"
+      <div
+        data-calendar-grid
+        className="calendar-month-width bg-border-subtle grid min-h-0 flex-1 auto-rows-fr grid-cols-7 gap-0.5 overflow-hidden rounded-[0.625rem] p-0.5"
       >
         {cells.map((cell) => {
           if (!cell.date || !cell.iso) {
@@ -504,118 +472,139 @@ function MonthGrid({
               >
                 {d.getUTCDate()}
               </span>
-              {isCurrentMonth && hasEvents && (
-                <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
-                  {dayEvents.slice(0, 3).map((e) => (
-                    <button
-                      key={`${iso}-${e.label}`}
-                      type="button"
-                      data-calendar-marker={e.kind}
-                      onClick={() => onEventClick(e)}
-                      className={`block w-full truncate rounded-md px-1 py-px text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${styleOf(e).chip}`}
-                    >
-                      {e.label}
-                    </button>
-                  ))}
-                  {dayEvents.length > 3 && (
-                    <span data-calendar-count={String(dayEvents.length)} className="text-muted font-mono text-xs">
-                      +{dayEvents.length - 3} more
+              {isCurrentMonth && hasEvents ? (
+                <>
+                  <div className="calendar-event-labels flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
+                    {dayEvents.slice(0, 3).map((event) => (
+                      <button
+                        key={`${iso}-${event.label}`}
+                        type="button"
+                        data-calendar-marker={event.kind}
+                        onClick={() => onEventClick(event)}
+                        className={`block w-full truncate rounded-md px-1 py-px text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${styleOf(event).chip}`}
+                      >
+                        {event.label}
+                      </button>
+                    ))}
+                    {dayEvents.length > 3 ? (
+                      <span data-calendar-count={String(dayEvents.length)} className="text-muted font-mono text-xs">
+                        +{dayEvents.length - 3} more
+                      </span>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    data-calendar-day-agenda={iso}
+                    onClick={() => onDayAgenda(dayEvents)}
+                    className="calendar-day-agenda focus-visible:ring-primary/40 text-on-surface-variant min-h-11 flex-col items-center justify-center gap-1 rounded-md px-1 text-xs font-medium focus-visible:ring-2"
+                    aria-label={`Open ${dayEvents.length} ${dayEvents.length === 1 ? "event" : "events"} on ${formatFullDate(d)}`}
+                  >
+                    <span aria-hidden="true" className="flex items-center gap-1">
+                      {dayEvents.slice(0, 3).map((event) => (
+                        <span
+                          key={`${event.kind}-${event.label}`}
+                          className={`size-1.5 rounded-full ${styleOf(event).bar}`}
+                        />
+                      ))}
                     </span>
-                  )}
-                </div>
-              )}
+                    {dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}
+                  </button>
+                </>
+              ) : null}
             </div>
           );
         })}
-      </motion.div>
+      </div>
     </div>
   );
 }
 
-function EventModal({
-  event,
+function DayAgendaDialog({
+  events,
+  onSelect,
   onClose,
-  formatDate,
-  parseISODateFn,
 }: {
-  event: CalendarEvent;
+  events: CalendarEvent[];
+  onSelect: (event: CalendarEvent) => void;
   onClose: () => void;
-  formatDate: (d: Date) => string;
-  parseISODateFn: (s: string) => Date;
 }) {
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    const onPointer = (e: PointerEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointer);
-    closeRef.current?.focus();
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointer);
-    };
-  }, [onClose]);
-
+  const date = events[0]?.date;
   return (
-    <div className="bg-scrim fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={event.label}
-        data-calendar-popover
-        className="neu-panel bg-surface-container w-full max-w-lg rounded-t-2xl p-4 sm:rounded-2xl"
+    <DialogRoot onDismiss={onClose} backdropLabel="Close day agenda" placement="mobile-sheet">
+      <DialogPanel
+        aria-label={date ? `Events on ${formatFullDate(parseISODate(date))}` : "Day agenda"}
+        size="md"
+        className="flex max-h-[min(40rem,calc(100dvh-1.5rem))] flex-col overflow-hidden p-4"
       >
+        <header className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-on-surface text-base font-medium">Day agenda</h2>
+            {date ? <p className="text-muted mt-1 text-xs">{formatFullDate(parseISODate(date))}</p> : null}
+          </div>
+          <Button data-dialog-initial-focus variant="ghost" size="denseIcon" aria-label="Close" onClick={onClose}>
+            <Icon name="close" size={16} />
+          </Button>
+        </header>
+        <div className="flex min-h-0 flex-col gap-1 overflow-y-auto">
+          {events.map((event) => (
+            <Button
+              key={`${event.date}-${event.kind}-${event.label}`}
+              variant="ghost"
+              size="field"
+              wrap
+              onClick={() => onSelect(event)}
+              className="h-auto min-h-11 w-full justify-start py-2 text-left"
+            >
+              <span aria-hidden className={`h-8 w-1 shrink-0 rounded-full ${styleOf(event).bar}`} />
+              <span className="min-w-0">
+                <span className="text-on-surface block text-sm font-medium">{event.label}</span>
+                <span className="text-muted block text-xs">{styleOf(event).label}</span>
+              </span>
+            </Button>
+          ))}
+        </div>
+      </DialogPanel>
+    </DialogRoot>
+  );
+}
+
+function EventModal({ event, onClose }: { event: CalendarEvent; onClose: () => void }) {
+  return (
+    <DialogRoot onDismiss={onClose} backdropLabel="Close event details" placement="mobile-sheet">
+      <DialogPanel aria-label={event.label} data-calendar-popover size="md" className="p-4">
         <div className="mb-3 flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <span aria-hidden className={`h-8 w-1.5 shrink-0 rounded-full ${styleOf(event).bar}`} />
             <div>
               <p className="text-on-surface text-sm font-medium">{event.label}</p>
-              <p className="text-muted text-xs">{formatDate(parseISODateFn(event.date))}</p>
+              <p className="text-muted text-xs">{formatFullDate(parseISODate(event.date))}</p>
             </div>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            className="focus-visible:ring-primary/40 text-muted hover:text-on-surface rounded-md p-1 transition-colors focus-visible:ring-2"
-          >
+          <Button data-dialog-initial-focus variant="ghost" size="denseIcon" aria-label="Close" onClick={onClose}>
             <Icon name="close" size={16} />
-          </button>
+          </Button>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="bg-surface-container-high text-on-surface-variant rounded-full px-2 py-0.5 text-xs font-medium">
-            {styleOf(event).label}
-          </span>
+          <InfoChip emphasis="strong">{styleOf(event).label}</InfoChip>
           {event.tags.map((tag) => (
-            <span
-              key={tag}
-              className="bg-surface-container-high text-on-surface-variant rounded-full px-2 py-0.5 text-xs font-medium"
-            >
+            <InfoChip key={tag} emphasis="strong">
               {tag}
-            </span>
+            </InfoChip>
           ))}
         </div>
-        {event.source_url && (
+        {event.source_url ? (
           <a
             href={event.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary mt-4 inline-flex min-h-9 min-w-11 items-center gap-1 text-xs underline"
+            className="text-primary mt-4 inline-flex min-h-11 min-w-11 items-center gap-1 text-xs underline"
             title="Open source"
           >
             <Icon name="externalLink" size={12} />
             View on UBC site
           </a>
-        )}
-      </div>
-    </div>
+        ) : null}
+      </DialogPanel>
+    </DialogRoot>
   );
 }

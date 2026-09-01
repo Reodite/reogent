@@ -2,7 +2,7 @@
 import fixture from "@/__fixtures__/calendar-events.json";
 import { CalendarPane } from "@/src/components/calendar/calendar-pane";
 import type { CalendarEvent } from "@/src/shared/calendar/event";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fixtureEvents = fixture.output as CalendarEvent[];
@@ -228,8 +228,8 @@ describe("20.13 + Property 27b — multi-event-day popover enumerates each event
     act(() => {
       fireEvent.click(markers[0]);
     });
-    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
-    const popover = container.querySelector("[data-calendar-popover]") as HTMLElement;
+    await waitFor(() => expect(document.querySelector("[data-calendar-popover]")).not.toBeNull());
+    const popover = document.querySelector("[data-calendar-popover]") as HTMLElement;
     expect(popover.textContent).toContain("Add/drop deadline");
     expect(popover.textContent).toContain("View on UBC site");
     restore();
@@ -256,11 +256,11 @@ describe("Redesign — clicking an event marker opens the modal with tags and ki
     const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
     const marker = cell.querySelector("[data-calendar-marker]") as HTMLElement;
     fireEvent.click(marker);
-    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
-    const popover = container.querySelector("[data-calendar-popover]") as HTMLElement;
+    await waitFor(() => expect(document.querySelector("[data-calendar-popover]")).not.toBeNull());
+    const popover = document.querySelector("[data-calendar-popover]") as HTMLElement;
     expect(popover.textContent).toContain("Family Day");
     fireEvent.click(popover.querySelector('[aria-label="Close"]') as HTMLElement);
-    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).toBeNull());
+    await waitFor(() => expect(document.querySelector("[data-calendar-popover]")).toBeNull());
     restore();
   });
 });
@@ -270,9 +270,46 @@ describe("Redesign — event modal closes on Escape", () => {
     const { container, restore } = renderPane({ cursor: "2025-02" });
     const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
     fireEvent.click(cell.querySelector("[data-calendar-marker]") as HTMLElement);
-    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).not.toBeNull());
+    await waitFor(() => expect(document.querySelector("[data-calendar-popover]")).not.toBeNull());
     fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(container.querySelector("[data-calendar-popover]")).toBeNull());
+    await waitFor(() => expect(document.querySelector("[data-calendar-popover]")).toBeNull());
     restore();
+  });
+});
+
+describe("Compact calendar agenda", () => {
+  it("opens one touch-sized day target and then the selected event", async () => {
+    const events: CalendarEvent[] = [
+      { kind: "holiday", date: "2025-02-17", label: "Family Day", source_url: null, tags: [] },
+      { kind: "academic", date: "2025-02-17", label: "Reading week", source_url: null, tags: [] },
+    ];
+    const { container, restore } = renderPane({ cursor: "2025-02" }, events);
+    const agenda = await waitForCell(container, "2025-02-17", "[data-calendar-day-agenda]");
+    const trigger = agenda.querySelector("[data-calendar-day-agenda]") as HTMLElement;
+    expect(trigger.className).toContain("min-h-11");
+    fireEvent.click(trigger);
+
+    const dialog = await screen.findByRole("dialog", { name: /Events on/ });
+    const eventButton = within(dialog).getByRole("button", { name: /Family Day/ });
+    expect(eventButton.className).toContain("min-h-11");
+    fireEvent.click(eventButton);
+    await waitFor(() => expect(dialog.isConnected).toBe(false));
+    expect(await screen.findByRole("dialog", { name: "Family Day" })).not.toBeNull();
+    restore();
+  });
+
+  it("distinguishes failed loading from a successful empty calendar and retries", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(new Response("[]", { status: 200, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CalendarPane state={{ cursor: "2025-02" }} setState={vi.fn()} />);
+
+    expect(screen.getByText("Loading upcoming events…")).not.toBeNull();
+    expect(await screen.findByText("Couldn't load calendar dates.")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.queryByText("Couldn't load calendar dates.")).toBeNull());
+    expect(screen.getByText("No events upcoming.")).not.toBeNull();
   });
 });

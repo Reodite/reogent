@@ -2,54 +2,83 @@
 
 import { addMonths, parseISODate, startOfMonth, toISODate } from "@/src/shared/calendar/date-math";
 import type { CalendarEvent } from "@/src/shared/calendar/event";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Per-instance cache of the calendar route's response for a cursor+kinds pair.
- * Stale-while-revalidate, silent revalidation on focus, falls back to the
- * last good snapshot on network error. Lifted only if a second consumer appears. */
+export type CalendarEventsState =
+  | { status: "loading"; events: []; error: null }
+  | { status: "ready"; events: CalendarEvent[]; error: null }
+  | { status: "refreshing"; events: CalendarEvent[]; error: null }
+  | { status: "stale"; events: CalendarEvent[]; error: Error }
+  | { status: "failed"; events: []; error: Error };
+
+interface KeyedState {
+  key: string;
+  value: CalendarEventsState;
+}
+
+function loadingState(events?: CalendarEvent[]): CalendarEventsState {
+  return events ? { status: "refreshing", events, error: null } : { status: "loading", events: [], error: null };
+}
+
+/** Loads one cursor+kinds calendar snapshot and preserves only same-key stale data. */
 export function useCalendarEvents(cursor: string, kinds: string[]) {
   const kindsKey = kinds.slice().sort().join(",");
-  const [events, setEvents] = useState<CalendarEvent[] | undefined>(undefined);
-  const [error, setError] = useState<Error | null>(null);
-  const lastGood = useRef<CalendarEvent[] | undefined>(undefined);
+  const requestKey = `${cursor}|${kindsKey}`;
+  const cacheRef = useRef(new Map<string, CalendarEvent[]>());
+  const requestId = useRef(0);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [snapshot, setSnapshot] = useState<KeyedState>(() => ({ key: requestKey, value: loadingState() }));
+  const retry = useCallback(() => setRefreshNonce((nonce) => nonce + 1), []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshNonce triggers explicit Retry and visibility refresh requests.
   useEffect(() => {
-    let cancelled = false;
-    setError(null);
+    const cached = cacheRef.current.get(requestKey);
+    const id = ++requestId.current;
+    const controller = new AbortController();
+    setSnapshot({ key: requestKey, value: loadingState(cached) });
+
     const monthStart = startOfMonth(parseISODate(`${cursor}-01`));
     const from = toISODate(monthStart);
     const to = toISODate(addMonths(monthStart, 12));
-    fetch(`/api/calendar?from=${from}&to=${to}&kinds=${encodeURIComponent(kindsKey)}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Calendar route returned ${r.status}`);
-        return r.json() as Promise<CalendarEvent[]>;
+
+    void fetch(`/api/calendar?from=${from}&to=${to}&kinds=${encodeURIComponent(kindsKey)}`, {
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Calendar route returned ${response.status}`);
+        return response.json() as Promise<unknown>;
       })
       .then((data) => {
-        if (cancelled) return;
-        lastGood.current = data;
-        setEvents(data);
+        if (id !== requestId.current || controller.signal.aborted) return;
+        if (!Array.isArray(data)) throw new Error("Calendar route returned invalid data");
+        const events = data as CalendarEvent[];
+        cacheRef.current.set(requestKey, events);
+        setSnapshot({ key: requestKey, value: { status: "ready", events, error: null } });
       })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e instanceof Error ? e : new Error(String(e)));
+      .catch((error: unknown) => {
+        if (id !== requestId.current || controller.signal.aborted) return;
+        const resolved = error instanceof Error ? error : new Error(String(error));
+        const retained = cacheRef.current.get(requestKey);
+        setSnapshot({
+          key: requestKey,
+          value: retained
+            ? { status: "stale", events: retained, error: resolved }
+            : { status: "failed", events: [], error: resolved },
+        });
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [cursor, kindsKey]);
 
-  // Focus silent revalidation — refetch without flipping the visible snapshot
+    return () => controller.abort();
+  }, [cursor, kindsKey, refreshNonce, requestKey]);
+
   useEffect(() => {
-    const onVis = () => {
-      if (!document.hidden) setEvents((cur) => cur);
+    const refreshWhenVisible = () => {
+      if (!document.hidden) retry();
     };
-    document.addEventListener("visibilitychange", onVis);
-    return () => document.removeEventListener("visibilitychange", onVis);
-  }, []);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => document.removeEventListener("visibilitychange", refreshWhenVisible);
+  }, [retry]);
 
-  return {
-    events: events ?? lastGood.current,
-    error,
-    isLoading: !lastGood.current && !events && !error,
-  };
+  const cached = cacheRef.current.get(requestKey);
+  const state = snapshot.key === requestKey ? snapshot.value : loadingState(cached);
+  return { state, retry };
 }

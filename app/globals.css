@@ -535,6 +535,10 @@ html.vt-active *::after {
   }
 }
 
+.calendar-day-agenda {
+  display: none;
+}
+
 .schedule-grid-day-tabs {
   display: none;
 }
@@ -544,8 +548,21 @@ html.vt-active *::after {
 }
 
 @container (max-width: 55rem) {
+  .calendar-month-width {
+    min-width: 36rem;
+  }
+
+  .calendar-event-labels {
+    display: none;
+  }
+
+  .calendar-day-agenda,
   .schedule-grid-day-tabs {
     display: flex;
+  }
+
+  [data-calendar-grid] {
+    grid-auto-rows: minmax(6rem, 1fr);
   }
 
   .schedule-grid-columns {
