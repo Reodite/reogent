@@ -181,12 +181,14 @@ describe("ScheduleApp group loading", () => {
       }),
     );
 
-    render(<ScheduleApp />);
+    const view = render(
+      <main data-pane="unity">
+        <ScheduleApp />
+      </main>,
+    );
 
     expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Shared schedule" }).closest("header")?.className).toContain(
-      "max-xl:pl-12",
-    );
+    expect(view.container.querySelector<HTMLElement>("[data-schedule-host]")?.dataset.scheduleHost).toBe("unity");
     expect(screen.getAllByText("Mon").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Controls" }).getAttribute("aria-pressed")).toBe("false");

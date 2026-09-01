@@ -1,19 +1,21 @@
 "use client";
 
-import type { Term } from "@/src/lib/schedule/features/terms";
 import type { KeyboardEvent } from "react";
 
+interface TermOption {
+  key: string;
+  label: string;
+}
+
 interface Props {
-  terms: Term[];
+  terms: TermOption[];
   selected: string | null;
   onSelect: (key: string) => void;
 }
 
 export function TermSwitcher({ terms, selected, onSelect }: Props) {
   if (terms.length === 0) return null;
-  if (terms.length === 1) {
-    return <span className="text-muted text-xs font-medium">{terms[0].label}</span>;
-  }
+
   const activeIndex = Math.max(
     0,
     terms.findIndex((term) => term.key === selected),
@@ -32,21 +34,28 @@ export function TermSwitcher({ terms, selected, onSelect }: Props) {
   }
 
   return (
-    <div className="neu-inset bg-surface-container-low flex rounded-full p-0.5" role="tablist" aria-label="Term">
-      {terms.map((t, index) => (
+    <div
+      data-schedule-term-switcher
+      className="neu-inset bg-surface-container-low flex w-max gap-1 rounded-lg p-1"
+      role="tablist"
+      aria-label="Term"
+    >
+      {terms.map((term, index) => (
         <button
-          key={t.key}
+          key={term.key}
           type="button"
           role="tab"
           tabIndex={index === activeIndex ? 0 : -1}
-          aria-selected={t.key === selected}
-          onClick={() => onSelect(t.key)}
+          aria-selected={term.key === selected}
+          onClick={() => onSelect(term.key)}
           onKeyDown={(event) => moveTermTab(event, index)}
-          className={`min-h-8 rounded-full px-3 text-xs font-medium transition-colors ${
-            t.key === selected ? "neu-panel text-on-surface" : "text-on-surface-variant hover:text-on-surface"
+          className={`focus-visible:ring-primary/40 min-h-8 shrink-0 rounded-md px-3 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 ${
+            term.key === selected
+              ? "bg-surface text-on-surface"
+              : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
           }`}
         >
-          {t.label}
+          {term.label}
         </button>
       ))}
     </div>
