@@ -7,6 +7,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const apiState = vi.hoisted(() => ({
   getCourseIndex: vi.fn() as () => Promise<{ courses: CourseIndexEntry[] }>,
 }));
+const routerPush = vi.hoisted(() => vi.fn());
+const flowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: routerPush }),
+}));
 
 vi.mock("@/src/components/providers", () => ({
   useApi: () => apiState,
@@ -15,21 +21,25 @@ vi.mock("@/src/components/providers", () => ({
 // ReactFlow needs a real DOM layout engine; stub the pieces the pane uses so
 // happy-dom renders the surrounding states without the canvas.
 vi.mock("reactflow", () => ({
-  default: ({
-    children,
-    onNodeContextMenu,
-  }: {
+  default: (props: {
     children?: React.ReactNode;
     onNodeContextMenu?: (e: React.MouseEvent, node: unknown) => void;
-  }) => (
-    // biome-ignore lint/a11y/noStaticElementInteractions: test stub for the ReactFlow canvas.
-    <div
-      data-testid="rf-canvas"
-      onContextMenu={(e) => onNodeContextMenu?.(e, { id: "CPSC 110", type: "course", data: { code: "CPSC 110" } })}
-    >
-      {children}
-    </div>
-  ),
+    nodesFocusable?: boolean;
+    edgesFocusable?: boolean;
+  }) => {
+    flowProps.current = props as Record<string, unknown>;
+    return (
+      // biome-ignore lint/a11y/noStaticElementInteractions: test stub for the ReactFlow canvas.
+      <div
+        data-testid="rf-canvas"
+        onContextMenu={(event) =>
+          props.onNodeContextMenu?.(event, { id: "CPSC 110", type: "course", data: { code: "CPSC 110" } })
+        }
+      >
+        {props.children}
+      </div>
+    );
+  },
   Background: () => null,
   ReactFlowProvider: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   useReactFlow: () => ({ setViewport: vi.fn(), zoomIn: vi.fn(), zoomOut: vi.fn(), fitView: vi.fn() }),
@@ -55,6 +65,8 @@ const COURSES: CourseIndexEntry[] = [
 describe("PrereqTreePane", () => {
   beforeEach(() => {
     apiState.getCourseIndex.mockReset();
+    routerPush.mockReset();
+    flowProps.current = null;
   });
 
   it("renders the literal 'Loading course index…' text while the index loads (REQ-10.5)", () => {
@@ -98,7 +110,10 @@ describe("PrereqTreePane", () => {
     fireEvent.change(screen.getByLabelText("Root course code"), { target: { value: "CPSC 2" } });
     fireEvent.click(await screen.findByRole("option"));
     expect((screen.getByLabelText("Root course code") as HTMLInputElement).value).toBe("CPSC 210");
-    expect(document.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("main");
+    expect(document.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("canvas");
+    expect(document.querySelector("[data-workspace-region='rail']")).toBeNull();
+    expect(document.querySelector("[data-workspace-view-toggle]")).toBeNull();
+    expect(routerPush).toHaveBeenCalledWith("/tools/prereq/CPSC210");
     expect(screen.getByTestId("rf-canvas")).toBeTruthy();
   });
 
@@ -117,9 +132,7 @@ describe("PrereqTreePane", () => {
   it("renders the empty state when a found course has no prereqs or coreqs (REQ-10.3)", async () => {
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     render(<PrereqTreePane initialRoot="CPSC 110" />);
-    await waitFor(() =>
-      expect(screen.getByText(/has no prerequisites or corequisites listed in the calendar/)).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getAllByText(/has no listed prerequisites/).length).toBeGreaterThan(0));
   });
 
   it("right-clicking a course card opens the context menu with a locked Add to Schedule", async () => {
@@ -132,8 +145,44 @@ describe("PrereqTreePane", () => {
     expect(menu.textContent).toContain("Ask AI about this tree");
     const schedule = screen.getByText("Add to Schedule").closest("button");
     expect(schedule?.disabled).toBe(true);
-    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByText("Open in Course Finder"));
+    expect(routerPush).toHaveBeenCalledWith("/tools/courses/CPSC110");
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+  });
+
+  it("syncs a rooted URL change without clobbering typed input", async () => {
+    apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
+    const view = render(<PrereqTreePane initialRoot="CPSC 210" />);
+    await waitFor(() => expect(screen.queryByText(/Loading course index/)).toBeNull());
+
+    view.rerender(<PrereqTreePane initialRoot="CPSC 121" />);
+
+    await waitFor(() => expect((screen.getByLabelText("Root course code") as HTMLInputElement).value).toBe("CPSC 121"));
+  });
+
+  it("clears the rooted graph and returns to the empty route", async () => {
+    apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
+    render(<PrereqTreePane initialRoot="CPSC 210" />);
+    await waitFor(() => expect(screen.queryByText(/Loading course index/)).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+
+    expect(routerPush).toHaveBeenCalledWith("/tools/prereq");
+    expect((screen.getByLabelText("Root course code") as HTMLInputElement).value).toBe("");
+    expect(screen.getAllByText(/Search for a course above/).length).toBeGreaterThan(0);
+  });
+
+  it("offers a compact outline while keeping graph controls out of nested tab stops", async () => {
+    apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
+    render(<PrereqTreePane initialRoot="CPSC 210" />);
+    await waitFor(() => expect(screen.queryByText(/Loading course index/)).toBeNull());
+
+    expect(screen.getByRole("button", { name: "outline" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "map" }));
+    expect(screen.getByRole("button", { name: "map" }).getAttribute("aria-pressed")).toBe("true");
+    expect(flowProps.current?.nodesFocusable).toBe(false);
+    expect(flowProps.current?.edgesFocusable).toBe(false);
+    expect(flowProps.current?.minZoom).toBe(0.8);
   });
 
   it("renders the retry alert when the index fetch fails", async () => {

@@ -11,14 +11,10 @@ import { Button } from "@/src/components/ui/button";
 import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
 import { InlineAction } from "@/src/components/ui/inline-action";
 import { announce } from "@/src/components/ui/live-region";
-import {
-  WorkspaceCanvas,
-  WorkspacePage,
-  WorkspacePanel,
-  WorkspaceRail,
-  type WorkspaceView,
-} from "@/src/components/ui/workspace";
+import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
+import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { isOkanagan } from "@/src/shared/course-code";
+import { useRouter } from "next/navigation";
 import {
   Component,
   useCallback,
@@ -68,25 +64,17 @@ const NODE_TYPES = {
 
 const EDGE_TYPES = { optional: OptionalEdge };
 
-/** Frames `bounds` (defaulting to every node) and snaps the camera there — no
- *  animation. The canvas bleeds left under the sidebar (`canvas-extend-sidebar`),
- *  so that strip is measured off and the graph is fitted into what the card
- *  actually shows; the offset is zero when the canvas isn't extended. */
+/** Frames `bounds` (defaulting to every node) and snaps the camera there without animation. */
 function useFitGraph() {
   const { getNodes, setViewport } = useReactFlow();
   const store = useStoreApi();
   return useCallback(
     (bounds?: Rect) => {
-      const { width, height, minZoom, domNode } = store.getState();
+      const { width, height, minZoom } = store.getState();
       if (!width || !height) return;
       const rect = bounds ?? getNodesBounds(getNodes());
       if (!rect.width || !rect.height) return;
-      const host = domNode?.closest(".canvas-extend-sidebar");
-      const hidden = host?.parentElement
-        ? host.parentElement.getBoundingClientRect().left - host.getBoundingClientRect().left
-        : 0;
-      const fit = getViewportForBounds(rect, width - hidden, height, minZoom, FIT_MAX_ZOOM, FIT_PADDING);
-      setViewport({ x: fit.x + hidden, y: fit.y, zoom: fit.zoom });
+      setViewport(getViewportForBounds(rect, width, height, minZoom, FIT_MAX_ZOOM, FIT_PADDING));
     },
     [getNodes, setViewport, store],
   );
@@ -288,38 +276,84 @@ function NotFoundAlert({ code, onPick }: { code: string; onPick: (code: string) 
   );
 }
 
-/** Keyboard-navigable accordion fallback when the canvas crashes. Children of
- *  a block are the sources of edges targeting it (edges flow prereq → dependent). */
-function AccordionFallback({ graph, rootId }: { graph: { nodes: Node[]; edges: Edge[] }; rootId: string }) {
+/** Keyboard-navigable prerequisite outline and crash fallback. */
+function AccordionFallback({
+  graph,
+  rootId,
+  onOpenCourse,
+}: {
+  graph: { nodes: Node[]; edges: Edge[] };
+  rootId: string;
+  onOpenCourse?: (code: string) => void;
+}) {
   const childrenOf = useMemo(() => {
-    const adj = new Map<string, string[]>();
-    for (const e of graph.edges) {
-      const list = adj.get(e.target);
-      if (list) list.push(e.source);
-      else adj.set(e.target, [e.source]);
+    const adjacency = new Map<string, string[]>();
+    for (const edge of graph.edges) {
+      const children = adjacency.get(edge.target);
+      if (children) children.push(edge.source);
+      else adjacency.set(edge.target, [edge.source]);
     }
-    return adj;
+    return adjacency;
   }, [graph]);
-  const byId = useMemo(() => new Map(graph.nodes.map((n) => [n.id, n])), [graph]);
+  const byId = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph]);
   const seen = new Set<string>();
   const renderNode = (id: string): ReactNode => {
     if (seen.has(id)) return null;
     seen.add(id);
     const node = byId.get(id);
     if (!node) return null;
-    const data = node.data as { code?: string; title?: string; text?: string };
-    const kids = childrenOf.get(id) ?? [];
+    const data = node.data as {
+      code?: string;
+      title?: string;
+      text?: string;
+      options?: { display: string }[];
+      selectedIdx?: number;
+      onChange?: (index: number) => void;
+    };
+    const children = childrenOf.get(id) ?? [];
+    const label = data.code ?? data.text ?? (data.options ? "Choose one prerequisite" : id);
     return (
-      <details key={id} className="ml-3 text-sm">
-        <summary className="cursor-pointer font-mono">
-          {data.code ?? data.text ?? id}
-          {data.title ? ` — ${data.title}` : ""}
+      <details key={id} open={id === rootId} className="border-border-subtle bg-surface rounded-lg border text-sm">
+        <summary className="text-on-surface flex min-h-11 cursor-pointer items-center gap-2 px-3 py-2">
+          <span className="font-mono font-medium">{label}</span>
+          {data.title ? <span className="text-on-surface-variant min-w-0 truncate">{data.title}</span> : null}
         </summary>
-        {kids.map(renderNode)}
+        <div className="border-border-subtle flex flex-col gap-2 border-t p-2 pl-4">
+          {data.code && onOpenCourse ? (
+            <Button size="compact" className="self-start" onClick={() => onOpenCourse(data.code as string)}>
+              Open course details
+            </Button>
+          ) : null}
+          {data.options && data.onChange ? (
+            <fieldset className="flex flex-col gap-1">
+              <legend className="sr-only">Choose a prerequisite branch</legend>
+              {data.options.map((option, index) => (
+                <button
+                  key={option.display}
+                  type="button"
+                  aria-pressed={index === data.selectedIdx}
+                  onClick={() => data.onChange?.(index)}
+                  className={`focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 py-2 text-left focus-visible:ring-2 ${
+                    index === data.selectedIdx
+                      ? "neu-inset bg-surface-container text-on-surface"
+                      : "text-on-surface-variant hover:bg-surface-container"
+                  }`}
+                >
+                  {option.display}
+                </button>
+              ))}
+            </fieldset>
+          ) : null}
+          {children.map(renderNode)}
+        </div>
       </details>
     );
   };
-  return <div className="text-on-surface overflow-auto">{renderNode(rootId)}</div>;
+  return (
+    <div data-prereq-outline className="text-on-surface flex h-full flex-col gap-2 overflow-auto p-3">
+      {renderNode(rootId)}
+    </div>
+  );
 }
 
 export function PrereqTreePane({
@@ -346,13 +380,19 @@ export function PrereqTreePane({
   onNavigateCourse?: (code: string) => void;
 }) {
   const api = useApi();
+  const { host, titlebarOutlet } = useWorkspaceHost();
+  const toolsMode = host === "tools";
+  const router = useRouter();
+  const shell = useChatShellOptional();
+  const { isGuest } = useAppAuth();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [index, setIndex] = useState<CourseIndex | null>(null);
   const [indexStatus, setIndexStatus] = useState<"loading" | "ready" | "error">("loading");
   const [query, setQuery] = useState(initialQuery || initialRoot);
   const [activeCode, setActiveCode] = useState<string | null>(initialRoot ? normalize(initialRoot) : null);
-  // Last submitted code that wasn't in the catalog (drives the not-found alert).
   const [missingCode, setMissingCode] = useState<string | null>(null);
-  const [mobileView, setMobileView] = useState<WorkspaceView>(initialRoot ? "main" : "rail");
+  const [compactView, setCompactView] = useState<"outline" | "map">("outline");
   // Per-disjunction selections keyed `${ownerCode}::${path}` — stable across
   // re-renders and root switches; absent key = option 0. Hydrated from the
   // cached pane state so a rebuilt tree keeps its chosen branches.
@@ -364,6 +404,16 @@ export function PrereqTreePane({
   const [softDisabled, setSoftDisabled] = useState<Map<string, boolean>>(
     () => new Map(Object.entries(initialSoftDisabled ?? {})),
   );
+
+  const lastInitialRoot = useRef(initialRoot);
+  useEffect(() => {
+    if (initialRoot === lastInitialRoot.current) return;
+    lastInitialRoot.current = initialRoot;
+    const nextRoot = initialRoot ? normalize(initialRoot) : null;
+    setActiveCode(nextRoot);
+    setQuery(nextRoot ?? "");
+    setMissingCode(null);
+  }, [initialRoot]);
 
   // Report restorable UI state upward whenever it changes. `onUiState` rides a
   // ref so an unstable callback identity can't re-fire the effect.
@@ -435,10 +485,10 @@ export function PrereqTreePane({
     (code: string) => {
       setActiveCode(code);
       setMissingCode(null);
-      setMobileView("main");
       onChangeRoot?.(code);
+      if (toolsMode) router.push(`/tools/prereq/${courseCodeToSlug(code)}`);
     },
-    [onChangeRoot],
+    [onChangeRoot, router, toolsMode],
   );
 
   const pickSuggestion = useCallback(
@@ -447,6 +497,27 @@ export function PrereqTreePane({
       activate(code);
     },
     [activate],
+  );
+
+  const changeQuery = useCallback(
+    (value: string) => {
+      const next = value.toUpperCase();
+      setQuery(next);
+      if (next.trim() || !activeCode) return;
+      setActiveCode(null);
+      setMissingCode(null);
+      onChangeRoot?.("");
+      if (toolsMode) router.push("/tools/prereq");
+    },
+    [activeCode, onChangeRoot, router, toolsMode],
+  );
+
+  const openInFinder = useCallback(
+    (code: string) => {
+      if (toolsMode) router.push(`/tools/courses/${courseCodeToSlug(code)}`);
+      else shell?.setActiveChannel("course-lookup", { code });
+    },
+    [router, shell, toolsMode],
   );
 
   const rejected = isOkanagan(query.trim());
@@ -498,10 +569,20 @@ export function PrereqTreePane({
       setSelection,
       softDisabled,
       toggleSoft,
-      onNavigateCourse,
+      onNavigateCourse ?? openInFinder,
       measuredHeights,
     );
-  }, [index, activeCode, selections, setSelection, softDisabled, toggleSoft, onNavigateCourse, measuredHeights]);
+  }, [
+    index,
+    activeCode,
+    selections,
+    setSelection,
+    softDisabled,
+    toggleSoft,
+    onNavigateCourse,
+    openInFinder,
+    measuredHeights,
+  ]);
 
   const rootEntry = index && activeCode ? (index.get(activeCode) ?? null) : null;
   const noPrereqs = rootEntry && isNoneOrEmpty(rootEntry.prerequisite) && isNoneOrEmpty(rootEntry.corequisite);
@@ -549,11 +630,6 @@ export function PrereqTreePane({
   );
   const onPaneContextMenu = useCallback((e: MouseEvent) => openCtxMenu(e), [openCtxMenu]);
 
-  const shell = useChatShellOptional();
-  const { isGuest } = useAppAuth();
-  // setActiveChannel (not setWorkspaceView) so only `code` is overridden and
-  // the finder's cached state (e.g. session pick) survives the jump.
-  const openInFinder = useCallback((code: string) => shell?.setActiveChannel("course-lookup", { code }), [shell]);
   // Serialize the rendered tree for the agent: nodes keep their identifying
   // fields (course code/title, disjunction options), edges keep direction and
   // the co-req/optional markers. Sent as an Ask AI attachment so the chat
@@ -594,17 +670,14 @@ export function PrereqTreePane({
     });
   }, [shell, graph, activeCode]);
 
-  const { host, titlebarOutlet } = useWorkspaceHost();
-  const toolsMode = host === "tools";
-  const rootRef = useRef<HTMLDivElement | null>(null);
   const searchShadowOn = titlebarOutlet ? "surface" : toolsMode ? "surface" : "surface-container-low";
 
   const searchForm = (
-    <form onSubmit={submit} className="mx-auto flex w-full max-w-md items-start gap-2">
+    <form onSubmit={submit} className={`flex w-full items-start gap-2 ${toolsMode ? "max-w-xl" : "mx-auto max-w-md"}`}>
       <div className="min-w-0 flex-1">
         <CourseSearchField
           value={query}
-          onChange={(value) => setQuery(value.toUpperCase())}
+          onChange={changeQuery}
           onSelect={pickSuggestion}
           status={indexStatus === "loading" ? "loading" : "idle"}
           list={query.trim() ? { candidates: suggestions, total: suggestions.length } : null}
@@ -615,6 +688,8 @@ export function PrereqTreePane({
           presentation="overlay"
           density={toolsMode ? "primary" : "rail"}
           shadowOn={searchShadowOn}
+          inputRef={searchInputRef}
+          openOnInitialValue={false}
         />
       </div>
       <Button type="submit" variant="primary" size={toolsMode ? "field" : "toolbar"} shadowOn={searchShadowOn}>
@@ -633,7 +708,7 @@ export function PrereqTreePane({
       {indexStatus === "ready" && activeCode && !rootEntry ? (
         <NotFoundAlert code={activeCode} onPick={pickSuggestion} />
       ) : null}
-      {noPrereqs ? (
+      {noPrereqs && !toolsMode ? (
         <p className="text-muted bg-surface rounded-lg px-3 py-1.5 text-sm">
           {activeCode} has no prerequisites or corequisites listed in the calendar.
         </p>
@@ -641,12 +716,44 @@ export function PrereqTreePane({
     </>
   );
 
+  const noRootState = (
+    <div className="text-muted grid h-full place-items-center px-6 text-center text-sm">
+      Search for a course above to render its prerequisite tree.
+    </div>
+  );
+  const noPrereqState = (
+    <div className="m-auto flex max-w-md flex-col items-center gap-3 px-6 text-center">
+      <div>
+        <h2 className="text-on-surface text-base font-medium">{activeCode} has no listed prerequisites</h2>
+        <p className="text-on-surface-variant mt-1 text-sm">
+          The UBC calendar does not list prerequisites or corequisites for this course.
+        </p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button onClick={() => activeCode && openInFinder(activeCode)}>Open course details</Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select();
+          }}
+        >
+          Search another course
+        </Button>
+      </div>
+    </div>
+  );
+
   const graphSurface = (
     <div ref={rootRef} data-pane="prereq-tree" className="relative h-full w-full overflow-hidden">
       <ReactFlowProvider>
         <div data-prereq-canvas className="bg-surface-container-low absolute inset-0">
-          {graph.nodes.length > 0 ? (
-            <PaneErrorBoundary fallback={<AccordionFallback graph={graph} rootId={activeCode ?? ""} />}>
+          {toolsMode && noPrereqs ? (
+            noPrereqState
+          ) : graph.nodes.length > 0 ? (
+            <PaneErrorBoundary
+              fallback={<AccordionFallback graph={graph} rootId={activeCode ?? ""} onOpenCourse={openInFinder} />}
+            >
               <ReactFlow
                 nodes={graph.nodes}
                 edges={graph.edges}
@@ -655,12 +762,17 @@ export function PrereqTreePane({
                 nodesDraggable={false}
                 nodesConnectable={false}
                 onNodesChange={onNodesChange}
+                onNodeClick={(_event, node) => {
+                  const code = node.type === "course" ? (node.data as { code?: string }).code : undefined;
+                  if (code) openInFinder(code);
+                }}
                 onNodeContextMenu={onNodeContextMenu}
                 onPaneContextMenu={onPaneContextMenu}
                 onPaneClick={closeCtxMenu}
                 onMoveStart={closeCtxMenu}
                 minZoom={MIN_ZOOM}
-                nodesFocusable
+                nodesFocusable={false}
+                edgesFocusable={false}
                 elementsSelectable
                 proOptions={{ hideAttribution: true }}
                 className={awaitingFit ? "opacity-0" : undefined}
@@ -670,9 +782,7 @@ export function PrereqTreePane({
               </ReactFlow>
             </PaneErrorBoundary>
           ) : indexStatus === "ready" && !missingCode && !activeCode ? (
-            <div className="text-muted grid h-full place-items-center px-6 text-center text-sm">
-              Choose a course in Controls to render its prerequisite graph.
-            </div>
+            noRootState
           ) : null}
         </div>
         {ctxMenu ? (
@@ -688,29 +798,56 @@ export function PrereqTreePane({
     </div>
   );
 
+  const outlineSurface = noPrereqs ? (
+    noPrereqState
+  ) : graph.nodes.length > 0 ? (
+    <AccordionFallback graph={graph} rootId={activeCode ?? ""} onOpenCourse={openInFinder} />
+  ) : (
+    noRootState
+  );
+
   if (toolsMode) {
     return (
       <WorkspacePage
-        composition="split"
+        composition="canvas"
         title="Prereq tree"
-        description="Trace prerequisites and corequisites from any course."
-        view={mobileView}
-        onViewChange={setMobileView}
-        mainLabel="Graph"
-        railLabel="Controls"
-        rail={
-          <WorkspaceRail>
-            <WorkspacePanel title="Find a course" description="Choose the graph root" padding="md">
-              <div className="flex flex-col gap-3">
-                {searchForm}
-                <p className="text-muted text-xs">Search a Vancouver course code, then choose a result or Show.</p>
-                {feedback}
-              </div>
-            </WorkspacePanel>
-          </WorkspaceRail>
-        }
+        description="Choose a course, then trace the prerequisites and corequisites that lead to it."
       >
-        <WorkspaceCanvas overflow="hidden">{graphSurface}</WorkspaceCanvas>
+        <div className="flex h-full min-h-0 flex-col gap-3">
+          <div className="flex shrink-0 flex-col gap-2 @min-[40rem]:flex-row @min-[40rem]:items-start">
+            {searchForm}
+            <fieldset
+              data-prereq-view-toggle
+              className="neu-inset bg-surface-container-low flex shrink-0 gap-1 rounded-lg p-1 @min-[40rem]:hidden"
+            >
+              <legend className="sr-only">Prerequisite tree view</legend>
+              {(["outline", "map"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  aria-pressed={compactView === view}
+                  onClick={() => setCompactView(view)}
+                  className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-md px-4 text-sm font-medium capitalize focus-visible:ring-2 ${
+                    compactView === view ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
+                  }`}
+                >
+                  {view}
+                </button>
+              ))}
+            </fieldset>
+          </div>
+          {feedback}
+          <div data-prereq-compact-view={compactView} className="min-h-0 flex-1">
+            <WorkspaceCanvas overflow="hidden">
+              <div className={compactView === "outline" ? "h-full @min-[40rem]:hidden" : "hidden"}>
+                {outlineSurface}
+              </div>
+              <div className={compactView === "map" ? "h-full" : "hidden h-full @min-[40rem]:block"}>
+                {graphSurface}
+              </div>
+            </WorkspaceCanvas>
+          </div>
+        </div>
       </WorkspacePage>
     );
   }

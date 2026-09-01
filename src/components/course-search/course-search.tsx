@@ -243,6 +243,7 @@ export type CourseSearchFieldProps = {
   density?: SearchDensity;
   shadowOn?: NeumorphicSurfaceToken;
   clearable?: boolean;
+  openOnInitialValue?: boolean;
 };
 
 export function CourseSearchField({
@@ -264,6 +265,7 @@ export function CourseSearchField({
   density = "primary",
   shadowOn = "surface",
   clearable = true,
+  openOnInitialValue = true,
 }: CourseSearchFieldProps) {
   const trimmed = value.trim();
   const overlay = presentation === "overlay";
@@ -271,6 +273,9 @@ export function CourseSearchField({
   const inputRef = useRef<HTMLInputElement>(null);
   const listboxRef = useRef<HTMLDivElement>(null);
   const restoringFocus = useRef(false);
+  const initialValue = useRef(value);
+  const allowAutomaticOpen = useRef(openOnInitialValue);
+  if (value !== initialValue.current || openOnInitialValue) allowAutomaticOpen.current = true;
   const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -288,11 +293,17 @@ export function CourseSearchField({
   useEffect(() => {
     if (presentation !== "overlay") return;
     setActiveIndex(-1);
-    if (value.trim()) setOpen(true);
+    if (value.trim() && allowAutomaticOpen.current) setOpen(true);
   }, [presentation, value]);
 
   useEffect(() => {
-    if (overlay && trimmed && (status === "loading" || !!error || rejected || hasPendingCandidate)) setOpen(true);
+    if (
+      overlay &&
+      allowAutomaticOpen.current &&
+      trimmed &&
+      (status === "loading" || !!error || rejected || hasPendingCandidate)
+    )
+      setOpen(true);
   }, [error, hasPendingCandidate, overlay, rejected, status, trimmed]);
 
   useEffect(() => {

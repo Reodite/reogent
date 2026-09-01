@@ -41,7 +41,8 @@ const HIDDEN_HANDLE = {
 export function CourseNode({ id, data }: NodeProps<CourseNodeData>) {
   const variant = data?.variant ?? "known";
   const isRoot = variant === "root";
-  const surface = variant === "known" && data?.coreq ? "bg-secondary-container text-on-secondary-container" : VARIANT_CLASS[variant];
+  const surface =
+    variant === "known" && data?.coreq ? "bg-secondary-container text-on-secondary-container" : VARIANT_CLASS[variant];
   return (
     <section
       data-node-id={id}
@@ -62,8 +63,11 @@ export function CourseNode({ id, data }: NodeProps<CourseNodeData>) {
               type="button"
               data-nav="course"
               className={`font-mono font-medium hover:underline focus-visible:underline ${isRoot ? "text-xl" : "text-sm"}`}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => data?.onNavigate?.(data.code as string)}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                data?.onNavigate?.(data.code as string);
+              }}
             >
               {data.code}
             </button>

@@ -346,6 +346,8 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     expect(screen.queryByRole("table")).toBeNull();
     await waitFor(() => expect(document.querySelector("[data-action='open-prereq-tree']")).not.toBeNull());
     expect(screen.getAllByText("CPSC 110").length).toBeGreaterThan(0);
+    fireEvent.click(document.querySelector("[data-action='open-prereq-tree']") as HTMLElement);
+    expect(routerPush).toHaveBeenCalledWith("/tools/prereq/CPSC110");
   });
 
   it("back button returns to the list URL", async () => {

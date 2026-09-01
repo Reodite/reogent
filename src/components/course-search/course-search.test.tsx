@@ -73,6 +73,14 @@ describe("CourseSearchField overlay", () => {
     expect(document.activeElement).toBe(input);
   });
 
+  it("keeps a settled initial value closed until the user focuses it", async () => {
+    render(<CourseSearchField {...baseProps} presentation="overlay" openOnInitialValue={false} />);
+
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.focus(screen.getByRole("combobox"));
+    expect(await screen.findByRole("listbox")).not.toBeNull();
+  });
+
   it("allows schedule surfaces to use sans-serif course codes", async () => {
     render(<CourseSearchField {...baseProps} presentation="overlay" monospaceCodes={false} />);
 

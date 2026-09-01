@@ -1,9 +1,9 @@
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { displayExpr, MAX_DEPTH, parsePrereq, type Expr } from "@/src/shared/prereq-ast";
 import type { Edge, Node } from "reactflow";
+import type { OptionalEdgeData } from "./edges/OptionalEdge";
 import type { CourseNodeVariant } from "./nodes/CourseNode";
 import type { DisjunctionData, DisjunctionDetail, EitherOrData } from "./nodes/DisjunctionNode";
-import type { OptionalEdgeData } from "./edges/OptionalEdge";
 
 /** The client-side course index: canonical "CPSC 110" → catalog record. */
 export type CourseIndex = Map<string, CourseIndexEntry>;
@@ -468,7 +468,12 @@ export function buildGraph(
     };
   }
 
-  function attachPrereqCode(code: string, depth: number, targetId: string, softContext: SoftContext | null = null): void {
+  function attachPrereqCode(
+    code: string,
+    depth: number,
+    targetId: string,
+    softContext: SoftContext | null = null,
+  ): void {
     // Resolve through codeAliases so an absorbed code's edge points at the
     // dropdown's group id, not a phantom course node.
     const sourceId = codeAliases.get(code) ?? code;
@@ -819,11 +824,8 @@ export function buildGraph(
   return { nodes, edges, depthCount, bbox };
 }
 
-// Auto-fit tuning, fed to ReactFlow's `getViewportForBounds`: the whole graph is
-// framed on both axes. FIT_MAX_ZOOM keeps tiny graphs from blowing up.
+// Auto-fit keeps small trees framed while the minimum zoom protects readable
+// node labels on larger trees, which remain pannable.
 export const FIT_PADDING = 0.05;
 export const FIT_MAX_ZOOM = 1;
-// Instance-wide zoom-out limit. Must sit below the zoom the deepest corpus
-// tree needs for its horizontal fit — ReactFlow's default of 0.5 clamped deep
-// trees mid-fit with the root off-screen.
-export const MIN_ZOOM = 0.05;
+export const MIN_ZOOM = 0.8;
