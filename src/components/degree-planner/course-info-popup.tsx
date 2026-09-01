@@ -122,6 +122,7 @@ export function CourseInfoPopup({
       ref={popupRef}
       role="dialog"
       aria-label={`${course.code} details`}
+      onPointerDown={(event) => event.stopPropagation()}
       style={{
         position: "fixed",
         top: pos?.top ?? -9999,
