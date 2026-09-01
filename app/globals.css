@@ -213,6 +213,11 @@ html[data-schedule-dragging] body * {
   font: inherit;
 }
 
+.maplibregl-map .maplibregl-ctrl-attrib-button {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
 /* ---- Keyframes ---- */
 
 @keyframes message-in {

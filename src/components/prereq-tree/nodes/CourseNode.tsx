@@ -62,7 +62,7 @@ export function CourseNode({ id, data }: NodeProps<CourseNodeData>) {
             <button
               type="button"
               data-nav="course"
-              className={`font-mono font-medium hover:underline focus-visible:underline ${isRoot ? "text-xl" : "text-sm"}`}
+              className={`inline-flex min-h-14 min-w-14 items-center justify-center rounded-md font-mono font-medium hover:underline focus-visible:underline ${isRoot ? "text-xl" : "text-sm"}`}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation();
