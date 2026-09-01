@@ -525,32 +525,34 @@ function ScheduleAppInner({ groupCode }: Props) {
         mobileView={mobileView}
         onMobileViewChange={setMobileView}
       >
-        <ScheduleGrid
-          model={grid.model}
-          activeDay={mobileDay}
-          onActiveDayChange={setMobileDay}
-          onBlockActivate={(id) => {
-            const block = grid.blocksById.get(id);
-            if (block) setDetail(block);
-          }}
-          bands={gridBands}
-          now={nowLine}
-          empty={empty}
-          renderBlockFooter={(block) => {
-            const peopleForBlock = grid.blocksById.get(block.id)?.people ?? [];
-            return (
-              <>
-                {peopleForBlock.slice(0, 4).map((person) => (
-                  <AvatarChip key={person.id} avatar={person.avatar} size={16} title={person.handle} />
-                ))}
-                {peopleForBlock.length > 4 ? (
-                  <span className="text-on-surface-variant ml-0.5 text-xs">+{peopleForBlock.length - 4}</span>
-                ) : null}
-              </>
-            );
-          }}
-          ariaLabel={group ? `${group.name} weekly schedule` : `${groupLabel} weekly schedule preview`}
-        />
+        <div data-sharer-content-card className="neu-panel bg-surface h-full min-h-0 rounded-xl p-2">
+          <ScheduleGrid
+            model={grid.model}
+            activeDay={mobileDay}
+            onActiveDayChange={setMobileDay}
+            onBlockActivate={(id) => {
+              const block = grid.blocksById.get(id);
+              if (block) setDetail(block);
+            }}
+            bands={gridBands}
+            now={nowLine}
+            empty={empty}
+            renderBlockFooter={(block) => {
+              const peopleForBlock = grid.blocksById.get(block.id)?.people ?? [];
+              return (
+                <>
+                  {peopleForBlock.slice(0, 4).map((person) => (
+                    <AvatarChip key={person.id} avatar={person.avatar} size={16} title={person.handle} />
+                  ))}
+                  {peopleForBlock.length > 4 ? (
+                    <span className="text-on-surface-variant ml-0.5 text-xs">+{peopleForBlock.length - 4}</span>
+                  ) : null}
+                </>
+              );
+            }}
+            ariaLabel={group ? `${group.name} weekly schedule` : `${groupLabel} weekly schedule preview`}
+          />
+        </div>
       </ScheduleWorkspace>
       {draftSchedule && (
         <ProfileModal
@@ -588,16 +590,18 @@ function ScheduleLoading() {
       mobileView={mobileView}
       onMobileViewChange={setMobileView}
     >
-      <ScheduleGrid
-        model={model}
-        activeDay="Mon"
-        onActiveDayChange={() => {}}
-        onBlockActivate={() => {}}
-        empty={{
-          title: "Loading your week",
-          description: "The timetable will stay here while your saved schedules arrive.",
-        }}
-      />
+      <div data-sharer-content-card className="neu-panel bg-surface h-full min-h-0 rounded-xl p-2">
+        <ScheduleGrid
+          model={model}
+          activeDay="Mon"
+          onActiveDayChange={() => {}}
+          onBlockActivate={() => {}}
+          empty={{
+            title: "Loading your week",
+            description: "The timetable will stay here while your saved schedules arrive.",
+          }}
+        />
+      </div>
     </ScheduleWorkspace>
   );
 }

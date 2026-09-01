@@ -189,6 +189,9 @@ describe("ScheduleApp group loading", () => {
 
     expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
     expect(view.container.querySelector<HTMLElement>("[data-schedule-host]")?.dataset.scheduleHost).toBe("unity");
+    const contentCard = view.container.querySelector("[data-sharer-content-card]");
+    expect(contentCard?.className).toContain("neu-panel");
+    expect(contentCard?.className).toContain("bg-surface");
     expect(screen.getAllByText("Mon").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Controls" }).getAttribute("aria-pressed")).toBe("false");
