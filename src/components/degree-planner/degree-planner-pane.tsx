@@ -429,6 +429,8 @@ export function DegreePlannerPane() {
           <section
             aria-label="Degree plan"
             aria-describedby="planner-scroll-hint"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable year board needs a keyboard focus target.
+            tabIndex={0}
             className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4 max-md:min-h-[36rem] max-md:shrink-0"
           >
             <p

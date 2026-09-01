@@ -29,7 +29,7 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
         <h3 className="text-on-surface text-sm font-medium">{year.label}</h3>
         <span className="text-muted ml-auto w-12 text-right text-xs tabular-nums">{yearCredits} cr</span>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div className="grid min-h-0 flex-1 grid-rows-[repeat(4,minmax(0,1fr))_2.25rem] gap-2">
         {year.terms.map((term, idx) => (
           <TermSection
             key={term.season}
@@ -40,6 +40,7 @@ export function YearColumn({ year, courseIndex, validations }: YearColumnProps) 
             validations={validations}
           />
         ))}
+        {!hasSummer && <div aria-hidden="true" className="row-span-2" />}
         <button
           type="button"
           onClick={() => {

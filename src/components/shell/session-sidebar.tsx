@@ -212,7 +212,7 @@ function SessionItem({
         title={session.title}
         className={`focus-visible:ring-primary/40 flex h-9 w-full items-center gap-2 overflow-hidden rounded-lg border-l-2 px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
           active
-            ? "bg-accent-subtle text-primary border-primary"
+            ? "neu-inset bg-surface-container text-on-surface border-transparent"
             : "text-on-surface-variant group-hover:bg-surface-container-high group-hover:text-on-surface border-transparent"
         }`}
       >
@@ -223,7 +223,7 @@ function SessionItem({
         className="pointer-events-none absolute inset-y-0 right-0 w-20 rounded-r-lg opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
         style={{
           background: active
-            ? "linear-gradient(to right, transparent, var(--accent-subtle) 40%)"
+            ? "linear-gradient(to right, transparent, var(--surface-container) 40%)"
             : "linear-gradient(to right, transparent, var(--surface-container-high) 40%)",
         }}
         aria-hidden="true"
@@ -437,7 +437,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
             <button
               type="button"
               onClick={() => setRenderLimit((n) => n + 100)}
-              className="text-primary hover:bg-accent-subtle mt-2 w-full rounded-lg px-2 py-2 text-center text-xs font-medium"
+              className="text-primary hover:bg-surface-container-high hover:text-on-surface mt-2 w-full rounded-lg px-2 py-2 text-center text-xs font-medium"
             >
               Show more ({sessions.length - renderLimit} remaining)
             </button>

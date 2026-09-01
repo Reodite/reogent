@@ -33,7 +33,7 @@ function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
                 collapsed ? "w-9 justify-center" : "w-full gap-2.5 px-3"
               } ${
                 active
-                  ? "bg-accent-subtle text-primary"
+                  ? "neu-inset bg-surface-container text-on-surface"
                   : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
             >

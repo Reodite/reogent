@@ -133,12 +133,11 @@ components:
     padding: "8px 12px"
     height: "36px"
   nav-item-active:
-    backgroundColor: "{colors.accent-subtle}"
-    textColor: "{colors.primary}"
+    backgroundColor: "{colors.surface-container}"
+    textColor: "{colors.on-surface}"
     rounded: "{rounded.lg}"
     padding: "8px 12px"
     height: "36px"
-    borderLeft: "2px solid {colors.primary}"
 ---
 
 # Design System: Reodite
@@ -169,7 +168,7 @@ A cool-neutral palette anchored by muted indigo. Warmth comes from the off-white
 
 ### Primary
 
-- **Muted Indigo** (`#4a4e7a`): Primary actions, active navigation, focus rings, links, surface tint. Appears on interactive elements only. Its rarity carries the meaning.
+- **Muted Indigo** (`#4a4e7a`): Primary actions, focus rings, links, and state indicators. Appears on interactive elements only. Its rarity carries the meaning.
 - **Indigo Container** (`#7a7ea8`): Avatar backgrounds, accent surfaces, badge backgrounds. Softer carrier for primary identity in larger areas.
 
 ### Secondary
@@ -303,8 +302,8 @@ Single unified shadow recipe applied through `.neu-*` classes. All composed surf
 
 **Primitives:**
 
-| Primitive           | Light                     | Dark                     |
-| ------------------- | ------------------------- | ------------------------ |
+| Primitive           | Light                     | Dark                  |
+| ------------------- | ------------------------- | --------------------- |
 | `--neu-highlight`   | `rgba(255,255,255,0.2)`   | `rgba(38,38,44,0.55)` |
 | `--neu-shadow`      | `rgba(105,112,116,0.045)` | `rgba(16,16,19,0.55)` |
 | `--neu-shadow-deep` | `rgba(91,99,104,0.06)`    | `rgba(10,10,12,0.65)` |
@@ -388,7 +387,7 @@ State changes through shadow transformation + press scale. Buttons never transla
 
 - **Standard panel** (`.neu-panel`): `bg-surface rounded-2xl` + surface shadow. No border, no blur. Padding: 12-16px. Used for: chat panel, map panel, sidebar, building popup, map controls.
 - **Chat panel**: `.neu-panel rounded-2xl`. Internal: title bar (transparent bg, `px-4 py-3`), message well (`.chat-message-well`, recessed with deep inset shadows at `inset 0 10px 24px -22px`, 72% surface-container-low mixed with background), composer area at bottom.
-- **Sidebar** (`.neu-panel rounded-2xl p-2`): Standard panel material. Anatomy, top to bottom: brand header (logo tile `size-9` + `Reodite` wordmark on the left; collapse chevron, and the close button in the mobile drawer, on the right; collapsed rail shows the tile only), mode content (session list in AI, tool list in Tools, community links in Unity) in a recessed well (`bg-surface-container-low/60 rounded-xl p-2`), then a footer stack above a `border-t`: the AI/Tools/Unity mode toggle, then the account row (avatar + username, full width). The account menu portals out of the sidebar's `overflow-hidden` card and anchors 8px above the trigger, spanning the trigger's full width (collapsed rail: flyout to the right, 224px). It contains username, the theme radiogroup, sign out, and the version badge. The shell has no top bar; on mobile the drawer opens from a floating trigger at top-left.
+- **Sidebar** (`.neu-panel rounded-2xl p-2`): Standard panel material. Anatomy, top to bottom: brand header (logo tile `size-9` + `Reodite` wordmark on the left; collapse chevron, and the close button in the mobile drawer, on the right; collapsed rail shows the tile only), mode content (session list in AI, tool list in Tools, community links in Unity) in a recessed well (`bg-surface-container-low/60 rounded-xl p-2`), then a footer stack with the AI/Tools/Unity mode toggle and account row (avatar + username, full width). The footer has no divider; spacing separates it from the rounded content well. The account menu portals out of the sidebar's `overflow-hidden` card and anchors 8px above the trigger, spanning the trigger's full width (collapsed rail: flyout to the right, 224px). It contains username, the theme radiogroup, sign out, and the version badge. The shell has no top bar. The Tools sidebar becomes a drawer below 1280px to preserve working width; other modes switch at 1024px.
 - **Tool result cards**: `bg-surface-container-low rounded-lg p-3`. Flat within the message bubble. Icon containers use `bg-secondary-container text-on-secondary-container size-9 rounded-lg` (or `size-8 rounded-md` for compact variants).
 
 ### Inputs / Fields
@@ -397,9 +396,19 @@ State changes through shadow transformation + press scale. Buttons never transla
 - **Auth input** (`.neu-inset`): `bg-surface-container-low text-on-surface h-11 rounded-lg px-3 text-sm`. Focus: `ring-primary/40 ring-2 ring-offset-1`. Error: `ring-error/30 ring-2`.
 - **Thinking state**: Animated conic-gradient border mask (2px pseudo-element with mask-composite) at 2.4s linear infinite. Send button replaced by a stop button (`.neu-button bg-surface text-on-surface-variant rounded-xl`) during generation, allowing the user to abort.
 
+### Degree Planner
+
+- **Composition**: Operate-mode workbench with 24px desktop padding, 16px region gaps, and 8px internal gaps. The top bar carries title, visible-label program selectors, then labeled actions. The body pairs the horizontally scrollable year board with a fixed 320px rail.
+- **Rail**: Requirements and Find Courses are separate `.neu-panel bg-surface rounded-2xl` cards in equal grid rows. Both use `min-w-0 min-h-0`, stable scrollbar gutters, and internal scrolling; neither card shrinks to make room for the other.
+- **Material**: Planner surfaces use neutral background, surface, and container tokens only. Primary color is limited to true affordances and state indicators such as Ask AI, focus, links, add controls, progress, and checkbox completion; errors use the error family. Study terms use tonal inset depth, course chips use tonal raised depth, and drag ghosts reuse that same elevation rather than `shadow-xl`.
+- **Terms**: Every study term keeps one anatomy: header, scrollable course region, and optional full-width `Mark as co-op work term` action. Co-op cards use the inverse full-width `Switch to study term` action. Winter and summer bands stay aligned across years; a year without summer reserves the same two-row band. Summer controls remain full-width at the bottom of each year.
+- **Course chips**: A fixed top row holds the course code and two 28px actions; a fixed bottom row holds the full title zone and credits. Actions never overlay or mask the course identity.
+- **Requirements**: Manual, course, planned, and completed rows share one 36px checkbox geometry. Text captions distinguish automatic completion from manual completion instead of changing the checkmark style.
+- **Responsive flow**: Below 768px, the board and rail stack inside one vertical scroll. The board remains keyboard-scrollable and names horizontal overflow with `Scroll horizontally to view all years →`. The two rail cards stay equal height after stacking.
+
 ### Navigation
 
-- **Session sidebar items**: `h-9 px-3 py-2 rounded-lg text-sm`. Active: `bg-accent-subtle text-primary border-l-2 border-primary`. Inactive: `text-on-surface-variant`. Hover: `bg-surface-container-high text-on-surface`. Transition: all 150ms. Focus: `ring-primary/40 ring-2 ring-offset-1`.
+- **Session sidebar items**: `h-9 px-3 py-2 rounded-lg text-sm`. Active: `neu-inset bg-surface-container text-on-surface`; active navigation and mode controls never use accent-tinted fills. Inactive: `text-on-surface-variant`. Hover: `bg-surface-container-high text-on-surface`. Transition: all 150ms. Focus: `ring-primary/40 ring-2 ring-offset-1`.
 - **Session group headers**: `text-muted uppercase text-xs tracking-[0.05em] font-medium px-2 pb-1.5`. Categories: Today, Yesterday, This Week, This Month, Older.
 - **Header**: The app shell has no persistent top header. Brand lives in the sidebar (`bg-surface-container-low text-primary size-9 rounded-lg` logo tile + `text-base font-medium tracking-[-0.025em]` wordmark). Panel headers (answer canvas, drawer sections) use `px-4 py-3` flex rows.
 - **Collapsed rail** (`.neu-panel`): `w-[3.75rem] rounded-2xl py-3`. Vertical label with `[writing-mode:vertical-rl] text-xs font-medium tracking-[0.06em]`. Expand button: `neu-panel size-9 rounded-xl`.
