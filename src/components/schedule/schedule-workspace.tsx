@@ -74,7 +74,7 @@ export function ScheduleWorkspace({
       </div>
 
       <div className="schedule-workspace-body grid min-h-0 min-w-0 flex-1 grid-cols-[19rem_minmax(0,1fr)] gap-4">
-        <aside className="schedule-workspace-controls neu-panel bg-surface min-h-0 min-w-0 [scrollbar-gutter:stable] overflow-y-auto rounded-2xl">
+        <aside className="schedule-workspace-controls neu-panel bg-surface min-h-0 min-w-0 overflow-visible rounded-2xl">
           {controls}
         </aside>
         <div className="schedule-workspace-canvas neu-panel bg-surface min-h-0 min-w-0 overflow-hidden rounded-2xl">

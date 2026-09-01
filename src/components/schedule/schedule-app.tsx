@@ -331,7 +331,7 @@ function ScheduleAppInner({ groupCode }: Props) {
   );
 
   const controls = (
-    <div className="flex flex-col gap-3 p-3">
+    <div className="flex h-full min-h-0 [scrollbar-gutter:stable] flex-col gap-3 overflow-y-auto p-3">
       {groups.length > 0 ? (
         <section aria-labelledby="schedule-groups-heading">
           <label id="schedule-groups-heading" htmlFor="schedule-group" className="text-on-surface text-sm font-medium">

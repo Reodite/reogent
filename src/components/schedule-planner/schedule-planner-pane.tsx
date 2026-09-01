@@ -590,11 +590,11 @@ function SchedulePlannerPaneInner() {
           getCandidatePresentation={getCandidatePresentation}
           inputRef={searchInputRef}
         />
-        {!query.trim() && status === "idle" ? (
-          <p className="text-muted mt-2 text-xs leading-4">
-            Search by course code, subject, or title, then choose a result.
-          </p>
-        ) : null}
+        <p className="text-muted mt-2 min-h-8 text-xs leading-4">
+          {!query.trim() && status === "idle"
+            ? "Search by course code, subject, or title, then choose a result."
+            : "\u00a0"}
+        </p>
       </section>
 
       <section
