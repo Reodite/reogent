@@ -300,7 +300,15 @@ Flexbox with spring-driven width animations:
 
 ## Elevation & Depth
 
-Two tiers of shadow. The defining characteristic is extreme subtlety — shadows function as a whisper, not a statement.
+Two tiers of shadow share one defining characteristic: extreme subtlety. Shadows function as a whisper, not a statement.
+
+### Generated surface color pairs
+
+`src/shared/color-tokens.ts` marks each opaque theme color that can sit beneath a neumorphic surface. Run `npm run colors:generate` to write a dark and light pair for each marked color into `app/theme-colors.generated.css`. The generator follows the [reference formula](https://github.com/adamgiebl/neumorphism/blob/master/src/Configuration.js): it adjusts each RGB channel by -15% or +15%, rounds the result, and clamps it to the 8-bit range.
+
+Pair names follow `--neu-<parent-token>-dark` and `--neu-<parent-token>-light`. Choose the pair for the material under the element. For example, a panel raised above `--background` uses the `--neu-background-*` pair, while a control raised inside `--surface` uses the `--neu-surface-*` pair.
+
+The generated colors are raw tonal endpoints. Keep the composed recipe's opacity, blur, and offset at the whisper-level values documented below. Translucent scrims, mixed course tints, borders, and text colors do not receive pairs because their visible backdrop depends on composition or they cannot host nested surfaces.
 
 ### Tier 1: Utility Elevation (Tailwind-mapped)
 
