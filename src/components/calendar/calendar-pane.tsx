@@ -268,9 +268,9 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           {upcomingRows.length === 0 ? (
             <p className="text-muted text-xs">No events upcoming.</p>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pl-2" style={{ direction: "rtl" }}>
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-2">
               {Object.entries(upcomingByDate).map(([date, dayEvents]) => (
-                <div key={date} style={{ direction: "ltr" }}>
+                <div key={date}>
                   <div className="mb-1.5 flex items-center gap-2">
                     <span className="text-on-surface text-xs font-medium">
                       {isSameDay(parseISODate(date), today) ? "Today" : formatDayLabel(parseISODate(date))}

@@ -73,6 +73,24 @@ describe("CreateGroupModal", () => {
 });
 
 describe("ScheduleApp group loading", () => {
+  it("keeps the header clear of the compact shell menu", async () => {
+    const response = (body: unknown) =>
+      new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith("/schedule")) return Promise.resolve(response({ person: null }));
+        if (url.endsWith("/groups")) return Promise.resolve(response({ groups: [] }));
+        throw new Error(`unexpected request: ${url}`);
+      }),
+    );
+
+    render(<ScheduleApp />);
+
+    expect((await screen.findByText("Student schedules")).closest("header")?.className).toContain("max-lg:pl-12");
+  });
+
   it("ignores a slower response for the previously active group", async () => {
     let resolveA: ((response: Response) => void) | undefined;
     const groupA = new Promise<Response>((resolve) => {

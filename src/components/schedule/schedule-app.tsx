@@ -280,7 +280,7 @@ function ScheduleAppInner({ groupCode }: Props) {
       aria-label="Shared schedule"
       className="neu-panel flex min-h-0 w-full flex-col overflow-hidden rounded-2xl"
     >
-      <header className="border-outline-variant/50 flex min-h-16 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
+      <header className="border-outline-variant/50 flex min-h-16 flex-wrap items-center gap-2 border-b px-3 py-2 max-lg:pl-12 sm:pr-4 lg:pl-4">
         <div className="mr-1 flex min-w-0 items-center gap-2">
           <span className="neu-button text-primary flex size-9 shrink-0 items-center justify-center rounded-xl">
             <Icon name="calendar" size={18} />

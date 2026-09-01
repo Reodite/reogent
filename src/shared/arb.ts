@@ -15,7 +15,7 @@ export const arbSubject = fc
  * optional trailing letter. Returns the input plus the canonical components so
  * property oracles can assert the raw form.
  *
- * ponytail: glossary writes the number range as max 9999, but canonicalize's
+ * The glossary writes the number range as max 9999, but canonicalize's
  * CODE_RE matches exactly 3 digits and rejects 4-digit numbers at the anchored
  * boundary, so unrestricted draws break the Property 1 premise.
  */
@@ -101,7 +101,7 @@ export const arbRecommendedTail = fc
 
 /**
  * Domain-4 dataset for BFS property tests (design.md:432). Each record pairs a
- * canonical course code with free-form prereq/coreq strings. ponytail: the
+ * canonical course code with free-form prereq/coreq strings. The
  * generic `arbPrereqString` constants rarely collide with random `arbCourseCode`
  * draws, so most lookups miss and the graph stays shallow; the hand-crafted
  * cycle/depthCap tests in build-graph.test.ts cover the deep cases

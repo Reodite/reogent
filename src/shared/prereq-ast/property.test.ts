@@ -56,7 +56,7 @@ describe("Property 7: mid-clause recommended produces no top-level Soft", () => 
 /** Property 38 — Soft-tail positive split (REQ-5.5): a trailing top-level recommended tail produces a Soft root. */
 describe("Property 38: trailing recommended tail produces a Soft root", () => {
   it("parsePrereq of a tail-shaped string has root kind 'soft'", () => {
-    // ponytail: design.md composes the tail with an arbPrereqString prefix,
+    // design.md composes the tail with an arbPrereqString prefix,
     // but a dot-bearing prefix splits hard/soft and yields an AND root, not a
     // soft root. Testing the tail alone matches the "root kind is 'soft'"
     // oracle in design.md:414.

@@ -50,6 +50,26 @@ describe("parseProgramYears", () => {
     expect(autofillCodesForRequirement(mixed)).toEqual(["MATH 221", "MATH 215"]);
   });
 
+  it("treats a single course and a two-course sequence as alternative paths", () => {
+    const nested = parseProgramYears(
+      ["First Year", "CPSC_V 110 (or 103 and 107)", "4", "Total Credits", "30"].join("\n"),
+    ).years[0].items[0];
+
+    expect(nested.paths).toEqual([["CPSC 110"], ["CPSC 103", "CPSC 107"]]);
+    expect(isRequirementMet(nested, new Set(["CPSC 110"]))).toBe(true);
+    expect(isRequirementMet(nested, new Set(["CPSC 103"]))).toBe(false);
+    expect(isRequirementMet(nested, new Set(["CPSC 103", "CPSC 107"]))).toBe(true);
+    expect(autofillCodesForRequirement(nested)).toEqual(["CPSC 110"]);
+  });
+
+  it("keeps course-level ranges as manual requirements", () => {
+    const range = parseProgramYears(
+      ["Third and Fourth Years", "CPSC courses numbered 300 or higher", "9", "Total Credits", "60"].join("\n"),
+    ).years[0].items[0];
+
+    expect(range).toMatchObject({ kind: "text", codes: [], credits: 9 });
+  });
+
   it("requires every code of an all-of row and any code of a one-of row", () => {
     const [cpsc, mathChoice] = parsed.years[0].items;
     expect(isRequirementMet(cpsc, new Set(["CPSC 103"]))).toBe(true);

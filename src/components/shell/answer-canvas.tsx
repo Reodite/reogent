@@ -9,12 +9,14 @@ import { useCallback, useRef, type ComponentType } from "react";
 /**
  * The AI Mode Answer Canvas: the idle map overview when no widget is active, or
  * the active widget's pane component. `view` is `workspaceView` passed by the
- * shell so the canvas stays pure and testable. `MapArea` reads its highlight and
+ * shell so the canvas stays pure and testable. Tools Mode mounts this without
+ * the titlebar (`titlebar={false}`); panes that portal toolbar content into
+ * the titlebar slot then fall back to their own in-pane chrome. `MapArea` reads its highlight and
  * focus nonce from the shell context (derived from `workspaceView` when the map
  * pane is active), so the idle and active-map paths both render `<MapArea>` and
  * differ only in the surrounding context.
  */
-export function AnswerCanvas({ view }: { view: CanvasView | null }) {
+export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | null; titlebar?: boolean }) {
   const { setRightPaneCollapsed, setAnswerSheetOpen, setUserDismissedPane } = useChatShell();
   const onClose = () => {
     setRightPaneCollapsed(true);
@@ -27,14 +29,14 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
   const isCanvas = paneId === "map" || paneId === "prereq-tree";
   return (
     <section
-      aria-label="Answer canvas"
+      aria-label={titlebar ? "Answer canvas" : label}
       data-pane={paneId}
       className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl"
     >
-      <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} />
+      {titlebar && <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} />}
       {isCanvas ? (
         <div className="relative min-h-0 flex-1">
-          <div className="canvas-extend-sidebar absolute inset-0">
+          <div className="absolute inset-0">
             <ActiveCanvasView view={view} />
           </div>
         </div>
@@ -57,7 +59,7 @@ function AnswerCanvasTitlebar({
   onClose: () => void;
 }) {
   return (
-    <header className="flex shrink-0 items-center gap-2 px-4 py-3">
+    <header className="flex h-15 shrink-0 items-center gap-2 px-4">
       <span className="bg-surface-container-low text-primary grid size-7 shrink-0 place-items-center rounded-lg">
         <Glyph className="size-4" />
       </span>

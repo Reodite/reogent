@@ -30,8 +30,13 @@ export type ActiveChannel = { id: PaneId; state: PaneState } | null;
 export interface ChatShellState {
   workspaceView: CanvasView | null;
   setWorkspaceView: (view: CanvasView | null) => void;
-  /** Loads the canvas for a mapped tool call. Unmapped calls are a no-op. */
-  activateCanvasView: (call: ToolCall) => void;
+  /** Loads the canvas for a mapped tool call. Unmapped calls are a no-op. When
+   *  `callKey` identifies the chip that triggered it, only that chip highlights. */
+  activateCanvasView: (call: ToolCall, callKey?: string) => void;
+
+  /** Key of the tool-call chip that opened the current pane; only that chip shows
+   *  the active highlight. Null when the pane was opened another way. */
+  activeCallKey: string | null;
 
   /** True when the user intentionally dismissed the pane; auto-open skips. */
   userDismissedPane: boolean;
@@ -129,6 +134,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const router = useRouterSafe();
 
   const [workspaceView, setWorkspaceViewState] = useState<CanvasView | null>(null);
+  const [activeCallKey, setActiveCallKey] = useState<string | null>(null);
   // Latest-value ref so setActiveChannel reads the current view without depending
   // on workspaceView in its callback deps — keeps the callback identity-stable
   // (same pattern as authRef in ApiProvider). ChatPanel's session-load effect lists
@@ -143,8 +149,14 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const [mode, setMode] = useShellMode(initialMode);
   const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
   // Collapses the wide AI-mode right pane: chat fills the row when true, and a
-  // topbar button re-expands. Auto-expanded below when a tool activates.
-  const [rightPaneCollapsed, setRightPaneCollapsed] = useState(true);
+  // topbar button re-expands. Auto-expanded below when a tool activates. The
+  // public setter also clears the chip highlight on collapse, so a closed pane
+  // leaves no chip marked active.
+  const [rightPaneCollapsed, setRightPaneCollapsedState] = useState(true);
+  const setRightPaneCollapsed = useCallback((c: boolean) => {
+    setRightPaneCollapsedState(c);
+    if (c) setActiveCallKey(null);
+  }, []);
   // Set when the user manually dismisses the pane. Auto-open at stream-end skips
   // while this is true; an explicit widget click-toggle and session start clear it.
   const [userDismissedPane, setUserDismissedPane] = useState(false);
@@ -197,7 +209,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const userDismissedPaneRef = useRef(false);
   userDismissedPaneRef.current = userDismissedPane;
   useEffect(() => {
-    if (workspaceView !== null && !userDismissedPaneRef.current) setRightPaneCollapsed(false);
+    if (workspaceView !== null && !userDismissedPaneRef.current) setRightPaneCollapsedState(false);
   }, [workspaceView]);
 
   const setWorkspaceView = useCallback((view: CanvasView | null) => {
@@ -205,13 +217,15 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
     // typed/selected survives tab swaps and reloads (restored below).
     if (view) cachePaneState(view.paneId, view.state);
     setWorkspaceViewState(view);
+    if (view === null) setActiveCallKey(null);
   }, []);
 
   const activateCanvasView = useCallback(
-    (call: ToolCall) => {
+    (call: ToolCall, callKey?: string) => {
       const view = toolCallToCanvasView(call);
       if (view) {
         setWorkspaceView({ paneId: view.paneId, state: resolveActivationState(view.paneId, view.state) });
+        setActiveCallKey(callKey ?? null);
         setRightPaneCollapsed(false);
         // Bump the focus nonce so the map re-focuses on the new highlight.
         setFocusNonce((n) => n + 1);
@@ -226,10 +240,11 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const setActiveChannel = useCallback(
     (id: PaneId | null, state: PaneState = {}) => {
       if (!id) {
-        setWorkspaceViewState(null);
+        setWorkspaceView(null);
         return;
       }
       setWorkspaceView({ paneId: id, state: resolveActivationState(id, state) });
+      setActiveCallKey(null);
     },
     [setWorkspaceView],
   );
@@ -299,6 +314,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       workspaceView,
       setWorkspaceView,
       activateCanvasView,
+      activeCallKey,
       userDismissedPane,
       setUserDismissedPane,
       mode,
@@ -330,11 +346,13 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       workspaceView,
       setWorkspaceView,
       activateCanvasView,
+      activeCallKey,
       userDismissedPane,
       mode,
       setMode,
       answerSheetOpen,
       rightPaneCollapsed,
+      setRightPaneCollapsed,
       activeChannel,
       setActiveChannel,
       highlight,

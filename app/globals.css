@@ -61,8 +61,8 @@
   --outline-variant: #bfc4c9;
 
   /* Borders */
-  --border: #e6e6e2;
-  --border-subtle: #efefeb;
+  --border: #d9d9dd;
+  --border-subtle: #e8e8ea;
 
   /* Accents */
   --accent-subtle: #edeef5;
@@ -94,11 +94,11 @@
 
   --background: #121214;
   --surface-container-lowest: #0e0e10;
-  --surface-container-low: #1a1a1e;
-  --surface-container: #222226;
-  --surface-container-high: #2c2c30;
+  --surface-container-low: #202024;
+  --surface-container: #26262b;
+  --surface-container-high: #2e2e33;
   --surface: #1a1a1e;
-  --surface-bright: #2a2a2e;
+  --surface-bright: #36363c;
 
   --primary: #b0b4d8;
   --primary-container: #363a5e;
@@ -129,21 +129,23 @@
   --outline: #8c9297;
   --outline-variant: #42484c;
 
-  --border: #2a2a2e;
-  --border-subtle: #232327;
+  --border: #2c2c31;
+  --border-subtle: #242428;
 
   --accent-subtle: #1e1f2a;
   --surface-tint: #b0b4d8;
 
-  --elevation-sm: 2px 2px 4px rgba(0, 0, 0, 0.1), -1px -1px 3px rgba(50, 50, 55, 0.15);
-  --elevation-md: 3px 3px 7px rgba(0, 0, 0, 0.12), -2px -2px 5px rgba(50, 50, 55, 0.12);
-  --elevation-lg: 4px 4px 10px rgba(0, 0, 0, 0.15), -3px -3px 8px rgba(50, 50, 55, 0.1);
-  --elevation-inset: inset 1px 1px 3px rgba(0, 0, 0, 0.1), inset -1px -1px 3px rgba(50, 50, 55, 0.1);
+  --elevation-sm: 2px 2px 4px rgba(16, 16, 19, 0.5), -1px -1px 3px rgba(38, 38, 44, 0.4);
+  --elevation-md: 3px 3px 7px rgba(16, 16, 19, 0.5), -2px -2px 5px rgba(38, 38, 44, 0.35);
+  --elevation-lg: 4px 4px 10px rgba(14, 14, 17, 0.55), -3px -3px 8px rgba(38, 38, 44, 0.3);
+  --elevation-inset: inset 1px 1px 3px rgba(16, 16, 19, 0.5), inset -1px -1px 3px rgba(38, 38, 44, 0.35);
   --elevation-glow: 0 2px 8px rgba(176, 180, 216, 0.08);
 
-  --neu-highlight: rgba(65, 66, 72, 0.1);
-  --neu-shadow: rgba(0, 0, 0, 0.11);
-  --neu-shadow-deep: rgba(0, 0, 0, 0.16);
+  /* Same-hue tonal shadows keep dark mode monochromatic: darker and lighter
+     shades of the surface color, never pure black or white. */
+  --neu-highlight: rgba(38, 38, 44, 0.55);
+  --neu-shadow: rgba(16, 16, 19, 0.55);
+  --neu-shadow-deep: rgba(10, 10, 12, 0.65);
   --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
   --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
 
@@ -299,10 +301,14 @@ body {
   outline-offset: 2px;
 }
 
+html[data-planner-dragging],
+html[data-planner-dragging] body,
+html[data-planner-dragging] body * {
+  cursor: grabbing;
+}
+
 .maplibregl-map {
   font: inherit;
-  border-radius: 1.01rem;
-  overflow: hidden;
 }
 
 /* ---- Keyframes ---- */
@@ -342,6 +348,23 @@ body {
   animation: message-in 200ms ease-out both;
 }
 
+@keyframes planner-flash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  20%,
+  60% {
+    box-shadow: 0 0 0 3px var(--error);
+    background-color: var(--error-container);
+  }
+}
+
+/* Pulsed on a planner course chip after the user clicks its entry in the issues list. */
+.planner-flash {
+  animation: planner-flash 1.4s ease-out 1;
+}
+
 .animate-topo-drift {
   animation: topo-drift 30s ease-in-out infinite;
 }
@@ -360,6 +383,18 @@ details[open] > *:not(summary) {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Anchored menus (account menu at the sidebar bottom) enter from the anchor. */
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -470,13 +505,12 @@ html.vt-active *::after {
   box-shadow:
     4px 4px 10px var(--neu-shadow),
     -2px -2px 7px var(--neu-highlight);
-  transform: translateY(-1px);
 }
 
 .neu-button:active,
 .neu-button[aria-pressed="true"] {
   box-shadow: var(--neu-inset-shadow);
-  transform: translateY(1px) scale(0.98);
+  transform: scale(0.98);
 }
 
 .neu-primary-button {
@@ -494,14 +528,13 @@ html.vt-active *::after {
     0 4px 10px rgba(74, 78, 122, 0.12),
     -2px -2px 7px var(--neu-highlight);
   filter: brightness(1.03);
-  transform: translateY(-1px);
 }
 
 .neu-primary-button:active {
   box-shadow:
     inset 2px 2px 5px rgba(0, 0, 0, 0.1),
     inset -1px -1px 4px rgba(255, 255, 255, 0.08);
-  transform: translateY(1px) scale(0.985);
+  transform: scale(0.985);
 }
 
 .neu-button:focus-visible,
@@ -548,33 +581,15 @@ html.vt-active *::after {
   }
 }
 
-@media (min-width: 1024px) {
-  .sidebar-content-offset .canvas-extend-sidebar {
-    left: calc(-1 * var(--sidebar-offset, 0px));
-  }
-}
-@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-  .sidebar-content-offset .canvas-extend-sidebar {
-    transition: left 0.3s var(--neu-ease);
+@media (min-width: 1280px) {
+  .tool-sidebar-content-offset {
+    padding-left: var(--sidebar-offset, 0px);
   }
 }
 
-/* The canvas extends under the sidebar, so left-anchored overlays must be
-   pushed back to the visible card edge: our own overlays (building popup, route
-   card) keep their `left-3` inset, maplibre's attribution corner keeps the 10px
-   margin its own controls carry. */
-@media (min-width: 1024px) {
-  .sidebar-content-offset .canvas-extend-sidebar .canvas-left-inset {
-    left: calc(var(--sidebar-offset, 0px) + 0.75rem);
-  }
-  .sidebar-content-offset .canvas-extend-sidebar .maplibregl-ctrl-bottom-left {
-    left: var(--sidebar-offset, 0px);
-  }
-}
-@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-  .sidebar-content-offset .canvas-extend-sidebar .canvas-left-inset,
-  .sidebar-content-offset .canvas-extend-sidebar .maplibregl-ctrl-bottom-left {
-    transition: left 0.3s var(--neu-ease);
+@media (min-width: 1280px) and (prefers-reduced-motion: no-preference) {
+  .tool-sidebar-content-offset {
+    transition: padding-left 0.3s var(--neu-ease);
   }
 }
 
