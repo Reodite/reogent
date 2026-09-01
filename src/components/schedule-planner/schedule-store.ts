@@ -3,7 +3,7 @@
 // server payload: section picks identified by { code, section, term }, with a
 // local-only snapshot cache so the grid paints before a catalog refetch.
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
-import { normalizeDays, sectionComponent } from "@/src/lib/schedule";
+import { normalizeDays, sectionGroup } from "@/src/lib/schedule";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -49,6 +49,7 @@ interface ScheduleState {
   stale: boolean;
 
   addEntry: (doc: CourseDoc, section: CourseSection) => void;
+  addCourseSections: (doc: CourseDoc, sections: CourseSection[]) => void;
   removeEntry: (code: string, section: string, term: string) => void;
   removeCourse: (code: string, term: string) => void;
   setActiveTerm: (term: string) => void;
@@ -73,7 +74,7 @@ export function courseTermKey(code: string, term: string): string {
 }
 
 export function componentKey(code: string, term: string, section: string): string {
-  return `${courseTermKey(code, term)}::${sectionComponent(section)}`;
+  return `${courseTermKey(code, term)}::${sectionGroup(section)}`;
 }
 
 function unique(items: string[]): string[] {
@@ -137,10 +138,10 @@ export const useSchedule = create<ScheduleState>()(
         set((s) => {
           const term = section.term ?? "";
           const code = normalizeScheduleCode(doc.code);
-          const component = sectionComponent(section.section);
+          const component = sectionGroup(section.section);
           const withoutPreviousChoice = s.entries.filter(
             (e) =>
-              !(normalizeScheduleCode(e.code) === code && e.term === term && sectionComponent(e.section) === component),
+              !(normalizeScheduleCode(e.code) === code && e.term === term && sectionGroup(e.section) === component),
           );
           const selectedKey = componentKey(code, term, section.section);
           const courseKey = courseTermKey(code, term);
@@ -172,6 +173,48 @@ export const useSchedule = create<ScheduleState>()(
             // A newly added entry in a fresh term takes over the tab when the
             // current term has no visible entries — otherwise the user adds a
             // section and sees nothing happen.
+            activeTerm,
+          };
+        }),
+
+      addCourseSections: (doc, sections) =>
+        set((s) => {
+          if (sections.length === 0) return s;
+          const code = normalizeScheduleCode(doc.code);
+          const selectedGroups = new Set(sections.map((section) => sectionGroup(section.section)));
+          const terms = new Set(sections.map((section) => section.term ?? ""));
+          const entries = s.entries.filter(
+            (entry) =>
+              normalizeScheduleCode(entry.code) !== code ||
+              !terms.has(entry.term) ||
+              !selectedGroups.has(sectionGroup(entry.section)),
+          );
+          const additions = sections.map((section) => ({
+            code,
+            section: section.section,
+            term: section.term ?? "",
+            snapshot: {
+              title: doc.title,
+              instructor: section.instructor ?? null,
+              days: normalizeDays(section.days),
+              start_time: section.start_time ?? null,
+              end_time: section.end_time ?? null,
+              status: section.status ?? null,
+            },
+          }));
+          const selectedKeys = additions.map((entry) => componentKey(entry.code, entry.term, entry.section));
+          const courseKeys = new Set(additions.map((entry) => courseTermKey(entry.code, entry.term)));
+          const nextTerm = additions[0].term;
+          const activeTerm =
+            s.entries.some((entry) => entry.term === s.activeTerm) && s.activeTerm !== "" ? s.activeTerm : nextTerm;
+          return {
+            dirty: true,
+            revision: s.revision + 1,
+            activeTermDirty: s.activeTermDirty || activeTerm !== s.activeTerm,
+            selectedComponents: unique([...s.selectedComponents, ...selectedKeys]),
+            removedComponents: s.removedComponents.filter((key) => !selectedKeys.includes(key)),
+            removedCourses: s.removedCourses.filter((key) => !courseKeys.has(key)),
+            entries: applyEntries([...entries, ...additions]),
             activeTerm,
           };
         }),

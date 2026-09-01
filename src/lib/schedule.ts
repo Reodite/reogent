@@ -29,6 +29,10 @@ const COMPONENT_LETTERS: Record<string, SectionComponent> = {
   D: "discussion",
 };
 
+function sectionSuffix(section: string): string {
+  return section.trim().split("_").at(-1) ?? "";
+}
+
 const DAY_LABELS: Record<string, string> = {
   m: "Mon",
   mon: "Mon",
@@ -52,14 +56,20 @@ export function normalizeDays(days: string[]): string[] {
   return days.map((day) => DAY_LABELS[day.trim().toLowerCase()] ?? day);
 }
 
-/** Classifies a section code by its component suffix. Dataset prefixes such as
- *  `A_301` and `A_L05` identify the campus/session, so only the suffix decides
- *  whether the section is a lecture, laboratory, tutorial, or discussion. */
+/** Returns the selection group for a section code without collapsing unknown prefixes together. */
+export function sectionGroup(section: string): string {
+  const suffix = sectionSuffix(section);
+  if (suffix === "") return "other:unknown";
+  if (/^\d/.test(suffix)) return "lecture";
+  const letters = suffix.match(/^[A-Za-z]+/)?.[0].toUpperCase() ?? suffix.toUpperCase();
+  const componentPrefix = letters.startsWith("V") && letters.length > 1 ? letters[1] : letters[0];
+  return COMPONENT_LETTERS[componentPrefix] ?? `other:${letters}`;
+}
+
+/** Classifies a section code for display while retaining unknown grouping through {@link sectionGroup}. */
 export function sectionComponent(section: string): SectionComponent {
-  const s = section.trim().split("_").at(-1) ?? "";
-  if (s === "") return "other";
-  if (/^\d/.test(s)) return "lecture";
-  return COMPONENT_LETTERS[s[0].toUpperCase()] ?? "other";
+  const group = sectionGroup(section);
+  return group.startsWith("other:") ? "other" : (group as SectionComponent);
 }
 
 /** "HH:MM" → minutes since midnight, or -1 when the value is missing/malformed. */

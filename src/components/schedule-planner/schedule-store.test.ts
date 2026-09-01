@@ -82,6 +82,22 @@ describe("schedule store", () => {
     expect(store.useSchedule.getState().activeTerm).toBe(term);
   });
 
+  it("adds a complete course selection in one revision", () => {
+    store.useSchedule
+      .getState()
+      .addCourseSections(doc, [section("101", "09:00"), { ...section("L1A", "13:00"), days: ["t", "th"] }]);
+
+    expect(store.useSchedule.getState().entries.map((entry) => entry.section)).toEqual(["101", "L1A"]);
+    expect(store.useSchedule.getState().revision).toBe(1);
+  });
+
+  it("keeps distinct unknown component prefixes", () => {
+    store.useSchedule.getState().addEntry(doc, section("R01", "09:00"));
+    store.useSchedule.getState().addEntry(doc, section("W-L", "11:00"));
+
+    expect(store.useSchedule.getState().entries.map((entry) => entry.section)).toEqual(["R01", "W-L"]);
+  });
+
   it("syncs identifiers while retaining snapshots locally", () => {
     store.useSchedule.getState().addEntry(doc, section("101", "09:00"));
     expect(store.syncedSlice(store.useSchedule.getState())).toEqual({

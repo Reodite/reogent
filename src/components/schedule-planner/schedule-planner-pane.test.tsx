@@ -98,6 +98,7 @@ const scheduleMock = vi.hoisted(() => ({
     activeTerm: "2026-27 Winter Term 1",
     stale: false,
     addEntry: vi.fn(),
+    addCourseSections: vi.fn(),
     removeEntry: vi.fn(),
     removeCourse: vi.fn(),
     setActiveTerm: vi.fn(),
@@ -112,6 +113,7 @@ vi.mock("./schedule-store", () => ({
 }));
 
 vi.mock("./use-schedule-sync", () => ({ useScheduleSync: () => undefined }));
+const autocompleteMock = vi.hoisted(() => ({ record: null as CourseDoc | null }));
 vi.mock("@/src/components/course-lookup/course-search", () => ({
   CourseSearchField: () => <input aria-label="Find a course to schedule" />,
   useCourseAutocomplete: () => ({
@@ -119,7 +121,7 @@ vi.mock("@/src/components/course-lookup/course-search", () => ({
     status: "idle",
     error: null,
     rejected: false,
-    record: null,
+    record: autocompleteMock.record,
     lookup: vi.fn(),
   }),
 }));
@@ -131,6 +133,7 @@ beforeEach(() => {
   scheduleMock.state.activeTerm = term;
   scheduleMock.state.stale = false;
   apiMock.getCourse.mockImplementation(async (code: string) => courses[code]);
+  autocompleteMock.record = null;
 });
 
 afterEach(() => {
@@ -165,6 +168,19 @@ describe("SchedulePlannerPane", () => {
     expect(view.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
     expect(view.getByRole("button", { name: "Courses" }).getAttribute("aria-pressed")).toBe("false");
     expect(view.getByRole("region", { name: "Weekly course schedule" })).toBeTruthy();
+  });
+
+  it("automatically selects a complete section combination for a new course", async () => {
+    scheduleMock.state.entries = [];
+    autocompleteMock.record = courses["CPSC 110"];
+    render(<SchedulePlannerPane />);
+
+    await waitFor(() =>
+      expect(scheduleMock.state.addCourseSections).toHaveBeenCalledWith(courses["CPSC 110"], [
+        courses["CPSC 110"].sections[0],
+        courses["CPSC 110"].sections[2],
+      ]),
+    );
   });
 
   it("opens the fixed section picker from a rail card and a timetable occurrence", async () => {

@@ -12,13 +12,15 @@ import {
   normalizeDays,
   parseTime,
   sectionComponent,
+  sectionGroup,
   type ScheduledSection,
   type SectionComponent,
 } from "@/src/lib/schedule";
+import { selectAutomaticSections } from "@/src/lib/schedule-planner";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import { buildScheduleGrid, type ScheduleGridItem } from "@/src/lib/schedule/grid";
 import { DAY_ORDER, type DayCode } from "@/src/lib/schedule/types";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { entryId, normalizeScheduleCode, useSchedule, type ScheduleEntry } from "./schedule-store";
 import { useScheduleSync } from "./use-schedule-sync";
 
@@ -46,16 +48,29 @@ function sortTerms(terms: Iterable<string>): string[] {
   });
 }
 
-function groupSections(sections: CourseSection[]): Map<SectionComponent, CourseSection[]> {
-  const groups = new Map<SectionComponent, CourseSection[]>();
+function groupSections(sections: CourseSection[]): Map<string, CourseSection[]> {
+  const groups = new Map<string, CourseSection[]>();
   for (const section of sections) {
-    const kind = sectionComponent(section.section);
+    const kind = sectionGroup(section.section);
     const group = groups.get(kind) ?? [];
     group.push(section);
     groups.set(kind, group);
   }
   for (const group of groups.values()) group.sort((a, b) => a.section.localeCompare(b.section));
   return groups;
+}
+
+function orderedSectionGroups(groups: Map<string, CourseSection[]>): string[] {
+  return [...groups.keys()].sort((a, b) => {
+    const aIndex = COMPONENT_ORDER.indexOf(a.startsWith("other:") ? "other" : (a as SectionComponent));
+    const bIndex = COMPONENT_ORDER.indexOf(b.startsWith("other:") ? "other" : (b as SectionComponent));
+    return aIndex - bIndex || a.localeCompare(b);
+  });
+}
+
+function sectionGroupLabel(group: string): string {
+  if (group.startsWith("other:")) return `Other · ${group.slice(6)}`;
+  return COMPONENT_LABELS[group as SectionComponent];
 }
 
 function sectionOption(section: CourseSection): string {
@@ -183,16 +198,17 @@ function CourseDetailsDialog({
               <p className="text-muted text-sm leading-relaxed">
                 Choose one section for each course component. Changes save to this term when you make them.
               </p>
-              {COMPONENT_ORDER.map((kind) => {
+              {orderedSectionGroups(groups).map((kind) => {
                 const options = groups.get(kind);
                 if (!options?.length) return null;
-                const current = selected.find((entry) => sectionComponent(entry.section) === kind);
+                const current = selected.find((entry) => sectionGroup(entry.section) === kind);
                 const hasConflict = current ? conflictingIds.has(entryId(current)) : false;
+                const label = sectionGroupLabel(kind);
                 return (
                   <label key={kind} className="flex flex-col gap-1.5">
-                    <span className="text-on-surface text-sm font-medium">{COMPONENT_LABELS[kind]}</span>
+                    <span className="text-on-surface text-sm font-medium">{label}</span>
                     <select
-                      aria-label={`${COMPONENT_LABELS[kind]} section`}
+                      aria-label={`${label} section`}
                       value={current?.section ?? ""}
                       onChange={(event) => {
                         const next = options.find((section) => section.section === event.target.value);
@@ -203,7 +219,7 @@ function CourseDetailsDialog({
                         hasConflict ? "ring-error/60 ring-2" : ""
                       }`}
                     >
-                      <option value="">Choose {COMPONENT_LABELS[kind].toLowerCase()}</option>
+                      <option value="">Choose {label.toLowerCase()}</option>
                       {options.map((section) => (
                         <option key={section.section} value={section.section}>
                           {sectionOption(section)}
@@ -318,6 +334,7 @@ export function SchedulePlannerPane() {
   const entries = useSchedule((state) => state.entries);
   const activeTerm = useSchedule((state) => state.activeTerm);
   const setActiveTerm = useSchedule((state) => state.setActiveTerm);
+  const addCourseSections = useSchedule((state) => state.addCourseSections);
   const stale = useSchedule((state) => state.stale);
   const setStale = useSchedule((state) => state.setStale);
   const [query, setQuery] = useState("");
@@ -326,14 +343,26 @@ export function SchedulePlannerPane() {
   const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
   const [activeDay, setActiveDay] = useState<DayCode>("Mon");
   const [detailCode, setDetailCode] = useState<string | null>(null);
+  const lastAutoRecord = useRef<CourseDoc | null>(null);
 
   const resolveSingle = useCallback((code: string) => api.getCourse(code), [api]);
   const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(query, { resolveSingle });
 
   useEffect(() => {
-    if (!record) return;
-    setDocs((current) => new Map(current).set(normalizeScheduleCode(record.code), record));
-  }, [record]);
+    if (!record || lastAutoRecord.current === record) return;
+    lastAutoRecord.current = record;
+    const code = normalizeScheduleCode(record.code);
+    setDocs((current) => new Map(current).set(code, record));
+    const offeredTerms = sortTerms(record.sections.flatMap((section) => (section.term ? [section.term] : [])));
+    const term = offeredTerms.includes(activeTerm) ? activeTerm : offeredTerms[0];
+    if (!term || entries.some((entry) => normalizeScheduleCode(entry.code) === code && entry.term === term)) return;
+    const selection = selectAutomaticSections(
+      record,
+      term,
+      toScheduled(entries.filter((entry) => entry.term === term)),
+    );
+    addCourseSections(record, selection.sections);
+  }, [activeTerm, addCourseSections, entries, record]);
 
   const storedCodeKey = useMemo(
     () => [...new Set(entries.map((entry) => normalizeScheduleCode(entry.code)))].sort().join("\u0000"),

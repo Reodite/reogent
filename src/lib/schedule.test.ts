@@ -8,6 +8,7 @@ import {
   normalizeDays,
   parseTime,
   sectionComponent,
+  sectionGroup,
   visibleDays,
   type ScheduledSection,
 } from "./schedule";
@@ -34,10 +35,15 @@ describe("sectionComponent", () => {
     expect(sectionComponent("D2")).toBe("discussion");
     expect(sectionComponent("A_301")).toBe("lecture");
     expect(sectionComponent("A_L05")).toBe("laboratory");
+    expect(sectionComponent("VL3")).toBe("laboratory");
+    expect(sectionComponent("VD1")).toBe("discussion");
   });
-  it("falls back to other for unknown letters and blanks", () => {
+  it("keeps unknown selection groups distinct while displaying them as other", () => {
     expect(sectionComponent("R01")).toBe("other");
     expect(sectionComponent("")).toBe("other");
+    expect(sectionGroup("R01")).toBe("other:R");
+    expect(sectionGroup("W-L")).toBe("other:W");
+    expect(sectionGroup("R01")).not.toBe(sectionGroup("W-L"));
   });
 });
 
