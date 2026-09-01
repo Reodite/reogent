@@ -150,7 +150,7 @@ function ProgramCombobox({
     );
     if (!match) return false;
     setQuery(match.label);
-    onChange(match.value);
+    if (match.value !== value) onChange(match.value);
     return true;
   }
 

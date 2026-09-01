@@ -428,9 +428,11 @@ export function DegreePlannerPane() {
         >
           <section
             aria-label="Degree plan"
+            aria-describedby="planner-scroll-hint"
             className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4 max-md:min-h-[36rem] max-md:shrink-0"
           >
             <p
+              id="planner-scroll-hint"
               className={`text-muted sticky left-0 mb-2 h-4 shrink-0 text-right text-[11px] ${
                 years.length > 4 ? "" : "xl:hidden"
               }`}

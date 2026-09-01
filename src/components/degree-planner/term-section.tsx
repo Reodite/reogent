@@ -14,7 +14,7 @@ import { useDndMonitor, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useState } from "react";
 import { CourseBlock } from "./course-block";
-import { isSummer, SEASON_META, TERM_CREDIT_WARN, usePlanner, type Term } from "./planner-store";
+import { SEASON_META, TERM_CREDIT_WARN, usePlanner, type Term } from "./planner-store";
 import { EMPTY_VALIDATION, type BlockValidation } from "./validation";
 
 interface TermSectionProps {
@@ -90,7 +90,6 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
   // enough for a planner subtotal.
   const creditTotal = term.blocks.reduce((sum, b) => sum + (courseIndex.get(b.code)?.credits ?? 0), 0);
   const creditOverload = creditTotal > TERM_CREDIT_WARN[term.season];
-  const summer = isSummer(term.season);
 
   return (
     <div
@@ -112,7 +111,11 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
         </span>
       </div>
       <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
-        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-0.5 pt-0.5">
+        <div
+          className={`flex min-h-0 flex-1 flex-col gap-1.5 px-0.5 pt-0.5 ${
+            term.blocks.length > 0 ? "overflow-y-auto" : "overflow-hidden"
+          }`}
+        >
           {term.blocks.map((b) => (
             <CourseBlock
               key={b.id}
@@ -124,9 +127,7 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
           ))}
           {term.blocks.length === 0 && (
             <p className="text-muted flex flex-1 items-center justify-center px-2 text-center text-xs">
-              {summer
-                ? "No summer courses. Drag one here to add it."
-                : "Drag a course here, or add one from Requirements."}
+              Drop courses here.
             </p>
           )}
         </div>

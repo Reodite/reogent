@@ -201,9 +201,10 @@ function CourseRequirementRow({
     >
       <button
         type="button"
+        aria-pressed={manuallyChecked}
         onClick={onToggle}
-        title="Mark complete with transfer or external credit"
-        aria-label="Mark requirement complete manually"
+        title={manuallyChecked ? "Mark requirement incomplete" : "Mark complete with transfer or external credit"}
+        aria-label={manuallyChecked ? "Mark requirement incomplete" : "Mark requirement complete manually"}
         className="hover:bg-surface-container shrink-0 rounded-lg"
       >
         <PlannerCheckboxMark checked={manuallyChecked} />
@@ -262,6 +263,8 @@ function ManualRequirementRow({
     <li>
       <button
         type="button"
+        aria-pressed={checked}
+        aria-label={checked ? "Mark requirement incomplete" : "Mark requirement complete"}
         onClick={onToggle}
         className="hover:bg-surface-container-low flex min-h-11 w-full items-start gap-1 rounded-lg px-2 py-1 text-left"
       >
@@ -307,6 +310,7 @@ function CompletedRequirementRow({
     <li>
       <button
         type="button"
+        aria-pressed="true"
         onClick={onToggle}
         className="hover:bg-surface-container-low flex min-h-11 w-full items-start gap-1 rounded-lg px-2 py-1 text-left"
         aria-label="Mark requirement incomplete"
