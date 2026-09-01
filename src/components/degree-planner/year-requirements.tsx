@@ -292,7 +292,7 @@ function CompletedRequirementRow({
 }) {
   const content = (
     <>
-      <PlannerCheckboxMark checked />
+      <PlannerCheckboxMark checked disabled={met} />
       <span className="text-muted min-w-0 flex-1 pt-2 text-xs leading-snug line-through decoration-current/30">
         {cleanLabel(item.label)}
       </span>
