@@ -13,6 +13,7 @@ import { AnswerSheet } from "@/src/components/shell/answer-sheet";
 import { FullBleedTool } from "@/src/components/shell/full-bleed-tool";
 import { LeftSidebar } from "@/src/components/shell/left-sidebar";
 import { useSidebarCollapsed } from "@/src/components/shell/session-sidebar";
+import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { LiveRegion } from "@/src/components/ui/live-region";
 import { useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -204,9 +205,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
                 }`}
               >
-                <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
-                  {mode === "tools" && workspaceView ? <FullBleedTool view={workspaceView} /> : children}
-                </div>
+                <WorkspaceHostProvider host={mode === "tools" ? "tools" : "unity"} menuClearance>
+                  <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                    {mode === "tools" && workspaceView ? <FullBleedTool view={workspaceView} /> : children}
+                  </div>
+                </WorkspaceHostProvider>
               </main>
             )}
           </div>

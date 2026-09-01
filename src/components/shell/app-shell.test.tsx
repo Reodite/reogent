@@ -79,6 +79,14 @@ function renderShell(wide: boolean) {
   );
 }
 
+function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
+  const link = Array.from(container.querySelectorAll<HTMLAnchorElement>("[data-mode-toggle]")).find(
+    (candidate) => candidate.textContent?.trim() === label,
+  );
+  if (!link) throw new Error(`Missing ${label} mode link`);
+  return link;
+}
+
 describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("wide AI renders chat + Answer Canvas inline with the skip target on chat", () => {
     const { container, getByTestId } = renderShell(true);
@@ -104,7 +112,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
   it("Tools mode renders no right pane collapse button", () => {
     const { container } = renderShell(true);
-    fireEvent.click(container.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement);
+    fireEvent.click(modeLink(container, "Tools"));
     expect(container.querySelector('[aria-label="Close answer canvas"]')).toBeNull();
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
@@ -117,7 +125,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
   it("wide Tools renders the Full-Bleed Tool with the skip target on the tool", () => {
     const { container } = renderShell(true);
-    fireEvent.click(container.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement);
+    fireEvent.click(modeLink(container, "Tools"));
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
     const surface = container.querySelector("[data-workspace-surface]");
     expect(surface?.className).toContain("workspace-surface");
@@ -132,10 +140,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
   it("Unity uses the same shell-owned workspace surface", () => {
     const { container } = renderShell(true);
-    const unityTab = Array.from(container.querySelectorAll<HTMLElement>('[role="tab"]')).find((tab) =>
-      tab.textContent?.includes("Unity"),
-    );
-    fireEvent.click(unityTab as HTMLElement);
+    fireEvent.click(modeLink(container, "Unity"));
 
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("unity");
     expect(container.querySelector("[data-workspace-surface]")?.className).toContain("workspace-surface");
@@ -144,7 +149,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
   it("below-wide Tools lives in the left drawer, Full-Bleed Tool stays full-bleed", () => {
     const { container } = renderShell(false);
-    fireEvent.click(container.querySelector('[role="tab"][aria-selected="false"]') as HTMLElement);
+    fireEvent.click(modeLink(container, "Tools"));
     fireEvent.click(container.querySelector('[aria-label="Open sidebar"]') as HTMLElement);
     const drawer = container.querySelector('[role="dialog"][aria-label="Tools"]');
     expect(drawer).not.toBeNull();

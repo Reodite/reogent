@@ -4,8 +4,9 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PANE_BY_ID, type CanvasView, type PaneState } from "@/src/components/shell/pane-registry";
+import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { Button } from "@/src/components/ui/button";
-import { useCallback, useRef, type ComponentType } from "react";
+import { useCallback, useRef, useState, type ComponentType } from "react";
 
 /**
  * The AI Mode Answer Canvas: the idle map overview when no widget is active, or
@@ -19,6 +20,7 @@ import { useCallback, useRef, type ComponentType } from "react";
  */
 export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | null; titlebar?: boolean }) {
   const { setRightPaneCollapsed, setAnswerSheetOpen, setUserDismissedPane } = useChatShell();
+  const [titlebarOutlet, setTitlebarOutlet] = useState<HTMLElement | null>(null);
   const onClose = () => {
     setRightPaneCollapsed(true);
     setAnswerSheetOpen(false);
@@ -27,26 +29,26 @@ export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | nul
   if (view === null || !PANE_BY_ID[view.paneId]) return null;
   const paneId = view.paneId;
   const { label, icon: PaneGlyph } = PANE_BY_ID[view.paneId];
-  const isCanvas = paneId === "map" || paneId === "prereq-tree";
+
   return (
-    <section
-      aria-label={titlebar ? "Answer canvas" : label}
-      data-pane={paneId}
-      className={`flex h-full w-full flex-col overflow-hidden ${titlebar ? "neu-panel rounded-2xl" : ""}`}
+    <WorkspaceHostProvider
+      host={titlebar ? "answer-canvas" : "tools"}
+      menuClearance={!titlebar}
+      titlebarOutlet={titlebarOutlet}
     >
-      {titlebar && <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} />}
-      {isCanvas ? (
-        <div className="relative min-h-0 flex-1">
-          <div className="absolute inset-0">
-            <ActiveCanvasView view={view} />
-          </div>
-        </div>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-auto">
+      <section
+        aria-label={titlebar ? "Answer canvas" : label}
+        data-pane={paneId}
+        className={`flex h-full w-full flex-col overflow-hidden ${titlebar ? "neu-panel rounded-2xl" : ""}`}
+      >
+        {titlebar && (
+          <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} onOutlet={setTitlebarOutlet} />
+        )}
+        <div className="relative min-h-0 flex-1 overflow-hidden">
           <ActiveCanvasView view={view} />
         </div>
-      )}
-    </section>
+      </section>
+    </WorkspaceHostProvider>
   );
 }
 
@@ -54,10 +56,12 @@ function AnswerCanvasTitlebar({
   label,
   Glyph,
   onClose,
+  onOutlet,
 }: {
   label: string;
   Glyph: ComponentType<{ className?: string }>;
   onClose: () => void;
+  onOutlet: (outlet: HTMLDivElement | null) => void;
 }) {
   return (
     <header className="flex h-15 shrink-0 items-center gap-2 px-4">
@@ -65,9 +69,7 @@ function AnswerCanvasTitlebar({
         <Glyph className="size-4" />
       </span>
       <h2 className="min-w-0 shrink-0 truncate text-base font-medium tracking-[-0.01em]">{label}</h2>
-      {/* Panes may portal toolbar content (e.g. the prereq tree's course lookup)
-          into this slot so the working area below keeps the full card height. */}
-      <div data-pane-titlebar-slot className="relative z-30 min-w-0 flex-1" />
+      <div ref={onOutlet} data-pane-titlebar-slot className="relative z-30 min-w-0 flex-1" />
       <Button aria-label="Close" onClick={onClose} variant="ghost" size="icon">
         <Icon name="close" size={18} />
       </Button>

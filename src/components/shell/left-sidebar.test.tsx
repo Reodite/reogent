@@ -78,20 +78,28 @@ function Capture() {
   return null;
 }
 
+function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
+  const link = Array.from(container.querySelectorAll<HTMLAnchorElement>("[data-mode-toggle]")).find(
+    (candidate) => candidate.textContent?.trim() === label,
+  );
+  if (!link) throw new Error(`Missing ${label} mode link`);
+  return link;
+}
+
 describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
-  it("ModeToggle toggles mode and persists to localStorage", () => {
+  it("ModeToggle navigates by link and persists the selected mode", () => {
     const { container } = render(
       <ChatShellProvider>
         <ModeToggle />
         <Capture />
       </ChatShellProvider>,
     );
-    const toolsTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
-      (el) => el.getAttribute("aria-selected") === "false",
-    ) as HTMLElement;
-    act(() => fireEvent.click(toolsTab));
+    const toolsLink = modeLink(container, "Tools");
+    expect(toolsLink.getAttribute("href")).toBe("/tools/map");
+    act(() => fireEvent.click(toolsLink));
     expect(shellRef.current?.mode).toBe("tools");
     expect(localStorage.getItem(SHELL_MODE_STORAGE_KEY)).toBe("tools");
+    expect(toolsLink.getAttribute("aria-current")).toBe("page");
   });
 
   it("LeftSidebar shows SessionList in AI mode and ToolList in Tools mode", () => {
@@ -103,10 +111,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     );
     expect(container.querySelector('[data-testid="session-list"]')).not.toBeNull();
     expect(container.querySelector("[data-tool-list]")).toBeNull();
-    const toolsTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
-      (el) => el.getAttribute("aria-selected") === "false",
-    ) as HTMLElement;
-    act(() => fireEvent.click(toolsTab));
+    act(() => fireEvent.click(modeLink(container, "Tools")));
     expect(container.querySelector('[data-testid="session-list"]')).toBeNull();
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
   });
@@ -118,10 +123,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <Capture />
       </ChatShellProvider>,
     );
-    const toolsTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
-      (el) => el.getAttribute("aria-selected") === "false",
-    ) as HTMLElement;
-    act(() => fireEvent.click(toolsTab));
+    act(() => fireEvent.click(modeLink(container, "Tools")));
     act(() => fireEvent.click(container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement));
     expect(shellRef.current?.workspaceView?.paneId).toBe("prereq-tree");
     expect(shellRef.current?.workspaceView?.state).toEqual({ root: "", query: "", selections: {}, softDisabled: {} });
@@ -133,12 +135,9 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <LeftSidebar />
       </ChatShellProvider>,
     );
-    expect(container.querySelector('[role="tab"]')).not.toBeNull();
-    const toolsTab = Array.from(container.querySelectorAll('[role="tab"]')).find(
-      (el) => el.getAttribute("aria-selected") === "false",
-    ) as HTMLElement;
-    act(() => fireEvent.click(toolsTab));
-    expect(container.querySelector('[role="tab"]')).not.toBeNull();
+    expect(modeLink(container, "AI").getAttribute("aria-current")).toBe("page");
+    act(() => fireEvent.click(modeLink(container, "Tools")));
+    expect(modeLink(container, "Tools").getAttribute("aria-current")).toBe("page");
   });
 
   it("marks shared schedule links as part of Schedule", () => {
