@@ -16,7 +16,7 @@ import { useSidebarCollapsed } from "@/src/components/shell/session-sidebar";
 import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { LiveRegion } from "@/src/components/ui/live-region";
 import { useReducedMotion } from "motion/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** Gate: initializing → null (brief); signed out → redirect to login. */
@@ -103,6 +103,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     setUserDismissedPane,
   } = useChatShell();
   const canvasInline = useIsCanvasInline();
+  const pathname = usePathname();
+  const settingsRoute = pathname === "/settings";
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
@@ -170,7 +172,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <LeftSidebar collapsed={sessionsCollapsed} onCollapse={collapseSessions} onExpand={expandSessions} />
               </div>
             </aside>
-            {mode === "ai" ? (
+            {settingsRoute ? (
+              <main
+                id="main-content"
+                data-pane="settings"
+                data-shell-mode={mode}
+                className={`flex min-h-0 min-w-0 flex-1 ${
+                  mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
+                }`}
+              >
+                <WorkspaceHostProvider host="settings" menuClearance>
+                  <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                    {children}
+                  </div>
+                </WorkspaceHostProvider>
+              </main>
+            ) : mode === "ai" ? (
               <div className="chat-map-area flex min-h-0 min-w-0 flex-1">
                 <main
                   id="main-content"

@@ -4,15 +4,16 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { PANE_REGISTRY } from "@/src/components/shell/pane-registry";
 import { SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
 import { paneIdToSlug } from "@/src/lib/pane-route";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export function ToolList({ collapsed = false }: { collapsed?: boolean }) {
   const { workspaceView, setActiveChannel } = useChatShell();
+  const pathname = usePathname();
   const router = useRouter();
   return (
     <SidebarListNav label="Tools" collapsed={collapsed} toolList>
       {PANE_REGISTRY.map((entry, i) => {
-        const active = workspaceView?.paneId === entry.id;
+        const active = pathname?.startsWith("/tools/") === true && workspaceView?.paneId === entry.id;
         const slug = paneIdToSlug(entry.id);
         return (
           <SidebarListItem key={entry.id} index={i}>

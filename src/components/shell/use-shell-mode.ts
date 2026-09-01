@@ -5,18 +5,16 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 /**
- * The AI/Tools shell mode, derived from the current URL pathname and persisted
- * to localStorage. `/tools/*` → "tools", anything else → "ai". The pathname
- * effect keeps state in lockstep with navigation (including deep links and
- * back/forward); `setMode` writes the local preference and lets the caller
- * push the URL (see `mode-toggle.tsx`). Dataset mirror is for SSR/paint parity
- * with the bootstrap script in `app/layout.tsx`.
+ * Tracks routed shell modes without changing the current mode on Settings.
+ * `setMode` persists explicit navigation; the dataset mirrors routed state for
+ * paint parity with the bootstrap script in `app/layout.tsx`.
  */
 export function useShellMode(initial: ShellMode = "ai"): [ShellMode, (mode: ShellMode) => void] {
   const [mode, setModeState] = useState<ShellMode>(initial);
   const pathname = usePathname();
 
   useEffect(() => {
+    if (pathname === "/settings") return;
     const next: ShellMode = pathname?.startsWith("/tools") ? "tools" : pathname?.startsWith("/pulse") ? "unity" : "ai";
     setModeState(next);
     // Dataset mirrors the URL so pre-paint chrome matches the active route.

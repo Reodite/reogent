@@ -476,6 +476,12 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 - **Import**: Both routes parse Workday Excel exports in the browser. Planner imports reconcile term, component, days, and times with catalog identifiers, require a choice for ambiguous matches, list skipped rows, and ask whether to merge or replace before one atomic update. Sharer imports remain read-only calendar data.
 - **Responsive flow**: At the shared 55rem container width, the rail and canvas become explicit 44px Schedule and Controls views while both remain mounted. The workspace uses 16px padding and gaps, opens Schedule first, renders one day column with 44px day tabs, and preserves term, day, form, and scroll state across view changes.
 
+### Settings
+
+- **Utility route**: Settings renders inside the authenticated shell before mode-dependent content. It keeps the existing AI, Tools, or Unity sidebar and cached workspace state without marking a prior tool row current. Browser Back restores the same route, mode, active pane, query, and scroll position.
+- **Composition**: The shared split workspace places Account and Appearance in two equal 20rem rail panels and Student Profile in the inset canvas. Compact users switch between Student profile and Account & appearance through the standard 44px control.
+- **Profile safety**: Profile fields do not render until saved defaults load successfully. Failure shows the shared Retry state and keeps editing locked; saving disables the complete fieldset without clearing values. Program, year, and student type use shared labeled fields.
+
 ### Map, Pulse, and Creators
 
 - **Campus Map**: Tools renders the standard page title and one inset full canvas without inventing an empty rail. AI keeps the map full-bleed inside Answer Canvas. Building details remain a transient raised inspector. Layer, reset, and zoom controls keep their specialized map contract while reaching 44px on compact screens. Load failure uses the shared stacked recovery state and only promises route details when a highlight exists.

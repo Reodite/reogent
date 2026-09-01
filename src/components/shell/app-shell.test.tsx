@@ -23,9 +23,10 @@ vi.mock("@/src/components/shell/session-sidebar", () => ({
 vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => null }));
 vi.mock("@/src/components/shell/user-menu", () => ({ UserMenu: () => null }));
 vi.mock("@/src/components/ui/live-region", () => ({ LiveRegion: () => null }));
+const pathname = vi.hoisted(() => ({ value: "/" }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: () => {}, push: () => {} }),
-  usePathname: () => "/",
+  usePathname: () => pathname.value,
   useParams: () => ({}),
 }));
 
@@ -59,6 +60,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+  pathname.value = "/";
   mem.clear();
   vi.clearAllMocks();
   cleanup();
@@ -68,15 +70,19 @@ afterAll(() => {
   localStorage.clear();
 });
 
-function renderShell(wide: boolean) {
-  wideMatches = wide;
-  return render(
+function ShellFixture() {
+  return (
     <ChatShellProvider>
       <AppShell>
         <div data-testid="chat-children" />
       </AppShell>
-    </ChatShellProvider>,
+    </ChatShellProvider>
   );
+}
+
+function renderShell(wide: boolean) {
+  wideMatches = wide;
+  return render(<ShellFixture />);
 }
 
 function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
@@ -135,6 +141,23 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     // ToolRouteActivator effect.
     expect(container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
+  });
+
+  it("renders Settings as a utility workspace without exposing the prior tool as current", () => {
+    const view = renderShell(true);
+    fireEvent.click(modeLink(view.container, "Tools"));
+    fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement);
+
+    pathname.value = "/settings";
+    view.rerender(<ShellFixture />);
+
+    expect(view.container.querySelectorAll("main")).toHaveLength(1);
+    expect(view.container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("settings");
+    expect(view.container.querySelector("#main-content")?.getAttribute("data-shell-mode")).toBe("tools");
+    expect(view.container.querySelector("[data-workspace-surface]")).not.toBeNull();
+    expect(view.container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-tool-id="prereq-tree"]')?.getAttribute("aria-current")).toBeNull();
+    expect(view.container.querySelector("[data-answer-sheet]")).toBeNull();
   });
 
   it("Unity uses the same shell-owned workspace surface", () => {

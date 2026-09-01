@@ -495,13 +495,15 @@ html.vt-active *::after {
 }
 
 @media (max-width: 1279px) {
-  [data-workspace-host="tools"][data-menu-clearance] [data-workspace-header] {
+  [data-workspace-host="tools"][data-menu-clearance] [data-workspace-header],
+  [data-pane="settings"][data-shell-mode="tools"] [data-workspace-header] {
     padding-left: 3rem;
   }
 }
 
 @media (max-width: 1023px) {
-  [data-workspace-host="unity"][data-menu-clearance] [data-workspace-header] {
+  [data-workspace-host="unity"][data-menu-clearance] [data-workspace-header],
+  [data-pane="settings"]:not([data-shell-mode="tools"]) [data-workspace-header] {
     padding-left: 3rem;
   }
 }
