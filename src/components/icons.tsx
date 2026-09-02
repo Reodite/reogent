@@ -60,6 +60,11 @@ const ICON_MAP = {
   file: "file-line",
   briefcase: "briefcase-line",
   warning: "warning-line",
+  share: "share-forward-line",
+  bookmark: "bookmark-line",
+  bookmarkFill: "bookmark-fill",
+  door: "door-line",
+  camera: "camera-line",
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

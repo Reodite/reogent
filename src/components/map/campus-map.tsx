@@ -720,6 +720,18 @@ export function CampusMap({
     setRoutePath(null);
     if (highlight?.kind !== "route") return;
     const key = `${highlight.from}|${highlight.to}`;
+    if (highlight.method === "network" && highlight.path) {
+      const path = drawableRoutePath({
+        from: highlight.from,
+        to: highlight.to,
+        meters: highlight.meters,
+        minutes: highlight.minutes,
+        method: "network",
+        polyline: highlight.path,
+      });
+      if (path) setRoutePath({ key, path });
+      return;
+    }
     const controller = new AbortController();
     api
       .getRoute(highlight.from, highlight.to, controller.signal)

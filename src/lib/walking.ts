@@ -14,6 +14,7 @@ interface WalkingHighlight {
   meters: number;
   minutes: number;
   method: "network" | "estimate" | null;
+  path?: LngLat[];
 }
 
 interface BuildingRef {
