@@ -110,9 +110,10 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 3. IF a Building_Record contains no Official_Photo, THEN THE Building_Rail SHALL display no fabricated or unrelated building image.
 4. WHEN Room_Record entries exist, THE Building_Rail SHALL display every Room_Record with room number or name, room type, capacity, floor, furniture, layout, and official room link when each field exists.
 5. WHEN bookable Room_Record entries exist, THE Building_Rail SHALL display the official booking action for each bookable room.
-6. WHEN an Availability_Snapshot exists, THE Building_Rail SHALL label availability with the snapshot collection time.
+6. WHEN an Availability_Snapshot contains a collection time, THE Building_Rail SHALL label availability with the snapshot collection time.
 7. IF an Availability_Snapshot is older than 24 hours, THEN THE Building_Rail SHALL identify availability as historical rather than current.
-8. IF room data fails while base building data succeeds, THEN THE Building_Rail SHALL preserve base building details and provide a room-section retry action.
+8. IF an Availability_Snapshot lacks a collection time, THEN THE Building_Rail SHALL identify availability freshness as unknown.
+9. IF room data fails while base building data succeeds, THEN THE Building_Rail SHALL preserve base building details and provide a room-section retry action.
 
 ### Requirement 6: Building actions and in-app directions
 
@@ -121,13 +122,15 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 #### Acceptance Criteria
 
 1. WHEN a user activates Directions, THE Building_Rail SHALL keep the Selected_Building as the destination and request an origin building.
-2. WHEN a user selects a valid origin building, THE Map_Canvas SHALL display the in-app pedestrian route, distance in metres, and estimated walking time in minutes.
-3. IF route calculation fails, THEN THE Building_Rail SHALL preserve the origin and destination and display a route retry action.
-4. WHEN a user activates Open in Google Maps, THE Campus_Map_Explorer SHALL open a separate Google Maps destination URL using the Selected_Building coordinates.
-5. WHEN a user activates Share, THE Campus_Map_Explorer SHALL produce a same-origin URL that restores the Selected_Building.
-6. WHERE Web_Share is available, THE Campus_Map_Explorer SHALL offer the shared building URL through Web_Share.
-7. IF Web_Share is unavailable or dismissed, THEN THE Campus_Map_Explorer SHALL preserve the Selected_Building and offer clipboard copy without reporting dismissal as an error.
-8. IF clipboard copy fails, THEN THE Building_Rail SHALL preserve the Selected_Building and display a retryable copy error.
+2. WHEN a user selects a valid origin building and the routing method is network, THE Map_Canvas SHALL display the in-app pedestrian route, distance in metres, and estimated walking time in minutes.
+3. IF the routing method is estimate, THEN THE Building_Rail SHALL identify the result as a straight-line distance estimate.
+4. IF the routing method is estimate, THEN THE Map_Canvas SHALL omit a route line.
+5. IF route calculation fails, THEN THE Building_Rail SHALL preserve the origin and destination and display a route retry action.
+6. WHEN a user activates Open in Google Maps, THE Campus_Map_Explorer SHALL open a separate Google Maps destination URL using the Selected_Building coordinates.
+7. WHEN a user activates Share, THE Campus_Map_Explorer SHALL produce a same-origin URL that restores the Selected_Building.
+8. WHERE Web_Share is available, THE Campus_Map_Explorer SHALL offer the shared building URL through Web_Share.
+9. IF Web_Share is unavailable or dismissed, THEN THE Campus_Map_Explorer SHALL preserve the Selected_Building and offer clipboard copy without reporting dismissal as an error.
+10. IF clipboard copy fails, THEN THE Building_Rail SHALL preserve the Selected_Building and display a retryable copy error.
 
 ### Requirement 7: Account-scoped favorite buildings
 
@@ -152,12 +155,13 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 1. THE Campus_Map_Explorer SHALL create entrance graphics only from Verified_Entrance records.
 2. WHEN a Verified_Entrance projects to a building wall segment within 4 metres, THE Map_Canvas SHALL render a Ground_Entrance_Marker that points from outside the footprint toward the entrance.
 3. WHEN a Verified_Entrance projects to a building wall segment within 4 metres, THE Map_Canvas SHALL render a Door_Marker on the matching 3D building side.
-4. THE Door_Marker SHALL use a ground clearance from 0 to 0.2 metres, a height from 1.8 to 2.4 metres, and a width from 0.8 to 1.8 metres.
-5. IF a Verified_Entrance cannot project to a building wall segment within 4 metres, THEN THE Campus_Map_Explorer SHALL omit Ground_Entrance_Marker and Door_Marker graphics for the unmatched entrance.
-6. IF a building has no Verified_Entrance records, THEN THE Map_Canvas SHALL render the building without entrance graphics.
-7. WHILE the Map_Canvas zoom is below level 16 and no building is selected, THE Map_Canvas SHALL hide entrance graphics.
-8. WHEN a building becomes the Selected_Building, THE Map_Canvas SHALL render valid entrance graphics for the Selected_Building at the selected-building camera extent.
-9. IF entrance accessibility semantics lack source documentation, THEN THE Building_Rail and Map_Canvas SHALL present the entrance without an accessibility claim.
+4. THE Door_Marker SHALL align width along the matched wall tangent and height along the vertical axis.
+5. THE Door_Marker SHALL use a ground clearance from 0 to 0.2 metres, a height from 1.8 to 2.4 metres, and a width from 0.8 to 1.8 metres.
+6. IF a Verified_Entrance cannot project to a building wall segment within 4 metres, THEN THE Campus_Map_Explorer SHALL omit Ground_Entrance_Marker and Door_Marker graphics for the unmatched entrance.
+7. IF a building has no Verified_Entrance records, THEN THE Map_Canvas SHALL render the building without entrance graphics.
+8. WHILE the Map_Canvas zoom is below level 16 and no building is selected, THE Map_Canvas SHALL hide entrance graphics.
+9. WHEN a building becomes the Selected_Building, THE Map_Canvas SHALL render valid entrance graphics for the Selected_Building at the selected-building camera extent.
+10. IF entrance accessibility semantics lack source documentation, THEN THE Building_Rail and Map_Canvas SHALL present the entrance without an accessibility claim.
 
 ### Requirement 9: Rich AI map widgets
 
@@ -175,6 +179,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 8. WHILE any Map_Widget is active in AI_Mode, THE AI_Answer_Canvas SHALL keep the Building_Rail unmounted.
 9. IF a Map_Widget contains an unknown building or malformed spatial data, THEN THE Response_Widget SHALL render an error state and THE AI_Answer_Canvas SHALL preserve the last valid map state.
 10. THE Agent tool guidance SHALL identify the data question served by each Map_Widget type.
+11. WHEN the Agent calls Building_Detail_Widget, Building_Entrances_Widget, or Building_Spaces_Widget, THE Agent SHALL provide one exact building code returned by a prior building lookup.
 
 ### Requirement 10: Responsive, accessible map exploration
 
