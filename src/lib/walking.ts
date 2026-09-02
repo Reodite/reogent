@@ -3,7 +3,8 @@
 // latest response has no map-driving call).
 
 import type { CanvasView } from "@/src/components/shell/pane-registry";
-import { isToolError, type ToolCall, type WalkingDistanceResult } from "@/src/lib/api-types";
+import { isToolError, type RouteResponse, type ToolCall, type WalkingDistanceResult } from "@/src/lib/api-types";
+import type { LngLat } from "@/src/shared/types";
 
 interface WalkingHighlight {
   kind: "route";
@@ -12,6 +13,7 @@ interface WalkingHighlight {
   to: string;
   meters: number;
   minutes: number;
+  method: "network" | "estimate" | null;
 }
 
 interface BuildingRef {
@@ -24,6 +26,8 @@ interface BuildingRef {
 interface BuildingsHighlight {
   kind: "buildings";
   buildings: BuildingRef[];
+  showEntrances?: boolean;
+  detailKind?: "building" | "spaces";
 }
 
 interface PlacePin {
@@ -42,6 +46,22 @@ interface PlacesHighlight {
 
 /** What the campus map renders: a walking route, focused buildings, or POI pins. */
 export type MapHighlight = WalkingHighlight | BuildingsHighlight | PlacesHighlight;
+
+/** Returns only verified network path geometry; estimates remain text-only. */
+export function drawableRoutePath(route: RouteResponse): LngLat[] | null {
+  if (route.method !== "network" || route.polyline.length < 2) return null;
+  return route.polyline.every(
+    ([longitude, latitude]) =>
+      Number.isFinite(longitude) &&
+      Number.isFinite(latitude) &&
+      longitude >= -180 &&
+      longitude <= 180 &&
+      latitude >= -90 &&
+      latitude <= 90,
+  )
+    ? route.polyline
+    : null;
+}
 
 /**
  * A map-renderable highlight from a walking_distance call, or null when the
@@ -67,7 +87,8 @@ export function extractWalkingHighlight(call: ToolCall): WalkingHighlight | null
     (typeof call.input.to_building === "string" && call.input.to_building) ||
     "";
   if (!from || !to) return null;
-  return { kind: "route", from, to, meters: result.meters, minutes: result.minutes };
+  const method = result.method === "network" || result.method === "estimate" ? result.method : null;
+  return { kind: "route", from, to, meters: result.meters, minutes: result.minutes, method };
 }
 
 /**
@@ -204,6 +225,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
         to: r.to,
         meters: r.meters,
         minutes: r.minutes,
+        method: null,
       };
       return { paneId: "map", state: { highlight: highlightRoute } };
     }

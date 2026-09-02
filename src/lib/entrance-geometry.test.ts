@@ -2,7 +2,7 @@ import type { EntranceFeatureCollection } from "@/src/lib/api-types";
 import fc from "fast-check";
 import type { FeatureCollection, Position } from "geojson";
 import { describe, expect, it } from "vitest";
-import { buildEntranceMarkers } from "./entrance-geometry";
+import { buildEntranceMarkers, visibleEntranceMarkers } from "./entrance-geometry";
 
 const METERS_PER_LATITUDE_DEGREE = 110_540;
 const ORIGIN: [number, number] = [-123.25, 49.26];
@@ -97,6 +97,17 @@ describe("entrance marker geometry", () => {
   it("drops entrances farther than the wall tolerance", () => {
     const position: [number, number] = [ORIGIN[0], ORIGIN[1] - latitudeDelta(12)];
     expect(buildEntranceMarkers(polygonCollection([ring(10, 10)]), entrances(position))).toEqual([]);
+  });
+
+  it("shows focused entrances below detail zoom and all entrances at detail zoom", () => {
+    const markers = [
+      ...buildEntranceMarkers(polygonCollection([ring(20, 12)], "ONE"), entrances(southEntrance(12), "ONE")),
+      ...buildEntranceMarkers(polygonCollection([ring(20, 12)], "TWO"), entrances(southEntrance(12), "TWO")),
+    ];
+
+    expect(visibleEntranceMarkers(markers, 14, new Set())).toEqual([]);
+    expect(visibleEntranceMarkers(markers, 14, new Set(["ONE"])).map((marker) => marker.buildingCode)).toEqual(["ONE"]);
+    expect(visibleEntranceMarkers(markers, 16, new Set())).toHaveLength(2);
   });
 
   // Feature: campus-map-explorer, Property 4: Entrance markers preserve verified geometry bounds.

@@ -59,13 +59,13 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Expose `resize()` and call MapLibre resize after a compact hidden map becomes visible.
     - Add component-level tests around controlled/uncontrolled selection state and map control wiring.
     - _Requirements: 1.1–1.4, 3.1–3.4, 10.3–10.4_
-  - [ ] 4.2 Add ground-arrow and 3D door layers
+  - [x] 4.2 Add ground-arrow and 3D door layers
     - Load the sanitized entrance collection through the cached public map API.
     - Build marker geometry once, index by building code, and display selected-building markers at focused extent or all valid markers at zoom 16 and above.
     - Render ground arrows below labels and vertical door outlines above building sides with theme tokens and no undocumented accessibility styling.
     - Add layer-descriptor tests for zoom filtering, selected-building override, theme colors, and empty/error entrance data.
     - _Requirements: 8.1–8.10, 9.4, 11.7_
-  - [ ] 4.3 Prevent estimated or failed routes from drawing straight lines
+  - [x] 4.3 Prevent estimated or failed routes from drawing straight lines
     - Carry route method through map state and draw route geometry only for network paths.
     - Keep labeled estimate distance and retry state outside the path layer.
     - Add the route-projection property and representative map-layer tests.

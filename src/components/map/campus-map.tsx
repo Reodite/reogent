@@ -16,12 +16,16 @@ import campusHull from "@/data/campus-hull.json";
 import type { MapHighlight } from "@/src/components/chat/chat-shell-context";
 import { BuildingPopup, type SelectedBuilding } from "@/src/components/map/building-popup";
 import { useApi, useTheme, type ResolvedTheme } from "@/src/components/providers";
+import type { BuildingSummary, EntranceFeatureCollection } from "@/src/lib/api-types";
+import { buildingFromFeature } from "@/src/lib/building-catalog";
+import { buildEntranceMarkers, visibleEntranceMarkers } from "@/src/lib/entrance-geometry";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
 import { featureCentroid, featuresBounds, findBuilding, type BuildingFeature, type LngLat } from "@/src/lib/geo";
 import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
+import { drawableRoutePath } from "@/src/lib/walking";
 import type { FeatureCollection } from "geojson";
 import type { ErrorEvent as MapLibreErrorEvent } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // MapLibre spawns its Web Worker via `new Worker(WORKER_URL)`. The default
 // worker URL resolves to the page route (/chat/{id}) in Turbopack builds, so
@@ -37,6 +41,7 @@ export interface MapControls {
   zoomIn: () => void;
   zoomOut: () => void;
   resetView: () => void;
+  resize: () => void;
 }
 
 interface CampusMapProps {
@@ -44,6 +49,9 @@ interface CampusMapProps {
   /** Bumps re-focus the camera on the current highlight. */
   focusNonce: number;
   showRoutes: boolean;
+  selectedBuilding?: BuildingSummary | null;
+  onBuildingSelect?: (building: BuildingSummary | null) => void;
+  showBuildingPopup?: boolean;
   onStatus?: (status: MapStatus) => void;
   /** Filled with imperative camera controls once the map is up. */
   controls?: React.RefObject<MapControls | null>;
@@ -130,7 +138,17 @@ type Rgba = [number, number, number, number];
 const MAP_COLORS: Record<
   ResolvedTheme,
   Record<
-    "fill" | "line" | "fillHighlight" | "lineHighlight" | "route" | "routeCasing" | "label" | "labelBg" | "walkway",
+    | "fill"
+    | "line"
+    | "fillHighlight"
+    | "lineHighlight"
+    | "route"
+    | "routeCasing"
+    | "label"
+    | "labelBg"
+    | "walkway"
+    | "entrance"
+    | "door",
     Rgba
   >
 > = {
@@ -149,6 +167,8 @@ const MAP_COLORS: Record<
     labelBg: [250, 250, 250, 255],
     // Walkways: primary accent at 25%
     walkway: [74, 78, 122, 64],
+    entrance: [74, 78, 122, 190],
+    door: [250, 250, 250, 255],
   },
   dark: {
     // Buildings
@@ -165,6 +185,8 @@ const MAP_COLORS: Record<
     labelBg: [14, 14, 16, 255],
     // Walkways: primary accent at 25%
     walkway: [176, 180, 216, 64],
+    entrance: [176, 180, 216, 210],
+    door: [18, 18, 20, 255],
   },
 };
 
@@ -235,6 +257,7 @@ interface MapHandles {
   layerModules: {
     GeoJsonLayer: typeof import("@deck.gl/layers").GeoJsonLayer;
     PathLayer: typeof import("@deck.gl/layers").PathLayer;
+    PolygonLayer: typeof import("@deck.gl/layers").PolygonLayer;
     ScatterplotLayer: typeof import("@deck.gl/layers").ScatterplotLayer;
     TextLayer: typeof import("@deck.gl/layers").TextLayer;
   };
@@ -273,7 +296,16 @@ function partialPath(path: LngLat[], t: number): LngLat[] {
   return out;
 }
 
-export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, controls }: CampusMapProps) {
+export function CampusMap({
+  highlight,
+  focusNonce,
+  showRoutes,
+  selectedBuilding: controlledSelected,
+  onBuildingSelect,
+  showBuildingPopup = true,
+  onStatus,
+  controls,
+}: CampusMapProps) {
   const api = useApi();
   const { theme } = useTheme();
 
@@ -283,27 +315,47 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   const didPanRef = useRef(false);
   const [status, setStatus] = useState<MapStatus>("loading");
   const [buildings, setBuildings] = useState<FeatureCollection | null>(null);
+  const [entrances, setEntrances] = useState<EntranceFeatureCollection | null>(null);
   const [walkingRoutes, setWalkingRoutes] = useState<FeatureCollection | null>(null);
+  const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
   const [picked, setPicked] = useState<PickedBuilding | null>(null);
-  /** Building whose details popup is open (click/tap on a footprint). */
-  const [selected, setSelected] = useState<SelectedBuilding | null>(null);
+  /** Building whose details popup is open when selection is not controlled by Tools. */
+  const [internalSelected, setInternalSelected] = useState<SelectedBuilding | null>(null);
+  const selected = controlledSelected === undefined ? internalSelected : controlledSelected;
+  const selectBuilding = useCallback(
+    (building: BuildingSummary | null) => {
+      if (onBuildingSelect) onBuildingSelect(building);
+      else setInternalSelected(building);
+    },
+    [onBuildingSelect],
+  );
 
   // Restore the last-selected building (its popup carries the rooms/POIs the
   // user was reading) after mount — effect, not initializer, so SSR markup
   // matches the first client render. Saves skip the mount commit so the
   // pre-restore `null` never wipes the cached value.
   useEffect(() => {
+    if (controlledSelected !== undefined) return;
     const cached = getCachedPaneState("map")?.selected as SelectedBuilding | null | undefined;
-    if (cached && typeof cached === "object" && typeof cached.code === "string") setSelected(cached);
-  }, []);
+    if (
+      cached &&
+      typeof cached === "object" &&
+      typeof cached.code === "string" &&
+      Array.isArray(cached.centroid) &&
+      cached.centroid.every(Number.isFinite)
+    ) {
+      setInternalSelected(cached);
+    }
+  }, [controlledSelected]);
   const skipSelectedSave = useRef(true);
   useEffect(() => {
+    if (controlledSelected !== undefined) return;
     if (skipSelectedSave.current) {
       skipSelectedSave.current = false;
       return;
     }
     cachePaneState("map", { selected });
-  }, [selected]);
+  }, [controlledSelected, selected]);
   /** Pedestrian-network polyline for the current route highlight. */
   const [routePath, setRoutePath] = useState<{ key: string; path: LngLat[] } | null>(null);
   const [drawProgress, setDrawProgress] = useState(1);
@@ -497,10 +549,11 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         canvasEl.addEventListener("pointerup", endDrag);
         canvasEl.addEventListener("pointercancel", endDrag);
 
-        // Constrain zoom/keyboard-induced pan
+        // Constrain zoom/keyboard-induced pan.
         map.on("moveend", () => {
           if (!dragging && !animating) snapBack();
         });
+        map.on("zoomend", () => setZoom(map.getZoom()));
 
         // Persist the camera so the map reopens where the user left it.
         // Debounced: the rubber-band drag emits moveend per jumpTo frame.
@@ -579,6 +632,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           layerModules: {
             GeoJsonLayer: layers.GeoJsonLayer,
             PathLayer: layers.PathLayer,
+            PolygonLayer: layers.PolygonLayer,
             ScatterplotLayer: layers.ScatterplotLayer,
             TextLayer: layers.TextLayer,
           },
@@ -592,6 +646,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
             zoomOut: () => map.zoomOut({ duration: duration() }),
             resetView: () =>
               map.flyTo({ ...INITIAL_VIEW, duration: prefersReducedMotion() ? 0 : 700, essential: true }),
+            resize: () => map.resize(),
           };
         }
       } catch (error) {
@@ -630,6 +685,21 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
   }, [api]);
 
   useEffect(() => {
+    let cancelled = false;
+    api
+      .getGeo("entrances")
+      .then((collection) => {
+        if (!cancelled) setEntrances(collection as EntranceFeatureCollection);
+      })
+      .catch(() => {
+        if (!cancelled) setEntrances(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
+
+  useEffect(() => {
     if (!showRoutes || walkingRoutes) return;
     let cancelled = false;
     api
@@ -645,31 +715,21 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
     };
   }, [api, showRoutes, walkingRoutes]);
 
-  // ---- Route polyline: fetch the pedestrian-network path for a route highlight;
-  // falls back to the straight centroid line if the fetch fails. ----
+  // Fetch route geometry only when the server confirms a connected pedestrian path.
   useEffect(() => {
-    if (highlight?.kind !== "route") {
-      setRoutePath(null);
-      return;
-    }
+    setRoutePath(null);
+    if (highlight?.kind !== "route") return;
     const key = `${highlight.from}|${highlight.to}`;
-    let cancelled = false;
+    const controller = new AbortController();
     api
-      .getRoute(highlight.from, highlight.to)
+      .getRoute(highlight.from, highlight.to, controller.signal)
       .then((route) => {
-        if (!cancelled && route.polyline.length >= 2) setRoutePath({ key, path: route.polyline });
+        const path = drawableRoutePath(route);
+        if (path) setRoutePath({ key, path });
       })
-      .catch(() => {
-        if (cancelled) return;
-        const route = resolveRoute(buildings, highlight);
-        if (route) setRoutePath({ key, path: [route.fromCenter, route.toCenter] });
-      });
-    return () => {
-      cancelled = true;
-    };
-    // `buildings` is intentionally read fresh only in the fallback; refetching on
-    // its arrival is unnecessary — the highlight always changes after sign-in.
-  }, [api, highlight, buildings]);
+      .catch(() => {});
+    return () => controller.abort();
+  }, [api, highlight]);
 
   // ---- Draw-on animation for the route trace ----
   useEffect(() => {
@@ -697,12 +757,17 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
     return () => cancelAnimationFrame(frame);
   }, [routePath]);
 
+  const entranceMarkers = useMemo(
+    () => (buildings && entrances ? buildEntranceMarkers(buildings, entrances) : []),
+    [buildings, entrances],
+  );
+
   // ---- Layers ----
   useEffect(() => {
     // `status` gates the pass so layers apply once the map reports ready.
     const handles = handlesRef.current;
     if (!handles || !buildings || status === "error") return;
-    const { GeoJsonLayer, PathLayer, ScatterplotLayer, TextLayer } = handles.layerModules;
+    const { GeoJsonLayer, PathLayer, PolygonLayer, ScatterplotLayer, TextLayer } = handles.layerModules;
     const colors = MAP_COLORS[theme];
     const route = resolveRoute(buildings, highlight);
     const focusedBuildings = highlight?.kind === "buildings" ? highlight.buildings : [];
@@ -713,17 +778,24 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
     if (selected) highlightedCodes.add(selected.code.toUpperCase());
     // Anchor building of a places search gets the highlight tint too.
     if (highlight?.kind === "places" && highlight.near) highlightedCodes.add(highlight.near.toUpperCase());
+    const entranceFocusCodes = new Set<string>();
+    if (selected) entranceFocusCodes.add(selected.code.toUpperCase());
+    if (highlight?.kind === "buildings" && highlight.showEntrances) {
+      for (const building of highlight.buildings) entranceFocusCodes.add(building.code.toUpperCase());
+    }
+    const visibleEntrances = visibleEntranceMarkers(entranceMarkers, zoom, entranceFocusCodes);
     const pins = highlight?.kind === "places" ? highlight.places : [];
 
     const isHighlighted = (feature: BuildingFeature) =>
       highlightedCodes.has((feature.properties?.BLDG_CODE ?? "").toString().toUpperCase());
 
-    const endpoints = route
-      ? [
-          { center: route.fromCenter, feature: route.from, text: highlight?.kind === "route" ? highlight.from : "" },
-          { center: route.toCenter, feature: route.to, text: highlight?.kind === "route" ? highlight.to : "" },
-        ]
-      : [];
+    const endpoints =
+      route && routePath
+        ? [
+            { center: route.fromCenter, feature: route.from, text: highlight?.kind === "route" ? highlight.from : "" },
+            { center: route.toCenter, feature: route.to, text: highlight?.kind === "route" ? highlight.to : "" },
+          ]
+        : [];
 
     /**
      * deck reads `beforeId` at runtime (interleaved insertion point) but does
@@ -752,6 +824,21 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
             }),
           )
         : null,
+      visibleEntrances.length > 0
+        ? new PolygonLayer(
+            withBeforeId({
+              id: "entrance-arrows",
+              data: visibleEntrances,
+              getPolygon: (marker) => marker.groundArrow,
+              getFillColor: colors.entrance,
+              getLineColor: colors.door,
+              stroked: true,
+              getLineWidth: 1,
+              lineWidthUnits: "pixels" as const,
+              pickable: false,
+            }),
+          )
+        : null,
       new GeoJsonLayer(
         withBeforeId({
           id: "buildings",
@@ -770,8 +857,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           autoHighlight: true,
           highlightColor: [124, 158, 178, 120],
           transitions: { getFillColor: 300 },
-          // Hover for pointers, click/tap for touch (Requirement 7.3: selecting a
-          // building shows its name and code).
+          // Hover shows identity without committing a map selection.
           onHover: (info) => {
             const properties = (info.object as BuildingFeature | undefined)?.properties;
             if (properties?.NAME || properties?.BLDG_CODE) {
@@ -785,22 +871,13 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
               setPicked(null);
             }
           },
-          // Click/tap opens the details popup (rooms, study rooms, services).
+          // Click/tap selects a building unless the gesture panned the map.
           onClick: (info) => {
-            if (didPanRef.current) return; // suppress click after drag
-            const properties = (info.object as BuildingFeature | undefined)?.properties;
-            if (!properties?.BLDG_CODE) {
-              setSelected(null);
-              return;
-            }
+            if (didPanRef.current) return;
+            const feature = info.object as BuildingFeature | undefined;
+            const building = feature ? buildingFromFeature(feature) : null;
             setPicked(null);
-            setSelected({
-              code: String(properties.BLDG_CODE),
-              name: String(properties.NAME ?? properties.BLDG_CODE),
-              usage: properties.BLDG_USAGE != null ? String(properties.BLDG_USAGE) : null,
-              floors: properties.MAX_FLOORS != null ? String(properties.MAX_FLOORS) : null,
-              address: properties.PRIMARY_ADDRESS != null ? String(properties.PRIMARY_ADDRESS) : null,
-            });
+            selectBuilding(building);
           },
           updateTriggers: {
             getFillColor: [theme, ...highlightedCodes],
@@ -808,6 +885,21 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
           },
         }),
       ),
+      visibleEntrances.length > 0
+        ? new PathLayer(
+            withBeforeId({
+              id: "entrance-doors",
+              data: visibleEntrances,
+              getPath: (marker) => marker.doorOutline,
+              getColor: colors.door,
+              getWidth: 3,
+              widthUnits: "pixels" as const,
+              capRounded: false,
+              jointRounded: false,
+              pickable: false,
+            }),
+          )
+        : null,
       routePath
         ? new PathLayer(
             withBeforeId({
@@ -933,7 +1025,21 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
       console.warn("deck.gl layer error:", e);
       setStatus("error");
     }
-  }, [buildings, walkingRoutes, showRoutes, highlight, theme, status, routePath, drawProgress, selected, labelLayerId]);
+  }, [
+    buildings,
+    walkingRoutes,
+    showRoutes,
+    highlight,
+    theme,
+    status,
+    routePath,
+    drawProgress,
+    selected,
+    labelLayerId,
+    entranceMarkers,
+    zoom,
+    selectBuilding,
+  ]);
 
   // ---- Theme: swap basemap style ----
   useEffect(() => {
@@ -1029,6 +1135,18 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
     );
   }, [buildings, highlight, focusNonce, status, routePath]);
 
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles || status !== "ready" || !selected || highlight) return;
+    handles.map.flyTo({
+      center: selected.centroid,
+      zoom: 16.8,
+      pitch: 55,
+      duration: prefersReducedMotion() ? 0 : 700,
+      essential: true,
+    });
+  }, [highlight, selected, status]);
+
   return (
     // The outer workspace surface clips the full-bleed map. A second radius
     // would show a double curve where the map meets its header.
@@ -1041,7 +1159,7 @@ export function CampusMap({ highlight, focusNonce, showRoutes, onStatus, control
         aria-label="Interactive campus map"
         aria-roledescription="map"
       />
-      {selected && <BuildingPopup building={selected} onClose={() => setSelected(null)} />}
+      {showBuildingPopup && selected && <BuildingPopup building={selected} onClose={() => selectBuilding(null)} />}
       {picked && (picked.name || picked.code) && (
         <div
           className="bg-surface-bright pointer-events-none absolute z-10 max-w-60 rounded-lg px-3 py-2 shadow-md"

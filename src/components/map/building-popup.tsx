@@ -7,16 +7,10 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
 import { RetryState } from "@/src/components/ui/feedback";
-import type { BuildingDetails } from "@/src/lib/api-types";
+import type { BuildingDetails, BuildingSummary } from "@/src/lib/api-types";
 import { useEffect, useRef, useState } from "react";
 
-export interface SelectedBuilding {
-  code: string;
-  name: string;
-  usage: string | null;
-  floors: string | null;
-  address: string | null;
-}
+export type SelectedBuilding = Pick<BuildingSummary, "code" | "name" | "usage" | "floors" | "address" | "centroid">;
 
 function Carousel({ label, children }: { label: string; children: React.ReactNode[] }) {
   const scroller = useRef<HTMLDivElement>(null);

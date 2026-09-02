@@ -6,6 +6,7 @@
 import type { ToolCall } from "@/src/lib/api-types";
 import { featureCentroid, featuresBounds, findBuilding } from "@/src/lib/geo";
 import {
+  drawableRoutePath,
   extractBuildingHighlight,
   extractParkingHighlight,
   extractPeopleHighlight,
@@ -21,7 +22,7 @@ describe("extractWalkingHighlight", () => {
   const healthy: ToolCall = {
     name: "walking_distance",
     input: { from_building: "IKB", to_building: "ICCS" },
-    result: { from: "IKB", to: "ICCS", meters: 790, minutes: 10 },
+    result: { from: "IKB", to: "ICCS", meters: 790, minutes: 10, method: "network" },
   };
 
   it("extracts the highlight from a healthy call", () => {
@@ -31,6 +32,7 @@ describe("extractWalkingHighlight", () => {
       to: "ICCS",
       meters: 790,
       minutes: 10,
+      method: "network",
     });
   });
 
@@ -68,6 +70,7 @@ describe("extractWalkingHighlight", () => {
       to: "ICCS",
       meters: 830,
       minutes: 11,
+      method: null,
     });
   });
 
@@ -77,7 +80,14 @@ describe("extractWalkingHighlight", () => {
       input: {},
       result: { from: "NEST", to: "BUCH", meters: 500, minutes: 7 },
     };
-    expect(extractWalkingHighlight(call)).toEqual({ kind: "route", from: "NEST", to: "BUCH", meters: 500, minutes: 7 });
+    expect(extractWalkingHighlight(call)).toEqual({
+      kind: "route",
+      from: "NEST",
+      to: "BUCH",
+      meters: 500,
+      minutes: 7,
+      method: null,
+    });
   });
 
   it("never fabricates a highlight without both endpoints and numeric measures (property)", () => {
@@ -103,6 +113,51 @@ describe("extractWalkingHighlight", () => {
           );
         },
       ),
+    );
+  });
+});
+
+describe("drawableRoutePath", () => {
+  it("returns network geometry and rejects estimates or malformed coordinates", () => {
+    const network = {
+      from: "A",
+      to: "B",
+      meters: 100,
+      minutes: 2,
+      method: "network" as const,
+      polyline: [
+        [-123.25, 49.26],
+        [-123.24, 49.27],
+      ] as [number, number][],
+    };
+    expect(drawableRoutePath(network)).toEqual(network.polyline);
+    expect(drawableRoutePath({ ...network, method: "estimate" })).toBeNull();
+    expect(
+      drawableRoutePath({
+        ...network,
+        polyline: [
+          [Number.NaN, 49.26],
+          [-123.24, 49.27],
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  // Feature: campus-map-explorer, Property 7: Estimated routes never become path geometry.
+  it("emits geometry exactly for valid network routes", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("network" as const, "estimate" as const),
+        fc.array(
+          fc.tuple(fc.double({ min: -180, max: 180, noNaN: true }), fc.double({ min: -90, max: 90, noNaN: true })),
+          { minLength: 2, maxLength: 20 },
+        ),
+        (method, polyline) => {
+          const result = drawableRoutePath({ from: "A", to: "B", meters: 10, minutes: 1, method, polyline });
+          expect(result !== null).toBe(method === "network");
+        },
+      ),
+      { numRuns: 100 },
     );
   });
 });
@@ -322,7 +377,14 @@ describe("toolCallToCanvasView", () => {
       result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11 },
     });
     expect(view?.paneId).toBe("map");
-    expect(view?.state.highlight).toEqual({ kind: "route", from: "IBLC", to: "ICCS", meters: 830, minutes: 11 });
+    expect(view?.state.highlight).toEqual({
+      kind: "route",
+      from: "IBLC",
+      to: "ICCS",
+      meters: 830,
+      minutes: 11,
+      method: null,
+    });
   });
 
   it("maps a find_places call to the map pane", () => {

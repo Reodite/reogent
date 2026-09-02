@@ -23,7 +23,10 @@ function highlightTitle(h: MapHighlight): string {
 
 /** Secondary label for a map highlight (detail line). */
 function highlightSubtitle(h: MapHighlight): string {
-  if (h.kind === "route") return `${formatMeters(h.meters)} · ${h.from} → ${h.to}`;
+  if (h.kind === "route") {
+    const label = h.method === "estimate" ? "Straight-line estimate" : "Walking route";
+    return `${label} · ${formatMeters(h.meters)} · ${h.from} → ${h.to}`;
+  }
   if (h.kind === "buildings") return h.buildings.map((b) => b.code).join(" · ");
   return h.near ? `near ${h.near}` : (h.places[0]?.name ?? "");
 }
@@ -31,7 +34,9 @@ function highlightSubtitle(h: MapHighlight): string {
 /** Text-only fallback description when the map fails to load. */
 function highlightFallback(h: MapHighlight): string {
   if (h.kind === "route") {
-    return `${formatMeters(h.meters)}, about ${formatMinutes(h.minutes)} walking from ${h.from} to ${h.to}.`;
+    return h.method === "estimate"
+      ? `Straight-line estimate: ${formatMeters(h.meters)} between ${h.from} and ${h.to}.`
+      : `${formatMeters(h.meters)}, about ${formatMinutes(h.minutes)} walking from ${h.from} to ${h.to}.`;
   }
   if (h.kind === "buildings") return h.buildings.map((b) => `${b.name} (${b.code})`).join(", ");
   return h.places.map((p) => p.name).join(", ") + (h.near ? ` — near ${h.near}` : "");
