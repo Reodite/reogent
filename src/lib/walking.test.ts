@@ -141,6 +141,7 @@ describe("drawableRoutePath", () => {
         ],
       }),
     ).toBeNull();
+    expect(drawableRoutePath({ ...network, polyline: [network.polyline[0], network.polyline[0]] })).toBeNull();
   });
 
   // Feature: campus-map-explorer, Property 7: Estimated routes never become path geometry.
@@ -154,7 +155,11 @@ describe("drawableRoutePath", () => {
         ),
         (method, polyline) => {
           const result = drawableRoutePath({ from: "A", to: "B", meters: 10, minutes: 1, method, polyline });
-          expect(result !== null).toBe(method === "network");
+          const [firstLongitude, firstLatitude] = polyline[0];
+          const hasDistance = polyline.some(
+            ([longitude, latitude]) => longitude !== firstLongitude || latitude !== firstLatitude,
+          );
+          expect(result !== null).toBe(method === "network" && hasDistance);
         },
       ),
       { numRuns: 100 },

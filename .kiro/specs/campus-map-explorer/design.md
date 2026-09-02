@@ -2,7 +2,7 @@
 
 ## Overview
 
-Campus Map Explorer turns the Tools version of Campus Map into a two-region building discovery workspace. A fixed 20rem Building Rail supports search, a curated eight-building starting list, account favorites, selected-building details, actions, room and service data, and an origin picker for directions. The existing inset map remains the main canvas. At compact workspace widths, the map stays visible while the same Explore rail becomes a non-modal bottom sheet; selecting a footprint expands its details without remounting WebGL.
+Campus Map Explorer turns the Tools version of Campus Map into a two-region building discovery workspace. A fixed 20rem Building Rail supports search, a curated eight-building starting list, account favorites, selected-building details, actions, room and service data, and an editable two-endpoint directions flow. The existing inset map remains the main canvas. At compact workspace widths, the map stays visible while the same Explore rail becomes a non-modal bottom sheet; selecting a footprint expands its details without remounting WebGL.
 
 AI mode continues to render the map without the Tools rail. Existing building, route, places, and parking widgets remain backward compatible. Three additive widget types expose comprehensive building details, verified entrances, and building spaces from an exact code already resolved by the agent. Response widgets drive map highlight state and entrance visibility without mounting Tools-only controls.
 
@@ -63,7 +63,7 @@ This keeps one map renderer and one layer pipeline. Tools controls live outside 
 4. `BuildingRail` renders base identity immediately and fills source sections as the record resolves. Source-status metadata distinguishes empty sections from unavailable sections.
 5. Favorite state loads only for authenticated users. Save and remove use one idempotent endpoint and roll back optimistic UI on failure.
 6. Entrance GeoJSON loads through the public map API. Pure entrance geometry helpers project verified entrance points to nearby footprint edges. `CampusMap` renders resulting ground arrows and door outlines only for a selected building or at zoom level 16 and above.
-7. In-app directions retain the selected building as destination, collect an origin from the same local catalog, and send official codes to the existing route API. Valid network results draw the complete pedestrian polyline immediately with a contrasting casing and navigation-blue trace; estimate results show labeled distance text without drawing a straight route line.
+7. In-app directions expose editable From and To boxes backed by one transient catalog listbox. Selecting a result commits that endpoint, removes the query/results immediately, and sends both official codes to the route API when available. Valid network results draw the complete pedestrian polyline immediately with a contrasting casing and navigation-blue trace; estimate results show labeled distance text without drawing a straight route line.
 8. AI `show_widget` results map into the same `MapHighlight` union. The existing `building` contract keeps its input and result shape; `building_detail`, `building_entrances`, and `building_spaces` accept one exact resolved building code. Building entrances set an entrance-display flag; building spaces highlight the building while the Chat card carries room details.
 
 ## Components and Interfaces
@@ -93,7 +93,7 @@ interface CampusMapExplorerProps {
 
 ### Component 2: BuildingRail
 
-**Purpose**: Present building discovery, details, and route-origin selection inside one bounded `WorkspacePanel`.
+**Purpose**: Present building discovery, details, and editable route endpoints inside one bounded `WorkspacePanel`.
 
 **Interface**:
 
@@ -101,7 +101,13 @@ interface CampusMapExplorerProps {
 type BuildingRailMode =
   | { kind: "discover"; query: string }
   | { kind: "details"; building: BuildingSummary }
-  | { kind: "directions"; destination: BuildingSummary; originQuery: string };
+  | {
+      kind: "directions";
+      origin: BuildingSummary | null;
+      destination: BuildingSummary;
+      editing: "origin" | "destination" | null;
+      query: string;
+    };
 
 interface BuildingRailProps {
   mode: BuildingRailMode;
@@ -116,7 +122,7 @@ interface BuildingRailProps {
   onSelect(building: BuildingSummary): void;
   onBack(): void;
   onDirections(): void;
-  onRoute(origin: BuildingSummary): void;
+  onRouteEndpointSelect(endpoint: "origin" | "destination", building: BuildingSummary): void;
   onRetryRoute(): void;
   onToggleFavorite(code: string): void;
   onSignIn(): void;
@@ -127,9 +133,9 @@ interface BuildingRailProps {
 
 **Responsibilities**:
 
-- Keep one fixed search field in discovery and origin modes.
+- Keep one fixed search field in discovery and two editable endpoint boxes in Directions.
 - Render Saved before Curated popular buildings when favorites exist.
-- Use listbox keyboard semantics for search results.
+- Use endpoint-specific listbox keyboard semantics and remove results immediately after selection.
 - Render task-relevant non-empty fields through explicit detail sections and omit physical property, construction, condition, occupancy, and management metadata.
 - Provide labeled Directions, Share, Save, and Open in Google Maps actions.
 - Identify curated popularity, spatial POI joins, room snapshot freshness, and source failures.
@@ -582,7 +588,7 @@ For all route responses, the map layer projection emits a drawable route path ex
 
 **Condition**: The route method is `estimate`, a building does not resolve, or the routing network fails.  
 **Response**: Preserve both selections. An estimate shows labeled distance text without a route line; a failed request shows a route-specific retry.  
-**Recovery**: Retry uses the same official codes; changing origin cancels the previous request.
+**Recovery**: Retry uses the same official codes; changing either endpoint cancels the previous request.
 
 ### Entrance geometry mismatch
 
@@ -627,7 +633,7 @@ Pure catalog, URL, detail-projection, entrance-geometry, widget-mapping, and fav
 - Exercise favorites with two users to prove isolation.
 - Render Tools and AI hosts around the same MapArea and assert the Building Rail exists only in Tools.
 - Run browser checks at 1440×900 and 390×844 in light, dark, and reduced-motion modes.
-- Verify search, map click, details, Back, URL reload, share copy, favorite rollback, route origin selection, entrance visibility, and widget history restoration.
+- Verify search, map click, details, Back, URL reload, share copy, favorite rollback, both route endpoint changes, transient-result dismissal, entrance visibility, and widget history restoration.
 - Measure document overflow, touch targets, accessibility violations, console errors, failed network requests, and LayoutShift entries.
 
 ## Performance Considerations

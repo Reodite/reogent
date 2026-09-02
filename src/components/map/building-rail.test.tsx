@@ -129,7 +129,10 @@ function props(overrides: Partial<BuildingRailProps> = {}): BuildingRailProps {
   return {
     mode: "discover" as const,
     query: "",
-    originQuery: "",
+    routeQuery: "",
+    routeOrigin: null,
+    routeField: null,
+    endpointError: null,
     catalog: [chem, iblc],
     popular: [iblc, chem],
     favorites: new Set(["CHEM"]),
@@ -141,11 +144,12 @@ function props(overrides: Partial<BuildingRailProps> = {}): BuildingRailProps {
     shareStatus: "idle" as const,
     selectionError: null,
     onQueryChange: vi.fn(),
-    onOriginQueryChange: vi.fn(),
+    onRouteQueryChange: vi.fn(),
+    onRouteFieldChange: vi.fn(),
+    onRouteEndpointSelect: vi.fn(),
     onSelect: vi.fn(),
     onBack: vi.fn(),
     onDirections: vi.fn(),
-    onRoute: vi.fn(),
     onRetryRoute: vi.fn(),
     onRetryDetails: vi.fn(),
     onToggleFavorite: vi.fn(),
@@ -187,6 +191,81 @@ describe("BuildingRail", () => {
     expect(search.getAttribute("aria-autocomplete")).toBe("list");
     fireEvent.keyDown(search, { key: "Escape" });
     expect(onQueryChange).toHaveBeenCalledWith("");
+  });
+
+  it("edits From and To through one transient endpoint list", () => {
+    const onRouteFieldChange = vi.fn();
+    const onRouteEndpointSelect = vi.fn();
+    const routeProps = props({
+      mode: "directions",
+      selected: iblc,
+      routeOrigin: chem,
+      routeField: "origin",
+      routeQuery: "chem",
+      onRouteFieldChange,
+      onRouteEndpointSelect,
+    });
+    const view = render(<BuildingRail {...routeProps} />);
+
+    expect(screen.getByRole("combobox", { name: "From building" }).getAttribute("value")).toBe("chem");
+    expect(screen.getByRole("combobox", { name: "To building" }).getAttribute("value")).toBe(iblc.name);
+    expect(screen.getByRole("listbox", { name: "Starting building results" })).toBeTruthy();
+    expect(screen.getByRole("option").getAttribute("tabindex")).toBe("-1");
+    fireEvent.click(screen.getByRole("option"));
+    expect(onRouteEndpointSelect).toHaveBeenCalledWith("origin", chem);
+
+    view.rerender(
+      <BuildingRail
+        {...props({
+          mode: "directions",
+          selected: iblc,
+          routeOrigin: chem,
+          routeField: null,
+          routeQuery: "",
+          onRouteFieldChange,
+        })}
+      />,
+    );
+    expect(screen.queryByRole("option")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "From building" }).getAttribute("value")).toBe(chem.name);
+    fireEvent.focus(screen.getByRole("combobox", { name: "To building" }));
+    expect(onRouteFieldChange).toHaveBeenCalledWith("destination");
+  });
+
+  it("clears an endpoint query before cancelling endpoint editing", () => {
+    const onRouteQueryChange = vi.fn();
+    const onRouteFieldChange = vi.fn();
+    const view = render(
+      <BuildingRail
+        {...props({
+          mode: "directions",
+          selected: iblc,
+          routeField: "origin",
+          routeQuery: "chem",
+          onRouteQueryChange,
+          onRouteFieldChange,
+        })}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "From building" }), { key: "Escape" });
+    expect(onRouteQueryChange).toHaveBeenCalledWith("");
+    expect(onRouteFieldChange).not.toHaveBeenCalled();
+
+    view.rerender(
+      <BuildingRail
+        {...props({
+          mode: "directions",
+          selected: iblc,
+          routeField: "origin",
+          routeQuery: "",
+          onRouteQueryChange,
+          onRouteFieldChange,
+        })}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "From building" }), { key: "Escape" });
+    expect(onRouteFieldChange).toHaveBeenCalledWith(null);
   });
 
   it("keeps details focused on useful building destinations and sources", () => {
@@ -249,7 +328,7 @@ describe("BuildingRail", () => {
         polyline: [chem.centroid, iblc.centroid],
       },
     };
-    const view = render(<BuildingRail {...props({ mode: "directions", selected: iblc, route })} />);
+    const view = render(<BuildingRail {...props({ mode: "directions", selected: iblc, routeOrigin: chem, route })} />);
 
     expect(screen.getByText("Campus walking network")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "View route" })).toBeNull();
@@ -259,6 +338,7 @@ describe("BuildingRail", () => {
         {...props({
           mode: "directions",
           selected: iblc,
+          routeOrigin: chem,
           route: {
             ...route,
             status: "estimate",

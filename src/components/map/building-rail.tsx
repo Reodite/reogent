@@ -3,7 +3,7 @@
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
-import { SearchInput } from "@/src/components/ui/form-controls";
+import { SearchInput, TextInput } from "@/src/components/ui/form-controls";
 import { WorkspacePanel } from "@/src/components/ui/workspace";
 import type { BuildingDetails, BuildingSummary, OfficialBuildingPhoto, RouteResponse } from "@/src/lib/api-types";
 import { searchBuildings } from "@/src/lib/building-catalog";
@@ -19,10 +19,15 @@ export type BuildingRouteState =
   | { status: "network" | "estimate"; from: BuildingSummary; to: BuildingSummary; route: RouteResponse }
   | { status: "error"; from: BuildingSummary; to: BuildingSummary };
 
+export type RouteEndpoint = "origin" | "destination";
+
 export interface BuildingRailProps {
   mode: "discover" | "details" | "directions";
   query: string;
-  originQuery: string;
+  routeQuery: string;
+  routeOrigin: BuildingSummary | null;
+  routeField: RouteEndpoint | null;
+  endpointError: string | null;
   catalog: BuildingSummary[];
   popular: BuildingSummary[];
   favorites: ReadonlySet<string>;
@@ -34,11 +39,12 @@ export interface BuildingRailProps {
   shareStatus: "idle" | "shared" | "copied" | "copy" | "error";
   selectionError: string | null;
   onQueryChange: (query: string) => void;
-  onOriginQueryChange: (query: string) => void;
+  onRouteQueryChange: (query: string) => void;
+  onRouteFieldChange: (field: RouteEndpoint | null) => void;
+  onRouteEndpointSelect: (field: RouteEndpoint, building: BuildingSummary) => void;
   onSelect: (building: BuildingSummary) => void;
   onBack: () => void;
   onDirections: () => void;
-  onRoute: (origin: BuildingSummary) => void;
   onRetryRoute: () => void;
   onRetryDetails: () => void;
   onToggleFavorite: (code: string) => void;
@@ -263,12 +269,14 @@ function BuildingRow({
   saved,
   id,
   selected,
+  tabIndex,
   onSelect,
 }: {
   building: BuildingSummary;
   saved: boolean;
   id?: string;
   selected?: boolean;
+  tabIndex?: number;
   onSelect: () => void;
 }) {
   return (
@@ -277,6 +285,7 @@ function BuildingRow({
       type="button"
       role="option"
       aria-selected={selected}
+      tabIndex={tabIndex}
       onClick={onSelect}
       className="focus-visible:ring-primary/40 hover:bg-surface-container-high flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left focus-visible:ring-2"
     >
@@ -327,9 +336,17 @@ export function BuildingRail(props: BuildingRailProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const discoveryScrollRef = useRef(0);
+  const originInputRef = useRef<HTMLInputElement>(null);
+  const destinationInputRef = useRef<HTMLInputElement>(null);
+  const originInputId = useId();
+  const destinationInputId = useId();
   const listboxId = useId();
-  const searchQuery = props.mode === "directions" ? props.originQuery : props.query;
-  const results = useMemo(() => searchBuildings(props.catalog, searchQuery), [props.catalog, searchQuery]);
+  const endpointErrorId = useId();
+  const searchQuery = props.mode === "directions" ? props.routeQuery : props.query;
+  const results = useMemo(
+    () => (props.mode === "directions" && !props.routeField ? [] : searchBuildings(props.catalog, searchQuery)),
+    [props.catalog, props.mode, props.routeField, searchQuery],
+  );
   const saved = useMemo(() => {
     const byCode = new Map(props.catalog.map((building) => [building.code, building]));
     return [...props.favorites].flatMap((code) => {
@@ -346,12 +363,30 @@ export function BuildingRail(props: BuildingRailProps) {
     return () => cancelAnimationFrame(frame);
   }, [props.mode]);
 
+  useEffect(() => {
+    setActiveIndex(0);
+    const input =
+      props.routeField === "origin"
+        ? originInputRef.current
+        : props.routeField === "destination"
+          ? destinationInputRef.current
+          : null;
+    if (!input) return;
+    const frame = requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [props.routeField]);
+
   function selectResult(building: BuildingSummary) {
-    if (props.mode === "directions") props.onRoute(building);
-    else {
-      discoveryScrollRef.current = listRef.current?.scrollTop ?? 0;
-      props.onSelect(building);
+    if (props.mode === "directions" && props.routeField) {
+      (props.routeField === "origin" ? originInputRef.current : destinationInputRef.current)?.focus();
+      props.onRouteEndpointSelect(props.routeField, building);
+      return;
     }
+    discoveryScrollRef.current = listRef.current?.scrollTop ?? 0;
+    props.onSelect(building);
   }
 
   useEffect(() => {
@@ -365,10 +400,17 @@ export function BuildingRail(props: BuildingRailProps) {
 
   function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") {
-      event.stopPropagation();
       setActiveIndex(0);
-      if (props.mode === "directions") props.onOriginQueryChange("");
-      else props.onQueryChange("");
+      if (props.mode === "directions") {
+        if (!props.routeField) return;
+        event.stopPropagation();
+        if (props.routeQuery) props.onRouteQueryChange("");
+        else props.onRouteFieldChange(null);
+      } else {
+        if (!props.query) return;
+        event.stopPropagation();
+        props.onQueryChange("");
+      }
       return;
     }
     if (results.length === 0) return;
@@ -378,12 +420,26 @@ export function BuildingRail(props: BuildingRailProps) {
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setActiveIndex((index) => (index - 1 + results.length) % results.length);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(results.length - 1);
     } else if (event.key === "Enter") {
       event.preventDefault();
       selectResult(results[Math.min(activeIndex, results.length - 1)]);
     }
   }
 
+  const routeSearching = props.mode === "directions" && props.routeField !== null;
+  const showResults = Boolean(searchQuery) && (props.mode === "discover" || routeSearching);
+  const resultListLabel =
+    props.mode === "directions"
+      ? props.routeField === "destination"
+        ? "Destination building results"
+        : "Starting building results"
+      : "Building search results";
   const title = props.mode === "directions" ? "Directions" : props.mode === "details" ? "Building details" : "Explore";
 
   return (
@@ -479,40 +535,95 @@ export function BuildingRail(props: BuildingRailProps) {
         <div className="flex h-full min-h-0 flex-col">
           {props.mode === "directions" && props.selected ? (
             <div className="border-border-subtle shrink-0 border-b px-3 py-3">
-              <Button variant="ghost" size="compact" onClick={props.onBack}>
-                <Icon name="left" size={15} />
-                {props.selected.name}
-              </Button>
-              <p className="text-on-surface mt-2 text-sm font-medium">Choose a starting building</p>
-              <p className="text-muted mt-1 text-xs">Destination: {props.selected.name}</p>
+              <div className="flex items-start gap-2">
+                <Button variant="ghost" size="icon" onClick={props.onBack} aria-label="Back to building details">
+                  <Icon name="left" size={17} />
+                </Button>
+                <div className="relative min-w-0 flex-1 space-y-2">
+                  <span aria-hidden className="bg-outline-variant absolute top-8 bottom-8 left-[0.3125rem] w-px" />
+                  {(["origin", "destination"] as const).map((field) => {
+                    const active = props.routeField === field;
+                    const building = field === "origin" ? props.routeOrigin : props.selected;
+                    const label = field === "origin" ? "From" : "To";
+                    const inputId = field === "origin" ? originInputId : destinationInputId;
+                    const inputRef = field === "origin" ? originInputRef : destinationInputRef;
+                    return (
+                      <div key={field} className="relative flex min-w-0 items-end gap-2.5">
+                        <span
+                          aria-hidden
+                          className={`mb-4 size-2.5 shrink-0 rounded-full border-2 ${
+                            field === "origin" ? "border-on-surface-variant bg-surface" : "border-primary bg-primary"
+                          }`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <label htmlFor={inputId} className="text-on-surface-variant mb-1 block text-xs font-medium">
+                            {label}
+                          </label>
+                          <TextInput
+                            ref={inputRef}
+                            id={inputId}
+                            value={active ? props.routeQuery : (building?.name ?? "")}
+                            readOnly={!active}
+                            onFocus={() => {
+                              if (!active) props.onRouteFieldChange(field);
+                            }}
+                            onChange={(event) => {
+                              setActiveIndex(0);
+                              props.onRouteQueryChange(event.target.value);
+                            }}
+                            onKeyDown={onSearchKeyDown}
+                            placeholder={field === "origin" ? "Choose starting building" : "Choose destination"}
+                            role="combobox"
+                            aria-label={`${label} building`}
+                            aria-autocomplete="list"
+                            aria-controls={active ? listboxId : undefined}
+                            aria-expanded={active && Boolean(searchQuery) && results.length > 0}
+                            aria-activedescendant={
+                              active && searchQuery && results[activeIndex]
+                                ? `building-result-${results[activeIndex].code}`
+                                : undefined
+                            }
+                            aria-invalid={active && props.endpointError ? true : undefined}
+                            aria-describedby={active && props.endpointError ? endpointErrorId : undefined}
+                            autoComplete="off"
+                            spellCheck={false}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {props.endpointError ? (
+                <p id={endpointErrorId} role="alert" className="text-error mt-2 pl-13 text-xs">
+                  {props.endpointError}
+                </p>
+              ) : null}
             </div>
-          ) : null}
-          <div className="shrink-0 px-3 py-3">
-            <SearchInput
-              density="rail"
-              value={searchQuery}
-              onChange={(event) => {
-                setActiveIndex(0);
-                if (props.mode === "directions") props.onOriginQueryChange(event.target.value);
-                else props.onQueryChange(event.target.value);
-              }}
-              onClear={() => {
-                if (props.mode === "directions") props.onOriginQueryChange("");
-                else props.onQueryChange("");
-              }}
-              onKeyDown={onSearchKeyDown}
-              placeholder={props.mode === "directions" ? "Starting building" : "Search buildings"}
-              role="combobox"
-              aria-label={props.mode === "directions" ? "Starting building" : "Search buildings"}
-              aria-autocomplete="list"
-              aria-controls={listboxId}
-              aria-expanded={Boolean(searchQuery && results.length > 0)}
-              aria-activedescendant={
-                searchQuery && results[activeIndex] ? `building-result-${results[activeIndex].code}` : undefined
-              }
-            />
-          </div>
-          <div ref={listRef} className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto px-2 pb-3">
+          ) : (
+            <div className="shrink-0 px-3 py-3">
+              <SearchInput
+                density="rail"
+                value={searchQuery}
+                onChange={(event) => {
+                  setActiveIndex(0);
+                  props.onQueryChange(event.target.value);
+                }}
+                onClear={() => props.onQueryChange("")}
+                onKeyDown={onSearchKeyDown}
+                placeholder="Search buildings"
+                role="combobox"
+                aria-label="Search buildings"
+                aria-autocomplete="list"
+                aria-controls={listboxId}
+                aria-expanded={Boolean(searchQuery && results.length > 0)}
+                aria-activedescendant={
+                  searchQuery && results[activeIndex] ? `building-result-${results[activeIndex].code}` : undefined
+                }
+              />
+            </div>
+          )}
+          <div ref={listRef} className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto px-2 py-3">
             {props.selectionError ? (
               <p
                 role="alert"
@@ -521,7 +632,7 @@ export function BuildingRail(props: BuildingRailProps) {
                 {props.selectionError}
               </p>
             ) : null}
-            {props.mode === "directions" && props.route.status !== "idle" ? (
+            {props.mode === "directions" && !routeSearching && props.route.status !== "idle" ? (
               <div className="px-1 pb-3">
                 {props.route.status === "loading" ? <LoadingStatus>Finding a walking route…</LoadingStatus> : null}
                 {props.route.status === "error" ? (
@@ -541,12 +652,12 @@ export function BuildingRail(props: BuildingRailProps) {
                 ) : null}
               </div>
             ) : null}
-            {searchQuery ? (
+            {showResults ? (
               <>
                 <div
                   id={listboxId}
                   role="listbox"
-                  aria-label="Building search results"
+                  aria-label={resultListLabel}
                   className={results.length > 0 ? "flex flex-col gap-1" : "hidden"}
                 >
                   {results.map((building, index) => (
@@ -556,6 +667,7 @@ export function BuildingRail(props: BuildingRailProps) {
                       building={building}
                       saved={props.favorites.has(building.code)}
                       selected={index === activeIndex}
+                      tabIndex={-1}
                       onSelect={() => selectResult(building)}
                     />
                   ))}
@@ -564,12 +676,32 @@ export function BuildingRail(props: BuildingRailProps) {
                   <div className="px-3 py-8 text-center">
                     <p className="text-on-surface text-sm font-medium">No buildings found</p>
                     <p className="text-muted mt-1 text-xs">Try a building code, name, or address.</p>
-                    <Button variant="ghost" size="compact" className="mt-3" onClick={() => props.onQueryChange("")}>
+                    <Button
+                      variant="ghost"
+                      size="compact"
+                      className="mt-3"
+                      onClick={() => {
+                        if (props.mode === "directions") props.onRouteQueryChange("");
+                        else props.onQueryChange("");
+                      }}
+                    >
                       Clear search
                     </Button>
                   </div>
                 ) : null}
               </>
+            ) : props.mode === "directions" ? (
+              routeSearching ? (
+                <div className="px-3 py-8 text-center">
+                  <p className="text-on-surface text-sm font-medium">
+                    Search for the {props.routeField === "origin" ? "starting building" : "destination"}
+                  </p>
+                  <p className="text-muted mt-1 text-xs">Type a building name, code, or address above.</p>
+                  <div id={listboxId} role="listbox" aria-label={resultListLabel} className="hidden" />
+                </div>
+              ) : props.route.status === "idle" ? (
+                <p className="text-muted px-3 py-8 text-center text-xs">Choose From or To above to plan a route.</p>
+              ) : null
             ) : (
               <div className="flex flex-col gap-4">
                 <div id={listboxId} role="listbox" aria-label="Building search results" className="hidden" />

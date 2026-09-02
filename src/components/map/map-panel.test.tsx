@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider, useChatShell } from "@/src/components/chat/chat-shell-context";
-import type { BuildingSummary } from "@/src/lib/api-types";
+import type { BuildingSummary, RouteResponse } from "@/src/lib/api-types";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,6 +30,24 @@ const iblc: BuildingSummary = {
   floors: 5,
   heightMeters: 26.87,
   centroid: [-123.252, 49.267],
+};
+const nest: BuildingSummary = {
+  ...iblc,
+  code: "NEST",
+  name: "AMS Student Nest",
+  shortName: "The Nest",
+  aliases: [],
+  address: "6133 University Boulevard",
+  centroid: [-123.249, 49.266],
+};
+const chem: BuildingSummary = {
+  ...iblc,
+  code: "CHEM",
+  name: "Chemistry Building",
+  shortName: "Chemistry",
+  aliases: [],
+  address: "2036 Main Mall",
+  centroid: [-123.254, 49.265],
 };
 
 vi.mock("motion/react", () => ({
@@ -74,6 +92,9 @@ vi.mock("@/src/components/map/campus-map", () => ({
         <button type="button" onClick={() => props.onBuildingSelect?.(iblc)}>
           Select IBLC on map
         </button>
+        <button type="button" onClick={() => props.onBuildingSelect?.(nest)}>
+          Select NEST on map
+        </button>
       </div>
     );
   },
@@ -110,6 +131,58 @@ const buildingGeo = {
         ],
       },
     },
+    {
+      type: "Feature",
+      properties: {
+        BLDG_CODE: "NEST",
+        NAME: nest.name,
+        SHORTNAME: nest.shortName,
+        PRIMARY_ADDRESS: nest.address,
+        POSTAL_CODE: nest.postalCode,
+        BLDG_USAGE: nest.usage,
+        BLDG_STATE: nest.state,
+        MAX_FLOORS: nest.floors,
+        BLDG_HEIGHT: nest.heightMeters,
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-123.25, 49.265],
+            [-123.248, 49.265],
+            [-123.248, 49.267],
+            [-123.25, 49.267],
+            [-123.25, 49.265],
+          ],
+        ],
+      },
+    },
+    {
+      type: "Feature",
+      properties: {
+        BLDG_CODE: "CHEM",
+        NAME: chem.name,
+        SHORTNAME: chem.shortName,
+        PRIMARY_ADDRESS: chem.address,
+        POSTAL_CODE: chem.postalCode,
+        BLDG_USAGE: chem.usage,
+        BLDG_STATE: chem.state,
+        MAX_FLOORS: chem.floors,
+        BLDG_HEIGHT: chem.heightMeters,
+      },
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-123.255, 49.264],
+            [-123.253, 49.264],
+            [-123.253, 49.266],
+            [-123.255, 49.266],
+            [-123.255, 49.264],
+          ],
+        ],
+      },
+    },
   ],
 };
 
@@ -125,17 +198,14 @@ beforeEach(() => {
   api.getBuildingDetails.mockReset().mockReturnValue(new Promise(() => {}));
   api.getBuildingFavorites.mockReset().mockResolvedValue({ codes: [] });
   api.setBuildingFavorite.mockReset().mockResolvedValue({ codes: ["IBLC"] });
-  api.getRoute.mockReset().mockResolvedValue({
-    from: "IBLC",
-    to: "IBLC",
-    meters: 0,
-    minutes: 0,
+  api.getRoute.mockReset().mockImplementation(async (from: string, to: string) => ({
+    from,
+    to,
+    meters: 185,
+    minutes: 3,
     method: "network",
-    polyline: [
-      [-123.252, 49.267],
-      [-123.252, 49.267],
-    ],
-  });
+    polyline: [nest.centroid, iblc.centroid],
+  }));
   Object.defineProperty(window.navigator, "share", { configurable: true, value: undefined });
   Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: undefined });
 });
@@ -263,21 +333,166 @@ describe("MapArea", () => {
     expect(screen.getByTestId("campus-map").dataset.selected).toBe("IBLC");
   });
 
+  it("changes either endpoint and removes results after routing", async () => {
+    navigation.params = new URLSearchParams("building=IBLC");
+    renderMap();
+    await screen.findByRole("heading", { name: iblc.name });
+    fireEvent.click(screen.getByRole("button", { name: "Directions" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "From building" }), {
+      target: { value: "NEST" },
+    });
+    fireEvent.click(await screen.findByRole("option", { name: /AMS Student Nest/ }));
+    await waitFor(() => expect(api.getRoute).toHaveBeenCalledWith("NEST", "IBLC", expect.any(AbortSignal)));
+    expect(screen.queryByRole("option")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Explore" }));
+    const destination = screen.getByRole("combobox", { name: "To building" });
+    fireEvent.focus(destination);
+    fireEvent.change(destination, { target: { value: "CHEM" } });
+    fireEvent.click(await screen.findByRole("option", { name: /Chemistry Building/ }));
+
+    await waitFor(() => expect(api.getRoute).toHaveBeenLastCalledWith("NEST", "CHEM", expect.any(AbortSignal)));
+    expect(screen.queryByRole("option")).toBeNull();
+    expect(screen.getByTestId("campus-map").dataset.selected).toBe("CHEM");
+    expect(new URL(window.location.href).searchParams.get("building")).toBe("CHEM");
+  });
+
+  it("rejects identical endpoints without requesting a route", async () => {
+    navigation.params = new URLSearchParams("building=IBLC");
+    renderMap();
+    await screen.findByRole("heading", { name: iblc.name });
+    fireEvent.click(screen.getByRole("button", { name: "Directions" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "From building" }), {
+      target: { value: "IBLC" },
+    });
+    fireEvent.click(await screen.findByRole("option", { name: /Irving K. Barber/ }));
+
+    expect(screen.getByText("Choose two different buildings.")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "From building" }).getAttribute("aria-invalid")).toBe("true");
+    expect(api.getRoute).not.toHaveBeenCalled();
+    expect(screen.getByRole("listbox", { name: "Starting building results" })).toBeTruthy();
+  });
+
+  it("invalidates a pending route when leaving Directions", async () => {
+    let resolveRoute: ((route: RouteResponse) => void) | undefined;
+    api.getRoute.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRoute = resolve;
+        }),
+    );
+    navigation.params = new URLSearchParams("building=IBLC");
+    renderMap();
+    await screen.findByRole("heading", { name: iblc.name });
+    fireEvent.click(screen.getByRole("button", { name: "Directions" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "From building" }), {
+      target: { value: "NEST" },
+    });
+    fireEvent.click(await screen.findByRole("option", { name: /AMS Student Nest/ }));
+    expect(await screen.findAllByText("Finding a walking route…")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button", { name: "Back to building details" }));
+
+    resolveRoute?.({
+      from: "NEST",
+      to: "IBLC",
+      meters: 185,
+      minutes: 3,
+      method: "network",
+      polyline: [nest.centroid, iblc.centroid],
+    });
+    await waitFor(() => expect(screen.getByTestId("campus-map").dataset.highlight).toBe("buildings"));
+    expect(screen.getByRole("heading", { name: iblc.name })).toBeTruthy();
+    expect(screen.queryByText("Campus walking network")).toBeNull();
+  });
+
+  it("layers Escape from endpoint query to editor to compact sheet", async () => {
+    navigation.params = new URLSearchParams("building=IBLC");
+    renderMap();
+    await screen.findByRole("heading", { name: iblc.name });
+    fireEvent.click(screen.getByRole("button", { name: "Directions" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "From building" }), {
+      target: { value: "NEST" },
+    });
+    fireEvent.click(await screen.findByRole("option", { name: /AMS Student Nest/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open Explore" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Open Explore" }));
+
+    const origin = screen.getByRole("combobox", { name: "From building" });
+    fireEvent.focus(origin);
+    fireEvent.keyDown(origin, { key: "Escape" });
+    expect((origin as HTMLInputElement).value).toBe("");
+    fireEvent.keyDown(origin, { key: "Escape" });
+    expect((origin as HTMLInputElement).value).toBe(nest.name);
+    fireEvent.keyDown(origin, { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Open Explore" })).toBeTruthy();
+  });
+
+  it("accepts only the latest endpoint-pair response", async () => {
+    let resolveFirst: ((route: RouteResponse) => void) | undefined;
+    let resolveSecond: ((route: RouteResponse) => void) | undefined;
+    api.getRoute
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
+    navigation.params = new URLSearchParams("building=IBLC");
+    renderMap();
+    await screen.findByRole("heading", { name: iblc.name });
+    fireEvent.click(screen.getByRole("button", { name: "Directions" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "From building" }), {
+      target: { value: "NEST" },
+    });
+    fireEvent.click(await screen.findByRole("option", { name: /AMS Student Nest/ }));
+
+    const origin = screen.getByRole("combobox", { name: "From building" });
+    fireEvent.focus(origin);
+    fireEvent.change(origin, { target: { value: "CHEM" } });
+    fireEvent.click(await screen.findByRole("option", { name: /Chemistry Building/ }));
+    resolveSecond?.({
+      from: "CHEM",
+      to: "IBLC",
+      meters: 900,
+      minutes: 12,
+      method: "network",
+      polyline: [chem.centroid, iblc.centroid],
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open Explore" }).textContent).toContain("CHEM"));
+
+    resolveFirst?.({
+      from: "NEST",
+      to: "IBLC",
+      meters: 185,
+      minutes: 3,
+      method: "network",
+      polyline: [nest.centroid, iblc.centroid],
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open Explore" }).textContent).toContain("CHEM"));
+    expect(screen.getByRole("button", { name: "Open Explore" }).textContent).not.toContain("NEST");
+  });
+
   it("keeps Explore open when a network response has no drawable route", async () => {
     navigation.params = new URLSearchParams("building=IBLC");
     api.getRoute.mockResolvedValueOnce({
-      from: "IBLC",
+      from: "NEST",
       to: "IBLC",
-      meters: 0,
-      minutes: 0,
+      meters: 185,
+      minutes: 3,
       method: "network",
       polyline: [],
     });
     renderMap();
     await screen.findByRole("heading", { name: iblc.name });
     fireEvent.click(screen.getByRole("button", { name: "Directions" }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Starting building" }), {
-      target: { value: "IBLC" },
+    fireEvent.change(screen.getByRole("combobox", { name: "From building" }), {
+      target: { value: "NEST" },
     });
     fireEvent.click(await screen.findByRole("option"));
 
@@ -290,15 +505,16 @@ describe("MapArea", () => {
     navigation.params = new URLSearchParams("building=IBLC");
     const view = renderMap();
     await screen.findByRole("heading", { name: iblc.name });
-    fireEvent.click(screen.getByRole("button", { name: "Explore" }));
     fireEvent.click(screen.getByRole("button", { name: "Directions" }));
-    fireEvent.change(screen.getByRole("combobox", { name: "Starting building" }), {
-      target: { value: "IBLC" },
+    fireEvent.change(screen.getByRole("combobox", { name: "From building" }), {
+      target: { value: "NEST" },
     });
     fireEvent.click(await screen.findByRole("option"));
     await waitFor(() => expect(screen.getByTestId("campus-map").dataset.highlight).toBe("route"));
-    expect(screen.getByRole("button", { name: "Open Explore" }).textContent).toContain("1 min walk");
-    expect(screen.queryByText("Walking route · 0 m · IBLC → IBLC")).toBeNull();
+    expect(api.getRoute).toHaveBeenCalledWith("NEST", "IBLC", expect.any(AbortSignal));
+    expect(screen.queryByRole("option")).toBeNull();
+    expect(screen.getByRole("button", { name: "Open Explore" }).textContent).toContain("3 min walk");
+    expect(screen.queryByText("Walking route · 185 m · NEST → IBLC")).toBeNull();
 
     navigation.params = new URLSearchParams();
     view.rerender(

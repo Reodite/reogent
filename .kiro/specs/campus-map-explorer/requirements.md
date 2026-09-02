@@ -121,16 +121,18 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 
 #### Acceptance Criteria
 
-1. WHEN a user activates Directions, THE Building_Rail SHALL keep the Selected_Building as the destination and request an origin building.
-2. WHEN a user selects a valid origin building and the routing method is network, THE Map_Canvas SHALL immediately display the complete in-app pedestrian route as a cased navigation-blue line, and THE Building_Rail or compact sheet handle SHALL display distance and estimated walking time without another View route action.
-3. IF the routing method is estimate, THEN THE Building_Rail SHALL identify the result as a straight-line distance estimate.
-4. IF the routing method is estimate, THEN THE Map_Canvas SHALL omit a route line.
-5. IF route calculation fails, THEN THE Building_Rail SHALL preserve the origin and destination and display a route retry action.
-6. WHEN a user activates Open in Google Maps, THE Campus_Map_Explorer SHALL open a separate Google Maps destination URL using the Selected_Building coordinates.
-7. WHEN a user activates Share, THE Campus_Map_Explorer SHALL produce a same-origin URL that restores the Selected_Building.
-8. WHERE Web_Share is available, THE Campus_Map_Explorer SHALL offer the shared building URL through Web_Share.
-9. IF Web_Share is unavailable or dismissed, THEN THE Campus_Map_Explorer SHALL preserve the Selected_Building and offer clipboard copy without reporting dismissal as an error.
-10. IF clipboard copy fails, THEN THE Building_Rail SHALL preserve the Selected_Building and display a retryable copy error.
+1. WHEN a user activates Directions, THE Building_Rail SHALL keep the Selected_Building as the destination and display editable From and To building boxes at the top.
+2. WHEN a user activates either endpoint box, THE Building_Rail SHALL open one endpoint-specific catalog listbox and support changing that endpoint without leaving Directions.
+3. WHEN a user selects an endpoint result, THE Building_Rail SHALL commit the building, clear the transient query and listbox, and start route calculation immediately when both endpoints exist.
+4. WHEN both endpoint buildings are valid and the routing method is network, THE Map_Canvas SHALL immediately display the complete in-app pedestrian route as a cased navigation-blue line, and THE Building_Rail or compact sheet handle SHALL display distance and estimated walking time without another View route action.
+5. IF the routing method is estimate, THEN THE Building_Rail SHALL identify the result as a straight-line distance estimate.
+6. IF the routing method is estimate, THEN THE Map_Canvas SHALL omit a route line.
+7. IF route calculation fails, THEN THE Building_Rail SHALL preserve the origin and destination and display a route retry action.
+8. WHEN a user activates Open in Google Maps, THE Campus_Map_Explorer SHALL open a separate Google Maps destination URL using the Selected_Building coordinates.
+9. WHEN a user activates Share, THE Campus_Map_Explorer SHALL produce a same-origin URL that restores the Selected_Building.
+10. WHERE Web_Share is available, THE Campus_Map_Explorer SHALL offer the shared building URL through Web_Share.
+11. IF Web_Share is unavailable or dismissed, THEN THE Campus_Map_Explorer SHALL preserve the Selected_Building and offer clipboard copy without reporting dismissal as an error.
+12. IF clipboard copy fails, THEN THE Building_Rail SHALL preserve the Selected_Building and display a retryable copy error.
 
 ### Requirement 7: Account-scoped favorite buildings
 

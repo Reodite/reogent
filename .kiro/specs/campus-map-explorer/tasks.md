@@ -73,16 +73,16 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
 
 - [x] 5. Build the Tools-only Building Rail
   - [x] 5.1 Implement discovery, search, and directions states
-    - Build one bounded `WorkspacePanel` with fixed search, Saved and Curated sections, deterministic results, keyboard listbox behavior, no-results recovery, and route-origin search.
-    - Use the existing input, button, feedback, and chip primitives; keep compact targets at least 44 by 44 pixels.
-    - Add component tests for initial popular state, favorites ordering, ranking, keyboard selection, query restoration, guest Save, and route-origin state.
+    - Build one bounded `WorkspacePanel` with fixed discovery search, Saved and Curated sections, deterministic results, keyboard listbox behavior, no-results recovery, and editable From/To route endpoints.
+    - Use the existing input, button, feedback, and chip primitives; keep compact targets at least 44 by 44 pixels, and unmount transient endpoint results after selection.
+    - Add component tests for initial popular state, favorites ordering, ranking, keyboard selection, query restoration, guest Save, endpoint replacement, stale requests, and route-result dismissal.
     - _Requirements: 2.1–2.8, 3.5, 6.1–6.5, 7.4, 7.6, 10.2, 10.6–10.7_
   - [x] 5.2 Implement focused building detail content and actions
     - Render task-relevant identity, address, service, room, entrance, and source fields while explicitly omitting physical property and management metadata.
     - Add source-aware photo, room booking, dated availability, partial retry, honest empty, and broken-image states.
-    - Add labeled Directions, Share, Save, Open in Google Maps, and Show on map actions with optimistic favorite rollback and accessible status announcements.
+    - Add labeled Directions, Share, Save, and Open in Google Maps actions with optimistic favorite rollback and accessible status announcements.
     - Add component tests for full, sparse, stale, partial-error, photo-failure, share fallback, Google URL, favorite rollback, and room booking states.
-    - _Requirements: 4.1–4.8, 5.1–5.9, 6.1–6.10, 7.1–7.7, 11.3–11.6, 12.4–12.8_
+    - _Requirements: 4.1–4.8, 5.1–5.9, 6.1–6.12, 7.1–7.7, 11.3–11.6, 12.4–12.8_
   - [x] 5.3 Compose CampusMapExplorer in MapArea
     - Render `WorkspacePage` split only in Tools and keep AI on the existing map-only surface.
     - Synchronize rail selection, map clicks, the compact Explore bottom sheet, URL search parameter, catalog/detail request generations, favorites, share, and routes.

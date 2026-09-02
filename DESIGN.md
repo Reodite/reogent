@@ -549,11 +549,13 @@ Reduced-motion: static, frozen at natural angle.
 
 ### Building Explorer
 
-Tools places a `WorkspacePanel` titled Explore beside the map. The panel owns three states: discovery, building details, and route origin. Discovery uses one fixed rail-density search field followed by Saved and Curated popular rows. Building rows use a 36px neutral icon tile, a 14px name, and mono code plus address metadata; compact rows retain a 44px floor.
+Tools places a `WorkspacePanel` titled Explore beside the map. The panel owns three states: discovery, building details, and directions. Discovery uses one fixed rail-density search field followed by Saved and Curated popular rows. Building rows use a 36px neutral icon tile, a 14px name, and mono code plus address metadata; compact rows retain a 44px floor.
 
 Selected details keep All buildings and identity fixed above the scroller. Directions is the primary action; Save, Share, and Google Maps use labeled shared buttons. The body omits property and construction metadata, then renders only non-empty Address, Rooms & spaces, Bookable rooms, Food & services, Entrances, and Sources sections. Official images use a horizontal snap strip and retain the source link if an image fails. Availability labels current, historical, or unknown freshness. The interface identifies spatial POI joins and makes no undocumented entrance-accessibility claim.
 
-Connected walking routes draw immediately as a 9px contrasting casing under a 5px navigation-blue trace. Tools carries route time, distance, and endpoints in the rail or collapsed bottom-sheet handle instead of a floating map card; AI retains the compact top-left highlight card.
+Directions places editable From and To boxes at the top of the rail. Focusing either box selects its committed building name and opens one endpoint-specific listbox; choosing a result commits it, removes the list immediately, and starts a route when both endpoints exist. Loading, retry, and route summaries occupy the area below the endpoint boxes without retaining search results.
+
+Connected walking routes draw immediately as a 9px contrasting casing under a 5px navigation-blue trace. Wide Tools keeps the endpoint editor and route summary beside the map. Compact Tools collapses to a time, distance, and endpoint handle after a valid route; reopening restores both editable boxes. AI retains its compact top-left highlight card.
 
 AI building clicks retain the transient raised popup: `.neu-panel absolute top-3 bottom-6 left-3 w-80 max-w-[calc(100%-1.5rem)] rounded-2xl`. The popup never appears beside the Tools rail.
 

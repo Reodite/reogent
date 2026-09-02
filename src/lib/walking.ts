@@ -51,7 +51,7 @@ export type MapHighlight = WalkingHighlight | BuildingsHighlight | PlacesHighlig
 /** Returns only verified network path geometry; estimates remain text-only. */
 export function drawableRoutePath(route: RouteResponse): LngLat[] | null {
   if (route.method !== "network" || route.polyline.length < 2) return null;
-  return route.polyline.every(
+  const valid = route.polyline.every(
     ([longitude, latitude]) =>
       Number.isFinite(longitude) &&
       Number.isFinite(latitude) &&
@@ -59,7 +59,10 @@ export function drawableRoutePath(route: RouteResponse): LngLat[] | null {
       longitude <= 180 &&
       latitude >= -90 &&
       latitude <= 90,
-  )
+  );
+  if (!valid) return null;
+  const [firstLongitude, firstLatitude] = route.polyline[0];
+  return route.polyline.some(([longitude, latitude]) => longitude !== firstLongitude || latitude !== firstLatitude)
     ? route.polyline
     : null;
 }

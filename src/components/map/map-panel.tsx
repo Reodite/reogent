@@ -4,7 +4,12 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
-import { BuildingRail, type BuildingDetailsState, type BuildingRouteState } from "@/src/components/map/building-rail";
+import {
+  BuildingRail,
+  type BuildingDetailsState,
+  type BuildingRouteState,
+  type RouteEndpoint,
+} from "@/src/components/map/building-rail";
 import { CampusMap, type MapControls, type MapStatus } from "@/src/components/map/campus-map";
 import { useApi } from "@/src/components/providers";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
@@ -133,16 +138,23 @@ function MapExploreSheet({
 }) {
   const contentId = useId();
   const handleRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previousOpenRef = useRef(open);
   const routeReady = route.status === "network" || route.status === "estimate";
+  const routeEstimate = route.status === "estimate";
   const title = routeReady
-    ? `${formatMinutes(route.route.minutes)} walk`
+    ? routeEstimate
+      ? `${formatMeters(route.route.meters)} estimate`
+      : `${formatMinutes(route.route.minutes)} walk`
     : mode === "details" && selected
       ? selected.name
       : mode === "directions"
         ? "Directions"
         : "Explore campus";
   const subtitle = routeReady
-    ? `${route.from.code} → ${route.to.code} · ${formatMeters(route.route.meters)}`
+    ? routeEstimate
+      ? `${route.from.code} → ${route.to.code} · Straight-line only`
+      : `${route.from.code} → ${route.to.code} · ${formatMeters(route.route.meters)}`
     : mode === "details"
       ? "Building details"
       : mode === "directions"
@@ -150,6 +162,14 @@ function MapExploreSheet({
           ? "Finding a walking route…"
           : "Choose a starting building"
         : "Search buildings, rooms, and services";
+
+  useEffect(() => {
+    const wasOpen = previousOpenRef.current;
+    previousOpenRef.current = open;
+    if (!wasOpen || open || !contentRef.current?.contains(document.activeElement)) return;
+    const handle = handleRef.current;
+    if (handle && window.getComputedStyle(handle).display !== "none") handle.focus();
+  }, [open]);
 
   return (
     <fieldset
@@ -176,7 +196,10 @@ function MapExploreSheet({
       >
         <span className="bg-outline/35 absolute top-1.5 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full" aria-hidden />
         <span className="bg-primary-container text-on-primary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-          <Icon name={routeReady ? "walk" : mode === "details" ? "location" : "search"} size={18} />
+          <Icon
+            name={routeEstimate ? "location" : routeReady ? "walk" : mode === "details" ? "location" : "search"}
+            size={18}
+          />
         </span>
         <span className="min-w-0 flex-1">
           <span className="text-on-surface block truncate text-sm font-medium">{title}</span>
@@ -188,7 +211,7 @@ function MapExploreSheet({
           className={`text-on-surface-variant shrink-0 transition-transform duration-200 ${open ? "" : "rotate-180"}`}
         />
       </button>
-      <div id={contentId} data-map-sheet-content className="min-h-0 flex-1">
+      <div ref={contentRef} id={contentId} data-map-sheet-content className="min-h-0 flex-1">
         {children}
       </div>
     </fieldset>
@@ -352,7 +375,10 @@ function CampusMapExplorer() {
   const [catalogStatus, setCatalogStatus] = useState<"loading" | "ready" | "error">("loading");
   const [catalogNonce, setCatalogNonce] = useState(0);
   const [query, setQuery] = useState("");
-  const [originQuery, setOriginQuery] = useState("");
+  const [routeQuery, setRouteQuery] = useState("");
+  const [routeOrigin, setRouteOrigin] = useState<BuildingSummary | null>(null);
+  const [routeField, setRouteField] = useState<RouteEndpoint | null>(null);
+  const [endpointError, setEndpointError] = useState<string | null>(null);
   const [selectedCode, setSelectedCode] = useState<string | null>(() => searchParams.get("building"));
   const selectedCodeRef = useRef(selectedCode);
   const [railMode, setRailMode] = useState<"discover" | "details" | "directions">(
@@ -364,7 +390,6 @@ function CampusMapExplorer() {
   const [favoriteCodes, setFavoriteCodes] = useState<string[]>([]);
   const [favoriteStatus, setFavoriteStatus] = useState<"idle" | "loading" | "saving" | "error">("idle");
   const [route, setRoute] = useState<BuildingRouteState>({ status: "idle" });
-  const [routeHighlight, setRouteHighlight] = useState<MapHighlight | null>(null);
   const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "copy" | "error">("idle");
   const controls = useRef<MapControls | null>(null);
   const routeController = useRef<AbortController | null>(null);
@@ -376,6 +401,19 @@ function CampusMapExplorer() {
     catalogStatus === "ready" && selectedCode && !selected
       ? `Building “${selectedCode}” is not in the current catalog.`
       : null;
+  const routeHighlight = useMemo<MapHighlight | null>(() => {
+    if (route.status !== "network" && route.status !== "estimate") return null;
+    const path = drawableRoutePath(route.route);
+    return {
+      kind: "route",
+      from: route.route.from,
+      to: route.route.to,
+      meters: route.route.meters,
+      minutes: route.route.minutes,
+      method: route.route.method,
+      ...(path ? { path } : {}),
+    };
+  }, [route]);
   const mapHighlight = useMemo<MapHighlight | null>(() => {
     if (routeHighlight) return routeHighlight;
     if (!selected) return shell.highlight;
@@ -414,16 +452,19 @@ function CampusMapExplorer() {
 
   useEffect(() => {
     const code = searchParams.get("building");
-    if (code !== selectedCodeRef.current) {
-      routeController.current?.abort();
-      setRoute({ status: "idle" });
-      setRouteHighlight(null);
-      setShareStatus("idle");
-      selectedCodeRef.current = code;
-      if (code) setSheetOpen(true);
-    }
+    if (code === selectedCodeRef.current) return;
+    routeController.current?.abort();
+    routeController.current = null;
+    setRoute({ status: "idle" });
+    setRouteOrigin(null);
+    setRouteField(null);
+    setRouteQuery("");
+    setEndpointError(null);
+    setShareStatus("idle");
+    selectedCodeRef.current = code;
     setSelectedCode(code);
     setRailMode(code ? "details" : "discover");
+    setSheetOpen(Boolean(code));
   }, [searchParams]);
 
   useEffect(() => {
@@ -433,12 +474,21 @@ function CampusMapExplorer() {
     }
     void detailsNonce;
     const controller = new AbortController();
+    const code = selected.code;
     setDetails({ status: "loading" });
     api
-      .getBuildingDetails(selected.code, controller.signal)
-      .then((data) => setDetails({ status: "ready", data }))
+      .getBuildingDetails(code, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted && selectedCodeRef.current === code) setDetails({ status: "ready", data });
+      })
       .catch((error) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) setDetails({ status: "error" });
+        if (
+          !controller.signal.aborted &&
+          selectedCodeRef.current === code &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        ) {
+          setDetails({ status: "error" });
+        }
       });
     return () => controller.abort();
   }, [api, detailsNonce, selected]);
@@ -466,47 +516,59 @@ function CampusMapExplorer() {
     };
   }, [api, authenticated]);
 
-  useEffect(() => () => routeController.current?.abort(), []);
-
-  const selectBuilding = useCallback((building: BuildingSummary | null) => {
+  const abortRouteRequest = useCallback(() => {
     routeController.current?.abort();
-    setRoute({ status: "idle" });
-    setRouteHighlight(null);
-    setShareStatus("idle");
-    selectedCodeRef.current = building?.code ?? null;
-    setSelectedCode(building?.code ?? null);
-    setRailMode(building ? "details" : "discover");
-    if (building) setSheetOpen(true);
-    writeBuildingParam(building);
+    routeController.current = null;
   }, []);
 
+  useEffect(() => () => abortRouteRequest(), [abortRouteRequest]);
+
+  const selectBuilding = useCallback(
+    (building: BuildingSummary | null) => {
+      abortRouteRequest();
+      setRoute({ status: "idle" });
+      setRouteOrigin(null);
+      setRouteField(null);
+      setRouteQuery("");
+      setEndpointError(null);
+      setShareStatus("idle");
+      const code = building?.code ?? null;
+      const changed = code !== selectedCodeRef.current;
+      selectedCodeRef.current = code;
+      setSelectedCode(code);
+      setRailMode(building ? "details" : "discover");
+      if (building) setSheetOpen(true);
+      if (changed) writeBuildingParam(building);
+    },
+    [abortRouteRequest],
+  );
+
   const runRoute = useCallback(
-    (origin: BuildingSummary) => {
-      if (!selected) return;
-      routeController.current?.abort();
+    (origin: BuildingSummary, destination: BuildingSummary) => {
+      if (origin.code === destination.code) {
+        setEndpointError("Choose two different buildings.");
+        setSheetOpen(true);
+        return;
+      }
+      abortRouteRequest();
       const controller = new AbortController();
       routeController.current = controller;
-      setRoute({ status: "loading", from: origin, to: selected });
+      setEndpointError(null);
+      setRouteOrigin(origin);
+      setRoute({ status: "loading", from: origin, to: destination });
       api
-        .getRoute(origin.code, selected.code, controller.signal)
+        .getRoute(origin.code, destination.code, controller.signal)
         .then((result) => {
           if (controller.signal.aborted || routeController.current !== controller) return;
           const path = drawableRoutePath(result);
           if (result.method === "network" && !path) {
-            setRoute({ status: "error", from: origin, to: selected });
+            routeController.current = null;
+            setRoute({ status: "error", from: origin, to: destination });
             return;
           }
+          routeController.current = null;
           const status = result.method === "network" ? "network" : "estimate";
-          setRoute({ status, from: origin, to: selected, route: result });
-          setRouteHighlight({
-            kind: "route",
-            from: result.from,
-            to: result.to,
-            meters: result.meters,
-            minutes: result.minutes,
-            method: result.method,
-            ...(path ? { path } : {}),
-          });
+          setRoute({ status, from: origin, to: destination, route: result });
           if (status === "network") setSheetOpen(false);
         })
         .catch((error) => {
@@ -515,11 +577,75 @@ function CampusMapExplorer() {
             !controller.signal.aborted &&
             !(error instanceof DOMException && error.name === "AbortError")
           ) {
-            setRoute({ status: "error", from: origin, to: selected });
+            routeController.current = null;
+            setRoute({ status: "error", from: origin, to: destination });
           }
         });
     },
-    [api, selected],
+    [abortRouteRequest, api],
+  );
+
+  const editRouteField = useCallback(
+    (field: RouteEndpoint | null) => {
+      if (!field) {
+        setRouteField(null);
+        setRouteQuery("");
+        setEndpointError(null);
+        return;
+      }
+      if (route.status === "loading") {
+        abortRouteRequest();
+        setRoute({ status: "idle" });
+      }
+      setEndpointError(null);
+      setRouteField(field);
+      setRouteQuery(field === "origin" ? (routeOrigin?.name ?? "") : (selected?.name ?? ""));
+      setSheetOpen(true);
+    },
+    [abortRouteRequest, route.status, routeOrigin, selected],
+  );
+
+  const selectRouteEndpoint = useCallback(
+    (field: RouteEndpoint, building: BuildingSummary) => {
+      const nextOrigin = field === "origin" ? building : routeOrigin;
+      const nextDestination = field === "destination" ? building : selected;
+      if (!nextDestination) return;
+      if (nextOrigin?.code === nextDestination.code) {
+        setEndpointError("Choose two different buildings.");
+        return;
+      }
+
+      setEndpointError(null);
+      setRouteField(null);
+      setRouteQuery("");
+      if (field === "origin") {
+        setRouteOrigin(building);
+      } else if (building.code !== selectedCodeRef.current) {
+        selectedCodeRef.current = building.code;
+        setSelectedCode(building.code);
+        setShareStatus("idle");
+        writeBuildingParam(building);
+      }
+
+      if (nextOrigin) {
+        runRoute(nextOrigin, nextDestination);
+      } else {
+        setRoute({ status: "idle" });
+        setRouteField("origin");
+      }
+    },
+    [routeOrigin, runRoute, selected],
+  );
+
+  const selectMapBuilding = useCallback(
+    (building: BuildingSummary | null) => {
+      if (building && railMode === "directions" && routeField) {
+        selectRouteEndpoint(routeField, building);
+      } else {
+        selectBuilding(building);
+      }
+    },
+    [railMode, routeField, selectBuilding, selectRouteEndpoint],
   );
 
   async function toggleFavorite(code: string) {
@@ -597,7 +723,10 @@ function CampusMapExplorer() {
       <BuildingRail
         mode={selected ? railMode : "discover"}
         query={query}
-        originQuery={originQuery}
+        routeQuery={routeQuery}
+        routeOrigin={routeOrigin}
+        routeField={routeField}
+        endpointError={endpointError}
         catalog={catalog}
         popular={curated}
         favorites={favoriteSet}
@@ -609,28 +738,38 @@ function CampusMapExplorer() {
         shareStatus={shareStatus}
         selectionError={selectionError}
         onQueryChange={setQuery}
-        onOriginQueryChange={setOriginQuery}
+        onRouteQueryChange={(nextQuery) => {
+          setEndpointError(null);
+          setRouteQuery(nextQuery);
+        }}
+        onRouteFieldChange={editRouteField}
+        onRouteEndpointSelect={selectRouteEndpoint}
         onSelect={selectBuilding}
         onBack={() => {
           if (railMode === "directions") {
+            abortRouteRequest();
             setRailMode("details");
-            setOriginQuery("");
             setRoute({ status: "idle" });
-            setRouteHighlight(null);
+            setRouteOrigin(null);
+            setRouteField(null);
+            setRouteQuery("");
+            setEndpointError(null);
           } else {
             selectBuilding(null);
           }
         }}
         onDirections={() => {
+          abortRouteRequest();
           setRailMode("directions");
           setSheetOpen(true);
-          setOriginQuery("");
           setRoute({ status: "idle" });
-          setRouteHighlight(null);
+          setRouteOrigin(null);
+          setRouteField("origin");
+          setRouteQuery("");
+          setEndpointError(null);
         }}
-        onRoute={runRoute}
         onRetryRoute={() => {
-          if (route.status !== "idle") runRoute(route.from);
+          if (route.status === "error") runRoute(route.from, route.to);
         }}
         onRetryDetails={() => setDetailsNonce((nonce) => nonce + 1)}
         onToggleFavorite={(code) => {
@@ -673,7 +812,7 @@ function CampusMapExplorer() {
             hideHighlightCard
             highlight={mapHighlight}
             selectedBuilding={selected}
-            onBuildingSelect={selectBuilding}
+            onBuildingSelect={selectMapBuilding}
             showBuildingPopup={false}
             controlsRef={controls}
           />
