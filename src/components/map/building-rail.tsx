@@ -291,7 +291,7 @@ function BuildingRow({
       onClick={onSelect}
       className={`focus-visible:ring-primary/40 hover:bg-surface-container-high flex w-full items-center gap-3 py-2 text-left focus-visible:ring-2 ${
         variant === "route"
-          ? "bg-surface-container-low/55 min-h-14 scroll-mt-48 rounded-xl px-3"
+          ? "bg-surface-container-low/55 min-h-14 scroll-mt-36 rounded-xl px-3"
           : "min-h-11 rounded-lg px-3"
       } ${selected ? "neu-inset bg-surface-container text-on-surface" : ""}`}
     >
@@ -451,7 +451,24 @@ export function BuildingRail(props: BuildingRailProps) {
   const title = props.mode === "directions" ? "Directions" : props.mode === "details" ? "Building details" : "Explore";
 
   return (
-    <WorkspacePanel title={title} bodyMode="contained" padding="none">
+    <WorkspacePanel
+      title={title}
+      leading={
+        props.mode === "directions" ? (
+          <Button
+            variant="ghost"
+            size="denseIcon"
+            onClick={props.onBack}
+            aria-label="Back to building details"
+            title="Back to building details"
+          >
+            <Icon name="left" size={17} />
+          </Button>
+        ) : undefined
+      }
+      bodyMode="contained"
+      padding="none"
+    >
       {props.mode === "details" && props.selected ? (
         <div className="flex h-full min-h-0 flex-col">
           <div className="border-border-subtle shrink-0 border-b px-3 py-3">
@@ -573,16 +590,6 @@ export function BuildingRail(props: BuildingRailProps) {
           >
             {props.mode === "directions" && props.selected ? (
               <div data-route-editor className="bg-surface sticky top-0 z-20 px-3 pt-3 pb-2">
-                <Button
-                  variant="ghost"
-                  size="compact"
-                  onClick={props.onBack}
-                  aria-label="Back to building details"
-                  className="mb-2"
-                >
-                  <Icon name="left" size={15} />
-                  Building details
-                </Button>
                 <div className="neu-raised bg-surface rounded-xl p-2">
                   <div
                     data-route-endpoints

@@ -220,6 +220,7 @@ const PANEL_PADDING_CLASSES = {
 interface WorkspacePanelProps {
   title: string;
   description?: ReactNode;
+  leading?: ReactNode;
   actions?: ReactNode;
   bodyMode?: "scroll" | "contained";
   padding?: keyof typeof PANEL_PADDING_CLASSES;
@@ -230,6 +231,7 @@ interface WorkspacePanelProps {
 export function WorkspacePanel({
   title,
   description,
+  leading,
   actions,
   bodyMode = "scroll",
   padding = "md",
@@ -239,15 +241,19 @@ export function WorkspacePanel({
   return (
     <section
       data-workspace-panel
+      data-workspace-panel-leading={leading ? true : undefined}
       aria-labelledby={headingId}
       className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl"
     >
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-4">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <h2 id={headingId} className="text-on-surface shrink-0 text-sm font-medium">
-            {title}
-          </h2>
-          {description ? <p className="text-muted min-w-0 truncate text-xs">{description}</p> : null}
+        <div className="flex min-w-0 items-center gap-1">
+          {leading}
+          <div className="flex min-w-0 items-baseline gap-2">
+            <h2 id={headingId} className="text-on-surface shrink-0 text-sm font-medium">
+              {title}
+            </h2>
+            {description ? <p className="text-muted min-w-0 truncate text-xs">{description}</p> : null}
+          </div>
         </div>
         {actions}
       </header>

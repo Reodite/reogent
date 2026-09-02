@@ -119,7 +119,12 @@ describe("WorkspacePage", () => {
   it("fixes panel material, header height, body scrolling, and canvas overflow variants", () => {
     const { container } = render(
       <WorkspaceRail>
-        <WorkspacePanel title="Controls" bodyMode="contained" padding="none">
+        <WorkspacePanel
+          title="Controls"
+          leading={<button aria-label="Back to controls" type="button" />}
+          bodyMode="contained"
+          padding="none"
+        >
           Body
         </WorkspacePanel>
       </WorkspaceRail>,
@@ -127,7 +132,9 @@ describe("WorkspacePage", () => {
     const panel = container.querySelector("[data-workspace-panel]");
     const panelBody = container.querySelector("[data-workspace-panel-body]");
     expect(panel?.className).toContain("neu-panel");
+    expect(panel?.hasAttribute("data-workspace-panel-leading")).toBe(true);
     expect(panel?.querySelector("header")?.className).toContain("h-12");
+    expect(panel?.querySelector("header button + div h2")?.textContent).toBe("Controls");
     expect(panelBody?.className).toContain("overflow-hidden");
     expect(panelBody?.className).toContain("p-0");
   });

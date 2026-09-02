@@ -221,7 +221,7 @@ describe("BuildingRail", () => {
     ]) {
       expect(from.className).toContain(inputClass);
     }
-    expect(screen.getByRole("button", { name: "Back to building details" }).textContent).toContain("Building details");
+    expect(screen.getByRole("button", { name: "Back to building details" }).textContent).toBe("");
     expect(view.container.querySelector("[data-route-endpoints]")?.className).toContain("gap-x-3");
     expect(view.container.querySelector("[data-route-marker-track]")).toBeTruthy();
     expect(from.parentElement?.className).toContain("col-start-2");

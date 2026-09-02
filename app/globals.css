@@ -616,7 +616,7 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 [data-route-results-scroll] {
   overscroll-behavior-y: contain;
   touch-action: pan-y;
-  scroll-padding-top: 12rem;
+  scroll-padding-top: 9rem;
   scrollbar-width: thin;
   scrollbar-color: var(--outline-variant) transparent;
   -webkit-overflow-scrolling: touch;
@@ -727,6 +727,10 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 
   [data-map-sheet-content] > [data-workspace-panel] > header {
     display: none;
+  }
+
+  [data-map-sheet-content] > [data-workspace-panel][data-workspace-panel-leading] > header {
+    display: flex;
   }
 
   [data-map-sheet-content] > [data-workspace-panel] > [data-workspace-panel-body] {
