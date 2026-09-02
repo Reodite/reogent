@@ -1185,7 +1185,9 @@ export function CampusMap({
       {highlight && (
         <p className="sr-only" role="status">
           {highlight.kind === "route"
-            ? `Route displayed on map: ${highlight.from} to ${highlight.to}, ${formatMeters(highlight.meters)}, ${formatMinutes(highlight.minutes)} walk.`
+            ? highlight.method === "estimate"
+              ? `Straight-line distance estimate: ${highlight.from} to ${highlight.to}, ${formatMeters(highlight.meters)}.`
+              : `Route displayed on map: ${highlight.from} to ${highlight.to}, ${formatMeters(highlight.meters)}, ${formatMinutes(highlight.minutes)} walk.`
             : highlight.kind === "buildings"
               ? `Highlighted on map: ${highlight.buildings.map((b) => `${b.name} (${b.code})`).join(", ")}.`
               : `${highlight.places.length} places marked on map${highlight.near ? ` near ${highlight.near}` : ""}.`}

@@ -147,7 +147,6 @@ function props(overrides: Partial<BuildingRailProps> = {}): BuildingRailProps {
     onRetryRoute: vi.fn(),
     onRetryDetails: vi.fn(),
     onToggleFavorite: vi.fn(),
-    onSignIn: vi.fn(),
     onShare: vi.fn(),
     onOpenGoogleMaps: vi.fn(),
     ...overrides,

@@ -43,7 +43,6 @@ export interface BuildingRailProps {
   onRetryRoute: () => void;
   onRetryDetails: () => void;
   onToggleFavorite: (code: string) => void;
-  onSignIn: () => void;
   onShare: () => void;
   onOpenGoogleMaps: () => void;
 }
@@ -452,6 +451,11 @@ export function BuildingRail(props: BuildingRailProps) {
               <Icon name="map" size={15} />
               Show on map
             </Button>
+            {props.favoriteStatus === "error" && props.authenticated ? (
+              <p className="text-error mt-2 text-xs" role="alert">
+                Couldn't update saved buildings. Try the Save action again.
+              </p>
+            ) : null}
             {props.shareStatus !== "idle" ? (
               <p
                 className={props.shareStatus === "error" ? "text-error mt-2 text-xs" : "text-muted mt-2 text-xs"}
@@ -463,11 +467,6 @@ export function BuildingRail(props: BuildingRailProps) {
                     ? "Link copied"
                     : "Couldn't share the link"}
               </p>
-            ) : null}
-            {!props.authenticated && props.favoriteStatus === "error" ? (
-              <Button variant="ghost" size="compact" onClick={props.onSignIn} className="mt-2">
-                Sign in to save buildings
-              </Button>
             ) : null}
           </div>
           <div className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto px-3 py-4">
@@ -579,6 +578,11 @@ export function BuildingRail(props: BuildingRailProps) {
             ) : (
               <div className="flex flex-col gap-4">
                 {props.favoriteStatus === "loading" ? <LoadingStatus>Loading saved buildings…</LoadingStatus> : null}
+                {props.favoriteStatus === "error" && props.authenticated ? (
+                  <p role="alert" className="text-error px-2 text-xs">
+                    Saved buildings are unavailable. Search and curated places still work.
+                  </p>
+                ) : null}
                 <BuildingList label="Saved" buildings={saved} favorites={props.favorites} onSelect={selectResult} />
                 <BuildingList
                   label="Curated popular buildings"

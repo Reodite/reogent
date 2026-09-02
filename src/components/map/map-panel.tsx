@@ -513,8 +513,10 @@ function CampusMapExplorer() {
           if (route.status !== "idle") runRoute(route.from);
         }}
         onRetryDetails={() => setDetailsNonce((nonce) => nonce + 1)}
-        onToggleFavorite={toggleFavorite}
-        onSignIn={() => navigation.push("/login")}
+        onToggleFavorite={(code) => {
+          if (authenticated) void toggleFavorite(code);
+          else navigation.push("/login");
+        }}
         onShare={shareBuilding}
         onOpenGoogleMaps={openGoogleMaps}
       />
