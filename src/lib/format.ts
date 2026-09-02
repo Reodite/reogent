@@ -157,6 +157,15 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
         const n = Array.isArray(input.buildings) ? input.buildings.length : 0;
         return n > 0 ? `Showing ${n} building${n > 1 ? "s" : ""}` : "Showing building";
       }
+      if (type === "building_detail") {
+        return has("building_code") ? `Showing details for ${s("building_code")}` : "Showing building details";
+      }
+      if (type === "building_entrances") {
+        return has("building_code") ? `Showing entrances for ${s("building_code")}` : "Showing building entrances";
+      }
+      if (type === "building_spaces") {
+        return has("building_code") ? `Showing rooms in ${s("building_code")}` : "Showing building rooms";
+      }
       if (type === "route") {
         return has("from_building") && has("to_building")
           ? `Showing route from ${s("from_building")} to ${s("to_building")}`

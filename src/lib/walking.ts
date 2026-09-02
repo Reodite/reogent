@@ -189,6 +189,34 @@ export function extractPeopleHighlight(call: ToolCall): BuildingsHighlight | nul
   return { kind: "buildings", buildings: [...byCode.values()] };
 }
 
+function richBuildingHighlight(
+  data: Record<string, unknown> | undefined,
+  options: Pick<BuildingsHighlight, "showEntrances" | "detailKind"> = {},
+): BuildingsHighlight | null {
+  const building = data?.building as { code?: unknown; name?: unknown; centroid?: unknown } | undefined;
+  if (
+    typeof building?.code !== "string" ||
+    !building.code ||
+    !Array.isArray(building.centroid) ||
+    building.centroid.length < 2 ||
+    typeof building.centroid[0] !== "number" ||
+    typeof building.centroid[1] !== "number"
+  ) {
+    return null;
+  }
+  const [lon, lat] = building.centroid;
+  if (!Number.isFinite(lon) || !Number.isFinite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) {
+    return null;
+  }
+  return {
+    kind: "buildings",
+    buildings: [
+      { code: building.code, name: typeof building.name === "string" ? building.name : building.code, lat, lon },
+    ],
+    ...options,
+  };
+}
+
 /** Tries every map-driving extractor; only one matches a given call name. */
 function extractMapHighlight(call: ToolCall): MapHighlight | null {
   return (
@@ -217,6 +245,18 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
   const outer = call.result as { type?: string; result?: unknown } | undefined;
   const data = outer?.result as Record<string, unknown> | undefined;
   switch (outer?.type) {
+    case "building_detail": {
+      const rich = richBuildingHighlight(data, { detailKind: "building" });
+      return rich ? { paneId: "map", state: { highlight: rich } } : null;
+    }
+    case "building_entrances": {
+      const rich = richBuildingHighlight(data, { showEntrances: true });
+      return rich ? { paneId: "map", state: { highlight: rich } } : null;
+    }
+    case "building_spaces": {
+      const rich = richBuildingHighlight(data, { detailKind: "spaces" });
+      return rich ? { paneId: "map", state: { highlight: rich } } : null;
+    }
     case "route": {
       const r = data as { from?: string; to?: string; meters?: number; minutes?: number } | undefined;
       if (typeof r?.meters !== "number" || typeof r.minutes !== "number" || !r.from || !r.to) return null;

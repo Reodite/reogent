@@ -92,13 +92,13 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - _Requirements: 1.1–1.4, 3.1–3.8, 10.1–10.10, 11.1–11.8_
 
 - [ ] 6. Add backward-compatible rich AI map widgets
-  - [ ] 6.1 Add exact-code widget execution
+  - [x] 6.1 Add exact-code widget execution
     - Preserve stored `building` widget input and output contracts.
     - Add `building_detail`, `building_entrances`, and `building_spaces` with one exact `building_code` already returned by `find_building`.
     - Reuse `loadBuildingDetails`, return type-specific subsets where appropriate, and update agent recipes and activity labels.
     - Add contract tests for legacy history, missing prior code, unknown code, rich results, and exact widget registration.
     - _Requirements: 9.1–9.3, 9.6, 9.9–9.11_
-  - [ ] 6.2 Map and render rich widget results
+  - [x] 6.2 Map and render rich widget results
     - Extend `MapHighlight` additively with entrance and detail flags.
     - Map valid rich widgets to building focus, entrance visibility, or room summaries while rejecting malformed coordinates.
     - Add section-aware Response Widget cards and preserve the raw-details crash fallback.

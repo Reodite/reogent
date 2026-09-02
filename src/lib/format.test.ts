@@ -224,6 +224,15 @@ describe("describeToolCall", () => {
     expect(describeToolCall("show_widget", { type: "route" })).toBe("Showing route");
     expect(describeToolCall("show_widget", { type: "tuition" })).toBe("Showing tuition");
     expect(describeToolCall("show_widget", { type: "grades" })).toBe("Showing grades");
+    expect(describeToolCall("show_widget", { type: "building_detail", building_code: "IBLC" })).toBe(
+      "Showing details for IBLC",
+    );
+    expect(describeToolCall("show_widget", { type: "building_entrances", building_code: "IBLC" })).toBe(
+      "Showing entrances for IBLC",
+    );
+    expect(describeToolCall("show_widget", { type: "building_spaces", building_code: "IBLC" })).toBe(
+      "Showing rooms in IBLC",
+    );
   });
 
   it("falls back for unknown tools by converting the name", () => {

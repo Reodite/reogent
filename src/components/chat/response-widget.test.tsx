@@ -160,6 +160,31 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(widget.getAttribute("role")).toBeNull();
   });
 
+  it("renders and activates rich building entrance widgets", () => {
+    const call = {
+      name: "show_widget",
+      input: { type: "building_entrances", building_code: "IBLC" },
+      result: {
+        type: "building_entrances",
+        result: {
+          building: {
+            code: "IBLC",
+            name: "Irving K. Barber Learning Centre",
+            centroid: [-123.252, 49.267],
+          },
+          entrances: [{ id: "IBLC-1" }, { id: "IBLC-2" }],
+        },
+      },
+      status: "ok",
+    } as unknown as ToolCall;
+    const { container, getByText } = renderWidget(call);
+
+    expect(getByText("2 verified entrances")).toBeTruthy();
+    fireEvent.click(container.querySelector('[data-widget="show_widget"]') as HTMLElement);
+    expect(shellRef.current?.workspaceView?.paneId).toBe("map");
+    expect(shellRef.current?.workspaceView?.state.highlight).toMatchObject({ showEntrances: true });
+  });
+
   it("keeps raw evidence visible when a rich renderer crashes", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     renderers.exploding_widget = () => {

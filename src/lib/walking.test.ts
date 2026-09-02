@@ -407,6 +407,53 @@ describe("toolCallToCanvasView", () => {
     expect(mapKind(view)).toBe("buildings");
   });
 
+  it.each([
+    ["building_detail", false, "building"],
+    ["building_entrances", true, undefined],
+    ["building_spaces", false, "spaces"],
+  ] as const)("maps %s to one rich building highlight", (type, showEntrances, detailKind) => {
+    const view = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type, building_code: "IBLC" },
+      result: {
+        type,
+        result: {
+          building: {
+            code: "IBLC",
+            name: "Irving K. Barber Learning Centre",
+            centroid: [-123.252, 49.267],
+          },
+        },
+      },
+    } as ToolCall);
+    expect(view?.paneId).toBe("map");
+    const highlight = view?.state.highlight as { kind?: string; showEntrances?: boolean; detailKind?: string };
+    expect(highlight.kind).toBe("buildings");
+    expect(Boolean(highlight.showEntrances)).toBe(showEntrances);
+    expect(highlight.detailKind).toBe(detailKind);
+  });
+
+  // Feature: campus-map-explorer, Property 5: Map widget mapping rejects malformed spatial state.
+  it("accepts rich widgets exactly for finite in-range building centroids", () => {
+    fc.assert(
+      fc.property(fc.double({ noNaN: false }), fc.double({ noNaN: false }), (lon, lat) => {
+        const view = toolCallToCanvasView({
+          name: "show_widget",
+          input: { type: "building_entrances", building_code: "IBLC" },
+          result: {
+            type: "building_entrances",
+            result: { building: { code: "IBLC", name: "IKB", centroid: [lon, lat] } },
+          },
+        } as ToolCall);
+        const valid =
+          Number.isFinite(lon) && Number.isFinite(lat) && lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90;
+        expect(view !== null).toBe(valid);
+        if (view) expect(view.state.highlight).toMatchObject({ showEntrances: true });
+      }),
+      { numRuns: 100 },
+    );
+  });
+
   it("maps a find_parking call to the map pane", () => {
     const view = toolCallToCanvasView({
       name: "find_parking",

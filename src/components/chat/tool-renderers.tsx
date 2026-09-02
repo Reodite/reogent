@@ -299,12 +299,14 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       );
     }
     case "route": {
-      const r = data as { from?: string; to?: string; meters?: number; minutes?: number } | undefined;
+      const r = data as
+        { from?: string; to?: string; meters?: number; minutes?: number; method?: "network" | "estimate" } | undefined;
       if (typeof r?.meters !== "number" || !r.from || !r.to) return null;
       return (
         <ToolResultCard icon="walk">
           <span className="text-on-surface block text-base font-medium">{formatMinutes(r.minutes)}</span>
           <span className="text-on-surface-variant block truncate text-xs">
+            {r.method === "estimate" ? "Straight-line estimate · " : ""}
             {formatMeters(r.meters)} · {r.from} → {r.to}
           </span>
         </ToolResultCard>
@@ -317,6 +319,81 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
         <ToolResultCard icon="map">
           <span className="text-on-surface block truncate text-base font-medium">{b.name ?? b.code}</span>
           <span className="text-muted block truncate font-mono text-xs">{b.code}</span>
+        </ToolResultCard>
+      );
+    }
+    case "building_detail": {
+      const result = data as
+        | {
+            building?: { code?: string; name?: string; address?: string | null };
+            room_count?: number;
+            bookable_room_count?: number;
+            pois?: unknown[];
+            entrances?: unknown[];
+          }
+        | undefined;
+      if (!result?.building?.code) return null;
+      const counts = [
+        typeof result.room_count === "number" ? `${result.room_count} rooms` : null,
+        typeof result.bookable_room_count === "number" ? `${result.bookable_room_count} bookable` : null,
+        Array.isArray(result.pois) ? `${result.pois.length} services` : null,
+        Array.isArray(result.entrances) ? `${result.entrances.length} entrances` : null,
+      ].filter(Boolean);
+      return (
+        <ToolResultCard icon="building1">
+          <span className="text-on-surface block truncate text-base font-medium">
+            {result.building.name ?? result.building.code}
+          </span>
+          <span className="text-muted block truncate text-xs">
+            <span className="font-mono">{result.building.code}</span>
+            {result.building.address ? ` · ${result.building.address}` : ""}
+          </span>
+          {counts.length > 0 ? (
+            <span className="text-on-surface-variant mt-1 block text-xs">{counts.join(" · ")}</span>
+          ) : null}
+        </ToolResultCard>
+      );
+    }
+    case "building_entrances": {
+      const result = data as { building?: { code?: string; name?: string }; entrances?: unknown[] } | undefined;
+      if (!result?.building?.code || !Array.isArray(result.entrances)) return null;
+      return (
+        <ToolResultCard icon="door">
+          <span className="text-on-surface block truncate text-base font-medium">
+            {result.building.name ?? result.building.code}
+          </span>
+          <span className="text-on-surface-variant block text-xs">
+            {result.entrances.length} verified entrance{result.entrances.length === 1 ? "" : "s"}
+          </span>
+          <span className="text-muted block text-xs">Accessibility details unavailable in source metadata</span>
+        </ToolResultCard>
+      );
+    }
+    case "building_spaces": {
+      const result = data as
+        | {
+            building?: { code?: string; name?: string };
+            rooms?: unknown[];
+            availability?: { rooms?: unknown[]; as_of?: string | null; freshness?: string } | null;
+          }
+        | undefined;
+      if (!result?.building?.code || !Array.isArray(result.rooms)) return null;
+      const bookable = Array.isArray(result.availability?.rooms) ? result.availability.rooms.length : 0;
+      return (
+        <ToolResultCard icon="school">
+          <span className="text-on-surface block truncate text-base font-medium">
+            {result.building.name ?? result.building.code}
+          </span>
+          <span className="text-on-surface-variant block text-xs">
+            {result.rooms.length} learning space{result.rooms.length === 1 ? "" : "s"} · {bookable} bookable room
+            {bookable === 1 ? "" : "s"}
+          </span>
+          {result.availability?.as_of ? (
+            <span className="text-muted block text-xs">
+              {result.availability.freshness === "historical" ? "Historical snapshot" : "Snapshot"} ·{" "}
+              {result.availability.as_of.slice(0, 10)}
+            </span>
+          ) : null}
         </ToolResultCard>
       );
     }

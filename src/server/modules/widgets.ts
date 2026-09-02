@@ -1,10 +1,11 @@
+import { loadBuildingDetails } from "../building-details";
 import type { DatasetModule, SearchClient } from "../core/types";
 import { BUCKET_KEYS, defaultSession, isSession, type BucketKey, type Session } from "../course-records";
 import { sanitizeMeiliId } from "../ingest";
 import { route } from "../routing";
 import { resolveBuilding } from "./buildings";
 import { findByCode, presentCourse, type CourseDoc } from "./courses";
-import { courseAverage, courseGrades } from "./grades";
+import { courseGrades } from "./grades";
 import { lookupTuition } from "./tuition";
 
 /**
@@ -29,6 +30,21 @@ async function getDocs(search: SearchClient, index: string, ids: string[]): Prom
     }
   }
   return out;
+}
+
+async function richBuildingDetails(search: SearchClient, input: Record<string, unknown>) {
+  const code = String(input.building_code ?? "")
+    .trim()
+    .toUpperCase();
+  if (!code) throw new Error("Rich building widgets require building_code from find_building");
+  let document: Record<string, unknown>;
+  try {
+    document = (await search.index("buildings").getDocument(code)) as Record<string, unknown>;
+  } catch {
+    throw new Error(`Unknown exact building code "${code}"`);
+  }
+  if (String(document.code ?? "").toUpperCase() !== code) throw new Error(`Unknown exact building code "${code}"`);
+  return loadBuildingDetails(search, code, new Date());
 }
 
 async function getCoursesByCodes(search: SearchClient, codes: string[]): Promise<CourseDoc[]> {
@@ -62,6 +78,9 @@ export function createWidgetsModule(): DatasetModule {
                     "grades",
                     "grade_distribution",
                     "building",
+                    "building_detail",
+                    "building_entrances",
+                    "building_spaces",
                     "route",
                     "tuition",
                     "places",
@@ -72,7 +91,7 @@ export function createWidgetsModule(): DatasetModule {
                     "key_dates",
                   ],
                   description:
-                    'Card type: "courses" (list), "course" (single), "grades" (grade), "grade_distribution" (per-session chart), "building" (map), "route" (route), "tuition" (rate), "places" (POIs), "parking" (lots), "event" (event), "study_spaces" (rooms), "program" (admission), "key_dates" (calendar)',
+                    'Card type: "courses" (list), "course" (single), "grades" (grade), "grade_distribution" (per-session chart), "building" (legacy map location), "building_detail" (full public building record), "building_entrances" (verified doors), "building_spaces" (rooms and booking snapshot), "route" (route), "tuition" (rate), "places" (POIs), "parking" (lots), "event" (event), "study_spaces" (rooms), "program" (admission), "key_dates" (calendar)',
                 },
                 course_codes: {
                   type: "array",
@@ -91,6 +110,11 @@ export function createWidgetsModule(): DatasetModule {
                   type: "array",
                   items: { type: "string" },
                   description: 'building only: building codes or names, e.g. ["ICCS", "IKB"]',
+                },
+                building_code: {
+                  type: "string",
+                  description:
+                    "building_detail/building_entrances/building_spaces only: one exact code returned by find_building",
                 },
                 from_building: {
                   type: "string",
@@ -264,6 +288,57 @@ export function createWidgetsModule(): DatasetModule {
               return { type, result };
             }
 
+            case "building_detail": {
+              const details = await richBuildingDetails(search, input);
+              return {
+                type,
+                result: {
+                  building: details.building,
+                  addresses: details.addresses,
+                  pois: details.pois.slice(0, 20),
+                  entrances: details.entrances,
+                  photos: details.photos,
+                  room_count: details.rooms.length,
+                  bookable_room_count: details.availability?.rooms.length ?? 0,
+                  sourceStatus: details.sourceStatus,
+                },
+              };
+            }
+
+            case "building_entrances": {
+              const details = await richBuildingDetails(search, input);
+              return {
+                type,
+                result: {
+                  building: details.building,
+                  entrances: details.entrances,
+                  sourceStatus: {
+                    building: details.sourceStatus.building,
+                    entrances: details.sourceStatus.entrances,
+                  },
+                },
+              };
+            }
+
+            case "building_spaces": {
+              const details = await richBuildingDetails(search, input);
+              return {
+                type,
+                result: {
+                  building: details.building,
+                  rooms: details.rooms.slice(0, 50),
+                  availability: details.availability
+                    ? { ...details.availability, rooms: details.availability.rooms.slice(0, 50) }
+                    : null,
+                  sourceStatus: {
+                    building: details.sourceStatus.building,
+                    rooms: details.sourceStatus.rooms,
+                    availability: details.sourceStatus.availability,
+                  },
+                },
+              };
+            }
+
             case "building": {
               const names = asStringArray(input.buildings);
               if (names.length === 0) throw new Error("show_widget type 'building' requires buildings");
@@ -289,8 +364,8 @@ export function createWidgetsModule(): DatasetModule {
               if (from.code === to.code) {
                 return { type, result: { from: from.code, to: to.code, meters: 0, minutes: 0 } };
               }
-              const { meters, minutes } = await route(from, to);
-              return { type, result: { from: from.code, to: to.code, meters, minutes } };
+              const { meters, minutes, method } = await route(from, to);
+              return { type, result: { from: from.code, to: to.code, meters, minutes, method } };
             }
 
             case "tuition": {
@@ -438,15 +513,15 @@ export function createWidgetsModule(): DatasetModule {
                 // not offered in this session
               }
               const buckets = rec?.buckets as Record<string, number> | undefined;
-              if (buckets && Object.values(buckets).some((v) => v > 0)) {
+              if (rec && buckets && Object.values(buckets).some((v) => v > 0)) {
                 return {
                   type,
                   result: {
-                    code: rec!.code,
+                    code: rec.code,
                     session,
                     buckets,
-                    average: rec!.average,
-                    reported: rec!.reported,
+                    average: rec.average,
+                    reported: rec.reported,
                     ...(hb ? { highlight_bucket: hb as BucketKey } : {}),
                   },
                 };
