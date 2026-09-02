@@ -192,6 +192,9 @@ export interface BuildingEntranceSummary {
 export interface BuildingProfile extends BuildingSummary {
   secondaryUsage: string | null;
   neighbourhood: string | null;
+  jurisdiction: string | null;
+  propertyType: string | null;
+  hasSubbuildings: boolean | null;
   managingOrganization: string | null;
   maintenanceOrganization: string | null;
   constructionStatus: string | null;

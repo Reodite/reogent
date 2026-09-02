@@ -115,6 +115,9 @@ export function BuildingDetailContent({ details }: { details: BuildingDetails })
     ["Secondary use", building.secondaryUsage],
     ["Building state", building.state],
     ["Neighbourhood", building.neighbourhood],
+    ["Jurisdiction", building.jurisdiction],
+    ["Property type", building.propertyType],
+    ["Contains sub-buildings", building.hasSubbuildings == null ? null : building.hasSubbuildings ? "Yes" : "No"],
     ["Floors", building.floors],
     ["Height", building.heightMeters == null ? null : `${building.heightMeters.toLocaleString("en-CA")} m`],
     [

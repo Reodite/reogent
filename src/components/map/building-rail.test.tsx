@@ -43,6 +43,9 @@ const details: BuildingDetails = {
     ...iblc,
     secondaryUsage: "Library",
     neighbourhood: "Academic",
+    jurisdiction: "UBC",
+    propertyType: "FeeSimple",
+    hasSubbuildings: false,
     managingOrganization: "UBC",
     maintenanceOrganization: "UBC",
     constructionStatus: "Complete",
@@ -181,6 +184,7 @@ describe("BuildingRail", () => {
 
     expect(screen.getByRole("heading", { name: iblc.name })).toBeTruthy();
     expect(screen.getByText("LEED Gold")).toBeTruthy();
+    expect(screen.getByText("FeeSimple")).toBeTruthy();
     expect(screen.getByText("IBLC 100")).toBeTruthy();
     expect(screen.getByText("Bookable room")).toBeTruthy();
     expect(screen.getByText("Library help desk")).toBeTruthy();

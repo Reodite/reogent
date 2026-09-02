@@ -25,6 +25,9 @@ const buildings: FeatureCollection = {
         NAME: "Test Building",
         SHORTNAME: "Test",
         PRIMARY_ADDRESS: "1 Main Mall",
+        JURISDICTION: "UBC",
+        PROPERTY_TYPE: "FeeSimple",
+        HAS_SUBBLDGS: 0,
         BLDG_HEIGHT: 12,
         CREATED_USER: "private@example.com",
       },
@@ -42,6 +45,9 @@ describe("public building map data", () => {
       NAME: "Test Building",
       SHORTNAME: "Test",
       PRIMARY_ADDRESS: "1 Main Mall",
+      JURISDICTION: "UBC",
+      PROPERTY_TYPE: "FeeSimple",
+      HAS_SUBBLDGS: 0,
       BLDG_HEIGHT: 12,
     });
     expect(properties).not.toHaveProperty("BLDG_UID");

@@ -92,7 +92,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 
 1. WHEN a Building_Record loads, THE Building_Rail SHALL display every Displayable_Building_Field from the Building_Record.
 2. THE Building_Rail SHALL group Displayable_Building_Field values under identity, address, physical building, services, rooms and spaces, entrances, and source sections.
-3. THE Building_Rail SHALL display the official code, official name, short name, primary address, postal code, building usage, operational state, height, and floor count when the Building_Record supplies each field.
+3. THE Building_Rail SHALL display the official code, official name, short name, primary address, postal code, building usage, operational state, jurisdiction, property type, sub-building status, height, and floor count when the Building_Record supplies each field.
 4. THE Building_Rail SHALL display directly joined points of interest with service type, hours, contact, official URL, and location when the Building_Record supplies each field.
 5. THE Building_Rail SHALL display Source_Provenance for derived joins and time-sensitive data.
 6. IF a source section contains no Displayable_Building_Field, THEN THE Building_Rail SHALL omit the empty section.

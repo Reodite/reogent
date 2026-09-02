@@ -37,6 +37,10 @@ function number(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+function booleanFlag(value: unknown): boolean | null {
+  return value === 1 || value === "1" ? true : value === 0 || value === "0" ? false : null;
+}
+
 function status(
   state: BuildingSourceStatus["state"],
   sourceName: string,
@@ -71,6 +75,9 @@ function buildingProfile(feature: BuildingFeature): BuildingProfile | null {
     ...summary,
     secondaryUsage: text(properties.BLDG_SEC_USAGE),
     neighbourhood: text(properties.NEIGHBOURHOOD),
+    jurisdiction: text(properties.JURISDICTION),
+    propertyType: text(properties.PROPERTY_TYPE),
+    hasSubbuildings: booleanFlag(properties.HAS_SUBBLDGS),
     managingOrganization: text(properties.MANAGE_ORG),
     maintenanceOrganization: text(properties.BLDG_MAINTENANCE),
     constructionStatus: text(properties.CONSTR_STATUS),

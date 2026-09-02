@@ -6,7 +6,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
 
 ## Tasks
 
-- [ ] 1. Establish public building and entrance contracts
+- [x] 1. Establish public building and entrance contracts
   - [x] 1.1 Add sanitized building catalog models and pure search helpers
     - Extend shared API types with `BuildingSummary`, source provenance, freshness, photo, entrance, and expanded `BuildingDetails` contracts.
     - Add pure catalog projection, acronym generation, deterministic ranking, 20-result cap, eight-code curated list validation, and building URL parse/format helpers.
@@ -25,7 +25,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add fast-check properties and examples for exterior rings, courtyard holes, MultiPolygons, invalid coordinates, distance rejection, arrow direction, vertical planes, and dimensions.
     - _Requirements: 8.1–8.10_
 
-- [ ] 2. Expand trustworthy building details and public routing
+- [x] 2. Expand trustworthy building details and public routing
   - [x] 2.1 Build the reusable Building Record loader
     - Refactor existing room, POI, and availability assembly into `loadBuildingDetails` reusable by HTTP and widgets.
     - Add documented building metadata, official addresses, verified entrance summaries, section provenance, source status, and three-state availability freshness.
@@ -40,7 +40,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add API and client tests for guest reads, network routes, estimate responses, aborts, invalid codes, and partial detail sections.
     - _Requirements: 3.8, 6.1–6.5, 11.3–11.5, 12.1–12.3_
 
-- [ ] 3. Add account-scoped building favorites
+- [x] 3. Add account-scoped building favorites
   - [x] 3.1 Add favorite schema and store functions
     - Add the user/building join table, uniqueness constraint, cascade behavior, and recent-save ordering.
     - Implement idempotent list, save, and remove functions with user-qualified queries.
@@ -52,7 +52,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add tests for unauthorized guests, invalid codes, idempotent responses, and user isolation.
     - _Requirements: 7.1–7.7, 12.2_
 
-- [ ] 4. Render selected buildings and verified entrances on the map
+- [x] 4. Render selected buildings and verified entrances on the map
   - [x] 4.1 Make CampusMap selection controllable without breaking AI popup behavior
     - Add controlled selected-building callbacks for Tools and retain internal cached selection plus popup for AI.
     - Frame controlled selection, keep map camera persistence, and preserve existing building, POI, route, and label layers.
@@ -71,7 +71,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add the route-projection property and representative map-layer tests.
     - _Requirements: 6.2–6.5, 9.9_
 
-- [ ] 5. Build the Tools-only Building Rail
+- [x] 5. Build the Tools-only Building Rail
   - [x] 5.1 Implement discovery, search, and directions states
     - Build one bounded `WorkspacePanel` with fixed search, Saved and Curated sections, deterministic results, keyboard listbox behavior, no-results recovery, and route-origin search.
     - Use the existing input, button, feedback, and chip primitives; keep compact targets at least 44 by 44 pixels.
@@ -91,7 +91,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add host integration tests for Tools-only rail, AI map-only rendering, deep-link reload, Back, rapid selection, stale response rejection, compact resize, and focus.
     - _Requirements: 1.1–1.4, 3.1–3.8, 10.1–10.10, 11.1–11.8_
 
-- [ ] 6. Add backward-compatible rich AI map widgets
+- [x] 6. Add backward-compatible rich AI map widgets
   - [x] 6.1 Add exact-code widget execution
     - Preserve stored `building` widget input and output contracts.
     - Add `building_detail`, `building_entrances`, and `building_spaces` with one exact `building_code` already returned by `find_building`.
@@ -116,10 +116,10 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add layout and accessibility regression tests for required viewports and both themes.
     - _Requirements: 10.1–10.10, 11.1–11.8_
 
-- [ ] 8. Checkpoint: complete automated verification
+- [x] 8. Checkpoint: complete automated verification
   - Run focused tests, the full Vitest suite, TypeScript, Biome, changed-file Prettier, the UI detector, and the production build. Fix any failures before visual review.
 
-- [ ] 9. Integrate design documentation and retire stale map paths
+- [x] 9. Integrate design documentation and retire stale map paths
   - [x] 9.1 Update product and design contracts
     - Record the Tools-only explorer, AI map-only widget behavior, data provenance, compact composition, entrance grammar, action hierarchy, and photo constraints in `PRODUCT.md` and `DESIGN.md`.
     - _Requirements: 1.1–1.4, 4.1–4.8, 8.1–8.10, 9.1–9.11, 10.1–10.10_
