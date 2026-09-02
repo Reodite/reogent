@@ -79,6 +79,43 @@ export interface RouteResponse {
   polyline: import("@/src/shared/types").LngLat[];
 }
 
+export interface BuildingSummary {
+  code: string;
+  name: string;
+  shortName: string | null;
+  aliases: string[];
+  address: string | null;
+  postalCode: string | null;
+  usage: string | null;
+  state: string | null;
+  floors: number | null;
+  heightMeters: number | null;
+  centroid: import("@/src/shared/types").LngLat;
+}
+
+export type BuildingDataAssociation = "direct" | "official-address" | "location-derived";
+export type BuildingDataFreshness = "current" | "historical" | "unknown";
+export type BuildingSourceState = "ready" | "unavailable";
+
+export interface BuildingDataProvenance {
+  sourceName: string;
+  refreshedAt: string | null;
+  association: BuildingDataAssociation;
+}
+
+export interface BuildingSourceStatus {
+  state: BuildingSourceState;
+  provenance: BuildingDataProvenance;
+}
+
+export interface OfficialBuildingPhoto {
+  url: string;
+  alt: string;
+  sourceUrl: string;
+  sourceName: string;
+  classification: "ubc-hosted" | "official-service" | "reodite-owned";
+}
+
 // GET /api/building/{code} — per-building popup details (rooms, POIs, availability).
 
 export interface RoomCard {

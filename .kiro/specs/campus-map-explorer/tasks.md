@@ -7,7 +7,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
 ## Tasks
 
 - [ ] 1. Establish public building and entrance contracts
-  - [ ] 1.1 Add sanitized building catalog models and pure search helpers
+  - [x] 1.1 Add sanitized building catalog models and pure search helpers
     - Extend shared API types with `BuildingSummary`, source provenance, freshness, photo, entrance, and expanded `BuildingDetails` contracts.
     - Add pure catalog projection, acronym generation, deterministic ranking, 20-result cap, eight-code curated list validation, and building URL parse/format helpers.
     - Add fast-check properties for deterministic bounded search and selected-building URL round trips.
