@@ -23,6 +23,7 @@ import { formatMeters, formatMinutes } from "@/src/lib/format";
 import { featureCentroid, featuresBounds, findBuilding, type BuildingFeature, type LngLat } from "@/src/lib/geo";
 import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import { drawableRoutePath } from "@/src/lib/walking";
+import type { LayerProps as DeckLayerProps } from "@deck.gl/core";
 import type { FeatureCollection } from "geojson";
 import type { ErrorEvent as MapLibreErrorEvent } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -190,9 +191,12 @@ const MAP_COLORS: Record<
   },
 };
 
-const ROUTE_LAYER_PARAMETERS = { depthTest: false } as const;
+const ROUTE_LAYER_PARAMETERS = {
+  depthCompare: "always",
+  depthWriteEnabled: false,
+} as const satisfies NonNullable<DeckLayerProps["parameters"]>;
 
-/** Returns the theme colors and depth state for route strokes. */
+/** Returns route colors and deck 9 depth state that draws without reading or writing scene depth. */
 export function routeLayerAppearance(theme: ResolvedTheme) {
   return {
     traceColor: MAP_COLORS[theme].route,
