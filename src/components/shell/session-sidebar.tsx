@@ -19,10 +19,11 @@ const COLLAPSED = "1";
 
 const sidebarListeners = new Set<() => void>();
 if (typeof window !== "undefined") {
-  window.addEventListener("storage", (e) => {
-    if (e.key === SIDEBAR_COLLAPSED_STORAGE_KEY) {
-      sidebarListeners.forEach((fn) => {
-        fn();
+  window.addEventListener("storage", (event) => {
+    if (event.key === SIDEBAR_COLLAPSED_STORAGE_KEY) {
+      document.documentElement.dataset.sidebarCollapsed = String(event.newValue === COLLAPSED);
+      sidebarListeners.forEach((listener) => {
+        listener();
       });
     }
   });

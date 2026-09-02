@@ -78,17 +78,24 @@ export function ShellNavigationProvider({ children }: { children: ReactNode }) {
     setIntent(null);
   }, [clearTimeoutRef, committedPathname, intent]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const cancelPendingIntent = () => {
       clearTimeoutRef();
-    },
-    [clearTimeoutRef],
-  );
+      setIntent(null);
+    };
+    window.addEventListener("popstate", cancelPendingIntent);
+    return () => {
+      window.removeEventListener("popstate", cancelPendingIntent);
+      clearTimeoutRef();
+    };
+  }, [clearTimeoutRef]);
 
   const navigate = useCallback(
     (method: "push" | "replace", href: string, options?: NavigationOptions) => {
       const next = sameOriginPath(href);
       if (!next || next.pathname === committedRef.current) {
+        clearTimeoutRef();
+        setIntent(null);
         startTransition(() => (options ? router[method](href, options) : router[method](href)));
         return;
       }

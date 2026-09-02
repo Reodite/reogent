@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSidebarCollapsed, VersionBadge } from "./session-sidebar";
 
@@ -60,6 +60,22 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
   it("defaults to expanded when no localStorage entry exists", () => {
     render(<Probe />);
     expect(screen.getByTestId("state").textContent).toBe("expanded");
+  });
+
+  it("synchronizes collapsed geometry when another tab changes storage", () => {
+    mem.set("reogent.sidebar.collapsed", "1");
+    render(<Probe />);
+    expect(screen.getByTestId("state").textContent).toBe("collapsed");
+
+    mem.set("reogent.sidebar.collapsed", "0");
+    act(() =>
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: "reogent.sidebar.collapsed", oldValue: "1", newValue: "0" }),
+      ),
+    );
+
+    expect(screen.getByTestId("state").textContent).toBe("expanded");
+    expect(document.documentElement.dataset.sidebarCollapsed).toBe("false");
   });
 
   it("round-trips collapse across remount: toggle collapsed → remount stays collapsed; toggle expanded → remount stays expanded", () => {

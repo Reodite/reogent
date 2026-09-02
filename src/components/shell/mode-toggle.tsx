@@ -34,10 +34,17 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
     return `/tools/${slug}`;
   }
 
+  function isLocked(next: ShellMode): boolean {
+    return Boolean(isGuest && DESTINATIONS.find((destination) => destination.mode === next)?.guestLocked);
+  }
+
   function navigate(event: MouseEvent<HTMLAnchorElement>, next: ShellMode) {
+    if (isLocked(next)) {
+      event.preventDefault();
+      return;
+    }
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const locked = isGuest && DESTINATIONS.find((destination) => destination.mode === next)?.guestLocked;
-    if (locked || (next === mode && pathnameMatchesMode(pathname, next))) {
+    if (next === mode && pathnameMatchesMode(pathname, next)) {
       event.preventDefault();
       return;
     }
@@ -66,7 +73,7 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
     <nav aria-label="Reodite areas">
       <ul className={`flex gap-1 rounded-xl p-1 ${collapsed ? "flex-col items-center" : ""}`}>
         {DESTINATIONS.map((destination) => {
-          const locked = isGuest && destination.guestLocked;
+          const locked = isLocked(destination.mode);
           const active = mode === destination.mode;
           return (
             <li key={destination.mode} className={`relative ${collapsed ? "" : "flex-1"}`}>
@@ -76,6 +83,9 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
                 aria-current={active ? "page" : undefined}
                 aria-disabled={locked || undefined}
                 onClick={(event) => navigate(event, destination.mode)}
+                onAuxClick={(event) => {
+                  if (locked) event.preventDefault();
+                }}
                 onMouseEnter={() => locked && setTooltip(destination.mode)}
                 onMouseLeave={() => setTooltip(null)}
                 onFocus={() => locked && setTooltip(destination.mode)}

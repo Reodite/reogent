@@ -93,7 +93,7 @@ export function AnswerCanvasLoading() {
       aria-label="Loading answer canvas"
       className="neu-panel bg-surface flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl"
     >
-      <header className="border-border-subtle flex h-12 shrink-0 items-center gap-3 border-b px-4">
+      <header className="border-border-subtle flex h-15 shrink-0 items-center gap-3 border-b px-4">
         <Skeleton className="size-8 rounded-lg" />
         <Skeleton className="h-4 w-28 rounded" />
       </header>
@@ -106,9 +106,18 @@ export function AnswerCanvasLoading() {
 
 /** Matches shell geometry during local-auth hydration instead of painting a blank page. */
 export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) {
+  const mode = pathname.startsWith("/tools")
+    ? "tools"
+    : pathname.startsWith("/pulse")
+      ? "unity"
+      : pathname === "/settings"
+        ? "settings"
+        : "ai";
+
   return (
     <div
       data-shell-boot-loading
+      data-shell-boot-mode={mode}
       aria-busy="true"
       className="app-shell-canvas bg-background flex h-svh flex-col overflow-hidden"
     >
@@ -116,7 +125,7 @@ export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) 
         <Icon name="school" size={18} />
       </span>
       <div className="shell-body min-h-0 flex-1">
-        <div className="chat-workspace shell-boot-workspace relative min-h-0 min-w-0 flex-1 p-3">
+        <div className="chat-workspace shell-boot-layout relative min-h-0 min-w-0 flex-1 p-3">
           <aside className="sessions-aside shell-boot-sidebar absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 w-68 overflow-hidden">
             <div className="neu-panel bg-surface flex h-full flex-col gap-3 rounded-2xl p-3">
               <div className="flex h-9 items-center gap-2">

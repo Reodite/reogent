@@ -22,6 +22,9 @@ function Capture() {
       <button type="button" onClick={() => navigation.push("/pulse")}>
         Open Pulse
       </button>
+      <button type="button" onClick={() => navigation.push("/chat")}>
+        Return to chat
+      </button>
     </>
   );
 }
@@ -74,6 +77,32 @@ describe("ShellNavigationProvider", () => {
       </ShellNavigationProvider>,
     );
     expect(screen.getByTestId("navigation").dataset.display).toBe("/pulse");
+    expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
+  });
+
+  it("clears a pending destination when the latest action returns to the committed route", () => {
+    render(
+      <ShellNavigationProvider>
+        <Capture />
+      </ShellNavigationProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
+    fireEvent.click(screen.getByRole("button", { name: "Return to chat" }));
+
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/chat");
+    expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
+  });
+
+  it("cancels pending intent when browser history traverses", () => {
+    render(
+      <ShellNavigationProvider>
+        <Capture />
+      </ShellNavigationProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
+    act(() => window.dispatchEvent(new PopStateEvent("popstate")));
+
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/chat");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
   });
 

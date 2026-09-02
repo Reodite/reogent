@@ -8,7 +8,10 @@ import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
-vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: "signedOut" }) }));
+const auth = vi.hoisted(() => ({ isGuest: false }));
+vi.mock("@/src/components/auth/app-auth", () => ({
+  useAppAuth: () => ({ status: "signedIn", isGuest: auth.isGuest }),
+}));
 const pathname = vi.hoisted(() => ({ value: "/chat" }));
 const routerPush = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
@@ -64,6 +67,7 @@ beforeAll(() => {
 
 afterEach(() => {
   pathname.value = "/chat";
+  auth.isGuest = false;
   mem.clear();
   routerPush.mockReset();
   vi.clearAllMocks();
@@ -111,6 +115,25 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     );
     expect(shellRef.current?.mode).toBe("tools");
     expect(modeLink(view.container, "Tools").getAttribute("aria-current")).toBe("page");
+  });
+
+  it("blocks modified and auxiliary activation for guest-locked destinations", () => {
+    auth.isGuest = true;
+    const view = render(
+      <ChatShellProvider initialMode="tools">
+        <ModeToggle />
+      </ChatShellProvider>,
+    );
+    const aiLink = modeLink(view.container, "AI");
+    const modifiedClick = new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true });
+    const auxiliaryClick = new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 });
+
+    aiLink.dispatchEvent(modifiedClick);
+    aiLink.dispatchEvent(auxiliaryClick);
+
+    expect(modifiedClick.defaultPrevented).toBe(true);
+    expect(auxiliaryClick.defaultPrevented).toBe(true);
+    expect(routerPush).not.toHaveBeenCalled();
   });
 
   it("allows the retained mode link to leave Settings", () => {

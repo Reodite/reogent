@@ -305,15 +305,6 @@ details[open] > *:not(summary) {
   }
 }
 
-@keyframes shell-content-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes content-opacity-in {
   from {
     opacity: 0;
@@ -534,10 +525,6 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   width: var(--sidebar-width);
 }
 
-.shell-route-content-animate {
-  animation: shell-content-in 180ms var(--neu-ease) backwards;
-}
-
 .prereq-graph-ready {
   animation: content-opacity-in 160ms ease-out backwards;
 }
@@ -571,13 +558,15 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   display: none;
 }
 
-html[data-shell-mode="tools"] .shell-boot-chat,
-html[data-shell-mode="unity"] .shell-boot-chat {
+[data-shell-boot-mode="tools"] .shell-boot-chat,
+[data-shell-boot-mode="unity"] .shell-boot-chat,
+[data-shell-boot-mode="settings"] .shell-boot-chat {
   display: none;
 }
 
-html[data-shell-mode="tools"] .shell-boot-workspace,
-html[data-shell-mode="unity"] .shell-boot-workspace {
+[data-shell-boot-mode="tools"] .shell-boot-workspace,
+[data-shell-boot-mode="unity"] .shell-boot-workspace,
+[data-shell-boot-mode="settings"] .shell-boot-workspace {
   display: block;
 }
 
@@ -681,15 +670,21 @@ html[data-shell-mode="unity"] .shell-boot-workspace {
 }
 
 @media (min-width: 1024px) {
-  html:not([data-shell-mode="tools"]) .shell-boot-menu {
+  [data-shell-boot-mode="ai"] .shell-boot-menu,
+  [data-shell-boot-mode="unity"] .shell-boot-menu,
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-menu {
     display: none;
   }
 
-  html:not([data-shell-mode="tools"]) .shell-boot-sidebar {
+  [data-shell-boot-mode="ai"] .shell-boot-sidebar,
+  [data-shell-boot-mode="unity"] .shell-boot-sidebar,
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-sidebar {
     display: block;
   }
 
-  html:not([data-shell-mode="tools"]) .shell-boot-main {
+  [data-shell-boot-mode="ai"] .shell-boot-main,
+  [data-shell-boot-mode="unity"] .shell-boot-main,
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-main {
     padding-left: var(--sidebar-offset, 0px);
   }
 
@@ -704,15 +699,18 @@ html[data-shell-mode="unity"] .shell-boot-workspace {
 }
 
 @media (min-width: 1280px) {
-  html[data-shell-mode="tools"] .shell-boot-menu {
+  [data-shell-boot-mode="tools"] .shell-boot-menu,
+  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-menu {
     display: none;
   }
 
-  html[data-shell-mode="tools"] .shell-boot-sidebar {
+  [data-shell-boot-mode="tools"] .shell-boot-sidebar,
+  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-sidebar {
     display: block;
   }
 
-  html[data-shell-mode="tools"] .shell-boot-main,
+  [data-shell-boot-mode="tools"] .shell-boot-main,
+  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-main,
   .tool-sidebar-content-offset {
     padding-left: var(--sidebar-offset, 0px);
   }

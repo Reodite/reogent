@@ -36,13 +36,25 @@ describe("shell loading surfaces", () => {
       </>,
     );
     expect(view.container.querySelector("[data-workspace-route-loading]")?.className).toContain("h-full");
-    expect(view.container.querySelector("[data-answer-canvas-loading]")?.className).toContain("h-full");
+    const answerCanvas = view.container.querySelector("[data-answer-canvas-loading]");
+    expect(answerCanvas?.className).toContain("h-full");
+    expect(answerCanvas?.querySelector("header")?.className).toContain("h-15");
   });
 
   it("renders one shell main instead of a blank auth frame", () => {
     const { container } = render(<ShellBootLoading />);
     expect(container.querySelectorAll("main")).toHaveLength(1);
-    expect(container.querySelector("[data-shell-boot-loading]")?.className).toContain("h-svh");
+    const boot = container.querySelector("[data-shell-boot-loading]");
+    expect(boot?.className).toContain("h-svh");
+    expect(boot?.getAttribute("data-shell-boot-mode")).toBe("ai");
+    expect(boot?.querySelector(".shell-boot-layout")?.classList.contains("shell-boot-workspace")).toBe(false);
+    expect(boot?.querySelectorAll(".shell-boot-workspace")).toHaveLength(1);
     expect(container.querySelector(".shell-boot-sidebar")).not.toBeNull();
+  });
+
+  it("selects boot geometry from the requested destination", () => {
+    const { container } = render(<ShellBootLoading pathname="/tools/map" />);
+
+    expect(container.querySelector("[data-shell-boot-loading]")?.getAttribute("data-shell-boot-mode")).toBe("tools");
   });
 });

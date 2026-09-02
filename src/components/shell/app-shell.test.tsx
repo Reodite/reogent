@@ -117,9 +117,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[data-testid="session-list"]')).not.toBeNull();
     expect(container.querySelector("[data-mode-toggle]")).not.toBeNull();
     expect(container.querySelector('[data-answer-sheet="closed"]')).not.toBeNull();
-    expect(container.querySelector("[data-shell-route-content]")?.className).not.toContain(
-      "shell-route-content-animate",
-    );
+    expect(container.querySelector("[data-shell-route-content]")?.getAttribute("data-route-transition")).toBeNull();
   });
 
   it("inline AI right pane starts collapsed and has no re-expand in topbar", () => {
@@ -144,6 +142,17 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(view.getByTestId("calendar-pane")).not.toBeNull();
   });
 
+  it("preserves the active ChatPanel when native history mints its session URL", () => {
+    pathname.value = "/chat";
+    const view = renderShell(true);
+    const chat = view.getByTestId("chat-children");
+
+    pathname.value = "/chat/f1100000-0000-4000-8000-000000000001";
+    view.rerender(<ShellFixture />);
+
+    expect(view.getByTestId("chat-children")).toBe(chat);
+  });
+
   it("replaces old chat with the intended tool before pathname commit", () => {
     pathname.value = "/chat";
     const { container, getByTestId, queryByTestId } = render(<NavigatingShellFixture />);
@@ -154,7 +163,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(getByTestId("map-area")).not.toBeNull();
     expect(queryByTestId("chat-children")).toBeNull();
     expect(container.querySelector("[data-shell-navigation-pending='/tools/map']")).not.toBeNull();
-    expect(container.querySelector("[data-shell-route-content]")?.className).toContain("shell-route-content-animate");
+    expect(container.querySelector("[data-shell-route-content]")?.getAttribute("data-route-transition")).toBe("true");
   });
 
   it("uses destination-shaped loading instead of Pulse when entering AI", () => {

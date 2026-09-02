@@ -25,7 +25,7 @@ import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { LiveRegion } from "@/src/components/ui/live-region";
 import { useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 /** Gate: initializing → null (brief); signed out → redirect to login. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -58,20 +58,37 @@ function ShellRouteContent({
   identity,
   pending,
   animate,
+  reducedMotion,
   children,
 }: {
   identity: string;
   pending: boolean;
   animate: boolean;
+  reducedMotion: boolean;
   children: ReactNode;
 }) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previousIdentityRef = useRef(identity);
+
+  useLayoutEffect(() => {
+    const previousIdentity = previousIdentityRef.current;
+    previousIdentityRef.current = identity;
+    if (!animate || reducedMotion || previousIdentity === identity) return;
+    const animation = contentRef.current?.animate?.([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 180,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+    });
+    return () => animation?.cancel();
+  }, [animate, identity, reducedMotion]);
+
   return (
     <div
-      key={identity}
+      ref={contentRef}
       data-shell-route-content={identity}
+      data-route-transition={animate || undefined}
       data-navigation-pending={pending || undefined}
       inert={pending || undefined}
-      className={`shell-route-content flex min-h-0 min-w-0 flex-1 ${animate ? "shell-route-content-animate" : ""}`}
+      className="shell-route-content flex min-h-0 min-w-0 flex-1"
     >
       {children}
     </div>
@@ -177,7 +194,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const enteringAi = navigation.pending && mode === "ai" && shellModeForPath(navigation.committedPathname) !== "ai";
   const routeContent = settingsRoute ? (
-    <ShellRouteContent identity={routeIdentity} pending={navigation.pending} animate={animateRoute}>
+    <ShellRouteContent
+      identity={routeIdentity}
+      pending={navigation.pending}
+      animate={animateRoute}
+      reducedMotion={Boolean(reduce)}
+    >
       <main
         id="main-content"
         data-pane="settings"
@@ -195,7 +217,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     </ShellRouteContent>
   ) : mode === "ai" ? (
     <div className="chat-map-area flex min-h-0 min-w-0 flex-1">
-      <ShellRouteContent identity={routeIdentity} pending={navigation.pending} animate={animateRoute}>
+      <ShellRouteContent
+        identity={routeIdentity}
+        pending={navigation.pending}
+        animate={animateRoute}
+        reducedMotion={Boolean(reduce)}
+      >
         <main
           id="main-content"
           data-pane="chat"
@@ -219,7 +246,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       </AnswerSheet>
     </div>
   ) : (
-    <ShellRouteContent identity={routeIdentity} pending={navigation.pending} animate={animateRoute}>
+    <ShellRouteContent
+      identity={routeIdentity}
+      pending={navigation.pending}
+      animate={animateRoute}
+      reducedMotion={Boolean(reduce)}
+    >
       <main
         id="main-content"
         data-pane={mode === "tools" ? "tool" : "unity"}
