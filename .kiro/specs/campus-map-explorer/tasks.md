@@ -74,7 +74,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
 - [x] 5. Build the Tools-only Building Rail
   - [x] 5.1 Implement discovery, search, and directions states
     - Build one bounded `WorkspacePanel` with fixed discovery search, Saved and Curated sections, deterministic results, keyboard listbox behavior, no-results recovery, and an aligned From/To route grid.
-    - Keep the route grid sticky inside one bounded native scroll owner with wheel, touch-pan, overscroll containment, visible keyboard selection, and a thin scrollbar; keep compact targets at least 44 by 44 pixels and unmount transient results after selection.
+    - Keep the rounded route grid sticky inside one bounded native scroll owner with wheel, touch-pan, overscroll containment, rounded icon-tile results, visible inset keyboard selection, and a thin scrollbar; keep compact targets at least 44 by 44 pixels and unmount transient results after selection.
     - Add component tests for initial popular state, favorites ordering, ranking, keyboard selection, query restoration, guest Save, endpoint replacement, stale requests, and route-result dismissal.
     - _Requirements: 2.1–2.8, 3.5, 6.1–6.5, 7.4, 7.6, 10.2, 10.6–10.7_
   - [x] 5.2 Implement focused building detail content and actions

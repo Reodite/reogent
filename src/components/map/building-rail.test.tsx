@@ -263,7 +263,8 @@ describe("BuildingRail", () => {
     const options = screen.getAllByRole("option");
     expect(input.getAttribute("aria-activedescendant")).toBe(options.at(-1)?.id);
     expect(options.at(-1)?.getAttribute("aria-selected")).toBe("true");
-    expect(options.at(-1)?.className).toContain("shadow-[inset_3px_0_0_var(--primary)]");
+    expect(options.at(-1)?.className).toContain("rounded-xl");
+    expect(options.at(-1)?.className).toContain("neu-inset");
   });
 
   it("clears an endpoint query before cancelling endpoint editing", () => {

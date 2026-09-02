@@ -290,14 +290,12 @@ function BuildingRow({
       tabIndex={tabIndex}
       onClick={onSelect}
       className={`focus-visible:ring-primary/40 hover:bg-surface-container-high flex w-full items-center gap-3 py-2 text-left focus-visible:ring-2 ${
-        variant === "route" ? "min-h-14 scroll-mt-36 rounded-none px-2" : "min-h-11 rounded-lg px-3"
-      } ${selected ? "bg-surface-container-high shadow-[inset_3px_0_0_var(--primary)]" : ""}`}
+        variant === "route"
+          ? "bg-surface-container-low/55 min-h-14 scroll-mt-40 rounded-xl px-3"
+          : "min-h-11 rounded-lg px-3"
+      } ${selected ? "neu-inset bg-surface-container text-on-surface" : ""}`}
     >
-      <span
-        className={`text-primary flex shrink-0 items-center justify-center ${
-          variant === "route" ? "size-8" : "bg-surface-container size-9 rounded-lg"
-        }`}
-      >
+      <span className="bg-surface-container text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
         <Icon name={variant === "route" ? "location" : saved ? "bookmarkFill" : "building1"} size={17} />
       </span>
       <span className="min-w-0 flex-1">
@@ -574,76 +572,78 @@ export function BuildingRail(props: BuildingRailProps) {
             }`}
           >
             {props.mode === "directions" && props.selected ? (
-              <div data-route-editor className="border-border-subtle bg-surface sticky top-0 z-20 border-b px-3 py-3">
-                <div className="grid grid-cols-[2.75rem_0.75rem_minmax(0,1fr)] grid-rows-[3rem_3rem] items-center gap-x-2 gap-y-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={props.onBack}
-                    aria-label="Back to building details"
-                    className="col-start-1 row-start-1"
-                  >
-                    <Icon name="left" size={17} />
-                  </Button>
-                  <span aria-hidden className="relative col-start-2 row-span-2 row-start-1 h-full">
-                    <span className="bg-outline-variant absolute top-6 bottom-6 left-1/2 w-px -translate-x-1/2" />
-                    <span className="border-on-surface-variant bg-surface absolute top-5 left-1/2 size-2 -translate-x-1/2 rounded-full border-2" />
-                    <span className="bg-primary absolute bottom-5 left-1/2 size-2 -translate-x-1/2 rounded-[2px]" />
-                  </span>
-                  {(["origin", "destination"] as const).map((field) => {
-                    const active = props.routeField === field;
-                    const building = field === "origin" ? props.routeOrigin : props.selected;
-                    const label = field === "origin" ? "From" : "To";
-                    const inputId = field === "origin" ? originInputId : destinationInputId;
-                    const inputRef = field === "origin" ? originInputRef : destinationInputRef;
-                    return (
-                      <label
-                        key={field}
-                        htmlFor={inputId}
-                        className={`neu-inset bg-surface-container-low focus-within:ring-primary/40 col-start-3 flex h-12 min-w-0 flex-col justify-center rounded-lg px-3 focus-within:ring-2 focus-within:ring-offset-1 ${
-                          field === "origin" ? "row-start-1" : "row-start-2"
-                        } ${active && props.endpointError ? "ring-error/30 ring-2" : ""}`}
-                      >
-                        <span className="text-muted text-xs leading-none">{label}</span>
-                        <input
-                          ref={inputRef}
-                          id={inputId}
-                          value={active ? props.routeQuery : (building?.name ?? "")}
-                          readOnly={!active}
-                          onFocus={() => {
-                            if (!active) props.onRouteFieldChange(field);
-                          }}
-                          onChange={(event) => {
-                            setActiveIndex(0);
-                            props.onRouteQueryChange(event.target.value);
-                          }}
-                          onKeyDown={onSearchKeyDown}
-                          placeholder={field === "origin" ? "Choose starting building" : "Choose destination"}
-                          role="combobox"
-                          aria-label={`${label} building`}
-                          aria-autocomplete="list"
-                          aria-controls={active ? listboxId : undefined}
-                          aria-expanded={active && Boolean(searchQuery) && results.length > 0}
-                          aria-activedescendant={
-                            active && searchQuery && results[activeIndex]
-                              ? `building-result-${results[activeIndex].code}`
-                              : undefined
-                          }
-                          aria-invalid={active && props.endpointError ? true : undefined}
-                          aria-describedby={active && props.endpointError ? endpointErrorId : undefined}
-                          autoComplete="off"
-                          spellCheck={false}
-                          className="text-on-surface placeholder:text-muted mt-0.5 h-5 min-w-0 bg-transparent text-sm leading-5 outline-none"
-                        />
-                      </label>
-                    );
-                  })}
+              <div data-route-editor className="bg-surface sticky top-0 z-20 px-3 pt-3 pb-2">
+                <div className="neu-raised bg-surface rounded-xl p-2">
+                  <div className="grid grid-cols-[2.75rem_0.75rem_minmax(0,1fr)] grid-rows-[3rem_3rem] items-center gap-x-2 gap-y-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={props.onBack}
+                      aria-label="Back to building details"
+                      className="col-start-1 row-start-1"
+                    >
+                      <Icon name="left" size={17} />
+                    </Button>
+                    <span aria-hidden className="relative col-start-2 row-span-2 row-start-1 h-full">
+                      <span className="bg-outline-variant absolute top-6 bottom-6 left-1/2 w-px -translate-x-1/2" />
+                      <span className="border-on-surface-variant bg-surface absolute top-5 left-1/2 size-2 -translate-x-1/2 rounded-full border-2" />
+                      <span className="bg-primary absolute bottom-5 left-1/2 size-2 -translate-x-1/2 rounded-[2px]" />
+                    </span>
+                    {(["origin", "destination"] as const).map((field) => {
+                      const active = props.routeField === field;
+                      const building = field === "origin" ? props.routeOrigin : props.selected;
+                      const label = field === "origin" ? "From" : "To";
+                      const inputId = field === "origin" ? originInputId : destinationInputId;
+                      const inputRef = field === "origin" ? originInputRef : destinationInputRef;
+                      return (
+                        <label
+                          key={field}
+                          htmlFor={inputId}
+                          className={`neu-inset bg-surface-container-low focus-within:ring-primary/40 col-start-3 flex h-12 min-w-0 flex-col justify-center rounded-lg px-3 focus-within:ring-2 focus-within:ring-offset-1 ${
+                            field === "origin" ? "row-start-1" : "row-start-2"
+                          } ${active && props.endpointError ? "ring-error/30 ring-2" : ""}`}
+                        >
+                          <span className="text-muted text-xs leading-none">{label}</span>
+                          <input
+                            ref={inputRef}
+                            id={inputId}
+                            value={active ? props.routeQuery : (building?.name ?? "")}
+                            readOnly={!active}
+                            onFocus={() => {
+                              if (!active) props.onRouteFieldChange(field);
+                            }}
+                            onChange={(event) => {
+                              setActiveIndex(0);
+                              props.onRouteQueryChange(event.target.value);
+                            }}
+                            onKeyDown={onSearchKeyDown}
+                            placeholder={field === "origin" ? "Choose starting building" : "Choose destination"}
+                            role="combobox"
+                            aria-label={`${label} building`}
+                            aria-autocomplete="list"
+                            aria-controls={active ? listboxId : undefined}
+                            aria-expanded={active && Boolean(searchQuery) && results.length > 0}
+                            aria-activedescendant={
+                              active && searchQuery && results[activeIndex]
+                                ? `building-result-${results[activeIndex].code}`
+                                : undefined
+                            }
+                            aria-invalid={active && props.endpointError ? true : undefined}
+                            aria-describedby={active && props.endpointError ? endpointErrorId : undefined}
+                            autoComplete="off"
+                            spellCheck={false}
+                            className="text-on-surface placeholder:text-muted mt-0.5 h-5 min-w-0 bg-transparent text-sm leading-5 outline-none"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {props.endpointError ? (
+                    <p id={endpointErrorId} role="alert" className="text-error mt-2 ml-[4.5rem] text-xs">
+                      {props.endpointError}
+                    </p>
+                  ) : null}
                 </div>
-                {props.endpointError ? (
-                  <p id={endpointErrorId} role="alert" className="text-error mt-2 ml-[4.5rem] text-xs">
-                    {props.endpointError}
-                  </p>
-                ) : null}
               </div>
             ) : null}
             {props.selectionError ? (
@@ -689,7 +689,7 @@ export function BuildingRail(props: BuildingRailProps) {
                     results.length === 0
                       ? "hidden"
                       : props.mode === "directions"
-                        ? "divide-border-subtle mx-2 flex flex-col divide-y"
+                        ? "mx-2 flex flex-col gap-2"
                         : "flex flex-col gap-1"
                   }
                 >
