@@ -19,6 +19,7 @@ import {
   Component,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -406,6 +407,19 @@ export function PrereqTreePane({
   const [activeCode, setActiveCode] = useState<string | null>(initialRoot ? normalize(initialRoot) : null);
   const [missingCode, setMissingCode] = useState<string | null>(null);
   const [compactView, setCompactView] = useState<"outline" | "map">("outline");
+  const viewSelectedRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!toolsMode) return;
+    const media = window.matchMedia("(min-width: 640px)");
+    const applyDefault = (wide: boolean) => {
+      if (!viewSelectedRef.current) setCompactView(wide ? "map" : "outline");
+    };
+    applyDefault(media.matches);
+    const onChange = (event: MediaQueryListEvent) => applyDefault(event.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [toolsMode]);
   // Per-disjunction selections keyed `${ownerCode}::${path}` — stable across
   // re-renders and root switches; absent key = option 0. Hydrated from the
   // cached pane state so a rebuilt tree keeps its chosen branches.
@@ -835,12 +849,12 @@ export function PrereqTreePane({
         title="Prereq tree"
         description="Choose a course, then trace the prerequisites and corequisites that lead to it."
       >
-        <div className="flex h-full min-h-0 flex-col gap-3">
+        <div data-prereq-layout className="flex h-full min-h-0 flex-col gap-1">
           <div className="flex shrink-0 flex-col gap-2 @min-[40rem]:flex-row @min-[40rem]:items-start">
             {searchForm}
             <fieldset
               data-prereq-view-toggle
-              className="neu-inset bg-surface-container-low flex shrink-0 gap-1 rounded-lg p-1 @min-[40rem]:hidden"
+              className="neu-inset bg-surface-container-low flex shrink-0 gap-1 rounded-lg p-1"
             >
               <legend className="sr-only">Prerequisite tree view</legend>
               {(["outline", "map"] as const).map((view) => (
@@ -848,7 +862,10 @@ export function PrereqTreePane({
                   key={view}
                   type="button"
                   aria-pressed={compactView === view}
-                  onClick={() => setCompactView(view)}
+                  onClick={() => {
+                    viewSelectedRef.current = true;
+                    setCompactView(view);
+                  }}
                   className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-md px-4 text-sm font-medium capitalize focus-visible:ring-2 ${
                     compactView === view ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
                   }`}
@@ -863,12 +880,8 @@ export function PrereqTreePane({
           </div>
           <div data-prereq-compact-view={compactView} className="min-h-0 flex-1">
             <WorkspaceCanvas overflow="hidden">
-              <div className={compactView === "outline" ? "h-full @min-[40rem]:hidden" : "hidden"}>
-                {outlineSurface}
-              </div>
-              <div className={compactView === "map" ? "h-full" : "hidden h-full @min-[40rem]:block"}>
-                {graphSurface}
-              </div>
+              <div className={compactView === "outline" ? "h-full" : "hidden"}>{outlineSurface}</div>
+              <div className={compactView === "map" ? "h-full" : "hidden"}>{graphSurface}</div>
             </WorkspaceCanvas>
           </div>
         </div>

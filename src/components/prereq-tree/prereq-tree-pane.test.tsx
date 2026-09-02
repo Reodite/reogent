@@ -9,6 +9,7 @@ const apiState = vi.hoisted(() => ({
 }));
 const routerPush = vi.hoisted(() => vi.fn());
 const flowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
+let wideViewport = false;
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPush }),
@@ -67,6 +68,15 @@ describe("PrereqTreePane", () => {
     apiState.getCourseIndex.mockReset();
     routerPush.mockReset();
     flowProps.current = null;
+    wideViewport = false;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({
+        matches: wideViewport,
+        addEventListener() {},
+        removeEventListener() {},
+      }),
+    });
   });
 
   it("renders the literal 'Loading course index…' text while the index loads (REQ-10.5)", () => {
@@ -170,6 +180,23 @@ describe("PrereqTreePane", () => {
     expect(routerPush).toHaveBeenCalledWith("/tools/prereq");
     expect((screen.getByLabelText("Root course code") as HTMLInputElement).value).toBe("");
     expect(screen.getAllByText(/Search for a course above/).length).toBeGreaterThan(0);
+  });
+
+  it("shows the view tabs on wide screens and opens the map by default", async () => {
+    wideViewport = true;
+    apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
+    const { container } = render(<PrereqTreePane initialRoot="CPSC 210" />);
+    await waitFor(() => expect(screen.queryByText(/Loading course index/)).toBeNull());
+
+    expect(screen.getByRole("button", { name: "map" }).getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector("[data-prereq-view-toggle]")?.className).not.toContain("@min-[40rem]:hidden");
+    expect(container.querySelector("[data-prereq-layout]")?.className).toContain("gap-1");
+
+    fireEvent.click(screen.getByRole("button", { name: "outline" }));
+    expect(screen.getByRole("button", { name: "outline" }).getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector("[data-prereq-compact-view]")?.getAttribute("data-prereq-compact-view")).toBe(
+      "outline",
+    );
   });
 
   it("offers a compact outline while keeping graph controls out of nested tab stops", async () => {
