@@ -105,12 +105,12 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add fast-check mapping properties plus click, keyboard, active-state, history restoration, and malformed-result tests.
     - _Requirements: 9.2–9.9_
 
-- [ ] 7. Harden guest, responsive, and failure behavior
-  - [ ] 7.1 Complete guest and trust-boundary coverage
+- [x] 7. Harden guest, responsive, and failure behavior
+  - [x] 7.1 Complete guest and trust-boundary coverage
     - Verify public map facts work with no account while favorites remain authenticated.
     - Verify allowlisted fields, links, photos, finite coordinates, bounded result counts, and source labels at each API and UI boundary.
     - _Requirements: 7.6, 11.2, 12.1–12.8_
-  - [ ] 7.2 Complete responsive and accessibility coverage
+  - [x] 7.2 Complete responsive and accessibility coverage
     - Verify wide 20rem rail geometry and compact Map/Explore switching without WebGL remount, page overflow, stale detail, or lost focus.
     - Verify headings, listbox semantics, statuses, text alternatives, keyboard map access, 44px compact targets, and zero-duration reduced motion.
     - Add layout and accessibility regression tests for required viewports and both themes.
@@ -129,7 +129,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add or update regression tests for retained contracts.
     - _Requirements: 1.2–1.4, 9.7–9.9_
 
-- [ ] 10. Final checkpoint: verify the complete map experience
+- [x] 10. Final checkpoint: verify the complete map experience
   - Run the final automated gate and bounded desktop/mobile browser matrix. Confirm search, popular and saved lists, details, rooms, photos, actions, routing, entrances, widgets, guest access, deep links, Back, accessibility, reduced motion, layout stability, console, and network health before the final commit.
 
 ## Notes
