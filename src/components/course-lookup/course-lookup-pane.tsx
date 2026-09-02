@@ -112,19 +112,21 @@ export function CourseLookupPane({
         composition="single"
         title="Course lookup"
         description={`Review ${propCode} catalog details, grades, prerequisites, and sections.`}
-        toolbar={
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              onClick={() => {
-                setCode("");
-                navigate("/tools/courses");
-              }}
-            >
-              <Icon name="left" size={14} /> Back to results
-            </Button>
-            <SessionPicker session={session} onChange={setSession} />
-          </div>
+        leading={
+          <Button
+            variant="ghost"
+            size="denseIcon"
+            onClick={() => {
+              setCode("");
+              navigate("/tools/courses");
+            }}
+            aria-label="Back to results"
+            title="Back to results"
+          >
+            <Icon name="left" size={17} />
+          </Button>
         }
+        toolbar={<SessionPicker session={session} onChange={setSession} />}
       >
         <WorkspaceCanvas padding="md">
           <div className="mx-auto flex h-full w-full max-w-6xl flex-col">

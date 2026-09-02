@@ -381,7 +381,8 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     shellState.mode = "tools";
     apiState.getCourse.mockResolvedValue(fullRecord);
     render(<CourseLookupPane state={{ code: "MATH 100" }} setState={vi.fn()} />);
-    const back = await screen.findByText("Back to results");
+    const back = await screen.findByRole("button", { name: "Back to results" });
+    expect(back.textContent).toBe("");
     fireEvent.click(back);
     expect(routerPush).toHaveBeenCalledWith("/tools/courses");
   });

@@ -116,6 +116,21 @@ describe("WorkspacePage", () => {
     outlet.remove();
   });
 
+  it("renders page-leading navigation immediately before the title", () => {
+    const { container } = render(
+      <WorkspacePage
+        composition="canvas"
+        title="Course lookup"
+        leading={<button aria-label="Back to results" type="button" />}
+      >
+        Details
+      </WorkspacePage>,
+    );
+    const leading = container.querySelector("[data-workspace-leading]");
+    expect(leading?.querySelector("button")?.textContent).toBe("");
+    expect(leading?.nextElementSibling?.querySelector("h1")?.textContent).toBe("Course lookup");
+  });
+
   it("fixes panel material, header height, body scrolling, and canvas overflow variants", () => {
     const { container } = render(
       <WorkspaceRail>

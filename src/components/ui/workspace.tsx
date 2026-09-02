@@ -9,6 +9,7 @@ export type WorkspaceView = "main" | "rail";
 type WorkspaceBaseProps = {
   title: string;
   description?: ReactNode;
+  leading?: ReactNode;
   toolbar?: ReactNode;
   actions?: ReactNode;
   titlebarActions?: ReactNode;
@@ -95,9 +96,18 @@ export function WorkspacePage(props: WorkspacePageProps) {
       <div className="workspace-page-layout flex h-full min-h-0 flex-col gap-4 p-6">
         {!embedded ? (
           <header data-workspace-header className="relative z-30 flex shrink-0 flex-col gap-3">
-            <div className="min-w-0">
-              <h1 className="text-on-surface text-xl leading-tight font-medium tracking-[-0.02em]">{props.title}</h1>
-              {props.description ? <p className="text-muted text-body-sm mt-1 leading-5">{props.description}</p> : null}
+            <div className="flex min-w-0 items-start gap-1">
+              {props.leading ? (
+                <div data-workspace-leading className="shrink-0">
+                  {props.leading}
+                </div>
+              ) : null}
+              <div className="min-w-0">
+                <h1 className="text-on-surface text-xl leading-tight font-medium tracking-[-0.02em]">{props.title}</h1>
+                {props.description ? (
+                  <p className="text-muted text-body-sm mt-1 leading-5">{props.description}</p>
+                ) : null}
+              </div>
             </div>
             {controls ? <WorkspaceHeaderControls toolbar={props.toolbar} actions={internalActions} /> : null}
           </header>

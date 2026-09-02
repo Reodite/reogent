@@ -449,19 +449,19 @@ export function BuildingRail(props: BuildingRailProps) {
         : "Starting building results"
       : "Building search results";
   const title = props.mode === "directions" ? "Directions" : props.mode === "details" ? "Building details" : "Explore";
+  const backLabel =
+    props.mode === "directions"
+      ? "Back to building details"
+      : props.mode === "details"
+        ? "Back to all buildings"
+        : null;
 
   return (
     <WorkspacePanel
       title={title}
       leading={
-        props.mode === "directions" ? (
-          <Button
-            variant="ghost"
-            size="denseIcon"
-            onClick={props.onBack}
-            aria-label="Back to building details"
-            title="Back to building details"
-          >
+        backLabel ? (
+          <Button variant="ghost" size="denseIcon" onClick={props.onBack} aria-label={backLabel} title={backLabel}>
             <Icon name="left" size={17} />
           </Button>
         ) : undefined
@@ -472,11 +472,7 @@ export function BuildingRail(props: BuildingRailProps) {
       {props.mode === "details" && props.selected ? (
         <div className="flex h-full min-h-0 flex-col">
           <div className="border-border-subtle shrink-0 border-b px-3 py-3">
-            <Button variant="ghost" size="compact" onClick={props.onBack}>
-              <Icon name="left" size={15} />
-              All buildings
-            </Button>
-            <div className="mt-3">
+            <div>
               <h2 className="text-on-surface text-base leading-snug font-medium">{props.selected.name}</h2>
               <p className="text-on-surface-variant mt-1 text-xs">
                 <span className="font-mono">{props.selected.code}</span>
