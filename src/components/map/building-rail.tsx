@@ -291,7 +291,7 @@ function BuildingRow({
       onClick={onSelect}
       className={`focus-visible:ring-primary/40 hover:bg-surface-container-high flex w-full items-center gap-3 py-2 text-left focus-visible:ring-2 ${
         variant === "route"
-          ? "bg-surface-container-low/55 min-h-14 scroll-mt-40 rounded-xl px-3"
+          ? "bg-surface-container-low/55 min-h-14 scroll-mt-48 rounded-xl px-3"
           : "min-h-11 rounded-lg px-3"
       } ${selected ? "neu-inset bg-surface-container text-on-surface" : ""}`}
     >
@@ -573,18 +573,26 @@ export function BuildingRail(props: BuildingRailProps) {
           >
             {props.mode === "directions" && props.selected ? (
               <div data-route-editor className="bg-surface sticky top-0 z-20 px-3 pt-3 pb-2">
+                <Button
+                  variant="ghost"
+                  size="compact"
+                  onClick={props.onBack}
+                  aria-label="Back to building details"
+                  className="mb-2"
+                >
+                  <Icon name="left" size={15} />
+                  Building details
+                </Button>
                 <div className="neu-raised bg-surface rounded-xl p-2">
-                  <div className="grid grid-cols-[2.75rem_0.75rem_minmax(0,1fr)] grid-rows-[3rem_3rem] items-center gap-x-2 gap-y-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={props.onBack}
-                      aria-label="Back to building details"
-                      className="col-start-1 row-start-1"
+                  <div
+                    data-route-endpoints
+                    className="grid grid-cols-[1rem_minmax(0,1fr)] grid-rows-[3rem_3rem] items-center gap-x-3 gap-y-2"
+                  >
+                    <span
+                      aria-hidden
+                      data-route-marker-track
+                      className="relative col-start-1 row-span-2 row-start-1 h-full"
                     >
-                      <Icon name="left" size={17} />
-                    </Button>
-                    <span aria-hidden className="relative col-start-2 row-span-2 row-start-1 h-full">
                       <span className="bg-outline-variant absolute top-6 bottom-6 left-1/2 w-px -translate-x-1/2" />
                       <span className="border-on-surface-variant bg-surface absolute top-5 left-1/2 size-2 -translate-x-1/2 rounded-full border-2" />
                       <span className="bg-primary absolute bottom-5 left-1/2 size-2 -translate-x-1/2 rounded-[2px]" />
@@ -598,7 +606,7 @@ export function BuildingRail(props: BuildingRailProps) {
                       return (
                         <div
                           key={field}
-                          className={`col-start-3 min-w-0 ${field === "origin" ? "row-start-1" : "row-start-2"}`}
+                          className={`col-start-2 min-w-0 ${field === "origin" ? "row-start-1" : "row-start-2"}`}
                         >
                           <label htmlFor={inputId} className="sr-only">
                             {label}
@@ -638,7 +646,7 @@ export function BuildingRail(props: BuildingRailProps) {
                     })}
                   </div>
                   {props.endpointError ? (
-                    <p id={endpointErrorId} role="alert" className="text-error mt-2 ml-[4.5rem] text-xs">
+                    <p id={endpointErrorId} role="alert" className="text-error mt-2 ml-7 text-xs">
                       {props.endpointError}
                     </p>
                   ) : null}

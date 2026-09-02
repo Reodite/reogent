@@ -221,6 +221,10 @@ describe("BuildingRail", () => {
     ]) {
       expect(from.className).toContain(inputClass);
     }
+    expect(screen.getByRole("button", { name: "Back to building details" }).textContent).toContain("Building details");
+    expect(view.container.querySelector("[data-route-endpoints]")?.className).toContain("gap-x-3");
+    expect(view.container.querySelector("[data-route-marker-track]")).toBeTruthy();
+    expect(from.parentElement?.className).toContain("col-start-2");
     expect(screen.getByRole("combobox", { name: "To building" }).getAttribute("value")).toBe(iblc.name);
     expect(screen.getByRole("listbox", { name: "Starting building results" })).toBeTruthy();
     expect(screen.getByRole("option").getAttribute("tabindex")).toBe("-1");
