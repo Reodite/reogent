@@ -77,6 +77,32 @@ describe("ShellNavigationProvider", () => {
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
   });
 
+  it("follows browser history commits without leaving a pending intent", () => {
+    const view = render(
+      <ShellNavigationProvider>
+        <Capture />
+      </ShellNavigationProvider>,
+    );
+
+    pathname.value = "/tools/map";
+    view.rerender(
+      <ShellNavigationProvider>
+        <Capture />
+      </ShellNavigationProvider>,
+    );
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/tools/map");
+    expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
+
+    pathname.value = "/chat";
+    view.rerender(
+      <ShellNavigationProvider>
+        <Capture />
+      </ShellNavigationProvider>,
+    );
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/chat");
+    expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
+  });
+
   it("drops an uncommitted intent after the bounded timeout", () => {
     vi.useFakeTimers();
     render(
