@@ -129,6 +129,8 @@ export function useChatShellOptional(): ChatShellState | null {
 export function ChatShellProvider({ initialMode = "ai", children }: { initialMode?: ShellMode; children: ReactNode }) {
   const api = useApi();
   const auth = useAppAuth();
+  const listSessionsRef = useRef(api.listSessions);
+  listSessionsRef.current = api.listSessions;
   const { committedPathname, displayPathname, push: navigate } = useShellNavigation();
 
   const [workspaceViewState, setWorkspaceViewState] = useState<CanvasView | null>(null);
@@ -162,8 +164,9 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   // while this is true; an explicit widget click-toggle and session start clear it.
   const [userDismissedPane, setUserDismissedPane] = useState(false);
 
+  const canLoadSessions = auth.status === "signedIn" && !auth.isGuest;
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsLoading, setSessionsLoading] = useState(canLoadSessions);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const loadSeq = useRef(0);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -180,8 +183,15 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const doRefresh = useCallback(() => {
     const seq = ++loadSeq.current;
     setSessionsError(null);
-    api
-      .listSessions()
+    if (!canLoadSessions) {
+      setSessions([]);
+      setSessionsLoading(false);
+      return;
+    }
+
+    setSessionsLoading(true);
+    listSessionsRef
+      .current()
       .then((list) => {
         if (loadSeq.current !== seq || !mountedRef.current) return;
         setSessions(list);
@@ -192,17 +202,22 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
         setSessionsLoading(false);
         setSessionsError(error instanceof Error ? error.message : "Couldn't load sessions");
       });
-  }, [api]);
+  }, [canLoadSessions]);
 
   const refreshSessions = useCallback(() => {
+    if (!canLoadSessions) return;
     // Debounce: at most one refresh per 2s to avoid spamming during rapid exchanges
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(doRefresh, 2000);
-  }, [doRefresh]);
+  }, [canLoadSessions, doRefresh]);
 
   useEffect(() => {
-    if (auth.status === "signedIn") doRefresh();
-  }, [auth.status, doRefresh]);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+    doRefresh();
+  }, [doRefresh]);
 
   // A collapsed pane would silently swallow tool activations (workspaceView set),
   // so expand the right pane whenever a tool becomes active — unless the user

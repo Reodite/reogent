@@ -185,6 +185,7 @@ describe("MapArea", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Sign in to save" }));
 
     expect(routerPush).toHaveBeenCalledWith(`/login?redirect=${encodeURIComponent("/tools/map?building=IBLC")}`);
+    expect(api.listSessions).not.toHaveBeenCalled();
   });
 
   it("offers clipboard copy after the native share sheet is dismissed", async () => {
