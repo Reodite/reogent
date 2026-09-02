@@ -74,6 +74,16 @@ CREATE TABLE IF NOT EXISTS schedules (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS building_favorites (
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  building_code TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, building_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_building_favorites_recent
+  ON building_favorites(user_id, created_at DESC);
+
 -- Schedule sharer: one opaque person blob per user; groups keyed by the
 -- 6-char base62 code that appears in share links.
 CREATE TABLE IF NOT EXISTS sharer_schedules (

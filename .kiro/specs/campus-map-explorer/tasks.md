@@ -41,7 +41,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - _Requirements: 3.8, 6.1–6.5, 11.3–11.5, 12.1–12.3_
 
 - [ ] 3. Add account-scoped building favorites
-  - [ ] 3.1 Add favorite schema and store functions
+  - [x] 3.1 Add favorite schema and store functions
     - Add the user/building join table, uniqueness constraint, cascade behavior, and recent-save ordering.
     - Implement idempotent list, save, and remove functions with user-qualified queries.
     - Add model and database tests for repeated writes, repeated deletes, ordering, and two-user isolation.
