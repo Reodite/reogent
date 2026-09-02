@@ -291,13 +291,13 @@ The landing page uses a larger, more expressive type scale:
 
 ## Layout
 
-Flexbox with spring-driven width animations:
+Flexbox keeps the sidebar and outer workspace stable while destinations replace the content stage.
 
-**Desktop (>=1024px):** `shell-body` is flex row. Sidebar (`sessions-aside`) animates width between 3.75rem (collapsed) and 17rem (expanded) via spring physics (stiffness: 300, damping: 30). Chat workspace (`chat-workspace`) is a flex row containing chat panel (flex-1) and map aside (50% when open, 3.75rem collapsed rail when closed). Map width animates with the same spring config. Content layers crossfade with 200ms CSS opacity transitions (75ms delay on reveal, immediate on hide).
+**Desktop:** AI and Unity show the persistent sidebar at 1024px; Tools shows it at 1280px to protect dense workspaces. The sidebar uses CSS width and content-padding transitions between 3.75rem (collapsed) and 17rem (expanded). The pre-hydration script applies the saved width before first paint. Chat and Answer Canvas share the remaining row. Answer Canvas changes desktop geometry immediately and crossfades its contents so delayed flex animation cannot move the composer.
 
-**Tablet (640-1024px):** Sidebar is a drawer (slide-over with backdrop scrim), not a persistent column. Chat + map share the workspace as flex row. Map collapse supported.
+**Tablet:** Below each mode's persistent-sidebar breakpoint, the sidebar becomes a drawer with a backdrop. Chat and Answer Canvas share the workspace from 640px upward.
 
-**Mobile (<640px):** Single column. Chat full-width. Sidebar is a slide-over drawer with `bg-scrim` backdrop at z-40/z-50. Map becomes an 80vh bottom sheet (`fixed inset-x-0 bottom-0`) with touch drag-to-dismiss (20% of height threshold). Safe-area inset padding via `env(safe-area-inset-bottom)`.
+**Mobile (<640px):** Chat uses one column. The sidebar becomes a slide-over drawer with a `bg-scrim` backdrop at z-40/z-50. Answer Canvas becomes an 80vh bottom sheet (`fixed inset-x-0 bottom-0`) with touch drag-to-dismiss at 20% of its height. Safe-area padding uses `env(safe-area-inset-bottom)`.
 
 **Spacing rhythm:** 8px grid with 6px sub-grid for tight icon gaps. Common values: `gap-1.5` (6px icon-to-label), `gap-2` (8px), `gap-2.5` (10px), `gap-3` (12px inter-panel), `gap-6` (24px message spacing). Panel padding: `p-2` (8px) sidebar outer, `p-3` (12px) workspace gaps around all panels, `px-4 py-3` (16/12px) header sections, `p-4 sm:p-6` (16/24px) chat message well. Panel and section headers (chat title, answer-canvas titlebar, sidebar top row) share one height: `h-15` (60px), `items-center px-4` on panels, `px-2` inside the sidebar, flush with the panel top edge so all header baselines align. Sidebar collapsed rail: 3.75rem (60px). Sidebar expanded: 17rem (272px).
 
@@ -567,17 +567,18 @@ Dropdown: `.glass-neu rounded-2xl p-3 w-64`. Entrance: scale from 0.97 to 1 + op
 
 ### In-App Motion
 
-- **Spring physics**: Layout state changes (sidebar collapse/expand, map panel collapse/expand) use `type: "spring"` with `stiffness: 300, damping: 30` via the `motion` library. Slightly underdamped for a natural settle.
+- **Spring physics**: Draggable and gesture-driven surfaces use `type: "spring"` with `stiffness: 300, damping: 30` through the `motion` library.
 - **Message entrance**: Spring (stiffness: 400, damping: 25) — opacity 0→1, translateY(6px→0). Quicker than panels, gentle overshoot.
 - **Tool badge stagger**: Spring (stiffness: 500, damping: 30) with `delay: i * 0.05`. Snappy, minimal overshoot.
-- **Sidebar list stagger** (session items, tool rows, Unity links): opacity fade with spring timing (stiffness: 500, damping: 30) and `delay: min(i * 0.03, 0.3)` — shared component, plays once per list mount. No translate: rows never move, so nothing can read as a layout shift.
 - **Suggestion pills / error banners**: CSS `animate-message-in` (200ms ease-out, opacity + translateY) with `animationDelay` for stagger. CSS rather than spring because staggered delay is cleaner for static lists.
 - **Button states**: shadow change on hover, inset shadow + scale(0.98) on press. No translate — buttons never shift position on hover or active. 150ms ease-out.
 - **Menu entrance**: Anchored menus (account menu) enter with `menu-in` (opacity 0→1, translateY(4px)→0, scale(0.97)→1, 180ms ease-out) from the anchor side. Other popovers: scale(0.97) + opacity(0) + blur(2px) → open. 150-250ms.
 - **Details expand**: opacity 0→1, translateY(-4px→0), 200ms `--neu-ease`.
-- **Data panel (answer canvas) collapse/entry**: CSS transition (300ms `--neu-ease`) animating `flex-grow`, `margin-left`, `opacity`, and `visibility` from a zero-width, invisible state to a `flex-1` pane, so it slides/fades in and out like the sidebar width animation. The inter-panel gap belongs to the pane's animating margin, so no leftover gap when collapsed.
-- **Sidebar/map content crossfade**: CSS opacity transitions (200ms) with 75ms delay on reveal, immediate on hide. Coordinates with the spring settle.
-- **Easing fallback**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions (mobile drawer, bottom sheet, profile menu, button micro-interactions). Duration: 150ms for micro-interactions, 250-300ms for mobile panel slides.
+- **Route navigation**: On click, `ShellNavigationProvider` updates the sidebar selection, shell mode, and destination content in one render before the URL commits. React unmounts the outgoing route tree. Navigations use a 180ms opacity fade. A fixed 2px progress line appears after 120ms and takes no layout space.
+- **Route loading**: Shell boot, new chat, conversation history, Answer Canvas, and workspace routes use geometry-matched skeletons. Loading footers and feedback rows reserve the same space as loaded controls. Heavy canvases reveal with opacity after setup.
+- **Answer Canvas**: Desktop geometry changes immediately while contents crossfade. The mobile sheet uses transform and opacity over 300ms `--neu-ease`; it does not animate layout properties.
+- **Sidebar/map content crossfade**: CSS opacity transitions use 200ms with a 75ms reveal delay and immediate hide.
+- **Easing fallback**: `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) serves CSS transitions such as the mobile drawer, bottom sheet, profile menu, and button micro-interactions. Micro-interactions use 150ms; mobile panels use 250–300ms.
 
 ### Landing Page Motion
 
@@ -611,7 +612,7 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 
 - **Do** apply `.neu-panel` / `.neu-raised` / `.neu-inset` for composed surfaces. They carry the unified shadow recipe.
 - **Do** use `--muted` (`#5a6066`) for all subdued text (placeholders, timestamps, metadata). Never `--outline` or `--outline-variant` for text.
-- **Do** use spring physics (via `motion`) for panel/layout state changes (sidebar, map). Config: stiffness 300, damping 30. Use `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions (mobile drawer, bottom sheet, menus). Duration: 150-300ms depending on travel distance.
+- **Do** use spring physics for isolated draggable surfaces and `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions such as drawers, sheets, and menus. Keep navigation fades to 180ms and mobile panel travel to 250–300ms.
 - **Do** respect `prefers-reduced-motion`. All animations collapse to 0.01ms, reveals show at once, the thinking orb freezes.
 - **Do** use `[data-theme="dark"]` for theme switching. Never `prefers-color-scheme` media query. The user controls the theme, not the OS.
 - **Do** maintain whisper-level dimension on all surfaces at rest. Depth is the resting state, not a hover effect.
@@ -630,5 +631,6 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 - **Don't** apply neumorphic depth to text content. Depth frames containers. Content stays flat inside.
 - **Don't** use font-weight 700 or above. Maximum is 600 (markdown strong, table headers, list markers).
 - **Don't** use primary indigo for background fills, decorative accents, or large surfaces. It means "interactive" or "active state."
-- **Don't** use blur reveals in the app shell. Those belong to the landing page only. In-app springs are for layout state changes; CSS `--neu-ease` handles micro-interactions and gesture-driven slides.
+- **Don't** retain outgoing route trees or animate layout properties during navigation. Replace stale content with the destination or its matched loading surface, then animate opacity.
+- **Don't** use blur reveals in the app shell. Those belong to the landing page only. CSS `--neu-ease` handles micro-interactions and gesture-driven slides.
 - **Don't** create new shadow recipes without documenting them. Use `--neu-surface-shadow` or `--neu-inset-shadow` from Tier 2, the five elevation utilities from Tier 1, or the sanctioned `.chat-message-well` recipe.
