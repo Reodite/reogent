@@ -16,7 +16,7 @@ import { createPortal } from "react-dom";
  * upward with the trigger's full width; the collapsed rail opens it as a
  * flyout to the right.
  */
-export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
+export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const auth = useAppAuth();
   const navigation = useShellNavigation();
   const [open, setOpen] = useState(false);
@@ -138,7 +138,10 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
             <Link
               href="/settings"
               role="menuitem"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.();
+              }}
               onNavigate={(event) => {
                 event.preventDefault();
                 navigation.push("/settings");

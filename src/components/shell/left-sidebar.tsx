@@ -16,7 +16,7 @@ const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
   { path: "/pulse/creators", label: "Creators", icon: "teacup" },
 ];
 
-function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
+function UnitySidebar({ collapsed = false, onSelect }: { collapsed?: boolean; onSelect?: () => void }) {
   const navigation = useShellNavigation();
   const pathname = navigation.displayPathname;
 
@@ -29,7 +29,10 @@ function UnitySidebar({ collapsed = false }: { collapsed?: boolean }) {
             <button
               type="button"
               aria-current={active ? "page" : undefined}
-              onClick={() => navigation.push(item.path)}
+              onClick={() => {
+                navigation.push(item.path);
+                onSelect?.();
+              }}
               className={`focus-visible:ring-primary/40 flex h-11 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
                 collapsed ? "w-11 justify-center sm:w-9" : "w-full gap-2.5 px-3"
               } ${
@@ -100,8 +103,8 @@ export function LeftSidebar({
   const { mode } = useChatShell();
   const footer = (
     <div className="flex flex-col gap-2">
-      <ModeToggle collapsed={collapsed} />
-      <UserMenu collapsed={collapsed} />
+      <ModeToggle collapsed={collapsed} onNavigate={onClose} />
+      <UserMenu collapsed={collapsed} onNavigate={onClose} />
     </div>
   );
 
@@ -145,7 +148,7 @@ export function LeftSidebar({
       {mode === "tools" ? (
         <ToolList collapsed={collapsed} onSelect={onClose} />
       ) : (
-        <UnitySidebar collapsed={collapsed} />
+        <UnitySidebar collapsed={collapsed} onSelect={onClose} />
       )}
       {footer}
     </div>

@@ -20,7 +20,7 @@ function pathnameMatchesMode(pathname: string, mode: ShellMode): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
-export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
+export function ModeToggle({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const { mode, setMode, workspaceView } = useChatShell();
   const { isGuest } = useAppAuth();
   const navigation = useShellNavigation();
@@ -67,6 +67,7 @@ export function ModeToggle({ collapsed = false }: { collapsed?: boolean }) {
     event.preventDefault();
     setMode(next);
     navigation.push(target);
+    onNavigate?.();
   }
 
   return (

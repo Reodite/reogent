@@ -208,6 +208,27 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("closes its host drawer after cross-area and Unity navigation", () => {
+    const onClose = vi.fn();
+    const view = render(
+      <ChatShellProvider>
+        <LeftSidebar onClose={onClose} />
+      </ChatShellProvider>,
+    );
+
+    act(() => fireEvent.click(modeLink(view.container, "Tools")));
+    expect(onClose).toHaveBeenCalledOnce();
+
+    pathname.value = "/pulse";
+    view.rerender(
+      <ChatShellProvider initialMode="unity">
+        <LeftSidebar onClose={onClose} />
+      </ChatShellProvider>,
+    );
+    act(() => fireEvent.click(view.getByRole("button", { name: "Creators" })));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
   it("marks the pathname tool current without depending on workspace state", () => {
     pathname.value = "/tools/prereq/CPSC320";
     const { container } = render(
