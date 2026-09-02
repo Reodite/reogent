@@ -43,7 +43,7 @@ export function buildingAliases(...names: (string | null | undefined)[]): string
   return [...aliases];
 }
 
-function toBuildingSummary(feature: BuildingFeature): BuildingSummary | null {
+export function buildingFromFeature(feature: BuildingFeature): BuildingSummary | null {
   const properties = feature.properties ?? {};
   const code = normalizeBuildingText(text(properties.BLDG_CODE) ?? "");
   const name = text(properties.NAME);
@@ -70,7 +70,7 @@ export function buildingsFromGeoJson(collection: FeatureCollection): BuildingSum
   const byCode = new Map<string, BuildingSummary>();
   for (const feature of collection.features) {
     if (feature.geometry?.type !== "Polygon" && feature.geometry?.type !== "MultiPolygon") continue;
-    const summary = toBuildingSummary(feature as BuildingFeature);
+    const summary = buildingFromFeature(feature as BuildingFeature);
     if (summary && !byCode.has(summary.code)) byCode.set(summary.code, summary);
   }
   return [...byCode.values()].sort((a, b) => compareText(a.name, b.name) || compareText(a.code, b.code));

@@ -47,20 +47,25 @@ describe("summarizeAvailability", () => {
       now,
     );
     expect(out?.as_of).toBe("2026-08-06T10:00:00Z");
+    expect(out?.freshness).toBe("current");
     expect(out?.rooms).toEqual([
       expect.objectContaining({ title: "Room A", freeNow: true, freeUntil: "14:00" }),
       expect.objectContaining({ title: "Room B", freeNow: false, nextFree: "15:00" }),
     ]);
   });
 
-  it("falls back to the latest snapshot date when today is absent", () => {
+  it("labels an old snapshot as historical", () => {
     const out = summarizeAvailability(
       [room(1, "Room A")],
-      [interval(1, "2026-08-01", "09:00", "10:00", "free"), interval(1, "2026-08-03", "11:00", "12:00", "free")],
+      [
+        { ...interval(1, "2026-08-01", "09:00", "10:00", "free"), collected_at: "2026-08-03T08:00:00Z" },
+        { ...interval(1, "2026-08-03", "11:00", "12:00", "free"), collected_at: "2026-08-03T08:00:00Z" },
+      ],
       now,
     );
-    // Evaluated at the start of 2026-08-03: not free "now", next free at 11:00.
+    // Evaluates the latest snapshot day from midnight when today's date is absent.
     expect(out?.rooms[0]).toEqual(expect.objectContaining({ freeNow: false, nextFree: "11:00" }));
+    expect(out?.freshness).toBe("historical");
   });
 
   it("returns null without rooms or intervals", () => {

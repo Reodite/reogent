@@ -405,6 +405,7 @@ interface BuildingDetails {
   photos: OfficialPhoto[];
   sourceStatus: {
     building: SourceSectionStatus;
+    addresses: SourceSectionStatus;
     rooms: SourceSectionStatus;
     availability: SourceSectionStatus;
     pois: SourceSectionStatus;

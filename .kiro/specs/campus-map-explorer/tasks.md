@@ -26,7 +26,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - _Requirements: 8.1–8.10_
 
 - [ ] 2. Expand trustworthy building details and public routing
-  - [ ] 2.1 Build the reusable Building Record loader
+  - [x] 2.1 Build the reusable Building Record loader
     - Refactor existing room, POI, and availability assembly into `loadBuildingDetails` reusable by HTTP and widgets.
     - Add documented building metadata, official addresses, verified entrance summaries, section provenance, source status, and three-state availability freshness.
     - Join POIs by official address first and spatial containment second; label the association and exclude heuristic event, person, food, and department claims.

@@ -142,7 +142,9 @@ export interface OfficialBuildingPhoto {
 // GET /api/building/{code} — per-building popup details (rooms, POIs, availability).
 
 export interface RoomCard {
-  name: string; // e.g. "AERL 120"
+  name: string;
+  roomNumber: string | null;
+  spaceType: string | null;
   capacity: number | null;
   floor: number | null;
   layout: string | null;
@@ -156,8 +158,9 @@ export interface PoiCard {
   service_type: string | null;
   url: string | null;
   photo: string | null;
-  hours: string | null; // free text — display verbatim
+  hours: string | null;
   contact: string | null;
+  association: "official-address" | "location-derived";
 }
 
 export interface AvailabilityRoomCard {
@@ -166,17 +169,62 @@ export interface AvailabilityRoomCard {
   url: string | null;
   thumbnail: string | null;
   freeNow: boolean;
-  freeUntil: string | null; // "HH:MM"
-  nextFree: string | null; // "HH:MM"
+  freeUntil: string | null;
+  nextFree: string | null;
+}
+
+export interface BuildingAddress {
+  fullAddress: string;
+  siteName: string | null;
+  primary: boolean;
+  official: boolean;
+  mailing: boolean;
+  pointType: string | null;
+}
+
+export interface BuildingEntranceSummary {
+  id: string;
+  entranceType: string | null;
+  doorCount: number | null;
+  position: import("@/src/shared/types").LngLat;
+}
+
+export interface BuildingProfile extends BuildingSummary {
+  secondaryUsage: string | null;
+  neighbourhood: string | null;
+  managingOrganization: string | null;
+  maintenanceOrganization: string | null;
+  constructionStatus: string | null;
+  constructionType: string | null;
+  occupancyDate: string | null;
+  grossAreaSquareMeters: number | null;
+  form: string | null;
+  condition: string | null;
+  greenStatus: string | null;
 }
 
 export interface BuildingDetails {
   code: string;
   name: string;
+  building: BuildingProfile;
+  addresses: BuildingAddress[];
   rooms: RoomCard[];
   pois: PoiCard[];
-  /** Bookable library rooms from the latest snapshot; null when the building has none. */
-  availability: { as_of: string | null; rooms: AvailabilityRoomCard[] } | null;
+  entrances: BuildingEntranceSummary[];
+  photos: OfficialBuildingPhoto[];
+  availability: {
+    as_of: string | null;
+    freshness: BuildingDataFreshness;
+    rooms: AvailabilityRoomCard[];
+  } | null;
+  sourceStatus: {
+    building: BuildingSourceStatus;
+    addresses: BuildingSourceStatus;
+    rooms: BuildingSourceStatus;
+    availability: BuildingSourceStatus;
+    pois: BuildingSourceStatus;
+    entrances: BuildingSourceStatus;
+  };
 }
 
 export type GeoName = "buildings" | "entrances" | "walking-routes";
