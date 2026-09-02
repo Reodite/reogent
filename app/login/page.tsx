@@ -14,11 +14,13 @@ function LoginContent() {
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
 
-  useEffect(() => {
-    if (auth.status === "signedIn") router.replace(auth.isGuest ? "/tools" : "/chat");
-  }, [auth.status, auth.isGuest, router]);
+  const authenticatedAccount = auth.status === "signedIn" && !auth.isGuest;
 
-  if (auth.status === "initializing" || auth.status === "signedIn") {
+  useEffect(() => {
+    if (authenticatedAccount) router.replace("/chat");
+  }, [authenticatedAccount, router]);
+
+  if (auth.status === "initializing" || authenticatedAccount) {
     return null;
   }
 
