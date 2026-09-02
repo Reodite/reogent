@@ -90,7 +90,7 @@ npm run ingest
 npm run dev
 ```
 
-The server opens at http://localhost:3000 and applies the Postgres schema on startup.
+The server opens at http://localhost:3000 and applies the Postgres schema on startup. The sample environment points host processes at `localhost`; Docker Compose overrides those service URLs with container hostnames.
 
 ### Environment variables
 
@@ -100,9 +100,9 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | `LLM_BASE_URL`      | Base URL for OpenAI-compatible endpoints            |
 | `LLM_MODEL`         | Model identifier                                    |
 | `LLM_API_KEY`       | Provider API key                                    |
-| `DATABASE_URL`      | Postgres connection string                          |
+| `DATABASE_URL`      | Postgres URL (`localhost:5432` on host)             |
 | `POSTGRES_PASSWORD` | Postgres password (docker compose)                  |
-| `MEILI_URL`         | Meilisearch base URL                                |
+| `MEILI_URL`         | Meilisearch URL (`localhost:7700` on host)          |
 | `MEILI_MASTER_KEY`  | Meilisearch master key                              |
 | `MEILI_ENV`         | Meilisearch environment (docker compose)            |
 | `AUTH_ENABLED`      | Set `false` in non-production to bypass auth        |
