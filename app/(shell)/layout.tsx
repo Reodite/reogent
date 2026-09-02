@@ -15,15 +15,19 @@ export default function ShellLayout({ children }: React.PropsWithChildren) {
   const { isGuest, status } = useAppAuth();
   const router = useRouter();
 
+  const guestRedirecting = isGuest && (pathname?.startsWith("/chat") || pathname?.startsWith("/pulse"));
+
   useEffect(() => {
     if (status === "signedOut") {
       router.replace("/login");
       return;
     }
-    if (isGuest && (pathname?.startsWith("/chat") || pathname?.startsWith("/pulse"))) router.replace("/tools");
-  }, [isGuest, pathname, router, status]);
+    if (guestRedirecting) router.replace("/tools/map");
+  }, [guestRedirecting, router, status]);
 
-  if (status !== "signedIn") return <ShellBootLoading pathname={pathname} />;
+  if (status !== "signedIn" || guestRedirecting) {
+    return <ShellBootLoading pathname={guestRedirecting ? "/tools/map" : pathname} />;
+  }
 
   const initialMode =
     pathname?.startsWith("/tools") || isGuest ? "tools" : pathname?.startsWith("/pulse") ? "unity" : "ai";
