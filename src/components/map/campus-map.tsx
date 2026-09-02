@@ -132,8 +132,8 @@ type Rgba = [number, number, number, number];
 
 // ---- Map color system ----
 // Derived from DESIGN.md tokens. Buildings use the neumorphic raised-surface
-// material; highlights use primary indigo; routes use familiar navigation blue
-// with a contrasting casing; the basemap blends with --background.
+// material; highlights and routes use the primary palette; route casing keeps
+// the trace legible; the basemap blends with --background.
 
 const MAP_COLORS: Record<
   ResolvedTheme,
@@ -159,9 +159,9 @@ const MAP_COLORS: Record<
     // Highlighted: primary muted indigo #4a4e7a
     fillHighlight: [74, 78, 122, 220],
     lineHighlight: [26, 29, 58, 255],
-    // Navigation route: Google Maps blue with a light casing.
-    route: [66, 133, 244, 255],
-    routeCasing: [250, 250, 250, 235],
+    // Route: primary #4a4e7a with a light casing.
+    route: [74, 78, 122, 235],
+    routeCasing: [250, 250, 250, 190],
     // Labels: on-surface-variant for legibility without heaviness
     label: [62, 67, 72, 255],
     labelBg: [250, 250, 250, 255],
@@ -177,9 +177,9 @@ const MAP_COLORS: Record<
     // Highlighted: dark-mode primary #b0b4d8
     fillHighlight: [176, 180, 216, 220],
     lineHighlight: [208, 210, 235, 255],
-    // Navigation route: lighter blue with a dark casing.
-    route: [138, 180, 248, 255],
-    routeCasing: [18, 18, 20, 235],
+    // Route: dark-mode primary #b0b4d8 with a dark casing.
+    route: [176, 180, 216, 220],
+    routeCasing: [18, 18, 20, 190],
     // Labels: on-surface-variant (dark) for clarity
     label: [194, 199, 204, 255],
     labelBg: [14, 14, 16, 255],
@@ -189,6 +189,17 @@ const MAP_COLORS: Record<
     door: [18, 18, 20, 255],
   },
 };
+
+const ROUTE_LAYER_PARAMETERS = { depthTest: false } as const;
+
+/** Returns the theme colors and depth state for route strokes. */
+export function routeLayerAppearance(theme: ResolvedTheme) {
+  return {
+    traceColor: MAP_COLORS[theme].route,
+    casingColor: MAP_COLORS[theme].routeCasing,
+    parameters: ROUTE_LAYER_PARAMETERS,
+  };
+}
 
 // Basemap layer overrides: makes CARTO tiles seamless with the app shell.
 // Positron (light) gets matched to --background; Dark Matter loses its black.
@@ -745,6 +756,7 @@ export function CampusMap({
     if (!handles || !buildings || status === "error") return;
     const { GeoJsonLayer, PathLayer, PolygonLayer, ScatterplotLayer, TextLayer } = handles.layerModules;
     const colors = MAP_COLORS[theme];
+    const routeAppearance = routeLayerAppearance(theme);
     const route = resolveRoute(buildings, highlight);
     const focusedBuildings = highlight?.kind === "buildings" ? highlight.buildings : [];
     const highlightedCodes = new Set(
@@ -883,11 +895,12 @@ export function CampusMap({
               id: "route-casing",
               data: [{ path: routePath.path }],
               getPath: (d: { path: LngLat[] }) => d.path,
-              getColor: colors.routeCasing,
+              getColor: routeAppearance.casingColor,
               getWidth: 9,
               widthUnits: "pixels" as const,
               capRounded: true,
               jointRounded: true,
+              parameters: routeAppearance.parameters,
               updateTriggers: { getPath: [routePath.key] },
             }),
           )
@@ -898,11 +911,12 @@ export function CampusMap({
               id: "route-trace",
               data: [{ path: routePath.path }],
               getPath: (d: { path: LngLat[] }) => d.path,
-              getColor: colors.route,
+              getColor: routeAppearance.traceColor,
               getWidth: 5,
               widthUnits: "pixels" as const,
               capRounded: true,
               jointRounded: true,
+              parameters: routeAppearance.parameters,
               updateTriggers: { getPath: [routePath.key] },
             }),
           )

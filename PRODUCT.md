@@ -109,7 +109,7 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 - Signed-in users save favorite buildings to the account. Building actions share a deep link, open a separate Google Maps destination, or start an in-app route. Directions keeps editable From and To boxes at the top; endpoint results exist only while one box is being edited and disappear as soon as a route starts.
 - AI Answer Canvas remains map-only. Existing map widgets stay compatible; additive building-detail, entrance, and space widgets expose richer map answers in Chat.
 - Building footprints render as extruded 3D GeoJSON. Verified entrances within a building-wall tolerance render as ground arrows and vertical door outlines; undocumented rotation and accessibility flags do not drive claims.
-- Walking routes use Dijkstra over the pedestrian network and render immediately as a blue path with a contrasting casing. Straight-line estimates remain labeled text and do not render as paths.
+- Walking routes use Dijkstra over the pedestrian network and render immediately in the Reodite primary color with a contrasting casing above map geometry. Straight-line estimates remain labeled text and do not render as paths.
 - POI pins use deck.gl point and text layers.
 - Building clicks open Explore details in Tools and retain the transient map popup in AI.
 - CARTO Positron and Dark Matter supply the light and dark basemaps.
