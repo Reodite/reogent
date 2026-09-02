@@ -49,6 +49,10 @@ export interface ChatApi {
   getRoute(from: string, to: string, signal?: AbortSignal): Promise<RouteResponse>;
   /** GET /api/building/{code} — public building, room, service, and entrance details. */
   getBuildingDetails(code: string, signal?: AbortSignal): Promise<BuildingDetails>;
+  /** GET /api/building-favorites — caller's favorite building codes. */
+  getBuildingFavorites(): Promise<{ codes: string[] }>;
+  /** PUT /api/building-favorites — applies one idempotent saved state. */
+  setBuildingFavorite(code: string, saved: boolean): Promise<{ codes: string[] }>;
   /** GET /api/courses/{code}?session= — exact course record; 404 on miss. Defaults to latest winter. */
   getCourse(
     code: string,
@@ -274,6 +278,12 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       publicRequest<RouteResponse>(`/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal }),
     getBuildingDetails: (code, signal) =>
       publicRequest<BuildingDetails>(`/building/${encodeURIComponent(code)}`, { signal }),
+    getBuildingFavorites: () => request<{ codes: string[] }>("/building-favorites"),
+    setBuildingFavorite: (code, saved) =>
+      request<{ codes: string[] }>("/building-favorites", {
+        method: "PUT",
+        body: JSON.stringify({ code, saved }),
+      }),
     getCourse: (code, session) => {
       const sp = new URLSearchParams();
       if (session) sp.set("session", session);

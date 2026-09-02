@@ -46,7 +46,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Implement idempotent list, save, and remove functions with user-qualified queries.
     - Add model and database tests for repeated writes, repeated deletes, ordering, and two-user isolation.
     - _Requirements: 7.1–7.4, 7.7_
-  - [ ] 3.2 Add authenticated favorite API and client methods
+  - [x] 3.2 Add authenticated favorite API and client methods
     - Validate requested building codes against the current catalog.
     - Add authenticated list and set-state operations to `ChatApi` without browser-local fallback.
     - Add tests for unauthorized guests, invalid codes, idempotent responses, and user isolation.

@@ -49,6 +49,21 @@ describe("public map API client", () => {
     expect(fetchMock.mock.calls[1][1]?.signal).toBe(routeController.signal);
   });
 
+  it("authenticates favorite reads and idempotent state updates", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ codes: ["IBLC"] })));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createChatApi({ getToken: async () => "jwt" });
+
+    await api.getBuildingFavorites();
+    await api.setBuildingFavorite("IBLC", true);
+
+    expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({ Authorization: "Bearer jwt" });
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({
+      method: "PUT",
+      body: JSON.stringify({ code: "IBLC", saved: true }),
+    });
+  });
+
   it("keeps private account requests authenticated", async () => {
     const getToken = vi.fn(async () => null);
     const onUnauthorized = vi.fn();
