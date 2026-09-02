@@ -122,7 +122,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 #### Acceptance Criteria
 
 1. WHEN a user activates Directions, THE Building_Rail SHALL keep the Selected_Building as the destination and display editable From and To building boxes at the top.
-2. WHEN a user activates either endpoint box, THE Building_Rail SHALL open one endpoint-specific catalog listbox and support changing that endpoint without leaving Directions.
+2. WHEN a user activates either endpoint box, THE Building_Rail SHALL open one endpoint-specific catalog listbox in a bounded native vertical scroll region shared with the sticky endpoint editor, so wheel, touch, and keyboard navigation can reach every result without leaving Directions.
 3. WHEN a user selects an endpoint result, THE Building_Rail SHALL commit the building, clear the transient query and listbox, and start route calculation immediately when both endpoints exist.
 4. WHEN both endpoint buildings are valid and the routing method is network, THE Map_Canvas SHALL immediately display the complete in-app pedestrian route as a cased navigation-blue line, and THE Building_Rail or compact sheet handle SHALL display distance and estimated walking time without another View route action.
 5. IF the routing method is estimate, THEN THE Building_Rail SHALL identify the result as a straight-line distance estimate.

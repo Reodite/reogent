@@ -609,6 +609,19 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   display: none;
 }
 
+[data-map-sheet-content] > [data-workspace-panel] {
+  height: 100%;
+}
+
+[data-route-results-scroll] {
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  scroll-padding-top: 8.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline-variant) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
 @container (max-width: 55rem) {
   .workspace-page-layout {
     gap: 1rem;
@@ -681,9 +694,23 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
     display: flex;
   }
 
+  [data-map-explore-sheet][data-sheet-open] [data-map-sheet-handle] {
+    height: 2.75rem;
+    min-height: 2.75rem;
+    justify-content: flex-end;
+    padding: 0.5rem 1rem 0.25rem;
+  }
+
+  [data-map-explore-sheet][data-sheet-open] [data-map-sheet-summary] {
+    display: none;
+  }
+
+  [data-map-explore-sheet][data-sheet-open] [data-map-sheet-chevron] {
+    display: flex;
+  }
+
   [data-map-sheet-content] {
     visibility: hidden;
-    height: calc(100% - 4rem);
     padding-bottom: env(safe-area-inset-bottom);
     pointer-events: none;
   }
@@ -694,7 +721,6 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   }
 
   [data-map-sheet-content] > [data-workspace-panel] {
-    height: 100%;
     border-radius: 0;
     box-shadow: none;
   }

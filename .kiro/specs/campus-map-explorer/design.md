@@ -133,9 +133,10 @@ interface BuildingRailProps {
 
 **Responsibilities**:
 
-- Keep one fixed search field in discovery and two editable endpoint boxes in Directions.
+- Keep one fixed search field in discovery and two equal endpoint fields in an aligned Back, marker, and field grid for Directions.
+- Keep the endpoint grid sticky inside the single bounded directions scroll owner; contain overscroll and preserve native vertical wheel and touch panning from both editor and result rows.
 - Render Saved before Curated popular buildings when favorites exist.
-- Use endpoint-specific listbox keyboard semantics and remove results immediately after selection.
+- Use flat endpoint-specific result rows with visible active state, listbox keyboard semantics, and immediate removal after selection.
 - Render task-relevant non-empty fields through explicit detail sections and omit physical property, construction, condition, occupancy, and management metadata.
 - Provide labeled Directions, Share, Save, and Open in Google Maps actions.
 - Identify curated popularity, spatial POI joins, room snapshot freshness, and source failures.

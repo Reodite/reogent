@@ -195,21 +195,22 @@ function MapExploreSheet({
         className="focus-visible:ring-primary/40 relative min-h-16 w-full shrink-0 items-center gap-3 px-4 pt-3 pb-2 text-left focus-visible:ring-2 focus-visible:ring-inset"
       >
         <span className="bg-outline/35 absolute top-1.5 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full" aria-hidden />
-        <span className="bg-primary-container text-on-primary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
+        <span
+          data-map-sheet-summary
+          className="bg-primary-container text-on-primary-container flex size-9 shrink-0 items-center justify-center rounded-lg"
+        >
           <Icon
             name={routeEstimate ? "location" : routeReady ? "walk" : mode === "details" ? "location" : "search"}
             size={18}
           />
         </span>
-        <span className="min-w-0 flex-1">
+        <span data-map-sheet-summary className="min-w-0 flex-1">
           <span className="text-on-surface block truncate text-sm font-medium">{title}</span>
           <span className="text-muted block truncate text-xs">{subtitle}</span>
         </span>
-        <Icon
-          name="down"
-          size={16}
-          className={`text-on-surface-variant shrink-0 transition-transform duration-200 ${open ? "" : "rotate-180"}`}
-        />
+        <span data-map-sheet-chevron className="text-on-surface-variant shrink-0">
+          <Icon name="down" size={16} className={`transition-transform duration-200 ${open ? "" : "rotate-180"}`} />
+        </span>
       </button>
       <div ref={contentRef} id={contentId} data-map-sheet-content className="min-h-0 flex-1">
         {children}

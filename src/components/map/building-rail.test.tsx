@@ -232,6 +232,40 @@ describe("BuildingRail", () => {
     expect(onRouteFieldChange).toHaveBeenCalledWith("destination");
   });
 
+  it("keeps broad endpoint results in one owned scroll region", () => {
+    const catalog = Array.from({ length: 25 }, (_, index): BuildingSummary => ({
+      ...iblc,
+      code: `A${String(index).padStart(3, "0")}`,
+      name: `Alpha Building ${index}`,
+      aliases: [],
+    }));
+    const { container } = render(
+      <BuildingRail
+        {...props({
+          mode: "directions",
+          selected: iblc,
+          catalog,
+          routeField: "origin",
+          routeQuery: "alpha",
+        })}
+      />,
+    );
+
+    const input = screen.getByRole("combobox", { name: "From building" });
+    const list = screen.getByRole("listbox", { name: "Starting building results" });
+    const scroller = container.querySelector("[data-route-results-scroll]");
+    expect(screen.getAllByRole("option")).toHaveLength(20);
+    expect(screen.getByText("20 results")).toBeTruthy();
+    expect(scroller?.contains(input)).toBe(true);
+    expect(scroller?.contains(list)).toBe(true);
+
+    fireEvent.keyDown(input, { key: "End" });
+    const options = screen.getAllByRole("option");
+    expect(input.getAttribute("aria-activedescendant")).toBe(options.at(-1)?.id);
+    expect(options.at(-1)?.getAttribute("aria-selected")).toBe("true");
+    expect(options.at(-1)?.className).toContain("shadow-[inset_3px_0_0_var(--primary)]");
+  });
+
   it("clears an endpoint query before cancelling endpoint editing", () => {
     const onRouteQueryChange = vi.fn();
     const onRouteFieldChange = vi.fn();
