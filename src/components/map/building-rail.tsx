@@ -599,14 +599,17 @@ export function BuildingRail(props: BuildingRailProps) {
                         <label
                           key={field}
                           htmlFor={inputId}
-                          className={`neu-inset bg-surface-container-low focus-within:ring-primary/40 col-start-3 flex h-12 min-w-0 flex-col justify-center rounded-lg px-3 focus-within:ring-2 focus-within:ring-offset-1 ${
+                          data-route-endpoint-field
+                          data-invalid={(active && Boolean(props.endpointError)) || undefined}
+                          className={`neu-inset bg-surface-container-low col-start-3 flex h-12 min-w-0 flex-col justify-center rounded-lg px-3 ${
                             field === "origin" ? "row-start-1" : "row-start-2"
-                          } ${active && props.endpointError ? "ring-error/30 ring-2" : ""}`}
+                          }`}
                         >
                           <span className="text-muted text-xs leading-none">{label}</span>
                           <input
                             ref={inputRef}
                             id={inputId}
+                            data-route-endpoint-input
                             value={active ? props.routeQuery : (building?.name ?? "")}
                             readOnly={!active}
                             onFocus={() => {
@@ -632,7 +635,7 @@ export function BuildingRail(props: BuildingRailProps) {
                             aria-describedby={active && props.endpointError ? endpointErrorId : undefined}
                             autoComplete="off"
                             spellCheck={false}
-                            className="text-on-surface placeholder:text-muted mt-0.5 h-5 min-w-0 bg-transparent text-sm leading-5 outline-none"
+                            className="text-on-surface placeholder:text-muted mt-0.5 h-5 min-w-0 bg-transparent text-sm leading-5"
                           />
                         </label>
                       );

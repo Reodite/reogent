@@ -613,6 +613,23 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   height: 100%;
 }
 
+[data-route-endpoint-input]:focus-visible {
+  outline: none;
+}
+
+[data-route-endpoint-field] {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+[data-route-endpoint-field]:focus-within {
+  outline-color: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+[data-route-endpoint-field][data-invalid] {
+  outline-color: color-mix(in srgb, var(--error) 45%, transparent);
+}
+
 [data-route-results-scroll] {
   overscroll-behavior-y: contain;
   touch-action: pan-y;
