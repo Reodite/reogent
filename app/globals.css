@@ -305,6 +305,50 @@ details[open] > *:not(summary) {
   }
 }
 
+@keyframes shell-content-in {
+  from {
+    opacity: 0;
+    transform: scale(0.997);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes content-opacity-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shell-progress-reveal {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shell-progress-travel {
+  from {
+    transform: translateX(-110%) scaleX(0.35);
+  }
+  to {
+    transform: translateX(230%) scaleX(0.8);
+  }
+}
+
+@keyframes shell-skeleton-sheen {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
 /* ---- Reduced motion ---- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -476,11 +520,73 @@ html.vt-active *::after {
 }
 
 .chat-workspace {
+  --sidebar-width: 17rem;
+  --sidebar-offset: 17.75rem;
+
   display: flex;
+}
+
+.chat-workspace[data-sidebar-collapsed],
+html[data-sidebar-collapsed="true"] .chat-workspace {
+  --sidebar-width: 3rem;
+  --sidebar-offset: 3.75rem;
+}
+
+.sessions-aside {
+  width: var(--sidebar-width);
+}
+
+.shell-route-content {
+  animation: shell-content-in 180ms var(--neu-ease) backwards;
+  transform-origin: 50% 45%;
+}
+
+.prereq-graph-ready {
+  animation: content-opacity-in 160ms ease-out backwards;
+}
+
+.shell-navigation-progress {
+  opacity: 0;
+  animation: shell-progress-reveal 100ms ease-out 80ms forwards;
+}
+
+.shell-navigation-progress > span {
+  width: 45%;
+  animation: shell-progress-travel 900ms ease-in-out 80ms infinite;
+}
+
+.shell-skeleton {
+  background: var(--surface-container);
+  overflow: hidden;
+  position: relative;
+}
+
+.shell-skeleton::after {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 72%, transparent), transparent);
+  content: "";
+  inset: 0;
+  transform: translateX(-120%);
+  animation: shell-skeleton-sheen 1.4s var(--neu-ease) 120ms infinite;
+}
+
+.shell-boot-workspace {
+  display: none;
+}
+
+html[data-shell-mode="tools"] .shell-boot-chat,
+html[data-shell-mode="unity"] .shell-boot-chat {
+  display: none;
+}
+
+html[data-shell-mode="tools"] .shell-boot-workspace,
+html[data-shell-mode="unity"] .shell-boot-workspace {
+  display: block;
 }
 
 .workspace-page {
   container-type: inline-size;
+  animation: content-opacity-in 160ms ease-out backwards;
 }
 
 .workspace-page-body {
@@ -578,6 +684,18 @@ html.vt-active *::after {
 }
 
 @media (min-width: 1024px) {
+  html:not([data-shell-mode="tools"]) .shell-boot-menu {
+    display: none;
+  }
+
+  html:not([data-shell-mode="tools"]) .shell-boot-sidebar {
+    display: block;
+  }
+
+  html:not([data-shell-mode="tools"]) .shell-boot-main {
+    padding-left: var(--sidebar-offset, 0px);
+  }
+
   .sidebar-content-offset {
     padding-left: var(--sidebar-offset, 0px);
   }
@@ -589,6 +707,15 @@ html.vt-active *::after {
 }
 
 @media (min-width: 1280px) {
+  html[data-shell-mode="tools"] .shell-boot-menu {
+    display: none;
+  }
+
+  html[data-shell-mode="tools"] .shell-boot-sidebar {
+    display: block;
+  }
+
+  html[data-shell-mode="tools"] .shell-boot-main,
   .tool-sidebar-content-offset {
     padding-left: var(--sidebar-offset, 0px);
   }

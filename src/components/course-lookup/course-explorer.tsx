@@ -313,10 +313,10 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                   title="Courses unavailable"
                   message="The course catalog could not be loaded."
                   onRetry={() => fetchExplorer()}
-                  className="m-auto p-6"
+                  className="min-h-0 flex-1 justify-center p-6"
                 />
               ) : loading && courses.length === 0 ? (
-                <div role="status" aria-label="Loading courses" className="flex flex-col gap-2 p-3">
+                <div role="status" aria-label="Loading courses" className="flex min-h-0 flex-1 flex-col gap-2 p-3">
                   {[0, 1, 2, 3, 4].map((index) => (
                     <div
                       key={index}
@@ -328,7 +328,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                   ))}
                 </div>
               ) : !error && courses.length === 0 ? (
-                <div className="text-muted m-auto flex flex-col items-center gap-3 p-6 text-center text-sm">
+                <div className="text-muted flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
                   <p>No courses match this search.</p>
                   {hasFilters ? (
                     <Button variant="outline" size="pill" onClick={clearAllFilters}>
@@ -418,7 +418,7 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                 </div>
               ) : null}
 
-              <footer className="border-border-subtle flex shrink-0 flex-wrap items-center justify-between gap-2 border-t p-3">
+              <footer className="border-border-subtle flex min-h-17 shrink-0 flex-wrap items-center justify-between gap-2 border-t p-3 sm:min-h-15">
                 <span className="text-muted text-xs">
                   {total.toLocaleString()} course{total === 1 ? "" : "s"} · {session}
                 </span>

@@ -27,13 +27,19 @@ export function PulseHistory() {
     void fetchHistory();
   }, [fetchHistory]);
 
-  if (!rounds && !error) return null;
+  const loading = !rounds && !error;
 
   return (
     <section aria-labelledby="pulse-history-heading" className="mt-6 flex flex-col gap-3">
       <h2 id="pulse-history-heading" className="text-on-surface text-base font-medium tracking-[-0.01em]">
         Previous rounds
       </h2>
+      {loading ? (
+        <div role="status" aria-label="Loading previous rounds" className="flex flex-col gap-3">
+          <span className="shell-skeleton h-20 w-full rounded-xl" />
+          <span className="shell-skeleton h-20 w-full rounded-xl" />
+        </div>
+      ) : null}
       {error ? <RetryState message={error} onRetry={() => void fetchHistory()} compact className="py-4" /> : null}
       {rounds?.length === 0 && <p className="text-muted py-4 text-center text-sm">No previous rounds yet.</p>}
       {rounds?.map((round) => (

@@ -24,6 +24,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   mem.clear();
+  delete document.documentElement.dataset.sidebarCollapsed;
 });
 
 afterEach(() => {
@@ -68,6 +69,7 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
     fireEvent.click(screen.getByRole("button", { name: "toggle" }));
     expect(screen.getByTestId("state").textContent).toBe("collapsed");
     expect(mem.get("reogent.sidebar.collapsed")).toBe("1");
+    expect(document.documentElement.dataset.sidebarCollapsed).toBe("true");
 
     cleanup();
     render(<Probe />);
@@ -75,6 +77,7 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
 
     fireEvent.click(screen.getByRole("button", { name: "toggle" }));
     expect(mem.get("reogent.sidebar.collapsed")).toBe("0");
+    expect(document.documentElement.dataset.sidebarCollapsed).toBe("false");
 
     cleanup();
     render(<Probe />);

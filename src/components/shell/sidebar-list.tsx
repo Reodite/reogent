@@ -1,17 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
-import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
-const StaggerContext = createContext(false);
-export { StaggerContext as SidebarStaggerContext };
-
-/**
- * Sidebar mode list container: a recessed well holding the mode's nav items.
- * Shared by AI sessions (via groups), Tools panes, and Unity links so all three
- * modes render the same frame. Clips content so animating items can't bleed
- * into the header above.
- */
+/** Shared recessed navigation frame for sessions, Tools, and Unity. */
 export function SidebarListNav({
   label,
   collapsed = false,
@@ -23,13 +14,6 @@ export function SidebarListNav({
   toolList?: boolean;
   children: ReactNode;
 }) {
-  const reduce = useReducedMotion();
-  // Stagger plays only on the first render; later re-renders skip it.
-  const hasAnimated = useRef(false);
-  useEffect(() => {
-    hasAnimated.current = true;
-  }, []);
-  const stagger = !hasAnimated.current && !reduce;
   return (
     <nav
       aria-label={label}
@@ -38,25 +22,12 @@ export function SidebarListNav({
         collapsed ? "p-1" : "p-2"
       }`}
     >
-      <ul className={`flex flex-col gap-1 ${collapsed ? "items-center" : ""}`}>
-        <StaggerContext.Provider value={stagger}>{children}</StaggerContext.Provider>
-      </ul>
+      <ul className={`flex flex-col gap-1 ${collapsed ? "items-center" : ""}`}>{children}</ul>
     </nav>
   );
 }
 
-/** List item with the shared entrance stagger (opacity fade, capped delay). */
-export function SidebarListItem({ index = 0, children }: { index?: number; children: ReactNode }) {
-  const stagger = useContext(StaggerContext);
-  return (
-    <motion.li
-      initial={stagger ? { opacity: 0 } : false}
-      animate={{ opacity: 1 }}
-      transition={
-        stagger ? { type: "spring", stiffness: 500, damping: 30, delay: Math.min(index * 0.03, 0.3) } : { duration: 0 }
-      }
-    >
-      {children}
-    </motion.li>
-  );
+/** Keeps routine navigation rows stable while their destination content transitions. */
+export function SidebarListItem({ children }: { index?: number; children: ReactNode }) {
+  return <li>{children}</li>;
 }

@@ -26,6 +26,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Settings", () => {
+  it("reserves the profile form footprint while loading", () => {
+    api.getProfile.mockReturnValue(new Promise(() => {}));
+    render(<ProfileForm />);
+
+    expect(screen.getByRole("status", { name: "Loading student profile" })).not.toBeNull();
+    expect(document.querySelectorAll(".shell-skeleton").length).toBeGreaterThan(0);
+  });
+
   it("uses the shared split workspace for account, appearance, and student profile", async () => {
     api.getProfile.mockResolvedValue({ profile: {} });
     const { container } = render(<SettingsPage />);

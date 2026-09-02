@@ -13,10 +13,18 @@ import { AnswerSheet } from "@/src/components/shell/answer-sheet";
 import { FullBleedTool } from "@/src/components/shell/full-bleed-tool";
 import { LeftSidebar } from "@/src/components/shell/left-sidebar";
 import { useSidebarCollapsed } from "@/src/components/shell/session-sidebar";
+import {
+  AnswerCanvasLoading,
+  ChatPanelLoading,
+  NewChatLoading,
+  WorkspaceRouteLoading,
+} from "@/src/components/shell/shell-loading";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { shellModeForPath } from "@/src/components/shell/use-shell-mode";
 import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { LiveRegion } from "@/src/components/ui/live-region";
 import { useReducedMotion } from "motion/react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** Gate: initializing → null (brief); signed out → redirect to login. */
@@ -44,6 +52,28 @@ function useIsCanvasInline(): boolean {
     return () => media.removeEventListener("change", onChange);
   }, []);
   return mounted ? inline : false;
+}
+
+function ShellRouteContent({
+  identity,
+  pending,
+  children,
+}: {
+  identity: string;
+  pending: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      key={identity}
+      data-shell-route-content={identity}
+      data-navigation-pending={pending || undefined}
+      inert={pending || undefined}
+      className="shell-route-content flex min-h-0 min-w-0 flex-1"
+    >
+      {children}
+    </div>
+  );
 }
 
 function SidebarDrawer() {
@@ -103,7 +133,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     setUserDismissedPane,
   } = useChatShell();
   const canvasInline = useIsCanvasInline();
-  const pathname = usePathname();
+  const navigation = useShellNavigation();
+  const pathname = navigation.displayPathname;
   const settingsRoute = pathname === "/settings";
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
@@ -134,6 +165,74 @@ export function AppShell({ children }: { children: ReactNode }) {
     setRightPaneCollapsed(true);
   }
 
+  const enteringAi = navigation.pending && mode === "ai" && shellModeForPath(navigation.committedPathname) !== "ai";
+  const routeIdentity = `${mode}:${pathname}`;
+  const routeContent = settingsRoute ? (
+    <ShellRouteContent identity={routeIdentity} pending={navigation.pending}>
+      <main
+        id="main-content"
+        data-pane="settings"
+        data-shell-mode={mode}
+        className={`flex min-h-0 min-w-0 flex-1 ${
+          mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
+        }`}
+      >
+        <WorkspaceHostProvider host="settings" menuClearance>
+          <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
+            {navigation.pending ? <WorkspaceRouteLoading label="Loading Settings" /> : children}
+          </div>
+        </WorkspaceHostProvider>
+      </main>
+    </ShellRouteContent>
+  ) : mode === "ai" ? (
+    <div className="chat-map-area flex min-h-0 min-w-0 flex-1">
+      <ShellRouteContent identity={routeIdentity} pending={navigation.pending}>
+        <main
+          id="main-content"
+          data-pane="chat"
+          className="sidebar-content-offset flex min-h-0 min-w-0 flex-1 lg:min-w-88"
+          inert={sheetInert || undefined}
+        >
+          {navigation.pending ? pathname === "/chat" ? <NewChatLoading /> : <ChatPanelLoading /> : children}
+        </main>
+      </ShellRouteContent>
+      <AnswerSheet
+        open={enteringAi ? false : answerSheetOpen}
+        onClose={() => {
+          collapseRightPane();
+          setAnswerSheetOpen(false);
+          setUserDismissedPane(true);
+        }}
+        collapsed={rightPaneCollapsed}
+        view={workspaceView}
+      >
+        {enteringAi ? <AnswerCanvasLoading /> : <AnswerCanvas view={workspaceView} />}
+      </AnswerSheet>
+    </div>
+  ) : (
+    <ShellRouteContent identity={routeIdentity} pending={navigation.pending}>
+      <main
+        id="main-content"
+        data-pane={mode === "tools" ? "tool" : "unity"}
+        className={`flex min-h-0 min-w-0 flex-1 ${
+          mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
+        }`}
+      >
+        <WorkspaceHostProvider host={mode === "tools" ? "tools" : "unity"} menuClearance>
+          <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
+            {mode === "tools" && workspaceView ? (
+              <FullBleedTool view={workspaceView} />
+            ) : navigation.pending ? (
+              <WorkspaceRouteLoading label="Loading Unity" />
+            ) : (
+              children
+            )}
+          </div>
+        </WorkspaceHostProvider>
+      </main>
+    </ShellRouteContent>
+  );
+
   return (
     <RequireAuth>
       <div className="app-shell-canvas flex h-svh flex-col overflow-hidden">
@@ -160,71 +259,34 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div inert={sidebarOpen || undefined} className="shell-body min-h-0 flex-1">
           <div
+            data-sidebar-collapsed={sessionsCollapsed || undefined}
             className="chat-workspace relative min-h-0 min-w-0 flex-1 p-3"
-            style={{ "--sidebar-offset": sessionsCollapsed ? "3.75rem" : "17.75rem" } as React.CSSProperties}
           >
             <aside
               aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
-              style={{ width: sessionsCollapsed ? "3rem" : "17rem" }}
               className={`sessions-aside absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 overflow-hidden ${mode === "tools" ? "xl:block" : "lg:block"} ${reduce ? "" : "transition-[width] duration-300 ease-[var(--neu-ease)]"}`}
             >
               <div className="h-full">
                 <LeftSidebar collapsed={sessionsCollapsed} onCollapse={collapseSessions} onExpand={expandSessions} />
               </div>
             </aside>
-            {settingsRoute ? (
-              <main
-                id="main-content"
-                data-pane="settings"
-                data-shell-mode={mode}
-                className={`flex min-h-0 min-w-0 flex-1 ${
-                  mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
-                }`}
-              >
-                <WorkspaceHostProvider host="settings" menuClearance>
-                  <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
-                    {children}
-                  </div>
-                </WorkspaceHostProvider>
-              </main>
-            ) : mode === "ai" ? (
-              <div className="chat-map-area flex min-h-0 min-w-0 flex-1">
-                <main
-                  id="main-content"
-                  data-pane="chat"
-                  className="sidebar-content-offset flex min-h-0 min-w-0 flex-1 lg:min-w-88"
-                  inert={sheetInert || undefined}
+            <div
+              data-shell-route-stage
+              aria-busy={navigation.pending}
+              className="shell-route-stage relative isolate flex min-h-0 min-w-0 flex-1"
+            >
+              {routeContent}
+              {navigation.pending ? (
+                <div
+                  data-shell-navigation-pending={navigation.target ?? ""}
+                  role="status"
+                  aria-label="Loading destination"
+                  className="shell-navigation-progress pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden"
                 >
-                  {children}
-                </main>
-                <AnswerSheet
-                  open={answerSheetOpen}
-                  onClose={() => {
-                    collapseRightPane();
-                    setAnswerSheetOpen(false);
-                    setUserDismissedPane(true);
-                  }}
-                  collapsed={rightPaneCollapsed}
-                  view={workspaceView}
-                >
-                  <AnswerCanvas view={workspaceView} />
-                </AnswerSheet>
-              </div>
-            ) : (
-              <main
-                id="main-content"
-                data-pane={mode === "tools" ? "tool" : "unity"}
-                className={`flex min-h-0 min-w-0 flex-1 ${
-                  mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
-                }`}
-              >
-                <WorkspaceHostProvider host={mode === "tools" ? "tools" : "unity"} menuClearance>
-                  <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
-                    {mode === "tools" && workspaceView ? <FullBleedTool view={workspaceView} /> : children}
-                  </div>
-                </WorkspaceHostProvider>
-              </main>
-            )}
+                  <span className="bg-primary block h-full origin-left rounded-full" />
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 

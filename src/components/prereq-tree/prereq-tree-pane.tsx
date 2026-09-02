@@ -797,7 +797,7 @@ export function PrereqTreePane({
                 edgesFocusable={false}
                 elementsSelectable
                 proOptions={{ hideAttribution: true }}
-                className={awaitingFit ? "opacity-0" : undefined}
+                className={awaitingFit ? "invisible" : "prereq-graph-ready"}
               >
                 <Background color="var(--border)" gap={16} />
                 <FitOnChange bbox={graph.bbox} rootBounds={rootBounds} fitKey={fitKey} onFitted={onFitted} />
@@ -858,7 +858,9 @@ export function PrereqTreePane({
               ))}
             </fieldset>
           </div>
-          {feedback}
+          <div data-prereq-feedback className="min-h-5 shrink-0">
+            {feedback}
+          </div>
           <div data-prereq-compact-view={compactView} className="min-h-0 flex-1">
             <WorkspaceCanvas overflow="hidden">
               <div className={compactView === "outline" ? "h-full @min-[40rem]:hidden" : "hidden"}>

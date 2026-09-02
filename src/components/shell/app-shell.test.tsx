@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider } from "@/src/components/chat/chat-shell-context";
 import { AppShell } from "@/src/components/shell/app-shell";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { ShellNavigationProvider } from "@/src/components/shell/shell-navigation";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -82,6 +83,18 @@ function ShellFixture() {
   );
 }
 
+function NavigatingShellFixture() {
+  return (
+    <ShellNavigationProvider>
+      <ChatShellProvider>
+        <AppShell>
+          <div data-testid="chat-children" />
+        </AppShell>
+      </ChatShellProvider>
+    </ShellNavigationProvider>
+  );
+}
+
 function renderShell(wide: boolean) {
   wideMatches = wide;
   return render(<ShellFixture />);
@@ -126,6 +139,30 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     view.rerender(<ShellFixture />);
     expect(view.queryByTestId("map-area")).toBeNull();
     expect(view.getByTestId("calendar-pane")).not.toBeNull();
+  });
+
+  it("replaces old chat with the intended tool before pathname commit", () => {
+    pathname.value = "/chat";
+    const { container, getByTestId, queryByTestId } = render(<NavigatingShellFixture />);
+
+    act(() => fireEvent.click(modeLink(container, "Tools")));
+
+    expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
+    expect(getByTestId("map-area")).not.toBeNull();
+    expect(queryByTestId("chat-children")).toBeNull();
+    expect(container.querySelector("[data-shell-navigation-pending='/tools/map']")).not.toBeNull();
+  });
+
+  it("uses destination-shaped loading instead of Pulse when entering AI", () => {
+    pathname.value = "/pulse";
+    const { container, queryByTestId } = render(<NavigatingShellFixture />);
+
+    act(() => fireEvent.click(modeLink(container, "AI")));
+
+    expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("chat");
+    expect(container.querySelector("[data-new-chat-loading]")).not.toBeNull();
+    expect(container.querySelector("[data-answer-canvas-loading]")).not.toBeNull();
+    expect(queryByTestId("chat-children")).toBeNull();
   });
 
   it("Tools mode renders no right pane collapse button", () => {

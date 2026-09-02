@@ -4,24 +4,23 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
-import { SidebarListItem, SidebarStaggerContext } from "@/src/components/shell/sidebar-list";
+import { SidebarListItem } from "@/src/components/shell/sidebar-list";
 import { Button } from "@/src/components/ui/button";
 import { RetryState } from "@/src/components/ui/feedback";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
-import { useReducedMotion } from "motion/react";
+import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "@/src/lib/sidebar";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
-const SIDEBAR_KEY = "reogent.sidebar.collapsed";
 const EXPANDED = "0";
 const COLLAPSED = "1";
 
 const sidebarListeners = new Set<() => void>();
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
-    if (e.key === SIDEBAR_KEY) {
+    if (e.key === SIDEBAR_COLLAPSED_STORAGE_KEY) {
       sidebarListeners.forEach((fn) => {
         fn();
       });
@@ -38,7 +37,7 @@ function subscribeSidebar(listener: () => void): () => void {
 
 function getSidebarSnapshot(): string {
   try {
-    return window.localStorage.getItem(SIDEBAR_KEY) ?? EXPANDED;
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) ?? EXPANDED;
   } catch {
     return EXPANDED;
   }
@@ -50,7 +49,8 @@ function getSidebarServerSnapshot(): string {
 
 function setSidebarCollapsed(next: boolean): void {
   try {
-    window.localStorage.setItem(SIDEBAR_KEY, next ? COLLAPSED : EXPANDED);
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, next ? COLLAPSED : EXPANDED);
+    document.documentElement.dataset.sidebarCollapsed = String(next);
   } catch {
     /* localStorage unavailable or over quota */
   }
@@ -304,17 +304,8 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
   // Pathname, not params: a locally-minted session exists only in the URL
   // (the router stays on /chat), so params would miss the highlight.
   const activeId = /^\/chat\/([^/]+)/.exec(pathname)?.[1];
-  const reduce = useReducedMotion();
-  const hasAnimated = useRef(false);
   const [renderLimit, setRenderLimit] = useState(100);
   const grouped = useMemo(() => groupSessions(sessions.slice(0, renderLimit)), [sessions, renderLimit]);
-
-  // Mark animated after first render with sessions (avoids render-time side effect)
-  useEffect(() => {
-    if (!sessionsLoading && !sessionsError && sessions.length > 0) {
-      hasAnimated.current = true;
-    }
-  }, [sessionsLoading, sessionsError, sessions]);
 
   function openSession(id: string) {
     setSidebarOpen(false);
@@ -372,68 +363,61 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
         aria-busy={sessionsLoading}
         className="bg-surface-container-low/60 min-h-0 flex-1 overflow-y-auto [overscroll-behavior-y:contain] rounded-xl p-2"
       >
-        <SidebarStaggerContext.Provider value={!hasAnimated.current && !reduce}>
-          {sessionsLoading && (
-            <div className="flex flex-col gap-2" role="status" aria-label="Loading sessions">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="bg-surface-container h-10 animate-pulse rounded-lg" />
-              ))}
-            </div>
-          )}
+        {sessionsLoading && (
+          <div className="flex flex-col gap-2" role="status" aria-label="Loading sessions">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="bg-surface-container h-10 animate-pulse rounded-lg" />
+            ))}
+          </div>
+        )}
 
-          {!sessionsLoading && sessionsError ? (
-            <RetryState
-              message="Couldn't load your conversations. Check your connection and try again."
-              onRetry={refreshSessions}
-              align="start"
-              compact
-              className="px-1 py-2"
-            />
-          ) : null}
+        {!sessionsLoading && sessionsError ? (
+          <RetryState
+            message="Couldn't load your conversations. Check your connection and try again."
+            onRetry={refreshSessions}
+            align="start"
+            compact
+            className="px-1 py-2"
+          />
+        ) : null}
 
-          {!sessionsLoading && !sessionsError && sessions.length === 0 && (
-            <p className="text-body-sm text-muted px-2 py-3">Your conversations will appear here.</p>
-          )}
+        {!sessionsLoading && !sessionsError && sessions.length === 0 && (
+          <p className="text-body-sm text-muted px-2 py-3">Your conversations will appear here.</p>
+        )}
 
-          {!sessionsLoading &&
-            !sessionsError &&
-            grouped.map(([group, items]) => {
-              const groupId = `session-group-${group.replace(/\s+/g, "-").toLowerCase()}`;
-              return (
-                <div key={group} className="pt-2 first:pt-0">
-                  <h3 id={groupId} className="text-muted px-2 pb-1.5 text-xs font-medium tracking-[0.05em] uppercase">
-                    {group}
-                  </h3>
-                  <ul aria-labelledby={groupId} className="flex flex-col gap-1">
-                    {items.map((session, i) => {
-                      const active = session.session_id === activeId;
-                      return (
-                        <SidebarListItem key={session.session_id} index={i}>
-                          <SessionItem
-                            session={session}
-                            active={active}
-                            onOpen={() => openSession(session.session_id)}
-                            onRename={(title) => renameSessionLocally(session.session_id, title)}
-                            onDelete={() => removeSessionLocally(session.session_id)}
-                          />
-                        </SidebarListItem>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
-          {!sessionsLoading && !sessionsError && sessions.length > renderLimit && (
-            <Button
-              variant="ghost"
-              size="compact"
-              onClick={() => setRenderLimit((n) => n + 100)}
-              className="mt-2 w-full"
-            >
-              Show more ({sessions.length - renderLimit} remaining)
-            </Button>
-          )}
-        </SidebarStaggerContext.Provider>
+        {!sessionsLoading &&
+          !sessionsError &&
+          grouped.map(([group, items]) => {
+            const groupId = `session-group-${group.replace(/\s+/g, "-").toLowerCase()}`;
+            return (
+              <div key={group} className="pt-2 first:pt-0">
+                <h3 id={groupId} className="text-muted px-2 pb-1.5 text-xs font-medium tracking-[0.05em] uppercase">
+                  {group}
+                </h3>
+                <ul aria-labelledby={groupId} className="flex flex-col gap-1">
+                  {items.map((session, i) => {
+                    const active = session.session_id === activeId;
+                    return (
+                      <SidebarListItem key={session.session_id} index={i}>
+                        <SessionItem
+                          session={session}
+                          active={active}
+                          onOpen={() => openSession(session.session_id)}
+                          onRename={(title) => renameSessionLocally(session.session_id, title)}
+                          onDelete={() => removeSessionLocally(session.session_id)}
+                        />
+                      </SidebarListItem>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+        {!sessionsLoading && !sessionsError && sessions.length > renderLimit && (
+          <Button variant="ghost" size="compact" onClick={() => setRenderLimit((n) => n + 100)} className="mt-2 w-full">
+            Show more ({sessions.length - renderLimit} remaining)
+          </Button>
+        )}
       </nav>
       <output className="sr-only" aria-live="polite">
         {!sessionsLoading && sessions.length > 0 ? `${sessions.length} conversations` : ""}

@@ -115,7 +115,7 @@ export function AnswerSheet({
   }
 
   const hasView = view !== null;
-  const slotClass = `flex min-h-0 flex-col transition-[flex-grow,opacity,visibility,margin] duration-300 [transition-timing-function:var(--neu-ease)] sm:h-full ${
+  const slotClass = `flex min-h-0 flex-col max-sm:transition-[transform,opacity,visibility] max-sm:duration-300 max-sm:[transition-timing-function:var(--neu-ease)] sm:h-full ${
     collapsed || !hasView
       ? "sm:ml-0 sm:basis-0 sm:grow-0 sm:overflow-hidden sm:invisible sm:min-w-0 sm:pointer-events-none sm:opacity-0"
       : "sm:ml-3 sm:basis-0 sm:grow sm:overflow-hidden sm:visible sm:min-w-72 sm:opacity-100 lg:min-w-88"

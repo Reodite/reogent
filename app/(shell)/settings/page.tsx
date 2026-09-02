@@ -5,7 +5,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { Button } from "@/src/components/ui/button";
-import { LoadingStatus, RetryState } from "@/src/components/ui/feedback";
+import { RetryState } from "@/src/components/ui/feedback";
 import { Field, SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import {
   WorkspaceCanvas,
@@ -18,6 +18,27 @@ import type { StudentProfile } from "@/src/shared/profile";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 type ProfileStatus = "loading" | "load-error" | "idle" | "saving" | "saved" | "error";
+
+function ProfileFormLoading() {
+  return (
+    <div role="status" aria-label="Loading student profile" className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <span className="shell-skeleton h-3 w-16 rounded" />
+        <span className="shell-skeleton h-11 w-full rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {["year", "student-type"].map((field) => (
+          <div key={field} className="flex flex-col gap-1.5">
+            <span className="shell-skeleton h-3 w-20 rounded" />
+            <span className="shell-skeleton h-11 w-full rounded-lg" />
+          </div>
+        ))}
+      </div>
+      <span className="shell-skeleton h-12 w-36 rounded-xl" />
+      <span className="shell-skeleton h-3 w-4/5 rounded" />
+    </div>
+  );
+}
 
 /** Loads and saves the student defaults used by tuition and program answers. */
 export function ProfileForm() {
@@ -52,7 +73,7 @@ export function ProfileForm() {
     }
   }
 
-  if (status === "loading") return <LoadingStatus>Loading student profile…</LoadingStatus>;
+  if (status === "loading") return <ProfileFormLoading />;
   if (status === "load-error") {
     return (
       <RetryState
