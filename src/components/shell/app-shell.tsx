@@ -57,10 +57,12 @@ function useIsCanvasInline(): boolean {
 function ShellRouteContent({
   identity,
   pending,
+  animate,
   children,
 }: {
   identity: string;
   pending: boolean;
+  animate: boolean;
   children: ReactNode;
 }) {
   return (
@@ -69,7 +71,7 @@ function ShellRouteContent({
       data-shell-route-content={identity}
       data-navigation-pending={pending || undefined}
       inert={pending || undefined}
-      className="shell-route-content flex min-h-0 min-w-0 flex-1"
+      className={`shell-route-content flex min-h-0 min-w-0 flex-1 ${animate ? "shell-route-content-animate" : ""}`}
     >
       {children}
     </div>
@@ -136,9 +138,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigation = useShellNavigation();
   const pathname = navigation.displayPathname;
   const settingsRoute = pathname === "/settings";
+  const routeIdentity = `${mode}:${pathname}`;
+  const initialRouteIdentityRef = useRef(routeIdentity);
+  const [hasNavigated, setHasNavigated] = useState(false);
+  const animateRoute = hasNavigated || routeIdentity !== initialRouteIdentityRef.current;
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
   const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (routeIdentity !== initialRouteIdentityRef.current) setHasNavigated(true);
+  }, [routeIdentity]);
 
   useEffect(() => {
     if (canvasInline && answerSheetOpen) setAnswerSheetOpen(false);
@@ -166,9 +176,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const enteringAi = navigation.pending && mode === "ai" && shellModeForPath(navigation.committedPathname) !== "ai";
-  const routeIdentity = `${mode}:${pathname}`;
   const routeContent = settingsRoute ? (
-    <ShellRouteContent identity={routeIdentity} pending={navigation.pending}>
+    <ShellRouteContent identity={routeIdentity} pending={navigation.pending} animate={animateRoute}>
       <main
         id="main-content"
         data-pane="settings"
@@ -186,7 +195,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     </ShellRouteContent>
   ) : mode === "ai" ? (
     <div className="chat-map-area flex min-h-0 min-w-0 flex-1">
-      <ShellRouteContent identity={routeIdentity} pending={navigation.pending}>
+      <ShellRouteContent identity={routeIdentity} pending={navigation.pending} animate={animateRoute}>
         <main
           id="main-content"
           data-pane="chat"
@@ -210,7 +219,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </AnswerSheet>
     </div>
   ) : (
-    <ShellRouteContent identity={routeIdentity} pending={navigation.pending}>
+    <ShellRouteContent identity={routeIdentity} pending={navigation.pending} animate={animateRoute}>
       <main
         id="main-content"
         data-pane={mode === "tools" ? "tool" : "unity"}
@@ -281,7 +290,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   data-shell-navigation-pending={navigation.target ?? ""}
                   role="status"
                   aria-label="Loading destination"
-                  className="shell-navigation-progress pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 overflow-hidden"
+                  className="shell-navigation-progress pointer-events-none absolute inset-x-0 top-0 z-40 h-0.5 overflow-hidden"
                 >
                   <span className="bg-primary block h-full origin-left rounded-full" />
                 </div>

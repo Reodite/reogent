@@ -117,6 +117,9 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[data-testid="session-list"]')).not.toBeNull();
     expect(container.querySelector("[data-mode-toggle]")).not.toBeNull();
     expect(container.querySelector('[data-answer-sheet="closed"]')).not.toBeNull();
+    expect(container.querySelector("[data-shell-route-content]")?.className).not.toContain(
+      "shell-route-content-animate",
+    );
   });
 
   it("inline AI right pane starts collapsed and has no re-expand in topbar", () => {
@@ -151,6 +154,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(getByTestId("map-area")).not.toBeNull();
     expect(queryByTestId("chat-children")).toBeNull();
     expect(container.querySelector("[data-shell-navigation-pending='/tools/map']")).not.toBeNull();
+    expect(container.querySelector("[data-shell-route-content]")?.className).toContain("shell-route-content-animate");
   });
 
   it("uses destination-shaped loading instead of Pulse when entering AI", () => {
