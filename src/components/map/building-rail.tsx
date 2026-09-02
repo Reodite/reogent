@@ -37,7 +37,6 @@ export interface BuildingRailProps {
   onOriginQueryChange: (query: string) => void;
   onSelect: (building: BuildingSummary) => void;
   onBack: () => void;
-  onShowMap: () => void;
   onDirections: () => void;
   onRoute: (origin: BuildingSummary) => void;
   onRetryRoute: () => void;
@@ -111,29 +110,6 @@ function OfficialPhotoCard({ photo }: { photo: OfficialBuildingPhoto }) {
 
 export function BuildingDetailContent({ details }: { details: BuildingDetails }) {
   const { building } = details;
-  const physicalFacts = [
-    ["Primary use", building.usage],
-    ["Secondary use", building.secondaryUsage],
-    ["Building state", building.state],
-    ["Neighbourhood", building.neighbourhood],
-    ["Jurisdiction", building.jurisdiction],
-    ["Property type", building.propertyType],
-    ["Contains sub-buildings", building.hasSubbuildings == null ? null : building.hasSubbuildings ? "Yes" : "No"],
-    ["Floors", building.floors],
-    ["Height", building.heightMeters == null ? null : `${building.heightMeters.toLocaleString("en-CA")} m`],
-    [
-      "Gross area",
-      building.grossAreaSquareMeters == null ? null : `${building.grossAreaSquareMeters.toLocaleString("en-CA")} m²`,
-    ],
-    ["Form", building.form],
-    ["Condition", building.condition],
-    ["Construction status", building.constructionStatus],
-    ["Construction type", building.constructionType],
-    ["Occupied since", formatDate(building.occupancyDate)],
-    ["Green certification", building.greenStatus],
-    ["Managed by", building.managingOrganization],
-    ["Maintained by", building.maintenanceOrganization],
-  ].filter((entry): entry is [string, string | number] => entry[1] !== null && entry[1] !== "");
   const unavailable = Object.entries(details.sourceStatus).filter(([, source]) => source.state === "unavailable");
 
   return (
@@ -161,16 +137,6 @@ export function BuildingDetailContent({ details }: { details: BuildingDetails })
           </dl>
         </DetailSection>
       )}
-
-      {physicalFacts.length > 0 ? (
-        <DetailSection title="Building">
-          <dl className="divide-border-subtle divide-y">
-            {physicalFacts.map(([label, value]) => (
-              <Fact key={label} label={label} value={value} />
-            ))}
-          </dl>
-        </DetailSection>
-      ) : null}
 
       {details.rooms.length > 0 ? (
         <DetailSection title={`Rooms & spaces (${details.rooms.length})`}>
@@ -399,6 +365,7 @@ export function BuildingRail(props: BuildingRailProps) {
 
   function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") {
+      event.stopPropagation();
       setActiveIndex(0);
       if (props.mode === "directions") props.onOriginQueryChange("");
       else props.onQueryChange("");
@@ -464,10 +431,6 @@ export function BuildingRail(props: BuildingRailProps) {
                 Google Maps
               </Button>
             </div>
-            <Button variant="ghost" className="mt-2 w-full" onClick={props.onShowMap}>
-              <Icon name="map" size={15} />
-              Show on map
-            </Button>
             {props.favoriteStatus === "error" && props.authenticated ? (
               <p className="text-error mt-2 text-xs" role="alert">
                 Couldn't update saved buildings. Try the Save action again.
@@ -574,11 +537,6 @@ export function BuildingRail(props: BuildingRailProps) {
                         ? "Straight-line estimate; no walking path is drawn."
                         : "Campus walking network"}
                     </p>
-                    {props.route.status === "network" ? (
-                      <Button variant="primary" size="compact" onClick={props.onShowMap} className="mt-2">
-                        View route
-                      </Button>
-                    ) : null}
                   </div>
                 ) : null}
               </div>

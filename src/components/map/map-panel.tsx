@@ -18,10 +18,10 @@ import {
   popularBuildings,
 } from "@/src/lib/building-catalog";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
-import type { MapHighlight } from "@/src/lib/walking";
+import { drawableRoutePath, type MapHighlight } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 /** Primary label for a map highlight (title line). */
 function highlightTitle(h: MapHighlight): string {
@@ -116,6 +116,85 @@ function RouteInfoCard({ highlight }: { highlight: MapHighlight | null }) {
   );
 }
 
+function MapExploreSheet({
+  open,
+  mode,
+  selected,
+  route,
+  onOpenChange,
+  children,
+}: {
+  open: boolean;
+  mode: "discover" | "details" | "directions";
+  selected: BuildingSummary | null;
+  route: BuildingRouteState;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  const contentId = useId();
+  const handleRef = useRef<HTMLButtonElement>(null);
+  const routeReady = route.status === "network" || route.status === "estimate";
+  const title = routeReady
+    ? `${formatMinutes(route.route.minutes)} walk`
+    : mode === "details" && selected
+      ? selected.name
+      : mode === "directions"
+        ? "Directions"
+        : "Explore campus";
+  const subtitle = routeReady
+    ? `${route.from.code} → ${route.to.code} · ${formatMeters(route.route.meters)}`
+    : mode === "details"
+      ? "Building details"
+      : mode === "directions"
+        ? route.status === "loading"
+          ? "Finding a walking route…"
+          : "Choose a starting building"
+        : "Search buildings, rooms, and services";
+
+  return (
+    <fieldset
+      data-map-explore-sheet
+      data-sheet-open={open || undefined}
+      className="m-0 flex h-full min-h-0 min-w-0 flex-col border-0 p-0"
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !open || event.defaultPrevented) return;
+        event.preventDefault();
+        onOpenChange(false);
+        requestAnimationFrame(() => handleRef.current?.focus());
+      }}
+    >
+      <legend className="sr-only">Explore panel</legend>
+      <button
+        ref={handleRef}
+        type="button"
+        data-map-sheet-handle
+        aria-expanded={open}
+        aria-controls={contentId}
+        aria-label={open ? "Collapse Explore" : "Open Explore"}
+        onClick={() => onOpenChange(!open)}
+        className="focus-visible:ring-primary/40 relative min-h-16 w-full shrink-0 items-center gap-3 px-4 pt-3 pb-2 text-left focus-visible:ring-2 focus-visible:ring-inset"
+      >
+        <span className="bg-outline/35 absolute top-1.5 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full" aria-hidden />
+        <span className="bg-primary-container text-on-primary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
+          <Icon name={routeReady ? "walk" : mode === "details" ? "location" : "search"} size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="text-on-surface block truncate text-sm font-medium">{title}</span>
+          <span className="text-muted block truncate text-xs">{subtitle}</span>
+        </span>
+        <Icon
+          name="down"
+          size={16}
+          className={`text-on-surface-variant shrink-0 transition-transform duration-200 ${open ? "" : "rotate-180"}`}
+        />
+      </button>
+      <div id={contentId} data-map-sheet-content className="min-h-0 flex-1">
+        {children}
+      </div>
+    </fieldset>
+  );
+}
+
 function MapFallback({ highlight, onRetry }: { highlight: MapHighlight | null; onRetry?: () => void }) {
   if (!onRetry) return null;
   return (
@@ -135,7 +214,7 @@ function MapFallback({ highlight, onRetry }: { highlight: MapHighlight | null; o
 }
 
 interface MapSurfaceProps {
-  hideOverlayControls?: boolean;
+  hideHighlightCard?: boolean;
   highlight?: MapHighlight | null;
   selectedBuilding?: BuildingSummary | null;
   onBuildingSelect?: (building: BuildingSummary | null) => void;
@@ -144,7 +223,7 @@ interface MapSurfaceProps {
 }
 
 function MapSurface({
-  hideOverlayControls,
+  hideHighlightCard,
   highlight: highlightOverride,
   selectedBuilding,
   onBuildingSelect,
@@ -159,6 +238,22 @@ function MapSurface({
   const [mapKey, setMapKey] = useState(0);
   const internalControls = useRef<MapControls | null>(null);
   const controls = controlsRef ?? internalControls;
+  const surfaceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    if (!surface || typeof ResizeObserver === "undefined") return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => controls.current?.resize());
+    });
+    observer.observe(surface);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [controls]);
 
   // Timeout: if map stays loading for 15s, treat as error
   useEffect(() => {
@@ -173,7 +268,7 @@ function MapSurface({
   }
 
   return (
-    <div className="relative h-full w-full" aria-busy={status === "loading"} data-map-status={status}>
+    <div ref={surfaceRef} className="relative h-full w-full" aria-busy={status === "loading"} data-map-status={status}>
       {status === "error" ? (
         <MapFallback highlight={highlight} onRetry={retryMap} />
       ) : (
@@ -193,8 +288,8 @@ function MapSurface({
             <div className="bg-surface-container-low absolute inset-0 animate-pulse" aria-hidden="true" />
           )}
 
-          {/* Route info — floating top-left (hidden in mobile sheet where header shows it) */}
-          {!hideOverlayControls && (
+          {/* AI keeps a compact highlight summary; Tools uses its rail or bottom sheet. */}
+          {!hideHighlightCard && (
             <div className="absolute top-3 left-3 z-10 max-w-[75%]">
               <RouteInfoCard highlight={highlight} />
             </div>
@@ -212,7 +307,10 @@ function MapSurface({
           </div>
 
           {/* Zoom — floating bottom-right */}
-          <div className="neu-panel absolute right-3 bottom-6 z-10 flex flex-col overflow-hidden rounded-xl">
+          <div
+            data-map-zoom-controls
+            className="neu-panel absolute right-3 bottom-6 z-10 flex flex-col overflow-hidden rounded-xl"
+          >
             <button
               type="button"
               aria-label="Zoom in"
@@ -260,7 +358,7 @@ function CampusMapExplorer() {
   const [railMode, setRailMode] = useState<"discover" | "details" | "directions">(
     selectedCode ? "details" : "discover",
   );
-  const [view, setView] = useState<"main" | "rail">("main");
+  const [sheetOpen, setSheetOpen] = useState(Boolean(selectedCode));
   const [details, setDetails] = useState<BuildingDetailsState>({ status: "idle" });
   const [detailsNonce, setDetailsNonce] = useState(0);
   const [favoriteCodes, setFavoriteCodes] = useState<string[]>([]);
@@ -322,6 +420,7 @@ function CampusMapExplorer() {
       setRouteHighlight(null);
       setShareStatus("idle");
       selectedCodeRef.current = code;
+      if (code) setSheetOpen(true);
     }
     setSelectedCode(code);
     setRailMode(code ? "details" : "discover");
@@ -369,12 +468,6 @@ function CampusMapExplorer() {
 
   useEffect(() => () => routeController.current?.abort(), []);
 
-  useEffect(() => {
-    if (view !== "main") return;
-    const frame = requestAnimationFrame(() => controls.current?.resize());
-    return () => cancelAnimationFrame(frame);
-  }, [view]);
-
   const selectBuilding = useCallback((building: BuildingSummary | null) => {
     routeController.current?.abort();
     setRoute({ status: "idle" });
@@ -383,7 +476,7 @@ function CampusMapExplorer() {
     selectedCodeRef.current = building?.code ?? null;
     setSelectedCode(building?.code ?? null);
     setRailMode(building ? "details" : "discover");
-    if (building) setView("rail");
+    if (building) setSheetOpen(true);
     writeBuildingParam(building);
   }, []);
 
@@ -397,6 +490,12 @@ function CampusMapExplorer() {
       api
         .getRoute(origin.code, selected.code, controller.signal)
         .then((result) => {
+          if (controller.signal.aborted || routeController.current !== controller) return;
+          const path = drawableRoutePath(result);
+          if (result.method === "network" && !path) {
+            setRoute({ status: "error", from: origin, to: selected });
+            return;
+          }
           const status = result.method === "network" ? "network" : "estimate";
           setRoute({ status, from: origin, to: selected, route: result });
           setRouteHighlight({
@@ -406,12 +505,16 @@ function CampusMapExplorer() {
             meters: result.meters,
             minutes: result.minutes,
             method: result.method,
-            ...(result.method === "network" ? { path: result.polyline } : {}),
+            ...(path ? { path } : {}),
           });
-          if (status === "network") setView("main");
+          if (status === "network") setSheetOpen(false);
         })
         .catch((error) => {
-          if (!(error instanceof DOMException && error.name === "AbortError")) {
+          if (
+            routeController.current === controller &&
+            !controller.signal.aborted &&
+            !(error instanceof DOMException && error.name === "AbortError")
+          ) {
             setRoute({ status: "error", from: origin, to: selected });
           }
         });
@@ -518,9 +621,9 @@ function CampusMapExplorer() {
             selectBuilding(null);
           }
         }}
-        onShowMap={() => setView("main")}
         onDirections={() => {
           setRailMode("directions");
+          setSheetOpen(true);
           setOriginQuery("");
           setRoute({ status: "idle" });
           setRouteHighlight(null);
@@ -544,26 +647,39 @@ function CampusMapExplorer() {
     );
 
   return (
-    <WorkspacePage
-      composition="split"
-      title="Campus map"
-      description="Find buildings, inspect rooms and services, and plan a campus walk."
-      rail={rail}
-      view={view}
-      onViewChange={setView}
-      mainLabel="Map"
-      railLabel="Explore"
-    >
-      <WorkspaceCanvas overflow="hidden">
-        <MapSurface
-          highlight={mapHighlight}
-          selectedBuilding={selected}
-          onBuildingSelect={selectBuilding}
-          showBuildingPopup={false}
-          controlsRef={controls}
-        />
-      </WorkspaceCanvas>
-    </WorkspacePage>
+    <div data-map-explorer className="h-full min-h-0">
+      <WorkspacePage
+        composition="split"
+        title="Campus map"
+        description="Find buildings, inspect rooms and services, and plan a campus walk."
+        rail={
+          <MapExploreSheet
+            open={sheetOpen}
+            mode={selected ? railMode : "discover"}
+            selected={selected}
+            route={route}
+            onOpenChange={setSheetOpen}
+          >
+            {rail}
+          </MapExploreSheet>
+        }
+        view={sheetOpen ? "rail" : "main"}
+        onViewChange={(next) => setSheetOpen(next === "rail")}
+        mainLabel="Map"
+        railLabel="Explore"
+      >
+        <WorkspaceCanvas overflow="hidden">
+          <MapSurface
+            hideHighlightCard
+            highlight={mapHighlight}
+            selectedBuilding={selected}
+            onBuildingSelect={selectBuilding}
+            showBuildingPopup={false}
+            controlsRef={controls}
+          />
+        </WorkspaceCanvas>
+      </WorkspacePage>
+    </div>
   );
 }
 

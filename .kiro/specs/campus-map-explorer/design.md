@@ -2,7 +2,7 @@
 
 ## Overview
 
-Campus Map Explorer turns the Tools version of Campus Map into a two-region building discovery workspace. A fixed 20rem Building Rail supports search, a curated eight-building starting list, account favorites, selected-building details, actions, room and service data, and an origin picker for directions. The existing inset map remains the main canvas. At compact workspace widths, the shared Map and Explore switch keeps both regions mounted; Map opens first, and selecting a footprint reveals the corresponding Explore details.
+Campus Map Explorer turns the Tools version of Campus Map into a two-region building discovery workspace. A fixed 20rem Building Rail supports search, a curated eight-building starting list, account favorites, selected-building details, actions, room and service data, and an origin picker for directions. The existing inset map remains the main canvas. At compact workspace widths, the map stays visible while the same Explore rail becomes a non-modal bottom sheet; selecting a footprint expands its details without remounting WebGL.
 
 AI mode continues to render the map without the Tools rail. Existing building, route, places, and parking widgets remain backward compatible. Three additive widget types expose comprehensive building details, verified entrances, and building spaces from an exact code already resolved by the agent. Response widgets drive map highlight state and entrance visibility without mounting Tools-only controls.
 
@@ -63,14 +63,14 @@ This keeps one map renderer and one layer pipeline. Tools controls live outside 
 4. `BuildingRail` renders base identity immediately and fills source sections as the record resolves. Source-status metadata distinguishes empty sections from unavailable sections.
 5. Favorite state loads only for authenticated users. Save and remove use one idempotent endpoint and roll back optimistic UI on failure.
 6. Entrance GeoJSON loads through the public map API. Pure entrance geometry helpers project verified entrance points to nearby footprint edges. `CampusMap` renders resulting ground arrows and door outlines only for a selected building or at zoom level 16 and above.
-7. In-app directions retain the selected building as destination, collect an origin from the same local catalog, and send official codes to the existing route API. Network results draw the pedestrian polyline; estimate results show labeled distance text without drawing a straight route line.
+7. In-app directions retain the selected building as destination, collect an origin from the same local catalog, and send official codes to the existing route API. Valid network results draw the complete pedestrian polyline immediately with a contrasting casing and navigation-blue trace; estimate results show labeled distance text without drawing a straight route line.
 8. AI `show_widget` results map into the same `MapHighlight` union. The existing `building` contract keeps its input and result shape; `building_detail`, `building_entrances`, and `building_spaces` accept one exact resolved building code. Building entrances set an entrance-display flag; building spaces highlight the building while the Chat card carries room details.
 
 ## Components and Interfaces
 
 ### Component 1: CampusMapExplorer
 
-**Purpose**: Own the Tools-only split workspace and synchronize rail, map, URL, compact view, catalog, details, route, and favorites state.
+**Purpose**: Own the Tools-only split workspace and synchronize rail, map, URL, compact sheet, catalog, details, route, and favorites state.
 
 **Interface**:
 
@@ -83,13 +83,13 @@ interface CampusMapExplorerProps {
 
 **Responsibilities**:
 
-- Render `WorkspacePage` with `mainLabel="Map"` and `railLabel="Explore"`.
-- Preserve both regions while compact view changes.
+- Render `WorkspacePage` with one map-specific wrapper that changes only the compact presentation.
+- Preserve both regions while the compact Explore sheet expands and collapses.
 - Parse and write the `building` search parameter without remounting the map.
 - Store the prior query and rail scroll position when details open.
 - Abort stale detail requests and keep base building identity visible during loading.
 - Coordinate selected building, favorite state, directions state, and map focus.
-- Switch compact users to Explore after a footprint click, expose a Show on map action from rail details, and switch back to Map after a network route succeeds.
+- Expand compact Explore after a footprint click, collapse it to a route-summary handle after a valid network route succeeds, and keep malformed or estimated routes in the sheet.
 
 ### Component 2: BuildingRail
 
@@ -115,7 +115,6 @@ interface BuildingRailProps {
   onQueryChange(query: string): void;
   onSelect(building: BuildingSummary): void;
   onBack(): void;
-  onShowMap(): void;
   onDirections(): void;
   onRoute(origin: BuildingSummary): void;
   onRetryRoute(): void;
@@ -131,8 +130,8 @@ interface BuildingRailProps {
 - Keep one fixed search field in discovery and origin modes.
 - Render Saved before Curated popular buildings when favorites exist.
 - Use listbox keyboard semantics for search results.
-- Render every non-empty presentation field through explicit detail sections.
-- Provide labeled Directions, Share, Save, Open in Google Maps, and Show on map actions.
+- Render task-relevant non-empty fields through explicit detail sections and omit physical property, construction, condition, occupancy, and management metadata.
+- Provide labeled Directions, Share, Save, and Open in Google Maps actions.
 - Identify curated popularity, spatial POI joins, room snapshot freshness, and source failures.
 - Omit empty sections rather than rendering placeholder cards.
 
@@ -187,7 +186,7 @@ interface CampusMapProps {
 - Render valid entrance markers for selected buildings and at high zoom.
 - Preserve the existing basemap, route, labels, camera cache, map status, and reduced-motion behavior.
 - Keep map footprint clicks as the only building selection gesture.
-- Expose `resize()` through `MapControls` and call `map.resize()` after a hidden compact Map region becomes visible.
+- Expose `resize()` through `MapControls` and call it from a `ResizeObserver` when the mounted map surface changes size.
 
 ### Component 5: Building catalog helpers
 
@@ -609,8 +608,8 @@ For all route responses, the map layer projection emits a drawable route path ex
 
 - Test catalog projection, search ranking, duplicate removal, popular-code validation, compact search keyboard behavior, and query preservation.
 - Test Building Rail discovery, details, directions, guest Save, partial source, stale snapshot, broken photo, and retry states with representative records.
-- Test `CampusMapExplorer` selection from both rail and map, compact-region switching, map resize after reveal, deep-link restoration, stale-request cancellation, and focus restoration.
-- Test detail projection against every field in `BuildingDetails` so newly added fields require an explicit presentation decision.
+- Test `CampusMapExplorer` selection from both rail and map, compact-sheet expansion and collapse, map resize, deep-link restoration, stale-request cancellation, and focus restoration.
+- Test detail projection against every field in `BuildingDetails` so newly added fields require an explicit include-or-omit decision.
 - Test public API sanitizers, provenance and freshness states, photo allowlist, and unknown-code responses.
 - Test FavoriteService save/remove idempotence and user isolation against a database test pool.
 - Test `CampusMap` layer descriptors independently from WebGL by extracting entrance-layer data builders.
@@ -639,7 +638,7 @@ Pure catalog, URL, detail-projection, entrance-geometry, widget-mapping, and fav
 - Compute entrance marker geometry once per building/entrance collection pair and index markers by building code.
 - Render entrance layers only for the selected building or at zoom level 16 and above.
 - Fetch rich Building Record data only after selection and abort stale requests.
-- Keep Map and Explore regions mounted across compact switching so WebGL does not reinitialize.
+- Keep the map and Explore rail mounted while the compact sheet expands and collapses so WebGL does not reinitialize.
 - Preserve current dynamic map-library imports and avoid adding a package.
 
 ## Security Considerations

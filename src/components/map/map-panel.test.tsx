@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
-import { ChatShellProvider } from "@/src/components/chat/chat-shell-context";
+import { ChatShellProvider, useChatShell } from "@/src/components/chat/chat-shell-context";
 import type { BuildingSummary } from "@/src/lib/api-types";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const resize = vi.hoisted(() => vi.fn());
@@ -151,17 +151,53 @@ function renderMap(mode: "tools" | "ai" = "tools") {
   );
 }
 
+function AiRouteMap() {
+  const { setWorkspaceView } = useChatShell();
+  useEffect(() => {
+    setWorkspaceView({
+      paneId: "map",
+      state: {
+        highlight: {
+          kind: "route",
+          from: "CHEM",
+          to: "IBLC",
+          meters: 900,
+          minutes: 12,
+          method: "network",
+          path: [[-123.256, 49.263], iblc.centroid],
+        },
+      },
+    });
+  }, [setWorkspaceView]);
+  return <MapArea />;
+}
+
 describe("MapArea", () => {
   it("renders the search rail only in Tools", async () => {
     const tools = renderMap("tools");
     await screen.findByText(iblc.name);
     expect(tools.container.querySelector("[data-workspace-composition='split']")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Open Explore" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Search buildings" })).toBeTruthy();
     cleanup();
 
     const ai = renderMap("ai");
     expect(ai.container.querySelector("[data-workspace-composition='split']")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Explore" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Search buildings" })).toBeNull();
+  });
+
+  it("keeps the floating route summary in AI only", async () => {
+    navigation.pathname = "/chat";
+    render(
+      <ChatShellProvider initialMode="ai">
+        <AiRouteMap />
+      </ChatShellProvider>,
+    );
+
+    expect(await screen.findByText("12 min")).toBeTruthy();
+    expect(screen.getByText("Walking route · 900 m · CHEM → IBLC")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Open Explore" })).toBeNull();
   });
 
   it("moves a map selection into Tools building details without a duplicate popup", async () => {
@@ -171,6 +207,7 @@ describe("MapArea", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select IBLC on map" }));
 
     expect(await screen.findByRole("heading", { name: iblc.name })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Collapse Explore" }).getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByTestId("campus-map").dataset.selected).toBe("IBLC");
     expect(screen.getByTestId("campus-map").dataset.popup).toBe("false");
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("rail");
@@ -204,13 +241,18 @@ describe("MapArea", () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("building=IBLC")));
   });
 
-  it("resizes the still-mounted map after compact view switching", async () => {
+  it("keeps the map mounted while the Explore sheet expands and collapses", async () => {
     renderMap();
     await screen.findByText(iblc.name);
-    fireEvent.click(screen.getByRole("button", { name: "Explore" }));
-    fireEvent.click(screen.getByRole("button", { name: "Map" }));
+    const map = screen.getByTestId("campus-map");
 
-    await waitFor(() => expect(resize).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "Open Explore" }));
+    const collapse = screen.getByRole("button", { name: "Collapse Explore" });
+    expect(collapse.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.keyDown(collapse, { key: "Escape" });
+
+    expect(screen.getByRole("button", { name: "Open Explore" }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByTestId("campus-map")).toBe(map);
   });
 
   it("restores a selected building from the URL", async () => {
@@ -219,6 +261,29 @@ describe("MapArea", () => {
 
     expect(await screen.findByRole("heading", { name: iblc.name })).toBeTruthy();
     expect(screen.getByTestId("campus-map").dataset.selected).toBe("IBLC");
+  });
+
+  it("keeps Explore open when a network response has no drawable route", async () => {
+    navigation.params = new URLSearchParams("building=IBLC");
+    api.getRoute.mockResolvedValueOnce({
+      from: "IBLC",
+      to: "IBLC",
+      meters: 0,
+      minutes: 0,
+      method: "network",
+      polyline: [],
+    });
+    renderMap();
+    await screen.findByRole("heading", { name: iblc.name });
+    fireEvent.click(screen.getByRole("button", { name: "Directions" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Starting building" }), {
+      target: { value: "IBLC" },
+    });
+    fireEvent.click(await screen.findByRole("option"));
+
+    expect(await screen.findByText("Couldn't calculate this route.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Collapse Explore" })).toBeTruthy();
+    expect(screen.getByTestId("campus-map").dataset.highlight).toBe("buildings");
   });
 
   it("clears a displayed route when browser history clears the selected building", async () => {
@@ -232,6 +297,8 @@ describe("MapArea", () => {
     });
     fireEvent.click(await screen.findByRole("option"));
     await waitFor(() => expect(screen.getByTestId("campus-map").dataset.highlight).toBe("route"));
+    expect(screen.getByRole("button", { name: "Open Explore" }).textContent).toContain("1 min walk");
+    expect(screen.queryByText("Walking route · 0 m · IBLC → IBLC")).toBeNull();
 
     navigation.params = new URLSearchParams();
     view.rerender(

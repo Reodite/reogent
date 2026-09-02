@@ -6,8 +6,8 @@
 // NAME / BLDG_CODE; walking routes are an optional context layer.
 //
 // Agent tool calls drive the highlight: a walking_distance call traces the
-// actual pedestrian-network polyline (from /api/route) with a draw-on
-// animation, and a find_building call highlights the footprint and flies to it.
+// actual pedestrian-network polyline from /api/route, and a find_building call
+// highlights the footprint and flies to it.
 //
 // maplibre + deck are imported dynamically inside the init effect so the ~1 MB
 // of map code stays out of the initial bundle (and out of SSR).
@@ -131,9 +131,9 @@ const STYLE_URLS: Record<ResolvedTheme, string> = {
 type Rgba = [number, number, number, number];
 
 // ---- Map color system ----
-// Derived from DESIGN.md tokens. Buildings are the same neumorphic "raised surface"
-// material; highlights use primary indigo; routes use secondary verdant; the basemap
-// blends seamlessly with --background.
+// Derived from DESIGN.md tokens. Buildings use the neumorphic raised-surface
+// material; highlights use primary indigo; routes use familiar navigation blue
+// with a contrasting casing; the basemap blends with --background.
 
 const MAP_COLORS: Record<
   ResolvedTheme,
@@ -159,9 +159,9 @@ const MAP_COLORS: Record<
     // Highlighted: primary muted indigo #4a4e7a
     fillHighlight: [74, 78, 122, 220],
     lineHighlight: [26, 29, 58, 255],
-    // Route: primary #4a4e7a
-    route: [74, 78, 122, 235],
-    routeCasing: [250, 250, 250, 190],
+    // Navigation route: Google Maps blue with a light casing.
+    route: [66, 133, 244, 255],
+    routeCasing: [250, 250, 250, 235],
     // Labels: on-surface-variant for legibility without heaviness
     label: [62, 67, 72, 255],
     labelBg: [250, 250, 250, 255],
@@ -177,9 +177,9 @@ const MAP_COLORS: Record<
     // Highlighted: dark-mode primary #b0b4d8
     fillHighlight: [176, 180, 216, 220],
     lineHighlight: [208, 210, 235, 255],
-    // Route: dark-mode primary #b0b4d8
-    route: [176, 180, 216, 220],
-    routeCasing: [18, 18, 20, 190],
+    // Navigation route: lighter blue with a dark casing.
+    route: [138, 180, 248, 255],
+    routeCasing: [18, 18, 20, 235],
     // Labels: on-surface-variant (dark) for clarity
     label: [194, 199, 204, 255],
     labelBg: [14, 14, 16, 255],
@@ -189,8 +189,6 @@ const MAP_COLORS: Record<
     door: [18, 18, 20, 255],
   },
 };
-
-const ROUTE_DRAW_MS = 2500;
 
 // Basemap layer overrides: makes CARTO tiles seamless with the app shell.
 // Positron (light) gets matched to --background; Dark Matter loses its black.
@@ -280,22 +278,6 @@ function resolveRoute(buildings: FeatureCollection | null, highlight: MapHighlig
   return { from, to, fromCenter, toCenter };
 }
 
-/** The first `t` (0..1) of the path, vertex-paced with the tip interpolated —
- *  drives the draw-on animation without TripsLayer. */
-function partialPath(path: LngLat[], t: number): LngLat[] {
-  if (t >= 1 || path.length < 2) return path;
-  const progress = (path.length - 1) * Math.max(0, t);
-  const i = Math.floor(progress);
-  const frac = progress - i;
-  const out = path.slice(0, i + 1);
-  if (frac > 0 && i + 1 < path.length) {
-    const [x0, y0] = path[i];
-    const [x1, y1] = path[i + 1];
-    out.push([x0 + (x1 - x0) * frac, y0 + (y1 - y0) * frac]);
-  }
-  return out;
-}
-
 export function CampusMap({
   highlight,
   focusNonce,
@@ -360,7 +342,6 @@ export function CampusMap({
   }, [controlledSelected, selected]);
   /** Pedestrian-network polyline for the current route highlight. */
   const [routePath, setRoutePath] = useState<{ key: string; path: LngLat[] } | null>(null);
-  const [drawProgress, setDrawProgress] = useState(1);
   /** First basemap label layer — deck layers insert before it so labels stay on top. */
   const [labelLayerId, setLabelLayerId] = useState<string | null>(null);
 
@@ -728,6 +709,7 @@ export function CampusMap({
     setRoutePath(null);
     if (highlight?.kind !== "route") return;
     const key = `${highlight.from}|${highlight.to}`;
+    if (highlight.method === "estimate") return;
     if (highlight.method === "network" && highlight.path) {
       const path = drawableRoutePath({
         from: highlight.from,
@@ -750,32 +732,6 @@ export function CampusMap({
       .catch(() => {});
     return () => controller.abort();
   }, [api, highlight]);
-
-  // ---- Draw-on animation for the route trace ----
-  useEffect(() => {
-    if (!routePath) return;
-    if (prefersReducedMotion()) {
-      setDrawProgress(1);
-      return;
-    }
-    setDrawProgress(0);
-    let frame = 0;
-    let start: number | undefined;
-    let frameCount = 0;
-    const tick = (now: number) => {
-      start ??= now;
-      const raw = Math.min(1, (now - start) / ROUTE_DRAW_MS);
-      const t = 1 - (1 - raw) ** 3; // ease-out cubic
-      // Throttle state updates to every 3rd frame to reduce layer rebuilds
-      frameCount++;
-      if (frameCount % 3 === 0 || raw >= 1) {
-        setDrawProgress(t);
-      }
-      if (raw < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [routePath]);
 
   const entranceMarkers = useMemo(
     () => (buildings && entrances ? buildEntranceMarkers(buildings, entrances) : []),
@@ -924,15 +880,30 @@ export function CampusMap({
       routePath
         ? new PathLayer(
             withBeforeId({
+              id: "route-casing",
+              data: [{ path: routePath.path }],
+              getPath: (d: { path: LngLat[] }) => d.path,
+              getColor: colors.routeCasing,
+              getWidth: 9,
+              widthUnits: "pixels" as const,
+              capRounded: true,
+              jointRounded: true,
+              updateTriggers: { getPath: [routePath.key] },
+            }),
+          )
+        : null,
+      routePath
+        ? new PathLayer(
+            withBeforeId({
               id: "route-trace",
-              data: [{ path: partialPath(routePath.path, drawProgress) }],
+              data: [{ path: routePath.path }],
               getPath: (d: { path: LngLat[] }) => d.path,
               getColor: colors.route,
               getWidth: 5,
               widthUnits: "pixels" as const,
               capRounded: true,
               jointRounded: true,
-              updateTriggers: { getPath: [routePath.key, drawProgress] },
+              updateTriggers: { getPath: [routePath.key] },
             }),
           )
         : null,
@@ -1054,7 +1025,6 @@ export function CampusMap({
     theme,
     status,
     routePath,
-    drawProgress,
     selected,
     labelLayerId,
     entranceMarkers,
@@ -1093,7 +1063,7 @@ export function CampusMap({
     };
   }, [theme, status]);
 
-  // ---- Camera: focus the highlight (re-runs on "Show on map" bumps) ----
+  // ---- Camera: focus the highlight when its selection or nonce changes ----
   useEffect(() => {
     void focusNonce;
     const handles = handlesRef.current;

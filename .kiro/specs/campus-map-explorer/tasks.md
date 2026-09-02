@@ -77,16 +77,16 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Use the existing input, button, feedback, and chip primitives; keep compact targets at least 44 by 44 pixels.
     - Add component tests for initial popular state, favorites ordering, ranking, keyboard selection, query restoration, guest Save, and route-origin state.
     - _Requirements: 2.1–2.8, 3.5, 6.1–6.5, 7.4, 7.6, 10.2, 10.6–10.7_
-  - [x] 5.2 Implement comprehensive building detail content and actions
-    - Render every displayable building field once under identity, address, physical building, services, rooms and spaces, entrances, and sources.
+  - [x] 5.2 Implement focused building detail content and actions
+    - Render task-relevant identity, address, service, room, entrance, and source fields while explicitly omitting physical property and management metadata.
     - Add source-aware photo, room booking, dated availability, partial retry, honest empty, and broken-image states.
     - Add labeled Directions, Share, Save, Open in Google Maps, and Show on map actions with optimistic favorite rollback and accessible status announcements.
     - Add component tests for full, sparse, stale, partial-error, photo-failure, share fallback, Google URL, favorite rollback, and room booking states.
     - _Requirements: 4.1–4.8, 5.1–5.9, 6.1–6.10, 7.1–7.7, 11.3–11.6, 12.4–12.8_
   - [x] 5.3 Compose CampusMapExplorer in MapArea
     - Render `WorkspacePage` split only in Tools and keep AI on the existing map-only surface.
-    - Synchronize rail selection, map clicks, compact Map/Explore view, URL search parameter, catalog/detail request generations, favorites, share, and routes.
-    - Keep both compact regions mounted; switch footprint selections to Explore and successful network routes to Map.
+    - Synchronize rail selection, map clicks, the compact Explore bottom sheet, URL search parameter, catalog/detail request generations, favorites, share, and routes.
+    - Keep both compact regions mounted; expand footprint details and collapse valid network routes to a summary handle over the main map.
     - Remove the duplicate Tools popup while retaining the AI popup.
     - Add host integration tests for Tools-only rail, AI map-only rendering, deep-link reload, Back, rapid selection, stale response rejection, compact resize, and focus.
     - _Requirements: 1.1–1.4, 3.1–3.8, 10.1–10.10, 11.1–11.8_
@@ -111,7 +111,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Verify allowlisted fields, links, photos, finite coordinates, bounded result counts, and source labels at each API and UI boundary.
     - _Requirements: 7.6, 11.2, 12.1–12.8_
   - [x] 7.2 Complete responsive and accessibility coverage
-    - Verify wide 20rem rail geometry and compact Map/Explore switching without WebGL remount, page overflow, stale detail, or lost focus.
+    - Verify wide 20rem rail geometry and compact Explore-sheet behavior without WebGL remount, page overflow, stale detail, or lost focus.
     - Verify headings, listbox semantics, statuses, text alternatives, keyboard map access, 44px compact targets, and zero-duration reduced motion.
     - Add layout and accessibility regression tests for required viewports and both themes.
     - _Requirements: 10.1–10.10, 11.1–11.8_

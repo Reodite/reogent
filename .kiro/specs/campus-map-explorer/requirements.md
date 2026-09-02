@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Campus Map Explorer expands the Tools version of Campus Map into a search-and-inspection workspace while preserving the AI Answer Canvas as a map-only surface. Students can discover common buildings, search the complete building catalog, inspect all trustworthy building-associated data, save buildings to an account, share deep links, and start walking directions. The same data contracts support richer agent-callable map widgets without placing the Tools rail inside AI mode.
+The Campus Map Explorer expands the Tools version of Campus Map into a search-and-inspection workspace while preserving the AI Answer Canvas as a map-only surface. Students can discover common buildings, search the complete building catalog, inspect task-relevant building destinations and sources, save buildings to an account, share deep links, and start walking directions. The same data contracts support richer agent-callable map widgets without placing the Tools rail inside AI mode.
 
 The feature uses repository-backed UBC Vancouver data. The interface identifies source freshness, omits information with undocumented meaning, and renders entrance graphics only from verified entrance coordinates joined to a known building. Product-curated popular buildings do not represent measured foot traffic or occupancy.
 
@@ -18,7 +18,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 - **Search_Result**: A Building_Catalog entry returned from a Building_Rail query.
 - **Building_Record**: The merged, public-safe record for one building and directly associated addresses, entrances, rooms, bookable spaces, and points of interest.
 - **Building_Detail_Service**: The service that validates a building code and assembles one Building_Record from public data sources.
-- **Displayable_Building_Field**: A non-empty Building_Record field with documented user-facing meaning and Source_Provenance.
+- **Displayable_Building_Field**: A non-empty, task-relevant Building_Record field selected for the rail with documented user-facing meaning and Source_Provenance.
 - **Source_Provenance**: The source name and freshness information attached to derived or time-sensitive building data.
 - **Popular_Building_Set**: A product-curated set of eight Building_Catalog entries; the set does not claim measured popularity.
 - **Selected_Building**: The building currently highlighted on the Map_Canvas and represented in the Building_Rail or an AI map widget.
@@ -84,15 +84,15 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 7. IF a shared building URL contains an unknown code, THEN THE Campus_Map_Explorer SHALL display the discovery state and identify the unmatched code without hiding the Map_Canvas.
 8. WHEN building selections overlap in time, THE Campus_Map_Explorer SHALL display details from the latest selection and discard earlier detail responses.
 
-### Requirement 4: Complete and trustworthy building details
+### Requirement 4: Focused and trustworthy building details
 
-**User Story:** As a student, I want one complete building record, so that I do not need to search separate UBC systems for basic building, room, and service information.
+**User Story:** As a student, I want one useful building record, so that I can find the destination, rooms, services, entrances, and source information without scanning property-management data.
 
 #### Acceptance Criteria
 
-1. WHEN a Building_Record loads, THE Building_Rail SHALL display every Displayable_Building_Field from the Building_Record.
-2. THE Building_Rail SHALL group Displayable_Building_Field values under identity, address, physical building, services, rooms and spaces, entrances, and source sections.
-3. THE Building_Rail SHALL display the official code, official name, short name, primary address, postal code, building usage, operational state, jurisdiction, property type, sub-building status, height, and floor count when the Building_Record supplies each field.
+1. WHEN a Building_Record loads, THE Building_Rail SHALL display task-relevant Displayable_Building_Field values and omit physical property, construction, condition, occupancy, and management metadata.
+2. THE Building_Rail SHALL group Displayable_Building_Field values under identity, address, services, rooms and spaces, entrances, and source sections.
+3. THE Building_Rail SHALL display the official code, official name, short name, primary address, and postal code when the Building_Record supplies each field.
 4. THE Building_Rail SHALL display directly joined points of interest with service type, hours, contact, official URL, and location when the Building_Record supplies each field.
 5. THE Building_Rail SHALL display Source_Provenance for derived joins and time-sensitive data.
 6. IF a source section contains no Displayable_Building_Field, THEN THE Building_Rail SHALL omit the empty section.
@@ -122,7 +122,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 #### Acceptance Criteria
 
 1. WHEN a user activates Directions, THE Building_Rail SHALL keep the Selected_Building as the destination and request an origin building.
-2. WHEN a user selects a valid origin building and the routing method is network, THE Map_Canvas SHALL display the in-app pedestrian route, distance in metres, and estimated walking time in minutes.
+2. WHEN a user selects a valid origin building and the routing method is network, THE Map_Canvas SHALL immediately display the complete in-app pedestrian route as a cased navigation-blue line, and THE Building_Rail or compact sheet handle SHALL display distance and estimated walking time without another View route action.
 3. IF the routing method is estimate, THEN THE Building_Rail SHALL identify the result as a straight-line distance estimate.
 4. IF the routing method is estimate, THEN THE Map_Canvas SHALL omit a route line.
 5. IF route calculation fails, THEN THE Building_Rail SHALL preserve the origin and destination and display a route retry action.
@@ -188,9 +188,9 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 #### Acceptance Criteria
 
 1. WHILE Wide_Map_Layout is active, THE Campus_Map_Explorer SHALL render a 20rem Building_Rail beside the Map_Canvas.
-2. WHILE Compact_Map_Layout is active, THE Campus_Map_Explorer SHALL provide Map and Explore controls with a minimum 44 by 44 pixel target.
-3. WHILE Compact_Map_Layout is active, THE Campus_Map_Explorer SHALL keep Map_Canvas state and Building_Rail state mounted when switching visible regions.
-4. WHEN a user selects a building footprint in Compact_Map_Layout, THE Campus_Map_Explorer SHALL show the Explore region with the Selected_Building details.
+2. WHILE Compact_Map_Layout is active, THE Campus_Map_Explorer SHALL keep the Map_Canvas as the main region and expose the Building_Rail through a non-modal Explore bottom-sheet handle with a minimum 44 by 44 pixel target.
+3. WHILE Compact_Map_Layout is active, THE Campus_Map_Explorer SHALL keep Map_Canvas state and Building_Rail state mounted while the Explore sheet expands and collapses.
+4. WHEN a user selects a building footprint in Compact_Map_Layout, THE Campus_Map_Explorer SHALL expand the Explore bottom sheet with the Selected_Building details.
 5. THE Campus_Map_Explorer SHALL expose one level-one page heading.
 6. THE Building_Rail SHALL use descending section heading levels below the Campus_Map_Explorer heading.
 7. THE Building_Rail SHALL expose search results, selected state, favorite state, loading state, and errors to assistive technology.

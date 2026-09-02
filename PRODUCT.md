@@ -104,12 +104,12 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 
 ### Map Capabilities
 
-- Tools Campus Map pairs a 20rem Explore rail with the 3D map. Compact workspaces switch between Map and Explore without remounting WebGL.
-- The Explore rail starts with eight curated buildings, searches the complete building catalog, and shows public building metadata, official addresses, rooms, dated booking availability, footprint-associated services, verified entrances, source freshness, and official photo sources.
+- Tools Campus Map pairs a 20rem Explore rail with the 3D map. Compact workspaces keep the map in place and present Explore as a non-modal bottom sheet without remounting WebGL.
+- Explore starts with eight curated buildings, searches the complete building catalog, and prioritizes official identity and addresses, rooms, dated booking availability, footprint-associated services, verified entrances, source freshness, and official photo sources.
 - Signed-in users save favorite buildings to the account. Building actions share a deep link, open a separate Google Maps destination, or start an in-app route from another campus building.
 - AI Answer Canvas remains map-only. Existing map widgets stay compatible; additive building-detail, entrance, and space widgets expose richer map answers in Chat.
 - Building footprints render as extruded 3D GeoJSON. Verified entrances within a building-wall tolerance render as ground arrows and vertical door outlines; undocumented rotation and accessibility flags do not drive claims.
-- Walking routes use Dijkstra over the pedestrian network and render as an animated path. Straight-line estimates remain labeled text and do not render as paths.
+- Walking routes use Dijkstra over the pedestrian network and render immediately as a blue path with a contrasting casing. Straight-line estimates remain labeled text and do not render as paths.
 - POI pins use deck.gl point and text layers.
 - Building clicks open Explore details in Tools and retain the transient map popup in AI.
 - CARTO Positron and Dark Matter supply the light and dark basemaps.

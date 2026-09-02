@@ -144,7 +144,6 @@ function props(overrides: Partial<BuildingRailProps> = {}): BuildingRailProps {
     onOriginQueryChange: vi.fn(),
     onSelect: vi.fn(),
     onBack: vi.fn(),
-    onShowMap: vi.fn(),
     onDirections: vi.fn(),
     onRoute: vi.fn(),
     onRetryRoute: vi.fn(),
@@ -190,14 +189,15 @@ describe("BuildingRail", () => {
     expect(onQueryChange).toHaveBeenCalledWith("");
   });
 
-  it("renders comprehensive building, room, booking, service, entrance, and source sections", () => {
+  it("keeps details focused on useful building destinations and sources", () => {
     render(
       <BuildingRail {...props({ mode: "details", selected: iblc, details: { status: "ready", data: details } })} />,
     );
 
     expect(screen.getByRole("heading", { name: iblc.name })).toBeTruthy();
-    expect(screen.getByText("LEED Gold")).toBeTruthy();
-    expect(screen.getByText("FeeSimple")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Building" })).toBeNull();
+    expect(screen.queryByText("LEED Gold")).toBeNull();
+    expect(screen.queryByText("FeeSimple")).toBeNull();
     expect(screen.getByText("IBLC 100")).toBeTruthy();
     expect(screen.getByText("Bookable room")).toBeTruthy();
     expect(screen.getByText("Library help desk")).toBeTruthy();
@@ -235,17 +235,39 @@ describe("BuildingRail", () => {
     expect(onCopyLink).toHaveBeenCalledOnce();
   });
 
-  it("labels estimates without offering a route-map action", () => {
+  it("shows route results without a redundant map action", () => {
     const route: BuildingRouteState = {
-      status: "estimate",
+      status: "network",
       from: chem,
       to: iblc,
-      route: { from: "CHEM", to: "IBLC", meters: 900, minutes: 12, method: "estimate", polyline: [] },
+      route: {
+        from: "CHEM",
+        to: "IBLC",
+        meters: 900,
+        minutes: 12,
+        method: "network",
+        polyline: [chem.centroid, iblc.centroid],
+      },
     };
-    render(<BuildingRail {...props({ mode: "directions", selected: iblc, route })} />);
+    const view = render(<BuildingRail {...props({ mode: "directions", selected: iblc, route })} />);
 
-    expect(screen.getByText(/Straight-line estimate/)).toBeTruthy();
+    expect(screen.getByText("Campus walking network")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "View route" })).toBeNull();
+
+    view.rerender(
+      <BuildingRail
+        {...props({
+          mode: "directions",
+          selected: iblc,
+          route: {
+            ...route,
+            status: "estimate",
+            route: { ...route.route, method: "estimate", polyline: [] },
+          },
+        })}
+      />,
+    );
+    expect(screen.getByText(/Straight-line estimate/)).toBeTruthy();
   });
 
   it("exposes every selected-building action", () => {
@@ -254,19 +276,18 @@ describe("BuildingRail", () => {
       onToggleFavorite: vi.fn(),
       onShare: vi.fn(),
       onOpenGoogleMaps: vi.fn(),
-      onShowMap: vi.fn(),
     };
     render(
       <BuildingRail {...props({ mode: "details", selected: iblc, details: { status: "loading" }, ...actions })} />,
     );
 
-    for (const name of ["Directions", "Save", "Share", "Google Maps", "Show on map"]) {
+    for (const name of ["Directions", "Save", "Share", "Google Maps"]) {
       fireEvent.click(screen.getByRole("button", { name }));
     }
+    expect(screen.queryByRole("button", { name: "Show on map" })).toBeNull();
     expect(actions.onDirections).toHaveBeenCalledOnce();
     expect(actions.onToggleFavorite).toHaveBeenCalledWith("IBLC");
     expect(actions.onShare).toHaveBeenCalledOnce();
     expect(actions.onOpenGoogleMaps).toHaveBeenCalledOnce();
-    expect(actions.onShowMap).toHaveBeenCalledOnce();
   });
 });
