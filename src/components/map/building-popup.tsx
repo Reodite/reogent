@@ -140,7 +140,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
     setDetails(null);
     setFailed(false);
     api
-      .getBuildingDetails(building.code)
+      .getBuildingDetails(building.code, controller.signal)
       .then((d) => {
         if (!controller.signal.aborted) setDetails(d);
       })

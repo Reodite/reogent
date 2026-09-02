@@ -1,4 +1,3 @@
-import { requireUser } from "@/src/server/auth";
 import { resolveBuilding } from "@/src/server/modules/buildings";
 import { route } from "@/src/server/routing";
 import { getSearch } from "@/src/server/search";
@@ -8,8 +7,6 @@ import { json, serverError } from "../http";
  *  with the polyline for drawing on the map. */
 export async function GET(request: Request): Promise<Response> {
   try {
-    const user = await requireUser(request);
-    if (user instanceof Response) return user;
     const url = new URL(request.url);
     const fromQuery = url.searchParams.get("from");
     const toQuery = url.searchParams.get("to");
@@ -25,7 +22,12 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     const result = await route(from, to);
-    return json({ from: from.code, to: to.code, ...result });
+    return json({
+      from: from.code,
+      to: to.code,
+      ...result,
+      polyline: result.method === "network" ? result.polyline : [],
+    });
   } catch (e) {
     return serverError(e);
   }

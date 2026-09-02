@@ -45,10 +45,10 @@ export interface ChatApi {
   renameSession(id: string, title: string): Promise<void>;
   /** GET /api/geo/{name} — GeoJSON FeatureCollection. */
   getGeo(name: GeoName): Promise<FeatureCollection>;
-  /** GET /api/route?from=&to= — walking route with the polyline the map draws. */
-  getRoute(from: string, to: string): Promise<RouteResponse>;
-  /** GET /api/building/{code} — popup details: rooms, POIs, availability. */
-  getBuildingDetails(code: string): Promise<BuildingDetails>;
+  /** GET /api/route?from=&to= — public walking route or labeled distance estimate. */
+  getRoute(from: string, to: string, signal?: AbortSignal): Promise<RouteResponse>;
+  /** GET /api/building/{code} — public building, room, service, and entrance details. */
+  getBuildingDetails(code: string, signal?: AbortSignal): Promise<BuildingDetails>;
   /** GET /api/courses/{code}?session= — exact course record; 404 on miss. Defaults to latest winter. */
   getCourse(
     code: string,
@@ -140,6 +140,20 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       if (error.status === 401) onUnauthorized?.();
       throw error;
     }
+    if (response.status === 204) return undefined as T;
+    return (await response.json()) as T;
+  }
+
+  async function publicRequest<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      signal: init?.signal ?? AbortSignal.timeout(30_000),
+      headers: {
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
+    });
+    if (!response.ok) throw await parseError(response);
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }
@@ -255,10 +269,11 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     deleteSession: (id) => request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }),
     renameSession: (id, title) =>
       request<void>(`/sessions/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ title }) }),
-    getGeo: (name) => request<FeatureCollection>(`/geo/${name}`),
-    getRoute: (from, to) =>
-      request<RouteResponse>(`/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-    getBuildingDetails: (code) => request<BuildingDetails>(`/building/${encodeURIComponent(code)}`),
+    getGeo: (name) => publicRequest<FeatureCollection>(`/geo/${name}`),
+    getRoute: (from, to, signal) =>
+      publicRequest<RouteResponse>(`/route?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { signal }),
+    getBuildingDetails: (code, signal) =>
+      publicRequest<BuildingDetails>(`/building/${encodeURIComponent(code)}`, { signal }),
     getCourse: (code, session) => {
       const sp = new URLSearchParams();
       if (session) sp.set("session", session);

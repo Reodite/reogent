@@ -33,7 +33,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Validate official image records and omit expiring or unclassified URLs.
     - Add unit tests proving field coverage, provenance, freshness, partial-source behavior, photo filtering, and unknown buildings.
     - _Requirements: 4.1–4.8, 5.1–5.9, 11.3–11.5, 12.2–12.7_
-  - [ ] 2.2 Expose public detail and honest route APIs
+  - [x] 2.2 Expose public detail and honest route APIs
     - Make building detail and walking route reads available to guest Tools users through the public request path.
     - Add abort signals to detail and route client methods.
     - Preserve `network` versus `estimate`; keep estimate distance text but omit drawable route geometry.
