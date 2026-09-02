@@ -189,10 +189,8 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     const surface = container.querySelector("[data-workspace-surface]");
     expect(surface?.className).toContain("workspace-surface");
     expect(surface?.className).toContain("overflow-hidden");
-    // No view activated yet → children (not-found) renders instead of the tool.
-    // This matches the real app: navigating to an unknown /tools/<slug> shows the
-    // not-found page in the workspace, while a valid tool activates via the
-    // ToolRouteActivator effect.
+    // The provider-free fixture changes remembered mode, but its mocked router
+    // does not commit a pathname. Without a routed tool view, the route child remains.
     expect(container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
   });
