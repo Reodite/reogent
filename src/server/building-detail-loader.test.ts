@@ -226,7 +226,7 @@ describe("loadBuildingDetails", () => {
     expect(details.entrances).toEqual([
       expect.objectContaining({ id: "TEST-1", entranceType: "Primary", doorCount: 2 }),
     ]);
-    expect(details.photos[0]).toMatchObject({ sourceName: "UBC Learning Spaces", classification: "ubc-hosted" });
+    expect(details.photos).toEqual([]);
     expect(details.availability).toMatchObject({ freshness: "current", rooms: [expect.any(Object)] });
     expect(details.sourceStatus.rooms.state).toBe("ready");
   });

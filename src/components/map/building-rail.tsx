@@ -8,7 +8,7 @@ import { WorkspacePanel } from "@/src/components/ui/workspace";
 import type { BuildingDetails, BuildingSummary, OfficialBuildingPhoto, RouteResponse } from "@/src/lib/api-types";
 import { searchBuildings } from "@/src/lib/building-catalog";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 export type BuildingDetailsState =
   { status: "idle" } | { status: "loading" } | { status: "ready"; data: BuildingDetails } | { status: "error" };
@@ -31,7 +31,7 @@ export interface BuildingRailProps {
   selected: BuildingSummary | null;
   details: BuildingDetailsState;
   route: BuildingRouteState;
-  shareStatus: "idle" | "shared" | "copied" | "error";
+  shareStatus: "idle" | "shared" | "copied" | "copy" | "error";
   selectionError: string | null;
   onQueryChange: (query: string) => void;
   onOriginQueryChange: (query: string) => void;
@@ -44,6 +44,7 @@ export interface BuildingRailProps {
   onRetryDetails: () => void;
   onToggleFavorite: (code: string) => void;
   onShare: () => void;
+  onCopyLink: () => void;
   onOpenGoogleMaps: () => void;
 }
 
@@ -245,7 +246,7 @@ export function BuildingDetailContent({ details }: { details: BuildingDetails })
                 <p className="text-muted mt-1 text-xs">
                   {poi.association === "official-address" ? "Official address match" : "Located inside footprint"}
                 </p>
-                {poi.url ? <ExternalLink href={poi.url}>Official site</ExternalLink> : null}
+                {poi.url ? <ExternalLink href={poi.url}>Website</ExternalLink> : null}
               </li>
             ))}
           </ul>
@@ -360,6 +361,7 @@ export function BuildingRail(props: BuildingRailProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const discoveryScrollRef = useRef(0);
+  const listboxId = useId();
   const searchQuery = props.mode === "directions" ? props.originQuery : props.query;
   const results = useMemo(() => searchBuildings(props.catalog, searchQuery), [props.catalog, searchQuery]);
   const saved = useMemo(() => {
@@ -386,7 +388,22 @@ export function BuildingRail(props: BuildingRailProps) {
     }
   }
 
+  useEffect(() => {
+    if (!searchQuery || results.length === 0) return;
+    document
+      .getElementById(`building-result-${results[Math.min(activeIndex, results.length - 1)].code}`)
+      ?.scrollIntoView?.({
+        block: "nearest",
+      });
+  }, [activeIndex, results, searchQuery]);
+
   function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      setActiveIndex(0);
+      if (props.mode === "directions") props.onOriginQueryChange("");
+      else props.onQueryChange("");
+      return;
+    }
     if (results.length === 0) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -397,9 +414,6 @@ export function BuildingRail(props: BuildingRailProps) {
     } else if (event.key === "Enter") {
       event.preventDefault();
       selectResult(results[Math.min(activeIndex, results.length - 1)]);
-    } else if (event.key === "Escape") {
-      if (props.mode === "directions") props.onOriginQueryChange("");
-      else props.onQueryChange("");
     }
   }
 
@@ -468,8 +482,16 @@ export function BuildingRail(props: BuildingRailProps) {
                   ? "Shared"
                   : props.shareStatus === "copied"
                     ? "Link copied"
-                    : "Couldn't share the link"}
+                    : props.shareStatus === "copy"
+                      ? "Share dismissed. You can copy the link instead."
+                      : "Couldn't copy the link"}
               </p>
+            ) : null}
+            {props.shareStatus === "copy" || props.shareStatus === "error" ? (
+              <Button variant="ghost" size="compact" className="mt-2" onClick={props.onCopyLink}>
+                <Icon name="share" size={15} />
+                {props.shareStatus === "error" ? "Retry copy" : "Copy link"}
+              </Button>
             ) : null}
           </div>
           <div className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto px-3 py-4">
@@ -517,8 +539,14 @@ export function BuildingRail(props: BuildingRailProps) {
               }}
               onKeyDown={onSearchKeyDown}
               placeholder={props.mode === "directions" ? "Starting building" : "Search buildings"}
+              role="combobox"
               aria-label={props.mode === "directions" ? "Starting building" : "Search buildings"}
-              aria-activedescendant={results[activeIndex] ? `building-result-${results[activeIndex].code}` : undefined}
+              aria-autocomplete="list"
+              aria-controls={listboxId}
+              aria-expanded={Boolean(searchQuery && results.length > 0)}
+              aria-activedescendant={
+                searchQuery && results[activeIndex] ? `building-result-${results[activeIndex].code}` : undefined
+              }
             />
           </div>
           <div ref={listRef} className="min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto px-2 pb-3">
@@ -556,8 +584,13 @@ export function BuildingRail(props: BuildingRailProps) {
               </div>
             ) : null}
             {searchQuery ? (
-              results.length > 0 ? (
-                <div role="listbox" aria-label="Building search results" className="flex flex-col gap-1">
+              <>
+                <div
+                  id={listboxId}
+                  role="listbox"
+                  aria-label="Building search results"
+                  className={results.length > 0 ? "flex flex-col gap-1" : "hidden"}
+                >
                   {results.map((building, index) => (
                     <BuildingRow
                       key={building.code}
@@ -569,17 +602,19 @@ export function BuildingRail(props: BuildingRailProps) {
                     />
                   ))}
                 </div>
-              ) : (
-                <div className="px-3 py-8 text-center">
-                  <p className="text-on-surface text-sm font-medium">No buildings found</p>
-                  <p className="text-muted mt-1 text-xs">Try a building code, name, or address.</p>
-                  <Button variant="ghost" size="compact" className="mt-3" onClick={() => props.onQueryChange("")}>
-                    Clear search
-                  </Button>
-                </div>
-              )
+                {results.length === 0 ? (
+                  <div className="px-3 py-8 text-center">
+                    <p className="text-on-surface text-sm font-medium">No buildings found</p>
+                    <p className="text-muted mt-1 text-xs">Try a building code, name, or address.</p>
+                    <Button variant="ghost" size="compact" className="mt-3" onClick={() => props.onQueryChange("")}>
+                      Clear search
+                    </Button>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="flex flex-col gap-4">
+                <div id={listboxId} role="listbox" aria-label="Building search results" className="hidden" />
                 {props.favoriteStatus === "loading" ? <LoadingStatus>Loading saved buildings…</LoadingStatus> : null}
                 {props.favoriteStatus === "error" && props.authenticated ? (
                   <p role="alert" className="text-error px-2 text-xs">

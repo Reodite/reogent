@@ -327,6 +327,9 @@ export function createWidgetsModule(): DatasetModule {
                 result: {
                   building: details.building,
                   rooms: details.rooms.slice(0, 50),
+                  room_count: details.rooms.length,
+                  rooms_truncated: details.rooms.length > 50,
+                  bookable_room_count: details.availability?.rooms.length ?? 0,
                   availability: details.availability
                     ? { ...details.availability, rooms: details.availability.rooms.slice(0, 50) }
                     : null,

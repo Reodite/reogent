@@ -151,6 +151,7 @@ function props(overrides: Partial<BuildingRailProps> = {}): BuildingRailProps {
     onRetryDetails: vi.fn(),
     onToggleFavorite: vi.fn(),
     onShare: vi.fn(),
+    onCopyLink: vi.fn(),
     onOpenGoogleMaps: vi.fn(),
     ...overrides,
   };
@@ -169,12 +170,24 @@ describe("BuildingRail", () => {
   it("filters search and activates the keyboard-selected result", () => {
     const onSelect = vi.fn();
     render(<BuildingRail {...props({ query: "chem", onSelect })} />);
-    const search = screen.getByRole("textbox", { name: "Search buildings" });
+    const search = screen.getByRole("combobox", { name: "Search buildings" });
 
     fireEvent.keyDown(search, { key: "Enter" });
 
     expect(screen.getAllByRole("option")).toHaveLength(1);
     expect(onSelect).toHaveBeenCalledWith(chem);
+  });
+
+  it("connects search to its listbox and clears unmatched queries with Escape", () => {
+    const onQueryChange = vi.fn();
+    render(<BuildingRail {...props({ query: "no match", onQueryChange })} />);
+    const search = screen.getByRole("combobox", { name: "Search buildings" });
+
+    expect(search.getAttribute("aria-controls")).toBeTruthy();
+    expect(search.getAttribute("aria-expanded")).toBe("false");
+    expect(search.getAttribute("aria-autocomplete")).toBe("list");
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(onQueryChange).toHaveBeenCalledWith("");
   });
 
   it("renders comprehensive building, room, booking, service, entrance, and source sections", () => {
@@ -202,6 +215,24 @@ describe("BuildingRail", () => {
     expect(screen.queryByRole("img", { name: /IBLC 100/ })).toBeNull();
     expect(screen.getByText("Photo unavailable.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /UBC Learning Spaces/ })).toBeTruthy();
+  });
+
+  it("offers copy after native share dismissal", () => {
+    const onCopyLink = vi.fn();
+    render(
+      <BuildingRail
+        {...props({
+          mode: "details",
+          selected: iblc,
+          details: { status: "loading" },
+          shareStatus: "copy",
+          onCopyLink,
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+    expect(onCopyLink).toHaveBeenCalledOnce();
   });
 
   it("labels estimates without offering a route-map action", () => {

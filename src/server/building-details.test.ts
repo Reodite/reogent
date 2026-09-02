@@ -1,5 +1,5 @@
 import { pointInFeature, type BuildingFeature } from "@/src/lib/geo";
-import { summarizeAvailability } from "@/src/server/building-details";
+import { summarizeAvailability, toPoiCard } from "@/src/server/building-details";
 import type { AvailabilityDoc, LibRoomDoc } from "@/src/server/modules/spaces";
 import { describe, expect, it } from "vitest";
 
@@ -71,6 +71,28 @@ describe("summarizeAvailability", () => {
   it("returns null without rooms or intervals", () => {
     expect(summarizeAvailability([], [interval(1, "2026-08-06", "09:00", "10:00", "free")], now)).toBeNull();
     expect(summarizeAvailability([room(1, "A")], [], now)).toBeNull();
+  });
+});
+
+describe("POI links", () => {
+  it("omits non-HTTPS links before labeling a service website", () => {
+    expect(
+      toPoiCard(
+        {
+          id: "1",
+          name: "Test service",
+          abbreviation: null,
+          service_type: "service",
+          url: "http://example.com",
+          contact: null,
+          hours: null,
+          photo: null,
+          lat: 49.26,
+          lon: -123.25,
+        },
+        "location-derived",
+      ).url,
+    ).toBeNull();
   });
 });
 

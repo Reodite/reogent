@@ -374,18 +374,27 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
         | {
             building?: { code?: string; name?: string };
             rooms?: unknown[];
+            room_count?: number;
+            rooms_truncated?: boolean;
+            bookable_room_count?: number;
             availability?: { rooms?: unknown[]; as_of?: string | null; freshness?: string } | null;
           }
         | undefined;
       if (!result?.building?.code || !Array.isArray(result.rooms)) return null;
-      const bookable = Array.isArray(result.availability?.rooms) ? result.availability.rooms.length : 0;
+      const roomCount = typeof result.room_count === "number" ? result.room_count : result.rooms.length;
+      const bookable =
+        typeof result.bookable_room_count === "number"
+          ? result.bookable_room_count
+          : Array.isArray(result.availability?.rooms)
+            ? result.availability.rooms.length
+            : 0;
       return (
         <ToolResultCard icon="school">
           <span className="text-on-surface block truncate text-base font-medium">
             {result.building.name ?? result.building.code}
           </span>
           <span className="text-on-surface-variant block text-xs">
-            {result.rooms.length} learning space{result.rooms.length === 1 ? "" : "s"} · {bookable} bookable room
+            {roomCount} learning space{roomCount === 1 ? "" : "s"} · {bookable} bookable room
             {bookable === 1 ? "" : "s"}
           </span>
           {result.availability?.as_of ? (

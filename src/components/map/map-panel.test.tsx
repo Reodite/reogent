@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
   getRoute: vi.fn(),
 }));
 const auth = vi.hoisted(() => ({ isGuest: false }));
+const routerPush = vi.hoisted(() => vi.fn());
 const navigation = vi.hoisted(() => ({ pathname: "/tools/map", params: new URLSearchParams() }));
 
 const iblc: BuildingSummary = {
@@ -50,10 +51,11 @@ vi.mock("@/src/components/auth/app-auth", () => ({
 vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
   useSearchParams: () => navigation.params,
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: routerPush, replace: vi.fn() }),
 }));
 vi.mock("@/src/components/map/campus-map", () => ({
   CampusMap: (props: {
+    highlight?: { kind?: string } | null;
     selectedBuilding?: BuildingSummary | null;
     onBuildingSelect?: (building: BuildingSummary) => void;
     showBuildingPopup?: boolean;
@@ -65,6 +67,7 @@ vi.mock("@/src/components/map/campus-map", () => ({
     return (
       <div
         data-testid="campus-map"
+        data-highlight={props.highlight?.kind ?? ""}
         data-selected={props.selectedBuilding?.code ?? ""}
         data-popup={String(props.showBuildingPopup)}
       >
@@ -116,13 +119,25 @@ beforeEach(() => {
   navigation.params = new URLSearchParams();
   auth.isGuest = false;
   resize.mockReset();
+  routerPush.mockReset();
   api.listSessions.mockReset().mockResolvedValue([]);
   api.getGeo.mockReset().mockResolvedValue(buildingGeo);
   api.getBuildingDetails.mockReset().mockReturnValue(new Promise(() => {}));
   api.getBuildingFavorites.mockReset().mockResolvedValue({ codes: [] });
   api.setBuildingFavorite.mockReset().mockResolvedValue({ codes: ["IBLC"] });
-  api.getRoute.mockReset();
+  api.getRoute.mockReset().mockResolvedValue({
+    from: "IBLC",
+    to: "IBLC",
+    meters: 0,
+    minutes: 0,
+    method: "network",
+    polyline: [
+      [-123.252, 49.267],
+      [-123.252, 49.267],
+    ],
+  });
   Object.defineProperty(window.navigator, "share", { configurable: true, value: undefined });
+  Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: undefined });
 });
 
 afterEach(cleanup);
@@ -141,12 +156,12 @@ describe("MapArea", () => {
     const tools = renderMap("tools");
     await screen.findByText(iblc.name);
     expect(tools.container.querySelector("[data-workspace-composition='split']")).not.toBeNull();
-    expect(screen.getByRole("textbox", { name: "Search buildings" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Search buildings" })).toBeTruthy();
     cleanup();
 
     const ai = renderMap("ai");
     expect(ai.container.querySelector("[data-workspace-composition='split']")).toBeNull();
-    expect(screen.queryByRole("textbox", { name: "Search buildings" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Search buildings" })).toBeNull();
   });
 
   it("moves a map selection into Tools building details without a duplicate popup", async () => {
@@ -160,6 +175,32 @@ describe("MapArea", () => {
     expect(screen.getByTestId("campus-map").dataset.popup).toBe("false");
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("rail");
     expect(new URL(window.location.href).searchParams.get("building")).toBe("IBLC");
+  });
+
+  it("preserves a guest's selected building through sign-in", async () => {
+    auth.isGuest = true;
+    renderMap();
+    await screen.findByText(iblc.name);
+    fireEvent.click(screen.getByRole("button", { name: "Select IBLC on map" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in to save" }));
+
+    expect(routerPush).toHaveBeenCalledWith(`/login?redirect=${encodeURIComponent("/tools/map?building=IBLC")}`);
+  });
+
+  it("offers clipboard copy after the native share sheet is dismissed", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, "share", {
+      configurable: true,
+      value: vi.fn().mockRejectedValue(new DOMException("dismissed", "AbortError")),
+    });
+    Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: { writeText } });
+    renderMap();
+    await screen.findByText(iblc.name);
+    fireEvent.click(screen.getByRole("button", { name: "Select IBLC on map" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Share" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Copy link" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("building=IBLC")));
   });
 
   it("resizes the still-mounted map after compact view switching", async () => {
@@ -177,5 +218,27 @@ describe("MapArea", () => {
 
     expect(await screen.findByRole("heading", { name: iblc.name })).toBeTruthy();
     expect(screen.getByTestId("campus-map").dataset.selected).toBe("IBLC");
+  });
+
+  it("clears a displayed route when browser history clears the selected building", async () => {
+    navigation.params = new URLSearchParams("building=IBLC");
+    const view = renderMap();
+    await screen.findByRole("heading", { name: iblc.name });
+    fireEvent.click(screen.getByRole("button", { name: "Explore" }));
+    fireEvent.click(screen.getByRole("button", { name: "Directions" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Starting building" }), {
+      target: { value: "IBLC" },
+    });
+    fireEvent.click(await screen.findByRole("option"));
+    await waitFor(() => expect(screen.getByTestId("campus-map").dataset.highlight).toBe("route"));
+
+    navigation.params = new URLSearchParams();
+    view.rerender(
+      <ChatShellProvider initialMode="tools">
+        <MapArea />
+      </ChatShellProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("campus-map").dataset.highlight).toBe(""));
   });
 });

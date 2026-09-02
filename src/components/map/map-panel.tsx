@@ -256,6 +256,7 @@ function CampusMapExplorer() {
   const [query, setQuery] = useState("");
   const [originQuery, setOriginQuery] = useState("");
   const [selectedCode, setSelectedCode] = useState<string | null>(() => searchParams.get("building"));
+  const selectedCodeRef = useRef(selectedCode);
   const [railMode, setRailMode] = useState<"discover" | "details" | "directions">(
     selectedCode ? "details" : "discover",
   );
@@ -266,7 +267,7 @@ function CampusMapExplorer() {
   const [favoriteStatus, setFavoriteStatus] = useState<"idle" | "loading" | "saving" | "error">("idle");
   const [route, setRoute] = useState<BuildingRouteState>({ status: "idle" });
   const [routeHighlight, setRouteHighlight] = useState<MapHighlight | null>(null);
-  const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "error">("idle");
+  const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "copy" | "error">("idle");
   const controls = useRef<MapControls | null>(null);
   const routeController = useRef<AbortController | null>(null);
   const authenticated = auth.status === "signedIn" && !auth.isGuest;
@@ -315,6 +316,13 @@ function CampusMapExplorer() {
 
   useEffect(() => {
     const code = searchParams.get("building");
+    if (code !== selectedCodeRef.current) {
+      routeController.current?.abort();
+      setRoute({ status: "idle" });
+      setRouteHighlight(null);
+      setShareStatus("idle");
+      selectedCodeRef.current = code;
+    }
     setSelectedCode(code);
     setRailMode(code ? "details" : "discover");
   }, [searchParams]);
@@ -359,6 +367,8 @@ function CampusMapExplorer() {
     };
   }, [api, authenticated]);
 
+  useEffect(() => () => routeController.current?.abort(), []);
+
   useEffect(() => {
     if (view !== "main") return;
     const frame = requestAnimationFrame(() => controls.current?.resize());
@@ -370,6 +380,7 @@ function CampusMapExplorer() {
     setRoute({ status: "idle" });
     setRouteHighlight(null);
     setShareStatus("idle");
+    selectedCodeRef.current = building?.code ?? null;
     setSelectedCode(building?.code ?? null);
     setRailMode(building ? "details" : "discover");
     if (building) setView("rail");
@@ -429,24 +440,30 @@ function CampusMapExplorer() {
     }
   }
 
-  async function shareBuilding() {
+  async function copyBuildingLink() {
     if (!selected) return;
     const url = formatBuildingUrl(new URL(window.location.href), selected.code).href;
-    setShareStatus("idle");
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: selected.name, url });
-        setShareStatus("shared");
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      }
-    }
     try {
       await navigator.clipboard.writeText(url);
       setShareStatus("copied");
     } catch {
       setShareStatus("error");
+    }
+  }
+
+  async function shareBuilding() {
+    if (!selected) return;
+    const url = formatBuildingUrl(new URL(window.location.href), selected.code).href;
+    setShareStatus("idle");
+    if (!navigator.share) {
+      await copyBuildingLink();
+      return;
+    }
+    try {
+      await navigator.share({ title: selected.name, url });
+      setShareStatus("shared");
+    } catch {
+      setShareStatus("copy");
     }
   }
 
@@ -515,9 +532,13 @@ function CampusMapExplorer() {
         onRetryDetails={() => setDetailsNonce((nonce) => nonce + 1)}
         onToggleFavorite={(code) => {
           if (authenticated) void toggleFavorite(code);
-          else navigation.push("/login");
+          else {
+            const redirect = `${window.location.pathname}${window.location.search}`;
+            navigation.push(`/login?redirect=${encodeURIComponent(redirect)}`);
+          }
         }}
         onShare={shareBuilding}
+        onCopyLink={copyBuildingLink}
         onOpenGoogleMaps={openGoogleMaps}
       />
     );

@@ -316,6 +316,8 @@ export function CampusMap({
   const [status, setStatus] = useState<MapStatus>("loading");
   const [buildings, setBuildings] = useState<FeatureCollection | null>(null);
   const [entrances, setEntrances] = useState<EntranceFeatureCollection | null>(null);
+  const [entranceStatus, setEntranceStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [entranceNonce, setEntranceNonce] = useState(0);
   const [walkingRoutes, setWalkingRoutes] = useState<FeatureCollection | null>(null);
   const [zoom, setZoom] = useState(INITIAL_VIEW.zoom);
   const [picked, setPicked] = useState<PickedBuilding | null>(null);
@@ -685,19 +687,25 @@ export function CampusMap({
   }, [api]);
 
   useEffect(() => {
+    void entranceNonce;
     let cancelled = false;
+    setEntranceStatus("loading");
     api
       .getGeo("entrances")
       .then((collection) => {
-        if (!cancelled) setEntrances(collection as EntranceFeatureCollection);
+        if (cancelled) return;
+        setEntrances(collection as EntranceFeatureCollection);
+        setEntranceStatus("ready");
       })
       .catch(() => {
-        if (!cancelled) setEntrances(null);
+        if (cancelled) return;
+        setEntrances(null);
+        setEntranceStatus("error");
       });
     return () => {
       cancelled = true;
     };
-  }, [api]);
+  }, [api, entranceNonce]);
 
   useEffect(() => {
     if (!showRoutes || walkingRoutes) return;
@@ -906,6 +914,7 @@ export function CampusMap({
               getColor: colors.door,
               getWidth: 3,
               widthUnits: "pixels" as const,
+              billboard: true,
               capRounded: false,
               jointRounded: false,
               pickable: false,
@@ -1172,6 +1181,21 @@ export function CampusMap({
         aria-roledescription="map"
       />
       {showBuildingPopup && selected && <BuildingPopup building={selected} onClose={() => selectBuilding(null)} />}
+      {entranceStatus === "error" ? (
+        <div
+          role="alert"
+          className="neu-panel bg-surface absolute right-3 bottom-28 z-20 flex max-w-64 items-center gap-2 rounded-xl p-2"
+        >
+          <span className="text-on-surface-variant text-xs">Entrance markers unavailable.</span>
+          <button
+            type="button"
+            onClick={() => setEntranceNonce((nonce) => nonce + 1)}
+            className="focus-visible:ring-primary/40 text-primary min-h-11 rounded-lg px-2 text-xs font-medium focus-visible:ring-2 sm:min-h-9"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
       {picked && (picked.name || picked.code) && (
         <div
           className="bg-surface-bright pointer-events-none absolute z-10 max-w-60 rounded-lg px-3 py-2 shadow-md"

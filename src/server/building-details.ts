@@ -7,7 +7,6 @@ import type {
   BuildingEntranceSummary,
   BuildingProfile,
   BuildingSourceStatus,
-  OfficialBuildingPhoto,
   PoiCard,
   RoomCard,
 } from "@/src/lib/api-types";
@@ -162,35 +161,32 @@ function entranceSummaries(collection: FeatureCollection, code: string): Buildin
   });
 }
 
-function sourceAllowed(url: string | null): boolean {
-  if (!url) return false;
+function safeExternalUrl(value: string | null): string | null {
+  if (!value) return null;
   try {
-    const parsed = new URL(url);
-    return (
-      parsed.protocol === "https:" &&
-      (parsed.hostname === "learningspaces.ubc.ca" || parsed.hostname.endsWith(".ubc.ca"))
-    );
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    const host = url.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      !host.includes(".") ||
+      /^(0\.|127\.|10\.|100\.(6[4-9]|[78]\d|9[0-9]|1[01]\d|12[0-7])\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|\[?::1)/.test(
+        host,
+      )
+    ) {
+      return null;
+    }
+    return url.href;
   } catch {
-    return false;
+    return null;
   }
 }
 
-function photosFromRooms(buildingName: string, rooms: RoomCard[]): OfficialBuildingPhoto[] {
-  const seen = new Set<string>();
-  const photos: OfficialBuildingPhoto[] = [];
-  for (const room of rooms) {
-    if (!sourceAllowed(room.link) || seen.has(room.link as string)) continue;
-    seen.add(room.link as string);
-    photos.push({
-      url: `/api/preview?url=${encodeURIComponent(room.link as string)}`,
-      alt: `${room.name} in ${buildingName}`,
-      sourceUrl: room.link as string,
-      sourceName: "UBC Learning Spaces",
-      classification: "ubc-hosted",
-    });
-    if (photos.length === 6) break;
-  }
-  return photos;
+function photoAllowed(value: string | null): boolean {
+  const safe = safeExternalUrl(value);
+  if (!safe) return false;
+  const host = new URL(safe).hostname;
+  return host === "ubc.ca" || host.endsWith(".ubc.ca");
 }
 
 export function availabilityFreshness(asOf: string | null, now: Date): BuildingDataFreshness {
@@ -227,8 +223,14 @@ export function summarizeAvailability(
     return {
       title: room.title,
       capacity: room.capacity,
-      url: room.url,
-      thumbnail: room.thumbnail ? (room.thumbnail.startsWith("//") ? `https:${room.thumbnail}` : room.thumbnail) : null,
+      url: safeExternalUrl(room.url),
+      thumbnail: room.thumbnail
+        ? photoAllowed(room.thumbnail.startsWith("//") ? `https:${room.thumbnail}` : room.thumbnail)
+          ? room.thumbnail.startsWith("//")
+            ? `https:${room.thumbnail}`
+            : room.thumbnail
+          : null
+        : null,
       freeNow: Boolean(freeNow),
       freeUntil: freeNow ? hhmm(freeNow.end) : null,
       nextFree: nextFree ? hhmm(nextFree.start) : null,
@@ -248,7 +250,7 @@ export function toRoomCard(doc: StudySpaceDoc): RoomCard {
     layout: doc.layout,
     furniture: doc.furniture,
     photo: null,
-    link: doc.link,
+    link: safeExternalUrl(doc.link),
   };
 }
 
@@ -256,8 +258,8 @@ export function toPoiCard(doc: PoiDoc, association: PoiCard["association"]): Poi
   return {
     name: doc.name,
     service_type: doc.service_type,
-    url: doc.url,
-    photo: sourceAllowed(doc.photo) ? doc.photo : null,
+    url: safeExternalUrl(doc.url),
+    photo: photoAllowed(doc.photo) ? doc.photo : null,
     hours: doc.hours,
     contact: doc.contact,
     association,
@@ -316,7 +318,7 @@ export async function loadBuildingDetails(search: SearchClient, query: string, n
     rooms,
     pois,
     entrances,
-    photos: photosFromRooms(building.name, rooms),
+    photos: [],
     availability: availabilityResult.data,
     sourceStatus: {
       building: status("ready", "UBC Geospatial Buildings", buildingRefreshedAt),

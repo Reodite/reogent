@@ -82,6 +82,16 @@ describe("rich building widgets", () => {
     },
   );
 
+  it("reports full room totals when a spaces payload is bounded", async () => {
+    const output = (await tool.execute({ type: "building_spaces", building_code: "IBLC" }, search())) as {
+      result: { rooms: unknown[]; room_count?: number; rooms_truncated?: boolean; bookable_room_count?: number };
+    };
+
+    expect(output.result.room_count).toBe(2);
+    expect(output.result.bookable_room_count).toBe(1);
+    expect(output.result.rooms_truncated).toBe(false);
+  });
+
   it("rejects missing and unresolved exact codes", async () => {
     await expect(tool.execute({ type: "building_detail" }, search())).rejects.toThrow(/require building_code/);
     await expect(tool.execute({ type: "building_detail", building_code: "NOPE" }, search(false))).rejects.toThrow(
