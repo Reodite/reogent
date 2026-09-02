@@ -209,9 +209,18 @@ describe("BuildingRail", () => {
 
     const from = screen.getByRole("combobox", { name: "From building" });
     expect(from.getAttribute("value")).toBe("chem");
-    expect(from.hasAttribute("data-route-endpoint-input")).toBe(true);
-    expect(from.closest("label")?.hasAttribute("data-route-endpoint-field")).toBe(true);
-    expect(from.closest("label")?.className).toContain("rounded-lg");
+    for (const inputClass of [
+      "neu-inset",
+      "bg-surface-container-low",
+      "rounded-lg",
+      "focus-visible:ring-2",
+      "focus-visible:outline-none",
+      "h-11",
+      "text-xs",
+      "sm:h-9",
+    ]) {
+      expect(from.className).toContain(inputClass);
+    }
     expect(screen.getByRole("combobox", { name: "To building" }).getAttribute("value")).toBe(iblc.name);
     expect(screen.getByRole("listbox", { name: "Starting building results" })).toBeTruthy();
     expect(screen.getByRole("option").getAttribute("tabindex")).toBe("-1");

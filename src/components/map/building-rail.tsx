@@ -3,7 +3,7 @@
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
-import { SearchInput } from "@/src/components/ui/form-controls";
+import { SearchInput, TextInput } from "@/src/components/ui/form-controls";
 import { WorkspacePanel } from "@/src/components/ui/workspace";
 import type { BuildingDetails, BuildingSummary, OfficialBuildingPhoto, RouteResponse } from "@/src/lib/api-types";
 import { searchBuildings } from "@/src/lib/building-catalog";
@@ -596,20 +596,17 @@ export function BuildingRail(props: BuildingRailProps) {
                       const inputId = field === "origin" ? originInputId : destinationInputId;
                       const inputRef = field === "origin" ? originInputRef : destinationInputRef;
                       return (
-                        <label
+                        <div
                           key={field}
-                          htmlFor={inputId}
-                          data-route-endpoint-field
-                          data-invalid={(active && Boolean(props.endpointError)) || undefined}
-                          className={`neu-inset bg-surface-container-low col-start-3 flex h-12 min-w-0 flex-col justify-center rounded-lg px-3 ${
-                            field === "origin" ? "row-start-1" : "row-start-2"
-                          }`}
+                          className={`col-start-3 min-w-0 ${field === "origin" ? "row-start-1" : "row-start-2"}`}
                         >
-                          <span className="text-muted text-xs leading-none">{label}</span>
-                          <input
+                          <label htmlFor={inputId} className="sr-only">
+                            {label}
+                          </label>
+                          <TextInput
                             ref={inputRef}
                             id={inputId}
-                            data-route-endpoint-input
+                            controlSize="compact"
                             value={active ? props.routeQuery : (building?.name ?? "")}
                             readOnly={!active}
                             onFocus={() => {
@@ -635,9 +632,8 @@ export function BuildingRail(props: BuildingRailProps) {
                             aria-describedby={active && props.endpointError ? endpointErrorId : undefined}
                             autoComplete="off"
                             spellCheck={false}
-                            className="text-on-surface placeholder:text-muted mt-0.5 h-5 min-w-0 bg-transparent text-sm leading-5"
                           />
-                        </label>
+                        </div>
                       );
                     })}
                   </div>

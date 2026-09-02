@@ -133,7 +133,7 @@ interface BuildingRailProps {
 
 **Responsibilities**:
 
-- Keep one fixed search field in discovery and two equal endpoint fields in an aligned Back, marker, and field grid for Directions.
+- Keep one fixed search field in discovery and two equal shared `TextInput` compact controls in an aligned Back, marker, and field grid for Directions.
 - Keep the endpoint grid sticky inside the single bounded directions scroll owner; contain overscroll and preserve native vertical wheel and touch panning from both editor and result rows.
 - Render Saved before Curated popular buildings when favorites exist.
 - Use rounded endpoint-specific result rows with familiar icon tiles, inset active state, listbox keyboard semantics, and immediate removal after selection.
