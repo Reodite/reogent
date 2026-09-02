@@ -146,7 +146,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
     };
   }, [api, building.code, fetchNonce]);
 
-  // Focus trap + Escape to close
+  // Moves focus to Close and lets Escape dismiss the non-modal inspector.
   useEffect(() => {
     const el = popupRef.current;
     if (!el) return;
@@ -169,7 +169,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
       role="dialog"
       aria-modal="false"
       aria-label={`${building.name} details`}
-      className="neu-panel canvas-left-inset absolute top-3 bottom-6 left-3 z-20 flex w-80 max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl"
+      className="neu-panel absolute top-3 bottom-6 left-3 z-20 flex w-80 max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl"
     >
       <div className="border-border-subtle flex items-start gap-2.5 border-b px-3.5 py-3">
         <span className="bg-secondary-container text-on-secondary-container mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md">

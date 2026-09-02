@@ -730,13 +730,6 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
     visibility 180ms;
 }
 
-@media (min-width: 640px) {
-  /* Prevent deck.gl canvas resize during spring width animation */
-  .map-panel-root > .map-surface-layer canvas {
-    min-width: 40vw;
-  }
-}
-
 /* ---- Assistant Markdown ---- */
 
 .assistant-markdown {
@@ -1030,8 +1023,6 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 /* Print: strip chrome, force readable output */
 @media print {
   .sessions-aside,
-  .map-aside,
-  .map-panel-root,
   .chat-composer,
   header,
   nav,

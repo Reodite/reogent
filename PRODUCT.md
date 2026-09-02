@@ -104,13 +104,16 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 
 ### Map Capabilities
 
-- Building footprints rendered as extruded 3D GeoJSON (deck.gl GeoJsonLayer)
-- Walking routes computed via Dijkstra on pedestrian graph, rendered as animated PathLayer (2500ms draw-on with ease-out)
-- POI pins via ScatterplotLayer + TextLayer labels
-- Building click opens popup with details (rooms, POIs, availability)
-- Basemap: CARTO Positron (light) / CARTO Dark Matter (dark) tiles via MapLibre GL
-- Camera: center [-123.246, 49.2626], zoom 14.4, pitch 40, bearing -8
-- Camera flies to highlighted buildings/routes on tool call
+- Tools Campus Map pairs a 20rem Explore rail with the 3D map. Compact workspaces switch between Map and Explore without remounting WebGL.
+- The Explore rail starts with eight curated buildings, searches the complete building catalog, and shows public building metadata, official addresses, rooms, dated booking availability, footprint-associated services, verified entrances, source freshness, and official photo sources.
+- Signed-in users save favorite buildings to the account. Building actions share a deep link, open a separate Google Maps destination, or start an in-app route from another campus building.
+- AI Answer Canvas remains map-only. Existing map widgets stay compatible; additive building-detail, entrance, and space widgets expose richer map answers in Chat.
+- Building footprints render as extruded 3D GeoJSON. Verified entrances within a building-wall tolerance render as ground arrows and vertical door outlines; undocumented rotation and accessibility flags do not drive claims.
+- Walking routes use Dijkstra over the pedestrian network and render as an animated path. Straight-line estimates remain labeled text and do not render as paths.
+- POI pins use deck.gl point and text layers.
+- Building clicks open Explore details in Tools and retain the transient map popup in AI.
+- CARTO Positron and Dark Matter supply the light and dark basemaps.
+- The default camera uses center [-123.246, 49.2626], zoom 14.4, pitch 40, and bearing -8; selected buildings and widget results update the camera.
 
 ### Technical Constraints
 
@@ -193,7 +196,7 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 - **Tuition**: Per-credit rates by program (Arts, Science, Engineering, etc.), student type (domestic/international), cohort year
 - **Buildings**: GeoJSON FeatureCollection with building footprints, heights, floor counts, addresses, usage types, building codes
 - **Walking routes**: GeoJSON LineStrings, pedestrian-only paths connecting building entrances, with computed distances
-- **Building entrances**: Derived coordinates for each building's accessible entrances (Dijkstra graph nodes)
+- **Building entrances**: Current entrance coordinates joined by official building identifier. Accessibility and rotation semantics remain undocumented, so the interface makes no accessibility or bearing claim from those fields.
 - **Programs**: Academic programs with admission requirements
 - **Events**: Campus events with dates, locations, descriptions
 - **Study spaces**: Libraries, study rooms, bookable spaces
@@ -206,7 +209,7 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 - No logo, wordmark, or brand guidelines
 - No design system document from a client or university
 - No visual assets (illustrations, photographs, icons beyond mingcute set)
-- No user research, analytics, or behavioral data
+- No user research, analytics, behavioral data, or measured building-popularity signal
 - No accessibility audit or VPAT
 
 ## Product Principles

@@ -486,7 +486,7 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 
 ### Map, Pulse, and Creators
 
-- **Campus Map**: Tools renders the standard page title and one inset full canvas without inventing an empty rail. AI keeps the map full-bleed inside Answer Canvas. Building details remain a transient raised inspector. Layer, reset, and zoom controls keep their specialized map contract while reaching 44px on compact screens. Load failure uses the shared stacked recovery state and only promises route details when a highlight exists.
+- **Campus Map**: Tools uses the shared split workspace with a 20rem Explore rail and one inset map canvas. The rail keeps search fixed, opens with Saved and eight curated buildings, and replaces discovery with complete selected-building details. Compact workspaces expose Map and Explore controls while both regions stay mounted; a footprint selection opens Explore and a connected route returns to Map. AI keeps the map full-bleed inside Answer Canvas without the Tools rail. Layer, reset, and zoom controls retain their specialized map contract and 44px compact targets.
 - **Pulse**: Pulse uses the shared single workspace and inset scroll canvas. Question cards use the sanctioned raised surface; voted results use the sanctioned inset surface. Swipe remains the pointer shortcut, while native 44px Agree and Disagree buttons provide keyboard and reduced-motion operation. Custom hard-offset card shadows are not permitted.
 - **Creators**: Creators uses the same single workspace, title hierarchy, inset canvas, and shared link-button treatment. Its centered people content remains intentionally sparse.
 
@@ -547,15 +547,17 @@ Spinning gradient sphere (1.75rem diameter) replacing the send button during age
 
 Reduced-motion: static, frozen at natural angle.
 
-### Building Popup
+### Building Explorer
 
-Aside dialog: `.neu-panel absolute top-3 bottom-6 left-3 w-80 max-w-[calc(100%-1.5rem)] rounded-2xl`. Contains:
+Tools places a `WorkspacePanel` titled Explore beside the map. The panel owns three states: discovery, building details, and route origin. Discovery uses one fixed rail-density search field followed by Saved and Curated popular rows. Building rows use a 36px neutral icon tile, a 14px name, and mono code plus address metadata; compact rows retain a 44px floor.
 
-- Header: icon (`bg-secondary-container size-8 rounded-md`) + building name/meta/address + close button (`size-9 rounded-md`)
-- Scrollable content area with carousel sections
-- Carousel: `snap-x snap-mandatory` horizontal scroll with nav buttons (`size-8 min-h-[44px] min-w-[44px] rounded-full` for accessible touch targets)
-- Detail cards: `bg-surface-container-low rounded-lg` with image slot (`h-32`) + body text
-- Status dots: `size-2 rounded-full bg-secondary` (free) / `bg-error` (busy)
+Selected details keep All buildings and identity fixed above the scroller. Directions is the primary action; Save, Share, Google Maps, and Show on map use labeled shared buttons. The body renders only non-empty Address, Building, Rooms & spaces, Bookable rooms, Food & services, Entrances, and Sources sections. Official images use a horizontal snap strip and retain the source link if an image fails. Availability labels current, historical, or unknown freshness. The interface identifies spatial POI joins and makes no undocumented entrance-accessibility claim.
+
+AI building clicks retain the transient raised popup: `.neu-panel absolute top-3 bottom-6 left-3 w-80 max-w-[calc(100%-1.5rem)] rounded-2xl`. The popup never appears beside the Tools rail.
+
+### Entrance Geometry
+
+Verified entrance points project to the nearest exterior or courtyard footprint segment within 4 metres. The ground layer draws a primary-tinted arrow from the non-building side toward the doorway. The 3D layer draws a neutral door outline with width parallel to the wall, height on the vertical axis, and a small outward offset. Selected-building entrances render at the focused camera; all valid entrances appear at zoom 16 and above. Missing, ambiguous, or undocumented entrance data produces no marker.
 
 ### User Menu
 

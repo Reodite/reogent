@@ -120,10 +120,10 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
   - Run focused tests, the full Vitest suite, TypeScript, Biome, changed-file Prettier, the UI detector, and the production build. Fix any failures before visual review.
 
 - [ ] 9. Integrate design documentation and retire stale map paths
-  - [ ] 9.1 Update product and design contracts
+  - [x] 9.1 Update product and design contracts
     - Record the Tools-only explorer, AI map-only widget behavior, data provenance, compact composition, entrance grammar, action hierarchy, and photo constraints in `PRODUCT.md` and `DESIGN.md`.
     - _Requirements: 1.1–1.4, 4.1–4.8, 8.1–8.10, 9.1–9.11, 10.1–10.10_
-  - [ ] 9.2 Remove superseded popup-only and dead map contracts
+  - [x] 9.2 Remove superseded popup-only and dead map contracts
     - Remove dead CSS selectors and misleading map comments touched by the feature.
     - Keep AI popup behavior, pane cache compatibility, stored widget compatibility, and raw fallback behavior.
     - Add or update regression tests for retained contracts.
