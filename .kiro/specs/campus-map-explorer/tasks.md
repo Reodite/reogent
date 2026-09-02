@@ -12,7 +12,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Add pure catalog projection, acronym generation, deterministic ranking, 20-result cap, eight-code curated list validation, and building URL parse/format helpers.
     - Add fast-check properties for deterministic bounded search and selected-building URL round trips.
     - _Requirements: 2.1–2.7, 3.6–3.7, 4.1–4.7, 12.2, 12.8_
-  - [ ] 1.2 Sanitize public building and entrance GeoJSON
+  - [x] 1.2 Sanitize public building and entrance GeoJSON
     - Extend the existing geo artifact contract with a concrete loader path for transformed collections.
     - Return only documented public building properties and current entrance points joined to official building codes.
     - Permit guest reads for buildings, entrances, and walking paths while keeping unknown artifacts rejected.

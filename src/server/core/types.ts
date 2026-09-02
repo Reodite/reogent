@@ -1,6 +1,7 @@
 // Core types shared by the agent loop, dataset modules, and API handlers.
 
 import type { ChatMessage } from "@/src/shared/types";
+import type { FeatureCollection } from "geojson";
 import type { Meilisearch } from "meilisearch";
 
 export type { ActivityBlock, ChatMessage, SessionSummary, ToolCall } from "@/src/shared/types";
@@ -75,7 +76,8 @@ export interface ToolDef {
 
 export interface GeoArtifact {
   name: string;
-  path: string;
+  path?: string;
+  load?: () => Promise<FeatureCollection>;
 }
 
 export interface DatasetModule {

@@ -1,3 +1,4 @@
+import { buildingAliases } from "@/src/lib/building-catalog";
 import { featureCentroid, type BuildingFeature } from "@/src/lib/geo";
 import type { FeatureCollection } from "geojson";
 import type { DatasetModule, SearchClient } from "../core/types";
@@ -20,22 +21,6 @@ const BUILDINGS_KEY = "geospatial/ubcv/locations/geojson/ubcv_buildings.geojson"
 const ROUTES_KEY = "geospatial/ubcv/transportation/geojson/ubcv_routes.geojson";
 const ENTRANCES_KEY = "geospatial/ubcv/locations/geojson/ubcv_building_entraces.geojson"; // (sic — dataset typo)
 
-/** Initial-letter prefixes (length ≥ 2) of each name — how people abbreviate
- *  buildings colloquially: "Irving K. Barber Learning Centre" → IK, IKB, IKBL, IKBLC. */
-function acronymAliases(...names: (string | null | undefined)[]): string[] {
-  const out = new Set<string>();
-  for (const name of names) {
-    if (!name) continue;
-    const initials = name
-      .split(/[^A-Za-z]+/)
-      .map((word) => word[0] ?? "")
-      .join("")
-      .toUpperCase();
-    for (let n = 2; n <= initials.length; n++) out.add(initials.slice(0, n));
-  }
-  return [...out];
-}
-
 export function transformBuilding(f: Feature): { id: string; doc: BuildingDoc } | null {
   const code = f?.properties?.BLDG_CODE;
   if (!code) return null;
@@ -43,7 +28,7 @@ export function transformBuilding(f: Feature): { id: string; doc: BuildingDoc } 
   if (!pt) return null;
   const [lon, lat] = pt;
   const name = f.properties.NAME ?? code;
-  return { id: code, doc: { code, name, aliases: acronymAliases(name, f.properties.SHORTNAME), lat, lon } };
+  return { id: code, doc: { code, name, aliases: buildingAliases(name, f.properties.SHORTNAME), lat, lon } };
 }
 
 let geoPromise: Promise<FeatureCollection> | undefined;
@@ -66,6 +51,111 @@ export function getBuildingsGeoJson(): Promise<FeatureCollection> {
       throw e;
     });
   return geoPromise;
+}
+
+const PUBLIC_BUILDING_FIELDS = [
+  "BLDG_CODE",
+  "NAME",
+  "SHORTNAME",
+  "POSTAL_CODE",
+  "PRIMARY_ADDRESS",
+  "CONSTR_STATUS",
+  "OCCU_DATE",
+  "BLDG_USAGE",
+  "BLDG_SEC_USAGE",
+  "JURISDICTION",
+  "NEIGHBOURHOOD",
+  "MANAGE_ORG",
+  "BLDG_STATE",
+  "GREEN_STATUS",
+  "CONSTR_TYPE",
+  "MAX_FLOORS",
+  "BLDG_HEIGHT",
+  "GBA",
+  "BLDG_FORM",
+  "BLDG_CONDITION",
+  "BLDG_MAINTENANCE",
+  "LABEL_NAME",
+] as const;
+
+/** Removes source identifiers and undocumented fields from public building geometry. */
+export function publicBuildingsGeoJson(collection: FeatureCollection): FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: collection.features.flatMap((feature) => {
+      if (feature.geometry?.type !== "Polygon" && feature.geometry?.type !== "MultiPolygon") return [];
+      const source = (feature.properties ?? {}) as Record<string, unknown>;
+      if (typeof source.BLDG_CODE !== "string" || typeof source.NAME !== "string") return [];
+      return [
+        {
+          type: "Feature" as const,
+          geometry: feature.geometry,
+          properties: Object.fromEntries(
+            PUBLIC_BUILDING_FIELDS.flatMap((field) => (source[field] == null ? [] : [[field, source[field]]])),
+          ),
+        },
+      ];
+    }),
+  };
+}
+
+/** Joins current entrance points to public building codes and drops undocumented flags. */
+export function publicEntrancesGeoJson(
+  buildingsCollection: FeatureCollection,
+  entrancesCollection: FeatureCollection,
+): FeatureCollection {
+  const uidToCode = new Map<string, string>();
+  for (const feature of buildingsCollection.features) {
+    const properties = (feature.properties ?? {}) as Record<string, unknown>;
+    if (properties.BLDG_UID && properties.BLDG_CODE) {
+      uidToCode.set(String(properties.BLDG_UID), String(properties.BLDG_CODE).toUpperCase());
+    }
+  }
+  return {
+    type: "FeatureCollection",
+    features: entrancesCollection.features.flatMap((feature, index) => {
+      if (feature.geometry?.type !== "Point") return [];
+      const properties = (feature.properties ?? {}) as Record<string, unknown>;
+      if (properties.STATUS !== "Current") return [];
+      const code = uidToCode.get(String(properties.BLDG_UID ?? ""));
+      const [longitude, latitude] = feature.geometry.coordinates;
+      if (!code || !Number.isFinite(longitude) || !Number.isFinite(latitude)) return [];
+      const doorCount = Number(properties.NUM_DOORS);
+      return [
+        {
+          type: "Feature" as const,
+          geometry: { type: "Point" as const, coordinates: [longitude, latitude] },
+          properties: {
+            id: `${code}-${index}`,
+            buildingCode: code,
+            entranceType: typeof properties.ENTRANCE_TYPE === "string" ? properties.ENTRANCE_TYPE : null,
+            doorCount: Number.isFinite(doorCount) && doorCount >= 0 ? doorCount : null,
+          },
+        },
+      ];
+    }),
+  };
+}
+
+export async function getPublicBuildingsGeoJson(): Promise<FeatureCollection> {
+  return publicBuildingsGeoJson(await getBuildingsGeoJson());
+}
+
+let entrancesPromise: Promise<FeatureCollection> | undefined;
+let entrancesLoadedAt = 0;
+
+export function getPublicEntrancesGeoJson(): Promise<FeatureCollection> {
+  if (entrancesPromise && Date.now() - entrancesLoadedAt > GEO_TTL_MS) entrancesPromise = undefined;
+  entrancesPromise ??= Promise.all([getBuildingsGeoJson(), dataStore().getJson(ENTRANCES_KEY)])
+    .then(([buildingsCollection, entrancesCollection]) => {
+      entrancesLoadedAt = Date.now();
+      return publicEntrancesGeoJson(buildingsCollection, entrancesCollection as FeatureCollection);
+    })
+    .catch((error) => {
+      entrancesPromise = undefined;
+      throw error;
+    });
+  return entrancesPromise;
 }
 
 /** Exact code, then acronym alias ("IKB" → IBLC), then fuzzy name search. */
@@ -193,7 +283,8 @@ export const buildings: DatasetModule = {
     },
   ],
   geo: [
-    { name: "buildings", path: BUILDINGS_KEY },
+    { name: "buildings", load: getPublicBuildingsGeoJson },
+    { name: "entrances", load: getPublicEntrancesGeoJson },
     { name: "walking-routes", path: WALKING_ROUTES_KEY },
   ],
 };

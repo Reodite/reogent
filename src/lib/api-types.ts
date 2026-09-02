@@ -156,7 +156,7 @@ export interface BuildingDetails {
   availability: { as_of: string | null; rooms: AvailabilityRoomCard[] } | null;
 }
 
-export type GeoName = "buildings" | "walking-routes";
+export type GeoName = "buildings" | "entrances" | "walking-routes";
 
 // GET /api/pulse — active-round feed. Vote fields appear only after the caller votes.
 
