@@ -18,7 +18,7 @@ Implement the feature in TypeScript by establishing trustworthy public map contr
     - Permit guest reads for buildings, entrances, and walking paths while keeping unknown artifacts rejected.
     - Add route tests for public access, property allowlists, invalid geometry filtering, and unknown artifacts.
     - _Requirements: 8.1, 8.5–8.10, 11.2, 11.7, 12.1–12.3_
-  - [ ] 1.3 Implement entrance marker geometry
+  - [x] 1.3 Implement entrance marker geometry
     - Add pure Polygon and MultiPolygon boundary-ring projection in local metre coordinates.
     - Generate ground arrows and vertical door outlines only for verified entrances within 4 metres of a wall.
     - Derive wall tangent, exterior normal, bounded dimensions, and outward z-fighting offset without using undocumented source rotation.

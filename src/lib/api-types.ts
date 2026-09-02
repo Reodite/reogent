@@ -93,6 +93,29 @@ export interface BuildingSummary {
   centroid: import("@/src/shared/types").LngLat;
 }
 
+export interface EntranceFeatureProperties {
+  id: string;
+  buildingCode: string;
+  entranceType: string | null;
+  doorCount: number | null;
+}
+
+export type EntranceFeatureCollection = import("geojson").FeatureCollection<
+  import("geojson").Point,
+  EntranceFeatureProperties
+>;
+
+export interface EntranceMarker {
+  id: string;
+  buildingCode: string;
+  entranceType: string | null;
+  entrance: import("@/src/shared/types").LngLat;
+  groundArrow: [number, number, number][];
+  doorOutline: [number, number, number][];
+  wallTangent: [number, number];
+  wallDistanceMeters: number;
+}
+
 export type BuildingDataAssociation = "direct" | "official-address" | "location-derived";
 export type BuildingDataFreshness = "current" | "historical" | "unknown";
 export type BuildingSourceState = "ready" | "unavailable";
