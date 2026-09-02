@@ -18,6 +18,7 @@
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { Button } from "@/src/components/ui/button";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { isSatisfied, type Expr } from "@/src/shared/prereq-ast";
@@ -58,6 +59,7 @@ export function CourseInfoPopup({
   onClose,
 }: CourseInfoPopupProps) {
   const api = useApi();
+  const navigation = useShellNavigation();
   const popupRef = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [description, setDescription] = useState<string | null>(descriptionCache.get(course.code) ?? null);
@@ -188,6 +190,10 @@ export function CourseInfoPopup({
       )}
       <Link
         href={`/tools/courses/${courseCodeToSlug(course.code)}`}
+        onNavigate={(event) => {
+          event.preventDefault();
+          navigation.push(`/tools/courses/${courseCodeToSlug(course.code)}`);
+        }}
         className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
       >
         Open in Course Finder

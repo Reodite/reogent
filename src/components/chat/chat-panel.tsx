@@ -17,6 +17,7 @@ import {
 } from "@/src/components/chat/message";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { Button } from "@/src/components/ui/button";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { RetryState } from "@/src/components/ui/feedback";
@@ -24,7 +25,6 @@ import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type HistoryState = "loading" | "ready" | "failed";
@@ -155,7 +155,7 @@ function toConversation(messages: DisplayMessage[]): ChatMessage[] {
 
 export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string | null }) {
   const api = useApi();
-  const router = useRouter();
+  const navigation = useShellNavigation();
   const [sessionId, setSessionId] = useState<string>(() => initialSessionId ?? "");
   // Tracks whether the session ID was minted locally (skip history fetch)
   const mintedLocally = useRef(!initialSessionId);
@@ -629,7 +629,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             message="Try again, or start with a fresh chat."
             onRetry={() => setHistoryNonce((nonce) => nonce + 1)}
             secondaryAction={
-              <Button variant="primary" onClick={() => router.push("/chat")}>
+              <Button variant="primary" onClick={() => navigation.push("/chat")}>
                 Start new chat
               </Button>
             }

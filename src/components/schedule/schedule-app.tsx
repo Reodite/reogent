@@ -2,6 +2,7 @@
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { Button } from "@/src/components/ui/button";
 import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import { LoadingStatus } from "@/src/components/ui/feedback";
@@ -20,7 +21,6 @@ import { defaultTermKey, deriveTerms, type Term } from "@/src/lib/schedule/featu
 import type { Avatar, DayCode, Person, Schedule, Section } from "@/src/lib/schedule/types";
 import { dayCodeOf, minutesNow, minutesToFullLabel, toISODate } from "@/src/lib/schedule/util/time";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AvatarChip } from "./avatar-chip";
 import { BlockDetail } from "./block-detail";
@@ -70,7 +70,7 @@ export function ScheduleApp(props: Props) {
 
 function ScheduleAppInner({ groupCode }: Props) {
   const auth = useAppAuth();
-  const router = useRouter();
+  const navigation = useShellNavigation();
   const toast = useToast();
   const now = useNow();
 
@@ -234,7 +234,7 @@ function ScheduleAppInner({ groupCode }: Props) {
 
   function switchGroup(code: string) {
     selectGroup(code);
-    router.push(`/pulse/schedule/${code}`);
+    navigation.push(`/pulse/schedule/${code}`);
   }
 
   async function saveSchedule(handle: string, avatar: Avatar) {
@@ -282,8 +282,8 @@ function ScheduleAppInner({ groupCode }: Props) {
       const nextGroups = await refreshGroups();
       const next = nextGroups.find((candidate) => candidate.code !== activeCode);
       selectGroup(next?.code ?? null);
-      if (next) router.replace(`/pulse/schedule/${next.code}`);
-      else router.replace("/pulse/schedule");
+      if (next) navigation.replace(`/pulse/schedule/${next.code}`);
+      else navigation.replace("/pulse/schedule");
       toast(`Left “${group.name}”`);
     } catch (error) {
       toast(messageOf(error), "error");
