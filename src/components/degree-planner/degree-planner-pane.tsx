@@ -34,8 +34,9 @@ import {
   closestCenter,
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   pointerWithin,
+  TouchSensor,
   useSensor,
   useSensors,
   type CollisionDetection,
@@ -188,9 +189,8 @@ export function DegreePlannerPane() {
   }, [undo, redo]);
 
   const sensors = useSensors(
-    // 4-px activation distance so a click on a block (e.g. to read the
-    // details popup) doesn't immediately start a drag and consume the event.
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
   useEffect(() => () => setPlannerDragCursor(false), []);
@@ -396,19 +396,23 @@ export function DegreePlannerPane() {
         composition="split"
         title="Degree Planner"
         description="Plan your UBC degree, term by term."
-        toolbar={<ProgramSelectors />}
-        actions={
-          <ActionsSection
-            years={years}
-            validations={validations}
-            courseIndex={courseIndex}
-            onClearAll={() => {
-              const total = years.reduce((count, year) => {
-                return count + year.terms.reduce((termCount, term) => termCount + term.blocks.length, 0);
-              }, 0);
-              if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
-            }}
-          />
+        toolbar={
+          <div data-planner-header-controls className="flex w-full flex-wrap items-end gap-3">
+            <div className="min-w-0 flex-[1_1_35rem]">
+              <ProgramSelectors />
+            </div>
+            <ActionsSection
+              years={years}
+              validations={validations}
+              courseIndex={courseIndex}
+              onClearAll={() => {
+                const total = years.reduce((count, year) => {
+                  return count + year.terms.reduce((termCount, term) => termCount + term.blocks.length, 0);
+                }, 0);
+                if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
+              }}
+            />
+          </div>
         }
         view={mobileView}
         onViewChange={setMobileView}
@@ -768,11 +772,11 @@ function AutofillSummary({ result, onClose }: { result: AutofillResult; onClose:
     <div
       role="status"
       aria-live="polite"
-      className="border-border bg-surface-container fixed right-5 bottom-5 z-50 w-80 rounded-xl border p-3 shadow-xl"
+      className="neu-panel bg-surface fixed right-5 bottom-5 z-50 w-80 rounded-xl p-3"
     >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="text-on-surface text-sm font-semibold">
+          <h3 className="text-on-surface text-sm font-medium">
             {result.placedCodes.length > 0
               ? `Added ${result.placedCodes.length} courses`
               : result.remaining.length > 0

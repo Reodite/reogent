@@ -157,11 +157,11 @@ function ProgramCombobox({
   }
 
   return (
-    <label htmlFor={inputId} className={`flex flex-col gap-1 ${className ?? ""}`}>
-      <span className="text-muted flex items-baseline justify-between gap-2 text-xs">
-        {label}
+    <div className={`flex flex-col gap-1 ${className ?? ""}`}>
+      <div className="text-muted flex items-baseline justify-between gap-2 text-xs">
+        <label htmlFor={inputId}>{label}</label>
         {labelExtra}
-      </span>
+      </div>
       <TextInput
         id={inputId}
         type="text"
@@ -191,7 +191,7 @@ function ProgramCombobox({
           <option key={option.value} value={option.label} />
         ))}
       </datalist>
-    </label>
+    </div>
   );
 }
 
@@ -395,7 +395,10 @@ function ProgressBar({ earned, required }: { earned: number; required: number })
   const pct = Math.max(0, Math.min(100, (earned / Math.max(required, 1)) * 100));
   return (
     <div className="bg-outline-variant/40 h-1.5 overflow-hidden rounded">
-      <div className="bg-primary h-full transition-[width] duration-200" style={{ width: `${pct}%` }} />
+      <div
+        className="bg-primary h-full w-full origin-left transition-transform duration-200"
+        style={{ transform: `scaleX(${pct / 100})` }}
+      />
     </div>
   );
 }

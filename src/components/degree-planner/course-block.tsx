@@ -71,7 +71,7 @@ export function CourseBlock({ blockId, code, entry, validation, ghost = false }:
       ref={ghost ? undefined : setNodeRef}
       style={ghost ? undefined : style}
       onPointerDown={ghost ? undefined : startDrag}
-      className={`group bg-surface-container relative flex min-h-14 w-full min-w-0 shrink-0 cursor-grab touch-none flex-col items-stretch gap-0.5 rounded-lg border px-2 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
+      className={`group bg-surface-container relative flex min-h-14 w-full min-w-0 shrink-0 cursor-grab touch-pan-y flex-col items-stretch gap-0.5 rounded-lg border px-2 py-1.5 text-sm select-none active:cursor-grabbing ${borderClass} ${
         ghost ? "neu-raised scale-[1.03]" : "neu-raised"
       } ${flashing ? "planner-flash" : ""}`}
       data-block-id={blockId}

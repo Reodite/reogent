@@ -40,7 +40,7 @@ export function LookupBlock({ entry, ghost = false, onPlaced }: LookupBlockProps
       ref={ghost ? undefined : setNodeRef}
       data-lookup-code={code}
       onPointerDown={ghost ? undefined : startDrag}
-      className={`group flex min-h-11 cursor-grab touch-none flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${
+      className={`group flex min-h-11 cursor-grab touch-pan-y flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm select-none active:cursor-grabbing ${
         ghost ? "neu-raised bg-surface-container scale-[1.03]" : "hover:bg-surface-container-low"
       } ${isDragging ? "opacity-0" : ""}`}
     >
