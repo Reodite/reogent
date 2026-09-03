@@ -157,7 +157,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 1. THE Campus_Map_Explorer SHALL create entrance graphics only from Verified_Entrance records.
 2. WHEN a Verified_Entrance projects to a building wall segment within 4 metres, THE Map_Canvas SHALL render a Ground_Entrance_Marker that points from outside the footprint toward the entrance.
 3. WHEN a Verified_Entrance projects to a building wall segment within 4 metres, THE Map_Canvas SHALL render a Door_Marker on the matching 3D building side.
-4. THE Door_Marker SHALL align width along the matched wall tangent and height along the vertical axis.
+4. THE Door_Marker SHALL align width along the matched wall tangent and height along the vertical axis, remain on the matched wall plane, use normal visible-depth comparison without depth writes, and apply rasterization depth bias so the building wall does not z-fight with or visibly separate from the marker.
 5. THE Door_Marker SHALL use a ground clearance from 0 to 0.2 metres, a height from 1.8 to 2.4 metres, and a width from 0.8 to 1.8 metres.
 6. IF a Verified_Entrance cannot project to a building wall segment within 4 metres, THEN THE Campus_Map_Explorer SHALL omit Ground_Entrance_Marker and Door_Marker graphics for the unmatched entrance.
 7. IF a building has no Verified_Entrance records, THEN THE Map_Canvas SHALL render the building without entrance graphics.

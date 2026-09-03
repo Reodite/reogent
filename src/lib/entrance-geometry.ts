@@ -105,14 +105,9 @@ function groundArrow(wall: WallProjection, outside: Vec2, origin: LngLat): [numb
   return [...points, points[0]];
 }
 
-function doorOutline(
-  wall: WallProjection,
-  outside: Vec2,
-  origin: LngLat,
-  doorCount: number | null,
-): [number, number, number][] {
+function doorOutline(wall: WallProjection, origin: LngLat, doorCount: number | null): [number, number, number][] {
   const width = Math.min(1.8, Math.max(0.8, (doorCount ?? 1) * 0.85));
-  const center = add(wall.point, outside, 0.08);
+  const center = wall.point;
   const left = add(center, wall.tangent, -width / 2);
   const right = add(center, wall.tangent, width / 2);
   const bottom = 0.1;
@@ -156,7 +151,7 @@ export function buildEntranceMarkers(
       entranceType: feature.properties.entranceType,
       entrance,
       groundArrow: groundArrow(wall, outside, entrance),
-      doorOutline: doorOutline(wall, outside, entrance, feature.properties.doorCount),
+      doorOutline: doorOutline(wall, entrance, feature.properties.doorCount),
       wallTangent: wall.tangent,
       wallDistanceMeters: wall.distance,
     });

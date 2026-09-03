@@ -207,8 +207,13 @@ const ROUTE_OCCLUDED_PARAMETERS = {
   depthCompare: "greater",
   depthWriteEnabled: false,
 } as const satisfies NonNullable<DeckLayerProps["parameters"]>;
+const DOOR_LAYER_PARAMETERS = {
+  depthCompare: "less-equal",
+  depthWriteEnabled: false,
+} as const satisfies NonNullable<DeckLayerProps["parameters"]>;
 const ROUTE_ALTITUDE_METERS = 0.2;
 const NO_POLYGON_OFFSET = () => [0, 0] as [number, number];
+const DOOR_DEPTH_BIAS = () => [-1, -1] as [number, number];
 
 function withAlpha([red, green, blue]: Rgba, alpha: number): Rgba {
   return [red, green, blue, alpha];
@@ -220,6 +225,14 @@ export function buildingLayerAppearance(theme: ResolvedTheme) {
     fillColor: MAP_COLORS[theme].fill,
     highlightColor: MAP_COLORS[theme].fillHighlight,
     parameters: BUILDING_LAYER_PARAMETERS,
+  };
+}
+
+/** Returns non-writing wall depth state with rasterization bias for door outlines. */
+export function doorLayerAppearance() {
+  return {
+    parameters: DOOR_LAYER_PARAMETERS,
+    getPolygonOffset: DOOR_DEPTH_BIAS,
   };
 }
 
@@ -812,6 +825,7 @@ export function CampusMap({
     const { GeoJsonLayer, PathLayer, PolygonLayer, ScatterplotLayer, TextLayer } = handles.layerModules;
     const colors = MAP_COLORS[theme];
     const buildingAppearance = buildingLayerAppearance(theme);
+    const doorAppearance = doorLayerAppearance();
     const routeAppearance = routeLayerAppearance(theme);
     const route = resolveRoute(buildings, highlight);
     const focusedBuildings = highlight?.kind === "buildings" ? highlight.buildings : [];
@@ -967,6 +981,8 @@ export function CampusMap({
               billboard: true,
               capRounded: false,
               jointRounded: false,
+              parameters: doorAppearance.parameters,
+              getPolygonOffset: doorAppearance.getPolygonOffset,
               pickable: false,
             }),
           )

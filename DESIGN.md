@@ -561,7 +561,7 @@ AI building clicks retain the transient raised popup: `.neu-panel absolute top-3
 
 ### Entrance Geometry
 
-Verified entrance points project to the nearest exterior or courtyard footprint segment within 4 metres. The ground layer draws a primary-tinted arrow from the non-building side toward the doorway. The 3D layer draws a neutral door outline with width parallel to the wall, height on the vertical axis, and a small outward offset. Selected-building entrances render at the focused camera; all valid entrances appear at zoom 16 and above. Missing, ambiguous, or undocumented entrance data produces no marker.
+Verified entrance points project to the nearest exterior or courtyard footprint segment within 4 metres. The ground layer draws a primary-tinted arrow from the non-building side toward the doorway. The 3D layer draws a neutral door outline with width parallel to the wall, height on the vertical axis, and vertices on the matched wall plane. Door strokes use `depthCompare: "less-equal"`, disable depth writes, and apply a `[-1, -1]` rasterization depth bias through `getPolygonOffset`; the marker wins the coplanar depth comparison without exposing a physical gap at oblique angles. Selected-building entrances render at the focused camera; all valid entrances appear at zoom 16 and above. Missing, ambiguous, or undocumented entrance data produces no marker.
 
 ### User Menu
 

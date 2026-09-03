@@ -239,7 +239,7 @@ export function buildEntranceMarkers(
 - Find the nearest ring segment in local metre coordinates and accept projections no farther than 4 metres from the verified point.
 - Determine the side outside the polygon material with point-in-polygon checks.
 - Point the ground arrow from the non-building side toward the verified entrance.
-- Build a vertical door outline with width along the wall tangent, height along altitude, and a small outward offset to avoid coplanar flicker.
+- Build a vertical door outline on the matched wall plane with width along the wall tangent and height along altitude; use less-equal depth comparison, no depth writes, and `[-1, -1]` rasterization depth bias to avoid z-fighting without exposing a physical gap.
 - Skip malformed or ambiguous geometry instead of falling back to source rotation.
 
 ### Component 7: Building detail loader
@@ -459,7 +459,7 @@ interface EntranceMarker {
 - Marker geometry exists only when wall distance is at most 4 metres.
 - Arrow and door coordinates remain finite and near the matched footprint.
 - Door width is 0.8–1.8 metres along `wallTangent`; height is 1.8–2.4 metres along altitude; ground clearance is 0–0.2 metres.
-- Door coordinates use a small outward wall-normal offset to prevent coplanar z-fighting.
+- Door coordinates remain on the matched wall plane; a small rasterization depth bias prevents coplanar z-fighting without moving the geometry.
 - Every exterior and courtyard boundary ring participates in nearest-wall search.
 - Source `ROT` and undocumented accessibility values do not drive labels or geometry.
 
@@ -537,7 +537,7 @@ For all valid BuildingDetails values, the detail-section projection contains eve
 
 ### Property 4: Entrance markers preserve verified geometry bounds
 
-For all valid Polygon and MultiPolygon boundary rings and entrance point sets, every generated EntranceMarker references an input Verified Entrance, lies within 4 metres of the selected wall, points from the non-building side toward the entrance, aligns door width to the wall tangent, aligns door height vertically, uses a small outward offset, and has dimensions inside the required ranges.
+For all valid Polygon and MultiPolygon boundary rings and entrance point sets, every generated EntranceMarker references an input Verified Entrance, lies within 4 metres of the selected wall, points from the non-building side toward the entrance, aligns door width to the wall tangent, aligns door height vertically, keeps the door on the matched wall plane, and has dimensions inside the required ranges.
 
 **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7**
 

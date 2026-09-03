@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildingLayerAppearance, routeLayerAppearance, routeRenderPath } from "./campus-map";
+import { buildingLayerAppearance, doorLayerAppearance, routeLayerAppearance, routeRenderPath } from "./campus-map";
 
 describe("map depth appearance", () => {
   it("keeps buildings opaque and depth-writing", () => {
@@ -9,6 +9,11 @@ describe("map depth appearance", () => {
       expect(building.highlightColor[3]).toBe(255);
       expect(building.parameters).toEqual({ depthCompare: "less-equal", depthWriteEnabled: true });
     }
+  });
+
+  it("keeps door outlines visible without writing wall depth", () => {
+    expect(doorLayerAppearance().parameters).toEqual({ depthCompare: "less-equal", depthWriteEnabled: false });
+    expect(doorLayerAppearance().getPolygonOffset()).toEqual([-1, -1]);
   });
 
   it("partitions route strokes into occluded and visible depth passes", () => {
