@@ -158,7 +158,7 @@ const MAP_COLORS: Record<
     fill: [190, 190, 197, 255],
     line: [195, 196, 202, 255],
     // Highlighted: primary muted indigo #4a4e7a
-    fillHighlight: [74, 78, 122, 220],
+    fillHighlight: [74, 78, 122, 255],
     lineHighlight: [26, 29, 58, 255],
     // Route: primary #4a4e7a with a light casing.
     route: [74, 78, 122, 235],
@@ -176,7 +176,7 @@ const MAP_COLORS: Record<
     fill: [9, 9, 11, 255],
     line: [64, 65, 72, 255],
     // Highlighted: dark-mode primary #b0b4d8
-    fillHighlight: [176, 180, 216, 220],
+    fillHighlight: [176, 180, 216, 255],
     lineHighlight: [208, 210, 235, 255],
     // Route: dark-mode primary #b0b4d8 with a dark casing.
     route: [176, 180, 216, 220],
@@ -191,18 +191,68 @@ const MAP_COLORS: Record<
   },
 };
 
-const ROUTE_LAYER_PARAMETERS = {
+const BUILDING_LAYER_PARAMETERS = {
+  depthCompare: "less-equal",
+  depthWriteEnabled: true,
+} as const satisfies NonNullable<DeckLayerProps["parameters"]>;
+const OVERLAY_LAYER_PARAMETERS = {
   depthCompare: "always",
   depthWriteEnabled: false,
 } as const satisfies NonNullable<DeckLayerProps["parameters"]>;
+const ROUTE_VISIBLE_PARAMETERS = {
+  depthCompare: "less-equal",
+  depthWriteEnabled: false,
+} as const satisfies NonNullable<DeckLayerProps["parameters"]>;
+const ROUTE_OCCLUDED_PARAMETERS = {
+  depthCompare: "greater",
+  depthWriteEnabled: false,
+} as const satisfies NonNullable<DeckLayerProps["parameters"]>;
+const ROUTE_ALTITUDE_METERS = 0.2;
+const NO_POLYGON_OFFSET = () => [0, 0] as [number, number];
 
-/** Returns route colors and deck 9 depth state that draws without reading or writing scene depth. */
+function withAlpha([red, green, blue]: Rgba, alpha: number): Rgba {
+  return [red, green, blue, alpha];
+}
+
+/** Returns opaque building colors and depth-writing state for solid occlusion. */
+export function buildingLayerAppearance(theme: ResolvedTheme) {
+  return {
+    fillColor: MAP_COLORS[theme].fill,
+    highlightColor: MAP_COLORS[theme].fillHighlight,
+    parameters: BUILDING_LAYER_PARAMETERS,
+  };
+}
+
+/** Returns ordered visible and occluded route stroke descriptors. */
 export function routeLayerAppearance(theme: ResolvedTheme) {
   return {
-    traceColor: MAP_COLORS[theme].route,
-    casingColor: MAP_COLORS[theme].routeCasing,
-    parameters: ROUTE_LAYER_PARAMETERS,
+    getPolygonOffset: NO_POLYGON_OFFSET,
+    strokes: [
+      {
+        id: "route-occluded",
+        width: 9,
+        color: withAlpha(MAP_COLORS[theme].route, 77),
+        parameters: ROUTE_OCCLUDED_PARAMETERS,
+      },
+      {
+        id: "route-casing",
+        width: 9,
+        color: withAlpha(MAP_COLORS[theme].routeCasing, 255),
+        parameters: ROUTE_VISIBLE_PARAMETERS,
+      },
+      {
+        id: "route-trace",
+        width: 5,
+        color: withAlpha(MAP_COLORS[theme].route, 255),
+        parameters: ROUTE_VISIBLE_PARAMETERS,
+      },
+    ] as const,
   };
+}
+
+/** Lifts route vertices above flat ground while keeping them below building geometry. */
+export function routeRenderPath(path: LngLat[]): Array<[number, number, number]> {
+  return path.map(([longitude, latitude]) => [longitude, latitude, ROUTE_ALTITUDE_METERS]);
 }
 
 // Basemap layer overrides: makes CARTO tiles seamless with the app shell.
@@ -357,6 +407,7 @@ export function CampusMap({
   }, [controlledSelected, selected]);
   /** Pedestrian-network polyline for the current route highlight. */
   const [routePath, setRoutePath] = useState<{ key: string; path: LngLat[] } | null>(null);
+  const renderedRoutePath = useMemo(() => (routePath ? routeRenderPath(routePath.path) : null), [routePath]);
   /** First basemap label layer — deck layers insert before it so labels stay on top. */
   const [labelLayerId, setLabelLayerId] = useState<string | null>(null);
 
@@ -760,6 +811,7 @@ export function CampusMap({
     if (!handles || !buildings || status === "error") return;
     const { GeoJsonLayer, PathLayer, PolygonLayer, ScatterplotLayer, TextLayer } = handles.layerModules;
     const colors = MAP_COLORS[theme];
+    const buildingAppearance = buildingLayerAppearance(theme);
     const routeAppearance = routeLayerAppearance(theme);
     const route = resolveRoute(buildings, highlight);
     const focusedBuildings = highlight?.kind === "buildings" ? highlight.buildings : [];
@@ -839,9 +891,13 @@ export function CampusMap({
           wireframe: false,
           extensions: [handles.gradientExtension],
           getElevation: (feature) => buildingHeight(feature as BuildingFeature),
-          getFillColor: (feature) => (isHighlighted(feature as BuildingFeature) ? colors.fillHighlight : colors.fill),
+          getFillColor: (feature) =>
+            isHighlighted(feature as BuildingFeature)
+              ? buildingAppearance.highlightColor
+              : buildingAppearance.fillColor,
           getLineColor: (feature) => (isHighlighted(feature as BuildingFeature) ? colors.lineHighlight : colors.line),
           material: { ambient: 1, diffuse: 0.6, shininess: 1 },
+          parameters: buildingAppearance.parameters,
           stroked: true,
           getLineWidth: 1,
           lineWidthUnits: "pixels" as const,
@@ -877,6 +933,28 @@ export function CampusMap({
           },
         }),
       ),
+      // Draw one x-ray stroke behind buildings, then the visible casing and trace.
+      ...(renderedRoutePath && routePath
+        ? routeAppearance.strokes.map(
+            (stroke) =>
+              new PathLayer(
+                withBeforeId({
+                  id: stroke.id,
+                  data: [{ path: renderedRoutePath }],
+                  getPath: (d: { path: Array<[number, number, number]> }) => d.path,
+                  getColor: stroke.color,
+                  getWidth: stroke.width,
+                  widthUnits: "pixels" as const,
+                  capRounded: true,
+                  jointRounded: true,
+                  parameters: stroke.parameters,
+                  getPolygonOffset: routeAppearance.getPolygonOffset,
+                  pickable: false,
+                  updateTriggers: { getPath: [routePath.key] },
+                }),
+              ),
+          )
+        : []),
       visibleEntrances.length > 0
         ? new PathLayer(
             withBeforeId({
@@ -890,38 +968,6 @@ export function CampusMap({
               capRounded: false,
               jointRounded: false,
               pickable: false,
-            }),
-          )
-        : null,
-      routePath
-        ? new PathLayer(
-            withBeforeId({
-              id: "route-casing",
-              data: [{ path: routePath.path }],
-              getPath: (d: { path: LngLat[] }) => d.path,
-              getColor: routeAppearance.casingColor,
-              getWidth: 9,
-              widthUnits: "pixels" as const,
-              capRounded: true,
-              jointRounded: true,
-              parameters: routeAppearance.parameters,
-              updateTriggers: { getPath: [routePath.key] },
-            }),
-          )
-        : null,
-      routePath
-        ? new PathLayer(
-            withBeforeId({
-              id: "route-trace",
-              data: [{ path: routePath.path }],
-              getPath: (d: { path: LngLat[] }) => d.path,
-              getColor: routeAppearance.traceColor,
-              getWidth: 5,
-              widthUnits: "pixels" as const,
-              capRounded: true,
-              jointRounded: true,
-              parameters: routeAppearance.parameters,
-              updateTriggers: { getPath: [routePath.key] },
             }),
           )
         : null,
@@ -1021,9 +1067,8 @@ export function CampusMap({
               fontFamily: "Aspekta, ui-sans-serif, sans-serif",
               fontWeight: 600,
               getPixelOffset: [0, -14],
-              // Interleaved mode depth-tests against the buildings drawn in
-              // the earlier group; the focused tag must clear them at pitch.
-              parameters: { depthTest: false },
+              // The focused tag stays above the earlier building group at pitch.
+              parameters: OVERLAY_LAYER_PARAMETERS,
             }),
           )
         : null,
@@ -1043,6 +1088,7 @@ export function CampusMap({
     theme,
     status,
     routePath,
+    renderedRoutePath,
     selected,
     labelLayerId,
     entranceMarkers,

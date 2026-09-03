@@ -1,17 +1,54 @@
 import { describe, expect, it } from "vitest";
-import { routeLayerAppearance } from "./campus-map";
+import { buildingLayerAppearance, routeLayerAppearance, routeRenderPath } from "./campus-map";
 
-describe("routeLayerAppearance", () => {
-  it("uses the original primary route palette above map depth", () => {
-    expect(routeLayerAppearance("light")).toEqual({
-      traceColor: [74, 78, 122, 235],
-      casingColor: [250, 250, 250, 190],
-      parameters: { depthCompare: "always", depthWriteEnabled: false },
-    });
-    expect(routeLayerAppearance("dark")).toEqual({
-      traceColor: [176, 180, 216, 220],
-      casingColor: [18, 18, 20, 190],
-      parameters: { depthCompare: "always", depthWriteEnabled: false },
-    });
+describe("map depth appearance", () => {
+  it("keeps buildings opaque and depth-writing", () => {
+    for (const theme of ["light", "dark"] as const) {
+      const building = buildingLayerAppearance(theme);
+      expect(building.fillColor[3]).toBe(255);
+      expect(building.highlightColor[3]).toBe(255);
+      expect(building.parameters).toEqual({ depthCompare: "less-equal", depthWriteEnabled: true });
+    }
+  });
+
+  it("partitions route strokes into occluded and visible depth passes", () => {
+    expect(routeLayerAppearance("light").strokes).toEqual([
+      {
+        id: "route-occluded",
+        width: 9,
+        color: [74, 78, 122, 77],
+        parameters: { depthCompare: "greater", depthWriteEnabled: false },
+      },
+      {
+        id: "route-casing",
+        width: 9,
+        color: [250, 250, 250, 255],
+        parameters: { depthCompare: "less-equal", depthWriteEnabled: false },
+      },
+      {
+        id: "route-trace",
+        width: 5,
+        color: [74, 78, 122, 255],
+        parameters: { depthCompare: "less-equal", depthWriteEnabled: false },
+      },
+    ]);
+    expect(routeLayerAppearance("dark").strokes.map(({ id, color }) => ({ id, color }))).toEqual([
+      { id: "route-occluded", color: [176, 180, 216, 77] },
+      { id: "route-casing", color: [18, 18, 20, 255] },
+      { id: "route-trace", color: [176, 180, 216, 255] },
+    ]);
+    expect(routeLayerAppearance("light").getPolygonOffset()).toEqual([0, 0]);
+  });
+
+  it("lifts every route vertex above flat ground", () => {
+    expect(
+      routeRenderPath([
+        [-123.25, 49.26],
+        [-123.24, 49.27],
+      ]),
+    ).toEqual([
+      [-123.25, 49.26, 0.2],
+      [-123.24, 49.27, 0.2],
+    ]);
   });
 });
