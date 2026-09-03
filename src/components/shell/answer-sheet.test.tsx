@@ -7,6 +7,20 @@ import { AnswerSheet, shouldDismissAnswerSheet } from "./answer-sheet";
 
 afterEach(cleanup);
 
+function mockHorizontalLayout(element: Element, left: number, width: number) {
+  vi.spyOn(element, "getBoundingClientRect").mockReturnValue({
+    bottom: 600,
+    height: 600,
+    left,
+    right: left + width,
+    top: 0,
+    width,
+    x: left,
+    y: 0,
+    toJSON: () => ({}),
+  });
+}
+
 function SheetHarness() {
   const [open, setOpen] = useState(false);
   return (
@@ -73,11 +87,61 @@ describe("AnswerSheet", () => {
         <span>Map</span>
       </AnswerSheet>,
     );
-    const sheet = container.querySelector("[data-answer-sheet]");
+    const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]");
     const scrim = container.querySelector("[data-answer-scrim]");
-    expect(sheet?.className).toContain("sm:grow");
+    const splitter = screen.getByRole("separator", { name: "Resize chat and answer canvas" });
+    expect(sheet?.className).toContain("sm:grow-0");
     expect(sheet?.className).toContain("sm:min-w-72");
+    expect(sheet?.style.flexBasis).toBe("calc(50% - 0.375rem)");
+    expect(splitter.parentElement?.className).toContain("sm:flex");
     expect(scrim?.className).toContain("sm:hidden");
+  });
+
+  it("resizes the inline panes with pointer and keyboard input", () => {
+    const { container } = render(
+      <AnswerSheet open={false} onClose={() => {}} view={{ paneId: "map", state: {} }}>
+        <span>Map</span>
+      </AnswerSheet>,
+    );
+    const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]");
+    if (!sheet?.parentElement) throw new Error("Missing answer sheet layout");
+    mockHorizontalLayout(sheet.parentElement, 100, 1000);
+    const splitter = screen.getByRole("separator", { name: "Resize chat and answer canvas" });
+
+    fireEvent.pointerDown(splitter, { pointerId: 2, button: 0, clientX: 600 });
+    fireEvent.pointerMove(splitter, { pointerId: 2, clientX: 750 });
+    expect(splitter.getAttribute("aria-valuenow")).toBe("65");
+    expect(sheet.style.flexBasis).toBe("calc(35% - 0.375rem)");
+    fireEvent.pointerUp(splitter, { pointerId: 2, clientX: 750 });
+
+    fireEvent.keyDown(splitter, { key: "ArrowLeft" });
+    expect(splitter.getAttribute("aria-valuenow")).toBe("60");
+    expect(sheet.style.flexBasis).toBe("calc(40% - 0.375rem)");
+
+    fireEvent.keyDown(splitter, { key: "Home" });
+    expect(splitter.getAttribute("aria-valuenow")).toBe(splitter.getAttribute("aria-valuemin"));
+    fireEvent.keyDown(splitter, { key: "End" });
+    expect(splitter.getAttribute("aria-valuenow")).toBe(splitter.getAttribute("aria-valuemax"));
+  });
+
+  it("restores the split position when pointer resizing is cancelled", () => {
+    const { container } = render(
+      <AnswerSheet open={false} onClose={() => {}} view={{ paneId: "map", state: {} }}>
+        <span>Map</span>
+      </AnswerSheet>,
+    );
+    const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]");
+    if (!sheet?.parentElement) throw new Error("Missing answer sheet layout");
+    mockHorizontalLayout(sheet.parentElement, 100, 1000);
+    const splitter = screen.getByRole("separator", { name: "Resize chat and answer canvas" });
+
+    fireEvent.pointerDown(splitter, { pointerId: 3, button: 0, clientX: 600 });
+    fireEvent.pointerMove(splitter, { pointerId: 3, clientX: 700 });
+    expect(splitter.getAttribute("aria-valuenow")).toBe("60");
+    fireEvent.pointerCancel(splitter, { pointerId: 3 });
+
+    expect(splitter.getAttribute("aria-valuenow")).toBe("50");
+    expect(sheet.style.flexBasis).toBe("calc(50% - 0.375rem)");
   });
 
   it("uses the documented distance and velocity dismissal thresholds", () => {
