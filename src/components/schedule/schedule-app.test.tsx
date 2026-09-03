@@ -193,11 +193,34 @@ describe("ScheduleApp group loading", () => {
     expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
     expect(view.container.querySelector<HTMLElement>("[data-workspace-page]")?.dataset.workspaceHost).toBe("unity");
     const contentCanvas = view.container.querySelector("[data-workspace-canvas]");
-    expect(contentCanvas?.className).toContain("bg-surface-container-low/40");
+    expect(contentCanvas?.className).toContain("neu-inset");
+    expect(contentCanvas?.className).toContain("bg-surface-container-low");
     expect(contentCanvas?.className).toContain("p-2");
     expect(screen.getAllByText("Mon").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Controls" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("keeps an initial load failure distinct from an empty schedule and retries", async () => {
+    let failing = true;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        if (failing) return Promise.reject(new Error("offline"));
+        const url = String(input);
+        if (url.endsWith("/schedule")) return Promise.resolve(json({ person: null }));
+        if (url.endsWith("/groups")) return Promise.resolve(json({ groups: [] }));
+        throw new Error(`unexpected request: ${url}`);
+      }),
+    );
+
+    render(<ScheduleApp />);
+    expect(await screen.findAllByText("Schedules unavailable")).toHaveLength(2);
+    expect(screen.queryByText("Your empty week is ready")).toBeNull();
+
+    failing = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Your empty week is ready")).not.toBeNull();
   });
 
   it("clears Group A content as soon as Group B is selected, then shows a keyed failure", async () => {
@@ -291,7 +314,7 @@ describe("ScheduleApp controls", () => {
     expect(screen.getByText("Replace my schedule")).toBeTruthy();
   });
 
-  it("moves import directly after management when my schedule is incomplete", async () => {
+  it("keeps personal import last when my schedule is incomplete", async () => {
     const me = wirePerson("u1", "Ada", false);
     stubSharerFetch({
       me,
@@ -300,7 +323,7 @@ describe("ScheduleApp controls", () => {
     const view = render(<ScheduleApp groupCode="AAAAAA" />);
     await screen.findByRole("button", { name: "Leave" });
 
-    expect(controlOrder(view.container)).toEqual(["group", "management", "import", "people", "free-time", "now"]);
+    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "now", "import"]);
     expect(screen.getByText("Import my schedule")).toBeTruthy();
   });
 

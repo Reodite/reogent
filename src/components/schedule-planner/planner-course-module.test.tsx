@@ -84,6 +84,11 @@ describe("PlannerCourseModule", () => {
 
     const lectureSelect = view.getByLabelText<HTMLSelectElement>("Lecture");
     expect(Array.from(lectureSelect.options, (option) => option.textContent)).toEqual(["Choose section", "101", "102"]);
+    expect(lectureSelect.className).toContain("min-h-11");
+    expect(lectureSelect.className).toContain("sm:min-h-9");
+    const remove = view.getByRole("button", { name: "Remove CPSC 110 from 2026-27 Winter Term 1" });
+    expect(remove.className).toContain("size-11");
+    expect(remove.className).toContain("sm:size-9");
     expect(view.getByLabelText("Laboratory")).toBeTruthy();
     expect(view.getByText("2 not selected automatically")).toBeTruthy();
     expect(view.getByLabelText("R sections")).toBeTruthy();

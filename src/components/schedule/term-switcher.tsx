@@ -49,7 +49,7 @@ export function TermSwitcher({ terms, selected, onSelect }: Props) {
           aria-selected={term.key === selected}
           onClick={() => onSelect(term.key)}
           onKeyDown={(event) => moveTermTab(event, index)}
-          className={`focus-visible:ring-primary/40 min-h-8 shrink-0 rounded-md px-3 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 ${
+          className={`focus-visible:ring-primary/40 min-h-11 shrink-0 rounded-md px-3 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 sm:min-h-8 ${
             term.key === selected
               ? "bg-surface text-on-surface"
               : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"

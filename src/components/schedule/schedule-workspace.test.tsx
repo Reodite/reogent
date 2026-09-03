@@ -51,7 +51,8 @@ describe("ScheduleWorkspace", () => {
     expect(root?.querySelector("h1")?.textContent).toBe("Course schedule");
     expect(rail?.querySelector("[data-workspace-panel]")).not.toBeNull();
     expect(rail?.querySelector("[data-testid='controls']")).not.toBeNull();
-    expect(canvas?.className).toContain("bg-surface-container-low/40");
+    expect(canvas?.className).toContain("neu-inset");
+    expect(canvas?.className).toContain("bg-surface-container-low");
     expect(canvas?.className).toContain("p-2");
     expect(canvas?.querySelector("[data-testid='canvas']")).not.toBeNull();
   });

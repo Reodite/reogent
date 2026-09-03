@@ -5,7 +5,7 @@ import { Icon } from "@/src/components/icons";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { Button } from "@/src/components/ui/button";
 import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
-import { LoadingStatus } from "@/src/components/ui/feedback";
+import { LoadingStatus, RetryState } from "@/src/components/ui/feedback";
 import { Checkbox, Field, SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import { buildCalendar, expandBlocks } from "@/src/lib/schedule/calendar/buildCalendar";
@@ -75,6 +75,8 @@ function ScheduleAppInner({ groupCode }: Props) {
   const now = useNow();
 
   const [booting, setBooting] = useState(true);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [bootNonce, setBootNonce] = useState(0);
   const [me, setMe] = useState<WirePerson | null>(null);
   const [groups, setGroups] = useState<GroupSummary[]>([]);
   const initialCode = groupCode ?? null;
@@ -126,8 +128,11 @@ function ScheduleAppInner({ groupCode }: Props) {
   );
 
   useEffect(() => {
+    void bootNonce;
     let cancelled = false;
     async function boot() {
+      setBooting(true);
+      setBootError(null);
       try {
         const [personResult, groupResult] = await Promise.all([
           request<{ person: WirePerson | null }>("/schedule"),
@@ -138,7 +143,7 @@ function ScheduleAppInner({ groupCode }: Props) {
         setGroups(groupResult.groups);
         if (!selectionRef.current.code) selectGroup(groupResult.groups[0]?.code ?? null);
       } catch (error) {
-        if (!cancelled) toast(messageOf(error), "error");
+        if (!cancelled) setBootError(messageOf(error));
       } finally {
         if (!cancelled) setBooting(false);
       }
@@ -147,7 +152,7 @@ function ScheduleAppInner({ groupCode }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [request, selectGroup, toast]);
+  }, [bootNonce, request, selectGroup]);
 
   useEffect(() => {
     if (groupCode && groupCode !== selectionRef.current.code) selectGroup(groupCode);
@@ -304,6 +309,46 @@ function ScheduleAppInner({ groupCode }: Props) {
 
   if (booting) return <ScheduleLoading />;
 
+  if (bootError) {
+    const retryBoot = () => {
+      if (selectionRef.current.code) selectGroup(selectionRef.current.code);
+      setBootNonce((nonce) => nonce + 1);
+    };
+    return (
+      <ScheduleWorkspace
+        title="Shared schedule"
+        description="Your groups and saved Workday schedule could not be loaded."
+        controlsLabel="Controls"
+        controls={
+          <RetryState
+            title="Schedules unavailable"
+            message={bootError}
+            onRetry={retryBoot}
+            align="start"
+            compact
+            className="p-4"
+          />
+        }
+        mobileView={mobileView}
+        onMobileViewChange={setMobileView}
+      >
+        <ScheduleGrid
+          model={grid.model}
+          activeDay={mobileDay}
+          onActiveDayChange={setMobileDay}
+          onBlockActivate={() => {}}
+          empty={{
+            title: "Schedules unavailable",
+            description: "Open Controls to retry loading your schedule and groups.",
+            actionLabel: "Open controls",
+            onAction: () => setMobileView("controls"),
+          }}
+          ariaLabel="Unavailable weekly schedule"
+        />
+      </ScheduleWorkspace>
+    );
+  }
+
   const selectedSummary = groups.find((summary) => summary.code === activeCode);
   const groupLabel = group?.name ?? selectedSummary?.name ?? (activeCode ? `Group ${activeCode}` : "Shared schedule");
   const mePerson = me ? normalizePerson(me) : null;
@@ -412,7 +457,6 @@ function ScheduleAppInner({ groupCode }: Props) {
               Leave
             </Button>
           </section>
-          {!meHasSchedule ? importControl : null}
           <div data-control-section="people" className="border-border-subtle border-t py-4">
             <PeoplePanel
               people={people}
@@ -470,7 +514,7 @@ function ScheduleAppInner({ groupCode }: Props) {
               <NowPanel people={enabledPeople} now={now} />
             </div>
           ) : null}
-          {meHasSchedule ? importControl : null}
+          {importControl}
         </>
       ) : groupView.status === "loading" ? (
         <section

@@ -21,6 +21,8 @@ describe("TermSwitcher", () => {
     expect(strip?.className).not.toContain("rounded-full");
     expect(selected.className).toContain("rounded-md");
     expect(selected.className).toContain("text-xs");
+    expect(selected.className).toContain("min-h-11");
+    expect(selected.className).toContain("sm:min-h-8");
     expect(selected.className).not.toMatch(/rounded-full|neu-panel|neu-raised|neu-inset/);
   });
 

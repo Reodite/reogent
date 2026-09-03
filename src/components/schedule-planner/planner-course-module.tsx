@@ -111,7 +111,7 @@ function PlannerSectionRow({
           value={current?.section ?? ""}
           aria-describedby={warning ? `${fieldId}-warning` : undefined}
           onChange={(event) => onSelect(options.find((section) => section.section === event.target.value) ?? null)}
-          className={`border-border bg-surface text-on-surface focus-visible:ring-primary/40 min-h-9 max-w-[11rem] min-w-0 rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-1 ${
+          className={`border-border bg-surface text-on-surface focus-visible:ring-primary/40 min-h-11 max-w-[11rem] min-w-0 rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-1 sm:min-h-9 ${
             conflict ? "ring-error/60 ring-2" : ""
           }`}
         >
@@ -205,7 +205,7 @@ export function PlannerCourseModule({
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${code} from ${term}`}
-          className="text-muted hover:bg-error/10 hover:text-error focus-visible:ring-primary/40 grid size-9 shrink-0 place-items-center rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="text-muted hover:bg-error/10 hover:text-error focus-visible:ring-primary/40 grid size-11 shrink-0 place-items-center rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-9"
         >
           <Icon name="trash" className="size-4" />
         </button>
