@@ -34,7 +34,7 @@ function SectionTable({ sections }: { sections: CourseSection[] }) {
       </h3>
       {[...groups].map(([term, termSections]) => (
         <details key={term} className="border-border-subtle bg-surface-container-low rounded-lg border">
-          <summary className="text-on-surface flex min-h-11 cursor-pointer items-center justify-between gap-3 px-3 text-sm font-medium">
+          <summary className="text-on-surface flex min-h-11 items-center justify-between gap-3 px-3 text-sm font-medium">
             <span className="min-w-0 truncate">{term}</span>
             <span className="text-muted shrink-0 text-xs whitespace-nowrap tabular-nums">
               {termSections.length} section{termSections.length === 1 ? "" : "s"}
@@ -173,7 +173,7 @@ function CourseStatsBand({ record, isRecent }: { record: Record<string, unknown>
       </div>
       {isRecent && (
         <details className="group rounded-lg">
-          <summary className="text-on-surface-variant hover:text-on-surface flex min-h-[44px] cursor-pointer list-none items-center justify-end gap-1 text-xs font-medium [&::-webkit-details-marker]:hidden">
+          <summary className="text-on-surface-variant hover:text-on-surface flex min-h-[44px] list-none items-center justify-end gap-1 text-xs font-medium [&::-webkit-details-marker]:hidden">
             Advanced stats
             <Icon name="down" size={14} className="transition-transform duration-150 group-open:rotate-180" />
           </summary>

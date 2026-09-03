@@ -98,7 +98,7 @@ export function DialogRoot({
         aria-label={backdropLabel}
         disabled={dismissDisabled}
         onClick={() => dismissRef.current()}
-        className="bg-scrim absolute inset-0 cursor-default disabled:cursor-not-allowed"
+        className="bg-scrim absolute inset-0"
       />
       <DialogPanelContext.Provider value={panelRef}>{children}</DialogPanelContext.Provider>
     </div>,

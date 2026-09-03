@@ -121,6 +121,86 @@
 
 /* ---- Base ---- */
 
+@layer base {
+  :where(
+    a[href]:not([aria-disabled="true"]),
+    button:not(:disabled):not([aria-disabled="true"]),
+    input:is(
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        [type="image"],
+        [type="checkbox"],
+        [type="radio"],
+        [type="file"],
+        [type="color"]
+      ):not(:disabled):not([aria-disabled="true"]),
+    select:not(:disabled):not([aria-disabled="true"]),
+    option:not(:disabled):not([aria-disabled="true"]),
+    label:has(:is(input[type="checkbox"], input[type="radio"], input[type="file"]):not(:disabled)):not(
+        [aria-disabled="true"]
+      ),
+    :is(
+      [role="button"],
+      [role="link"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="menuitemcheckbox"],
+      [role="menuitemradio"],
+      [role="option"],
+      [role="radio"],
+      [role="switch"],
+      [role="checkbox"],
+      [role="treeitem"]
+    ):not([aria-disabled="true"])
+  ):not([inert], [inert] *) {
+    cursor: pointer;
+  }
+
+  details > summary:not([aria-disabled="true"]):not([inert], [inert] *) {
+    cursor: pointer;
+  }
+
+  :where(
+    a[href][aria-disabled="true"],
+    button:is(:disabled, [aria-disabled="true"]),
+    input:is(
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        [type="image"],
+        [type="checkbox"],
+        [type="radio"],
+        [type="file"],
+        [type="color"]
+      ):is(:disabled, [aria-disabled="true"]),
+    select:is(:disabled, [aria-disabled="true"]),
+    option:is(:disabled, [aria-disabled="true"]),
+    label:has(
+      :is(input[type="checkbox"], input[type="radio"], input[type="file"]):is(:disabled, [aria-disabled="true"])
+    ),
+    :is(
+      [role="button"],
+      [role="link"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="menuitemcheckbox"],
+      [role="menuitemradio"],
+      [role="option"],
+      [role="radio"],
+      [role="switch"],
+      [role="checkbox"],
+      [role="treeitem"]
+    )[aria-disabled="true"]
+  ) {
+    cursor: not-allowed;
+  }
+
+  details > summary[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 html,
 body {
   height: 100%;

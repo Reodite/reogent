@@ -85,7 +85,7 @@ export function ToolResultFailure({ name, result }: { name: string; result: unkn
     <div role="alert" className="border-error/30 bg-error-container/40 text-on-error-container rounded-lg border p-3">
       <p className="text-sm font-medium">This {name.replaceAll("_", " ")} result couldn't be displayed.</p>
       <details className="mt-2">
-        <summary className="min-h-11 cursor-pointer text-xs font-medium">View raw result</summary>
+        <summary className="min-h-11 text-xs font-medium">View raw result</summary>
         <pre className="bg-surface-container-low text-on-surface mt-1 max-h-40 overflow-auto rounded-md p-2 text-xs whitespace-pre-wrap">
           {safeResultText(result)}
         </pre>

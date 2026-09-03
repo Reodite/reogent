@@ -428,7 +428,7 @@ function ScheduleAppInner({ groupCode }: Props) {
           >
             <label
               htmlFor="schedule-common-free-time"
-              className="text-on-surface flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm font-medium"
+              className="text-on-surface flex min-h-11 items-center justify-between gap-3 text-sm font-medium"
             >
               <span>Common free time</span>
               <Checkbox

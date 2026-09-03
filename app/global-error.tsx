@@ -50,6 +50,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
                   color: "#18191b",
                   border: "1px solid #e6e6e2",
                   textDecoration: "none",
+                  cursor: "pointer",
                   fontSize: "0.875rem",
                   fontWeight: 500,
                 }}

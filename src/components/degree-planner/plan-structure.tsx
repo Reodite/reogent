@@ -59,7 +59,7 @@ export function PlanStructure() {
         <label
           htmlFor="planner-coop"
           className={`hover:bg-surface-container-low flex min-h-11 items-center gap-1 rounded-lg px-1 text-left ${
-            !coopInfo && !coop ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+            !coopInfo && !coop ? "opacity-50" : ""
           }`}
         >
           <Checkbox

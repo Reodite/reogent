@@ -76,7 +76,7 @@ function ToolBadge({
       }
       className={`inline-flex w-fit max-w-full items-center gap-1.5 overflow-hidden rounded-full border px-2.5 py-1 font-mono text-xs ${
         failed ? "border-error/20 bg-error/10 text-error" : "border-primary/20 bg-primary/10 text-primary"
-      } ${mapped ? "hover:bg-primary/15 focus-visible:ring-primary/40 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-2" : ""} ${
+      } ${mapped ? "hover:bg-primary/15 focus-visible:ring-primary/40 transition-colors duration-150 outline-none focus-visible:ring-2" : ""} ${
         mapped && active ? "bg-primary/15 ring-primary ring-2" : ""
       }`}
     >
@@ -780,7 +780,7 @@ export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: st
       }
       className={
         mapped
-          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 min-h-[44px] cursor-pointer rounded-lg transition-[background-color,box-shadow] duration-150 outline-none focus-visible:ring-2 ${
+          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 min-h-[44px] rounded-lg transition-[background-color,box-shadow] duration-150 outline-none focus-visible:ring-2 ${
               active ? "bg-accent-subtle ring-primary ring-2" : "hover:ring-primary/40 hover:ring-1"
             }`
           : "rounded-lg"

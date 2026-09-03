@@ -65,7 +65,7 @@ function buttonClasses({
     SIZE_CLASSES[size],
     `neu-shadow-on-${shadowOn}`,
     wrap ? "whitespace-normal" : "whitespace-nowrap",
-    link ? null : "disabled:cursor-not-allowed disabled:opacity-45",
+    link ? null : "disabled:opacity-45",
     className,
   ]
     .filter(Boolean)

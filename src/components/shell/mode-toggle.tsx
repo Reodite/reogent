@@ -95,7 +95,7 @@ export function ModeToggle({ collapsed = false, onNavigate }: { collapsed?: bool
                   collapsed ? "w-11 justify-center sm:w-9" : "w-full justify-center gap-1.5"
                 } ${
                   locked
-                    ? "cursor-not-allowed opacity-40"
+                    ? "opacity-40"
                     : active
                       ? "neu-inset bg-surface-container text-on-surface"
                       : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"

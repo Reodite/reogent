@@ -6,13 +6,7 @@ const INLINE_CLASSES =
 
 /** Renders a native link-styled button for compact inline choices. */
 export function InlineAction({ type = "button", className, ...props }: ComponentPropsWithRef<"button">) {
-  return (
-    <button
-      type={type}
-      className={`${INLINE_CLASSES} disabled:cursor-not-allowed disabled:opacity-45 ${className ?? ""}`}
-      {...props}
-    />
-  );
+  return <button type={type} className={`${INLINE_CLASSES} disabled:opacity-45 ${className ?? ""}`} {...props} />;
 }
 
 /** Renders a Next.js link with the shared inline action hit area. */

@@ -457,7 +457,7 @@ export function CourseSearchField({
                         if (!unavailable) setActiveIndex(index);
                       }}
                       onClick={() => selectCandidate(index)}
-                      className="hover:bg-surface-container-low aria-selected:bg-primary/10 focus-visible:ring-primary/40 flex min-h-12 w-full items-center px-3 py-1.5 text-left focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="hover:bg-surface-container-low aria-selected:bg-primary/10 focus-visible:ring-primary/40 flex min-h-12 w-full items-center px-3 py-1.5 text-left focus-visible:ring-2 disabled:opacity-60"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="flex min-w-0 items-baseline gap-2">

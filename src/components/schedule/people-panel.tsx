@@ -39,7 +39,7 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
             <li key={p.id}>
               <label
                 htmlFor={`schedule-person-${p.id}`}
-                className={`hover:bg-surface-container focus-within:ring-primary/40 flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 focus-within:ring-2 ${
+                className={`hover:bg-surface-container focus-within:ring-primary/40 flex min-h-11 items-center gap-2.5 rounded-lg px-2 py-1.5 focus-within:ring-2 ${
                   p.enabled ? "" : "opacity-60"
                 }`}
               >

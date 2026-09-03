@@ -188,7 +188,7 @@ function TreeContextMenu({
               disabled
               aria-disabled="true"
               title="Sign in to use AI chat"
-              className="text-on-surface flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
+              className="text-on-surface flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
             >
               <Icon name="chat1" size={16} className="text-on-surface-variant" />
               Ask AI about this tree
@@ -214,7 +214,7 @@ function TreeContextMenu({
             disabled
             aria-disabled="true"
             title="Schedule building is coming soon"
-            className="text-on-surface flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
+            className="text-on-surface flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
           >
             <Icon name="calendar" size={16} className="text-on-surface-variant" />
             Add to Schedule
@@ -328,7 +328,7 @@ function AccordionFallback({
     const label = data.code ?? data.text ?? (data.options ? "Choose one prerequisite" : id);
     return (
       <details key={id} open={id === rootId} className="border-border-subtle bg-surface rounded-lg border text-sm">
-        <summary className="text-on-surface flex min-h-11 cursor-pointer items-center gap-2 px-3 py-2">
+        <summary className="text-on-surface flex min-h-11 items-center gap-2 px-3 py-2">
           <span className="font-mono font-medium">{label}</span>
           {data.title ? <span className="text-on-surface-variant min-w-0 truncate">{data.title}</span> : null}
         </summary>

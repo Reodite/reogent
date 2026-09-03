@@ -237,7 +237,7 @@ export function PlannerCourseModule({
           onToggle={(event) => setAdditionalOpen(event.currentTarget.open)}
           className="border-border-subtle border-t"
         >
-          <summary className="text-on-surface hover:bg-surface-container focus-visible:ring-primary/40 flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-xs font-medium focus-visible:ring-2">
+          <summary className="text-on-surface hover:bg-surface-container focus-visible:ring-primary/40 flex min-h-11 list-none items-center justify-between gap-2 px-3 text-xs font-medium focus-visible:ring-2">
             <span>Additional component types</span>
             <span className="text-muted font-normal">
               {unselectedAdditional > 0 ? `${unselectedAdditional} not selected automatically` : "Configured"}

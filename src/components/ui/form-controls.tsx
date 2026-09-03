@@ -4,7 +4,7 @@ import type { NeumorphicSurfaceToken } from "@/src/shared/color-tokens";
 import type { ComponentPropsWithoutRef, ComponentPropsWithRef, ReactNode } from "react";
 
 const BASE_CLASSES =
-  "neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none aria-[invalid=true]:ring-error/30 aria-[invalid=true]:ring-2 disabled:cursor-not-allowed disabled:opacity-55";
+  "neu-inset bg-surface-container-low text-on-surface placeholder:text-muted focus-visible:ring-primary/40 rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none aria-[invalid=true]:ring-error/30 aria-[invalid=true]:ring-2 disabled:opacity-55";
 
 const SIZE_CLASSES = {
   compact: "h-11 text-xs sm:h-9",
@@ -176,12 +176,7 @@ export type CheckboxProps = Omit<ComponentPropsWithRef<"input">, "type"> & {
 export function Checkbox({ className, label, ...props }: CheckboxProps) {
   return (
     <span className={`relative flex size-9 shrink-0 items-center justify-center ${className ?? ""}`}>
-      <input
-        type="checkbox"
-        aria-label={label}
-        className="peer absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-not-allowed"
-        {...props}
-      />
+      <input type="checkbox" aria-label={label} className="peer absolute inset-0 z-10 opacity-0" {...props} />
       <span
         aria-hidden="true"
         className="border-outline peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-primary/40 flex size-5 items-center justify-center rounded-md border-2 peer-focus-visible:ring-2 peer-disabled:opacity-50 peer-checked:[&>svg]:opacity-100"

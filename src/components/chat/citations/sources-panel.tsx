@@ -29,7 +29,7 @@ export function SourcesPanel({ citations }: { citations: Citation[] | null | und
   return (
     <aside ref={ref} data-sources-panel className="mt-2">
       <details onToggle={handleToggle}>
-        <summary className="focus-visible:ring-primary/40 hover:bg-surface-container/60 inline-flex min-h-[44px] cursor-pointer list-none items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium select-none focus-visible:ring-2 focus-visible:ring-offset-1 [&::-webkit-details-marker]:hidden">
+        <summary className="focus-visible:ring-primary/40 hover:bg-surface-container/60 inline-flex min-h-[44px] list-none items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium select-none focus-visible:ring-2 focus-visible:ring-offset-1 [&::-webkit-details-marker]:hidden">
           <Icon name="down" size={14} className="transition-transform open:rotate-180" />
           {used.length > 0 ? `Sources used (${used.length})` : `Other retrieved context (${unused.length})`}
         </summary>

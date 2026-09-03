@@ -100,7 +100,7 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
             </ul>
             {completed.length > 0 && (
               <details className="group">
-                <summary className="text-muted hover:text-on-surface-variant flex h-8 cursor-pointer list-none items-center gap-1 rounded px-2 text-xs [&::-webkit-details-marker]:hidden">
+                <summary className="text-muted hover:text-on-surface-variant flex h-8 list-none items-center gap-1 rounded px-2 text-xs [&::-webkit-details-marker]:hidden">
                   <Icon name="right" size={11} className="transition-transform group-open:rotate-90" />
                   {completed.length} completed
                 </summary>
@@ -243,7 +243,7 @@ function CourseRequirementRow({
         onClick={() => target && addBlock(target.yearId, target.termIdx, selectedCode)}
         title={target ? `Add ${selectedCode} to the plan` : "No available study term"}
         aria-label={target ? `Add ${selectedCode} to the plan` : "No available study term"}
-        className="text-primary hover:bg-primary/10 flex size-9 shrink-0 items-center justify-center rounded-lg disabled:cursor-not-allowed disabled:opacity-30"
+        className="text-primary hover:bg-primary/10 flex size-9 shrink-0 items-center justify-center rounded-lg disabled:opacity-30"
       >
         <Icon name="add" size={14} />
       </button>
