@@ -336,8 +336,48 @@ describe("BuildingRail", () => {
     expect(screen.queryByRole("heading", { name: /^Entrances/ })).toBeNull();
     expect(screen.queryByText("Primary")).toBeNull();
     expect(screen.queryByText(/Accessibility details/)).toBeNull();
-    expect(screen.getByRole("heading", { name: "Sources" })).toBeTruthy();
+    const sources = screen.getByRole("heading", { name: "Sources" }).parentElement;
+    expect(sources?.textContent).toContain("UBC Buildings");
+    expect(sources?.textContent).toContain("UBC Addresses");
+    expect(sources?.textContent).toContain("UBC Learning Spaces");
+    expect(sources?.textContent).toContain("UBC Library Room Bookings");
+    expect(sources?.textContent).toContain("UBC Points of Interest");
+    expect(sources?.textContent).not.toContain("UBC Entrances");
     expect(screen.getByText(/Historical snapshot/)).toBeTruthy();
+  });
+
+  it("omits citations that do not back rendered building data", () => {
+    const sparseDetails: BuildingDetails = {
+      ...details,
+      addresses: [],
+      rooms: [],
+      pois: [],
+      photos: [],
+      availability: null,
+      sourceStatus: {
+        ...details.sourceStatus,
+        entrances: { ...details.sourceStatus.entrances, state: "unavailable" },
+      },
+    };
+    render(
+      <BuildingRail
+        {...props({ mode: "details", selected: iblc, details: { status: "ready", data: sparseDetails } })}
+      />,
+    );
+
+    const sources = screen.getByRole("heading", { name: "Sources" }).parentElement;
+    expect(sources?.textContent).toContain("UBC Buildings");
+    for (const unusedSource of [
+      "UBC Addresses",
+      "UBC Learning Spaces",
+      "UBC Library Room Bookings",
+      "UBC Points of Interest",
+      "UBC Entrances",
+    ]) {
+      expect(sources?.textContent).not.toContain(unusedSource);
+    }
+    expect(screen.queryByText(/Some source sections are unavailable/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Retry unavailable sections" })).toBeNull();
   });
 
   it("keeps official source access when a photo fails", () => {

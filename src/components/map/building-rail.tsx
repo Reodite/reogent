@@ -114,9 +114,28 @@ function OfficialPhotoCard({ photo }: { photo: OfficialBuildingPhoto }) {
   );
 }
 
+const BUILDING_DETAIL_SOURCE_KEYS = ["building", "addresses", "rooms", "availability", "pois"] as const;
+type BuildingDetailSourceKey = (typeof BUILDING_DETAIL_SOURCE_KEYS)[number];
+
+function renderedBuildingDetailSources(details: BuildingDetails) {
+  const keys: BuildingDetailSourceKey[] = ["building"];
+  if (details.addresses.length > 0) keys.push("addresses");
+  if (details.rooms.length > 0 || details.photos.length > 0) keys.push("rooms");
+  if (details.availability?.rooms.length) keys.push("availability");
+  if (details.pois.length > 0) keys.push("pois");
+  return keys.map((key) => [key, details.sourceStatus[key]] as const);
+}
+
+function unavailableBuildingDetailSources(details: BuildingDetails) {
+  return BUILDING_DETAIL_SOURCE_KEYS.map((key) => details.sourceStatus[key]).filter(
+    (source) => source.state === "unavailable",
+  );
+}
+
 export function BuildingDetailContent({ details }: { details: BuildingDetails }) {
   const { building } = details;
-  const unavailable = Object.entries(details.sourceStatus).filter(([, source]) => source.state === "unavailable");
+  const sources = renderedBuildingDetailSources(details);
+  const unavailable = unavailableBuildingDetailSources(details);
 
   return (
     <div className="flex flex-col gap-4">
@@ -227,8 +246,8 @@ export function BuildingDetailContent({ details }: { details: BuildingDetails })
 
       <DetailSection title="Sources">
         <ul className="flex flex-col gap-1.5">
-          {Object.values(details.sourceStatus).map((source) => (
-            <li key={source.provenance.sourceName} className="flex items-start justify-between gap-2 text-xs">
+          {sources.map(([key, source]) => (
+            <li key={key} className="flex items-start justify-between gap-2 text-xs">
               <span className="text-on-surface-variant">{source.provenance.sourceName}</span>
               <span className={source.state === "ready" ? "text-muted" : "text-error"}>
                 {source.state === "ready"
@@ -525,7 +544,7 @@ export function BuildingRail(props: BuildingRailProps) {
             {props.details.status === "ready" ? (
               <>
                 <BuildingDetailContent details={props.details.data} />
-                {Object.values(props.details.data.sourceStatus).some((source) => source.state === "unavailable") ? (
+                {unavailableBuildingDetailSources(props.details.data).length > 0 ? (
                   <Button variant="ghost" size="compact" className="mt-3" onClick={props.onRetryDetails}>
                     <Icon name="refresh2" size={15} />
                     Retry unavailable sections

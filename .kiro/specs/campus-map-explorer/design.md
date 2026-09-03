@@ -139,7 +139,7 @@ interface BuildingRailProps {
 - Use rounded endpoint-specific result rows with familiar icon tiles, inset active state, listbox keyboard semantics, and immediate removal after selection.
 - Render task-relevant non-empty fields through explicit detail sections; keep verified entrances as map graphics rather than a textual rail section, and omit physical property, construction, condition, occupancy, and management metadata.
 - Provide labeled Directions, Share, Save, and Open in Google Maps actions.
-- Identify curated popularity, spatial POI joins, room snapshot freshness, and source failures.
+- Identify curated popularity, spatial POI joins, room snapshot freshness, and source failures; list provenance only for sources backing rendered detail data.
 - Omit empty sections rather than rendering placeholder cards.
 
 ### Component 3: Building detail presentation
@@ -575,7 +575,7 @@ For all route responses, the map layer projection emits a drawable route path ex
 
 ### Partial building source failure
 
-**Condition**: One of rooms, availability, POIs, or entrances fails while base building data succeeds.  
+**Condition**: One of addresses, rooms, availability, or POIs fails while base building data succeeds.
 **Response**: Return successful sections plus `sourceStatus="unavailable"` for the failed section.  
 **Recovery**: A section Retry refetches the complete record and merges the recovered section only if the selected code still matches.
 
