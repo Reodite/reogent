@@ -333,7 +333,9 @@ describe("BuildingRail", () => {
     expect(screen.getByText("IBLC 100")).toBeTruthy();
     expect(screen.getByText("Bookable room")).toBeTruthy();
     expect(screen.getByText("Library help desk")).toBeTruthy();
-    expect(screen.getByText("Primary")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /^Entrances/ })).toBeNull();
+    expect(screen.queryByText("Primary")).toBeNull();
+    expect(screen.queryByText(/Accessibility details/)).toBeNull();
     expect(screen.getByRole("heading", { name: "Sources" })).toBeTruthy();
     expect(screen.getByText(/Historical snapshot/)).toBeTruthy();
   });

@@ -225,23 +225,6 @@ export function BuildingDetailContent({ details }: { details: BuildingDetails })
         </DetailSection>
       ) : null}
 
-      {details.entrances.length > 0 ? (
-        <DetailSection title={`Entrances (${details.entrances.length})`}>
-          <ul className="divide-border-subtle divide-y">
-            {details.entrances.map((entrance, index) => (
-              <li key={entrance.id} className="flex items-center gap-2 py-2 text-sm">
-                <Icon name="door" size={16} className="text-on-surface-variant" />
-                <span className="text-on-surface flex-1">{entrance.entranceType ?? `Entrance ${index + 1}`}</span>
-                {entrance.doorCount != null ? (
-                  <span className="text-muted text-xs">{entrance.doorCount} doors</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-          <p className="text-muted mt-2 text-xs">Accessibility details are unavailable in the source metadata.</p>
-        </DetailSection>
-      ) : null}
-
       <DetailSection title="Sources">
         <ul className="flex flex-col gap-1.5">
           {Object.values(details.sourceStatus).map((source) => (

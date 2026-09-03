@@ -86,12 +86,12 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 
 ### Requirement 4: Focused and trustworthy building details
 
-**User Story:** As a student, I want one useful building record, so that I can find the destination, rooms, services, entrances, and source information without scanning property-management data.
+**User Story:** As a student, I want one useful building record, so that I can find the destination, rooms, services, and source information without scanning property-management data.
 
 #### Acceptance Criteria
 
 1. WHEN a Building_Record loads, THE Building_Rail SHALL display task-relevant Displayable_Building_Field values and omit physical property, construction, condition, occupancy, and management metadata.
-2. THE Building_Rail SHALL group Displayable_Building_Field values under identity, address, services, rooms and spaces, entrances, and source sections.
+2. THE Building_Rail SHALL group Displayable_Building_Field values under identity, address, services, rooms and spaces, and source sections.
 3. THE Building_Rail SHALL display the official code, official name, short name, primary address, and postal code when the Building_Record supplies each field.
 4. THE Building_Rail SHALL display directly joined points of interest with service type, hours, contact, official URL, and location when the Building_Record supplies each field.
 5. THE Building_Rail SHALL display Source_Provenance for derived joins and time-sensitive data.
@@ -163,7 +163,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 7. IF a building has no Verified_Entrance records, THEN THE Map_Canvas SHALL render the building without entrance graphics.
 8. WHILE the Map_Canvas zoom is below level 16 and no building is selected, THE Map_Canvas SHALL hide entrance graphics.
 9. WHEN a building becomes the Selected_Building, THE Map_Canvas SHALL render valid entrance graphics for the Selected_Building at the selected-building camera extent.
-10. IF entrance accessibility semantics lack source documentation, THEN THE Building_Rail and Map_Canvas SHALL present the entrance without an accessibility claim.
+10. IF entrance accessibility semantics lack source documentation, THEN THE Map_Canvas and AI_Answer_Canvas SHALL present the entrance without an accessibility claim.
 
 ### Requirement 9: Rich AI map widgets
 

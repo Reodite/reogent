@@ -105,7 +105,7 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 ### Map Capabilities
 
 - Tools Campus Map pairs a 20rem Explore rail with the 3D map. Compact workspaces keep the map in place and present Explore as a non-modal bottom sheet without remounting WebGL.
-- Explore starts with eight curated buildings, searches the complete building catalog, and prioritizes official identity and addresses, rooms, dated booking availability, footprint-associated services, verified entrances, source freshness, and official photo sources.
+- Explore starts with eight curated buildings, searches the complete building catalog, and prioritizes official identity and addresses, rooms, dated booking availability, footprint-associated services, source freshness, and official photo sources. Verified entrances remain map graphics rather than a textual building-detail section.
 - Signed-in users save favorite buildings to the account. Building actions share a deep link, open a separate Google Maps destination, or start an in-app route. Directions keeps editable From and To boxes at the top; endpoint results exist only while one box is being edited and disappear as soon as a route starts.
 - AI Answer Canvas remains map-only. Existing map widgets stay compatible; additive building-detail, entrance, and space widgets expose richer map answers in Chat.
 - Building footprints render as extruded 3D GeoJSON. Verified entrances within a building-wall tolerance render as compact solid ground arrowheads and vertical door outlines; undocumented rotation and accessibility flags do not drive claims.
