@@ -44,9 +44,12 @@ describe("ProgramSelectors", () => {
       major: "https://calendar.ubc.ca/program",
       minor: null,
     });
-    render(<ProgramSelectors />);
+    const { container } = render(<ProgramSelectors />);
 
     const link = await screen.findByRole("link", { name: /UBC Calendar/ });
+    const layout = container.firstElementChild as HTMLElement;
+    expect(layout.className).toContain("grid-cols-2");
+    expect(layout.className).toContain("@min-[55rem]:flex");
     const input = screen.getByRole("combobox", { name: "Major / program" });
     await waitFor(() => expect((input as HTMLInputElement).value).toBe("Computer Science"));
     expect(link.closest("label")).toBeNull();

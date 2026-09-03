@@ -397,8 +397,11 @@ export function DegreePlannerPane() {
         title="Degree Planner"
         description="Plan your UBC degree, term by term."
         toolbar={
-          <div data-planner-header-controls className="flex w-full flex-wrap items-end gap-3">
-            <div className="min-w-0 flex-[1_1_35rem]">
+          <div
+            data-planner-header-controls
+            className="flex w-full flex-col gap-3 @min-[55rem]:flex-row @min-[55rem]:flex-wrap @min-[55rem]:items-end"
+          >
+            <div className="w-full min-w-0 @min-[55rem]:flex-[1_1_35rem]">
               <ProgramSelectors />
             </div>
             <ActionsSection
@@ -639,7 +642,7 @@ function ActionsSection({
   }
 
   return (
-    <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2 max-md:ml-0 max-md:w-full max-md:justify-start">
+    <div className="flex w-full max-w-full min-w-0 flex-nowrap items-center justify-start gap-2 overflow-x-auto pb-1 @min-[55rem]:ml-auto @min-[55rem]:w-auto @min-[55rem]:flex-wrap @min-[55rem]:justify-end @min-[55rem]:overflow-visible @min-[55rem]:pb-0">
       <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-xl p-1">
         <Button
           variant="ghost"

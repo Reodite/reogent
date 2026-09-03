@@ -71,10 +71,10 @@ export function ProgramSelectors() {
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-x-3 gap-y-2 max-md:w-full">
+    <div className="grid w-full grid-cols-2 items-end gap-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3">
       <ProgramCombobox
         label="Faculty"
-        className="w-44"
+        className="w-full @min-[55rem]:w-44"
         placeholder="Search faculties"
         value={faculty}
         options={index.faculties.map((name) => ({ value: name, label: name }))}
@@ -86,7 +86,7 @@ export function ProgramSelectors() {
       />
       <ProgramCombobox
         label="Major / program"
-        className="w-52"
+        className="w-full @min-[55rem]:w-52"
         labelExtra={
           major ? (
             <a
@@ -108,7 +108,7 @@ export function ProgramSelectors() {
       />
       <ProgramCombobox
         label="Minor (optional)"
-        className="w-40"
+        className="w-full @min-[55rem]:w-40"
         placeholder={faculty ? "Search minors" : "Select a faculty first"}
         value={minor}
         options={minorOptions.map((option) => ({ value: option.url, label: option.label }))}
