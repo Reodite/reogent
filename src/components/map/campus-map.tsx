@@ -207,13 +207,13 @@ const ROUTE_OCCLUDED_PARAMETERS = {
   depthCompare: "greater",
   depthWriteEnabled: false,
 } as const satisfies NonNullable<DeckLayerProps["parameters"]>;
-const DOOR_LAYER_PARAMETERS = {
+const SURFACE_OVERLAY_PARAMETERS = {
   depthCompare: "less-equal",
   depthWriteEnabled: false,
 } as const satisfies NonNullable<DeckLayerProps["parameters"]>;
 const ROUTE_ALTITUDE_METERS = 0.2;
 const NO_POLYGON_OFFSET = () => [0, 0] as [number, number];
-const DOOR_DEPTH_BIAS = () => [-1, -1] as [number, number];
+const SURFACE_DEPTH_BIAS = () => [-1, -1] as [number, number];
 
 function withAlpha([red, green, blue]: Rgba, alpha: number): Rgba {
   return [red, green, blue, alpha];
@@ -231,8 +231,16 @@ export function buildingLayerAppearance(theme: ResolvedTheme) {
 /** Returns non-writing wall depth state with rasterization bias for door outlines. */
 export function doorLayerAppearance() {
   return {
-    parameters: DOOR_LAYER_PARAMETERS,
-    getPolygonOffset: DOOR_DEPTH_BIAS,
+    parameters: SURFACE_OVERLAY_PARAMETERS,
+    getPolygonOffset: SURFACE_DEPTH_BIAS,
+  };
+}
+
+/** Returns non-writing ground depth state with rasterization bias for entrance arrows. */
+export function groundEntranceLayerAppearance() {
+  return {
+    parameters: SURFACE_OVERLAY_PARAMETERS,
+    getPolygonOffset: SURFACE_DEPTH_BIAS,
   };
 }
 
@@ -826,6 +834,7 @@ export function CampusMap({
     const colors = MAP_COLORS[theme];
     const buildingAppearance = buildingLayerAppearance(theme);
     const doorAppearance = doorLayerAppearance();
+    const groundEntranceAppearance = groundEntranceLayerAppearance();
     const routeAppearance = routeLayerAppearance(theme);
     const route = resolveRoute(buildings, highlight);
     const focusedBuildings = highlight?.kind === "buildings" ? highlight.buildings : [];
@@ -893,6 +902,8 @@ export function CampusMap({
               stroked: true,
               getLineWidth: 1,
               lineWidthUnits: "pixels" as const,
+              parameters: groundEntranceAppearance.parameters,
+              getPolygonOffset: groundEntranceAppearance.getPolygonOffset,
               pickable: false,
             }),
           )

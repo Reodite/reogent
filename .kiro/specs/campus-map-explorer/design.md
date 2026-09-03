@@ -238,7 +238,7 @@ export function buildEntranceMarkers(
 - Search every exterior and courtyard boundary ring in Polygon and MultiPolygon footprints.
 - Find the nearest ring segment in local metre coordinates and accept projections no farther than 4 metres from the verified point.
 - Determine the side outside the polygon material with point-in-polygon checks.
-- Point the ground arrow from the non-building side toward the verified entrance.
+- Point the ground arrow from the non-building side toward the verified entrance, keep it on the ground plane, and use less-equal comparison with no depth writes plus `[-1, -1]` rasterization depth bias to prevent basemap z-fighting.
 - Build a vertical door outline on the matched wall plane with width along the wall tangent and height along altitude; use less-equal depth comparison, no depth writes, and `[-1, -1]` rasterization depth bias to avoid z-fighting without exposing a physical gap.
 - Skip malformed or ambiguous geometry instead of falling back to source rotation.
 

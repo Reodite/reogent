@@ -65,6 +65,7 @@ describe("entrance marker geometry", () => {
 
     expect(marker.wallDistanceMeters).toBeCloseTo(0, 4);
     expect(marker.groundArrow[0][1]).toBeLessThan(marker.groundArrow[3][1]);
+    expect(marker.groundArrow.every((position) => position[2] === 0)).toBe(true);
     expect(marker.doorOutline.map((position) => position[2])).toEqual([0.1, 2.2, 2.2, 0.1, 0.1]);
     expect((southEntrance(12)[1] - marker.doorOutline[0][1]) * METERS_PER_LATITUDE_DEGREE).toBeCloseTo(0, 3);
     expect(Math.abs(marker.wallTangent[0])).toBeCloseTo(1, 4);
