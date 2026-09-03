@@ -12,6 +12,22 @@ interface AuthFormProps {
   mode: "login" | "signup";
 }
 
+export function AuthFormLoading({ label }: { label: string }) {
+  return (
+    <div role="status" aria-label={label} className="flex w-full max-w-80 flex-col gap-3">
+      {["username", "password"].map((field) => (
+        <div key={field} className="flex flex-col gap-1.5">
+          <span className="shell-skeleton h-3 w-20 rounded" />
+          <span className="shell-skeleton h-11 w-full rounded-lg" />
+        </div>
+      ))}
+      <span data-auth-loading-feedback className="h-8" />
+      <span data-auth-loading-action className="shell-skeleton h-12 w-full rounded-xl" />
+      <span className="shell-skeleton h-11 w-full rounded-lg" />
+    </div>
+  );
+}
+
 export function AuthForm({ mode }: AuthFormProps) {
   const auth = useAppAuth();
   const router = useRouter();
@@ -51,7 +67,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} aria-busy={pending} className="flex w-full max-w-80 flex-col gap-4">
+    <form onSubmit={handleSubmit} aria-busy={pending} className="flex w-full max-w-80 flex-col gap-3">
       <Field label="Username" htmlFor="auth-username">
         <TextInput
           ref={usernameRef}
@@ -87,22 +103,24 @@ export function AuthForm({ mode }: AuthFormProps) {
           shadowOn="background"
         />
       </Field>
-      <AnimatePresence>
-        {error && (
-          <motion.p
-            id="auth-error"
-            role="alert"
-            aria-live="assertive"
-            className="text-error text-center text-xs"
-            initial={prefersReducedMotion ? false : { opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
-          >
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
+      <div data-auth-error-slot className="flex min-h-8 items-center justify-center">
+        <AnimatePresence>
+          {error ? (
+            <motion.p
+              id="auth-error"
+              role="alert"
+              aria-live="assertive"
+              className="text-error text-center text-xs leading-4"
+              initial={prefersReducedMotion ? false : { opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+            >
+              {error}
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
+      </div>
       <Button
         type="submit"
         variant="primary"
@@ -110,7 +128,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         shadowOn="background"
         disabled={pending}
         aria-busy={pending}
-        className="mt-1 w-full"
+        className="w-full"
       >
         {pending
           ? mode === "login"
@@ -120,7 +138,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             ? "Sign in"
             : "Create account"}
       </Button>
-      <p className="text-muted flex min-h-[44px] items-center justify-center text-sm">
+      <p className="text-muted flex min-h-11 items-center justify-center text-sm">
         {mode === "login" ? (
           <>
             Don&apos;t have an account?{" "}

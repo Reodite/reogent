@@ -11,6 +11,7 @@ const replace = vi.hoisted(() => vi.fn());
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => auth }));
 vi.mock("@/src/components/auth/auth-form", () => ({
   AuthForm: ({ mode }: { mode: string }) => <div data-testid="auth-form">{mode}</div>,
+  AuthFormLoading: ({ label }: { label: string }) => <div data-testid="auth-form-loading">{label}</div>,
 }));
 vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => null }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
@@ -23,9 +24,7 @@ vi.mock("next/link", () => ({
 }));
 vi.mock("motion/react", () => ({
   motion: {
-    div: ({ children, className }: { children: ReactNode; className?: string }) => (
-      <div className={className}>{children}</div>
-    ),
+    div: ({ children, ...props }: React.ComponentProps<"div">) => <div {...props}>{children}</div>,
   },
   useReducedMotion: () => true,
 }));
@@ -49,10 +48,21 @@ describe("guest auth pages", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
-  it("redirects an authenticated account away from auth forms", () => {
+  it("renders an auth-shaped loading frame during initialization", () => {
+    auth.status = "initializing";
+    const { container } = render(<LoginPage />);
+
+    expect(screen.queryByTestId("auth-form")).toBeNull();
+    expect(screen.getByTestId("auth-form-loading")).not.toBeNull();
+    expect(container.querySelector("[data-auth-content]")?.className).toContain("py-6");
+    expect(container.querySelector("[data-auth-content]")?.className).toContain("sm:py-12");
+  });
+
+  it("redirects an authenticated account away from auth forms without a blank frame", () => {
     auth.isGuest = false;
     render(<LoginPage />);
     expect(screen.queryByTestId("auth-form")).toBeNull();
+    expect(screen.getByTestId("auth-form-loading")).not.toBeNull();
     expect(replace).toHaveBeenCalledWith("/chat");
   });
 });

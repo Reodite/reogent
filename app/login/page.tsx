@@ -1,7 +1,7 @@
 "use client";
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
-import { AuthForm } from "@/src/components/auth/auth-form";
+import { AuthForm, AuthFormLoading } from "@/src/components/auth/auth-form";
 import { Icon } from "@/src/components/icons";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { motion, useReducedMotion } from "motion/react";
@@ -20,9 +20,7 @@ function LoginContent() {
     if (authenticatedAccount) router.replace("/chat");
   }, [authenticatedAccount, router]);
 
-  if (auth.status === "initializing" || authenticatedAccount) {
-    return null;
-  }
+  const loading = auth.status === "initializing" || authenticatedAccount;
 
   return (
     <div className="auth-canvas flex min-h-svh flex-col px-4 py-8">
@@ -36,7 +34,8 @@ function LoginContent() {
         </Link>
       </nav>
       <motion.div
-        className="flex flex-1 flex-col items-center justify-center py-12"
+        data-auth-content
+        className="flex flex-1 flex-col items-center justify-center py-6 sm:py-12"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
@@ -47,7 +46,7 @@ function LoginContent() {
           </span>
           <h1 className="text-on-surface mb-2 text-center text-2xl font-medium tracking-[-0.02em]">Welcome back</h1>
           <p className="text-muted mb-6 text-center text-sm">Sign in to continue to Reodite</p>
-          <AuthForm mode="login" />
+          {loading ? <AuthFormLoading label="Loading sign in" /> : <AuthForm mode="login" />}
         </div>
       </motion.div>
       <footer className="flex items-center justify-center pb-2">

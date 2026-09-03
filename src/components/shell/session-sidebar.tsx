@@ -149,7 +149,7 @@ function SessionItem({
   // Editing: inline text input with checkmark/x
   if (mode === "editing") {
     return (
-      <div className="flex h-9 items-center gap-1 px-1">
+      <div data-session-editing className="flex min-h-11 items-center gap-1 px-1 sm:min-h-9">
         <input
           ref={inputRef}
           type="text"
@@ -160,13 +160,13 @@ function SessionItem({
             if (e.key === "Escape") cancelAction();
           }}
           maxLength={80}
-          className="bg-surface-container-low text-on-surface h-7 min-w-0 flex-1 rounded-md px-2 text-sm outline-none"
+          className="bg-surface-container-low text-on-surface h-11 min-w-0 flex-1 rounded-md px-2 text-sm outline-none sm:h-7"
         />
         <button
           type="button"
           onClick={commitRename}
           aria-label="Confirm rename"
-          className="focus-visible:ring-primary/40 text-secondary hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="focus-visible:ring-primary/40 text-secondary hover:text-on-surface flex size-11 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8"
         >
           <Icon name="check" size={14} />
         </button>
@@ -174,7 +174,7 @@ function SessionItem({
           type="button"
           onClick={cancelAction}
           aria-label="Cancel"
-          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-11 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8"
         >
           <Icon name="close" size={12} />
         </button>
@@ -185,13 +185,13 @@ function SessionItem({
   // Confirming delete: shows "Confirm deletion" with checkmark/x
   if (mode === "confirming-delete") {
     return (
-      <div className="flex h-9 items-center gap-1 px-1">
+      <div data-session-delete-confirmation className="flex min-h-11 items-center gap-1 px-1 sm:min-h-9">
         <span className="text-error min-w-0 flex-1 truncate px-2 text-sm">Confirm deletion</span>
         <button
           type="button"
           onClick={confirmDelete}
           aria-label="Confirm delete"
-          className="focus-visible:ring-primary/40 text-error hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="focus-visible:ring-primary/40 text-error hover:text-on-surface flex size-11 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8"
         >
           <Icon name="check" size={14} />
         </button>
@@ -199,7 +199,7 @@ function SessionItem({
           type="button"
           onClick={cancelAction}
           aria-label="Cancel"
-          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-11 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8"
         >
           <Icon name="close" size={12} />
         </button>
@@ -214,7 +214,7 @@ function SessionItem({
         onClick={onOpen}
         aria-current={active ? "page" : undefined}
         title={session.title}
-        className={`focus-visible:ring-primary/40 flex h-11 w-full items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-left transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
+        className={`focus-visible:ring-primary/40 flex h-11 w-full items-center gap-2 overflow-hidden rounded-lg py-2 pr-24 pl-3 text-left transition-[color,background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 sm:px-3 ${
           active
             ? "neu-inset bg-surface-container text-on-surface"
             : "text-on-surface-variant group-hover:bg-surface-container-high group-hover:text-on-surface"
@@ -224,7 +224,7 @@ function SessionItem({
         <span className="truncate text-sm">{session.title?.trim() || "Untitled"}</span>
       </button>
       <div
-        className="pointer-events-none absolute inset-y-0 right-0 w-20 rounded-r-lg opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-y-0 right-0 w-24 rounded-r-lg opacity-100 transition-opacity sm:w-20 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
         style={{
           background: active
             ? "linear-gradient(to right, transparent, var(--surface-container) 40%)"
@@ -232,12 +232,12 @@ function SessionItem({
         }}
         aria-hidden="true"
       />
-      <div className="absolute right-1 flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+      <div className="absolute right-1 flex items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
         <button
           type="button"
           onClick={startRename}
           aria-label="Rename"
-          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-11 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8"
         >
           <Icon name="pencil" size={12} />
         </button>
@@ -245,7 +245,7 @@ function SessionItem({
           type="button"
           onClick={() => setMode("confirming-delete")}
           aria-label="Delete"
-          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-error hover:bg-error-container/40 flex size-8 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-error hover:bg-error-container/40 flex size-11 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8"
         >
           <Icon name="close" size={12} />
         </button>
