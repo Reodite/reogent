@@ -387,6 +387,7 @@ describe("BuildingRail", () => {
     fireEvent.error(screen.getByRole("img", { name: /IBLC 100/ }));
 
     expect(screen.queryByRole("img", { name: /IBLC 100/ })).toBeNull();
+    expect(document.querySelector("[data-photo-fallback]")?.className).toContain("h-36");
     expect(screen.getByText("Photo unavailable.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /UBC Learning Spaces/ })).toBeTruthy();
   });

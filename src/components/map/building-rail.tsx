@@ -105,7 +105,11 @@ function OfficialPhotoCard({ photo }: { photo: OfficialBuildingPhoto }) {
           onError={() => setFailed(true)}
           className="h-36 w-full object-cover"
         />
-      ) : null}
+      ) : (
+        <div data-photo-fallback className="text-muted flex h-36 items-center justify-center" aria-hidden="true">
+          <Icon name="camera" size={24} />
+        </div>
+      )}
       <figcaption className="px-3 py-2 text-xs">
         {failed ? <span className="text-muted mr-2">Photo unavailable.</span> : null}
         <ExternalLink href={photo.sourceUrl}>{photo.sourceName}</ExternalLink>

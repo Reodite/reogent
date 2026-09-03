@@ -41,7 +41,7 @@ function SessionPicker({ session, onChange }: { session: string; onChange: (sess
 
 function CourseDetailSkeleton() {
   return (
-    <div role="status" aria-label="Loading course details" className="flex flex-col gap-2 p-3">
+    <div role="status" aria-label="Loading course details" className="flex flex-col gap-3">
       <span className="bg-surface-container h-5 w-32 animate-pulse rounded" />
       <span className="bg-surface-container h-3 w-64 max-w-full animate-pulse rounded" />
       <span className="bg-surface-container h-24 w-full animate-pulse rounded" />

@@ -209,6 +209,7 @@ describe("PrereqTreePane", () => {
     expect(screen.getByRole("button", { name: "map" }).getAttribute("aria-pressed")).toBe("true");
     expect(flowProps.current?.nodesFocusable).toBe(false);
     expect(flowProps.current?.edgesFocusable).toBe(false);
+    expect(flowProps.current?.onNodeClick).toBeUndefined();
     expect(flowProps.current?.minZoom).toBe(0.8);
   });
 

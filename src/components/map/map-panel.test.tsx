@@ -247,7 +247,7 @@ describe("MapArea", () => {
     const tools = renderMap("tools");
     await screen.findByText(iblc.name);
     expect(tools.container.querySelector("[data-workspace-composition='split']")).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Open Explore" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Explore" }).textContent).toContain("Buildings, rooms, services");
     expect(screen.getByRole("combobox", { name: "Search buildings" })).toBeTruthy();
     cleanup();
 

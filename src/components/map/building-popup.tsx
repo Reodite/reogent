@@ -67,8 +67,11 @@ function DetailCard({
   const body = (
     <>
       <div className="bg-surface-container relative h-32 shrink-0 overflow-hidden">
-        <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-35" aria-hidden="true">
-          🏛
+        <span
+          className="text-on-surface-variant absolute inset-0 flex items-center justify-center opacity-35"
+          aria-hidden="true"
+        >
+          <Icon name="camera" size={24} />
         </span>
         {src && !failed && (
           // biome-ignore lint/performance/noImgElement: images come from arbitrary external hosts — next/image would need a remotePattern per host

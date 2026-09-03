@@ -89,8 +89,8 @@ describe("Property 26 — two events on one day with different kinds render two 
   });
 });
 
-describe("Property 27 — days with k > 3 events indicate the overflow count (REQ-16.4)", () => {
-  it("a day with four events shows the first three labels and a '+1 more' overflow count", async () => {
+describe("Property 27 — busy days preserve a readable overflow count (REQ-16.4)", () => {
+  it("a day with four events shows two labels and a '+2 more' overflow count", async () => {
     const events: CalendarEvent[] = (["Academic one", "Academic two", "Academic three", "Academic four"] as const).map(
       (label) => ({
         kind: "academic" as const,
@@ -104,8 +104,8 @@ describe("Property 27 — days with k > 3 events indicate the overflow count (RE
     const cell = await waitForCell(container, "2024-11-29", "[data-calendar-count]");
     const count = cell.querySelector("[data-calendar-count]");
     expect(count?.getAttribute("data-calendar-count")).toBe("4");
-    expect(count?.textContent).toContain("1 more");
-    expect(cell.querySelectorAll("[data-calendar-marker]")).toHaveLength(3);
+    expect(count?.textContent).toContain("2 more");
+    expect(cell.querySelectorAll("[data-calendar-marker]")).toHaveLength(2);
     restore();
   });
 });
@@ -191,6 +191,8 @@ describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17
     expect(kinds).toEqual(["academic"]);
     const offButton = off.container.querySelector('[data-calendar-legend="holiday"]') as HTMLElement;
     expect(offButton.getAttribute("aria-pressed")).toBe("false");
+    expect(offButton.className).toContain("text-muted");
+    expect(offButton.className).not.toContain("text-muted/60");
     off.restore();
   });
 });
@@ -223,7 +225,7 @@ describe("20.13 + Property 27b — multi-event-day popover enumerates each event
     const { container, restore } = renderPane({ cursor: "2024-09" }, events);
     const cell = await waitForCell(container, "2024-09-17", "[data-calendar-marker]");
     const markers = cell.querySelectorAll("[data-calendar-marker]");
-    expect(markers).toHaveLength(3);
+    expect(markers).toHaveLength(2);
     // Click the first event marker (Add/drop deadline, which has a source_url)
     act(() => {
       fireEvent.click(markers[0]);
@@ -307,6 +309,7 @@ describe("Compact calendar agenda", () => {
     render(<CalendarPane state={{ cursor: "2025-02" }} setState={vi.fn()} />);
 
     expect(screen.getByText("Loading upcoming events…")).not.toBeNull();
+    expect(screen.getByText("Loading calendar…")).not.toBeNull();
     expect(await screen.findByText("Couldn't load calendar dates.")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(screen.queryByText("Couldn't load calendar dates.")).toBeNull());

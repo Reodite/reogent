@@ -57,7 +57,7 @@ export function CourseNode({ id, data }: NodeProps<CourseNodeData>) {
         <div className="text-xs leading-snug">{data?.text}</div>
       ) : (
         <>
-          {isRoot && <div className="text-sm tracking-wide uppercase opacity-70">ROOT</div>}
+          {isRoot && <div className="text-xs font-medium tracking-[0.05em] uppercase opacity-70">ROOT</div>}
           {data?.onNavigate && data?.code ? (
             <button
               type="button"
@@ -76,7 +76,7 @@ export function CourseNode({ id, data }: NodeProps<CourseNodeData>) {
           )}
           {data?.title && (
             <div
-              className={`border-border border-t leading-snug ${isRoot ? "mt-2 pt-2 text-lg" : "mt-1.5 pt-1.5 text-xs"}`}
+              className={`border-border border-t leading-snug ${isRoot ? "mt-2 pt-2 text-base" : "mt-1.5 pt-1.5 text-xs"}`}
             >
               {data.title}
             </div>

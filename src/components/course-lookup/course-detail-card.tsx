@@ -113,7 +113,7 @@ export function CourseDetailCard({
   const buckets = (record as { buckets?: Record<string, number> }).buckets;
   const hasDistribution = buckets != null;
   return (
-    <article className="neu-panel bg-surface flex flex-col gap-3 rounded-xl p-4">
+    <article className="flex flex-col gap-3">
       <header className="flex flex-wrap items-baseline gap-1.5">
         {/* Catalog codes carry a _V campus suffix after the subject; display strips it. */}
         <h2 className="font-mono text-base leading-tight font-medium">{record.code.replace(/_V(?=\b|$)/, "")}</h2>

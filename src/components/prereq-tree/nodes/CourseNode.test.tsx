@@ -13,10 +13,18 @@ vi.mock("reactflow", () => ({
 const renderNode = (data: CourseNodeData, id = "n1") => render(<CourseNode id={id} data={data} />).container;
 
 describe("CourseNode variants (REQ-9.4)", () => {
-  it("renders root variant with ROOT label and title row (bg-primary-container)", () => {
-    expect(
-      renderNode({ code: "CPSC 320", title: "Intermediate Algorithm Design and Analysis", variant: "root" }),
-    ).toMatchSnapshot();
+  it("renders root labels on the documented in-app type ramp", () => {
+    const node = renderNode({ code: "CPSC 320", title: "Intermediate Algorithm Design and Analysis", variant: "root" });
+    const label = Array.from(node.querySelectorAll("div")).find((element) => element.textContent === "ROOT");
+    const title = Array.from(node.querySelectorAll("div")).find((element) =>
+      element.textContent?.includes("Intermediate Algorithm Design"),
+    );
+
+    expect(label?.className).toContain("text-xs");
+    expect(label?.className).toContain("tracking-[0.05em]");
+    expect(title?.className).toContain("text-base");
+    expect(title?.className).not.toContain("text-lg");
+    expect(node).toMatchSnapshot();
   });
 
   it("renders known variant with a title row (bg-surface)", () => {

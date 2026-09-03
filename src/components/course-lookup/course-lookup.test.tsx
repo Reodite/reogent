@@ -81,6 +81,9 @@ afterEach(() => cleanup());
 describe("CourseDetailCard — render with sections (13.6, REQ-2.1)", () => {
   it("renders code, title, credits, description, prerequisite, terms, and a section row", () => {
     const { container } = render(<CourseDetailCard record={fullRecord} />);
+    const article = container.querySelector("article");
+    expect(article?.className).not.toContain("neu-panel");
+    expect(article?.className).not.toContain("p-4");
     expect(container.textContent).toContain("CPSC 110");
     expect(container.textContent).toContain("Computation, Programs, and Programming");
     expect(container.textContent).toContain("4 cr");
@@ -305,6 +308,8 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     expect(document.querySelector("[data-workspace-region='rail']")).toBeNull();
     expect(document.querySelector("[data-workspace-view-toggle]")).toBeNull();
     expect(document.querySelector("[data-workspace-canvas]")).not.toBeNull();
+    expect(screen.getByLabelText("Session").className).toContain("h-11");
+    expect(screen.getByLabelText("Session").className).not.toContain("sm:h-9");
     expect(apiState.searchCourses).toHaveBeenCalledWith(expect.objectContaining({ sort: "students_desc" }));
   });
 
@@ -362,6 +367,8 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     });
     render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
     const codeButton = await screen.findByRole("button", { name: "MATH 100" });
+    expect(codeButton.className).toContain("after:absolute");
+    expect(codeButton.closest("tr")?.className).not.toContain("cursor-pointer");
     fireEvent.click(codeButton);
     expect(routerPush).toHaveBeenCalledWith("/tools/courses/MATH100");
   });

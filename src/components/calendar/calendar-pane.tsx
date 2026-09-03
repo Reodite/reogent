@@ -188,7 +188,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                 data-calendar-legend={key}
                 aria-pressed={shown}
                 onClick={() => toggleKind(key)}
-                className={shown ? "text-on-surface-variant" : "text-muted/60"}
+                className={shown ? "text-on-surface-variant" : "text-muted"}
               >
                 <span
                   aria-hidden
@@ -281,6 +281,11 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           aria-busy={eventsState.status === "loading" || eventsState.status === "refreshing"}
           padding="md"
         >
+          {eventsState.status === "loading" ? (
+            <div className="bg-surface-container-low/70 pointer-events-none absolute inset-0 z-10 grid place-items-center">
+              <LoadingStatus className="bg-surface rounded-lg px-3 py-2">Loading calendar…</LoadingStatus>
+            </div>
+          ) : null}
           <MonthGrid
             cells={cells}
             eventsByDate={eventsByDate}
@@ -475,20 +480,20 @@ function MonthGrid({
               {isCurrentMonth && hasEvents ? (
                 <>
                   <div className="calendar-event-labels flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
-                    {dayEvents.slice(0, 3).map((event) => (
+                    {dayEvents.slice(0, 2).map((event) => (
                       <button
                         key={`${iso}-${event.label}-${event.source_url ?? "local"}`}
                         type="button"
                         data-calendar-marker={event.kind}
                         onClick={() => onEventClick(event)}
-                        className={`block w-full truncate rounded-md px-1 py-px text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${styleOf(event).chip}`}
+                        className={`block w-full truncate rounded-md px-1 py-0.5 text-left text-xs leading-tight font-medium transition-colors hover:opacity-80 ${styleOf(event).chip}`}
                       >
                         {event.label}
                       </button>
                     ))}
                     {dayEvents.length > 3 ? (
                       <span data-calendar-count={String(dayEvents.length)} className="text-muted font-mono text-xs">
-                        +{dayEvents.length - 3} more
+                        +{dayEvents.length - 2} more
                       </span>
                     ) : null}
                   </div>

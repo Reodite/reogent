@@ -72,7 +72,7 @@ function FilterSelect({
 }) {
   return (
     <Field label={label} htmlFor={id}>
-      <SelectInput id={id} value={value} onChange={(event) => onChange(event.target.value)} controlSize="compact">
+      <SelectInput id={id} value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
           <option key={option.value || "all"} value={option.value}>
             {option.label}
@@ -379,17 +379,13 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
                         return (
                           <tr
                             key={course.code}
-                            className="border-surface-container hover:bg-surface-container-low cursor-pointer border-t transition-colors"
-                            onClick={() => onSelect?.(course.code)}
+                            className="border-surface-container hover:bg-surface-container-low relative border-t transition-colors"
                           >
                             <td className="px-3 py-1.5">
                               <button
                                 type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  onSelect?.(course.code);
-                                }}
-                                className="focus-visible:ring-primary/40 hover:text-primary -mx-1.5 min-h-11 rounded-md px-1.5 font-mono text-xs font-medium focus-visible:ring-2 focus-visible:ring-offset-1 sm:min-h-8"
+                                onClick={() => onSelect?.(course.code)}
+                                className="hover:text-primary focus-visible:after:ring-primary/40 -mx-1.5 min-h-11 rounded-md px-1.5 font-mono text-xs font-medium after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset sm:min-h-8"
                               >
                                 {course.code}
                               </button>

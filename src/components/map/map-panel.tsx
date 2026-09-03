@@ -161,7 +161,7 @@ function MapExploreSheet({
         ? route.status === "loading"
           ? "Finding a walking route…"
           : "Choose a starting building"
-        : "Search buildings, rooms, and services";
+        : "Buildings, rooms, services";
 
   useEffect(() => {
     const wasOpen = previousOpenRef.current;

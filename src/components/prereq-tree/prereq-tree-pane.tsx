@@ -798,10 +798,6 @@ export function PrereqTreePane({
                 nodesDraggable={false}
                 nodesConnectable={false}
                 onNodesChange={onNodesChange}
-                onNodeClick={(_event, node) => {
-                  const code = node.type === "course" ? (node.data as { code?: string }).code : undefined;
-                  if (code) openInFinder(code);
-                }}
                 onNodeContextMenu={onNodeContextMenu}
                 onPaneContextMenu={onPaneContextMenu}
                 onPaneClick={closeCtxMenu}

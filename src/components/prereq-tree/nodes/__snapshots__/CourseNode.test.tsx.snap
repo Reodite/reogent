@@ -37,7 +37,7 @@ exports[`CourseNode variants (REQ-9.4) > renders note variant with text prose (b
 </div>
 `;
 
-exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label and title row (bg-primary-container) 1`] = `
+exports[`CourseNode variants (REQ-9.4) > renders root labels on the documented in-app type ramp 1`] = `
 <div>
   <section
     class="neu-raised border-border min-w-[120px] rounded-lg border bg-primary-container text-on-primary-container px-4 py-3 text-center"
@@ -45,7 +45,7 @@ exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label an
     data-variant="root"
   >
     <div
-      class="text-sm tracking-wide uppercase opacity-70"
+      class="text-xs font-medium tracking-[0.05em] uppercase opacity-70"
     >
       ROOT
     </div>
@@ -55,7 +55,7 @@ exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label an
       CPSC 320
     </div>
     <div
-      class="border-border border-t leading-snug mt-2 pt-2 text-lg"
+      class="border-border border-t leading-snug mt-2 pt-2 text-base"
     >
       Intermediate Algorithm Design and Analysis
     </div>
