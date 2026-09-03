@@ -58,13 +58,15 @@ function southEntrance(height: number, center = ORIGIN): [number, number] {
 }
 
 describe("entrance marker geometry", () => {
-  it("builds an inward ground arrow and a vertical wall-aligned door", () => {
+  it("builds an inward solid arrowhead and a vertical wall-aligned door", () => {
     const markers = buildEntranceMarkers(polygonCollection([ring(20, 12)]), entrances(southEntrance(12)));
     expect(markers).toHaveLength(1);
     const marker = markers[0];
 
     expect(marker.wallDistanceMeters).toBeCloseTo(0, 4);
-    expect(marker.groundArrow[0][1]).toBeLessThan(marker.groundArrow[3][1]);
+    expect(marker.groundArrow).toHaveLength(4);
+    expect(marker.groundArrow.at(-1)).toEqual(marker.groundArrow[0]);
+    expect(marker.groundArrow[0][1]).toBeLessThan(marker.groundArrow[1][1]);
     expect(marker.groundArrow.every((position) => position[2] === 0)).toBe(true);
     expect(marker.doorOutline.map((position) => position[2])).toEqual([0.1, 2.2, 2.2, 0.1, 0.1]);
     expect((southEntrance(12)[1] - marker.doorOutline[0][1]) * METERS_PER_LATITUDE_DEGREE).toBeCloseTo(0, 3);

@@ -108,7 +108,7 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 - Explore starts with eight curated buildings, searches the complete building catalog, and prioritizes official identity and addresses, rooms, dated booking availability, footprint-associated services, verified entrances, source freshness, and official photo sources.
 - Signed-in users save favorite buildings to the account. Building actions share a deep link, open a separate Google Maps destination, or start an in-app route. Directions keeps editable From and To boxes at the top; endpoint results exist only while one box is being edited and disappear as soon as a route starts.
 - AI Answer Canvas remains map-only. Existing map widgets stay compatible; additive building-detail, entrance, and space widgets expose richer map answers in Chat.
-- Building footprints render as extruded 3D GeoJSON. Verified entrances within a building-wall tolerance render as ground arrows and vertical door outlines; undocumented rotation and accessibility flags do not drive claims.
+- Building footprints render as extruded 3D GeoJSON. Verified entrances within a building-wall tolerance render as compact solid ground arrowheads and vertical door outlines; undocumented rotation and accessibility flags do not drive claims.
 - Walking routes use Dijkstra over the pedestrian network. Visible segments render at full opacity with a contrasting casing; building-occluded segments remain readable as one 30%-opacity primary stroke. Opaque depth-writing buildings fully occlude one another. Straight-line estimates remain labeled text and do not render as paths.
 - POI pins use deck.gl point and text layers.
 - Building clicks open Explore details in Tools and retain the transient map popup in AI.

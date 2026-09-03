@@ -239,6 +239,8 @@ export function doorLayerAppearance() {
 /** Returns non-writing ground depth state with rasterization bias for entrance arrows. */
 export function groundEntranceLayerAppearance() {
   return {
+    filled: true,
+    stroked: false,
     parameters: SURFACE_OVERLAY_PARAMETERS,
     getPolygonOffset: SURFACE_DEPTH_BIAS,
   };
@@ -898,10 +900,8 @@ export function CampusMap({
               data: visibleEntrances,
               getPolygon: (marker) => marker.groundArrow,
               getFillColor: colors.entrance,
-              getLineColor: colors.door,
-              stroked: true,
-              getLineWidth: 1,
-              lineWidthUnits: "pixels" as const,
+              filled: groundEntranceAppearance.filled,
+              stroked: groundEntranceAppearance.stroked,
               parameters: groundEntranceAppearance.parameters,
               getPolygonOffset: groundEntranceAppearance.getPolygonOffset,
               pickable: false,

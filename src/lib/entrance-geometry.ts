@@ -93,15 +93,7 @@ function position3d(position: Vec2, origin: LngLat, altitude: number): [number, 
 function groundArrow(wall: WallProjection, outside: Vec2, origin: LngLat): [number, number, number][] {
   const at = (normalDistance: number, tangentDistance: number) =>
     position3d(add(add(wall.point, outside, normalDistance), wall.tangent, tangentDistance), origin, 0);
-  const points = [
-    at(3.2, -0.25),
-    at(1.1, -0.25),
-    at(1.1, -0.75),
-    at(0.15, 0),
-    at(1.1, 0.75),
-    at(1.1, 0.25),
-    at(3.2, 0.25),
-  ];
+  const points = [at(1.35, -0.75), at(0.15, 0), at(1.35, 0.75)];
   return [...points, points[0]];
 }
 

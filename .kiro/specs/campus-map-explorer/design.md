@@ -62,7 +62,7 @@ This keeps one map renderer and one layer pipeline. Tools controls live outside 
 3. The selected code starts an abortable Building Record request. A request generation guard prevents an older response from replacing a newer selection.
 4. `BuildingRail` renders base identity immediately and fills source sections as the record resolves. Source-status metadata distinguishes empty sections from unavailable sections.
 5. Favorite state loads only for authenticated users. Save and remove use one idempotent endpoint and roll back optimistic UI on failure.
-6. Entrance GeoJSON loads through the public map API. Pure entrance geometry helpers project verified entrance points to nearby footprint edges. `CampusMap` renders resulting ground arrows and door outlines only for a selected building or at zoom level 16 and above.
+6. Entrance GeoJSON loads through the public map API. Pure entrance geometry helpers project verified entrance points to nearby footprint edges. `CampusMap` renders resulting compact ground arrowheads and door outlines only for a selected building or at zoom level 16 and above.
 7. In-app directions expose editable From and To boxes backed by one transient catalog listbox. Selecting a result commits that endpoint, removes the query/results immediately, and sends both official codes to the route API when available. Valid network results lift the pedestrian polyline slightly above flat ground. A single 30%-opacity primary stroke renders fragments behind scene geometry; a full-opacity casing and primary trace render visible fragments. Route passes do not write depth, opaque buildings retain normal depth comparison and writes, and basemap labels remain on top. Estimate results show labeled distance text without drawing a straight route line.
 8. AI `show_widget` results map into the same `MapHighlight` union. The existing `building` contract keeps its input and result shape; `building_detail`, `building_entrances`, and `building_spaces` accept one exact resolved building code. Building entrances set an entrance-display flag; building spaces highlight the building while the Chat card carries room details.
 
@@ -238,7 +238,7 @@ export function buildEntranceMarkers(
 - Search every exterior and courtyard boundary ring in Polygon and MultiPolygon footprints.
 - Find the nearest ring segment in local metre coordinates and accept projections no farther than 4 metres from the verified point.
 - Determine the side outside the polygon material with point-in-polygon checks.
-- Point the ground arrow from the non-building side toward the verified entrance, keep it on the ground plane, and use less-equal comparison with no depth writes plus `[-1, -1]` rasterization depth bias to prevent basemap z-fighting.
+- Draw a compact solid triangular arrowhead without a stem from the non-building side toward the verified entrance, keep it on the ground plane, and use less-equal comparison with no depth writes plus `[-1, -1]` rasterization depth bias to prevent basemap z-fighting.
 - Build a vertical door outline on the matched wall plane with width along the wall tangent and height along altitude; use less-equal depth comparison, no depth writes, and `[-1, -1]` rasterization depth bias to avoid z-fighting without exposing a physical gap.
 - Skip malformed or ambiguous geometry instead of falling back to source rotation.
 

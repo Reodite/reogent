@@ -27,7 +27,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 - **Availability_Snapshot**: A dated set of room availability intervals whose collection time is visible to the user.
 - **Favorite_Service**: The account-scoped service that reads and updates saved building codes.
 - **Verified_Entrance**: A current entrance point joined by official building identifier to a Building_Record.
-- **Ground_Entrance_Marker**: A ground-plane arrow derived from a Verified_Entrance and a valid nearby building wall segment.
+- **Ground_Entrance_Marker**: A compact solid ground-plane arrowhead derived from a Verified_Entrance and a valid nearby building wall segment.
 - **Door_Marker**: A door-shaped vertical rectangle derived from a Verified_Entrance and a valid nearby building wall segment.
 - **Agent**: The server-side assistant that calls data tools and presentation tools.
 - **Map_Widget**: An agent-callable presentation result that renders a map state in the AI_Answer_Canvas and a corresponding Response_Widget in Chat.
@@ -155,7 +155,7 @@ The feature uses repository-backed UBC Vancouver data. The interface identifies 
 #### Acceptance Criteria
 
 1. THE Campus_Map_Explorer SHALL create entrance graphics only from Verified_Entrance records.
-2. WHEN a Verified_Entrance projects to a building wall segment within 4 metres, THE Map_Canvas SHALL render a Ground_Entrance_Marker on the ground plane that points from outside the footprint toward the entrance and uses non-writing visible-depth comparison with rasterization depth bias to prevent basemap z-fighting.
+2. WHEN a Verified_Entrance projects to a building wall segment within 4 metres, THE Map_Canvas SHALL render a compact solid Ground_Entrance_Marker arrowhead without a stem on the ground plane that points from outside the footprint toward the entrance and uses non-writing visible-depth comparison with rasterization depth bias to prevent basemap z-fighting.
 3. WHEN a Verified_Entrance projects to a building wall segment within 4 metres, THE Map_Canvas SHALL render a Door_Marker on the matching 3D building side.
 4. THE Door_Marker SHALL align width along the matched wall tangent and height along the vertical axis, remain on the matched wall plane, use normal visible-depth comparison without depth writes, and apply rasterization depth bias so the building wall does not z-fight with or visibly separate from the marker.
 5. THE Door_Marker SHALL use a ground clearance from 0 to 0.2 metres, a height from 1.8 to 2.4 metres, and a width from 0.8 to 1.8 metres.

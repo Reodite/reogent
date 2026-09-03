@@ -22,7 +22,8 @@ describe("map depth appearance", () => {
     expect(doorLayerAppearance().getPolygonOffset()).toEqual([-1, -1]);
   });
 
-  it("keeps ground entrance arrows above the basemap without writing depth", () => {
+  it("renders solid ground arrowheads above the basemap without writing depth", () => {
+    expect(groundEntranceLayerAppearance()).toMatchObject({ filled: true, stroked: false });
     expect(groundEntranceLayerAppearance().parameters).toEqual({
       depthCompare: "less-equal",
       depthWriteEnabled: false,
