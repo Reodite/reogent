@@ -138,6 +138,8 @@ describe("Property 24 — source_url absent renders no anchor and exposes label 
     expect(anchor?.getAttribute("href")).toBe("https://students.ubc.ca/calendar");
     expect(anchor?.getAttribute("title")).toBe("UBC Calendar");
     expect(anchor?.getAttribute("target")).toBe("_blank");
+    expect(anchor?.className).toContain("text-xs");
+    expect(anchor?.className).not.toContain("text-[0.625em]");
   });
 });
 
@@ -152,9 +154,9 @@ describe("17.8 — Sources panel two-list rendering edge cases", () => {
     expect(c.querySelectorAll('[data-used="true"]')).toHaveLength(3);
     expect(c.querySelectorAll('[data-used="false"]')).toHaveLength(2);
     expect(c.querySelector("summary")?.textContent).toContain("Sources used (3)");
-    // Unused rows carry the reduced-opacity label class.
     const unusedRow = c.querySelector('[data-used="false"]');
-    expect(unusedRow?.innerHTML).toContain("opacity-60");
+    expect(unusedRow?.innerHTML).toContain("text-muted");
+    expect(unusedRow?.innerHTML).not.toContain("opacity-60");
   });
   it("falls back to 'Other retrieved context (M)' when no citations are stamped used", () => {
     const citations = makeCitations(4, false, true);

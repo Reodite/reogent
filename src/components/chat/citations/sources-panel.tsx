@@ -29,7 +29,7 @@ export function SourcesPanel({ citations }: { citations: Citation[] | null | und
   return (
     <aside ref={ref} data-sources-panel className="mt-2">
       <details onToggle={handleToggle}>
-        <summary className="focus-visible:ring-primary/40 hover:bg-surface-container/60 inline-flex min-h-[44px] list-none items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium select-none focus-visible:ring-2 focus-visible:ring-offset-1 [&::-webkit-details-marker]:hidden">
+        <summary className="focus-visible:ring-primary/40 hover:bg-surface-container/60 inline-flex min-h-11 list-none items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium select-none focus-visible:ring-2 focus-visible:ring-offset-1 [&::-webkit-details-marker]:hidden">
           <Icon name="down" size={14} className="transition-transform open:rotate-180" />
           {used.length > 0 ? `Sources used (${used.length})` : `Other retrieved context (${unused.length})`}
         </summary>
@@ -70,14 +70,14 @@ function SourceRow({ c }: { c: Citation }) {
     >
       <span className="text-muted shrink-0 font-mono">{c.index}.</span>
       <div className="flex min-w-0 flex-col">
-        <span className={c.used ? "text-on-surface" : "text-on-surface-variant opacity-60"}>{c.label}</span>
+        <span className={c.used ? "text-on-surface" : "text-muted"}>{c.label}</span>
         {c.source_url && (
           <a
             href={c.source_url}
             target="_blank"
             rel="noopener noreferrer"
             title="Open source"
-            className="text-primary hover:text-primary/80 inline-flex min-h-[36px] min-w-[44px] items-center text-xs underline"
+            className="text-primary hover:text-primary/80 inline-flex min-h-11 min-w-11 items-center text-xs underline sm:min-h-9"
           >
             Source
           </a>

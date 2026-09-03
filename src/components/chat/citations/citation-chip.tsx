@@ -18,7 +18,7 @@ export function CitationChip({ citation }: { citation: Citation }) {
         rel="noopener noreferrer"
         title={label}
         onClick={() => announce(`Citation ${citation.index} opened`)}
-        className="bg-primary-container/60 text-on-primary-container hover:bg-primary-container focus-visible:ring-primary/40 ml-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 align-super font-mono text-[0.625em] leading-none transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
+        className="bg-primary-container/60 text-on-primary-container hover:bg-primary-container focus-visible:ring-primary/40 ml-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 align-super font-mono text-xs leading-none transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
       >
         [{citation.index}]
       </a>
@@ -28,7 +28,7 @@ export function CitationChip({ citation }: { citation: Citation }) {
     <span
       data-index={citation.index}
       title={label}
-      className="bg-surface-container text-on-surface-variant ml-0.5 inline-flex cursor-help items-center rounded-full px-1.5 py-0.5 align-super font-mono text-[0.625em] leading-none"
+      className="bg-surface-container text-on-surface-variant ml-0.5 inline-flex cursor-help items-center rounded-full px-1.5 py-0.5 align-super font-mono text-xs leading-none"
     >
       [{citation.index}]
     </span>

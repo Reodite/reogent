@@ -239,7 +239,7 @@ describe("14.2 — reload re-activates the latest widget (REQ-3.8, REQ-9.5)", ()
 });
 
 describe("14.3 — revisit an earlier widget + keyboard activation (REQ-3.4, REQ-3.5, REQ-8.1)", () => {
-  it("activating an earlier widget switches the canvas; Enter on a widget also loads it", async () => {
+  it("uses explicit native controls to revisit earlier widgets", async () => {
     api.getSession.mockResolvedValue([
       { role: "user", content: "CPSC 110?" },
       activityMsg("ok", [courseCall("CPSC 110")]),
@@ -250,16 +250,18 @@ describe("14.3 — revisit an earlier widget + keyboard activation (REQ-3.4, REQ
     // Reload restores the last mapped tool (CPSC 320).
     await waitFor(() => expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 320"));
 
-    // Revisit the earlier CPSC 110 widget (first show_widget widget in the log).
     const widgets = container.querySelectorAll('[data-widget="show_widget"]');
     expect(widgets.length).toBe(2);
-    fireEvent.click(widgets[0] as HTMLElement);
+    const earlier = widgets[0].querySelector<HTMLButtonElement>('[data-action="open-course-details"]');
+    const later = widgets[1].querySelector<HTMLButtonElement>('[data-action="open-course-details"]');
+    expect(earlier?.tagName).toBe("BUTTON");
+    expect(later?.tagName).toBe("BUTTON");
+
+    fireEvent.click(earlier as HTMLButtonElement);
     expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 110");
 
-    // Keyboard-activate the later CPSC 320 widget via Enter; focus stays on it.
-    const later = widgets[1] as HTMLElement;
-    later.focus();
-    fireEvent.keyDown(later, { key: "Enter" });
+    later?.focus();
+    fireEvent.click(later as HTMLButtonElement);
     expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 320");
     expect(document.activeElement).toBe(later);
   });

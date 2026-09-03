@@ -86,6 +86,23 @@ const walkingLoadingCall = {
   result: undefined,
   status: "ok",
 } as unknown as ToolCall;
+const courseCall = {
+  name: "show_widget",
+  input: { type: "course" },
+  result: {
+    type: "course",
+    result: {
+      code: "CPSC_V 110",
+      title: "Computation, Programs, and Programming",
+      description: "A first course in programming.",
+      credits: 4,
+      prerequisite: "One of CPSC 100 or 103",
+      corequisite: null,
+      sections: [],
+    },
+  },
+  status: "ok",
+} as unknown as ToolCall;
 
 describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
   it("a mapped widget is focusable and loads its canvas view on click", () => {
@@ -158,6 +175,53 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     const { container } = renderWidget(walkingLoadingCall);
     const widget = container.querySelector('[data-widget="walking_distance"]') as HTMLElement;
     expect(widget.getAttribute("role")).toBeNull();
+  });
+
+  it("gives compound course widgets explicit child actions instead of an interactive ancestor", () => {
+    const { container, getByRole } = renderWidget(courseCall, "m1:tc-0");
+    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
+
+    expect(widget.getAttribute("role")).toBeNull();
+    expect(widget.getAttribute("tabindex")).toBeNull();
+    fireEvent.click(getByRole("button", { name: "Course details" }));
+    expect(shellRef.current?.workspaceView?.paneId).toBe("course-lookup");
+  });
+
+  it("renders study-space evidence as static rows when no concrete row action exists", () => {
+    const call = {
+      name: "show_widget",
+      input: { type: "study_spaces" },
+      result: {
+        type: "study_spaces",
+        result: { spaces: [{ id: "1", title: "Quiet room", name: null, building_code: "IBLC" }] },
+      },
+      status: "ok",
+    } as unknown as ToolCall;
+    const { queryByRole, getByText } = renderWidget(call);
+
+    expect(getByText("Quiet room")).not.toBeNull();
+    expect(queryByRole("button", { name: /Quiet room/ })).toBeNull();
+  });
+
+  it("only styles program rows as links when they have a destination", () => {
+    const call = {
+      name: "show_widget",
+      input: { type: "program" },
+      result: {
+        type: "program",
+        result: {
+          programs: [
+            { id: 1, name: "With URL", url: "https://example.com/program", degrees: ["BSc"] },
+            { id: 2, name: "Without URL", url: "", degrees: ["BA"] },
+          ],
+        },
+      },
+      status: "ok",
+    } as unknown as ToolCall;
+    const { getByText } = renderWidget(call);
+
+    expect(getByText("With URL").closest("a")?.getAttribute("href")).toBe("https://example.com/program");
+    expect(getByText("Without URL").closest("a")).toBeNull();
   });
 
   it("renders and activates rich building entrance widgets", () => {

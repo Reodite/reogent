@@ -122,9 +122,9 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
         {course.prerequisite ? `Prereq: ${course.prerequisite}` : "No prerequisites"}
         {detailed && course.corequisite ? ` · Coreq: ${course.corequisite}` : ""}
       </p>
-      {course.prerequisite ? (
+      <div className="mt-2 flex flex-wrap gap-2">
         <Button
-          data-action="open-prereq-tree"
+          data-action="open-course-details"
           data-code={course.code}
           variant="outline"
           size="pill"
@@ -133,13 +133,29 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
             setUserDismissedPane(false);
             setAnswerSheetOpen(true);
             setRightPaneCollapsed(false);
-            setWorkspaceView({ paneId: "prereq-tree", state: { root: course.code, selections: {} } });
+            setWorkspaceView({ paneId: "course-lookup", state: { code: course.code } });
           }}
-          className="mt-2"
         >
-          <Icon name="tree" size={12} /> Prereq Tree
+          <Icon name="book2" size={12} /> Course details
         </Button>
-      ) : null}
+        {course.prerequisite ? (
+          <Button
+            data-action="open-prereq-tree"
+            data-code={course.code}
+            variant="outline"
+            size="pill"
+            onClick={(event) => {
+              event.stopPropagation();
+              setUserDismissedPane(false);
+              setAnswerSheetOpen(true);
+              setRightPaneCollapsed(false);
+              setWorkspaceView({ paneId: "prereq-tree", state: { root: course.code, selections: {} } });
+            }}
+          >
+            <Icon name="tree" size={12} /> Prereq Tree
+          </Button>
+        ) : null}
+      </div>
     </article>
   );
 }
@@ -213,14 +229,8 @@ function formatEventTime(start: string | null | undefined, end: string | null | 
 /** The show_widget tool returns { type, result } where `result` mirrors the
  *  internal tool it delegated to. Each case renders the matching widget. */
 function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
-  const {
-    workspaceView,
-    setWorkspaceView,
-    setActiveChannel,
-    setUserDismissedPane,
-    setAnswerSheetOpen,
-    setRightPaneCollapsed,
-  } = useChatShell();
+  const { setWorkspaceView, setActiveChannel, setUserDismissedPane, setAnswerSheetOpen, setRightPaneCollapsed } =
+    useChatShell();
   const [coursesExpanded, setCoursesExpanded] = useState(false);
   const outer = call.result as { type?: string; result?: unknown } | undefined;
   const data = outer?.result;
@@ -524,19 +534,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                 building_code?: string;
               };
               return (
-                <button
-                  key={room.eid ?? index}
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setUserDismissedPane(false);
-                    if (workspaceView !== null) {
-                      setAnswerSheetOpen(true);
-                      setRightPaneCollapsed(false);
-                    }
-                  }}
-                  className={toolResultRowClasses(true)}
-                >
+                <div key={room.eid ?? index} className={toolResultRowClasses()}>
                   <ToolResultRowContent
                     title={room.room ?? room.title}
                     description={room.location ?? "—"}
@@ -544,7 +542,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                       room.capacity != null ? <InfoChip className="shrink-0">{room.capacity} seats</InfoChip> : null
                     }
                   />
-                </button>
+                </div>
               );
             })}
           </ToolResultList>
@@ -556,19 +554,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       return (
         <ToolResultList footer={spaces.length > shown.length ? `+${spaces.length - shown.length} more` : null}>
           {shown.map((space) => (
-            <button
-              key={space.id}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setUserDismissedPane(false);
-                if (workspaceView !== null) {
-                  setAnswerSheetOpen(true);
-                  setRightPaneCollapsed(false);
-                }
-              }}
-              className={toolResultRowClasses(true)}
-            >
+            <div key={space.id} className={toolResultRowClasses()}>
               <ToolResultRowContent
                 title={space.name ?? space.title}
                 description={[space.building_name ?? space.building_code, space.space_type].filter(Boolean).join(" · ")}
@@ -576,7 +562,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
                   space.capacity != null ? <InfoChip className="shrink-0">{space.capacity} seats</InfoChip> : null
                 }
               />
-            </button>
+            </div>
           ))}
         </ToolResultList>
       );
@@ -679,21 +665,31 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       const shown = (programs as ProgramDoc[]).slice(0, 5);
       return (
         <ToolResultList footer={programs.length > shown.length ? `+${programs.length - shown.length} more` : null}>
-          {shown.map((program) => (
-            <a
-              key={program.id}
-              href={program.url || undefined}
-              target={program.url ? "_blank" : undefined}
-              rel={program.url ? "noreferrer" : undefined}
-              onClick={(event) => event.stopPropagation()}
-              className={toolResultRowClasses(true)}
-            >
+          {shown.map((program) => {
+            const content = (
               <ToolResultRowContent
+                key={program.id}
                 title={program.name}
                 description={Array.isArray(program.degrees) ? program.degrees.join(", ") : undefined}
               />
-            </a>
-          ))}
+            );
+            return program.url ? (
+              <a
+                key={program.id}
+                href={program.url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                className={toolResultRowClasses(true)}
+              >
+                {content}
+              </a>
+            ) : (
+              <div key={program.id} className={toolResultRowClasses()}>
+                {content}
+              </div>
+            );
+          })}
         </ToolResultList>
       );
     }
@@ -725,25 +721,26 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
   }
 }
 
-// ---- Registry ----
-
 export const renderers: Record<string, ToolCallRenderer> = {
   show_widget: ShowWidgetRenderer,
 };
 
+function richWidgetOwnsActivation(call: ToolCall): boolean {
+  if (call.name !== "show_widget") return false;
+  const type = (call.result as { type?: string } | undefined)?.type;
+  return type === "courses" || type === "course" || type === "course_detail";
+}
+
 /**
- * One tool call in the activity stack. Internal tools render their compact
- * badge only; the show_widget tool renders its data widget as the answer. A
- * mapped widget is clickable and loads its canvas view on click/Enter.
- * `callKey` (message id + condensed block index) identifies this chip to the
- * shell so the active highlight follows the clicked chip, not every chip
- * showing the same data.
+ * Renders one tool call. Simple mapped widgets own one canvas action; compound
+ * widgets leave interaction to their explicit child controls.
  */
 export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: string }) {
   const reduce = useReducedMotion();
   const { activeCallKey, activateCanvasView, setUserDismissedPane, setRightPaneCollapsed } = useChatShell();
   const view = useMemo(() => toolCallToCanvasView(call), [call]);
   const mapped = view !== null;
+  const interactive = mapped && !richWidgetOwnsActivation(call);
   const active = mapped && callKey !== undefined && activeCallKey === callKey;
   const Renderer = renderers[call.name];
   const widget = Renderer !== undefined;
@@ -762,28 +759,30 @@ export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: st
       initial={reduce ? false : { opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 30 }}
-      role={mapped ? "button" : undefined}
-      tabIndex={mapped ? 0 : undefined}
-      aria-pressed={mapped ? active : undefined}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-pressed={interactive ? active : undefined}
       data-widget={call.name}
       data-active={active || undefined}
-      onClick={mapped ? toggle : undefined}
+      onClick={interactive ? toggle : undefined}
       onKeyDown={
-        mapped
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
+        interactive
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
                 toggle();
               }
             }
           : undefined
       }
       className={
-        mapped
-          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 min-h-[44px] rounded-lg transition-[background-color,box-shadow] duration-150 outline-none focus-visible:ring-2 ${
+        interactive
+          ? `hover:bg-surface-container-high focus-visible:ring-primary/40 min-h-11 rounded-lg transition-[background-color,box-shadow] duration-150 outline-none focus-visible:ring-2 ${
               active ? "bg-accent-subtle ring-primary ring-2" : "hover:ring-primary/40 hover:ring-1"
             }`
-          : "rounded-lg"
+          : active
+            ? "bg-accent-subtle ring-primary rounded-lg ring-2"
+            : "rounded-lg"
       }
     >
       {loaded ? (

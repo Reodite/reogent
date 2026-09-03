@@ -177,14 +177,9 @@ describe("23.10 — raised-to-recessed pressed-state token present on ported int
   });
 });
 
-// 23.8 — contrast audit on "Other retrieved context" panel + "note" variant
-// Prereq Tree node: assert computed-style contrast is readable against the
-// neumorphic surface. happy-dom returns the raw token classes; we instead
-// assert the panel uses the documented muted/variant tokens (opacity-60 for
-// unused rows, text-on-surface-variant on the body) that DESIGN.md flags as
-// passing 4.5:1 on bg-surface-container-low.
+// 23.8 — contrast audit on "Other retrieved context" panel + "note" variant.
 describe("23.8 — contrast audit: Other retrieved context panel + note node use readable token pairs (REQ-20.5)", () => {
-  it("SourcesPanel unused rows use opacity-60 on text-on-surface-variant over bg-surface-container-low (per DESIGN.md contrast)", async () => {
+  it("SourcesPanel unused rows keep the documented muted text contrast", async () => {
     const { SourcesPanel } = await import("@/src/components/chat/citations/sources-panel");
     const citations: Citation[] = [
       { index: 1, label: "Used source", kind: "course", used: true, source_url: "https://e", tool: "get_course" },
@@ -200,7 +195,8 @@ describe("23.8 — contrast audit: Other retrieved context panel + note node use
     const labelSpan = Array.from(unusedRow.querySelectorAll("span")).find((s) =>
       s.textContent?.includes("Unused source"),
     ) as HTMLElement;
-    expect(labelSpan.className).toContain("opacity-60");
+    expect(labelSpan.className).toContain("text-muted");
+    expect(labelSpan.className).not.toContain("opacity-60");
     expect(container.querySelector("[data-sources-panel]")?.querySelector(".bg-surface-container-low")).not.toBeNull();
   });
 });
