@@ -96,7 +96,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
       <div className="workspace-page-layout flex h-full min-h-0 flex-col gap-4 p-6">
         {!embedded ? (
           <header data-workspace-header className="relative z-30 flex shrink-0 flex-col gap-3">
-            <div className="flex min-w-0 items-start gap-1">
+            <div className="flex min-w-0 items-start gap-1.5">
               {props.leading ? (
                 <div data-workspace-leading className="shrink-0">
                   {props.leading}
@@ -256,7 +256,7 @@ export function WorkspacePanel({
       className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl"
     >
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-4">
-        <div className="flex min-w-0 items-center gap-1">
+        <div className="flex min-w-0 items-center gap-1.5">
           {leading}
           <div className="flex min-w-0 items-baseline gap-2">
             <h2 id={headingId} className="text-on-surface shrink-0 text-sm font-medium">
@@ -295,7 +295,7 @@ export function WorkspaceCanvas({ overflow = "auto", padding = "none", children,
   return (
     <div
       data-workspace-canvas
-      className={`border-border bg-surface-container-low/40 relative flex h-full min-h-0 min-w-0 flex-col rounded-xl border ${
+      className={`neu-inset neu-shadow-on-surface bg-surface-container-low relative flex h-full min-h-0 min-w-0 flex-col rounded-xl ${
         CANVAS_PADDING_CLASSES[padding]
       } ${overflow === "auto" ? "overflow-auto" : "overflow-hidden"}`}
       {...props}

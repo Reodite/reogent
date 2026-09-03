@@ -89,7 +89,9 @@ export function DialogRoot({
       ref={overlayRef}
       data-dialog-root
       className={`fixed inset-0 z-50 flex justify-center ${
-        placement === "mobile-sheet" ? "items-end p-3 sm:items-center sm:p-6" : "items-center p-4"
+        placement === "mobile-sheet"
+          ? "items-end px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:items-center sm:p-6"
+          : "items-center p-4"
       }`}
     >
       <button

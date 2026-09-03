@@ -210,7 +210,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <WorkspaceHostProvider host="settings" menuClearance>
           <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
-            {navigation.pending ? <WorkspaceRouteLoading label="Loading Settings" /> : children}
+            {navigation.pending ? <WorkspaceRouteLoading label="Loading Settings" composition="split" /> : children}
           </div>
         </WorkspaceHostProvider>
       </main>
@@ -264,7 +264,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             {mode === "tools" && workspaceView ? (
               <FullBleedTool view={workspaceView} />
             ) : navigation.pending ? (
-              <WorkspaceRouteLoading label="Loading Unity" />
+              <WorkspaceRouteLoading
+                label="Loading Unity"
+                composition={pathname.startsWith("/pulse/schedule") ? "split" : "single"}
+                controls={pathname.startsWith("/pulse/schedule")}
+              />
             ) : (
               children
             )}

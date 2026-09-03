@@ -46,7 +46,7 @@ export function ChatPanelLoading() {
       aria-label="Loading conversation"
       className="neu-panel bg-surface flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl"
     >
-      <header className="border-border-subtle flex h-15 shrink-0 items-center border-b px-4">
+      <header className="flex h-15 shrink-0 items-center px-4">
         <Skeleton className="h-5 w-40 rounded-md" />
       </header>
       <div className="chat-message-well flex min-h-0 flex-1 flex-col gap-6 overflow-hidden p-4 sm:p-6">
@@ -60,24 +60,77 @@ export function ChatPanelLoading() {
   );
 }
 
-/** Reserves a full workspace header and canvas while a shell route resolves. */
-export function WorkspaceRouteLoading({ label = "Loading workspace" }: { label?: string }) {
+/** Reserves the destination workspace composition while a shell route resolves. */
+export function WorkspaceRouteLoading({
+  label = "Loading workspace",
+  composition = "single",
+  controls = false,
+}: {
+  label?: string;
+  composition?: "single" | "split";
+  controls?: boolean;
+}) {
+  const split = composition === "split";
   return (
     <section
       data-workspace-route-loading
+      data-workspace-composition={composition}
+      data-workspace-view={split ? "main" : undefined}
       role="status"
       aria-label={label}
       className="workspace-page h-full min-h-0 w-full min-w-0 overflow-hidden"
     >
       <div className="workspace-page-layout flex h-full min-h-0 flex-col gap-4 p-6">
-        <header className="flex h-11 shrink-0 flex-col justify-center gap-2">
-          <Skeleton className="h-5 w-40 rounded-md" />
-          <Skeleton className="h-3 w-64 max-w-full rounded" />
+        <header className="flex shrink-0 flex-col gap-3">
+          <div className="flex min-h-12 flex-col justify-center gap-2">
+            <Skeleton className="h-5 w-40 rounded-md" />
+            <Skeleton className="h-3 w-64 max-w-full rounded" />
+          </div>
+          {controls ? (
+            <div data-workspace-loading-controls className="flex h-11 items-center justify-between gap-3">
+              <Skeleton className="h-9 w-72 max-w-3/5 rounded-lg" />
+              <Skeleton className="h-9 w-44 max-w-2/5 rounded-lg" />
+            </div>
+          ) : null}
         </header>
-        <div className="border-border bg-surface-container-low/40 flex min-h-0 flex-1 flex-col gap-3 rounded-xl border p-4">
-          <Skeleton className="h-11 w-full rounded-lg" />
-          <Skeleton className="h-11 w-5/6 rounded-lg" />
-          <Skeleton className="h-11 w-2/3 rounded-lg" />
+        {split ? (
+          <fieldset
+            data-workspace-view-toggle
+            className="workspace-page-toggle neu-inset bg-surface-container-low h-13 shrink-0 gap-1 rounded-lg p-1"
+          >
+            <legend className="sr-only">Loading workspace view</legend>
+            <Skeleton className="h-11 flex-1 rounded-md" />
+            <Skeleton className="h-11 flex-1 rounded-md" />
+          </fieldset>
+        ) : null}
+        <div className="workspace-page-body grid min-h-0 min-w-0 flex-1 gap-4">
+          {split ? (
+            <aside data-workspace-region="rail" className="workspace-page-region min-h-0 min-w-0">
+              <div
+                data-workspace-panel
+                className="neu-panel bg-surface flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl"
+              >
+                <header className="flex h-12 shrink-0 items-center px-4">
+                  <Skeleton className="h-4 w-28 rounded" />
+                </header>
+                <div className="border-border-subtle flex min-h-0 flex-1 flex-col gap-2 border-t p-3">
+                  <Skeleton className="h-11 w-full rounded-lg" />
+                  <Skeleton className="h-11 w-5/6 rounded-lg" />
+                  <Skeleton className="h-11 w-2/3 rounded-lg" />
+                </div>
+              </div>
+            </aside>
+          ) : null}
+          <div data-workspace-region="main" className="workspace-page-region min-h-0 min-w-0">
+            <div
+              data-workspace-canvas
+              className="neu-inset neu-shadow-on-surface bg-surface-container-low flex h-full min-h-0 flex-col gap-3 rounded-xl p-4"
+            >
+              <Skeleton className="h-11 w-full rounded-lg" />
+              <Skeleton className="h-11 w-5/6 rounded-lg" />
+              <Skeleton className="h-11 w-2/3 rounded-lg" />
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -93,8 +146,8 @@ export function AnswerCanvasLoading() {
       aria-label="Loading answer canvas"
       className="neu-panel bg-surface flex h-full min-h-0 w-full flex-col overflow-hidden rounded-2xl"
     >
-      <header className="border-border-subtle flex h-15 shrink-0 items-center gap-3 border-b px-4">
-        <Skeleton className="size-8 rounded-lg" />
+      <header className="flex h-15 shrink-0 items-center gap-3 px-4">
+        <Skeleton className="size-7 rounded-lg" />
         <Skeleton className="h-4 w-28 rounded" />
       </header>
       <div className="min-h-0 flex-1 p-3">
@@ -114,6 +167,19 @@ export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) 
         ? "settings"
         : "ai";
 
+  const splitWorkspace =
+    mode === "settings" ||
+    pathname === "/tools/map" ||
+    pathname === "/tools/calendar" ||
+    pathname === "/tools/planner" ||
+    pathname.startsWith("/tools/schedule") ||
+    pathname.startsWith("/pulse/schedule");
+  const workspaceControls =
+    pathname === "/tools/calendar" ||
+    pathname === "/tools/planner" ||
+    pathname.startsWith("/tools/schedule") ||
+    pathname.startsWith("/pulse/schedule");
+
   return (
     <div
       data-shell-boot-loading
@@ -127,15 +193,23 @@ export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) 
       <div className="shell-body min-h-0 flex-1">
         <div className="chat-workspace shell-boot-layout relative min-h-0 min-w-0 flex-1 p-3">
           <aside className="sessions-aside shell-boot-sidebar absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 w-68 overflow-hidden">
-            <div className="neu-panel bg-surface flex h-full flex-col gap-3 rounded-2xl p-3">
-              <div className="flex h-9 items-center gap-2">
+            <div className="neu-panel bg-surface flex h-full flex-col rounded-2xl p-2 pt-0">
+              <div data-shell-boot-brand className="flex h-15 shrink-0 items-center gap-2 px-2">
                 <Skeleton className="size-9 rounded-lg" />
                 <Skeleton className="h-4 w-24 rounded" />
               </div>
-              <Skeleton className="h-11 w-full rounded-lg" />
+              {mode === "ai" ? (
+                <div className="pb-3">
+                  <Skeleton className="h-11 w-full rounded-lg" />
+                </div>
+              ) : null}
               <div className="bg-surface-container-low/60 flex min-h-0 flex-1 flex-col gap-2 rounded-xl p-2">
                 <Skeleton className="h-9 w-full rounded-lg" />
                 <Skeleton className="h-9 w-5/6 rounded-lg" />
+                <Skeleton className="h-9 w-full rounded-lg" />
+              </div>
+              <div data-shell-boot-footer className="mt-2 flex flex-col gap-2">
+                <Skeleton className="h-9 w-full rounded-lg" />
                 <Skeleton className="h-9 w-full rounded-lg" />
               </div>
             </div>
@@ -146,7 +220,7 @@ export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) 
                 {pathname === "/chat" ? <NewChatLoading /> : <ChatPanelLoading />}
               </div>
               <div className="shell-boot-workspace hidden h-full min-h-0 w-full">
-                <WorkspaceRouteLoading />
+                <WorkspaceRouteLoading composition={splitWorkspace ? "split" : "single"} controls={workspaceControls} />
               </div>
             </div>
           </main>

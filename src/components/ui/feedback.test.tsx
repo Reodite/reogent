@@ -41,12 +41,16 @@ describe("shared feedback states", () => {
         fill="parent"
         title="Something went wrong"
         description={sanitizePublicErrorMessage("boom at /srv/app.ts:10:2")}
+        meta="Error ID: test"
         actions={<a href="/">Go home</a>}
       />,
     );
     const alert = getByRole("alert", { name: "Something went wrong" });
     expect(alert.parentElement?.className).toContain("h-full");
     expect(alert.textContent).not.toContain("/srv/app.ts");
+    expect(alert.textContent).toContain("Error ID: test");
+    const meta = Array.from(alert.querySelectorAll("div")).find((element) => element.textContent === "Error ID: test");
+    expect(meta?.className).not.toContain("text-muted/60");
     expect(getByRole("link", { name: "Go home" })).not.toBeNull();
   });
 

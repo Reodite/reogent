@@ -68,7 +68,11 @@ describe("WorkspacePage", () => {
     expect(page?.querySelector("h1")?.textContent).toBe("Degree Planner");
     expect(page?.querySelectorAll("main")).toHaveLength(0);
     expect(page?.querySelectorAll("[data-workspace-panel]")).toHaveLength(2);
-    expect(page?.querySelector("[data-workspace-canvas]")?.className).toContain("p-4");
+    const canvas = page?.querySelector("[data-workspace-canvas]");
+    expect(canvas?.className).toContain("p-4");
+    expect(canvas?.className).toContain("neu-inset");
+    expect(canvas?.className).toContain("neu-shadow-on-surface");
+    expect(canvas?.className).not.toContain("border-border");
     expect(page?.querySelector("[data-workspace-actions]")?.className).toContain("w-full");
     expect(page?.querySelector("[data-workspace-actions]")?.className).toContain("@min-[55rem]:w-auto");
   });
@@ -128,6 +132,7 @@ describe("WorkspacePage", () => {
     );
     const leading = container.querySelector("[data-workspace-leading]");
     expect(leading?.querySelector("button")?.textContent).toBe("");
+    expect(leading?.parentElement?.className).toContain("gap-1.5");
     expect(leading?.nextElementSibling?.querySelector("h1")?.textContent).toBe("Course lookup");
   });
 
@@ -150,6 +155,7 @@ describe("WorkspacePage", () => {
     expect(panel?.hasAttribute("data-workspace-panel-leading")).toBe(true);
     expect(panel?.querySelector("header")?.className).toContain("h-12");
     expect(panel?.querySelector("header button + div h2")?.textContent).toBe("Controls");
+    expect(panel?.querySelector("header > div")?.className).toContain("gap-1.5");
     expect(panelBody?.className).toContain("overflow-hidden");
     expect(panelBody?.className).toContain("p-0");
   });

@@ -83,7 +83,9 @@ describe("Dialog", () => {
     const dialog = await screen.findByRole("dialog", { name: "Profile" });
     fireEvent.submit(dialog);
     expect(submit).toHaveBeenCalledOnce();
-    expect(document.querySelector("[data-dialog-root]")?.className).toContain("items-end");
+    const root = document.querySelector("[data-dialog-root]");
+    expect(root?.className).toContain("items-end");
+    expect(root?.className).toContain("pb-[max(0.75rem,env(safe-area-inset-bottom))]");
     expect(dialog.className).toContain("overflow-y-auto");
   });
 

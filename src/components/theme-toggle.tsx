@@ -61,7 +61,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       role="radiogroup"
       aria-label="Appearance"
       onKeyDown={handleKeyDown}
-      className={`border-border-subtle neu-inset grid grid-cols-3 gap-0.5 rounded-xl border p-1 ${className}`}
+      className={`neu-inset grid grid-cols-3 gap-0.5 rounded-xl p-1 ${className}`}
     >
       {OPTIONS.map((option) => {
         const selected = mode === option.mode;
@@ -75,7 +75,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
             aria-label={option.label}
             tabIndex={selected ? 0 : -1}
             onClick={(e) => applyWithRipple(e, () => setMode(option.mode))}
-            className={`focus-visible:ring-primary/40 flex size-11 items-center justify-center rounded-lg text-xs font-medium transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8 ${
+            className={`focus-visible:ring-primary/40 flex size-11 items-center justify-center rounded-lg text-xs font-medium transition-[color,background-color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8 ${
               selected ? "neu-raised bg-surface text-primary" : "text-on-surface-variant hover:text-on-surface"
             }`}
           >

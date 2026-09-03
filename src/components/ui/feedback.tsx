@@ -48,7 +48,7 @@ export function FullPageState({
       >
         <h1 className="text-on-surface text-2xl font-medium tracking-[-0.02em]">{title}</h1>
         <div className="text-muted mt-2 text-sm">{description}</div>
-        {meta ? <div className="text-muted/60 mt-2 text-xs">{meta}</div> : null}
+        {meta ? <div className="text-muted mt-2 text-xs">{meta}</div> : null}
         <div className="mt-6 flex w-full flex-col gap-3">{actions}</div>
       </section>
     </div>
