@@ -13,7 +13,13 @@ vi.mock("motion/react", async (importOriginal) => ({
 
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
-    value: () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }),
+    value: () => ({
+      matches: false,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+    }),
     configurable: true,
   });
 });
@@ -42,11 +48,21 @@ describe("PulseQuestionCard — unvoted", () => {
 
   it("renders the question with 44px vote buttons that report the direction", () => {
     const onVote = vi.fn();
-    const { getByText, getByRole } = render(<PulseQuestionCard card={card} onVote={onVote} />);
+    const pointerStart = vi.fn();
+    const { getByText, getByRole } = render(
+      <div onPointerDown={pointerStart}>
+        <PulseQuestionCard card={card} onVote={onVote} />
+      </div>,
+    );
     expect(getByText(card.text)).toBeTruthy();
 
     const agree = getByRole("button", { name: `Agree: ${card.text}` });
     const disagree = getByRole("button", { name: `Disagree: ${card.text}` });
+    fireEvent.pointerDown(agree);
+    fireEvent.pointerDown(disagree);
+    expect(pointerStart).not.toHaveBeenCalled();
+    expect(agree.textContent).toBe("Agree");
+    expect(disagree.textContent).toBe("Disagree");
     expect(agree.className).toContain("min-h-11");
     expect(disagree.className).toContain("min-h-11");
 

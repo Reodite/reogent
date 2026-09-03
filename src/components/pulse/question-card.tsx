@@ -103,21 +103,23 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
             <div className="mt-3 flex items-center justify-between px-1">
               <motion.button
                 type="button"
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => castVote(false)}
                 aria-label={`Disagree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: -8, scale: 0.95 }}
                 className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 items-center px-2 py-3 text-sm transition-colors select-none"
               >
-                disagree
+                Disagree
               </motion.button>
               <motion.button
                 type="button"
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => castVote(true)}
                 aria-label={`Agree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: 8, scale: 0.95 }}
                 className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 items-center px-2 py-3 text-sm transition-colors select-none"
               >
-                agree
+                Agree
               </motion.button>
             </div>
             {card.error && (

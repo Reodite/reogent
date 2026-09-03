@@ -30,8 +30,12 @@ describe("Settings", () => {
     api.getProfile.mockReturnValue(new Promise(() => {}));
     render(<ProfileForm />);
 
-    expect(screen.getByRole("status", { name: "Loading student profile" })).not.toBeNull();
+    const loading = screen.getByRole("status", { name: "Loading student profile" });
+    expect(loading).not.toBeNull();
     expect(document.querySelectorAll(".shell-skeleton").length).toBeGreaterThan(0);
+    const action = loading.querySelector("[data-profile-loading-action]");
+    expect(action?.className).toContain("h-11");
+    expect(action?.className).toContain("sm:h-10");
   });
 
   it("uses the shared split workspace for account, appearance, and student profile", async () => {
@@ -42,6 +46,9 @@ describe("Settings", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Appearance" })).not.toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Student profile" })).not.toBeNull();
     expect(container.querySelectorAll("main")).toHaveLength(0);
+    const mainRegion = container.querySelector("[data-workspace-region='main']");
+    expect(mainRegion?.querySelectorAll("[data-workspace-panel]")).toHaveLength(0);
+    expect(mainRegion?.querySelector("[data-settings-profile]")).not.toBeNull();
     await screen.findByLabelText("Program");
   });
 

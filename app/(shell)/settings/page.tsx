@@ -34,7 +34,7 @@ function ProfileFormLoading() {
           </div>
         ))}
       </div>
-      <span className="shell-skeleton h-12 w-36 rounded-xl" />
+      <span data-profile-loading-action className="shell-skeleton h-11 w-36 rounded-xl sm:h-10" />
       <span className="shell-skeleton h-3 w-4/5 rounded" />
     </div>
   );
@@ -198,17 +198,22 @@ export default function SettingsPage() {
       }
     >
       <WorkspaceCanvas padding="md">
-        <div className="mx-auto w-full max-w-2xl">
-          <WorkspacePanel title="Student profile" padding="md">
-            {auth.isGuest ? (
-              <p className="text-on-surface-variant text-sm">
-                Guest sessions do not save student defaults. Sign in to set your program, year, and student type.
-              </p>
-            ) : (
-              <ProfileForm />
-            )}
-          </WorkspacePanel>
-        </div>
+        <section
+          data-settings-profile
+          aria-labelledby="settings-profile-title"
+          className="mx-auto flex w-full max-w-2xl flex-col gap-4"
+        >
+          <h2 id="settings-profile-title" className="text-on-surface text-base font-medium">
+            Student profile
+          </h2>
+          {auth.isGuest ? (
+            <p className="text-on-surface-variant text-sm">
+              Guest sessions do not save student defaults. Sign in to set your program, year, and student type.
+            </p>
+          ) : (
+            <ProfileForm />
+          )}
+        </section>
       </WorkspaceCanvas>
     </WorkspacePage>
   );
