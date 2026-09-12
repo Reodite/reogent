@@ -45,7 +45,7 @@ The module registry defines data access and presentation tools:
 | admissions      | `find_programs`, `get_admission_requirements`   | Undergraduate programs and requirements                            |
 | calendar        | `get_key_dates`                                 | Academic calendar dates                                            |
 | places, parking | `find_places`                                   | Campus POIs and parking facts                                      |
-| spaces          | `find_study_spaces`                             | Study areas, bookable rooms and availability snapshots             |
+| spaces          | `find_study_spaces`                             | Study-area and classroom descriptions                              |
 | events          | `find_events`                                   | Campus events                                                      |
 | pages           | `search_ubc_pages`                              | Legacy page excerpts and Prose article metadata                    |
 | prose           | `get_prose_article`                             | Complete indexed Markdown articles and provenance                  |
@@ -94,6 +94,8 @@ scripts/
 `ubc-unified-data` is a git submodule holding scraped UBC datasets: courses, tuition, building and walking GeoJSON, study spaces, events, and grade distributions (`data/grades/`, collected from [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data) by the submodule's `grades` collector).
 
 The undergraduate tables contain factual labels, source links, housing fee observations and dated library hours. They do not contain full page bodies. Housing `amount_cents` values retain their exact integer or null value; consult the linked conditions before using a rate. Library `booking_lid` strings belong to a separate namespace from `hours_id`. Hours describe a schedule in `America/Vancouver`, including `closes_next_day`; an absent date remains unknown. See [UNDERGRADUATE-SOURCES.md](ubc-unified-data/UNDERGRADUATE-SOURCES.md) for table contracts.
+
+Room booking availability is outside the dataset and tool scope. Study-space descriptions and scheduled library hours do not establish live vacancy.
 
 ### Prose
 
@@ -160,22 +162,22 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 
 ## API endpoints
 
-| Method | Path                   | Purpose                                      |
-| ------ | ---------------------- | -------------------------------------------- |
-| POST   | `/api/chat`            | Stream agent response (NDJSON)               |
-| GET    | `/api/sessions`        | List user sessions                           |
-| GET    | `/api/sessions/:id`    | Session messages                             |
-| PATCH  | `/api/sessions/:id`    | Rename a session                             |
-| DELETE | `/api/sessions/:id`    | Delete a session                             |
-| GET    | `/api/route?from=&to=` | Walking-route polyline                       |
-| GET    | `/api/building/:code`  | Building details (rooms, POIs, availability) |
-| GET    | `/api/geo/:name`       | GeoJSON layer                                |
-| GET    | `/api/pulse`           | Active Pulse round with the caller's votes   |
-| POST   | `/api/pulse/vote`      | Record an agree/disagree vote                |
-| GET    | `/api/pulse/history`   | Locked Pulse rounds with final tallies       |
-| POST   | `/api/auth/login`      | Sign in, returns JWT                         |
-| POST   | `/api/auth/register`   | Create account, returns JWT                  |
-| GET    | `/api/preview?url=`    | Resolve og:image for card links              |
+| Method | Path                   | Purpose                                    |
+| ------ | ---------------------- | ------------------------------------------ |
+| POST   | `/api/chat`            | Stream agent response (NDJSON)             |
+| GET    | `/api/sessions`        | List user sessions                         |
+| GET    | `/api/sessions/:id`    | Session messages                           |
+| PATCH  | `/api/sessions/:id`    | Rename a session                           |
+| DELETE | `/api/sessions/:id`    | Delete a session                           |
+| GET    | `/api/route?from=&to=` | Walking-route polyline                     |
+| GET    | `/api/building/:code`  | Building details (rooms, POIs, entrances)  |
+| GET    | `/api/geo/:name`       | GeoJSON layer                              |
+| GET    | `/api/pulse`           | Active Pulse round with the caller's votes |
+| POST   | `/api/pulse/vote`      | Record an agree/disagree vote              |
+| GET    | `/api/pulse/history`   | Locked Pulse rounds with final tallies     |
+| POST   | `/api/auth/login`      | Sign in, returns JWT                       |
+| POST   | `/api/auth/register`   | Create account, returns JWT                |
+| GET    | `/api/preview?url=`    | Resolve og:image for card links            |
 
 ## Example query
 

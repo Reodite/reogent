@@ -1,8 +1,6 @@
 import type {
-  AvailabilityRoomCard,
   BuildingAddress,
   BuildingDataAssociation,
-  BuildingDataFreshness,
   BuildingDetails,
   BuildingEntranceSummary,
   BuildingProfile,
@@ -18,14 +16,10 @@ import { dataStore } from "./data";
 import { getIndexFreshness } from "./freshness";
 import { getBuildingsGeoJson, getPublicEntrancesGeoJson, resolveBuilding } from "./modules/buildings";
 import { transformPoi, type PoiDoc } from "./modules/places";
-import type { AvailabilityDoc, LibRoomDoc, StudySpaceDoc } from "./modules/spaces";
+import type { StudySpaceDoc } from "./modules/spaces";
 
 const ADDRESS_KEY = "geospatial/ubcv/locations/geojson/ubcv_address.geojson";
 const POI_KEY = "geospatial/ubcv/locations/geojson/ubcv_poi.geojson";
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-const toDate = (value: string) => new Date(value.replace(" ", "T"));
-const hhmm = (value: string | null) => (value && value.length >= 16 ? value.slice(11, 16) : null);
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -189,57 +183,6 @@ function photoAllowed(value: string | null): boolean {
   return host === "ubc.ca" || host.endsWith(".ubc.ca");
 }
 
-export function availabilityFreshness(asOf: string | null, now: Date): BuildingDataFreshness {
-  if (!asOf) return "unknown";
-  const collected = new Date(asOf);
-  if (!Number.isFinite(collected.getTime())) return "unknown";
-  return now.getTime() - collected.getTime() > DAY_MS ? "historical" : "current";
-}
-
-/** Summarizes the latest available intervals without presenting a stale snapshot as live. */
-export function summarizeAvailability(
-  libRooms: LibRoomDoc[],
-  intervals: AvailabilityDoc[],
-  now: Date,
-): { as_of: string | null; freshness: BuildingDataFreshness; rooms: AvailabilityRoomCard[] } | null {
-  if (libRooms.length === 0 || intervals.length === 0) return null;
-  const today = now.toLocaleDateString("en-CA");
-  const dates = [...new Set(intervals.map((interval) => interval.date).filter(Boolean))] as string[];
-  const evalDate = dates.includes(today) ? today : dates.sort().at(-1);
-  if (!evalDate) return null;
-  const evalNow = evalDate === today ? now : toDate(`${evalDate} 00:00`);
-
-  const rooms = libRooms.map((room) => {
-    const mine = intervals
-      .filter((interval) => interval.eid === room.eid && interval.date === evalDate)
-      .sort((a, b) => a.start.localeCompare(b.start));
-    const freeNow = mine.find(
-      (interval) =>
-        interval.state === "free" &&
-        toDate(interval.start) <= evalNow &&
-        (!interval.end || evalNow <= toDate(interval.end)),
-    );
-    const nextFree = mine.find((interval) => interval.state === "free" && toDate(interval.start) > evalNow);
-    return {
-      title: room.title,
-      capacity: room.capacity,
-      url: safeExternalUrl(room.url),
-      thumbnail: room.thumbnail
-        ? photoAllowed(room.thumbnail.startsWith("//") ? `https:${room.thumbnail}` : room.thumbnail)
-          ? room.thumbnail.startsWith("//")
-            ? `https:${room.thumbnail}`
-            : room.thumbnail
-          : null
-        : null,
-      freeNow: Boolean(freeNow),
-      freeUntil: freeNow ? hhmm(freeNow.end) : null,
-      nextFree: nextFree ? hhmm(nextFree.start) : null,
-    };
-  });
-  const as_of = intervals.find((interval) => interval.collected_at)?.collected_at ?? null;
-  return { as_of, freshness: availabilityFreshness(as_of, now), rooms };
-}
-
 export function toRoomCard(doc: StudySpaceDoc): RoomCard {
   return {
     name: doc.name ?? doc.title,
@@ -267,7 +210,7 @@ export function toPoiCard(doc: PoiDoc, association: PoiCard["association"]): Poi
 }
 
 /** Loads one complete public building record while preserving independent source failures. */
-export async function loadBuildingDetails(search: SearchClient, query: string, now: Date): Promise<BuildingDetails> {
+export async function loadBuildingDetails(search: SearchClient, query: string): Promise<BuildingDetails> {
   const resolved = await resolveBuilding(search, query);
   const buildingsCollection = await getBuildingsGeoJson();
   const feature = buildingsCollection.features.find(
@@ -277,25 +220,18 @@ export async function loadBuildingDetails(search: SearchClient, query: string, n
   if (!feature || !building) throw new Error(`Unknown building: "${query}"`);
   const buildingUid = String(feature.properties?.BLDG_UID ?? "");
 
-  const [addressResult, roomResult, availabilityResult, poiResult, entranceResult, timestamps] = await Promise.all([
+  const [addressResult, roomResult, poiResult, entranceResult, timestamps] = await Promise.all([
     optional(() => dataStore().getJson(ADDRESS_KEY) as Promise<FeatureCollection>, {
       type: "FeatureCollection",
       features: [],
     } as FeatureCollection),
     optional(() => searchByBuilding<StudySpaceDoc>(search, "study_spaces", building.code, 500), []),
-    optional(async () => {
-      const [rooms, intervals] = await Promise.all([
-        searchByBuilding<LibRoomDoc>(search, "lib_rooms", building.code, 100),
-        searchByBuilding<AvailabilityDoc>(search, "room_availability", building.code, 2000),
-      ]);
-      return summarizeAvailability(rooms, intervals, now);
-    }, null),
     optional(() => dataStore().getJson(POI_KEY) as Promise<FeatureCollection>, {
       type: "FeatureCollection",
       features: [],
     } as FeatureCollection),
     optional(() => getPublicEntrancesGeoJson(), { type: "FeatureCollection", features: [] } as FeatureCollection),
-    Promise.all([freshness("buildings"), freshness("study_spaces"), freshness("room_availability"), freshness("poi")]),
+    Promise.all([freshness("buildings"), freshness("study_spaces"), freshness("poi")]),
   ]);
 
   const addresses = addressesForBuilding(addressResult.data, buildingUid);
@@ -308,7 +244,7 @@ export async function loadBuildingDetails(search: SearchClient, query: string, n
   const rooms = roomResult.data.map(toRoomCard);
   const pois = poiResult.ready ? poiCardsForBuilding(poiResult.data, feature, addressIds) : [];
   const entrances = entranceResult.ready ? entranceSummaries(entranceResult.data, building.code) : [];
-  const [buildingRefreshedAt, roomRefreshedAt, availabilityRefreshedAt, poiRefreshedAt] = timestamps;
+  const [buildingRefreshedAt, roomRefreshedAt, poiRefreshedAt] = timestamps;
 
   return {
     code: building.code,
@@ -319,16 +255,10 @@ export async function loadBuildingDetails(search: SearchClient, query: string, n
     pois,
     entrances,
     photos: [],
-    availability: availabilityResult.data,
     sourceStatus: {
       building: status("ready", "UBC Geospatial Buildings", buildingRefreshedAt),
       addresses: status(addressResult.ready ? "ready" : "unavailable", "UBC Geospatial Addresses", buildingRefreshedAt),
       rooms: status(roomResult.ready ? "ready" : "unavailable", "UBC Learning Spaces", roomRefreshedAt),
-      availability: status(
-        availabilityResult.ready ? "ready" : "unavailable",
-        "UBC Library Room Bookings",
-        availabilityRefreshedAt,
-      ),
       pois: status(
         poiResult.ready ? "ready" : "unavailable",
         "UBC Geospatial Points of Interest",

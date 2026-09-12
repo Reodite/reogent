@@ -8,7 +8,7 @@ import { stripHtml } from "./html";
 import { transformPage } from "./pages";
 import { transformParking } from "./parking";
 import { transformPoi } from "./places";
-import { transformAvailability, transformStudySpace } from "./spaces";
+import { transformStudySpace } from "./spaces";
 import { meltTuition, transformTuition } from "./tuition";
 
 describe("schedule-only course synthesis", () => {
@@ -216,18 +216,9 @@ describe("geospatial transforms", () => {
 });
 
 describe("spaces transforms", () => {
-  it("parses string capacities and keys availability by eid#start", () => {
+  it("parses string capacities", () => {
     const room = transformStudySpace({ id: 3, Title: "AERL 120", "Building Code": "AERL", Capacity: "144" });
     expect(room?.doc.capacity).toBe(144);
-    const slot = transformAvailability({
-      eid: 8,
-      room: "IKB 461",
-      state: "booked",
-      start: "2026-08-06T10:00",
-      minutes: 60,
-    });
-    expect(slot?.id).toBe("8#2026-08-06T10:00");
-    expect(slot?.doc.state).toBe("booked");
   });
 });
 

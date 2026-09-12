@@ -149,7 +149,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
 - Calculate walking distances between buildings
 - Find buildings on campus
 - Find places (food, services) near buildings
-- Search study spaces and free rooms
+- Search study-space descriptions and published library hours
 - Look up grade distributions
 - Search events, parking, admission requirements, key dates
 

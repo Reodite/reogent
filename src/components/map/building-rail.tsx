@@ -163,14 +163,13 @@ function OfficialPhotoCard({ photo }: { photo: OfficialBuildingPhoto }) {
   );
 }
 
-const BUILDING_DETAIL_SOURCE_KEYS = ["building", "addresses", "rooms", "availability", "pois"] as const;
+const BUILDING_DETAIL_SOURCE_KEYS = ["building", "addresses", "rooms", "pois"] as const;
 type BuildingDetailSourceKey = (typeof BUILDING_DETAIL_SOURCE_KEYS)[number];
 
 function renderedBuildingDetailSources(details: BuildingDetails) {
   const keys: BuildingDetailSourceKey[] = ["building"];
   if (details.addresses.length > 0) keys.push("addresses");
   if (details.rooms.length > 0 || details.photos.length > 0) keys.push("rooms");
-  if (details.availability?.rooms.length) keys.push("availability");
   if (details.pois.length > 0) keys.push("pois");
   return keys.map((key) => [key, details.sourceStatus[key]] as const);
 }
@@ -229,35 +228,6 @@ export function BuildingDetailContent({ details }: { details: BuildingDetails })
                   .join(" · ")}
                 detail={[room.layout, room.furniture].filter(Boolean).join(" · ")}
                 action={room.link ? <ExternalLink href={room.link}>Details</ExternalLink> : null}
-              />
-            ))}
-          </ul>
-        </DetailSection>
-      ) : null}
-
-      {details.availability?.rooms.length ? (
-        <DetailSection title={`Bookable rooms (${details.availability.rooms.length})`}>
-          <p className="text-muted mb-2 text-xs">
-            {details.availability.freshness === "unknown"
-              ? "Snapshot time unavailable"
-              : `${details.availability.freshness === "historical" ? "Historical snapshot" : "Snapshot"} · ${formatDate(details.availability.as_of)}`}
-          </p>
-          <ul className="flex flex-col gap-2">
-            {details.availability.rooms.map((room) => (
-              <BuildingDetailItem
-                key={room.title}
-                title={room.title}
-                summary={
-                  <>
-                    {room.freeNow
-                      ? `Free until ${room.freeUntil ?? "the next booking"}`
-                      : room.nextFree
-                        ? `Next free at ${room.nextFree}`
-                        : "No free interval in this snapshot"}
-                    {room.capacity != null ? ` · ${room.capacity} people` : ""}
-                  </>
-                }
-                action={room.url ? <ExternalLink href={room.url}>Book</ExternalLink> : null}
               />
             ))}
           </ul>

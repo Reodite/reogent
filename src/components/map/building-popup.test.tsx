@@ -15,10 +15,9 @@ const building: SelectedBuilding = {
   address: "1961 East Mall",
   centroid: [-123.252, 49.267],
 };
-const emptyContent: Pick<BuildingDetails, "rooms" | "pois" | "availability"> = {
+const emptyContent: Pick<BuildingDetails, "rooms" | "pois"> = {
   rooms: [],
   pois: [],
-  availability: null,
 };
 
 beforeEach(() => {
@@ -28,6 +27,8 @@ afterEach(cleanup);
 
 describe("BuildingPopup loading", () => {
   it("matches carousel geometry without replacing the fixed building header or close action", async () => {
+    const roomUrl = "https://learningspaces.ubc.ca/classrooms/iblc-100";
+    const serviceUrl = "https://learningcommons.ubc.ca";
     let resolveDetails: (details: typeof emptyContent) => void = () => {};
     api.getBuildingDetails.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -55,7 +56,28 @@ describe("BuildingPopup loading", () => {
       resolveDetails({
         ...emptyContent,
         rooms: [
-          { name: "IBLC 100", capacity: 80, floor: 1, layout: "Rows", furniture: "Tables", photo: null, link: null },
+          {
+            name: "IBLC 100",
+            roomNumber: "100",
+            spaceType: "classroom",
+            capacity: 80,
+            floor: 1,
+            layout: "Rows",
+            furniture: "Tables",
+            photo: null,
+            link: roomUrl,
+          },
+        ],
+        pois: [
+          {
+            name: "Library help desk",
+            service_type: "campus_services",
+            url: serviceUrl,
+            photo: null,
+            hours: "9–5",
+            contact: null,
+            association: "official-address",
+          },
         ],
       }),
     );
@@ -65,6 +87,22 @@ describe("BuildingPopup loading", () => {
       "first:border-t-0 first:pt-0",
     );
     expect(screen.getByRole("button", { name: "Previous rooms" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Previous services" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Study rooms" })).toBeNull();
+    expect(screen.queryByText("No room or service listings for this building.")).toBeNull();
+    for (const [link, href] of [
+      [screen.getByRole("link", { name: /IBLC 100/ }), roomUrl],
+      [screen.getByRole("link", { name: /Library help desk/ }), serviceUrl],
+    ] as const) {
+      expect(link.getAttribute("href")).toBe(href);
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toBe("noreferrer");
+      const image = link.querySelector("img")!;
+      expect(image.getAttribute("src")).toBe(`/api/preview?url=${encodeURIComponent(href)}`);
+      fireEvent.error(image);
+      expect(link.querySelector("img")).toBeNull();
+      expect(link.querySelector(".h-32")).toBeTruthy();
+    }
     expect(screen.getByRole("heading", { name: building.name })).toBe(identity);
     expect(screen.getByRole("button", { name: "Close building details" })).toBe(close);
     fireEvent.click(close);

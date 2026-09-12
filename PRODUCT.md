@@ -10,7 +10,7 @@ web
 
 UBC Vancouver undergraduate and graduate students. They use Reodite during two windows: (1) course registration periods (mid-March for summer, mid-June for fall, mid-October for spring) to search courses, check prerequisites, and compare tuition costs, and (2) the first two weeks of each term when campus is unfamiliar and they need walking directions between buildings.
 
-Secondary context: mid-term schedule crunches when students need study spaces, room availability, or campus services.
+Secondary context: mid-term schedule crunches when students need study spaces, library hours, or campus services.
 
 They are task-focused and time-pressured, often between classes on a laptop or walking campus on a phone. They want to type a question and get a grounded answer. No exploring, no browsing.
 
@@ -81,7 +81,7 @@ The app has three zones, left to right:
 
 ## Capabilities and Constraints
 
-### Agent Tools (22 tools across 14 modules)
+### Agent Tools
 
 | Module     | Tools                                                          | Output                                                      |
 | ---------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -89,7 +89,7 @@ The app has three zones, left to right:
 | courses    | `search_courses`, `get_course`                                 | Course list with filters, full course record with prereqs   |
 | tuition    | `get_tuition`                                                  | Per-credit rates by program, student type, cohort year      |
 | places     | `find_places`                                                  | Points of interest with locations                           |
-| spaces     | `search_study_spaces`, `find_free_rooms`, `get_room_schedule`  | Study space availability, free classrooms, room schedules   |
+| spaces     | `find_study_spaces`                                            | Study-area and classroom descriptions                       |
 | admissions | `search_programs`, `get_admission_requirements`                | Program search, admission criteria                          |
 | costs      | `get_cost_estimate`, `get_living_costs`, `search_student_fees` | Cost breakdowns, living cost estimates                      |
 | calendar   | `get_key_dates`                                                | Academic calendar dates                                     |
@@ -105,7 +105,7 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 ### Map Capabilities
 
 - Tools Campus Map pairs a 20rem Explore rail with the 3D map. Compact workspaces keep the map in place and present Explore as a non-modal bottom sheet without remounting WebGL.
-- Explore starts with eight curated buildings, searches the complete building catalog, and prioritizes official identity and addresses, rooms, dated booking availability, footprint-associated services, source freshness, and official photo sources. Verified entrances remain map graphics rather than a textual building-detail section. The Sources section lists only provenance that supplies data currently shown in building details.
+- Explore starts with eight curated buildings, searches the complete building catalog, and prioritizes official identity and addresses, rooms, footprint-associated services, source freshness, and official photo sources. Verified entrances remain map graphics rather than a textual building-detail section. The Sources section lists only provenance that supplies data currently shown in building details.
 - Signed-in users save favorite buildings to the account. Building actions share a deep link, open a separate Google Maps destination, or start an in-app route. Directions keeps editable From and To boxes at the top; endpoint results exist only while one box is being edited and disappear as soon as a route starts.
 - AI Answer Canvas remains map-only. Existing map widgets stay compatible; additive building-detail, entrance, and space widgets expose richer map answers in Chat.
 - Building footprints render as extruded 3D GeoJSON. Verified entrances within a building-wall tolerance render as compact solid ground arrowheads and vertical door outlines; undocumented rotation and accessibility flags do not drive claims.
@@ -120,6 +120,7 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 - **Sequential tool execution**: Tool results must complete before the next LLM turn.
 - **8-iteration limit**: Agent loop stops after 8 tool-calling turns. A nudge message forces a final text response at iteration 8.
 - **Data freshness**: Data is as current as the last ingest script run. Not real-time.
+- **Room availability**: Reodite does not collect bookings or occupancy. Study-space descriptions and library schedules do not establish vacancy.
 - **No file upload**: Text-only input.
 - **Single map context**: One set of highlights/routes active at a time. A new tool call replaces the previous one.
 
@@ -199,7 +200,7 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 - **Building entrances**: Current entrance coordinates joined by official building identifier. Accessibility and rotation semantics remain undocumented, so the interface makes no accessibility or bearing claim from those fields.
 - **Programs**: Academic programs with admission requirements
 - **Events**: Campus events with dates, locations, descriptions
-- **Study spaces**: Libraries, study rooms, bookable spaces
+- **Study spaces**: Classrooms and informal study areas, with separate library opening schedules
 - **Parking**: Parking lots with locations and types
 - **Pages**: Indexed UBC website content
 - **Grades**: Historical grade distributions by course and instructor (from UBC Pair)

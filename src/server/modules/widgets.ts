@@ -44,7 +44,7 @@ async function richBuildingDetails(search: SearchClient, input: Record<string, u
     throw new Error(`Unknown exact building code "${code}"`);
   }
   if (String(document.code ?? "").toUpperCase() !== code) throw new Error(`Unknown exact building code "${code}"`);
-  return loadBuildingDetails(search, code, new Date());
+  return loadBuildingDetails(search, code);
 }
 
 async function getCoursesByCodes(search: SearchClient, codes: string[]): Promise<CourseDoc[]> {
@@ -91,7 +91,7 @@ export function createWidgetsModule(): DatasetModule {
                     "key_dates",
                   ],
                   description:
-                    'Card type: "courses" (list), "course" (single), "grades" (grade), "grade_distribution" (per-session chart), "building" (legacy map location), "building_detail" (full public building record), "building_entrances" (verified doors), "building_spaces" (rooms and booking snapshot), "route" (route), "tuition" (rate), "places" (POIs), "parking" (lots), "event" (event), "study_spaces" (rooms), "program" (admission), "key_dates" (calendar)',
+                    'Card type: "courses" (list), "course" (single), "grades" (grade), "grade_distribution" (per-session chart), "building" (legacy map location), "building_detail" (full public building record), "building_entrances" (verified doors), "building_spaces" (rooms and study areas), "route" (route), "tuition" (rate), "places" (POIs), "parking" (lots), "event" (event), "study_spaces" (rooms), "program" (admission), "key_dates" (calendar)',
                 },
                 course_codes: {
                   type: "array",
@@ -160,12 +160,7 @@ export function createWidgetsModule(): DatasetModule {
                 study_space_ids: {
                   type: "array",
                   items: { type: "string" },
-                  description: "study_spaces (informal) only: study-space ids from find_study_spaces",
-                },
-                room_eids: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "study_spaces (bookable) only: library-room eids from find_study_spaces",
+                  description: "study_spaces only: study-space ids from find_study_spaces",
                 },
                 program_ids: {
                   type: "array",
@@ -201,8 +196,7 @@ export function createWidgetsModule(): DatasetModule {
             else if (asStringArray(input.place_ids).length > 0) type = "places";
             else if (asStringArray(input.parking_ids).length > 0) type = "parking";
             else if (asStringArray(input.event_ids).length > 0) type = "event";
-            else if (asStringArray(input.study_space_ids).length > 0 || asStringArray(input.room_eids).length > 0)
-              type = "study_spaces";
+            else if (asStringArray(input.study_space_ids).length > 0) type = "study_spaces";
             else if (asStringArray(input.program_ids).length > 0) type = "program";
             else if (asStringArray(input.key_date_ids).length > 0) type = "key_dates";
             else if (input.course) type = input.include_grades ? "grades" : "course";
@@ -299,7 +293,6 @@ export function createWidgetsModule(): DatasetModule {
                   entrances: details.entrances,
                   photos: details.photos,
                   room_count: details.rooms.length,
-                  bookable_room_count: details.availability?.rooms.length ?? 0,
                   sourceStatus: details.sourceStatus,
                 },
               };
@@ -329,14 +322,9 @@ export function createWidgetsModule(): DatasetModule {
                   rooms: details.rooms.slice(0, 50),
                   room_count: details.rooms.length,
                   rooms_truncated: details.rooms.length > 50,
-                  bookable_room_count: details.availability?.rooms.length ?? 0,
-                  availability: details.availability
-                    ? { ...details.availability, rooms: details.availability.rooms.slice(0, 50) }
-                    : null,
                   sourceStatus: {
                     building: details.sourceStatus.building,
                     rooms: details.sourceStatus.rooms,
-                    availability: details.sourceStatus.availability,
                   },
                 },
               };
@@ -433,27 +421,8 @@ export function createWidgetsModule(): DatasetModule {
 
             case "study_spaces": {
               const spaceIds = asStringArray(input.study_space_ids);
-              const roomEids = asStringArray(input.room_eids);
-              if (spaceIds.length === 0 && roomEids.length === 0) {
-                throw new Error("show_widget type 'study_spaces' requires study_space_ids or room_eids");
-              }
-              if (roomEids.length > 0) {
-                let rooms = await getDocs(search, "lib_rooms", roomEids);
-                if (rooms.length === 0) {
-                  // The model sometimes passes room names ("IKB 461") rather
-                  // than numeric eids — fall back to a search on those strings.
-                  const found = new Map<string, unknown>();
-                  for (const r of roomEids) {
-                    const res = await search.index("lib_rooms").search(r, { limit: 3 });
-                    for (const hit of res.hits as unknown as Record<string, unknown>[]) {
-                      const id = String(hit.eid ?? hit.id);
-                      if (!found.has(id)) found.set(id, hit);
-                    }
-                  }
-                  rooms = [...found.values()] as Record<string, unknown>[];
-                }
-                if (rooms.length === 0) throw new Error("None of the given room eids resolved");
-                return { type, result: { kind: "bookable", rooms } };
+              if (spaceIds.length === 0) {
+                throw new Error("show_widget type 'study_spaces' requires study_space_ids");
               }
               const spaces = await getDocs(search, "study_spaces", spaceIds);
               let informal = spaces;

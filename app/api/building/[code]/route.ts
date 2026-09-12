@@ -7,7 +7,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cod
   try {
     const { code } = await params;
     try {
-      return json(await loadBuildingDetails(getSearch(), code, new Date()));
+      return json(await loadBuildingDetails(getSearch(), code));
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Unknown building:")) {
         return json({ error: error.message }, 404);

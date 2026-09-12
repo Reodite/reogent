@@ -137,13 +137,13 @@ const QUERIES: { query: string; domain: string; expectedTools: string[] }[] = [
   // Study spaces
   { query: "Where can I study near IKB?", domain: "spaces", expectedTools: ["find_study_spaces", "show_widget"] },
   {
-    query: "Find bookable library rooms that are free right now",
+    query: "Find study spaces with at least six seats",
     domain: "spaces",
     expectedTools: ["find_study_spaces", "show_widget"],
   },
   { query: "Show me study spaces in the Nest", domain: "spaces", expectedTools: ["find_study_spaces", "show_widget"] },
   {
-    query: "Are there any free study rooms in IKB?",
+    query: "Find classrooms in IKB with at least 20 seats",
     domain: "spaces",
     expectedTools: ["find_study_spaces", "show_widget"],
   },

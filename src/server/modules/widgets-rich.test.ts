@@ -78,7 +78,7 @@ describe("rich building widgets", () => {
 
       expect(output.type).toBe(type);
       expect(output.result.building.code).toBe("IBLC");
-      expect(loadBuildingDetails).toHaveBeenCalledWith(expect.anything(), "IBLC", expect.any(Date));
+      expect(loadBuildingDetails).toHaveBeenCalledWith(expect.anything(), "IBLC");
     },
   );
 
@@ -88,7 +88,8 @@ describe("rich building widgets", () => {
     };
 
     expect(output.result.room_count).toBe(2);
-    expect(output.result.bookable_room_count).toBe(1);
+    expect(output.result).not.toHaveProperty("bookable_room_count");
+    expect(output.result).not.toHaveProperty("availability");
     expect(output.result.rooms_truncated).toBe(false);
   });
 

@@ -410,12 +410,17 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
           ? result.bookable_room_count
           : Array.isArray(result.availability?.rooms)
             ? result.availability.rooms.length
-            : 0;
+            : null;
       return (
         <ToolResultCard
           icon="school"
           title={result.building.name ?? result.building.code}
-          metadata={`${roomCount} learning space${roomCount === 1 ? "" : "s"} · ${bookable} bookable room${bookable === 1 ? "" : "s"}`}
+          metadata={[
+            `${roomCount} learning space${roomCount === 1 ? "" : "s"}`,
+            bookable !== null ? `${bookable} bookable room${bookable === 1 ? "" : "s"}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
           detail={
             result.availability?.as_of
               ? `${result.availability.freshness === "historical" ? "Historical snapshot" : "Snapshot"} · ${result.availability.as_of.slice(0, 10)}`

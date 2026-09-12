@@ -420,6 +420,27 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(shellRef.current?.workspaceView?.state.highlight).toMatchObject({ showEntrances: true });
   });
 
+  it.each([
+    [{}, "2 learning spaces"],
+    [{ bookable_room_count: 0 }, "2 learning spaces · 0 bookable rooms"],
+    [{ availability: { rooms: [{}] } }, "2 learning spaces · 1 bookable room"],
+  ])("only shows booking counts when the widget carries them: %j", async (booking, expected) => {
+    const { getByText } = renderWidget({
+      name: "show_widget",
+      input: { type: "building_spaces", building_code: "IBLC" },
+      result: {
+        type: "building_spaces",
+        result: {
+          building: { code: "IBLC", name: "Learning Centre" },
+          rooms: [{ name: "Room 1" }, { name: "Room 2" }],
+          ...booking,
+        },
+      },
+    });
+    await act(async () => {});
+    expect(getByText(expected)).not.toBeNull();
+  });
+
   it("keeps raw evidence visible when a rich renderer crashes", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     renderers.exploding_widget = () => {

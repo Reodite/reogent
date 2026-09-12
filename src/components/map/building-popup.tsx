@@ -1,8 +1,8 @@
 "use client";
 
-// Shows building details plus carousels for rooms, study spaces, food, and
-// services. Linked cards resolve preview images through `/api/preview`; other
-// cards use stored photos and preserve the image slot on load failure.
+// Shows building details with room and service carousels. Linked cards resolve
+// preview images through `/api/preview`; other cards use stored photos and
+// preserve the image slot on load failure.
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
@@ -54,7 +54,6 @@ function DetailCard({
   title,
   sub,
   meta,
-  dot,
 }: {
   /** Image URL, already chosen by the caller (direct photo or preview proxy). */
   src?: string | null;
@@ -62,7 +61,6 @@ function DetailCard({
   title: string;
   sub?: string | null;
   meta?: string | null;
-  dot?: "free" | "busy";
 }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -89,13 +87,6 @@ function DetailCard({
       </div>
       <div className="flex flex-col gap-1 px-2.5 py-2">
         <span className="text-on-surface flex items-center gap-1.5 text-sm font-medium">
-          {dot && (
-            // The sub line states the availability in words; the dot is decoration.
-            <span
-              className={`size-2 shrink-0 rounded-full ${dot === "free" ? "bg-secondary" : "bg-error"}`}
-              aria-hidden="true"
-            />
-          )}
           <span className="truncate">{title}</span>
         </span>
         {sub && <span className="text-on-surface-variant text-xs">{sub}</span>}
@@ -114,12 +105,11 @@ function DetailCard({
   );
 }
 
-function Section({ title, note, children }: { title: string; note?: string | null; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="ui-content-enter border-border-subtle border-t pt-3 first:border-t-0 first:pt-0">
       <Heading as="h3" size="subsection" className="mb-2">
         {title}
-        {note && <span className="text-muted ml-1.5 text-xs font-normal">{note}</span>}
       </Heading>
       {children}
     </section>
@@ -167,7 +157,6 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
     return () => el.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  const availability = details?.availability;
   return (
     <aside
       ref={popupRef}
@@ -246,33 +235,6 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
                 </Carousel>
               </Section>
             )}
-            {availability && availability.rooms.length > 0 && (
-              <Section
-                title="Study rooms"
-                note={availability.as_of ? `as of ${availability.as_of.slice(0, 10)}` : null}
-              >
-                <Carousel label="study rooms">
-                  {availability.rooms.map((room) => (
-                    <DetailCard
-                      key={room.title}
-                      // LibCal catalog thumbnails are stable direct URLs; LibCal pages rarely expose og:image
-                      src={room.thumbnail ?? (room.url ? preview(room.url) : null)}
-                      href={room.url}
-                      title={room.title}
-                      dot={room.freeNow ? "free" : "busy"}
-                      sub={
-                        room.freeNow
-                          ? `free until ${room.freeUntil ?? "end of day"}`
-                          : room.nextFree
-                            ? `free at ${room.nextFree}`
-                            : "booked today"
-                      }
-                      meta={`${room.capacity ?? "?"} people · book on LibCal`}
-                    />
-                  ))}
-                </Carousel>
-              </Section>
-            )}
             {details.pois.length > 0 && (
               <Section title={`Food & services (${details.pois.length})`}>
                 <Carousel label="services">
@@ -289,7 +251,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
                 </Carousel>
               </Section>
             )}
-            {details.rooms.length === 0 && !availability?.rooms.length && details.pois.length === 0 && (
+            {details.rooms.length === 0 && details.pois.length === 0 && (
               <p className="ui-content-enter text-on-surface-variant text-sm">
                 No room or service listings for this building.
               </p>

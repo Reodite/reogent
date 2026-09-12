@@ -107,7 +107,7 @@ const QUESTIONS: { query: string; scenario: string; expectedTools: string[] }[] 
     expectedTools: ["find_study_spaces"],
   },
   {
-    query: "My study group needs a room for 6 people this Thursday evening — can we book one?",
+    query: "My study group needs a place for six people. Show study spaces with enough seats.",
     scenario: "study-group",
     expectedTools: ["find_study_spaces"],
   },
@@ -117,9 +117,9 @@ const QUESTIONS: { query: string; scenario: string; expectedTools: string[] }[] 
     expectedTools: ["find_study_spaces"],
   },
   {
-    query: "Which library has the most free seats at 2pm on a Tuesday?",
+    query: "What are Koerner Library's opening hours this Tuesday?",
     scenario: "study-library",
-    expectedTools: ["find_study_spaces"],
+    expectedTools: ["get_library_hours"],
   },
 
   // --- Parking ---

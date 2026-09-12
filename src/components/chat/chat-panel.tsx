@@ -66,7 +66,7 @@ const SUGGESTION_BUCKETS = {
     "How much is a full course load in Science?",
   ],
   other: [
-    "Where can I study right now?",
+    "Find study spaces with room for six people",
     "What's the grade distribution for CHEM 121?",
     "Any events on campus this week?",
     "Where can I park near the engineering buildings?",
@@ -74,10 +74,10 @@ const SUGGESTION_BUCKETS = {
     "When is the last day to drop a course without a W?",
     "Find coffee shops near the Nest",
     "What's the average GPA for MATH 100?",
-    "Are there any free rooms in Buchanan right now?",
+    "Find study spaces in Buchanan",
     "When does registration open for 2026W Term 1?",
     "Find food options near the engineering buildings",
-    "What study rooms are available in IKB?",
+    "Show me study spaces in IKB",
     "Where is the Aquatic Centre?",
     "What are the admission requirements for Sauder?",
   ],
@@ -102,7 +102,7 @@ const TIPS = [
   "Answers come from indexed UBC data, not guesses.",
   "Tuition estimates break down by program and residency.",
   "Building searches show the location on the map.",
-  "Room schedules update with real availability.",
+  "Library hours include holiday and exam schedules.",
   "Admission requirements vary by program — ask about yours.",
   "Food and services near any building are one question away.",
   "Prerequisites chain together — I'll trace them.",
@@ -210,8 +210,8 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     // Bias toward contextually relevant "other" suggestions
     let otherPick: string;
     if (hour >= 18 || hour < 6) {
-      // Evening/night: study spaces and room availability
-      const evening = otherPool.filter((s) => /study|room|free/i.test(s));
+      // Favor study-space suggestions in the evening.
+      const evening = otherPool.filter((s) => /study|room/i.test(s));
       otherPick = evening.length > 0 ? pick(evening) : pick(otherPool);
     } else if (hour >= 6 && hour < 12) {
       // Morning: events and calendar

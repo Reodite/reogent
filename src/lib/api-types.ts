@@ -117,7 +117,6 @@ export interface EntranceMarker {
 }
 
 export type BuildingDataAssociation = "direct" | "official-address" | "location-derived";
-export type BuildingDataFreshness = "current" | "historical" | "unknown";
 export type BuildingSourceState = "ready" | "unavailable";
 
 export interface BuildingDataProvenance {
@@ -139,7 +138,7 @@ export interface OfficialBuildingPhoto {
   classification: "ubc-hosted" | "official-service" | "reodite-owned";
 }
 
-// GET /api/building/{code} — per-building popup details (rooms, POIs, availability).
+// GET /api/building/{code}: building details, rooms, and services.
 
 export interface RoomCard {
   name: string;
@@ -161,16 +160,6 @@ export interface PoiCard {
   hours: string | null;
   contact: string | null;
   association: "official-address" | "location-derived";
-}
-
-export interface AvailabilityRoomCard {
-  title: string;
-  capacity: number | null;
-  url: string | null;
-  thumbnail: string | null;
-  freeNow: boolean;
-  freeUntil: string | null;
-  nextFree: string | null;
 }
 
 export interface BuildingAddress {
@@ -215,16 +204,10 @@ export interface BuildingDetails {
   pois: PoiCard[];
   entrances: BuildingEntranceSummary[];
   photos: OfficialBuildingPhoto[];
-  availability: {
-    as_of: string | null;
-    freshness: BuildingDataFreshness;
-    rooms: AvailabilityRoomCard[];
-  } | null;
   sourceStatus: {
     building: BuildingSourceStatus;
     addresses: BuildingSourceStatus;
     rooms: BuildingSourceStatus;
-    availability: BuildingSourceStatus;
     pois: BuildingSourceStatus;
     entrances: BuildingSourceStatus;
   };

@@ -121,7 +121,7 @@ const entranceCollection: FeatureCollection = {
 
 function searchClient(failRooms = false): SearchClient {
   return {
-    index: (name: string) => ({
+    index: vi.fn((name: string) => ({
       search: vi.fn(async () => {
         if (name === "study_spaces") {
           if (failRooms) throw new Error("rooms unavailable");
@@ -182,7 +182,7 @@ function searchClient(failRooms = false): SearchClient {
         return { hits: [] };
       }),
       getDocument: vi.fn(),
-    }),
+    })),
   } as unknown as SearchClient;
 }
 
@@ -198,7 +198,8 @@ beforeEach(() => {
 
 describe("loadBuildingDetails", () => {
   it("assembles documented building, address, room, POI, entrance, photo, and freshness fields", async () => {
-    const details = await loadBuildingDetails(searchClient(), "TEST", new Date("2026-08-06T12:30:00Z"));
+    const search = searchClient();
+    const details = await loadBuildingDetails(search, "TEST");
 
     expect(details.building).toMatchObject({
       code: "TEST",
@@ -227,12 +228,16 @@ describe("loadBuildingDetails", () => {
       expect.objectContaining({ id: "TEST-1", entranceType: "Primary", doorCount: 2 }),
     ]);
     expect(details.photos).toEqual([]);
-    expect(details.availability).toMatchObject({ freshness: "current", rooms: [expect.any(Object)] });
+    expect(details).not.toHaveProperty("availability");
+    expect(details.sourceStatus).not.toHaveProperty("availability");
     expect(details.sourceStatus.rooms.state).toBe("ready");
+    expect(search.index).toHaveBeenCalledTimes(1);
+    expect(search.index).toHaveBeenCalledWith("study_spaces");
+    expect(mocks.getIndexFreshness).not.toHaveBeenCalledWith("room_availability");
   });
 
   it("preserves successful sections when room search fails", async () => {
-    const details = await loadBuildingDetails(searchClient(true), "TEST", new Date("2026-08-06T12:30:00Z"));
+    const details = await loadBuildingDetails(searchClient(true), "TEST");
 
     expect(details.building.code).toBe("TEST");
     expect(details.rooms).toEqual([]);
@@ -242,6 +247,6 @@ describe("loadBuildingDetails", () => {
 
   it("propagates an unknown building without fabricating base details", async () => {
     mocks.resolveBuilding.mockRejectedValue(new Error('Unknown building: "NOPE"'));
-    await expect(loadBuildingDetails(searchClient(), "NOPE", new Date())).rejects.toThrow("Unknown building");
+    await expect(loadBuildingDetails(searchClient(), "NOPE")).rejects.toThrow("Unknown building");
   });
 });

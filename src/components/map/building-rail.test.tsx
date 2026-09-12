@@ -101,26 +101,10 @@ const details: BuildingDetails = {
       classification: "ubc-hosted",
     },
   ],
-  availability: {
-    as_of: "2026-08-11T08:33:32Z",
-    freshness: "historical",
-    rooms: [
-      {
-        title: "Bookable room",
-        capacity: 6,
-        url: "https://libcal.library.ubc.ca/space/1",
-        thumbnail: null,
-        freeNow: false,
-        freeUntil: null,
-        nextFree: "14:00",
-      },
-    ],
-  },
   sourceStatus: {
     building: source("UBC Buildings"),
     addresses: source("UBC Addresses"),
     rooms: source("UBC Learning Spaces"),
-    availability: source("UBC Library Room Bookings"),
     pois: source("UBC Points of Interest"),
     entrances: source("UBC Entrances"),
   },
@@ -467,19 +451,21 @@ describe("BuildingRail", () => {
     expect(screen.queryByText("LEED Gold")).toBeNull();
     expect(screen.queryByText("FeeSimple")).toBeNull();
     expect(screen.getByText("IBLC 100")).toBeTruthy();
-    expect(screen.getByText("Bookable room")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /^Bookable rooms/ })).toBeNull();
     expect(screen.getByText("Library help desk")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: /^Entrances/ })).toBeNull();
     expect(screen.queryByText("Primary")).toBeNull();
     expect(screen.queryByText(/Accessibility details/)).toBeNull();
-    const sources = screen.getByRole("heading", { name: "Sources" }).parentElement;
-    expect(sources?.textContent).toContain("UBC Buildings");
-    expect(sources?.textContent).toContain("UBC Addresses");
-    expect(sources?.textContent).toContain("UBC Learning Spaces");
-    expect(sources?.textContent).toContain("UBC Library Room Bookings");
-    expect(sources?.textContent).toContain("UBC Points of Interest");
-    expect(sources?.textContent).not.toContain("UBC Entrances");
-    expect(screen.getByText(/Historical snapshot/)).toBeTruthy();
+    const sources = screen.getByRole("heading", { name: "Sources" }).parentElement!;
+    expect(sources.textContent).toContain("UBC Buildings");
+    expect(sources.textContent).toContain("UBC Addresses");
+    expect(sources.textContent).toContain("UBC Learning Spaces");
+    expect(sources.textContent).toContain("UBC Points of Interest");
+    expect(sources.textContent).not.toContain("UBC Entrances");
+    const refreshedAt = new Date(details.sourceStatus.building.provenance.refreshedAt!).toLocaleDateString("en-CA", {
+      dateStyle: "medium",
+    });
+    expect(within(sources).getAllByText(refreshedAt)).toHaveLength(4);
   });
 
   it("shares list-item anatomy while preserving truncation, wrapping, and action placement", () => {
@@ -490,22 +476,16 @@ describe("BuildingRail", () => {
       {
         title: "IBLC 100",
         action: "Details",
+        href: details.rooms[0].link,
         summary: "classroom · Floor 1 · 80 seats",
         detail: "Rows · Tables",
         truncate: true,
         trailing: true,
       },
       {
-        title: "Bookable room",
-        action: "Book",
-        summary: "Next free at 14:00 · 6 people",
-        detail: null,
-        truncate: false,
-        trailing: true,
-      },
-      {
         title: "Library help desk",
         action: "Website",
+        href: details.pois[0].url,
         summary: "campus services · 9–5",
         detail: "Official address match",
         truncate: false,
@@ -523,6 +503,7 @@ describe("BuildingRail", () => {
       if (variant.detail) expect(within(item).getByText(variant.detail).className).toContain("text-muted");
       const action = within(item).getByRole("link", { name: variant.action });
       expect(action.parentElement?.classList.contains("flex")).toBe(variant.trailing);
+      expect(action.getAttribute("href")).toBe(variant.href);
       expect(action.getAttribute("target")).toBe("_blank");
       expect(action.getAttribute("rel")).toBe("noreferrer");
       expect(action.className).toContain("min-h-11");
@@ -538,7 +519,6 @@ describe("BuildingRail", () => {
       rooms: [],
       pois: [],
       photos: [],
-      availability: null,
       sourceStatus: {
         ...details.sourceStatus,
         entrances: { ...details.sourceStatus.entrances, state: "unavailable" },
@@ -552,13 +532,7 @@ describe("BuildingRail", () => {
 
     const sources = screen.getByRole("heading", { name: "Sources" }).parentElement;
     expect(sources?.textContent).toContain("UBC Buildings");
-    for (const unusedSource of [
-      "UBC Addresses",
-      "UBC Learning Spaces",
-      "UBC Library Room Bookings",
-      "UBC Points of Interest",
-      "UBC Entrances",
-    ]) {
+    for (const unusedSource of ["UBC Addresses", "UBC Learning Spaces", "UBC Points of Interest", "UBC Entrances"]) {
       expect(sources?.textContent).not.toContain(unusedSource);
     }
     expect(screen.queryByText(/Some source sections are unavailable/)).toBeNull();
