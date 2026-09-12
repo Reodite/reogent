@@ -21,7 +21,14 @@ const INDEX: CourseIndex = new Map([
 ]);
 
 const build = (root: string, selections = new Map<string, number>(), softDisabled = new Map<string, boolean>()) =>
-  buildGraph(root, INDEX, selections, () => {}, softDisabled, () => {});
+  buildGraph(
+    root,
+    INDEX,
+    selections,
+    () => {},
+    softDisabled,
+    () => {},
+  );
 
 const nodeById = (g: ReturnType<typeof build>, id: string) => {
   const n = g.nodes.find((x) => x.id === id);
@@ -103,7 +110,16 @@ describe("buildGraph (ported reodite logic)", () => {
       ["CHAIN 300", 120],
       ["AAA 200", 80],
     ]);
-    const g = buildGraph("CHAIN 300", INDEX, new Map(), () => {}, new Map(), () => {}, undefined, measured);
+    const g = buildGraph(
+      "CHAIN 300",
+      INDEX,
+      new Map(),
+      () => {},
+      new Map(),
+      () => {},
+      undefined,
+      measured,
+    );
     // Single-item columns center at y=0: top = -height/2 exactly.
     expect(nodeById(g, "CHAIN 300").position.y).toBe(-60);
     expect(nodeById(g, "AAA 200").position.y).toBe(-40);
