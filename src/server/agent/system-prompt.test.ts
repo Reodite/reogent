@@ -138,6 +138,10 @@ describe("source retrieval and attribution", () => {
     expect(SYSTEM_PROMPT).toContain("discipline-specific application page");
     expect(SYSTEM_PROMPT).toContain("administering co-op program from official directory or program guidance");
     expect(SYSTEM_PROMPT).toContain("A general application page does not establish every discipline's criteria");
+    expect(SYSTEM_PROMPT).toContain("Read that discipline's article before the general application or deadline pages");
+    expect(SYSTEM_PROMPT).toContain("Report its exact average and course requirements");
+    expect(SYSTEM_PROMPT).toContain("Compare each eligibility requirement with the student's stated details");
+    expect(SYSTEM_PROMPT).toContain("mark unprovided details as unverified");
   });
 
   it("keeps identically named sources tied to their URLs and assigned indices", () => {

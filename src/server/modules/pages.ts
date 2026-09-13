@@ -143,7 +143,11 @@ export const pages: DatasetModule = {
           json: {
             type: "object",
             properties: {
-              query: { type: "string", description: "Keywords to search page titles and text for" },
+              query: {
+                type: "string",
+                description:
+                  'Short keywords for page titles and text. Search a provided page title first. Start with the specific discipline, service or program name otherwise, e.g. "Computer Science" for its co-op requirements. With subcategory set, omit generic UBC/Science Co-op prefixes.',
+              },
               source: {
                 type: "string",
                 description:
@@ -152,7 +156,7 @@ export const pages: DatasetModule = {
               subcategory: {
                 type: "string",
                 description:
-                  "Optional Prose topic: it-services for Canvas/CWL/IT instructions, workday for Workday procedures, academic-calendar for calendar policies, science-coop for Science Co-op, or another indexed topic such as student-housing or science-advising. Use this or source.",
+                  "Optional Prose topic: it-services for Canvas/CWL/IT instructions, workday for Workday procedures, academic-calendar for calendar policies. Co-op topics: coop-programs (official directory/shared guidance), science-coop, arts-coop, engineering-coop, forestry-coop, sauder-undergraduate. Use the administering program's topic, not the faculty name alone. Other indexed topics include student-housing and science-advising. Use this or source.",
               },
               limit: { type: "number", description: "Max results (default 5, maximum 20)" },
             },

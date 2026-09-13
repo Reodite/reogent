@@ -136,6 +136,14 @@ describe("page search compatibility", () => {
     expect(index).not.toHaveBeenCalled();
     expect(tool.spec.description).toContain("co-op");
     expect(JSON.stringify(tool.spec.inputSchema)).toContain("science-coop");
+    expect(JSON.stringify(tool.spec.inputSchema)).toContain(
+      "Start with the specific discipline, service or program name",
+    );
+    expect(JSON.stringify(tool.spec.inputSchema)).toContain("Computer Science");
+    expect(JSON.stringify(tool.spec.inputSchema)).toContain("Search a provided page title first");
+    for (const topic of ["coop-programs", "arts-coop", "engineering-coop", "forestry-coop", "sauder-undergraduate"]) {
+      expect(JSON.stringify(tool.spec.inputSchema)).toContain(topic);
+    }
   });
 
   it("reports index failures rather than hiding missing source results", async () => {
