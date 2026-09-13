@@ -1,5 +1,6 @@
 import fixture from "@/__fixtures__/calendar-events.json";
-import { GET, projectCalendarEvents, projectCampusEvents } from "@/app/api/calendar/route";
+import { GET } from "@/app/api/calendar/route";
+import { projectCalendarEvents, projectCampusEvents } from "@/src/server/calendar-events";
 import type { KeyDateDoc } from "@/src/server/modules/calendar";
 import type { EventDoc } from "@/src/server/modules/events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -129,6 +130,10 @@ describe("projectCampusEvents — campus events as per-day event-kind entries", 
 });
 
 describe("GET /api/calendar route — projected CalendarEvent[] shape and caching (REQ-16.1)", () => {
+  it("keeps the route export contract", async () => {
+    expect(Object.keys(await import("./route"))).toEqual(["GET"]);
+  });
+
   it("returns the projected array with a 5-minute public cache header", async () => {
     const request = new Request("https://example/api/calendar?kinds=academic");
     const res = await GET(request);

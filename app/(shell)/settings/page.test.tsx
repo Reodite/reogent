@@ -14,7 +14,7 @@ vi.mock("@/src/components/providers", () => ({ useApi: () => api }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => auth }));
 vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => <div data-testid="theme-toggle" /> }));
 
-const { default: SettingsPage, ProfileForm } = await import("./page");
+const { default: SettingsPage } = await import("./page");
 
 beforeEach(() => {
   api.getProfile.mockReset();
@@ -26,9 +26,13 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Settings", () => {
+  it("keeps the page export contract", async () => {
+    expect(Object.keys(await import("./page"))).toEqual(["default"]);
+  });
+
   it("reserves the profile form footprint while loading", () => {
     api.getProfile.mockReturnValue(new Promise(() => {}));
-    render(<ProfileForm />);
+    render(<SettingsPage />);
 
     const loading = screen.getByRole("status", { name: "Loading student profile" });
     expect(loading).not.toBeNull();
@@ -59,7 +63,7 @@ describe("Settings", () => {
     api.getProfile.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({
       profile: { program: "Computer Science", year: 3, student_type: "domestic" },
     });
-    render(<ProfileForm />);
+    render(<SettingsPage />);
 
     expect(await screen.findByText("Profile unavailable")).not.toBeNull();
     expect(screen.queryByLabelText("Program")).toBeNull();
@@ -78,7 +82,7 @@ describe("Settings", () => {
   ])("clears saved feedback when %s changes", async (label, value) => {
     api.getProfile.mockResolvedValue({ profile: { program: "Mathematics", year: 2, student_type: "domestic" } });
     api.saveProfile.mockResolvedValue(undefined);
-    render(<ProfileForm />);
+    render(<SettingsPage />);
     await screen.findByLabelText("Program");
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
     await screen.findByText("Saved");
@@ -97,7 +101,7 @@ describe("Settings", () => {
           finish = resolve;
         }),
     );
-    render(<ProfileForm />);
+    render(<SettingsPage />);
     const program = await screen.findByLabelText("Program");
     fireEvent.change(program, { target: { value: "Statistics" } });
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));

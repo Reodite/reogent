@@ -43,7 +43,7 @@ function ProfileFormLoading() {
 }
 
 /** Loads and saves the student defaults used by tuition and program answers. */
-export function ProfileForm() {
+function ProfileForm() {
   const api = useApi();
   const [profile, setProfile] = useState<StudentProfile>({});
   const [status, setStatus] = useState<ProfileStatus>("loading");
