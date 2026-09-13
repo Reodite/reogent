@@ -1,7 +1,7 @@
 import { canonicalSourceUrl } from "@/src/shared/citations/url";
 import type { DatasetModule } from "../core/types";
+import { searchDocuments, type DocumentSummary } from "./documents";
 import { stripHtml } from "./html";
-import { searchProse, type ProseSummary } from "./prose";
 
 export interface PageDoc {
   source: string;
@@ -14,7 +14,7 @@ export interface PageDoc {
 
 /** Searchable source metadata and bounded legacy excerpts. */
 export type PageResult = Pick<PageDoc, "source" | "title" | "url" | "date" | "source_record"> &
-  Partial<ProseSummary> & { snippets: string[] };
+  Partial<DocumentSummary> & { snippets: string[] };
 
 const SOURCE_TOPICS: Record<string, string> = { calendar: "academic-calendar", facilities: "campus-facilities" };
 
@@ -138,7 +138,7 @@ export const pages: DatasetModule = {
       spec: {
         name: "search_ubc_pages",
         description:
-          "Search official UBC Vancouver pages and Prose articles, including IT service login/access instructions, Workday procedures, calendar policies, admissions, housing, faculty advising and undergraduate co-op. Use subcategory it-services for IT instructions and science-coop for Science Co-op program guidance. Prose results include original_id, category and subcategory; use get_prose_article to read complete steps and discipline-specific conditions. Legacy pages return bounded excerpts. Use get_costs for structured money questions and cite source URLs.",
+          "Search official UBC Vancouver pages and Markdown documents, including IT service login/access instructions, Workday procedures, calendar policies, admissions, housing, faculty advising and undergraduate co-op. Use subcategory it-services for IT instructions and science-coop for Science Co-op program guidance. Document results include original_id, category and subcategory; use get_document to read complete steps and discipline-specific conditions. Legacy pages return bounded excerpts. Use get_costs for structured money questions and cite source URLs.",
         inputSchema: {
           json: {
             type: "object",
@@ -156,7 +156,7 @@ export const pages: DatasetModule = {
               subcategory: {
                 type: "string",
                 description:
-                  "Optional Prose topic: it-services for Canvas/CWL/IT instructions, workday for Workday procedures, academic-calendar for calendar policies. Co-op topics: coop-programs (official directory/shared guidance), science-coop, arts-coop, engineering-coop, forestry-coop, sauder-undergraduate. Use the administering program's topic, not the faculty name alone. Other indexed topics include student-housing and science-advising. Use this or source.",
+                  "Optional document topic: it-services for Canvas/CWL/IT instructions, workday for Workday procedures, academic-calendar for calendar policies. Co-op topics: coop-programs (official directory/shared guidance), science-coop, arts-coop, engineering-coop, forestry-coop, sauder-undergraduate. Use the administering program's topic, not the faculty name alone. Advising topics include arts-advising, science-advising, lfs-advising (Land and Food Systems) and kinesiology-advising. Housing guidance uses student-housing. Use this or source.",
               },
               limit: { type: "number", description: "Max results (default 5, maximum 20)" },
             },
@@ -191,7 +191,7 @@ export const pages: DatasetModule = {
                 limit,
                 attributesToHighlight: ["text"],
               }),
-          searchProse(query, topic, limit, search),
+          searchDocuments(query, topic, limit, search),
         ]);
         const legacy = res.hits.map((hit) => {
           const doc = hit as unknown as PageDoc & { _formatted?: { text?: string } };

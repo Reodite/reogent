@@ -60,6 +60,8 @@ export interface IndexDef<TRaw = any> {
   index: string;
   /** Atomically replaces the complete snapshot instead of upserting documents. */
   replace?: boolean;
+  /** Retires an obsolete index only after publishing a replacement snapshot. */
+  formerIndex?: string;
   /** Meilisearch index settings: searchableAttributes, filterableAttributes, sortableAttributes. */
   settings: {
     searchableAttributes?: string[];

@@ -147,10 +147,11 @@ export function describeToolCall(name: string, input: Record<string, unknown>): 
       const target = has("query") ? `${s("query")} hours` : "library hours";
       return has("date") ? `Searched ${target} for ${s("date")}` : `Searched ${target}`;
     }
-    case "get_prose_article":
-      return "Read Prose article";
+    case "get_prose_article": // Stored activity uses the original tool name.
+    case "get_document":
+      return "Read document";
     case "search_ubc_pages": {
-      const target = has("subcategory") ? `Prose (${s("subcategory").replaceAll("-", " ")})` : "UBC pages";
+      const target = has("subcategory") ? `documents (${s("subcategory").replaceAll("-", " ")})` : "UBC pages";
       return has("query") ? `Searched ${target} for ${s("query")}` : `Searched ${target}`;
     }
     case "get_prereq_tree":

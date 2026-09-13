@@ -305,10 +305,11 @@ describe("runIngest", () => {
     expect(vi.mocked(recordIndexFreshness).mock.calls).toEqual([["first"], ["second"]]);
   });
 
-  it.each(["read", "transform", "documents", "derive", "swap"])(
-    "cleans up a failed replacement %s without stamping it",
+  it.each(["read", "transform", "documents", "derive", "swap", "freshness"])(
+    "cleans up a failed replacement %s without retiring its former index",
     async (stage) => {
       const f = replacementFixture();
+      Object.assign(f.first.definition, { formerIndex: "prose" });
       const error = new Error(`${stage} failed`);
       if (stage === "read") {
         f.first.definition.read.mockImplementation(async function* () {
@@ -321,6 +322,7 @@ describe("runIngest", () => {
         });
       else if (stage === "documents") f.first.addDocuments.mockRejectedValueOnce(error);
       else if (stage === "derive") f.first.definition.derive.mockRejectedValueOnce(error);
+      else if (stage === "freshness") vi.mocked(recordIndexFreshness).mockRejectedValueOnce(error);
       else f.swapIndexes.mockRejectedValueOnce(error);
 
       await expect(runIngest(f.modules, f.search, f.store)).rejects.toMatchObject({
@@ -330,11 +332,100 @@ describe("runIngest", () => {
       const staging = f.createIndex.mock.calls[0][0];
       expect(staging).toMatch(/^first__/);
       expect(f.deleteIndex).toHaveBeenCalledExactlyOnceWith(staging);
-      expect(f.swapIndexes).toHaveBeenCalledTimes(stage === "swap" ? 1 : 0);
+      expect(f.swapIndexes).toHaveBeenCalledTimes(["swap", "freshness"].includes(stage) ? 1 : 0);
+      expect(f.deleteIndex).not.toHaveBeenCalledWith("prose");
       expect(f.second.definition.derive).toHaveBeenCalledExactlyOnceWith(f.store);
-      expect(vi.mocked(recordIndexFreshness).mock.calls).toEqual([["second"]]);
+      expect(vi.mocked(recordIndexFreshness).mock.calls).toEqual(
+        stage === "freshness" ? [["first"], ["second"]] : [["second"]],
+      );
     },
   );
+
+  it.each([0, 501])("retires the former index after publishing a %i-row replacement", async (count) => {
+    const f = replacementFixture(count);
+    Object.assign(f.first.definition, { formerIndex: "prose" });
+    f.deleteIndex.mockImplementation(async (name) => ({ taskUid: name === "prose" ? 8 : 7 }));
+
+    await runIngest(f.modules, f.search, f.store);
+
+    expect(f.deleteIndex.mock.calls).toEqual([["prose"], [f.createIndex.mock.calls[0][0]]]);
+    expect(f.waitForTask.mock.calls.map(([uid]) => uid)).toContain(8);
+    expect(vi.mocked(recordIndexFreshness).mock.invocationCallOrder[0]).toBeLessThan(
+      f.deleteIndex.mock.invocationCallOrder[0],
+    );
+    expect(f.swapIndexes.mock.invocationCallOrder[0]).toBeLessThan(f.deleteIndex.mock.invocationCallOrder[0]);
+  });
+
+  it.each(["queued", "HTTP"])("accepts an absent former index from %s deletion", async (outcome) => {
+    const f = replacementFixture();
+    Object.assign(f.first.definition, { formerIndex: "prose" });
+    const error = {
+      message: "Index prose not found",
+      code: "index_not_found",
+      type: "invalid_request",
+      link: "https://example.invalid/errors#index_not_found",
+    };
+    f.deleteIndex.mockImplementation(async (name) => {
+      if (name === "prose" && outcome === "HTTP") {
+        throw new MeilisearchApiError(new Response(null, { status: 404 }), error);
+      }
+      return { taskUid: name === "prose" ? 8 : 7 };
+    });
+    f.waitForTask.mockImplementation(async (uid) => ({
+      uid,
+      status: uid === 8 ? "failed" : "succeeded",
+      error: uid === 8 ? error : null,
+    }));
+
+    await expect(runIngest(f.modules, f.search, f.store)).resolves.toBeUndefined();
+    expect(f.deleteIndex).toHaveBeenCalledWith("prose");
+    expect(f.second.definition.derive).toHaveBeenCalledExactlyOnceWith(f.store);
+  });
+
+  it.each(["queued", "HTTP", "network"])(
+    "reports %s retirement failures without rolling back documents",
+    async (outcome) => {
+      const f = replacementFixture();
+      Object.assign(f.first.definition, { formerIndex: "prose" });
+      const error = {
+        message: "Deletion denied",
+        code: "invalid_api_key",
+        type: "auth",
+        link: "https://example.invalid/errors#invalid_api_key",
+      };
+      f.deleteIndex.mockImplementation(async (name) => {
+        if (name === "prose" && outcome === "network") throw new Error("Connection refused");
+        if (name === "prose" && outcome === "HTTP") {
+          throw new MeilisearchApiError(new Response(null, { status: 403 }), error);
+        }
+        return { taskUid: name === "prose" ? 8 : 7 };
+      });
+      f.waitForTask.mockImplementation(async (uid) => ({
+        uid,
+        status: uid === 8 ? "failed" : "succeeded",
+        error: uid === 8 ? error : null,
+      }));
+
+      await expect(runIngest(f.modules, f.search, f.store)).rejects.toThrow("Ingest failed");
+      expect(f.swapIndexes).toHaveBeenCalledOnce();
+      expect(f.deleteIndex.mock.calls).toEqual([["prose"], [f.createIndex.mock.calls[0][0]]]);
+      expect(vi.mocked(recordIndexFreshness).mock.calls).toEqual([["first"], ["second"]]);
+    },
+  );
+
+  it.each([
+    { replace: false, formerIndex: "prose" },
+    { replace: true, formerIndex: "first" },
+    { replace: true, formerIndex: "second" },
+  ])("rejects unsafe index retirement before writing: %j", async (options) => {
+    const f = replacementFixture();
+    Object.assign(f.first.definition, options);
+    await expect(runIngest(f.modules, f.search, f.store)).rejects.toThrow("Ingest failed");
+    expect(f.first.addDocuments).not.toHaveBeenCalled();
+    expect(f.swapIndexes).not.toHaveBeenCalled();
+    expect(f.deleteIndex).not.toHaveBeenCalled();
+    expect(f.second.definition.derive).toHaveBeenCalledExactlyOnceWith(f.store);
+  });
 
   it("publishes an empty snapshot rather than retaining removed dated records", async () => {
     const f = replacementFixture(0);

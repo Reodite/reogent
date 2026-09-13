@@ -119,9 +119,11 @@ function SourceRow({ c }: { c: Citation }) {
       <span className="text-muted shrink-0 font-mono">{c.index}.</span>
       <div className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
         <span className={c.used ? "text-on-surface" : "text-muted"}>{c.label}</span>
-        {detail?.category === "prose" ? (
+        {detail?.category === "documents" || detail?.category === "prose" ? (
           <span data-source-category className="text-muted capitalize">
-            {typeof detail.subcategory === "string" ? `Prose · ${detail.subcategory.replaceAll("-", " ")}` : "Prose"}
+            {typeof detail.subcategory === "string"
+              ? `Documents · ${detail.subcategory.replaceAll("-", " ")}`
+              : "Documents"}
           </span>
         ) : null}
         {typeof detail?.source_modified_at === "string" ? (

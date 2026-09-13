@@ -77,7 +77,7 @@ describe("module registry consistency", () => {
         "find_events",
         "get_key_dates",
         "search_ubc_pages",
-        "get_prose_article",
+        "get_document",
         "search_student_resources",
         "get_library_hours",
         "find_person",
@@ -87,9 +87,15 @@ describe("module registry consistency", () => {
     );
   });
 
-  it("includes prose in the dataset registry with snapshot replacement", () => {
-    expect(modules.find((module) => module.name === "prose")?.indices.map((index) => index.index)).toEqual(["prose"]);
-    expect(modules.find((module) => module.name === "prose")?.indices[0].replace).toBe(true);
+  it("includes documents in the dataset registry with snapshot replacement", () => {
+    expect(modules.find((module) => module.name === "documents")?.indices.map((index) => index.index)).toEqual([
+      "documents",
+    ]);
+    expect(modules.find((module) => module.name === "documents")?.indices[0]).toMatchObject({
+      replace: true,
+      formerIndex: "prose",
+    });
+    expect(modules.some((module) => module.name === "prose")).toBe(false);
     expect(modules.some((module) => module.name === "undergraduate")).toBe(true);
   });
 

@@ -24,7 +24,7 @@ type SourceRecord = {
 function sourceSeed(row: SourceRecord, tool: string, date?: string): CitationSeed {
   return {
     label: row.title,
-    kind: row.category === "prose" ? "prose" : "page",
+    kind: row.category === "documents" ? "documents" : "page",
     tool,
     source_url: urlOrNull(row.source_url),
     detail: {
@@ -48,9 +48,9 @@ const courseSeed = (c: CourseDoc, tool: string): CitationSeed => ({
 });
 
 export const CITATION_EXTRACTORS: Record<string, CitationExtractor> = {
-  get_prose_article: (result) =>
+  get_document: (result) =>
     result && typeof result === "object" && "title" in result
-      ? [sourceSeed(result as SourceRecord, "get_prose_article")]
+      ? [sourceSeed(result as SourceRecord, "get_document")]
       : [],
   search_student_resources: (result) => {
     const { resources } = (result ?? {}) as { resources?: SourceRecord[] };

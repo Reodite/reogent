@@ -17,11 +17,11 @@ it("carries the assigned source marker into follow-up article results without ch
   const first = {
     title: "Example guide",
     url: "https://example.test/first",
-    category: "prose",
+    category: "documents",
     subcategory: "workday",
-    original_id: "prose:workday:first",
+    original_id: "documents:workday:first",
   };
-  const second = { ...first, url: "https://example.test/second", original_id: "prose:workday:second" };
+  const second = { ...first, url: "https://example.test/second", original_id: "documents:workday:second" };
   const article = {
     title: second.title,
     category: second.category,
@@ -39,7 +39,7 @@ it("carries the assigned source marker into follow-up article results without ch
         execute: async () => ({ pages: [first, second] }),
       },
       {
-        spec: { name: "get_prose_article", description: "Read fixture", inputSchema: { json: { type: "object" } } },
+        spec: { name: "get_document", description: "Read fixture", inputSchema: { json: { type: "object" } } },
         execute: async () => article,
       },
     ],
@@ -53,7 +53,7 @@ it("carries the assigned source marker into follow-up article results without ch
       yield {
         type: "tool_use",
         toolUseId: "article",
-        name: "get_prose_article",
+        name: "get_document",
         input: { article_id: second.original_id },
       };
       yield { type: "stop", reason: "tool_use" };
@@ -71,7 +71,7 @@ it("carries the assigned source marker into follow-up article results without ch
   );
   const response = llm.converseStream.mock.calls[2][0].messages
     .flatMap((message) => message.content)
-    .find((block) => block.toolResult?.name === "get_prose_article")?.toolResult;
+    .find((block) => block.toolResult?.name === "get_document")?.toolResult;
   expect(response?.content).toEqual([
     { json: article },
     {

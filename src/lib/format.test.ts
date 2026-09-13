@@ -153,10 +153,11 @@ describe("describeToolCall", () => {
     expect(describeToolCall("get_costs", {})).toBe("Searched for costs");
   });
 
-  it("groups article lookups under Prose with an optional topic", () => {
-    expect(describeToolCall("get_prose_article", { article_id: "prose:workday:1" })).toBe("Read Prose article");
+  it("labels document lookups and stored article activity with an optional topic", () => {
+    expect(describeToolCall("get_document", { article_id: "documents:workday:1" })).toBe("Read document");
+    expect(describeToolCall("get_prose_article", { article_id: "prose:workday:1" })).toBe("Read document");
     expect(describeToolCall("search_ubc_pages", { query: "application", subcategory: "student-housing" })).toBe(
-      "Searched Prose (student housing) for application",
+      "Searched documents (student housing) for application",
     );
   });
 

@@ -124,9 +124,9 @@ describe("evidence-only answers", () => {
 describe("source retrieval and attribution", () => {
   it("looks beyond service metadata for instructions before reporting a gap", () => {
     expect(SYSTEM_PROMPT).toContain(
-      "For service setup, login or access instructions, follow source metadata with search_ubc_pages and get_prose_article.",
+      "For service setup, login or access instructions, follow source metadata with search_ubc_pages and get_document.",
     );
-    expect(SYSTEM_PROMPT).toContain("After checking the available service records and Prose articles");
+    expect(SYSTEM_PROMPT).toContain("After checking the available service records and documents");
     expect(SYSTEM_PROMPT).toContain('"IT service setup / login / access instructions"');
     expect(SYSTEM_PROMPT).toContain('subcategory: "it-services"');
     expect(SYSTEM_PROMPT).toContain("Match the article's source_url to the assigned source index");
