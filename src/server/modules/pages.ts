@@ -138,7 +138,7 @@ export const pages: DatasetModule = {
       spec: {
         name: "search_ubc_pages",
         description:
-          "Search official UBC Vancouver pages and Prose articles, including IT service login/access instructions, Workday procedures, calendar policies, admissions, housing and faculty advising. Use subcategory it-services for Canvas, CWL and other IT services. Prose results include original_id, category and subcategory; use get_prose_article to read complete steps and conditions. Legacy pages return bounded excerpts. Use get_costs for structured money questions and cite source URLs.",
+          "Search official UBC Vancouver pages and Prose articles, including IT service login/access instructions, Workday procedures, calendar policies, admissions, housing, faculty advising and undergraduate co-op. Use subcategory it-services for IT instructions and science-coop for Science Co-op program guidance. Prose results include original_id, category and subcategory; use get_prose_article to read complete steps and discipline-specific conditions. Legacy pages return bounded excerpts. Use get_costs for structured money questions and cite source URLs.",
         inputSchema: {
           json: {
             type: "object",
@@ -152,7 +152,7 @@ export const pages: DatasetModule = {
               subcategory: {
                 type: "string",
                 description:
-                  "Optional Prose topic: it-services for Canvas/CWL/IT instructions, workday for Workday procedures, academic-calendar for calendar policies, or another topic such as student-housing or science-advising. Use this or source.",
+                  "Optional Prose topic: it-services for Canvas/CWL/IT instructions, workday for Workday procedures, academic-calendar for calendar policies, science-coop for Science Co-op, or another indexed topic such as student-housing or science-advising. Use this or source.",
               },
               limit: { type: "number", description: "Max results (default 5, maximum 20)" },
             },

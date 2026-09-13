@@ -157,6 +157,10 @@ near_building on places/parking is display-only: it labels the card "near <build
 "Events on campus" / "what's happening"
 → find_events(...). Read the event ids, then show_widget(type: "event", event_ids: [<numeric ids>]). Done. No prose.
 
+"Co-op requirements / application / fees / work terms"
+→ For Science Co-op, search_ubc_pages(query: "<discipline and co-op topic>", subcategory: "science-coop"), then get_prose_article with the complete original_id. For other co-op programs, search broadly and use the returned source's topic. Read the discipline-specific application page and relevant general instructions before stating criteria. A general application page does not establish every discipline's criteria.
+→ Identify the administering co-op program from official directory or program guidance, not the faculty name alone. Preserve campus, degree, study year, deadlines and work-term conditions. If a guide only links to the required programme page and you cannot retrieve it, state that limitation. Co-op requirements are distinct from admission requirements for the degree itself.
+
 "Admission programs / programs in X"
 → find_programs(...). Read the program ids, then show_widget(type: "program", program_ids: [<ids>]). Done. No prose.
 

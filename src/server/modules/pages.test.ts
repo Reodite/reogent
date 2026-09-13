@@ -115,6 +115,29 @@ describe("page search compatibility", () => {
     expect(searchProse).toHaveBeenCalledWith("registration", "workday", 5, client);
   });
 
+  it("routes Science Co-op discovery through its indexed article topic", async () => {
+    const summary = {
+      original_id: "prose:science-coop:example-program",
+      category: "prose",
+      subcategory: "science-coop",
+      title: "Example discipline co-op requirements",
+      source_url: "https://example.test/coop/requirements",
+      retrieved_at: "2026-09-01T12:00:00Z",
+      source_records: [],
+      warnings: [],
+    } as unknown as ProseSummary;
+    vi.mocked(searchProse).mockResolvedValue([summary]);
+    const index = vi.fn();
+    const client = { index } as unknown as SearchClient;
+    expect(
+      await tool.execute({ query: "Example discipline requirements", subcategory: "science-coop" }, client),
+    ).toMatchObject({ pages: [{ ...summary, source: "science-coop", snippets: [] }] });
+    expect(searchProse).toHaveBeenCalledWith("Example discipline requirements", "science-coop", 5, client);
+    expect(index).not.toHaveBeenCalled();
+    expect(tool.spec.description).toContain("co-op");
+    expect(JSON.stringify(tool.spec.inputSchema)).toContain("science-coop");
+  });
+
   it("reports index failures rather than hiding missing source results", async () => {
     vi.mocked(searchProse).mockRejectedValue(new Error("Search unavailable"));
     const client = { index: () => ({ search: async () => ({ hits: [legacy()] }) }) } as unknown as SearchClient;

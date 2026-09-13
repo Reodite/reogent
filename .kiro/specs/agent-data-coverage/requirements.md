@@ -6,7 +6,7 @@ Expand Reodite's tools to answer more questions supported by the current `ubc-un
 
 The operator approved an independent four-domain coverage audit and a first live sweep of 100 question cases against the configured `google` / `gemini-3.1-flash-lite` model, followed by up to 20 focused reruns. Preserve failed runs and report the limits of this finite sample. Commit each verified implementation unit separately.
 
-Room-booking snapshots and their integration are outside this work. The operator plans a separate API later. Keep learning-space descriptions and published library hours; do not collect new upstream data to expand this task's scope.
+Room-booking snapshots and their integration are outside this work. The operator plans a separate API later. Keep learning-space descriptions and published library hours. The operator separately authorized official undergraduate co-op source expansion through the data-repository agent; other domains use the pinned available data.
 
 ## Glossary
 

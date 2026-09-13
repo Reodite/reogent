@@ -132,6 +132,14 @@ describe("source retrieval and attribution", () => {
     expect(SYSTEM_PROMPT).toContain("Match the article's source_url to the assigned source index");
   });
 
+  it("uses full discipline-specific co-op guidance before stating programme criteria", () => {
+    expect(SYSTEM_PROMPT).toContain('"Co-op requirements / application / fees / work terms"');
+    expect(SYSTEM_PROMPT).toContain('subcategory: "science-coop"');
+    expect(SYSTEM_PROMPT).toContain("discipline-specific application page");
+    expect(SYSTEM_PROMPT).toContain("administering co-op program from official directory or program guidance");
+    expect(SYSTEM_PROMPT).toContain("A general application page does not establish every discipline's criteria");
+  });
+
   it("keeps identically named sources tied to their URLs and assigned indices", () => {
     const prompt = systemPrompt(new Date("2026-08-18T00:00:00Z"), [
       CITATIONS[0],

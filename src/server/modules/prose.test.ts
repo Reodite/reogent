@@ -177,6 +177,49 @@ describe("common prose adapter", () => {
     expect(source.putJson).not.toHaveBeenCalled();
   });
 
+  it("ingests catalog-declared co-op sources with distinct original identities", async () => {
+    const topics = [
+      "science-coop",
+      "coop-programs",
+      "arts-coop",
+      "engineering-coop",
+      "forestry-coop",
+      "sauder-undergraduate",
+    ];
+    const tables = topics.map((subcategory) => ({
+      subcategory,
+      json: `prose/${subcategory}/articles.json`,
+      records: 1,
+      status: "complete",
+    }));
+    const inputs = new Map(
+      tables.map((table) => [
+        table.json,
+        [
+          article({
+            id: `prose:${table.subcategory}:1`,
+            subcategory: table.subcategory,
+            source_id: table.subcategory,
+            source_url: `https://example.test/${table.subcategory}/requirements`,
+          }),
+        ],
+      ]),
+    );
+    const source: DataWriter = {
+      getJson: vi.fn(async (key) => (key === "prose/_catalog.json" ? { category: "prose", tables } : inputs.get(key))),
+      putJson: vi.fn(),
+    };
+    const results = await collect(source);
+    expect(results.map((result) => result.doc.subcategory)).toEqual(topics);
+    expect(new Set(results.map((result) => sanitizeMeiliId(result.id))).size).toBe(topics.length);
+    for (const result of results) {
+      expect(result.doc.content_markdown).toBe(MARKDOWN);
+      expect(result.doc.original_id).toBe(result.id);
+      expect(result.doc.source_id).toBe(result.doc.subcategory);
+    }
+    expect(source.putJson).not.toHaveBeenCalled();
+  });
+
   it.each([{ title: " " }, { content_markdown: "\n " }])(
     "rejects nonempty tables whose articles are all skipped: %j",
     async (patch) => {
