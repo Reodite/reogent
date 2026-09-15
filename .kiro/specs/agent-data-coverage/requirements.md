@@ -27,7 +27,7 @@ Room-booking snapshots and their integration are outside this work. The operator
 
 #### Acceptance Criteria
 
-1. THE Coverage_Matrix SHALL account for each Canonical_Dataset in the academic, student-service, campus and prose/event/report families.
+1. THE Coverage_Matrix SHALL account for each Canonical_Dataset in the academic, student-service, campus and documents/event/report families.
 2. WHEN a tool transformation omits available facts, THE Coverage_Matrix SHALL identify the source fields, remaining retrieval routes and affected questions.
 3. WHEN an existing alternate tool can retrieve the required evidence, THE Coverage_Matrix SHALL identify that route before classifying the question as a coverage gap.
 4. IF a dataset or suspected gap remains unverified, THEN THE Coverage_Matrix SHALL record the unresolved scope and its reason.

@@ -109,6 +109,14 @@ Datasets and crawl caches stay outside application images and standalone output.
 
 The document namespace changes the catalog path, index, ID prefix and retrieval tool. Update the data submodule and run normal ingestion before using this version. After the `documents` snapshot publishes and records freshness, ingestion deletes the obsolete `prose` index. A validation or publication failure preserves the old index; a retirement failure reports failure and leaves the new snapshot available for a retry. Coordinate this refresh with application rollout: an older application still queries `prose`. Saved citations and activity keep their source details and display the Documents label; the current agent exposes only `get_document`.
 
+### Official-web crawl handoff
+
+The current data pin, `2f7a602`, supplies the source-scoped `documents` catalog. At the clean producer checkpoint `e29a186`, those 6,859 articles remain byte-identical. The producer also publishes a separate institutional crawl under `data/document-crawl/`. The current adapter does not read that export; moving the data pin alone will not make its articles searchable.
+
+Final crawl integration remains pending the verified producer handoff for the expanded coverage scope. At `e29a186`, `document-crawl/_current.json` selects generation `2d8ff6a2-afac-476b-bd2f-22540716d650`, with 1,861 articles and 1,844 body files, `traversal_state: "paused"` and `complete: false`. The frontier includes 653 pending Facilities URL jobs and 47,705 pending or fetched jobs overall, plus unresolved access, host-review and inventory gaps. Consult the producer's `CRAWL-COVERAGE.md` at that checkpoint before making coverage claims. Keep the current pin until the final handoff; continuing collection must preserve its earlier generations.
+
+The downstream reader must validate the selected manifest and JSONL ledgers, load their body-addressed Markdown, and preserve physical source URLs, canonical claims, response provenance and exact-body matches to existing documents. Crawl articles cover both campuses and all institutional audiences; `campus: null` means unclassified. They lack the source-scoped catalog envelope and inline body fields expected by the current adapter. Final verification must cover that mapping and publication through the ordinary `documents` index, including replacement and provenance-aware deduplication, before rollout.
+
 ### Snapshot replacement
 
 `student_resources`, `housing_fees`, `library_hours` and `documents` replace their complete snapshots. Ingestion loads and validates a temporary index, waits for its tasks, then swaps it into place. This removes dated records absent from the next library-hours snapshot. A pre-swap failure leaves the previous index active; cleanup errors report failure without rolling back an already published snapshot. Other indexes retain upsert behavior.
