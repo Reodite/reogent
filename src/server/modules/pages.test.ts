@@ -47,6 +47,15 @@ describe("canonical page result merging", () => {
     expect(mergePageResults([old], [first, second], 5)).toEqual([first, second]);
   });
 
+  it("does not join a null source-record ID to a literal string ID", () => {
+    const old = legacy({
+      url: "https://old.example.test/old",
+      source_record: { path: "housing/guidance.json", id: "null" },
+    });
+    const document = normalized({ source_records: [{ path: "housing/guidance.json", id: null }] });
+    expect(mergePageResults([old], [document], 5)).toEqual([document, old]);
+  });
+
   it("does not match by title or discard meaningful query parameters", () => {
     const first = normalized({ url: "https://example.test/page?topic=one" });
     const second = legacy({ url: "https://example.test/page?topic=two" });

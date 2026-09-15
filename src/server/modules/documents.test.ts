@@ -143,6 +143,7 @@ describe("common documents adapter", () => {
     { upstream_id: {} },
     { source_records: [{ path: "../secret.json", id: 1 }] },
     { source_records: [{ path: "pages.json", id: {} }] },
+    { source_records: [{ path: "pages.json" }] },
     { links: [{ text: "Unsafe", url: "data:text/html,example" }] },
     { warnings: [null] },
     { retrieved_at: "2026-02-30T12:00:00Z" },
@@ -172,6 +173,18 @@ describe("common documents adapter", () => {
       source_records: input.source_records,
       links: input.links,
     });
+  });
+
+  it("preserves nullable source-record IDs in ingestion, search and full retrieval", async () => {
+    const source_records = [{ path: "housing/guidance.json", id: null }];
+    const [document] = await collect(store([article({ source_records })]));
+    expect(document.doc.source_records).toEqual(source_records);
+    search.mockResolvedValue({ hits: [document.doc] });
+    const [summary] = await searchDocuments("guide", undefined, 5, client);
+    expect(summary.source_records).toEqual(source_records);
+    getDocument.mockResolvedValue(document.doc);
+    const full = await documents.tools[0].execute({ article_id: summary.original_id }, client);
+    expect(full).toEqual(document.doc);
   });
 
   it("reads catalog-declared arrays and skips empty articles without writing data", async () => {
@@ -372,7 +385,10 @@ describe("document ingestion and retrieval", () => {
     const input = article({
       id: "documents:lfs-advising:570",
       subcategory: "lfs-advising",
-      source_records: [{ path: "support/pages.json", id: "prose:upstream-id" }],
+      source_records: [
+        { path: "support/pages.json", id: "prose:upstream-id" },
+        { path: "housing/guidance.json", id: null },
+      ],
     });
     const source = store(
       [input],

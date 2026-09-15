@@ -26,7 +26,9 @@ export function mergePageResults(legacy: PageResult[], normalized: PageResult[],
   const referenceKey = (ref: { path: string; id: string | number }) => `${ref.path}\u0000${ref.id}`;
   for (const page of normalized) {
     const url = canonicalSourceUrl(page.url);
-    for (const ref of page.source_records ?? []) references.add(referenceKey(ref));
+    for (const ref of page.source_records ?? []) {
+      if (ref.id !== null) references.add(referenceKey({ path: ref.path, id: ref.id }));
+    }
     if (url && urls.has(url)) continue;
     if (url) urls.add(url);
     result.push(page);

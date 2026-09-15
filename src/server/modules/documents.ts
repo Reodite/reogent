@@ -21,7 +21,7 @@ export interface DocumentDoc {
   audience: string;
   source_modified_at: string | null;
   retrieved_at: string;
-  source_records: { path: string; id: string | number }[];
+  source_records: { path: string; id: string | number | null }[];
   links: { text: string; url: string }[];
   warnings: string[];
 }
@@ -81,8 +81,12 @@ export function transformDocument(raw: unknown): { id: string; doc: DocumentDoc 
     if (!/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*$/.test(path) || path.split("/").includes("..")) {
       throw new Error("source_records.path must stay relative to the data root");
     }
-    if (typeof reference.id !== "string" && !(typeof reference.id === "number" && Number.isSafeInteger(reference.id))) {
-      throw new Error("source_records.id must be a string or integer");
+    if (
+      reference.id !== null &&
+      typeof reference.id !== "string" &&
+      !(typeof reference.id === "number" && Number.isSafeInteger(reference.id))
+    ) {
+      throw new Error("source_records.id must be a string, integer or null");
     }
     return { path, id: reference.id };
   });
