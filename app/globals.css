@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./theme-colors.generated.css";
+@source not "../ubc-unified-data";
 
 /*
  * Design tokens per DESIGN.md: neumorphic depth over a cool-neutral palette.
