@@ -14,6 +14,7 @@ import { people } from "./people";
 import { places } from "./places";
 import { spaces } from "./spaces";
 import { tuition } from "./tuition";
+import { undergraduate } from "./undergraduate";
 import { createWidgetsModule } from "./widgets";
 
 /** The dataset-module registry. Ingest, tool dispatch, and the /api/geo
@@ -32,6 +33,7 @@ const dataModules: DatasetModule[] = [
   spaces,
   events,
   pages,
+  undergraduate,
   grades,
   people,
   food,

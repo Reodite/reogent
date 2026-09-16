@@ -13,7 +13,13 @@ vi.mock("motion/react", async (importOriginal) => ({
 
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
-    value: () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }),
+    value: () => ({
+      matches: false,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+    }),
     configurable: true,
   });
 });
@@ -42,13 +48,27 @@ describe("PulseQuestionCard — unvoted", () => {
 
   it("renders the question with 44px vote buttons that report the direction", () => {
     const onVote = vi.fn();
-    const { getByText, getByRole } = render(<PulseQuestionCard card={card} onVote={onVote} />);
+    const pointerStart = vi.fn();
+    const { getByText, getByRole } = render(
+      <div onPointerDown={pointerStart}>
+        <PulseQuestionCard card={card} onVote={onVote} />
+      </div>,
+    );
     expect(getByText(card.text)).toBeTruthy();
 
     const agree = getByRole("button", { name: `Agree: ${card.text}` });
     const disagree = getByRole("button", { name: `Disagree: ${card.text}` });
-    expect(agree.className).toContain("min-h-11");
-    expect(disagree.className).toContain("min-h-11");
+    fireEvent.pointerDown(agree);
+    fireEvent.pointerDown(disagree);
+    expect(pointerStart).not.toHaveBeenCalled();
+    expect(agree.textContent).toBe("Agree");
+    expect(disagree.textContent).toBe("Disagree");
+    for (const button of [agree, disagree]) {
+      expect(button.classList.contains("h-11")).toBe(true);
+      expect(button.className).toContain("enabled:hover:bg-surface-container-high");
+      expect(button.className).toContain("focus-visible:ring-2");
+      expect(button.className).not.toMatch(/-m[xy]-|py-3/);
+    }
 
     fireEvent.click(agree);
     expect(onVote).toHaveBeenLastCalledWith(true);
@@ -99,4 +119,19 @@ describe("PulseQuestionCard — voted shadow", () => {
     expect(getAllByText("—")).toHaveLength(2);
     expect(getByText("Recording your vote…")).toBeTruthy();
   });
+});
+
+it("restores vote controls and removes tallies when an optimistic vote rolls back", () => {
+  reduceMotion = true;
+  const onVote = vi.fn();
+  const { rerender, getByRole, queryByRole } = render(
+    <PulseQuestionCard card={{ id: 1, text: "Q", myAgree: true, pending: true }} onVote={onVote} />,
+  );
+  expect(getByRole("img").getAttribute("aria-label")).toBe("Recording your vote");
+  rerender(<PulseQuestionCard card={{ id: 1, text: "Q", error: "Vote failed. Try again." }} onVote={onVote} />);
+  expect(queryByRole("img")).toBeNull();
+  expect(getByRole("alert").className).toContain("ui-notice-enter");
+  fireEvent.click(getByRole("button", { name: "Agree: Q" }));
+  expect(onVote).toHaveBeenCalledWith(true);
+  reduceMotion = false;
 });

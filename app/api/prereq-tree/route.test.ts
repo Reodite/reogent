@@ -16,7 +16,6 @@ beforeEach(() => {
 });
 
 describe("GET /api/prereq-tree", () => {
-
   it("200 without auth — public endpoint", async () => {
     buildPrereqGraph.mockResolvedValue({
       rootCode: "CPSC 110",

@@ -5,7 +5,7 @@ import type { DataWriter } from "./core/types";
 const dataPath = () => process.env.DATA_PATH || path.join(process.cwd(), "data");
 export { dataPath };
 
-/** Filesystem-backed data store implementing DataWriter interface. */
+/** Filesystem-backed data store rooted at DATA_PATH. */
 export function dataStore(): DataWriter {
   const root = dataPath();
   return {

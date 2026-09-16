@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import type { Candidate } from "@/src/components/course-lookup/course-search";
+import type { Candidate } from "@/src/components/course-search/course-search";
 import type { CourseDoc } from "@/src/lib/api-types";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SchedulePlannerPane } from "./schedule-planner-pane";
 
@@ -112,7 +112,8 @@ vi.mock("./schedule-store", () => ({
   useSchedule: (selector: (state: typeof scheduleMock.state) => unknown) => selector(scheduleMock.state),
 }));
 
-vi.mock("./use-schedule-sync", () => ({ useScheduleSync: () => undefined }));
+const syncMock = vi.hoisted(() => ({ hydrating: false }));
+vi.mock("./use-schedule-sync", () => ({ useScheduleSync: () => syncMock.hydrating }));
 
 const autocompleteMock = vi.hoisted(() => ({
   list: null as { candidates: Candidate[]; total: number } | null,
@@ -123,8 +124,8 @@ const autocompleteMock = vi.hoisted(() => ({
   lookup: vi.fn(),
 }));
 
-vi.mock("@/src/components/course-lookup/course-search", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/src/components/course-lookup/course-search")>();
+vi.mock("@/src/components/course-search/course-search", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/src/components/course-search/course-search")>();
   return {
     ...original,
     useCourseAutocomplete: () => autocompleteMock,
@@ -155,6 +156,7 @@ function setCandidates(...docs: CourseDoc[]) {
 }
 
 beforeEach(() => {
+  syncMock.hydrating = false;
   scheduleMock.state.entries = [];
   scheduleMock.state.activeTerm = term;
   scheduleMock.state.stale = false;
@@ -356,13 +358,25 @@ describe("SchedulePlannerPane explicit course flow", () => {
     const footer = view.container.querySelector<HTMLElement>("[data-planner-import]");
 
     expect(root?.className).toContain("h-full");
-    expect(root?.className).toContain("min-h-0");
+    expect(root?.className).toContain("min-h-min");
     expect(search?.className).toContain("shrink-0");
     expect(search?.className).not.toContain("overflow-y-auto");
-    expect(list?.className).toContain("min-h-0");
+    expect(list?.className).toContain("min-h-48");
+    expect(list?.className).toContain("[contain:size]");
     expect(list?.className).toContain("overflow-y-auto");
     expect(footer?.className).toContain("shrink-0");
-    expect(view.getByRole("button", { name: /Import Workday schedule/ })).toBeTruthy();
+    const dropzone = view.getByRole("button", { name: /Import Workday schedule/ });
+    expect(dropzone.className).toContain("border-dashed");
+    expect(dropzone.className).toContain("min-h-20");
+  });
+
+  it("keeps the empty-term explanation beside its heading without extra padding", () => {
+    const view = render(<SchedulePlannerPane />);
+    const heading = view.getByRole("heading", { name: "Courses in this term" });
+    const description = view.getByText("Add a course from search to configure its lecture, lab, and tutorial here.");
+    expect(heading.parentElement?.className).toContain("mb-1");
+    expect(description.className).not.toMatch(/\bp[ty]-/);
+    expect(description.closest("section")).toBe(heading.closest("section"));
   });
 
   it("moves to course controls and focuses search from the empty timetable", async () => {
@@ -372,5 +386,56 @@ describe("SchedulePlannerPane explicit course flow", () => {
     fireEvent.click(view.getByRole("button", { name: "Browse courses" }));
     await waitFor(() => expect(document.activeElement).toBe(input));
     expect(view.getByRole("button", { name: "Courses" }).getAttribute("aria-pressed")).toBe("true");
+  });
+});
+
+describe("SchedulePlannerPane content loading", () => {
+  it("shows saved-course skeletons only during initial hydration", () => {
+    syncMock.hydrating = true;
+    const view = render(<SchedulePlannerPane />);
+    expect(view.getByRole("status", { name: "Loading saved courses" }).querySelector("[data-skeleton]")).toBeTruthy();
+    expect(view.getByRole("status", { name: "Loading schedule terms" })).toBeTruthy();
+    expect(view.getByRole("status", { name: "Loading your weekly course schedule" })).toBeTruthy();
+    expect(view.getByText("9 AM")).toBeTruthy();
+    expect(view.queryByText("Build your first timetable")).toBeNull();
+    expect(view.container.querySelector("[data-schedule-block]")).toBeNull();
+    syncMock.hydrating = false;
+    view.rerender(<SchedulePlannerPane />);
+    expect(view.getByText("Build your first timetable")).toBeTruthy();
+    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
+  });
+
+  it("keeps saved meetings while section options load, fail, and retry", async () => {
+    syncMock.hydrating = true;
+    scheduleMock.state.entries = [structuredClone(cpscEntry)];
+    let reject!: (error: Error) => void;
+    apiMock.getCourse.mockReturnValue(
+      new Promise((_, fail) => {
+        reject = fail;
+      }),
+    );
+    const view = render(<SchedulePlannerPane />);
+    expect(
+      view.getByRole("status", { name: "Loading lecture section options" }).querySelector("[data-skeleton]"),
+    ).toBeTruthy();
+    expect(view.getByText(cpscEntry.snapshot.title)).toBeTruthy();
+    expect(view.container.querySelectorAll("[data-schedule-block]")).toHaveLength(3);
+    expect(view.queryByRole("status", { name: "Loading saved courses" })).toBeNull();
+    expect(view.queryByText("This saved section is no longer listed in the catalog.")).toBeNull();
+    await act(async () => reject(new Error("offline")));
+    expect(view.getByText("Section options unavailable. Saved meetings remain visible.")).toBeTruthy();
+    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
+    expect(view.container.querySelectorAll("[data-schedule-block]")).toHaveLength(3);
+    expect(apiMock.getCourse).toHaveBeenCalledTimes(1);
+    apiMock.getCourse.mockResolvedValue(courses["CPSC 110"]);
+    fireEvent.click(view.getByRole("button", { name: "Retry section options" }));
+    await waitFor(() =>
+      expect(view.queryByText("Section options unavailable. Saved meetings remain visible.")).toBeNull(),
+    );
+    await waitFor(() =>
+      expect(view.getByRole<HTMLSelectElement>("combobox", { name: "Lecture" }).disabled).toBe(false),
+    );
+    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
+    expect(apiMock.getCourse).toHaveBeenCalledTimes(2);
   });
 });

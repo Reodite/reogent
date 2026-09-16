@@ -6,6 +6,11 @@
 // shows degree-wide rules and the selected minor's requirements.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { RetryAlert } from "@/src/components/ui/feedback";
+import { Field, TextInput } from "@/src/components/ui/form-controls";
+import { Heading } from "@/src/components/ui/heading";
+import { InlineLink } from "@/src/components/ui/inline-action";
+import { Skeleton, SkeletonGroup, SkeletonList } from "@/src/components/ui/skeleton";
 import {
   evaluateCategory,
   getDegreeRules,
@@ -33,6 +38,40 @@ interface ProgramRequirementsProps {
 
 function creditValue(entry: CourseIndexEntry | undefined): number {
   return entry?.credits ?? 0;
+}
+
+/** Reserves the responsive faculty, major, and minor control row. */
+export function ProgramSelectorsLoading() {
+  const major = usePlanner((state) => state.major);
+  return (
+    <SkeletonGroup
+      label="Loading programs…"
+      className="grid w-full grid-cols-2 items-end gap-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3"
+    >
+      {[
+        ["Faculty", "@min-[55rem]:w-44"],
+        ["Major / program", "@min-[55rem]:w-52"],
+        ["Minor (optional)", "@min-[55rem]:w-40"],
+      ].map(([label, width]) => (
+        <div key={label} className={`flex w-full min-w-0 flex-col gap-1.5 ${width}`}>
+          <div className="flex min-h-4 flex-wrap items-center justify-between gap-x-2">
+            <span className="relative text-xs leading-4 font-medium">
+              <span className="invisible">{label}</span>
+              <Skeleton className="absolute inset-0 h-4 w-full" />
+            </span>
+            {label === "Major / program" && major ? (
+              <span className="relative inline-flex min-h-11 shrink-0 items-center gap-0.5 px-1 text-xs leading-4 whitespace-nowrap sm:min-h-0 sm:px-0">
+                <span className="invisible">UBC Calendar</span>
+                <Icon name="externalLink" size={11} className="invisible" />
+                <Skeleton className="absolute inset-x-0 top-1/2 h-4 w-full -translate-y-1/2" />
+              </span>
+            ) : null}
+          </div>
+          <Skeleton className="h-11 w-full rounded-lg sm:h-9" />
+        </div>
+      ))}
+    </SkeletonGroup>
+  );
 }
 
 // Program selectors write the faculty, major, and minor to the planner store.
@@ -90,14 +129,14 @@ export function ProgramSelectors() {
     return <div className="text-error text-sm">Couldn’t load program index: {loadError}</div>;
   }
   if (!index) {
-    return <div className="text-muted text-sm">Loading programs…</div>;
+    return <ProgramSelectorsLoading />;
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-x-3 gap-y-2 max-md:w-full">
+    <div className="grid w-full grid-cols-2 items-end gap-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3">
       <ProgramCombobox
         label="Faculty"
-        className="w-44"
+        className="w-full @min-[55rem]:w-44"
         placeholder="Search faculties"
         value={faculty}
         options={index.faculties.map((name) => ({ value: name, label: name }))}
@@ -109,18 +148,18 @@ export function ProgramSelectors() {
       />
       <ProgramCombobox
         label="Major / program"
-        className="w-52"
-        labelExtra={
+        className="w-full @min-[55rem]:w-52"
+        labelAction={
           majorUrl ? (
-            <a
+            <InlineLink
               href={majorUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary flex items-center gap-0.5 text-[11px] hover:underline"
+              className="shrink-0 gap-0.5 text-xs leading-4 whitespace-nowrap"
             >
               UBC Calendar
               <Icon name="externalLink" size={11} />
-            </a>
+            </InlineLink>
           ) : undefined
         }
         placeholder={faculty ? "Search programs" : "Select a faculty first"}
@@ -131,7 +170,7 @@ export function ProgramSelectors() {
       />
       <ProgramCombobox
         label="Minor (optional)"
-        className="w-40"
+        className="w-full @min-[55rem]:w-40"
         placeholder={faculty ? "Search minors" : "Select a faculty first"}
         value={minor}
         options={minorOptions.map((option) => ({ value: option.id, label: option.label }))}
@@ -144,7 +183,7 @@ export function ProgramSelectors() {
 
 function ProgramCombobox({
   label,
-  labelExtra,
+  labelAction,
   className,
   placeholder,
   value,
@@ -153,7 +192,7 @@ function ProgramCombobox({
   disabled = false,
 }: {
   label: string;
-  labelExtra?: ReactNode;
+  labelAction?: ReactNode;
   className?: string;
   placeholder: string;
   value: string | null;
@@ -162,13 +201,14 @@ function ProgramCombobox({
   disabled?: boolean;
 }) {
   const listId = useId();
+  const inputId = `${listId}-input`;
   const selectedLabel = options.find((option) => option.value === value)?.label ?? "";
   const [query, setQuery] = useState(selectedLabel);
 
   useEffect(() => setQuery(selectedLabel), [selectedLabel]);
 
-  function apply(value: string): boolean {
-    const normalized = value.trim().toLowerCase();
+  function apply(input: string): boolean {
+    const normalized = input.trim().toLowerCase();
     const match = options.find(
       (option) => option.label.toLowerCase() === normalized || option.value.toLowerCase() === normalized,
     );
@@ -179,12 +219,9 @@ function ProgramCombobox({
   }
 
   return (
-    <label className={`flex flex-col gap-1 ${className ?? ""}`}>
-      <span className="text-muted flex items-baseline justify-between gap-2 text-[11px]">
-        {label}
-        {labelExtra}
-      </span>
-      <input
+    <Field label={label} htmlFor={inputId} labelAction={labelAction} className={className}>
+      <TextInput
+        id={inputId}
         type="text"
         list={listId}
         value={query}
@@ -205,14 +242,42 @@ function ProgramCombobox({
           if (!event.currentTarget.value) return;
           if (!apply(event.currentTarget.value)) setQuery(selectedLabel);
         }}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 w-full rounded-lg px-3 text-sm focus-visible:ring-2 disabled:opacity-50"
+        controlSize="compact"
       />
       <datalist id={listId}>
         {options.map((option) => (
           <option key={option.value} value={option.label} />
         ))}
       </datalist>
-    </label>
+    </Field>
+  );
+}
+
+function RequirementProgressCard({
+  label,
+  value,
+  earned,
+  required,
+  children,
+  listItem = false,
+}: {
+  label: string;
+  value: ReactNode;
+  earned: number;
+  required: number;
+  children?: ReactNode;
+  listItem?: boolean;
+}) {
+  const Component = listItem ? "li" : "div";
+  return (
+    <Component className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <span className="text-on-surface min-w-0 flex-1">{label}</span>
+        <span className="text-on-surface-variant shrink-0 text-xs whitespace-nowrap">{value}</span>
+      </div>
+      <ProgressBar earned={earned} required={required} />
+      {children}
+    </Component>
   );
 }
 
@@ -225,18 +290,20 @@ interface ResolvedPrograms {
   subjectFaculty: Record<string, string>;
 }
 
-// Resolves the selected programs into progress bars and requirement rows.
+/** Renders the selected major, degree-wide rules, and minor requirements. */
 export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequirementsProps) {
   const major = usePlanner((s) => s.major);
   const minor = usePlanner((s) => s.minor);
-  const [resolved, setResolved] = useState<ResolvedPrograms | null>(null);
+  const [result, setResult] = useState<{
+    major: string | null;
+    minor: string | null;
+    resolved: ResolvedPrograms | null;
+    error: boolean;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     if (!major && !minor) {
-      queueMicrotask(() => {
-        if (!cancelled) setResolved(null);
-      });
       return () => {
         cancelled = true;
       };
@@ -254,8 +321,17 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
         minor ? getRequirementsFor(minor) : Promise.resolve(null),
       ]);
       const rules = majorEntry ? (rulesMap.get(majorEntry.degree) ?? null) : null;
-      if (!cancelled) setResolved({ majorEntry, minorEntry, majorReq, minorReq, rules, subjectFaculty });
-    })();
+      if (!cancelled) {
+        setResult({
+          major,
+          minor,
+          resolved: { majorEntry, minorEntry, majorReq, minorReq, rules, subjectFaculty },
+          error: false,
+        });
+      }
+    })().catch(() => {
+      if (!cancelled) setResult({ major, minor, resolved: null, error: true });
+    });
     return () => {
       cancelled = true;
     };
@@ -273,11 +349,22 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
       </p>
     );
   }
-  if (!resolved) {
-    return <div className="text-muted text-sm">Loading requirements…</div>;
+  if (!result || result.major !== major || result.minor !== minor) {
+    return <SkeletonList label="Loading requirements…" padding="none" rows={4} />;
+  }
+  if (result.error || !result.resolved) {
+    return <RetryAlert>Couldn’t load requirements. Reload the page to try again.</RetryAlert>;
+  }
+  const resolved = result.resolved;
+  if (!resolved.majorReq && !resolved.minorReq && !resolved.rules) {
+    return (
+      <p className="text-muted p-4 text-sm">
+        No requirements are available for this program. Choose another program in the top bar.
+      </p>
+    );
   }
   return (
-    <div className="flex min-h-0 min-w-0 flex-col gap-3">
+    <div className="flex min-h-0 min-w-0 flex-col gap-2">
       {resolved.majorReq && (
         <RequirementsPanel
           req={resolved.majorReq}
@@ -289,9 +376,9 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
       )}
       {resolved.rules && (
         <section className="flex flex-col gap-2">
-          <h4 className="text-on-surface text-xs font-semibold tracking-wide uppercase">
+          <Heading as="h4" size="label">
             {resolved.majorEntry?.degree} degree-wide requirements
-          </h4>
+          </Heading>
           {typeof resolved.rules.total_credits === "number" && (
             <TotalCreditsBar
               earned={planned.reduce((sum, course) => sum + course.credits, 0)}
@@ -307,9 +394,9 @@ export function ProgramProgress({ courseIndex, plannedCodes }: ProgramRequiremen
       )}
       {resolved.minorReq && (
         <section className="flex flex-col gap-2">
-          <h4 className="text-on-surface text-xs font-semibold tracking-wide uppercase">
+          <Heading as="h4" size="label">
             {resolved.minorEntry?.title ?? "Minor"}
-          </h4>
+          </Heading>
           <RequirementsPanel
             req={resolved.minorReq}
             courseIndex={courseIndex}
@@ -337,20 +424,17 @@ function CategoryList({
       {categories.map((category) => {
         const { earned, matched } = evaluateCategory(category, planned, subjectFaculty);
         return (
-          <li
+          <RequirementProgressCard
             key={category.name}
-            className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2"
+            listItem
+            label={category.name}
+            value={`${earned}/${category.credits_required} cr`}
+            earned={earned}
+            required={category.credits_required}
           >
-            <div className="flex items-baseline justify-between text-sm">
-              <span className="text-on-surface">{category.name}</span>
-              <span className="text-on-surface-variant text-xs">
-                {earned}/{category.credits_required} cr
-              </span>
-            </div>
-            <ProgressBar earned={earned} required={category.credits_required} />
             {category.notes && <p className="text-muted text-xs">{category.notes}</p>}
             {matched.length > 0 && <p className="text-on-surface-variant text-xs">{matched.join(", ")}</p>}
-          </li>
+          </RequirementProgressCard>
         );
       })}
     </ul>
@@ -423,20 +507,18 @@ function ProseRequirements({
   const totalReferencedCredits = referenced.reduce((sum, c) => sum + creditValue(courseIndex.get(c)), 0);
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <div className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
-        <div className="flex items-baseline justify-between">
-          <span className="text-on-surface">Referenced courses</span>
-          <span className="text-on-surface-variant text-xs">
-            {completedRefs.length}/{referenced.length} planned
-          </span>
-        </div>
-        <ProgressBar earned={earned} required={totalReferencedCredits || 1} />
-        {totalReferencedCredits > 0 && (
+      <RequirementProgressCard
+        label="Referenced courses"
+        value={`${completedRefs.length}/${referenced.length} planned`}
+        earned={earned}
+        required={totalReferencedCredits || 1}
+      >
+        {totalReferencedCredits > 0 ? (
           <p className="text-muted text-xs">
             {earned}/{totalReferencedCredits} referenced credits planned
           </p>
-        )}
-        {referenced.length > 0 && (
+        ) : null}
+        {referenced.length > 0 ? (
           <ul className="mt-1 flex max-h-40 flex-col gap-0.5 overflow-y-auto text-xs">
             {referenced.map((code) => {
               const planned = referencedSet.has(code) && plannedCodes.has(code);
@@ -446,19 +528,19 @@ function ProseRequirements({
                   key={code}
                   className={`flex items-baseline gap-2 ${planned ? "text-on-surface" : "text-on-surface-variant"}`}
                 >
-                  {planned ? (
-                    <Icon name="check" size={14} className="text-primary shrink-0 self-center" />
-                  ) : (
-                    <Icon name="circle" size={14} className="text-muted shrink-0 self-center" />
-                  )}
-                  <span className="shrink-0 font-mono">{code}</span>
-                  {title && <span className="text-muted truncate">— {title}</span>}
+                  <Icon
+                    name={planned ? "check" : "circle"}
+                    size={14}
+                    className={`${planned ? "text-primary" : "text-muted"} shrink-0 self-center`}
+                  />
+                  <span className="shrink-0 font-medium">{code}</span>
+                  {title ? <span className="text-muted truncate">— {title}</span> : null}
                 </li>
               );
             })}
           </ul>
-        )}
-      </div>
+        ) : null}
+      </RequirementProgressCard>
     </div>
   );
 }
@@ -467,21 +549,21 @@ function ProgressBar({ earned, required }: { earned: number; required: number })
   const pct = Math.max(0, Math.min(100, (earned / Math.max(required, 1)) * 100));
   return (
     <div className="bg-outline-variant/40 h-1.5 overflow-hidden rounded">
-      <div className="bg-primary h-full transition-[width] duration-200" style={{ width: `${pct}%` }} />
+      <div
+        className="bg-primary h-full w-full origin-left transition-transform duration-200"
+        style={{ transform: `scaleX(${pct / 100})` }}
+      />
     </div>
   );
 }
 
 function TotalCreditsBar({ earned, required }: { earned: number; required: number }) {
   return (
-    <div className="border-border bg-surface-container-low flex flex-col gap-1 rounded-lg border p-2">
-      <div className="flex items-baseline justify-between text-sm">
-        <span className="text-on-surface">Total credits</span>
-        <span className="text-on-surface-variant text-xs">
-          {earned}/{required} cr
-        </span>
-      </div>
-      <ProgressBar earned={earned} required={required} />
-    </div>
+    <RequirementProgressCard
+      label="Total credits"
+      value={`${earned}/${required} cr`}
+      earned={earned}
+      required={required}
+    />
   );
 }

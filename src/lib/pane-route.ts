@@ -31,6 +31,26 @@ export function paneIdToSlug(id: PaneId): string | null {
   return PANE_ID_TO_TOOL_SLUG[id] ?? null;
 }
 
+export type ToolPathActivation = { paneId: PaneId; state: Record<string, unknown> };
+
+/** Resolves a Tools pathname into the pane state the URL explicitly owns. */
+export function parseToolPath(pathname: string): ToolPathActivation | null {
+  if (!pathname.startsWith("/tools/")) return null;
+  const segments = pathname.slice("/tools/".length).split("/");
+  const paneId = parseToolSlug(segments[0]);
+  if (!paneId || segments.length > 2) return null;
+
+  if (paneId === "course-lookup") {
+    const code = segments[1] ? courseSlugToCode(segments[1]) : "";
+    return code === null ? null : { paneId, state: { code } };
+  }
+  if (paneId === "prereq-tree") {
+    const root = segments[1] ? courseSlugToCode(segments[1]) : "";
+    return root === null ? null : { paneId, state: { root, query: root } };
+  }
+  return { paneId, state: {} };
+}
+
 /** URL segment for a course detail page: "MATH 100" → "MATH100". */
 export function courseCodeToSlug(code: string): string {
   return code.replace(/\s+/g, "").toUpperCase();

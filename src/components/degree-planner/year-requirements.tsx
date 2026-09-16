@@ -4,6 +4,9 @@
 // click-add; manual checks cover transfer credit and non-course requirements.
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { CheckboxMark as PlannerCheckboxMark } from "@/src/components/ui/form-controls";
+import { Heading } from "@/src/components/ui/heading";
 import { findCourseTarget } from "@/src/lib/planner-placement";
 import {
   isRequirementMet,
@@ -13,8 +16,8 @@ import {
 } from "@/src/lib/program-years";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { useMemo, useState } from "react";
-import { PlannerCheckboxMark } from "./planner-checkbox";
+import { useMemo, useState, type ReactNode } from "react";
+import { forwardPlannerDragActivator } from "./drag-activator";
 import { usePlanner } from "./planner-store";
 
 interface YearRequirementsProps {
@@ -60,8 +63,8 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
         </div>
         <div className="bg-surface-container-high h-1.5 overflow-hidden rounded-full">
           <div
-            className="bg-primary h-full rounded-full transition-[width] duration-200"
-            style={{ width: `${pct}%` }}
+            className="bg-primary h-full w-full origin-left rounded-full transition-transform duration-200"
+            style={{ transform: `scaleX(${pct / 100})` }}
           />
         </div>
       </div>
@@ -79,7 +82,9 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
         return (
           <section key={year.label} className="flex flex-col gap-2">
             <div className="bg-surface sticky top-0 z-10 flex items-baseline px-2 py-1">
-              <h4 className="text-muted text-xs font-medium tracking-[0.05em] uppercase">{year.label}</h4>
+              <Heading as="h4" size="label" tone="muted" className="tracking-[0.05em] uppercase">
+                {year.label}
+              </Heading>
               {year.totalCredits != null && (
                 <span className="text-muted ml-auto text-xs tabular-nums">{year.totalCredits} cr</span>
               )}
@@ -100,7 +105,7 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
             </ul>
             {completed.length > 0 && (
               <details className="group">
-                <summary className="text-muted hover:text-on-surface-variant flex h-8 cursor-pointer list-none items-center gap-1 rounded px-2 text-xs [&::-webkit-details-marker]:hidden">
+                <summary className="text-muted hover:text-on-surface-variant flex min-h-11 list-none items-center gap-1 rounded px-2 text-xs sm:min-h-8 [&::-webkit-details-marker]:hidden">
                   <Icon name="right" size={11} className="transition-transform group-open:rotate-90" />
                   {completed.length} completed
                 </summary>
@@ -115,6 +120,38 @@ export function YearRequirements({ programUrl, parsed, plannedCodes, courseIndex
         );
       })}
     </div>
+  );
+}
+
+function RequirementRowContent({
+  label,
+  credits,
+  completed = false,
+  status,
+  secondary,
+}: {
+  label: string;
+  credits: number | null;
+  completed?: boolean;
+  status?: string;
+  secondary?: ReactNode;
+}) {
+  return (
+    <>
+      <span className="min-w-0 flex-1 pt-2">
+        <span
+          title={label}
+          className={`block text-xs leading-snug ${completed ? "text-muted line-through decoration-current/30" : "text-on-surface-variant"}`}
+        >
+          {label}
+        </span>
+        {secondary}
+      </span>
+      {status ? <span className="text-muted shrink-0 pt-2 text-xs">{status}</span> : null}
+      {credits != null && (
+        <span className="text-muted w-9 shrink-0 pt-2 text-right text-xs tabular-nums">{credits} cr</span>
+      )}
+    </>
   );
 }
 
@@ -183,6 +220,10 @@ function CourseRequirementRow({
     disabled: !selectedCode || !target,
   });
 
+  function startDrag(event: React.MouseEvent | React.TouchEvent) {
+    forwardPlannerDragActivator(event, listeners);
+  }
+
   const plannedCount = item.codes.filter((code) => plannedCodes.has(code)).length;
   const partial = item.codes.length > 1 && plannedCount > 0 ? `${plannedCount}/${item.codes.length} planned` : null;
 
@@ -191,13 +232,10 @@ function CourseRequirementRow({
       ref={setNodeRef}
       data-requirement-key={rowKey}
       style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1 }}
-      onPointerDown={(e) => {
-        // The row is draggable anywhere except its interactive controls.
-        if ((e.target as HTMLElement).closest("button, a, select, input")) return;
-        listeners?.onPointerDown?.(e);
-      }}
+      onMouseDown={startDrag}
+      onTouchStart={startDrag}
       className={`hover:bg-surface-container-low flex min-h-11 items-start gap-1 rounded-lg px-2 py-1 ${
-        selectedCode && target ? "cursor-grab touch-none active:cursor-grabbing" : ""
+        selectedCode && target ? "cursor-grab touch-pan-y active:cursor-grabbing" : ""
       }`}
     >
       <button
@@ -210,43 +248,41 @@ function CourseRequirementRow({
       >
         <PlannerCheckboxMark checked={manuallyChecked} />
       </button>
-      <div className="min-w-0 flex-1 pt-2">
-        <p className="text-on-surface-variant text-xs leading-snug" title={cleanLabel(item.label)}>
-          {cleanLabel(item.label)}
-        </p>
-        {(choices.length > 1 || partial) && (
-          <div className="text-muted mt-0.5 flex items-center gap-1 text-[11px]">
-            {choices.length > 1 && (
-              <select
-                value={selectedCode}
-                onChange={(event) => setChosenCode(event.target.value)}
-                className="neu-inset bg-surface-container-low text-on-surface h-6 max-w-full rounded-md px-1 font-mono text-[11px]"
-                aria-label="Course alternative"
-              >
-                {choices.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-            )}
-            {partial && <span>{partial}</span>}
-          </div>
-        )}
-      </div>
-      {item.credits != null && (
-        <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
-      )}
-      <button
-        type="button"
+      <RequirementRowContent
+        label={cleanLabel(item.label)}
+        credits={item.credits}
+        secondary={
+          (choices.length > 1 || partial) && (
+            <span className="text-muted mt-0.5 flex items-center gap-1 text-xs">
+              {choices.length > 1 && (
+                <select
+                  value={selectedCode}
+                  onChange={(event) => setChosenCode(event.target.value)}
+                  className="neu-inset bg-surface-container-low text-on-surface h-6 max-w-full rounded-md px-1 text-xs"
+                  aria-label="Course alternative"
+                >
+                  {choices.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {partial && <span>{partial}</span>}
+            </span>
+          )
+        }
+      />
+      <Button
+        variant="ghost"
+        size="icon"
         disabled={!target || !selectedCode}
         onClick={() => target && addBlock(target.yearId, target.termIdx, selectedCode)}
         title={target ? `Add ${selectedCode} to the plan` : "No available study term"}
         aria-label={target ? `Add ${selectedCode} to the plan` : "No available study term"}
-        className="text-primary hover:bg-primary/10 flex size-9 shrink-0 items-center justify-center rounded-lg disabled:cursor-not-allowed disabled:opacity-30"
       >
         <Icon name="add" size={14} />
-      </button>
+      </Button>
     </li>
   );
 }
@@ -270,12 +306,7 @@ function ManualRequirementRow({
         className="hover:bg-surface-container-low flex min-h-11 w-full items-start gap-1 rounded-lg px-2 py-1 text-left"
       >
         <PlannerCheckboxMark checked={checked} />
-        <span className="text-on-surface-variant min-w-0 flex-1 pt-2 text-xs leading-snug">
-          {cleanLabel(item.label)}
-        </span>
-        {item.credits != null && (
-          <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
-        )}
+        <RequirementRowContent label={cleanLabel(item.label)} credits={item.credits} />
       </button>
     </li>
   );
@@ -293,13 +324,12 @@ function CompletedRequirementRow({
   const content = (
     <>
       <PlannerCheckboxMark checked disabled={met} />
-      <span className="text-muted min-w-0 flex-1 pt-2 text-xs leading-snug line-through decoration-current/30">
-        {cleanLabel(item.label)}
-      </span>
-      <span className="text-muted shrink-0 pt-2 text-[10px]">{met ? "Planned" : "Marked done"}</span>
-      {item.credits != null && (
-        <span className="text-muted w-9 shrink-0 pt-2 text-right text-[11px] tabular-nums">{item.credits} cr</span>
-      )}
+      <RequirementRowContent
+        label={cleanLabel(item.label)}
+        credits={item.credits}
+        completed
+        status={met ? "Planned" : "Marked done"}
+      />
     </>
   );
   // Auto-detected rows are inert; manually checked rows stay clickable so the

@@ -4,7 +4,7 @@ import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { PlannerCourseModule } from "./planner-course-module";
-import type { ScheduleEntry } from "./schedule-store";
+import { entryId, type ScheduleEntry } from "./schedule-store";
 
 const term = "2026-27 Winter Term 1";
 
@@ -79,16 +79,75 @@ afterEach(() => {
 });
 
 describe("PlannerCourseModule", () => {
+  it("shows conflict status only for conflicting courses and keeps removal actionable", () => {
+    const onRemove = vi.fn();
+    const view = render(
+      <PlannerCourseModule
+        {...baseProps}
+        conflictingIds={new Set([entryId(baseProps.entries[0])])}
+        onRemove={onRemove}
+      />,
+    );
+    expect(view.getByText("Conflict").className).toContain("bg-error-container");
+    fireEvent.click(view.getByRole("button", { name: `Remove CPSC 110 from ${term}` }));
+    expect(onRemove).toHaveBeenCalledOnce();
+    view.rerender(<PlannerCourseModule {...baseProps} />);
+    expect(view.queryByText("Conflict")).toBeNull();
+  });
+
+  it("reserves section controls until a course without cached entries resolves", () => {
+    const view = render(<PlannerCourseModule {...baseProps} doc={undefined} entries={[]} />);
+    expect(
+      view.getByRole("status", { name: "Loading CPSC 110 section options" }).querySelector("[data-skeleton]"),
+    ).toBeTruthy();
+    expect(
+      view.queryByText("No sections are listed for this term. Cached meetings remain on the timetable."),
+    ).toBeNull();
+    view.rerender(<PlannerCourseModule {...baseProps} entries={[]} doc={{ ...doc, sections: [] }} />);
+    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
+    expect(
+      view.getByText("No sections are listed for this term. Cached meetings remain on the timetable."),
+    ).toBeTruthy();
+  });
+
   it("keeps known selectors visible and independent additional groups disclosed", () => {
     const view = render(<PlannerCourseModule {...baseProps} />);
 
     const lectureSelect = view.getByLabelText<HTMLSelectElement>("Lecture");
     expect(Array.from(lectureSelect.options, (option) => option.textContent)).toEqual(["Choose section", "101", "102"]);
+    expect(lectureSelect.className).toContain("min-h-11");
+    expect(lectureSelect.className).toContain("sm:min-h-9");
+    const remove = view.getByRole("button", { name: "Remove CPSC 110 from 2026-27 Winter Term 1" });
+    expect(remove.className).toContain("size-11");
+    expect(remove.className).toContain("sm:size-8");
     expect(view.getByLabelText("Laboratory")).toBeTruthy();
     expect(view.getByText("2 not selected automatically")).toBeTruthy();
     expect(view.getByLabelText("R sections")).toBeTruthy();
     expect(view.getByLabelText("W sections")).toBeTruthy();
     expect(view.container.querySelector("details")?.open).toBe(false);
+  });
+
+  it("keeps native Additional focus paint outside the article and rounds only its closed hover edge", async () => {
+    const view = render(<PlannerCourseModule {...baseProps} />);
+    const article = view.container.querySelector("article")!;
+    const details = article.querySelector("details")!;
+    const summary = details.querySelector("summary")!;
+    const lecture = view.getByLabelText<HTMLSelectElement>("Lecture");
+    expect(article.classList.contains("overflow-hidden")).toBe(false);
+    expect(article.classList.contains("rounded-lg")).toBe(true);
+    expect(article.classList.contains("border")).toBe(true);
+    expect(details.classList.contains("group/additional")).toBe(true);
+    expect(summary.getAttribute("role")).toBeNull();
+    expect(summary.getAttribute("tabindex")).toBeNull();
+    expect(summary.classList.contains("min-h-11")).toBe(true);
+    expect(summary.classList.contains("rounded-b-[calc(var(--radius-lg)-1px)]")).toBe(true);
+    expect(summary.classList.contains("group-open/additional:rounded-b-none")).toBe(true);
+    fireEvent.click(summary);
+    await waitFor(() => expect(details.open).toBe(true));
+    fireEvent.click(summary);
+    await waitFor(() => expect(details.open).toBe(false));
+    expect(view.getByLabelText("Lecture")).toBe(lecture);
+    expect(lecture.value).toBe("101");
   });
 
   it("puts meeting time and instructor on separate sans-serif lines", () => {

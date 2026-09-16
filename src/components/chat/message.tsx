@@ -3,6 +3,7 @@
 // Tactile message surfaces: user messages stay literal, while assistant
 // responses render safe GitHub-flavored Markdown without allowing raw HTML.
 // Interstitial blocks (thinking + tool calls) render inline before the final text.
+import { AssistantIdentity } from "@/src/components/chat/assistant-identity";
 import { injectChips } from "@/src/components/chat/citations/chip-injector";
 import { SourcesPanel } from "@/src/components/chat/citations/sources-panel";
 import { ResponseWidget } from "@/src/components/chat/tool-renderers";
@@ -51,14 +52,12 @@ const LazyMarkdown = lazy(() =>
 
 const markdownComponents = (citations: Citation[] | null | undefined) => {
   const inject = (children: React.ReactNode) => injectChips(children, citations);
-  // Renders the real tag with citation chips injected into its string leaves.
-  // Returning bare `inject(children)` would drop the wrapping element — for
-  // table cells that yields a text node directly under <tr>, an invalid-HTML
-  // hydration error. `style` carries GFM column alignment on th/td.
+  // Preserve tags, GFM classes, and table alignment while injecting string-leaf citations.
+  // Table cells must stay wrapped in th/td to keep rows valid.
   const leaf =
     (tag: string) =>
-    ({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) =>
-      createElement(tag, style ? { style } : {}, inject(children));
+    ({ children, style, className }: { children?: React.ReactNode; style?: React.CSSProperties; className?: string }) =>
+      createElement(tag, { style, className }, inject(children));
   return {
     a: ({ href, title, children }: { href?: string; title?: string; children?: React.ReactNode }) => {
       const opensNewTab = typeof href === "string" && /^https?:\/\//i.test(href);
@@ -101,14 +100,16 @@ const markdownComponents = (citations: Citation[] | null | undefined) => {
 function AssistantMarkdown({ content, citations }: { content: string; citations?: Citation[] }) {
   const raw = <p className="break-words whitespace-pre-wrap">{content}</p>;
   return (
-    <div className="assistant-markdown">
-      <ErrorBoundary fallback={raw}>
-        <Suspense fallback={raw}>
-          <LazyMarkdown content={content} citations={citations} />
-        </Suspense>
-      </ErrorBoundary>
+    <>
+      <div className="assistant-markdown">
+        <ErrorBoundary fallback={raw}>
+          <Suspense fallback={raw}>
+            <LazyMarkdown content={content} citations={citations} />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
       <SourcesPanel citations={citations} />
-    </div>
+    </>
   );
 }
 
@@ -173,24 +174,23 @@ function ThinkingBlock({ content, compact = false }: { content: string; compact?
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
       className={`group bg-surface-container-low rounded-lg ${compact ? "" : "mb-2"}`}
     >
-      <summary className="focus-visible:ring-primary/40 text-muted flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium select-none focus-visible:ring-2 focus-visible:ring-offset-1">
+      <summary className="focus-visible:ring-primary/40 text-muted flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium select-none focus-visible:ring-2 focus-visible:ring-offset-1 sm:min-h-8">
         <Icon name="bling" size={14} className="text-muted shrink-0" />
         <span className="truncate">Thinking…</span>
         <Icon name="down" size={12} className="ml-auto shrink-0 transition-transform group-open:rotate-180" />
       </summary>
-      {open && content && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="border-border-subtle overflow-hidden border-t"
-        >
-          <p className="text-muted max-h-40 overflow-auto px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap">
+      {content ? (
+        <div className="border-border-subtle overflow-hidden border-t">
+          <p
+            data-thinking-scroll
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users scroll the bounded thinking text.
+            tabIndex={0}
+            className="text-muted max-h-40 overflow-auto px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap"
+          >
             {content}
           </p>
-        </motion.div>
-      )}
+        </div>
+      ) : null}
     </details>
   );
 }
@@ -227,17 +227,10 @@ export const AssistantMessage = memo(function AssistantMessage({
       animate={{ opacity: 1, y: 0 }}
       transition={reduce ? { duration: 0 } : messageSpring}
     >
-      {showAvatar && (
-        <div className="mb-2 flex items-center gap-2">
-          <span className="bg-primary-container text-on-primary-container flex size-7 items-center justify-center rounded-lg text-[0.6875rem] font-medium">
-            R
-          </span>
-          <span className="text-muted text-xs font-medium">Reodite</span>
-        </div>
-      )}
+      {showAvatar && <AssistantIdentity />}
       <div className="bg-surface max-w-[88%] min-w-0 rounded-[16px_16px_16px_5px] px-4 py-3">
         {message.warning && (
-          <div className="bg-tertiary-container text-body-sm text-on-tertiary-container mb-3 flex items-start gap-2 rounded-xl px-3 py-2">
+          <div className="ui-notice-enter bg-tertiary-container text-body-sm text-on-tertiary-container mb-3 flex items-start gap-2 rounded-xl px-3 py-2">
             <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
             <span>{message.warning}</span>
           </div>
@@ -261,7 +254,7 @@ export const AssistantMessage = memo(function AssistantMessage({
         )}
         {message.content && <AssistantMarkdown content={message.content} citations={message.citations} />}
         {message.stopped && (
-          <p className="text-muted mt-2 flex items-center gap-1.5 text-xs">
+          <p className="ui-notice-enter text-muted mt-2 flex items-center gap-1.5 text-xs">
             <Icon name="stop" size={12} className="shrink-0" />
             Response stopped
           </p>
@@ -286,17 +279,16 @@ export function TypingIndicator({ slow, isFirstMessage }: { slow: boolean; isFir
   const label = pool[Math.floor(Date.now() / interval) % pool.length];
   return (
     <div role="status" aria-label="The assistant is thinking">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="bg-primary-container text-on-primary-container flex size-7 items-center justify-center rounded-lg text-[0.6875rem] font-medium">
-          R
-        </span>
-        <span className="text-muted text-xs font-medium">Reodite</span>
-      </div>
+      <AssistantIdentity />
       <div className="bg-surface inline-flex items-center gap-3 rounded-[16px_16px_16px_5px] px-4 py-3">
         <span className="thinking-orb" aria-hidden="true" />
         <span className="text-on-surface text-sm font-medium">{label}</span>
       </div>
-      {slow && <p className="text-muted mt-2 text-xs">Working across data sources — this can take up to 30 seconds.</p>}
+      {slow && (
+        <p className="ui-notice-enter text-muted mt-2 text-xs">
+          Working across data sources — this can take up to 30 seconds.
+        </p>
+      )}
     </div>
   );
 }

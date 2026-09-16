@@ -10,6 +10,7 @@
 //  - coop: a compact work-term card; not a drop target, holds no blocks
 import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { useDndMonitor, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useState } from "react";
@@ -69,7 +70,10 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
 
   if (term.kind === "coop") {
     return (
-      <div className="neu-inset bg-surface-container-low flex min-w-0 flex-1 flex-col rounded-xl px-4 py-3 text-center">
+      <div
+        key="coop"
+        className="ui-content-enter neu-inset bg-surface-container-low flex min-h-[var(--planner-term-min,16rem)] min-w-0 flex-1 flex-col rounded-xl px-4 py-3 text-center"
+      >
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1">
           <Icon name="briefcase" size={18} className="text-on-surface-variant" />
           <p className="text-on-surface text-sm font-medium">Co-op work term</p>
@@ -78,13 +82,14 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
             {term.code ? ` · ${term.code}` : ""}
           </p>
         </div>
-        <button
-          type="button"
+        <Button
+          size="toolbar"
+          shadowOn="surface-container-low"
           onClick={() => setTermKind(yearId, termIdx, "study")}
-          className="neu-button text-on-surface-variant hover:text-on-surface mt-2 h-9 w-full shrink-0 rounded-lg text-xs"
+          className="mt-2 w-full"
         >
           Switch to study term
-        </button>
+        </Button>
       </div>
     );
   }
@@ -96,8 +101,9 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
 
   return (
     <div
+      key="study"
       ref={setNodeRef}
-      className={`neu-inset flex min-h-28 min-w-0 flex-1 flex-col gap-2 rounded-xl border p-3 ${
+      className={`ui-content-enter neu-inset flex min-h-[var(--planner-term-min,16rem)] min-w-0 flex-1 flex-col gap-2 rounded-xl border p-3 ${
         highlighted
           ? "border-muted/70 bg-surface-container border-dashed"
           : "bg-surface-container-low border-transparent"
@@ -105,9 +111,9 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
     >
       <div className="flex h-6 shrink-0 items-baseline gap-2 text-xs">
         <span className="text-on-surface shrink-0 font-medium">{meta.short}</span>
-        <span className="text-muted min-w-0 truncate text-[11px]">{meta.months}</span>
+        <span className="text-muted min-w-0 truncate text-xs">{meta.months}</span>
         <span
-          className={`ml-auto shrink-0 text-right text-[11px] tabular-nums ${creditOverload ? "text-error" : "text-muted"}`}
+          className={`ml-auto shrink-0 text-right text-xs tabular-nums ${creditOverload ? "text-error" : "text-muted"}`}
           title={creditOverload ? "Over the usual credit load for this term" : undefined}
         >
           {creditTotal} cr
@@ -115,7 +121,7 @@ export function TermSection({ yearId, termIdx, term, courseIndex, validations }:
       </div>
       <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
         <div
-          className={`flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 px-0.5 pt-0.5 ${
+          className={`flex min-h-36 min-w-0 flex-1 flex-col gap-1.5 px-0.5 pt-0.5 [contain:size] ${
             term.blocks.length > 0 ? "overflow-y-auto" : "overflow-hidden"
           }`}
         >
@@ -149,17 +155,18 @@ function TermKindButton({ yearId, termIdx, onSet }: { yearId: string; termIdx: n
   const term = years.find((y) => y.id === yearId)?.terms[termIdx];
   const hasBlocks = (term?.blocks.length ?? 0) > 0;
   return (
-    <button
-      type="button"
+    <Button
+      size="toolbar"
+      shadowOn="surface-container-low"
       onClick={() => {
         if (hasBlocks && !window.confirm("Marking this as a co-op work term removes its courses. Continue?")) {
           return;
         }
         onSet();
       }}
-      className="neu-button text-on-surface-variant hover:text-on-surface h-9 w-full shrink-0 rounded-lg px-2 text-xs"
+      className="w-full"
     >
       Mark as co-op work term
-    </button>
+    </Button>
   );
 }

@@ -3,7 +3,8 @@
 // latest response has no map-driving call).
 
 import type { CanvasView } from "@/src/components/shell/pane-registry";
-import { isToolError, type ToolCall, type WalkingDistanceResult } from "@/src/lib/api-types";
+import { isToolError, type RouteResponse, type ToolCall, type WalkingDistanceResult } from "@/src/lib/api-types";
+import type { LngLat } from "@/src/shared/types";
 
 interface WalkingHighlight {
   kind: "route";
@@ -12,6 +13,8 @@ interface WalkingHighlight {
   to: string;
   meters: number;
   minutes: number;
+  method: "network" | "estimate" | null;
+  path?: LngLat[];
 }
 
 interface BuildingRef {
@@ -24,6 +27,8 @@ interface BuildingRef {
 interface BuildingsHighlight {
   kind: "buildings";
   buildings: BuildingRef[];
+  showEntrances?: boolean;
+  detailKind?: "building" | "spaces";
 }
 
 interface PlacePin {
@@ -42,6 +47,25 @@ interface PlacesHighlight {
 
 /** What the campus map renders: a walking route, focused buildings, or POI pins. */
 export type MapHighlight = WalkingHighlight | BuildingsHighlight | PlacesHighlight;
+
+/** Returns only verified network path geometry; estimates remain text-only. */
+export function drawableRoutePath(route: RouteResponse): LngLat[] | null {
+  if (route.method !== "network" || route.polyline.length < 2) return null;
+  const valid = route.polyline.every(
+    ([longitude, latitude]) =>
+      Number.isFinite(longitude) &&
+      Number.isFinite(latitude) &&
+      longitude >= -180 &&
+      longitude <= 180 &&
+      latitude >= -90 &&
+      latitude <= 90,
+  );
+  if (!valid) return null;
+  const [firstLongitude, firstLatitude] = route.polyline[0];
+  return route.polyline.some(([longitude, latitude]) => longitude !== firstLongitude || latitude !== firstLatitude)
+    ? route.polyline
+    : null;
+}
 
 /**
  * A map-renderable highlight from a walking_distance call, or null when the
@@ -67,7 +91,8 @@ export function extractWalkingHighlight(call: ToolCall): WalkingHighlight | null
     (typeof call.input.to_building === "string" && call.input.to_building) ||
     "";
   if (!from || !to) return null;
-  return { kind: "route", from, to, meters: result.meters, minutes: result.minutes };
+  const method = result.method === "network" || result.method === "estimate" ? result.method : null;
+  return { kind: "route", from, to, meters: result.meters, minutes: result.minutes, method };
 }
 
 /**
@@ -167,6 +192,34 @@ export function extractPeopleHighlight(call: ToolCall): BuildingsHighlight | nul
   return { kind: "buildings", buildings: [...byCode.values()] };
 }
 
+function richBuildingHighlight(
+  data: Record<string, unknown> | undefined,
+  options: Pick<BuildingsHighlight, "showEntrances" | "detailKind"> = {},
+): BuildingsHighlight | null {
+  const building = data?.building as { code?: unknown; name?: unknown; centroid?: unknown } | undefined;
+  if (
+    typeof building?.code !== "string" ||
+    !building.code ||
+    !Array.isArray(building.centroid) ||
+    building.centroid.length < 2 ||
+    typeof building.centroid[0] !== "number" ||
+    typeof building.centroid[1] !== "number"
+  ) {
+    return null;
+  }
+  const [lon, lat] = building.centroid;
+  if (!Number.isFinite(lon) || !Number.isFinite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) {
+    return null;
+  }
+  return {
+    kind: "buildings",
+    buildings: [
+      { code: building.code, name: typeof building.name === "string" ? building.name : building.code, lat, lon },
+    ],
+    ...options,
+  };
+}
+
 /** Tries every map-driving extractor; only one matches a given call name. */
 function extractMapHighlight(call: ToolCall): MapHighlight | null {
   return (
@@ -195,8 +248,20 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
   const outer = call.result as { type?: string; result?: unknown } | undefined;
   const data = outer?.result as Record<string, unknown> | undefined;
   switch (outer?.type) {
+    case "building_detail": {
+      const rich = richBuildingHighlight(data, { detailKind: "building" });
+      return rich ? { paneId: "map", state: { highlight: rich } } : null;
+    }
+    case "building_entrances": {
+      const rich = richBuildingHighlight(data, { showEntrances: true });
+      return rich ? { paneId: "map", state: { highlight: rich } } : null;
+    }
+    case "building_spaces": {
+      const rich = richBuildingHighlight(data, { detailKind: "spaces" });
+      return rich ? { paneId: "map", state: { highlight: rich } } : null;
+    }
     case "route": {
-      const r = data as { from?: string; to?: string; meters?: number; minutes?: number } | undefined;
+      const r = data as { from?: string; to?: string; meters?: number; minutes?: number; method?: unknown } | undefined;
       if (typeof r?.meters !== "number" || typeof r.minutes !== "number" || !r.from || !r.to) return null;
       const highlightRoute: MapHighlight = {
         kind: "route",
@@ -204,6 +269,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
         to: r.to,
         meters: r.meters,
         minutes: r.minutes,
+        method: r.method === "network" || r.method === "estimate" ? r.method : null,
       };
       return { paneId: "map", state: { highlight: highlightRoute } };
     }
@@ -262,11 +328,6 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
       const first = Array.isArray(list?.courses) ? list.courses[0] : undefined;
       if (!first?.code) return null;
       return { paneId: "course-lookup", state: { code: first.code } };
-    }
-    case "prereq_tree": {
-      const g = data as { rootCode?: string } | undefined;
-      if (!g?.rootCode) return null;
-      return { paneId: "prereq-tree", state: { root: g.rootCode, selections: {} } };
     }
     case "key_dates": {
       const list = data as { dates?: unknown[] } | undefined;

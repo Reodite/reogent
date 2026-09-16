@@ -61,7 +61,7 @@ describe("module registry consistency", () => {
     }
   });
 
-  it("exposes exactly the 16 redesigned tools with no legacy names", () => {
+  it("exposes the supported data and presentation tools", () => {
     expect(new Set(modules.flatMap((m) => m.tools.map((t) => t.spec.name)))).toEqual(
       new Set([
         "find_courses",
@@ -77,11 +77,20 @@ describe("module registry consistency", () => {
         "find_events",
         "get_key_dates",
         "search_ubc_pages",
+        "search_student_resources",
+        "get_library_hours",
         "find_person",
         "find_food",
         "show_widget",
       ]),
     );
+  });
+
+  it("keeps document corpus integration outside the UI registry", () => {
+    expect(modules.map((module) => module.name)).not.toEqual(expect.arrayContaining(["documents"]));
+    expect(modules.map((module) => module.name)).not.toEqual(expect.arrayContaining(["prose"]));
+    expect(modules.flatMap((module) => module.indices.map((index) => index.index))).not.toContain("documents");
+    expect(modules.flatMap((module) => module.tools.map((tool) => tool.spec.name))).not.toContain("get_document");
   });
 
   it("every tool spec has typed, described properties and a required list", () => {

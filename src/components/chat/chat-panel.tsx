@@ -3,6 +3,7 @@
 // Chat panel (task 3.1): history load, optimistic send with in-flight lock,
 // error banner with retry resending the same message, inline iteration warning,
 // and highlight publication for the map via the walking_distance renderer.
+import { ChatComposerFrame, ChatFrame } from "@/src/components/chat/chat-frame";
 import { ChatInput, type ChatInputHandle } from "@/src/components/chat/chat-input";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import {
@@ -17,12 +18,17 @@ import {
 } from "@/src/components/chat/message";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { ChatMessagesSkeleton } from "@/src/components/shell/shell-loading";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { Button } from "@/src/components/ui/button";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
+import { RetryState } from "@/src/components/ui/feedback";
+import { Heading } from "@/src/components/ui/heading";
+import { SkeletonGroup } from "@/src/components/ui/skeleton";
 import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type HistoryState = "loading" | "ready" | "failed";
@@ -60,7 +66,7 @@ const SUGGESTION_BUCKETS = {
     "How much is a full course load in Science?",
   ],
   other: [
-    "Where can I study right now?",
+    "Find study spaces with room for six people",
     "What's the grade distribution for CHEM 121?",
     "Any events on campus this week?",
     "Where can I park near the engineering buildings?",
@@ -68,10 +74,10 @@ const SUGGESTION_BUCKETS = {
     "When is the last day to drop a course without a W?",
     "Find coffee shops near the Nest",
     "What's the average GPA for MATH 100?",
-    "Are there any free rooms in Buchanan right now?",
+    "Find study spaces in Buchanan",
     "When does registration open for 2026W Term 1?",
     "Find food options near the engineering buildings",
-    "What study rooms are available in IKB?",
+    "Show me study spaces in IKB",
     "Where is the Aquatic Centre?",
     "What are the admission requirements for Sauder?",
   ],
@@ -96,7 +102,7 @@ const TIPS = [
   "Answers come from indexed UBC data, not guesses.",
   "Tuition estimates break down by program and residency.",
   "Building searches show the location on the map.",
-  "Room schedules update with real availability.",
+  "Library hours include holiday and exam schedules.",
   "Admission requirements vary by program — ask about yours.",
   "Food and services near any building are one question away.",
   "Prerequisites chain together — I'll trace them.",
@@ -114,9 +120,11 @@ function nextId(): string {
 // instead of killing the entire chat panel.
 function ComposerFallback() {
   return (
-    <div className="shrink-0 px-3 pt-2 pb-3 text-center sm:px-4">
-      <p className="text-muted text-xs">Something went wrong. Reload to restore.</p>
-    </div>
+    <ChatComposerFrame>
+      <p className="text-muted flex min-h-14 items-center justify-center text-center text-xs">
+        Something went wrong. Reload to restore.
+      </p>
+    </ChatComposerFrame>
   );
 }
 
@@ -131,18 +139,17 @@ function FollowUpChips({ onSend, followUps }: { onSend: (text: string) => void; 
       transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-wrap gap-2 pt-2"
     >
-      {followUps.map((chip, i) => (
-        <motion.button
+      {followUps.map((chip) => (
+        <Button
           key={chip}
-          initial={reduce ? false : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={reduce ? { duration: 0 } : { delay: i * 0.06, duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          type="button"
+          variant="outline"
+          size="pill"
+          wrap
           onClick={() => onSend(chip)}
-          className="focus-visible:ring-primary/40 border-border text-on-surface-variant hover:bg-accent-subtle hover:text-primary min-h-[44px] max-w-full rounded-2xl border px-4 py-2.5 text-left text-xs font-medium break-words transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="max-w-full text-left"
         >
           {chip}
-        </motion.button>
+        </Button>
       ))}
     </motion.div>
   );
@@ -154,7 +161,7 @@ function toConversation(messages: DisplayMessage[]): ChatMessage[] {
 
 export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string | null }) {
   const api = useApi();
-  const router = useRouter();
+  const navigation = useShellNavigation();
   const [sessionId, setSessionId] = useState<string>(() => initialSessionId ?? "");
   // Tracks whether the session ID was minted locally (skip history fetch)
   const mintedLocally = useRef(!initialSessionId);
@@ -172,6 +179,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     askAiRequest,
     consumeAskAi,
   } = useChatShell();
+  const lastNewChatNonce = useRef(newChatNonce);
 
   const [historyState, setHistoryState] = useState<HistoryState>("loading");
   const [historyNonce, setHistoryNonce] = useState(0);
@@ -202,8 +210,8 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     // Bias toward contextually relevant "other" suggestions
     let otherPick: string;
     if (hour >= 18 || hour < 6) {
-      // Evening/night: study spaces and room availability
-      const evening = otherPool.filter((s) => /study|room|free/i.test(s));
+      // Favor study-space suggestions in the evening.
+      const evening = otherPool.filter((s) => /study|room/i.test(s));
       otherPick = evening.length > 0 ? pick(evening) : pick(otherPool);
     } else if (hour >= 6 && hour < 12) {
       // Morning: events and calendar
@@ -221,7 +229,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   }, []);
 
   const inputRef = useRef<ChatInputHandle>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLElement>(null);
   const pendingRetry = useRef<{ conversation: ChatMessage[] } | null>(null);
 
   // Cleanup: abort in-flight requests and cancel pending frames on unmount.
@@ -250,11 +258,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     return firstUser ? splitUserContent(firstUser.content).text : "New conversation";
   }, [sessions, sessionId, messages]);
 
-  // "New conversation" from the sidebar: the minted session only exists in the
-  // URL (the router is still parked on /chat), so router.push("/chat") is a
-  // no-op. Reset this panel in place and drop the minted URL.
+  // Apply reset requests made after this panel mounts.
   useEffect(() => {
-    if (newChatNonce === 0) return;
+    if (newChatNonce === lastNewChatNonce.current) return;
+    lastNewChatNonce.current = newChatNonce;
     mintedLocally.current = true;
     pendingRetry.current = null;
     setSendError(null);
@@ -366,9 +373,11 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
     node.scrollTo({ top: node.scrollHeight, behavior });
   }, [messageCount, sending, lastMessageContent, lastActivityCount, prefersReducedMotion]);
 
-  // Focus the input when the conversation is ready and after each response.
+  // Preserve existing focus when history or a response finishes.
   useEffect(() => {
-    if (historyState === "ready" && !sending) inputRef.current?.focus();
+    if (historyState === "ready" && !sending && document.activeElement === document.body) {
+      inputRef.current?.focus();
+    }
   }, [historyState, sending]);
 
   // Honest expectations: flag responses that pass 5s.
@@ -601,174 +610,152 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
   }, []);
 
   return (
-    <section aria-label="Conversation" className="neu-panel flex min-h-0 w-full flex-col overflow-hidden rounded-2xl">
-      <div className="flex h-15 shrink-0 items-center justify-between bg-transparent px-4">
-        <h1 className="text-on-surface min-w-0 truncate text-base font-medium tracking-[-0.01em]">{sessionTitle}</h1>
-      </div>
+    <ChatFrame
+      aria-label="Conversation"
+      header={
+        <Heading as="h1" className="min-w-0 truncate">
+          {sessionTitle}
+        </Heading>
+      }
+      scrollRef={scrollRef}
+      messagesBusy={historyState === "loading" || sending}
+      footer={
+        <>
+          <output className="sr-only" aria-live="polite">
+            {announcement}
+          </output>
+          <ErrorBoundary key={newChatNonce} fallback={<ComposerFallback />}>
+            <ChatInput
+              ref={inputRef}
+              disabled={sending || historyState !== "ready"}
+              thinking={sending}
+              showDisclaimer={messages.length > 0}
+              tip={tip}
+              onSend={send}
+              onStop={sending ? stopGenerating : undefined}
+            />
+          </ErrorBoundary>
+        </>
+      }
+    >
+      {historyState === "loading" && (
+        <SkeletonGroup label="Loading conversation" className="h-full">
+          <ChatMessagesSkeleton />
+        </SkeletonGroup>
+      )}
 
-      <div
-        ref={scrollRef}
-        aria-busy={historyState === "loading" || sending}
-        className="chat-message-well min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6"
-      >
-        {historyState === "loading" && (
-          <div
-            role="status"
-            aria-label="Loading conversation"
-            className="flex h-full flex-col items-center justify-center gap-6"
-          >
-            <div className="neu-inset bg-surface-container h-12 w-3/5 animate-pulse self-end rounded-[16px_16px_5px_16px]" />
-            <div className="neu-inset bg-surface-container h-20 w-4/5 animate-pulse rounded-[16px_16px_16px_5px]" />
-          </div>
-        )}
-
-        {historyState === "failed" && (
-          <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
-            <span className="bg-surface text-error flex size-16 items-center justify-center rounded-2xl">
-              <Icon name="alert" size={30} />
-            </span>
-            <div>
-              <p className="text-on-surface text-xl font-medium">Couldn&apos;t load this conversation</p>
-              <p className="text-on-surface-variant mt-1 text-sm">Try again, or start with a fresh chat.</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setHistoryNonce((n) => n + 1)}
-                className="neu-button bg-surface text-on-surface flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
-              >
-                <Icon name="refresh2" size={16} />
-                Try again
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/chat")}
-                className="neu-primary-button bg-primary text-on-primary flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
-              >
-                Start new chat
-              </button>
-            </div>
-          </div>
-        )}
-
-        <AnimatePresence>
-          {historyState === "ready" && messages.length === 0 && !sending && (
-            <motion.div
-              key="empty-state"
-              initial={prefersReducedMotion ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="flex min-h-full flex-col px-3 text-center sm:px-6"
-            >
-              <div className="m-auto flex w-full max-w-xl flex-col items-center">
-                <span className="bg-surface text-primary flex size-12 items-center justify-center rounded-2xl">
-                  <Icon name="school" size={24} />
-                </span>
-                <h2 className="text-on-surface mt-4 text-xl font-medium tracking-[-0.025em]">{greeting}</h2>
-                <p className="text-on-surface-variant mt-2 max-w-80 text-sm leading-relaxed">
-                  Courses, tuition, walking routes, study spaces, grades, events, parking — all from real UBC data.
-                </p>
-                <nav aria-label="Suggested questions" className="mt-5 flex w-full flex-wrap justify-center gap-2">
-                  {randomSuggestions.map((suggestion, i) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      onClick={() => send(suggestion)}
-                      disabled={sending}
-                      style={{ animationDelay: `${i * 60}ms` }}
-                      className="animate-message-in border-primary text-primary hover:bg-accent-subtle focus-visible:ring-primary/40 min-h-[44px] rounded-2xl border px-3.5 py-2.5 text-center text-xs font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {historyState === "ready" && messages.length > 0 && (
-          <div role="log" aria-label="Conversation" className="flex min-w-0 flex-col gap-6">
-            {messages.map((message, idx) =>
-              message.role === "user" ? (
-                <UserMessage key={message.id} message={message} />
-              ) : message.content || (message.activity && message.activity.length > 0) ? (
-                <AssistantMessage
-                  key={message.id}
-                  message={message}
-                  showAvatar={idx === 0 || messages[idx - 1].role !== "assistant"}
-                />
-              ) : null,
-            )}
-            <AnimatePresence>
-              {sending &&
-                (!messages.length ||
-                  messages[messages.length - 1]?.role !== "assistant" ||
-                  (!messages[messages.length - 1]?.content && !messages[messages.length - 1]?.activity?.length)) && (
-                  <motion.div
-                    key="typing-indicator"
-                    initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0, transition: { duration: 0.15 } }}
-                    exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
-                  >
-                    <TypingIndicator slow={slowResponse} isFirstMessage={messages.length <= 1} />
-                  </motion.div>
-                )}
-            </AnimatePresence>
-            {!sending && !sendError && messages.length > 0 && messages[messages.length - 1].role === "assistant" && (
-              <FollowUpChips onSend={send} followUps={messages[messages.length - 1].followUps} />
-            )}
-            {sendError && (
-              <div
-                role="alert"
-                className="animate-message-in border-error/30 bg-error-container/40 flex flex-col items-start justify-between gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center"
-              >
-                <p id="send-error-msg" className="text-on-surface flex min-w-0 items-center gap-2 text-sm break-words">
-                  <Icon name="alert" size={16} className="text-error shrink-0" />
-                  {sendError}
-                </p>
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    onClick={retry}
-                    disabled={sending}
-                    aria-describedby="send-error-msg"
-                    className="neu-button bg-surface text-on-surface flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-medium disabled:pointer-events-none disabled:opacity-60"
-                  >
-                    <Icon name="refresh2" size={14} />
-                    Retry
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSendError(null)}
-                    aria-label="Dismiss error"
-                    className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-on-surface flex size-9 items-center justify-center rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
-                  >
-                    <Icon name="close" size={16} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <output className="sr-only" aria-live="polite">
-        {announcement}
-      </output>
-
-      <ErrorBoundary key={sessionId} fallback={<ComposerFallback />}>
-        <ChatInput
-          ref={inputRef}
-          disabled={sending || historyState !== "ready"}
-          thinking={sending}
-          showDisclaimer={messages.length > 0}
-          tip={tip}
-          onSend={send}
-          onStop={sending ? stopGenerating : undefined}
+      {historyState === "failed" ? (
+        <RetryState
+          title="Couldn't load this conversation"
+          message="Try again, or start with a fresh chat."
+          onRetry={() => setHistoryNonce((nonce) => nonce + 1)}
+          secondaryAction={
+            <Button variant="primary" onClick={() => navigation.push("/chat")}>
+              Start new chat
+            </Button>
+          }
+          className="h-full justify-center px-4"
         />
-      </ErrorBoundary>
-    </section>
+      ) : null}
+
+      <AnimatePresence>
+        {historyState === "ready" && messages.length === 0 && !sending && (
+          <motion.div
+            key="empty-state"
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+            className="flex min-h-full flex-col px-3 text-center sm:px-6"
+          >
+            <div className="m-auto flex w-full max-w-xl flex-col items-center">
+              <span className="bg-surface text-primary flex size-12 items-center justify-center rounded-2xl">
+                <Icon name="school" size={24} />
+              </span>
+              <Heading size="title" className="mt-4">
+                {greeting}
+              </Heading>
+              <p className="text-on-surface-variant mt-2 max-w-80 text-sm leading-relaxed">
+                Courses, tuition, walking routes, study spaces, grades, events, parking — all from real UBC data.
+              </p>
+              <nav aria-label="Suggested questions" className="mt-5 flex w-full flex-wrap justify-center gap-2">
+                {randomSuggestions.map((suggestion, index) => (
+                  <Button
+                    key={suggestion}
+                    variant="outline"
+                    size="pill"
+                    wrap
+                    onClick={() => send(suggestion)}
+                    disabled={sending}
+                    style={{ animationDelay: `${index * 60}ms` }}
+                    className="animate-message-in max-w-full min-w-0 text-center"
+                  >
+                    {suggestion}
+                  </Button>
+                ))}
+              </nav>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {historyState === "ready" && messages.length > 0 && (
+        <div role="log" aria-label="Conversation" className="flex min-w-0 flex-col gap-6">
+          {messages.map((message, idx) =>
+            message.role === "user" ? (
+              <UserMessage key={message.id} message={message} />
+            ) : message.content || (message.activity && message.activity.length > 0) ? (
+              <AssistantMessage
+                key={message.id}
+                message={message}
+                showAvatar={idx === 0 || messages[idx - 1].role !== "assistant"}
+              />
+            ) : null,
+          )}
+          <AnimatePresence>
+            {sending &&
+              (!messages.length ||
+                messages[messages.length - 1]?.role !== "assistant" ||
+                (!messages[messages.length - 1]?.content && !messages[messages.length - 1]?.activity?.length)) && (
+                <motion.div
+                  key="typing-indicator"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: prefersReducedMotion ? 0 : 0.15 } }}
+                  exit={{
+                    opacity: 0,
+                    y: prefersReducedMotion ? 0 : -4,
+                    transition: { duration: prefersReducedMotion ? 0 : 0.12 },
+                  }}
+                >
+                  <TypingIndicator slow={slowResponse} isFirstMessage={messages.length <= 1} />
+                </motion.div>
+              )}
+          </AnimatePresence>
+          {!sending && !sendError && messages.length > 0 && messages[messages.length - 1].role === "assistant" && (
+            <FollowUpChips onSend={send} followUps={messages[messages.length - 1].followUps} />
+          )}
+          {sendError && (
+            <div
+              role="alert"
+              className="animate-message-in border-error/30 bg-error-container/40 flex flex-col items-start justify-between gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center"
+            >
+              <p id="send-error-msg" className="text-on-surface flex min-w-0 items-center gap-2 text-sm break-words">
+                <Icon name="alert" size={16} className="text-error shrink-0" />
+                {sendError}
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <Button onClick={retry} disabled={sending} aria-describedby="send-error-msg">
+                  <Icon name="refresh2" size={14} />
+                  Retry
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setSendError(null)} aria-label="Dismiss error">
+                  <Icon name="close" size={16} />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </ChatFrame>
   );
 }

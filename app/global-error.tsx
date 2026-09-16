@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/src/components/icons";
+
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   // Log digest for correlation with server-side logs
   if (error.digest) console.error("[GlobalError]", error.digest, error.message);
@@ -19,18 +21,32 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           }}
         >
           <div style={{ maxWidth: "24rem", textAlign: "center" }}>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 500, marginBottom: "0.5rem" }}>Something went wrong</h1>
+            <h1
+              style={{
+                fontSize: "1.25rem",
+                fontWeight: 500,
+                lineHeight: 1.3,
+                letterSpacing: "-0.02em",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Something went wrong
+            </h1>
             <p style={{ fontSize: "0.875rem", color: "#5a6066", marginBottom: "1.5rem" }}>{message}</p>
             {error.digest && (
-              <p style={{ fontSize: "0.75rem", color: "#8c9297", marginBottom: "1rem" }}>Error ID: {error.digest}</p>
+              <p style={{ fontSize: "0.75rem", color: "#5a6066", marginBottom: "1rem" }}>Error ID: {error.digest}</p>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <button
                 type="button"
                 onClick={reset}
                 style={{
+                  minHeight: "2.75rem",
                   padding: "0.625rem 1rem",
-                  borderRadius: "0.75rem",
+                  borderRadius: "0.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   background: "#4a4e7a",
                   color: "white",
                   border: "none",
@@ -43,18 +59,28 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
               </button>
               <a
                 href="/"
+                aria-label="Back to home"
+                title="Back to home"
                 style={{
-                  padding: "0.625rem 1rem",
-                  borderRadius: "0.75rem",
-                  background: "#fafafa",
+                  minHeight: "2.75rem",
+                  width: "2.75rem",
+                  boxSizing: "border-box",
+                  alignSelf: "center",
+                  padding: 0,
+                  borderRadius: "0.5rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "transparent",
                   color: "#18191b",
-                  border: "1px solid #e6e6e2",
+                  border: "none",
                   textDecoration: "none",
+                  cursor: "pointer",
                   fontSize: "0.875rem",
                   fontWeight: 500,
                 }}
               >
-                Go home
+                <Icon name="arrowLeft" size={20} />
               </a>
             </div>
           </div>

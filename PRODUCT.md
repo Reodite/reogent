@@ -10,7 +10,7 @@ web
 
 UBC Vancouver undergraduate and graduate students. They use Reodite during two windows: (1) course registration periods (mid-March for summer, mid-June for fall, mid-October for spring) to search courses, check prerequisites, and compare tuition costs, and (2) the first two weeks of each term when campus is unfamiliar and they need walking directions between buildings.
 
-Secondary context: mid-term schedule crunches when students need study spaces, room availability, or campus services.
+Secondary context: mid-term schedule crunches when students need study spaces, library hours, or campus services.
 
 They are task-focused and time-pressured, often between classes on a laptop or walking campus on a phone. They want to type a question and get a grounded answer. No exploring, no browsing.
 
@@ -57,7 +57,7 @@ The app has three zones, left to right:
 
 1. **Sidebar** (left): Session history list. Collapsible on desktop (3.75rem collapsed rail to 17rem expanded). Drawer with backdrop scrim on mobile (<1024px). Contains: new conversation button, session list grouped by recency.
 
-2. **Chat panel** (center): Always visible, full-height. Contains: message history (scrollable), chat input composer (bottom-pinned). The primary and permanent surface. When no visual pane is open, chat stretches to fill the remaining width.
+2. **Chat panel** (center): Full-height conversation with scrollable history and a bottom-pinned composer. Without a visual pane, chat fills the remaining width. On phones, use a flat edge-to-edge page with content insets rather than a surrounding card.
 
 3. **Visual pane** (right): Conditionally visible. Appears when the agent's response includes visual content (map route, building highlight, POI pins). Disappears when dismissed. On desktop: side-by-side flex layout with chat (50% width when open, 3.75rem collapsed rail when closed). On mobile (<640px): a draggable bottom sheet (80vh height, 20% drag threshold to dismiss).
 
@@ -77,11 +77,11 @@ The app has three zones, left to right:
 
 - **Desktop (>=1024px)**: Sidebar + Chat + Visual Pane (when active). Sidebar is collapsible (flex layout with animated width). Visual pane transitions width.
 - **Tablet (640-1024px)**: Sidebar is a drawer (hidden by default, triggered by menu button). Chat + Visual Pane side-by-side.
-- **Mobile (<640px)**: Chat full-width. Sidebar is a drawer with backdrop scrim. Visual pane becomes a bottom sheet overlay (80vh, drag-to-dismiss).
+- **Mobile (<640px)**: Chat, Tools, Unity, and Settings use flat, edge-to-edge main views above persistent AI, Tools, and Unity bottom tabs. Each mode restores its last routed screen; Settings keeps the prior mode without replacing that saved destination. A flat menu button in the route header opens the current mode's destinations in an edge-attached drawer. Keep text and control insets, 44px action targets, 48px drawer rows, and 60px mode targets. The bottom bar owns the bottom safe area. Size the shell and fixed overlays to the browser's reported visual viewport at normal scale, with the visual pane at 80% height. Keep contained cards and input depth. From 640px upward, retain the existing panel layout and sidebar mode controls.
 
 ## Capabilities and Constraints
 
-### Agent Tools (22 tools across 14 modules)
+### Agent Tools
 
 | Module     | Tools                                                          | Output                                                      |
 | ---------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -89,7 +89,7 @@ The app has three zones, left to right:
 | courses    | `search_courses`, `get_course`                                 | Course list with filters, full course record with prereqs   |
 | tuition    | `get_tuition`                                                  | Per-credit rates by program, student type, cohort year      |
 | places     | `find_places`                                                  | Points of interest with locations                           |
-| spaces     | `search_study_spaces`, `find_free_rooms`, `get_room_schedule`  | Study space availability, free classrooms, room schedules   |
+| spaces     | `find_study_spaces`                                            | Study-area and classroom descriptions                       |
 | admissions | `search_programs`, `get_admission_requirements`                | Program search, admission criteria                          |
 | costs      | `get_cost_estimate`, `get_living_costs`, `search_student_fees` | Cost breakdowns, living cost estimates                      |
 | calendar   | `get_key_dates`                                                | Academic calendar dates                                     |
@@ -104,19 +104,23 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 
 ### Map Capabilities
 
-- Building footprints rendered as extruded 3D GeoJSON (deck.gl GeoJsonLayer)
-- Walking routes computed via Dijkstra on pedestrian graph, rendered as animated PathLayer (2500ms draw-on with ease-out)
-- POI pins via ScatterplotLayer + TextLayer labels
-- Building click opens popup with details (rooms, POIs, availability)
-- Basemap: CARTO Positron (light) / CARTO Dark Matter (dark) tiles via MapLibre GL
-- Camera: center [-123.246, 49.2626], zoom 14.4, pitch 40, bearing -8
-- Camera flies to highlighted buildings/routes on tool call
+- Tools Campus Map pairs a 20rem Explore rail with the 3D map. Compact workspaces keep the map in place and present Explore as a non-modal bottom sheet without remounting WebGL.
+- Explore starts with eight curated buildings, searches the complete building catalog, and prioritizes official identity and addresses, rooms, footprint-associated services, source freshness, and official photo sources. Verified entrances remain map graphics rather than a textual building-detail section. The Sources section lists only provenance that supplies data currently shown in building details.
+- Signed-in users save favorite buildings to the account. Building actions share a deep link, open a separate Google Maps destination, or start an in-app route. Directions keeps editable From and To boxes at the top; endpoint results exist only while one box is being edited and disappear as soon as a route starts.
+- AI Answer Canvas remains map-only. Existing map widgets stay compatible; additive building-detail, entrance, and space widgets expose richer map answers in Chat.
+- Building footprints render as extruded 3D GeoJSON. Verified entrances within a building-wall tolerance render as compact solid ground arrowheads and vertical door outlines; undocumented rotation and accessibility flags do not drive claims.
+- Walking routes use Dijkstra over the pedestrian network. Visible segments render at full opacity with a contrasting casing; building-occluded segments remain readable as one 30%-opacity primary stroke. Opaque depth-writing buildings fully occlude one another. Straight-line estimates remain labeled text and do not render as paths.
+- POI pins use deck.gl point and text layers.
+- Building clicks open Explore details in Tools and retain the transient map popup in AI.
+- CARTO Positron and Dark Matter supply the light and dark basemaps.
+- The default camera uses center [-123.246, 49.2626], zoom 14.4, pitch 40, and bearing -8; selected buildings and widget results update the camera.
 
 ### Technical Constraints
 
 - **Sequential tool execution**: Tool results must complete before the next LLM turn.
 - **8-iteration limit**: Agent loop stops after 8 tool-calling turns. A nudge message forces a final text response at iteration 8.
 - **Data freshness**: Data is as current as the last ingest script run. Not real-time.
+- **Room availability**: Reodite does not collect bookings or occupancy. Study-space descriptions and library schedules do not establish vacancy.
 - **No file upload**: Text-only input.
 - **Single map context**: One set of highlights/routes active at a time. A new tool call replaces the previous one.
 
@@ -142,7 +146,7 @@ Neumorphism at whisper intensity is the primary visual language:
 
 - **Raised surfaces** (buttons, cards, panels) sit above the background via dual-direction box-shadows: dark shadow bottom-right, light highlight top-left. Light source is upper-left.
 - **Recessed surfaces** (input fields, sidebar wells, content areas) sit below the background via inset shadows with the same dual-direction logic.
-- **Flat surfaces** (text content, message bubbles, inline elements) have no shadow. They sit on the surface plane.
+- **Flat surfaces** (mobile pages and their main content regions, text, message bubbles, inline elements) have no shadow. Use the available phone width for the task, with padding around content and controls.
 
 Shadows use tiny offsets (2-3px), minimal blur (4-8px), and near-transparent opacity (4-6%). Depth communicates function — raised = interactive, recessed = input, flat = content — but registers subconsciously rather than announcing itself. The interface reads as one continuous material shaped into different forms.
 
@@ -165,7 +169,7 @@ Controls feel physical and unambiguous:
 
 - A button looks pressable (raised) and animates inward on press (recessed)
 - An input looks like a well you type into (recessed)
-- A panel sits on top of the background (raised)
+- Contained cards, wider-screen panels, and overlays sit above the background; mobile main views share the page plane
 - Hover states are visible but subtle
 - Active/pressed states show physical depression (shadow inversion)
 - Disabled states flatten and fade, losing their depth
@@ -193,10 +197,10 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 - **Tuition**: Per-credit rates by program (Arts, Science, Engineering, etc.), student type (domestic/international), cohort year
 - **Buildings**: GeoJSON FeatureCollection with building footprints, heights, floor counts, addresses, usage types, building codes
 - **Walking routes**: GeoJSON LineStrings, pedestrian-only paths connecting building entrances, with computed distances
-- **Building entrances**: Derived coordinates for each building's accessible entrances (Dijkstra graph nodes)
+- **Building entrances**: Current entrance coordinates joined by official building identifier. Accessibility and rotation semantics remain undocumented, so the interface makes no accessibility or bearing claim from those fields.
 - **Programs**: Academic programs with admission requirements
 - **Events**: Campus events with dates, locations, descriptions
-- **Study spaces**: Libraries, study rooms, bookable spaces
+- **Study spaces**: Classrooms and informal study areas, with separate library opening schedules
 - **Parking**: Parking lots with locations and types
 - **Pages**: Indexed UBC website content
 - **Grades**: Historical grade distributions by course and instructor (from UBC Pair)
@@ -206,7 +210,7 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 - No logo, wordmark, or brand guidelines
 - No design system document from a client or university
 - No visual assets (illustrations, photographs, icons beyond mingcute set)
-- No user research, analytics, or behavioral data
+- No user research, analytics, behavioral data, or measured building-popularity signal
 - No accessibility audit or VPAT
 
 ## Product Principles
@@ -219,15 +223,18 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 
 4. **Minimal friction**: Direct to chat. No onboarding flow, no feature tour, no empty state tutorial. Sign in, type, get an answer. The design is self-explanatory.
 
-5. **Single-material coherence**: Every surface, control, and container shares the same neumorphic treatment. Nothing looks bolted on from a different system.
+5. **Single-material coherence**: Use one neutral material across the interface. Keep mobile main views flat and full-width; reserve depth for controls, contained content, and overlays.
 
 ## Accessibility & Inclusion
 
 - WCAG 2.1 AA compliance as baseline (all text meets 4.5:1 contrast on its background; subdued text uses `--muted` #5a6066 which passes AA on all surfaces)
 - Map content has text alternatives: when a route is displayed, distance and time are also stated in chat message text
-- Chat is keyboard-navigable: Tab through messages, Enter to send, Escape to dismiss overlays
-- Reduced-motion preference respected: all animations collapse to 0.01ms duration, reveals show at once, spinning elements freeze
+- Chat is keyboard-navigable: focus Conversation messages to scroll with the keyboard, use Enter to send, and Escape to dismiss overlays
+- Reduced-motion preference applies to entrances and exits, including native details, modal removal, graph zoom, and locate scrolling. State changes remain immediate and legible; spinning elements freeze
 - Screen reader support: messages are announced via sr-only live region, tool execution states communicated, icon buttons have aria-labels
 - Focus indicators are visible on keyboard navigation (`ring-primary/40 ring-2` with ring-offset), not hidden behind mouse-only styles
 - Interactive elements target 44x44px on mobile via `min-h-[44px]` on pills; some icon buttons remain at 36-40px where density is prioritized over the WCAG minimum
-- Safe-area insets respected for bottom-pinned elements on iOS (`env(safe-area-inset-bottom)`)
+- Safe-area insets protect mobile headers, the bottom mode bar, and independent overlays. Phone text-entry controls use 16px text. The shell follows the unzoomed visual viewport when the browser reports a reduced visible area; physical keyboard and notch behavior need device testing.
+- Keep shell navigation usable during route loading while pending task controls remain inert. Trap drawer focus and return account-popup focus inside the drawer. Underlying mode tabs stay inactive only while a visible modal requires it.
+- Motion explains interaction: mode selection, overlay entry/exit, disclosures, newly arrived results, and feedback. It must not delay data changes, replay on streaming updates, reset maps/forms/scroll, or keep obsolete routes and groups visible.
+- Optical layout uses measured anchors and close inset contours. Keep leading controls centered on the title line, plain rail content aligned with its header, and compact theme controls at intrinsic width. Derive matching inner corners from actual insets; preserve independent content cards and touch targets.

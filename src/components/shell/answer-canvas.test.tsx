@@ -112,5 +112,8 @@ describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
     const { container } = renderCanvas({ paneId: "map", state: {} });
     expect(container.querySelector('[data-pane="map"]')).not.toBeNull();
     expect(container.querySelector("h2")?.textContent).toBe("Campus map");
+    const content = container.querySelector('[data-testid="map-area"]')?.parentElement;
+    expect(content?.classList.contains("rounded-b-[inherit]")).toBe(true);
+    expect(content?.classList.contains("overflow-hidden")).toBe(true);
   });
 });

@@ -3,47 +3,110 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { CourseDetailCard } from "@/src/components/course-lookup/course-detail-card";
 import { CourseExplorer } from "@/src/components/course-lookup/course-explorer";
-import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-lookup/course-search";
+import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-search/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import type { PaneState } from "@/src/components/shell/pane-registry";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { Button } from "@/src/components/ui/button";
+import { LoadingStatus, RetryAlert, RetryState } from "@/src/components/ui/feedback";
+import { SelectInput } from "@/src/components/ui/form-controls";
+import { Heading } from "@/src/components/ui/heading";
+import { Skeleton, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
+import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
-import { useRouter } from "next/navigation";
+import { canonicalize } from "@/src/shared/course-code";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-function SessionPicker({ session, onChange }: { session: string; onChange: (s: string) => void }) {
+function SessionPicker({ session, onChange }: { session: string; onChange: (session: string) => void }) {
   return (
     <div className="flex items-center gap-2">
       <label htmlFor="course-session" className="text-muted text-xs font-medium">
         Session
       </label>
-      <select
+      <SelectInput
         id="course-session"
         value={session}
-        onChange={(e) => onChange(e.target.value)}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 h-9 rounded-lg px-2.5 text-xs focus-visible:ring-2 focus-visible:ring-offset-1"
+        onChange={(event) => onChange(event.target.value)}
+        controlSize="compact"
+        width="auto"
       >
-        {SESSIONS.map((s) => (
-          <option key={s} value={s}>
-            {s}
+        {SESSIONS.map((option) => (
+          <option key={option} value={option}>
+            {option}
           </option>
         ))}
-      </select>
+      </SelectInput>
     </div>
   );
 }
 
-export function CourseLookupPane({ state, setState }: { state: PaneState; setState: (s: Partial<PaneState>) => void }) {
+function CourseDetailSkeleton() {
+  return (
+    <SkeletonGroup label="Loading course details" className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="h-5 w-12 rounded-full" />
+        </div>
+        <Skeleton className="h-5 w-80" />
+        <SkeletonText className="py-1" />
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((index) => (
+          <div
+            key={index}
+            className="neu-inset bg-surface-container-low flex min-w-0 flex-col items-center gap-1 rounded-lg px-2 py-2"
+          >
+            <Skeleton className="my-0.5 h-3 w-16" />
+            <Skeleton className="my-1 h-3 w-12" />
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="mx-auto h-3 w-48" />
+      </div>
+      <div className="flex flex-col gap-2">
+        {[0, 1].map((index) => (
+          <div key={index} className="flex flex-col gap-1">
+            <Skeleton className="my-0.5 h-3 w-24" />
+            <Skeleton className="my-1 h-3 w-2/3" />
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="my-1 h-3 w-20" />
+        {[0, 1].map((index) => (
+          <div
+            key={index}
+            className="border-border-subtle bg-surface-container-low flex min-h-11 items-center justify-between gap-3 rounded-lg border px-3"
+          >
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
+      </div>
+    </SkeletonGroup>
+  );
+}
+
+export function CourseLookupPane({
+  state,
+  setState,
+}: {
+  state: PaneState;
+  setState: (state: Partial<PaneState>) => void;
+}) {
   const api = useApi();
-  const { mode } = useChatShell();
-  const router = useRouter();
+  const { mode, setActiveChannel } = useChatShell();
+  const { push: navigate } = useShellNavigation();
   const [code, setCode] = useState(((state.code as string | undefined) ?? "") as string);
   const [session, setSession] = useState<string>((state.session as string | undefined) ?? defaultSession());
-  // Sync when a widget or the map drives the pane to a different course code.
-  // Compares against the last-seen state.code so typing locally never gets
-  // clobbered back to the prop (in tests, setState is mocked and state.code
-  // never advances, so a naive diff would revert the input on every keystroke).
+
   const lastPropCode = useRef(state.code);
   useEffect(() => {
     if (state.code !== lastPropCode.current) {
@@ -59,9 +122,7 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
     }
   }, [state.session]);
 
-  // Stable identity: a fresh arrow each render would re-fire the hook's
-  // debounced lookup effect on every render, an infinite reload loop.
-  const resolveSingle = useCallback((c: string) => api.getCourse(c, session), [api, session]);
+  const resolveSingle = useCallback((courseCode: string) => api.getCourse(courseCode, session), [api, session]);
   const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(code, { resolveSingle });
 
   useEffect(() => {
@@ -72,56 +133,105 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
     if (record) setState({ session });
   }, [record, session, setState]);
 
-  // Tools mode splits the pane into two exclusive views driven by the URL:
-  // /tools/courses renders the browse list; /tools/courses/<code> renders only
-  // that course's details. AI mode keeps the search + detail flow.
   const toolsMode = mode === "tools";
   const propCode = typeof state.code === "string" ? state.code.trim() : "";
   const toolsDetail = toolsMode && propCode !== "";
+  const openFromList = useCallback(
+    (courseCode: string) => navigate(`/tools/courses/${courseCodeToSlug(courseCode)}`),
+    [navigate],
+  );
+  const openPrereqs = useCallback(
+    (courseCode: string) => {
+      if (toolsMode) navigate(`/tools/prereq/${courseCodeToSlug(courseCode)}`);
+      else setActiveChannel("prereq-tree", { root: courseCode, query: courseCode, selections: {} });
+    },
+    [navigate, setActiveChannel, toolsMode],
+  );
 
-  const openFromList = useCallback((c: string) => router.push(`/tools/courses/${courseCodeToSlug(c)}`), [router]);
-
-  if (toolsMode && !toolsDetail) {
-    return (
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-4xl flex-col p-3">
-        <CourseExplorer onSelect={openFromList} />
-      </div>
-    );
-  }
+  if (toolsMode && !toolsDetail) return <CourseExplorer onSelect={openFromList} />;
 
   if (toolsDetail) {
+    const alternatives = list?.candidates ?? [];
     return (
-      <div className="mx-auto flex h-full w-full max-w-3xl flex-col gap-3 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
+      <WorkspacePage
+        composition="single"
+        title="Course lookup"
+        description={`Review ${propCode} catalog details, grades, prerequisites, and sections.`}
+        leading={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="sm:size-11"
             onClick={() => {
               setCode("");
-              router.push("/tools/courses");
+              navigate("/tools/courses");
             }}
-            className="neu-button bg-surface text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 inline-flex min-h-[44px] items-center gap-1 rounded-xl px-3 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-1"
+            aria-label="Back to results"
+            title="Back to results"
           >
-            <Icon name="left" size={14} /> All courses
-          </button>
-          <SessionPicker session={session} onChange={setSession} />
-        </div>
-        {record ? (
-          <div className="min-h-0 flex-1">
-            <CourseDetailCard record={record} session={session} />
+            <Icon name="arrowLeft" size={20} />
+          </Button>
+        }
+        toolbar={
+          <div className="flex items-center gap-3">
+            <SessionPicker session={session} onChange={setSession} />
+            {record && status === "loading" ? (
+              <LoadingStatus aria-label="Updating course details">Updating…</LoadingStatus>
+            ) : null}
           </div>
-        ) : (
-          <div role="status" aria-busy="true" className="bg-surface-container-low flex flex-col gap-2 rounded-lg p-3">
-            <span className="bg-surface-container h-5 w-32 animate-pulse rounded" />
-            <span className="bg-surface-container h-3 w-64 animate-pulse rounded" />
-            <span className="bg-surface-container h-24 w-full animate-pulse rounded" />
+        }
+      >
+        <WorkspaceCanvas padding="md">
+          <div className="mx-auto flex h-full w-full max-w-6xl flex-col">
+            {record ? (
+              <div aria-busy={status === "loading"} className="flex flex-col gap-3">
+                {error ? (
+                  <RetryAlert onRetry={() => lookup(code)}>
+                    Couldn't refresh course details. Showing the previous record.
+                  </RetryAlert>
+                ) : null}
+                <CourseDetailCard record={record} session={session} onOpenPrereqs={openPrereqs} />
+              </div>
+            ) : status === "loading" ? (
+              <CourseDetailSkeleton />
+            ) : error ? (
+              <RetryState
+                title="Course unavailable"
+                message={`${propCode} could not be loaded from the catalog.`}
+                onRetry={() => lookup(code)}
+                className="m-auto"
+              />
+            ) : (
+              <div className="m-auto flex max-w-md flex-col items-center gap-3 text-center">
+                <div>
+                  <Heading as="h2" size="section">
+                    Course not found
+                  </Heading>
+                  <p className="text-on-surface-variant mt-1 text-sm">
+                    {rejected
+                      ? "Okanagan course codes are not in this catalog."
+                      : `${propCode} is not available in this session.`}
+                  </p>
+                </div>
+                {alternatives.length > 0 ? (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {alternatives.slice(0, 4).map((candidate) => (
+                      <Button key={candidate.code} size="compact" onClick={() => openFromList(candidate.code)}>
+                        {candidate.code}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </WorkspaceCanvas>
+      </WorkspacePage>
     );
   }
 
   return (
-    <div className="flex h-full flex-col gap-3 p-3">
+    <div data-course-lookup-embedded className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-3">
       <SessionPicker session={session} onChange={setSession} />
       <CourseSearchField
         value={code}
@@ -132,15 +242,26 @@ export function CourseLookupPane({ state, setState }: { state: PaneState; setSta
         list={list}
         error={error}
         rejected={rejected}
+        record={record}
+        loadingFallback={
+          canonicalize(code)?.kind === "code" ? (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <CourseDetailSkeleton />
+            </div>
+          ) : undefined
+        }
       />
-      {status === "loading" ? (
-        <div role="status" aria-busy="true" className="bg-surface-container-low flex flex-col gap-2 rounded-lg p-3">
-          <span className="bg-surface-container h-5 w-32 animate-pulse rounded" />
-          <span className="bg-surface-container h-3 w-64 animate-pulse rounded" />
-          <span className="bg-surface-container h-24 w-full animate-pulse rounded" />
-        </div>
-      ) : record ? (
-        <CourseDetailCard record={record} session={session} />
+      {record ? (
+        <section
+          data-course-detail-scroll
+          aria-label="Course details"
+          aria-busy={status === "loading"}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need to scroll long course records.
+          tabIndex={0}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
+          <CourseDetailCard record={record} session={session} onOpenPrereqs={openPrereqs} />
+        </section>
       ) : null}
     </div>
   );

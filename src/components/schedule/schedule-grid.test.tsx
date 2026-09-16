@@ -8,6 +8,29 @@ import { ScheduleGrid } from "./schedule-grid";
 afterEach(cleanup);
 
 describe("ScheduleGrid", () => {
+  it("uses a decorative loading overlay without inventing meetings or showing empty guidance", () => {
+    const view = render(
+      <ScheduleGrid
+        model={buildScheduleGrid([])}
+        activeDay="Mon"
+        onActiveDayChange={vi.fn()}
+        onBlockActivate={vi.fn()}
+        loading="Loading saved schedule"
+        empty={{ title: "Empty week", description: "Add courses." }}
+      />,
+    );
+    expect(
+      view.getByRole("status", { name: "Loading saved schedule" }).querySelectorAll("[data-skeleton]"),
+    ).toHaveLength(3);
+    expect(view.container.querySelectorAll("[data-schedule-block]")).toHaveLength(0);
+    expect(view.getAllByText("Mon").length).toBeGreaterThan(0);
+    expect(view.getByText("10 PM")).toBeTruthy();
+    expect(view.queryByText("Empty week")).toBeNull();
+    const scroller = view.getByRole("region", { name: "Timetable scroll area" });
+    expect(scroller.getAttribute("tabindex")).toBe("0");
+    expect(scroller.className).toContain("focus-visible:ring-2");
+  });
+
   it("keeps the week visible behind an actionable empty state", () => {
     const onAction = vi.fn();
     const onActiveDayChange = vi.fn();
@@ -27,6 +50,41 @@ describe("ScheduleGrid", () => {
     expect(onActiveDayChange).toHaveBeenCalledWith("Tue");
     fireEvent.click(view.getByRole("button", { name: "Add course" }));
     expect(onAction).toHaveBeenCalledOnce();
+  });
+
+  it("reveals the selected day without remounting columns or changing scroll and block geometry", () => {
+    const model = buildScheduleGrid([
+      {
+        id: "course",
+        courseKey: "CPSC 110",
+        code: "CPSC 110",
+        title: "Programming",
+        days: ["Mon", "Tue"],
+        startMin: 540,
+        endMin: 600,
+      },
+    ]);
+    const props = { model, onActiveDayChange: vi.fn(), onBlockActivate: vi.fn() };
+    const view = render(<ScheduleGrid {...props} activeDay="Mon" />);
+    const days = [...view.container.querySelectorAll("[data-schedule-day]")];
+    const blocks = [...view.container.querySelectorAll<HTMLElement>("[data-schedule-block]")];
+    const geometry = blocks.map((block) => block.style.cssText);
+    const scroller = view.getByRole("region", { name: "Timetable scroll area" });
+    scroller.scrollTop = 180;
+
+    view.rerender(<ScheduleGrid {...props} activeDay="Tue" />);
+    const nextDays = [...view.container.querySelectorAll("[data-schedule-day]")];
+    nextDays.forEach((day, index) => {
+      expect(day).toBe(days[index]);
+    });
+    const nextBlocks = [...view.container.querySelectorAll<HTMLElement>("[data-schedule-block]")];
+    nextBlocks.forEach((block, index) => {
+      expect(block).toBe(blocks[index]);
+    });
+    expect(nextBlocks.map((block) => block.style.cssText)).toEqual(geometry);
+    expect(scroller.scrollTop).toBe(180);
+    expect(blocks[0].parentElement?.className).not.toContain("ui-content-enter");
+    expect(blocks[1].parentElement?.className).toContain("ui-content-enter");
   });
 
   it("activates one logical section from any rendered day", () => {
@@ -178,6 +236,9 @@ describe("ScheduleGrid", () => {
     const tallFooter = view.getByText("tall-footer avatar");
     expect(tallFooter).toBeTruthy();
     expect(tallFooter.parentElement?.className).toContain("justify-end");
-    expect(view.container.querySelector("[data-schedule-grid-frame]")?.className).toContain("rounded-[0.625rem]");
+    expect(view.container.querySelector("[data-schedule-grid-frame]")?.className).toContain("rounded-[0.875rem]");
+    expect(view.getByRole("region", { name: "Timetable scroll area" }).className).toContain("rounded-xl");
+    expect(view.getByRole("tablist", { name: "Day" }).className).toContain("rounded-xl");
+    expect(view.getByRole("tab", { name: "Mon" }).className).toContain("rounded-lg");
   });
 });

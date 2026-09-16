@@ -112,9 +112,9 @@ A self-contained subset of donor logic eligible for direct reuse with light adap
 5. WHEN the Prerequisite String contains a tail clause of the form `. X is recommended` / `. X, Y are recommended` / `. X strongly recommended` (case-insensitive), the Prerequisite AST Parser SHALL split that tail into a Soft wrapper around its own parsed sub-expression, leaving the hard prerequisites as the primary expression.
 6. WHEN the Prerequisite String names codes inside an unbalanced parenthesis (e.g. `KIN 320 (KIN 351 strongly recommended)`), the Prerequisite AST Parser SHALL NOT split that tail into a Soft wrapper (the "recommended" sits mid-clause).
 
-### Requirement 6: Prerequisite AST Pretty-Printer and Round-Trip Stability
+### Requirement 6: Prerequisite AST Pretty-Printer
 
-**User Story:** As a developer, I want a Pretty-Printer for the Prerequisite AST and a round-trip property tying the parser and printer together, so that dropdown and radio labels render predictable human-readable text and parser regressions surface as test failures.
+**User Story:** As a developer, I want the Pretty-Printer to preserve course-code and clause text in display labels, so that dropdown and radio options show predictable human-readable requirements.
 
 #### Acceptance Criteria
 
@@ -123,7 +123,7 @@ A self-contained subset of donor logic eligible for direct reuse with light adap
 3. WHEN an `And` node is the input, the Prerequisite AST Pretty-Printer SHALL join its children's labels with ` + `; WHEN an `Or` node is the input, the Prerequisite AST Pretty-Printer SHALL join its children's labels with ` / `.
 4. WHEN a `Soft` node wraps an inner node, the Prerequisite AST Pretty-Printer SHALL flatten into the inner node's label (the Soft wrapper affects edge styling only, not the label text).
 5. WHEN a `Literal` or `Flattened` node carries empty text, the Prerequisite AST Pretty-Printer SHALL emit a sentinel placeholder (e.g. `(empty)`) rather than the empty string.
-6. FOR ALL Prerequisite AST nodes `expr` produced by the Parser, calling `parsePrereq(displayExpr(expr))` SHALL produce an AST whose contained course codes are identical to those in `expr` (round-trip stability on the code-bearing subset).
+6. FOR ALL Prerequisite AST nodes `expr`, the Pretty-Printer SHALL retain the canonical text of each `Code` reached through `And`, `Or`, or `Soft` branches. `Literal` and `Flattened` nodes SHALL retain their text labels or the REQ-6.5 placeholder; `Flattened.subExpr` SHALL NOT replace that text. Display labels are not a lossless serialization format and need not round-trip through the Parser.
 
 ### Requirement 7: Prerequisite Tree BFS Expansion — Depth, Cycle Safety, Corequisite Column
 
@@ -302,7 +302,7 @@ A formal correctness-prework pass accompanies the design document. The summaries
 | REQ-3 (ambiguous input) | Property + example | Subject-prefix scan, level filter, "did you mean" — varies meaningfully with input |
 | REQ-4 (course ↔ tree nav) | Smoke + example | Wiring check; one example per nav direction |
 | REQ-5 (parser null-safety) | Property + edge case | Null/empty/whitespace generator; unknown-token generator; never-throws property |
-| REQ-6 (pretty-printer + round-trip) | Property | FOR ALL Prerequisite AST `expr`: code-bearing set of `parsePrereq(displayExpr(expr))` equals that of `expr` |
+| REQ-6 (pretty-printer) | Property | Display labels retain canonical code text through And/Or/Soft branches and preserve Literal/Flattened text |
 | REQ-7 (BFS expansion) | Property + example | Cycle-safety property (visited-set invariant); depth-cap property; coreq-column rendering as example |
 | REQ-8 (selection stability) | Property + example | Sibling-selection-isolation property; root-switch-survives property |
 | REQ-9 (disjunction + node variants) | Example + edge case | Render + interaction tests; "menu inherits zoom" is a layout invariant |

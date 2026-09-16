@@ -12,15 +12,25 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import type { CanvasView, PaneId, PaneState } from "@/src/components/shell/pane-registry";
 import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { useShellMode } from "@/src/components/shell/use-shell-mode";
 import type { SessionSummary, ToolCall } from "@/src/lib/api-types";
-import { courseSlugToCode, parseToolSlug } from "@/src/lib/pane-route";
+import { parseToolPath } from "@/src/lib/pane-route";
 import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import { LAST_CHAT_PATH_KEY, type ShellMode } from "@/src/lib/shell-mode";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { MapHighlight } from "@/src/lib/walking";
-import { usePathname, useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 export type { CanvasView, MapHighlight };
 export type { ShellMode };
@@ -52,7 +62,7 @@ export interface ChatShellState {
   setRightPaneCollapsed: (c: boolean) => void;
 
   activeChannel: ActiveChannel;
-  /** Sets the active pane (`null` collapses to the map rail). */
+  /** Opens an explicitly selected pane, or clears the canvas for null. */
   setActiveChannel: (id: PaneId | null, state?: PaneState) => void;
 
   highlight: MapHighlight | null;
@@ -116,37 +126,30 @@ export function useChatShellOptional(): ChatShellState | null {
   return useContext(ChatShellContext);
 }
 
-/** `useRouter` that tolerates hosts without a mounted app router (tests render
- *  the provider standalone). The hook is still called unconditionally — only
- *  Next's mount invariant is caught. */
-function useRouterSafe(): ReturnType<typeof useRouter> | null {
-  try {
-    // biome-ignore lint/correctness/useHookAtTopLevel: called unconditionally on every render — the try only catches Next's router-mount invariant.
-    return useRouter();
-  } catch {
-    return null;
-  }
-}
-
 export function ChatShellProvider({ initialMode = "ai", children }: { initialMode?: ShellMode; children: ReactNode }) {
   const api = useApi();
   const auth = useAppAuth();
-  const router = useRouterSafe();
+  const listSessionsRef = useRef(api.listSessions);
+  listSessionsRef.current = api.listSessions;
+  const { committedPathname, displayPathname, push: navigate } = useShellNavigation();
 
-  const [workspaceView, setWorkspaceViewState] = useState<CanvasView | null>(null);
+  const [workspaceViewState, setWorkspaceViewState] = useState<CanvasView | null>(null);
+  const routedActivation = useMemo(() => parseToolPath(displayPathname), [displayPathname]);
+  const committedActivation = useMemo(() => parseToolPath(committedPathname), [committedPathname]);
+  const workspaceView = useMemo<CanvasView | null>(() => {
+    if (!routedActivation) return workspaceViewState;
+    const currentState =
+      workspaceViewState?.paneId === routedActivation.paneId ? workspaceViewState.state : ({} as PaneState);
+    return {
+      paneId: routedActivation.paneId,
+      state: resolveActivationState(routedActivation.paneId, { ...currentState, ...routedActivation.state }),
+    };
+  }, [routedActivation, workspaceViewState]);
   const [activeCallKey, setActiveCallKey] = useState<string | null>(null);
-  // Latest-value ref so setActiveChannel reads the current view without depending
-  // on workspaceView in its callback deps — keeps the callback identity-stable
-  // (same pattern as authRef in ApiProvider). ChatPanel's session-load effect lists
-  // setActiveChannel in its deps; if it churned on every open, the effect would
-  // re-run and reset workspaceView to null, closing the pane the instant a user
-  // opened it.
-  const workspaceViewRef = useRef<CanvasView | null>(null);
-  workspaceViewRef.current = workspaceView;
   const [focusNonce, setFocusNonce] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newChatNonce, setNewChatNonce] = useState(0);
-  const [mode, setMode] = useShellMode(initialMode);
+  const [mode, setMode] = useShellMode(initialMode, { committedPathname, displayPathname });
   const [answerSheetOpen, setAnswerSheetOpen] = useState(false);
   // Collapses the wide AI-mode right pane: chat fills the row when true, and a
   // topbar button re-expands. Auto-expanded below when a tool activates. The
@@ -161,8 +164,9 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   // while this is true; an explicit widget click-toggle and session start clear it.
   const [userDismissedPane, setUserDismissedPane] = useState(false);
 
+  const canLoadSessions = auth.status === "signedIn" && !auth.isGuest;
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsLoading, setSessionsLoading] = useState(canLoadSessions);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const loadSeq = useRef(0);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,8 +183,15 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
   const doRefresh = useCallback(() => {
     const seq = ++loadSeq.current;
     setSessionsError(null);
-    api
-      .listSessions()
+    if (!canLoadSessions) {
+      setSessions([]);
+      setSessionsLoading(false);
+      return;
+    }
+
+    setSessionsLoading(true);
+    listSessionsRef
+      .current()
       .then((list) => {
         if (loadSeq.current !== seq || !mountedRef.current) return;
         setSessions(list);
@@ -191,17 +202,22 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
         setSessionsLoading(false);
         setSessionsError(error instanceof Error ? error.message : "Couldn't load sessions");
       });
-  }, [api]);
+  }, [canLoadSessions]);
 
   const refreshSessions = useCallback(() => {
+    if (!canLoadSessions) return;
     // Debounce: at most one refresh per 2s to avoid spamming during rapid exchanges
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(doRefresh, 2000);
-  }, [doRefresh]);
+  }, [canLoadSessions, doRefresh]);
 
   useEffect(() => {
-    if (auth.status === "signedIn") doRefresh();
-  }, [auth.status, doRefresh]);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+    doRefresh();
+  }, [doRefresh]);
 
   // A collapsed pane would silently swallow tool activations (workspaceView set),
   // so expand the right pane whenever a tool becomes active — unless the user
@@ -220,6 +236,20 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
     if (view === null) setActiveCallKey(null);
   }, []);
 
+  useLayoutEffect(() => {
+    if (!committedActivation) return;
+    setWorkspaceViewState((current) => {
+      const currentState = current?.paneId === committedActivation.paneId ? current.state : {};
+      const state = resolveActivationState(committedActivation.paneId, {
+        ...currentState,
+        ...committedActivation.state,
+      });
+      cachePaneState(committedActivation.paneId, state);
+      return { paneId: committedActivation.paneId, state };
+    });
+    setActiveCallKey(null);
+  }, [committedActivation]);
+
   const activateCanvasView = useCallback(
     (call: ToolCall, callKey?: string) => {
       const view = toolCallToCanvasView(call);
@@ -234,7 +264,7 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
         if (!userDismissedPaneRef.current) setAnswerSheetOpen(true);
       }
     },
-    [setWorkspaceView],
+    [setWorkspaceView, setRightPaneCollapsed],
   );
 
   const setActiveChannel = useCallback(
@@ -243,10 +273,13 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
         setWorkspaceView(null);
         return;
       }
+      setUserDismissedPane(false);
+      setAnswerSheetOpen(true);
+      setRightPaneCollapsed(false);
       setWorkspaceView({ paneId: id, state: resolveActivationState(id, state) });
       setActiveCallKey(null);
     },
-    [setWorkspaceView],
+    [setWorkspaceView, setRightPaneCollapsed],
   );
 
   const addOptimisticSession = useCallback((sessionId: string, title: string) => {
@@ -297,9 +330,9 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       } catch {
         /* sessionStorage unavailable */
       }
-      router?.push(target);
+      navigate(target);
     },
-    [setMode, router],
+    [navigate, setMode],
   );
 
   const activeChannel = useMemo<ActiveChannel>(
@@ -373,34 +406,5 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
     ],
   );
 
-  return (
-    <ChatShellContext.Provider value={value}>
-      <ToolRouteActivator />
-      {children}
-    </ChatShellContext.Provider>
-  );
-}
-
-/** When the URL is `/tools/<slug>` (or `/tools/courses/<code>`), push the
- * matching pane state onto the workspace canvas. Mounted in ChatShellProvider
- * so it lives wherever the shell is rendered and runs the URL effect
- * independent of AppShell's chat-vs-tool layout decision. */
-function ToolRouteActivator() {
-  const pathname = usePathname();
-  const { setActiveChannel } = useChatShell();
-  useEffect(() => {
-    if (!pathname?.startsWith("/tools/")) return;
-    const segments = pathname.slice("/tools/".length).split("/");
-    if (segments[0] === "courses" && segments[1]) {
-      const code = courseSlugToCode(segments[1]);
-      if (code) {
-        setActiveChannel("course-lookup", { code });
-        return;
-      }
-    }
-    const paneId = parseToolSlug(segments[0]);
-    // No explicit overrides: the pane comes back with its cached state.
-    if (paneId) setActiveChannel(paneId);
-  }, [pathname, setActiveChannel]);
-  return null;
+  return <ChatShellContext.Provider value={value}>{children}</ChatShellContext.Provider>;
 }

@@ -1,6 +1,10 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { Heading } from "@/src/components/ui/heading";
+import { InfoChip } from "@/src/components/ui/info-chip";
+import { Skeleton, SkeletonFields, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
 import { normalizeDays, sectionGroup, type SectionComponent } from "@/src/lib/schedule";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
@@ -26,6 +30,8 @@ interface PlannerCourseModuleProps {
   code: string;
   title: string;
   doc?: CourseDoc;
+  catalogError?: boolean;
+  onRetry?: () => void;
   term: string;
   entries: ScheduleEntry[];
   conflictingIds: Set<string>;
@@ -74,8 +80,10 @@ function PlannerSectionRow({
   inputRef,
   idPrefix,
   onSelect,
+  catalogStatus,
 }: {
   group: string;
+  catalogStatus: "loading" | "error" | "ready";
   options: CourseSection[];
   current?: ScheduleEntry;
   conflict: boolean;
@@ -87,7 +95,7 @@ function PlannerSectionRow({
   const liveCurrent = options.find((section) => section.section === current?.section);
   const summary = liveCurrent ?? current?.snapshot;
   const fieldId = `${idPrefix}-${group.replace(/[^a-z0-9]+/gi, "-")}`;
-  const unavailable = !!current && !liveCurrent;
+  const unavailable = catalogStatus === "ready" && !!current && !liveCurrent;
   const status = current?.snapshot.status;
   const warning = conflict
     ? conflictLabels.length > 0
@@ -102,32 +110,42 @@ function PlannerSectionRow({
   return (
     <div className="border-border-subtle border-t px-3 py-2.5">
       <div className="flex items-center gap-2">
-        <label className="text-on-surface min-w-0 flex-1 text-xs font-medium" htmlFor={fieldId}>
+        <label
+          className="text-on-surface min-w-0 flex-1 text-xs font-medium"
+          htmlFor={catalogStatus === "loading" ? undefined : fieldId}
+        >
           {sectionGroupLabel(group)}
         </label>
-        <select
-          ref={inputRef}
-          id={fieldId}
-          value={current?.section ?? ""}
-          aria-describedby={warning ? `${fieldId}-warning` : undefined}
-          onChange={(event) => onSelect(options.find((section) => section.section === event.target.value) ?? null)}
-          className={`border-border bg-surface text-on-surface focus-visible:ring-primary/40 min-h-9 max-w-[11rem] min-w-0 rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-1 ${
-            conflict ? "ring-error/60 ring-2" : ""
-          }`}
-        >
-          <option value="">Choose section</option>
-          {unavailable ? <option value={current.section}>{current.section}</option> : null}
-          {options.map((section) => (
-            <option key={section.section} value={section.section}>
-              {section.section}
-            </option>
-          ))}
-        </select>
+        {catalogStatus === "loading" ? (
+          <SkeletonGroup label={`Loading ${sectionGroupLabel(group).toLowerCase()} section options`}>
+            <Skeleton className="h-11 w-28 rounded-md sm:h-9" />
+          </SkeletonGroup>
+        ) : (
+          <select
+            disabled={catalogStatus !== "ready"}
+            ref={inputRef}
+            id={fieldId}
+            value={current?.section ?? ""}
+            aria-describedby={warning ? `${fieldId}-warning` : undefined}
+            onChange={(event) => onSelect(options.find((section) => section.section === event.target.value) ?? null)}
+            className={`border-border bg-surface text-on-surface focus-visible:ring-primary/40 min-h-11 max-w-[11rem] min-w-0 rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-1 sm:min-h-9 ${
+              conflict ? "ring-error/60 ring-2" : ""
+            }`}
+          >
+            <option value="">Choose section</option>
+            {current && !liveCurrent ? <option value={current.section}>{current.section}</option> : null}
+            {options.map((section) => (
+              <option key={section.section} value={section.section}>
+                {section.section}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       {summary ? (
         <div className="text-muted mt-1 text-xs leading-4">
           <p>{sectionMeetingLabel(summary)}</p>
-          {current?.snapshot.instructor ? <p className="mt-0.5">{current.snapshot.instructor}</p> : null}
+          {current?.snapshot.instructor ? <p className="mt-1">{current.snapshot.instructor}</p> : null}
         </div>
       ) : (
         <p className="text-muted mt-1 text-xs leading-4">Not selected</p>
@@ -146,6 +164,8 @@ export function PlannerCourseModule({
   code,
   title,
   doc,
+  catalogError = false,
+  onRetry,
   term,
   entries,
   conflictingIds,
@@ -186,29 +206,32 @@ export function PlannerCourseModule({
       ref={rootRef}
       tabIndex={-1}
       data-planner-course={code}
-      className="border-border bg-surface overflow-hidden rounded-lg border"
+      className="border-border bg-surface rounded-lg border"
     >
       <header className="flex min-h-11 items-start gap-2 px-3 py-2.5">
         <span className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ backgroundColor: courseColor(code) }} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-on-surface text-body-sm truncate leading-5 font-medium">{code}</h3>
+            <Heading as="h3" size="subsection" className="truncate">
+              {code}
+            </Heading>
             {hasCourseConflict ? (
-              <span className="bg-error-container/60 text-on-error-container shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium">
+              <InfoChip tone="error" className="shrink-0">
                 Conflict
-              </span>
+              </InfoChip>
             ) : null}
           </div>
           <p className="text-muted truncate text-xs leading-4">{title}</p>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="denseIcon"
           onClick={onRemove}
           aria-label={`Remove ${code} from ${term}`}
-          className="text-muted hover:bg-error/10 hover:text-error focus-visible:ring-primary/40 grid size-9 shrink-0 place-items-center rounded-lg focus-visible:ring-2 focus-visible:ring-offset-1"
+          className="enabled:hover:bg-error/10 enabled:hover:text-error"
         >
           <Icon name="trash" className="size-4" />
-        </button>
+        </Button>
       </header>
 
       {known.map((group) => {
@@ -216,6 +239,7 @@ export function PlannerCourseModule({
         return (
           <PlannerSectionRow
             key={group}
+            catalogStatus={doc ? "ready" : catalogError ? "error" : "loading"}
             group={group}
             options={groups.get(group) ?? []}
             current={current}
@@ -235,9 +259,9 @@ export function PlannerCourseModule({
         <details
           open={additionalOpen || forceAdditionalOpen}
           onToggle={(event) => setAdditionalOpen(event.currentTarget.open)}
-          className="border-border-subtle border-t"
+          className="group/additional border-border-subtle border-t"
         >
-          <summary className="text-on-surface hover:bg-surface-container focus-visible:ring-primary/40 flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-xs font-medium focus-visible:ring-2">
+          <summary className="text-on-surface hover:bg-surface-container focus-visible:ring-primary/40 flex min-h-11 list-none items-center justify-between gap-2 rounded-b-[calc(var(--radius-lg)-1px)] px-3 text-xs font-medium group-open/additional:rounded-b-none focus-visible:ring-2">
             <span>Additional component types</span>
             <span className="text-muted font-normal">
               {unselectedAdditional > 0 ? `${unselectedAdditional} not selected automatically` : "Configured"}
@@ -248,6 +272,7 @@ export function PlannerCourseModule({
             return (
               <PlannerSectionRow
                 key={group}
+                catalogStatus={doc ? "ready" : catalogError ? "error" : "loading"}
                 group={group}
                 options={groups.get(group) ?? []}
                 current={current}
@@ -265,10 +290,19 @@ export function PlannerCourseModule({
         </details>
       ) : null}
 
-      {!doc ? (
-        <p className="border-border-subtle text-muted border-t px-3 py-2.5 text-xs leading-4">
-          Loading section options…
-        </p>
+      {!doc && catalogError ? (
+        <div className="border-border-subtle border-t px-3 py-2.5">
+          <p className="text-muted text-xs leading-4">Section options unavailable. Saved meetings remain visible.</p>
+          {onRetry ? (
+            <Button size="compact" onClick={onRetry} className="mt-2">
+              Retry section options
+            </Button>
+          ) : null}
+        </div>
+      ) : !doc && groups.size === 0 ? (
+        <div className="border-border-subtle border-t px-3 py-2.5">
+          <SkeletonFields label={`Loading ${code} section options`} fields={1} />
+        </div>
       ) : null}
       {doc && groups.size === 0 ? (
         <p className="border-border-subtle text-tertiary border-t px-3 py-2.5 text-xs leading-4">
@@ -276,5 +310,28 @@ export function PlannerCourseModule({
         </p>
       ) : null}
     </article>
+  );
+}
+
+export function PlannerCoursesSkeleton() {
+  return (
+    <SkeletonGroup label="Loading saved courses" className="flex flex-col gap-2">
+      {[0, 1].map((course) => (
+        <div key={course} className="border-border bg-surface overflow-hidden rounded-lg border">
+          <div className="flex min-h-11 items-start gap-2 px-3 py-2.5">
+            <Skeleton className="mt-1.5 size-2.5 rounded-full" />
+            <SkeletonText lines={2} className="flex-1 py-1" />
+            <Skeleton className="size-11 rounded-lg sm:size-8" />
+          </div>
+          <div className="border-border-subtle border-t px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-11 w-28 rounded-md sm:h-9" />
+            </div>
+            <Skeleton className="mt-1 h-4 w-2/3" />
+          </div>
+        </div>
+      ))}
+    </SkeletonGroup>
   );
 }

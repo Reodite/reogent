@@ -1,0 +1,847 @@
+"use client";
+
+import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
+import { SearchInput, TextInput } from "@/src/components/ui/form-controls";
+import { Heading } from "@/src/components/ui/heading";
+import { InlineLink } from "@/src/components/ui/inline-action";
+import { Skeleton, SkeletonGroup, SkeletonList, SkeletonText } from "@/src/components/ui/skeleton";
+import { WorkspacePanel } from "@/src/components/ui/workspace";
+import type { BuildingDetails, BuildingSummary, OfficialBuildingPhoto, RouteResponse } from "@/src/lib/api-types";
+import { searchBuildings } from "@/src/lib/building-catalog";
+import { formatMeters, formatMinutes } from "@/src/lib/format";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
+
+export type BuildingDetailsState =
+  { status: "idle" } | { status: "loading" } | { status: "ready"; data: BuildingDetails } | { status: "error" };
+
+export type BuildingRouteState =
+  | { status: "idle" }
+  | { status: "loading"; from: BuildingSummary; to: BuildingSummary }
+  | { status: "network" | "estimate"; from: BuildingSummary; to: BuildingSummary; route: RouteResponse }
+  | { status: "error"; from: BuildingSummary; to: BuildingSummary };
+
+export type RouteEndpoint = "origin" | "destination";
+
+export interface BuildingRailProps {
+  mode: "discover" | "details" | "directions";
+  query: string;
+  routeQuery: string;
+  routeOrigin: BuildingSummary | null;
+  routeField: RouteEndpoint | null;
+  endpointError: string | null;
+  catalog: BuildingSummary[];
+  popular: BuildingSummary[];
+  favorites: ReadonlySet<string>;
+  favoriteStatus: "idle" | "loading" | "saving" | "error";
+  authenticated: boolean;
+  selected: BuildingSummary | null;
+  details: BuildingDetailsState;
+  route: BuildingRouteState;
+  shareStatus: "idle" | "shared" | "copied" | "copy" | "error";
+  selectionError: string | null;
+  onQueryChange: (query: string) => void;
+  onRouteQueryChange: (query: string) => void;
+  onRouteFieldChange: (field: RouteEndpoint | null) => void;
+  onRouteEndpointSelect: (field: RouteEndpoint, building: BuildingSummary) => void;
+  onSelect: (building: BuildingSummary) => void;
+  onBack: () => void;
+  onDirections: () => void;
+  onRetryRoute: () => void;
+  onRetryDetails: () => void;
+  onToggleFavorite: (code: string) => void;
+  onShare: () => void;
+  onCopyLink: () => void;
+  onOpenGoogleMaps: () => void;
+}
+
+function formatDate(value: string | null): string | null {
+  if (!value) return null;
+  if (/^\d{8}$/.test(value)) return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleDateString("en-CA", { dateStyle: "medium" }) : value;
+}
+
+function Fact({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 py-1.5 text-sm">
+      <dt className="text-on-surface-variant">{label}</dt>
+      <dd className="text-on-surface max-w-40 text-right">{value}</dd>
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="border-border-subtle border-t pt-3 first:border-t-0 first:pt-0">
+      <Heading as="h3" size="subsection" className="mb-2">
+        {title}
+      </Heading>
+      {children}
+    </section>
+  );
+}
+
+function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <InlineLink
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="min-h-11 shrink-0 gap-1 text-sm font-medium sm:min-h-9"
+    >
+      {children}
+      <Icon name="externalLink" size={14} />
+    </InlineLink>
+  );
+}
+
+function BuildingDetailItem({
+  title,
+  summary,
+  detail,
+  action,
+  actionPlacement = "trailing",
+  truncateTitle = false,
+}: {
+  title: string;
+  summary: ReactNode;
+  detail?: ReactNode;
+  action?: ReactNode;
+  actionPlacement?: "trailing" | "below";
+  truncateTitle?: boolean;
+}) {
+  return (
+    <li className="bg-surface-container-low rounded-lg p-3">
+      <div className={actionPlacement === "trailing" ? "flex items-start justify-between gap-2" : undefined}>
+        <div className="min-w-0">
+          <p className={`text-on-surface text-sm font-medium ${truncateTitle ? "truncate" : "wrap-anywhere"}`}>
+            {title}
+          </p>
+          <p className="text-on-surface-variant mt-1 text-xs">{summary}</p>
+          {detail ? <p className="text-muted mt-1 text-xs">{detail}</p> : null}
+        </div>
+        {action}
+      </div>
+    </li>
+  );
+}
+
+function OfficialPhotoCard({ photo }: { photo: OfficialBuildingPhoto }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <figure className="bg-surface-container min-w-full snap-start overflow-hidden rounded-lg">
+      {!failed ? (
+        // biome-ignore lint/performance/noImgElement: the API returns validated official image endpoints.
+        <img
+          src={photo.url}
+          alt={photo.alt}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          className="h-36 w-full object-cover"
+        />
+      ) : (
+        <div data-photo-fallback className="text-muted flex h-36 items-center justify-center" aria-hidden="true">
+          <Icon name="camera" size={24} />
+        </div>
+      )}
+      <figcaption className="px-3 py-2 text-xs">
+        {failed ? <span className="text-muted mr-2">Photo unavailable.</span> : null}
+        <ExternalLink href={photo.sourceUrl}>{photo.sourceName}</ExternalLink>
+      </figcaption>
+    </figure>
+  );
+}
+
+const BUILDING_DETAIL_SOURCE_KEYS = ["building", "addresses", "rooms", "pois"] as const;
+type BuildingDetailSourceKey = (typeof BUILDING_DETAIL_SOURCE_KEYS)[number];
+
+function renderedBuildingDetailSources(details: BuildingDetails) {
+  const keys: BuildingDetailSourceKey[] = ["building"];
+  if (details.addresses.length > 0) keys.push("addresses");
+  if (details.rooms.length > 0 || details.photos.length > 0) keys.push("rooms");
+  if (details.pois.length > 0) keys.push("pois");
+  return keys.map((key) => [key, details.sourceStatus[key]] as const);
+}
+
+function unavailableBuildingDetailSources(details: BuildingDetails) {
+  return BUILDING_DETAIL_SOURCE_KEYS.map((key) => details.sourceStatus[key]).filter(
+    (source) => source.state === "unavailable",
+  );
+}
+
+export function BuildingDetailContent({ details }: { details: BuildingDetails }) {
+  const { building } = details;
+  const sources = renderedBuildingDetailSources(details);
+  const unavailable = unavailableBuildingDetailSources(details);
+
+  return (
+    <div className="ui-content-enter flex flex-col gap-4">
+      {details.photos.length > 0 ? (
+        <section aria-label="Building photos" className="flex snap-x [scrollbar-gutter:stable] gap-2 overflow-x-auto">
+          {details.photos.map((photo) => (
+            <OfficialPhotoCard key={photo.sourceUrl} photo={photo} />
+          ))}
+        </section>
+      ) : null}
+
+      {(building.shortName || details.addresses.length > 0 || building.postalCode) && (
+        <DetailSection title="Address">
+          <dl className="divide-border-subtle divide-y">
+            {building.shortName ? <Fact label="Short name" value={building.shortName} /> : null}
+            {details.addresses.map((address) => (
+              <Fact
+                key={`${address.fullAddress}-${address.siteName ?? ""}-${address.pointType ?? ""}-${address.primary}`}
+                label={address.primary ? "Primary address" : address.mailing ? "Mailing address" : "Address"}
+                value={address.fullAddress}
+              />
+            ))}
+            {building.postalCode ? <Fact label="Postal code" value={building.postalCode} /> : null}
+          </dl>
+        </DetailSection>
+      )}
+
+      {details.rooms.length > 0 ? (
+        <DetailSection title={`Rooms & spaces (${details.rooms.length})`}>
+          <ul className="flex flex-col gap-2">
+            {details.rooms.map((room) => (
+              <BuildingDetailItem
+                key={`${room.name}-${room.roomNumber ?? ""}`}
+                title={room.name}
+                truncateTitle
+                summary={[
+                  room.spaceType,
+                  room.floor != null ? `Floor ${room.floor}` : null,
+                  room.capacity != null ? `${room.capacity} seats` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                detail={[room.layout, room.furniture].filter(Boolean).join(" · ")}
+                action={room.link ? <ExternalLink href={room.link}>Details</ExternalLink> : null}
+              />
+            ))}
+          </ul>
+        </DetailSection>
+      ) : null}
+
+      {details.pois.length > 0 ? (
+        <DetailSection title={`Food & services (${details.pois.length})`}>
+          <ul className="flex flex-col gap-2">
+            {details.pois.map((poi) => (
+              <BuildingDetailItem
+                key={poi.name}
+                title={poi.name}
+                summary={[poi.service_type?.replace(/_/g, " "), poi.hours, poi.contact].filter(Boolean).join(" · ")}
+                detail={poi.association === "official-address" ? "Official address match" : "Located inside footprint"}
+                action={poi.url ? <ExternalLink href={poi.url}>Website</ExternalLink> : null}
+                actionPlacement="below"
+              />
+            ))}
+          </ul>
+        </DetailSection>
+      ) : null}
+
+      <DetailSection title="Sources">
+        <ul className="flex flex-col gap-1.5">
+          {sources.map(([key, source]) => (
+            <li key={key} className="flex items-start justify-between gap-2 text-xs">
+              <span className="text-on-surface-variant">{source.provenance.sourceName}</span>
+              <span className={source.state === "ready" ? "text-muted" : "text-error"}>
+                {source.state === "ready"
+                  ? formatDate(source.provenance.refreshedAt) || "Date unavailable"
+                  : "Unavailable"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </DetailSection>
+
+      {unavailable.length > 0 ? (
+        <p className="text-error text-xs">Some source sections are unavailable. Retry details to check again.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function BuildingRow({
+  building,
+  saved,
+  id,
+  selected,
+  tabIndex,
+  variant = "default",
+  onSelect,
+}: {
+  building: BuildingSummary;
+  saved: boolean;
+  id?: string;
+  selected?: boolean;
+  tabIndex?: number;
+  variant?: "default" | "route";
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="option"
+      aria-selected={selected}
+      tabIndex={tabIndex}
+      onClick={onSelect}
+      className={`focus-visible:ring-primary/40 hover:bg-surface-container-high flex w-full items-center gap-3 py-2 text-left focus-visible:ring-2 ${
+        variant === "route" ? "bg-surface-container-low/55 min-h-14 rounded-xl px-3" : "min-h-11 rounded-lg px-3"
+      } ${selected ? "neu-inset bg-surface-container text-on-surface" : ""}`}
+    >
+      <span className="bg-surface-container text-primary flex size-9 shrink-0 items-center justify-center rounded-lg">
+        <Icon name={variant === "route" ? "location" : saved ? "bookmarkFill" : "building1"} size={17} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-on-surface block truncate text-sm font-medium">{building.name}</span>
+        <span className="text-muted mt-1 block truncate text-xs">
+          <span className="font-mono">{building.code}</span>
+          {building.address ? ` · ${building.address}` : ""}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function BuildingList({
+  label,
+  buildings,
+  favorites,
+  onSelect,
+}: {
+  label: string;
+  buildings: BuildingSummary[];
+  favorites: ReadonlySet<string>;
+  onSelect: (building: BuildingSummary) => void;
+}) {
+  if (buildings.length === 0) return null;
+  return (
+    <section aria-label={label} className="ui-content-enter">
+      <Heading as="h3" size="label" tone="muted" className="px-2 pb-1.5">
+        {label}
+      </Heading>
+      <div role="listbox" aria-label={label} className="flex flex-col gap-1">
+        {buildings.map((building) => (
+          <BuildingRow
+            key={building.code}
+            building={building}
+            saved={favorites.has(building.code)}
+            onSelect={() => onSelect(building)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function BuildingRail(props: BuildingRailProps) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const identityRef = useRef<HTMLDivElement>(null);
+  const discoveryScrollRef = useRef(0);
+  const originInputRef = useRef<HTMLInputElement>(null);
+  const destinationInputRef = useRef<HTMLInputElement>(null);
+  const originInputId = useId();
+  const destinationInputId = useId();
+  const listboxId = useId();
+  const endpointErrorId = useId();
+  const searchQuery = props.mode === "directions" ? props.routeQuery : props.query;
+  const results = useMemo(
+    () => (props.mode === "directions" && !props.routeField ? [] : searchBuildings(props.catalog, searchQuery)),
+    [props.catalog, props.mode, props.routeField, searchQuery],
+  );
+  const saved = useMemo(() => {
+    const byCode = new Map(props.catalog.map((building) => [building.code, building]));
+    return [...props.favorites].flatMap((code) => {
+      const building = byCode.get(code);
+      return building ? [building] : [];
+    });
+  }, [props.catalog, props.favorites]);
+
+  useLayoutEffect(() => {
+    if (props.mode !== "details" || !props.selected?.code) return;
+    const body = identityRef.current?.parentElement;
+    if (body) body.scrollTop = 0;
+  }, [props.mode, props.selected?.code]);
+
+  useEffect(() => {
+    if (props.mode !== "discover") return;
+    const frame = requestAnimationFrame(() => {
+      if (listRef.current) listRef.current.scrollTop = discoveryScrollRef.current;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [props.mode]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    if (props.routeField && listRef.current) listRef.current.scrollTop = 0;
+    const input =
+      props.routeField === "origin"
+        ? originInputRef.current
+        : props.routeField === "destination"
+          ? destinationInputRef.current
+          : null;
+    if (!input) return;
+    const frame = requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [props.routeField]);
+
+  function selectResult(building: BuildingSummary) {
+    if (props.mode === "directions" && props.routeField) {
+      if (listRef.current) listRef.current.scrollTop = 0;
+      (props.routeField === "origin" ? originInputRef.current : destinationInputRef.current)?.focus();
+      props.onRouteEndpointSelect(props.routeField, building);
+      return;
+    }
+    discoveryScrollRef.current = listRef.current?.scrollTop ?? 0;
+    props.onSelect(building);
+  }
+
+  useEffect(() => {
+    if (!searchQuery || results.length === 0) return;
+    document
+      .getElementById(`building-result-${results[Math.min(activeIndex, results.length - 1)].code}`)
+      ?.scrollIntoView?.({
+        block: "nearest",
+      });
+  }, [activeIndex, results, searchQuery]);
+
+  function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") {
+      setActiveIndex(0);
+      if (props.mode === "directions") {
+        if (!props.routeField) return;
+        event.stopPropagation();
+        if (props.routeQuery) props.onRouteQueryChange("");
+        else props.onRouteFieldChange(null);
+      } else {
+        if (!props.query) return;
+        event.stopPropagation();
+        props.onQueryChange("");
+      }
+      return;
+    }
+    if (results.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % results.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => (index - 1 + results.length) % results.length);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(results.length - 1);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      selectResult(results[Math.min(activeIndex, results.length - 1)]);
+    }
+  }
+
+  const routeSearching = props.mode === "directions" && props.routeField !== null;
+  const showResults = Boolean(searchQuery) && (props.mode === "discover" || routeSearching);
+  const resultListLabel =
+    props.mode === "directions"
+      ? props.routeField === "destination"
+        ? "Destination building results"
+        : "Starting building results"
+      : "Building search results";
+  const title = props.mode === "directions" ? "Directions" : props.mode === "details" ? "Building details" : "Explore";
+  const backLabel =
+    props.mode === "directions"
+      ? "Back to building details"
+      : props.mode === "details"
+        ? "Back to all buildings"
+        : null;
+
+  return (
+    <WorkspacePanel
+      title={title}
+      leading={
+        backLabel ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="sm:size-11"
+            onClick={props.onBack}
+            aria-label={backLabel}
+            title={backLabel}
+          >
+            <Icon name="arrowLeft" size={20} />
+          </Button>
+        ) : undefined
+      }
+      bodyMode={props.mode === "details" && props.selected ? "scroll" : "contained"}
+      padding="none"
+    >
+      {props.mode === "details" && props.selected ? (
+        <>
+          <div ref={identityRef} className="ui-content-enter border-border-subtle border-b px-3 py-3">
+            <div>
+              <Heading as="h2" size="section">
+                {props.selected.name}
+              </Heading>
+              <p className="text-on-surface-variant mt-1 text-xs">
+                <span className="font-mono">{props.selected.code}</span>
+                {props.selected.address ? ` · ${props.selected.address}` : ""}
+              </p>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button variant="primary" size="compact" onClick={props.onDirections}>
+                <Icon name="route" size={15} />
+                Directions
+              </Button>
+              <Button
+                variant="outline"
+                size="compact"
+                disabled={props.favoriteStatus === "loading" || props.favoriteStatus === "saving"}
+                onClick={() => {
+                  if (props.selected) props.onToggleFavorite(props.selected.code);
+                }}
+              >
+                <Icon name={props.favorites.has(props.selected.code) ? "bookmarkFill" : "bookmark"} size={15} />
+                {props.authenticated
+                  ? props.favorites.has(props.selected.code)
+                    ? "Saved"
+                    : "Save"
+                  : "Sign in to save"}
+              </Button>
+              <Button variant="outline" size="compact" onClick={props.onShare}>
+                <Icon name="share" size={15} />
+                Share
+              </Button>
+              <Button variant="outline" size="compact" onClick={props.onOpenGoogleMaps}>
+                <Icon name="externalLink" size={15} />
+                Google Maps
+              </Button>
+            </div>
+            {props.favoriteStatus === "error" && props.authenticated ? (
+              <p className="ui-notice-enter text-error mt-2 text-xs" role="alert">
+                Couldn't update saved buildings. Try the Save action again.
+              </p>
+            ) : null}
+            {props.shareStatus !== "idle" ? (
+              <p
+                className={
+                  props.shareStatus === "error"
+                    ? "ui-notice-enter text-error mt-2 text-xs"
+                    : "ui-notice-enter text-muted mt-2 text-xs"
+                }
+                role="status"
+              >
+                {props.shareStatus === "shared"
+                  ? "Shared"
+                  : props.shareStatus === "copied"
+                    ? "Link copied"
+                    : props.shareStatus === "copy"
+                      ? "Share dismissed. You can copy the link instead."
+                      : "Couldn't copy the link"}
+              </p>
+            ) : null}
+            {props.shareStatus === "copy" || props.shareStatus === "error" ? (
+              <Button variant="ghost" size="compact" className="mt-2" onClick={props.onCopyLink}>
+                <Icon name="share" size={15} />
+                {props.shareStatus === "error" ? "Retry copy" : "Copy link"}
+              </Button>
+            ) : null}
+          </div>
+          <div className="px-3 py-4">
+            {props.details.status === "loading" ? (
+              <SkeletonGroup label="Loading building details" className="flex flex-col gap-4">
+                <div className="overflow-hidden rounded-lg">
+                  <Skeleton className="h-36 w-full rounded-none" />
+                  <div className="px-3 py-2">
+                    <Skeleton className="h-11 w-32 sm:h-9" />
+                  </div>
+                </div>
+                <div>
+                  <Skeleton className="mb-2 h-5 w-24" />
+                  <div className="divide-border-subtle divide-y">
+                    {[0, 1, 2].map((row) => (
+                      <div key={row} className="flex justify-between gap-3 py-1.5">
+                        <Skeleton className="h-5 w-20" />
+                        <Skeleton className="h-5 w-32" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="border-border-subtle border-t pt-3">
+                  <Skeleton className="mb-2 h-5 w-36" />
+                  <div className="flex flex-col gap-2">
+                    {[0, 1].map((row) => (
+                      <div key={row} className="bg-surface-container-low rounded-lg p-3">
+                        <SkeletonText lines={2} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </SkeletonGroup>
+            ) : null}
+            {props.details.status === "error" ? (
+              <RetryAlert className="ui-notice-enter" onRetry={props.onRetryDetails}>
+                Couldn't load building details.
+              </RetryAlert>
+            ) : null}
+            {props.details.status === "ready" ? (
+              <>
+                <BuildingDetailContent details={props.details.data} />
+                {unavailableBuildingDetailSources(props.details.data).length > 0 ? (
+                  <Button variant="ghost" size="compact" className="mt-3" onClick={props.onRetryDetails}>
+                    <Icon name="refresh2" size={15} />
+                    Retry unavailable sections
+                  </Button>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <div className="flex h-full min-h-0 flex-col">
+          {props.mode !== "directions" ? (
+            <div className="shrink-0 px-4 py-3">
+              <SearchInput
+                density="rail"
+                value={searchQuery}
+                onChange={(event) => {
+                  setActiveIndex(0);
+                  props.onQueryChange(event.target.value);
+                }}
+                onClear={() => props.onQueryChange("")}
+                onKeyDown={onSearchKeyDown}
+                placeholder="Search buildings"
+                role="combobox"
+                aria-label="Search buildings"
+                aria-autocomplete="list"
+                aria-controls={listboxId}
+                aria-expanded={Boolean(searchQuery && results.length > 0)}
+                aria-activedescendant={
+                  searchQuery && results[activeIndex] ? `building-result-${results[activeIndex].code}` : undefined
+                }
+              />
+            </div>
+          ) : null}
+          <div
+            ref={listRef}
+            data-route-results-scroll={props.mode === "directions" || undefined}
+            className={`min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto ${
+              props.mode === "directions" ? "" : "px-2 py-3"
+            }`}
+          >
+            {props.mode === "directions" && props.selected ? (
+              <div data-route-editor className="ui-content-enter bg-surface px-3 pt-3 pb-2">
+                <div className="neu-raised bg-surface rounded-xl p-2">
+                  <div
+                    data-route-endpoints
+                    className="grid grid-cols-[1rem_minmax(0,1fr)] grid-rows-[3rem_3rem] items-center gap-x-3 gap-y-2"
+                  >
+                    <span
+                      aria-hidden
+                      data-route-marker-track
+                      className="relative col-start-1 row-span-2 row-start-1 h-full"
+                    >
+                      <span className="bg-outline-variant absolute top-6 bottom-6 left-1/2 w-px -translate-x-1/2" />
+                      <span className="border-on-surface-variant bg-surface absolute top-5 left-1/2 size-2 -translate-x-1/2 rounded-full border-2" />
+                      <span className="bg-primary absolute bottom-5 left-1/2 size-2 -translate-x-1/2 rounded-[2px]" />
+                    </span>
+                    {(["origin", "destination"] as const).map((field) => {
+                      const active = props.routeField === field;
+                      const building = field === "origin" ? props.routeOrigin : props.selected;
+                      const label = field === "origin" ? "From" : "To";
+                      const inputId = field === "origin" ? originInputId : destinationInputId;
+                      const inputRef = field === "origin" ? originInputRef : destinationInputRef;
+                      return (
+                        <div
+                          key={field}
+                          className={`col-start-2 min-w-0 ${field === "origin" ? "row-start-1" : "row-start-2"}`}
+                        >
+                          <label htmlFor={inputId} className="sr-only">
+                            {label}
+                          </label>
+                          <TextInput
+                            ref={inputRef}
+                            id={inputId}
+                            controlSize="compact"
+                            value={active ? props.routeQuery : (building?.name ?? "")}
+                            readOnly={!active}
+                            onFocus={() => {
+                              if (!active) props.onRouteFieldChange(field);
+                            }}
+                            onChange={(event) => {
+                              setActiveIndex(0);
+                              props.onRouteQueryChange(event.target.value);
+                            }}
+                            onKeyDown={onSearchKeyDown}
+                            placeholder={field === "origin" ? "Choose starting building" : "Choose destination"}
+                            role="combobox"
+                            aria-label={`${label} building`}
+                            aria-autocomplete="list"
+                            aria-controls={active ? listboxId : undefined}
+                            aria-expanded={active && Boolean(searchQuery) && results.length > 0}
+                            aria-activedescendant={
+                              active && searchQuery && results[activeIndex]
+                                ? `building-result-${results[activeIndex].code}`
+                                : undefined
+                            }
+                            aria-invalid={active && props.endpointError ? true : undefined}
+                            aria-describedby={active && props.endpointError ? endpointErrorId : undefined}
+                            autoComplete="off"
+                            spellCheck={false}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {props.endpointError ? (
+                    <p id={endpointErrorId} role="alert" className="ui-notice-enter text-error mt-2 ml-7 text-xs">
+                      {props.endpointError}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            {props.selectionError ? (
+              <p
+                role="alert"
+                className="ui-notice-enter bg-error-container text-on-error-container mx-1 mb-3 rounded-lg px-3 py-2 text-xs"
+              >
+                {props.selectionError}
+              </p>
+            ) : null}
+            {props.mode === "directions" && !routeSearching && props.route.status !== "idle" ? (
+              <div className="px-3 py-3">
+                {props.route.status === "loading" ? (
+                  <LoadingStatus className="ui-notice-enter">Finding a walking route…</LoadingStatus>
+                ) : null}
+                {props.route.status === "error" ? (
+                  <RetryAlert className="ui-notice-enter" onRetry={props.onRetryRoute}>
+                    Couldn't calculate this route.
+                  </RetryAlert>
+                ) : null}
+                {props.route.status === "network" || props.route.status === "estimate" ? (
+                  <div className="ui-content-enter bg-surface-container-low rounded-lg p-3">
+                    <p className="text-on-surface text-sm font-medium">
+                      {formatMinutes(props.route.route.minutes)} · {formatMeters(props.route.route.meters)}
+                    </p>
+                    <p className="text-muted mt-1 text-xs">
+                      {props.route.status === "estimate"
+                        ? "Straight-line estimate; no walking path is drawn."
+                        : "Campus walking network"}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {showResults ? (
+              <>
+                {props.mode === "directions" && results.length > 0 ? (
+                  <p className="text-muted px-3 pt-3 pb-2 text-xs" role="status">
+                    {results.length} result{results.length === 1 ? "" : "s"}
+                  </p>
+                ) : null}
+                <div
+                  id={listboxId}
+                  role="listbox"
+                  aria-label={resultListLabel}
+                  className={
+                    results.length === 0
+                      ? "hidden"
+                      : props.mode === "directions"
+                        ? "ui-content-enter mx-2 flex flex-col gap-2"
+                        : "ui-content-enter flex flex-col gap-1"
+                  }
+                >
+                  {results.map((building, index) => (
+                    <BuildingRow
+                      key={building.code}
+                      id={`building-result-${building.code}`}
+                      building={building}
+                      saved={props.favorites.has(building.code)}
+                      selected={index === activeIndex}
+                      tabIndex={-1}
+                      variant={props.mode === "directions" ? "route" : "default"}
+                      onSelect={() => selectResult(building)}
+                    />
+                  ))}
+                </div>
+                {results.length === 0 ? (
+                  <div className="ui-content-enter px-3 py-8 text-center">
+                    <p className="text-on-surface text-sm font-medium">No buildings found</p>
+                    <p className="text-muted mt-1 text-xs">Try a building code, name, or address.</p>
+                    <Button
+                      variant="ghost"
+                      size="compact"
+                      className="mt-3"
+                      onClick={() => {
+                        if (props.mode === "directions") props.onRouteQueryChange("");
+                        else props.onQueryChange("");
+                      }}
+                    >
+                      Clear search
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            ) : props.mode === "directions" ? (
+              routeSearching ? (
+                <div className="ui-content-enter px-3 py-8 text-center">
+                  <p className="text-on-surface text-sm font-medium">
+                    Search for the {props.routeField === "origin" ? "starting building" : "destination"}
+                  </p>
+                  <p className="text-muted mt-1 text-xs">Type a building name, code, or address above.</p>
+                  <div id={listboxId} role="listbox" aria-label={resultListLabel} className="hidden" />
+                </div>
+              ) : props.route.status === "idle" ? (
+                <p className="ui-content-enter text-muted px-3 py-8 text-center text-xs">
+                  Choose From or To above to plan a route.
+                </p>
+              ) : null
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div id={listboxId} role="listbox" aria-label="Building search results" className="hidden" />
+                {props.favoriteStatus === "loading" && saved.length === 0 ? (
+                  <section aria-label="Saved">
+                    <Heading as="h3" size="label" tone="muted" className="px-2 pb-1.5">
+                      Saved
+                    </Heading>
+                    <SkeletonList label="Loading saved buildings" rows={2} icon padding="none" className="px-3" />
+                  </section>
+                ) : null}
+                {props.favoriteStatus === "error" && props.authenticated ? (
+                  <p role="alert" className="ui-notice-enter text-error px-2 text-xs">
+                    Saved buildings are unavailable. Search and curated places still work.
+                  </p>
+                ) : null}
+                <BuildingList label="Saved" buildings={saved} favorites={props.favorites} onSelect={selectResult} />
+                <BuildingList
+                  label="Curated popular buildings"
+                  buildings={props.popular}
+                  favorites={props.favorites}
+                  onSelect={selectResult}
+                />
+                <p className="text-muted px-2 text-xs">Curated starting points, not a measure of foot traffic.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </WorkspacePanel>
+  );
+}

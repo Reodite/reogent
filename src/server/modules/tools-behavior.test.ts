@@ -123,7 +123,7 @@ function matchClause(doc: Record<string, unknown>, clause: string): boolean {
   const eq = clause.match(/^(\w+) = '?([^']*)'?$/);
   if (eq) {
     const raw = eq[2];
-    const want = raw.replace(/'/g, "");
+    const want = raw.startsWith('"') ? JSON.parse(raw) : raw.replace(/'/g, "");
     const v = doc[eq[1]];
     if (Array.isArray(v)) return v.map(String).includes(want);
     if (v === null || v === undefined) return false;
@@ -374,6 +374,56 @@ describe("get_costs (agent-tool-redesign)", () => {
     expect(fees.fees.length).toBe(1);
   });
 
+  it("routes housing fees without changing cents, unknown amounts, or source conditions", async () => {
+    const tool = costs.tools.find((t) => t.spec.name === "get_costs")!;
+    const table = {
+      id: "housing_page_example_table_0",
+      source_record_id: "housing_page:example:table:0",
+      campus: "vancouver",
+      title: "Example House Fees",
+      source_url: "https://housing.example.test/fees",
+      retrieved_at: "2026-09-01T12:00:00Z",
+      source_modified_at: "2026-08-01T12:00:00Z",
+      record_sha256: "a".repeat(64),
+      page_id: "housing_page:example",
+      residence_ids: ["housing_residence:example"],
+      table_index: 0,
+      section_labels: [],
+      source_context_required: true,
+      values: [123456, null].map((amount_cents, index) => ({
+        source_row: index + 1,
+        source_column: 1,
+        row_label: "Room",
+        column_label: "Amount",
+        period_label: "One term",
+        amount_text: amount_cents === null ? "—" : "$1,234.56*",
+        amount_cents,
+        amount_basis: null,
+        footnote_markers: amount_cents === null ? [] : ["*"],
+      })),
+    };
+    const search = fakeSearch({ housing_fees: [table] });
+
+    const out = await tool.execute({ kind: "housing", query: "Example House" }, search);
+
+    expect(out).toMatchObject({
+      kind: "housing",
+      fee_tables: [
+        {
+          source_record_id: table.source_record_id,
+          values: table.values,
+          source_context_required: true,
+          retrieved_at: table.retrieved_at,
+          source_url: table.source_url,
+        },
+      ],
+      total: 1,
+      has_more: false,
+    });
+    expect(search.calls()).toEqual({ housing_fees: 1 });
+    await expect(tool.execute({ kind: "housing" }, search)).rejects.toThrow(/query/i);
+  });
+
   it("reports missing required params for tuition", async () => {
     const tool = costs.tools.find((t) => t.spec.name === "get_costs")!;
     await expect(tool.execute({ kind: "tuition", program_slug: "x" }, fakeSearch({}))).rejects.toThrow(/requires/);
@@ -432,26 +482,19 @@ describe("find_study_spaces (agent-tool-redesign)", () => {
     expect(out.spaces.length).toBe(1);
   });
 
-  it("filters bookable rooms to free state", async () => {
-    const tool = spaces.tools.find((t) => t.spec.name === "find_study_spaces")!;
-    const out = (await tool.execute({ kind: "bookable" }, fakeSearch(spacesFixture))) as {
-      kind: string;
-      rooms: { state: string }[];
-    };
-    expect(out.kind).toBe("bookable");
-    expect(out.rooms).toHaveLength(1);
-    expect(out.rooms[0].state).toBe("free");
+  it("ingests only learning-space descriptions", () => {
+    expect(spaces.indices.map((index) => index.index)).toEqual(["study_spaces"]);
   });
 
-  it("returns the full schedule for a named room", async () => {
-    const tool = spaces.tools.find((t) => t.spec.name === "find_study_spaces")!;
-    const out = (await tool.execute({ room: "IKB 461" }, fakeSearch(spacesFixture))) as {
-      kind: string;
-      intervals: unknown[];
-    };
-    expect(out.kind).toBe("schedule");
-    expect(out.intervals.length).toBeGreaterThan(0);
-  });
+  it.each([{ kind: "bookable" }, { room: "IKB 461" }, { min_minutes: 60 }, { date: "2026-09-12" }])(
+    "rejects booking availability requests without searching stale indexes: %j",
+    async (input) => {
+      const tool = spaces.tools.find((t) => t.spec.name === "find_study_spaces")!;
+      const search = fakeSearch(spacesFixture);
+      await expect(tool.execute(input, search)).rejects.toThrow(/booking availability is not available/i);
+      expect(search.calls()).toEqual({});
+    },
+  );
 });
 
 describe("find_programs (agent-tool-redesign)", () => {
@@ -839,7 +882,7 @@ describe("show_widget (explicit entities)", () => {
     expect(out.result.events[0].text.length).toBe(400);
   });
 
-  it("renders study spaces by id and rooms by eid", async () => {
+  it("renders study spaces by id and rejects booking snapshot ids", async () => {
     const search = fakeSearch({
       study_spaces: [{ id: "s1", title: "AERL 120", building_code: "AERL", capacity: 30 }],
       lib_rooms: [{ id: "461", eid: "461", title: "IKB 461", capacity: 10 }],
@@ -850,11 +893,10 @@ describe("show_widget (explicit entities)", () => {
     expect(spacesOut.result.kind).toBe("informal");
     expect(spacesOut.result.spaces).toHaveLength(1);
 
-    const roomsOut = (await tool.execute({ type: "study_spaces", room_eids: ["461"] }, search)) as {
-      result: { kind: string; rooms: unknown[] };
-    };
-    expect(roomsOut.result.kind).toBe("bookable");
-    expect(roomsOut.result.rooms).toHaveLength(1);
+    await expect(tool.execute({ type: "study_spaces", room_eids: ["461"] }, search)).rejects.toThrow(
+      /requires study_space_ids/,
+    );
+    expect(search.calls()).toEqual({ study_spaces: 1 });
   });
 
   it("renders programs and key dates by id", async () => {

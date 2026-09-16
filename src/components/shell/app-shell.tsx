@@ -1,10 +1,7 @@
 "use client";
 
-// The dashboard shell: TopBar + LeftSidebar + a mode-dependent workspace
-// (AI: Chat Surface + Answer Canvas; Tools: a single Full-Bleed Tool). The Answer
-// Canvas is hosted here, not inside ChatPanel, so the map survives session swaps
-// (REQ-9.4). Below each mode's desktop breakpoint, the AI canvas surfaces as a
-// Bottom Sheet and the Tools list lives in the left drawer.
+// Hosts the sidebar and mode-dependent workspace. The Answer Canvas remains
+// mounted across chat session swaps and becomes a bottom sheet below 640px.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
@@ -12,11 +9,25 @@ import { AnswerCanvas } from "@/src/components/shell/answer-canvas";
 import { AnswerSheet } from "@/src/components/shell/answer-sheet";
 import { FullBleedTool } from "@/src/components/shell/full-bleed-tool";
 import { LeftSidebar } from "@/src/components/shell/left-sidebar";
+import { ModeToggle } from "@/src/components/shell/mode-toggle";
 import { useSidebarCollapsed } from "@/src/components/shell/session-sidebar";
+import {
+  AnswerCanvasLoading,
+  ChatPanelLoading,
+  NewChatLoading,
+  WorkspaceRouteLoading,
+} from "@/src/components/shell/shell-loading";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { useMobileViewport } from "@/src/components/shell/use-mobile-viewport";
+import { shellModeForPath } from "@/src/components/shell/use-shell-mode";
+import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
+import { lockBodyScroll } from "@/src/components/ui/body-scroll-lock";
+import { Button } from "@/src/components/ui/button";
+import { tabStops } from "@/src/components/ui/floating-panel";
 import { LiveRegion } from "@/src/components/ui/live-region";
 import { useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 /** Gate: initializing → null (brief); signed out → redirect to login. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -30,38 +41,101 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return null;
 }
 
-/** Wide viewport (≥1024px) for sheet auto-close and `inert` gating only. Layout
- *  itself is CSS-responsive, so the DOM is stable across this toggle — no
- *  hydration mismatch. Returns false until mounted (SSR-safe). */
-function useIsWide(): boolean {
-  const [wide, setWide] = useState(false);
+/** Tracks when the Answer Canvas is inline for sheet cleanup and inert gating. */
+function useIsCanvasInline(): boolean {
+  const [inline, setInline] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-    const m = window.matchMedia("(min-width: 1024px)");
-    setWide(m.matches);
-    const onChange = (e: MediaQueryListEvent) => setWide(e.matches);
-    m.addEventListener("change", onChange);
-    return () => m.removeEventListener("change", onChange);
+    const media = window.matchMedia("(min-width: 640px)");
+    setInline(media.matches);
+    const onChange = (event: MediaQueryListEvent) => setInline(event.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, []);
-  return mounted ? wide : false;
+  return mounted ? inline : false;
 }
 
-function SidebarDrawer() {
+function ShellRouteContent({
+  identity,
+  pending,
+  animate,
+  reducedMotion,
+  children,
+}: {
+  identity: string;
+  pending: boolean;
+  animate: boolean;
+  reducedMotion: boolean;
+  children: ReactNode;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previousIdentityRef = useRef(identity);
+
+  useLayoutEffect(() => {
+    const previousIdentity = previousIdentityRef.current;
+    previousIdentityRef.current = identity;
+    if (!animate || reducedMotion || previousIdentity === identity) return;
+    const animation = contentRef.current?.animate?.([{ opacity: 0 }, { opacity: 1 }], {
+      duration: 180,
+      easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+    });
+    return () => animation?.cancel();
+  }, [animate, identity, reducedMotion]);
+
+  return (
+    <div
+      ref={contentRef}
+      data-shell-route-content={identity}
+      data-route-transition={animate || undefined}
+      data-navigation-pending={pending || undefined}
+      className="shell-route-content flex min-h-0 min-w-0 flex-1"
+    >
+      {children}
+    </div>
+  );
+}
+
+function SidebarDrawer({ id }: { id: string }) {
   const { sidebarOpen, setSidebarOpen, mode } = useChatShell();
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!sidebarOpen) return;
     const btn = dialogRef.current?.querySelector<HTMLElement>("button");
     btn?.focus();
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const releaseScroll = lockBodyScroll();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSidebarOpen(false);
+      const dialog = dialogRef.current;
+      if (!dialog || event.defaultPrevented || dialog.closest("[inert]")) return;
+      if (event.target instanceof Element && event.target.closest("[data-floating-panel], [data-dialog-root]")) return;
+      if (event.key === "Escape") {
+        const trigger =
+          event.target instanceof Element ? event.target.closest("[aria-controls], [aria-describedby]") : null;
+        const popupIds =
+          `${trigger?.getAttribute("aria-controls") ?? ""} ${trigger?.getAttribute("aria-describedby") ?? ""}`.split(
+            /\s+/,
+          );
+        if (popupIds.some((popupId) => document.getElementById(popupId)?.hasAttribute("data-floating-panel"))) return;
+        event.preventDefault();
+        setSidebarOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const stops = tabStops(dialog);
+      const first = stops[0] ?? dialog;
+      const last = stops.at(-1) ?? dialog;
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = prev;
+      releaseScroll();
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [sidebarOpen, setSidebarOpen]);
@@ -77,10 +151,12 @@ function SidebarDrawer() {
       />
       <div
         ref={dialogRef}
+        id={id}
         role="dialog"
+        tabIndex={-1}
         aria-modal="true"
         aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
-        className={`fixed inset-y-0 left-0 z-50 w-[min(18.5rem,calc(100vw-3rem))] p-3 transition-transform duration-250 [transition-timing-function:var(--neu-ease)] ${desktopHidden}`}
+        className={`shell-sidebar-drawer fixed inset-y-0 left-0 z-50 w-[min(18.5rem,calc(100vw-3rem))] p-3 duration-250 [transition-timing-function:var(--neu-ease)] ${desktopHidden} ${sidebarOpen ? "visible transition-transform" : "invisible transition-[transform,visibility]"}`}
         style={{ transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)" }}
       >
         <div className="h-full">
@@ -103,25 +179,54 @@ export function AppShell({ children }: { children: ReactNode }) {
     setRightPaneCollapsed,
     setUserDismissedPane,
   } = useChatShell();
-  const wide = useIsWide();
+  const canvasInline = useIsCanvasInline();
+  const navigation = useShellNavigation();
+  const pathname = navigation.displayPathname;
+  const settingsRoute = pathname === "/settings";
+  const routeIdentity = `${mode}:${pathname}`;
+  const initialRouteIdentityRef = useRef(routeIdentity);
+  const [hasNavigated, setHasNavigated] = useState(false);
+  const animateRoute = hasNavigated || routeIdentity !== initialRouteIdentityRef.current;
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
+  const sidebarId = useId();
+  const viewportRef = useMobileViewport();
+  const desktopSidebarQuery = mode === "tools" ? "(min-width: 1280px)" : "(min-width: 1024px)";
   const reduce = useReducedMotion();
 
-  // Crossing to wide closes a lingering Answer sheet (the button that opens it
-  // is hidden at wide); nothing else needs this, so a one-shot close suffices.
   useEffect(() => {
-    if (wide && answerSheetOpen) setAnswerSheetOpen(false);
-  }, [wide, answerSheetOpen, setAnswerSheetOpen]);
+    if (routeIdentity !== initialRouteIdentityRef.current) setHasNavigated(true);
+  }, [routeIdentity]);
 
-  const sheetInert = mode === "ai" && answerSheetOpen && !wide;
+  useEffect(() => {
+    if (canvasInline && answerSheetOpen) setAnswerSheetOpen(false);
+  }, [canvasInline, answerSheetOpen, setAnswerSheetOpen]);
 
-  // Restore focus to the sidebar drawer trigger when it closes.
+  const enteringAi = navigation.pending && mode === "ai" && shellModeForPath(navigation.committedPathname) !== "ai";
+  const sheetOpen = mode === "ai" && !settingsRoute && !canvasInline && !enteringAi && answerSheetOpen;
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const media = window.matchMedia(desktopSidebarQuery);
+    const closeOnDesktop = () => {
+      if (media.matches) setSidebarOpen(false);
+    };
+    closeOnDesktop();
+    media.addEventListener("change", closeOnDesktop);
+    return () => media.removeEventListener("change", closeOnDesktop);
+  }, [desktopSidebarQuery, sidebarOpen, setSidebarOpen]);
+
+  // Restore focus to the sidebar control visible at the current breakpoint.
   const prevSidebarOpen = useRef(false);
   useEffect(() => {
-    if (prevSidebarOpen.current && !sidebarOpen) sidebarOpenRef.current?.focus();
+    if (prevSidebarOpen.current && !sidebarOpen) {
+      const target = window.matchMedia(desktopSidebarQuery).matches
+        ? document.getElementById("desktop-session-collapse")
+        : sidebarOpenRef.current;
+      target?.focus();
+    }
     prevSidebarOpen.current = sidebarOpen;
-  }, [sidebarOpen]);
+  }, [desktopSidebarQuery, sidebarOpen]);
 
   function collapseSessions() {
     setSessionsCollapsed(true);
@@ -135,83 +240,158 @@ export function AppShell({ children }: { children: ReactNode }) {
     setRightPaneCollapsed(true);
   }
 
+  const sidebarToggle = (
+    <Button
+      ref={sidebarOpenRef}
+      onClick={() => setSidebarOpen(true)}
+      aria-label="Open sidebar"
+      aria-expanded={sidebarOpen}
+      aria-controls={sidebarId}
+      aria-haspopup="dialog"
+      variant="ghost"
+      size="fieldIcon"
+      className={`shell-menu-trigger ${mode === "tools" ? "xl:hidden" : "lg:hidden"}`}
+    >
+      <Icon name="menu" size={22} />
+    </Button>
+  );
+  const routeContent = settingsRoute ? (
+    <ShellRouteContent
+      identity={routeIdentity}
+      pending={navigation.pending}
+      animate={animateRoute}
+      reducedMotion={Boolean(reduce)}
+    >
+      <main
+        id="main-content"
+        data-pane="settings"
+        data-shell-mode={mode}
+        className={`flex min-h-0 min-w-0 flex-1 ${
+          mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
+        }`}
+      >
+        <WorkspaceHostProvider host="settings" navigation={sidebarToggle}>
+          <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
+            {navigation.pending ? <WorkspaceRouteLoading label="Loading Settings" composition="split" /> : children}
+          </div>
+        </WorkspaceHostProvider>
+      </main>
+    </ShellRouteContent>
+  ) : mode === "ai" ? (
+    <div className="chat-map-area sidebar-content-offset flex min-h-0 min-w-0 flex-1">
+      <ShellRouteContent
+        identity={routeIdentity}
+        pending={navigation.pending}
+        animate={animateRoute}
+        reducedMotion={Boolean(reduce)}
+      >
+        <main
+          id="main-content"
+          data-pane="chat"
+          className="flex min-h-0 min-w-0 flex-1 lg:min-w-88"
+          inert={sheetOpen || undefined}
+        >
+          <WorkspaceHostProvider host="chat" navigation={sidebarToggle}>
+            {navigation.pending ? pathname === "/chat" ? <NewChatLoading /> : <ChatPanelLoading /> : children}
+          </WorkspaceHostProvider>
+        </main>
+      </ShellRouteContent>
+      <AnswerSheet
+        open={sheetOpen}
+        onClose={() => {
+          collapseRightPane();
+          setAnswerSheetOpen(false);
+          setUserDismissedPane(true);
+        }}
+        collapsed={rightPaneCollapsed}
+        view={workspaceView}
+      >
+        {enteringAi ? <AnswerCanvasLoading /> : <AnswerCanvas view={workspaceView} />}
+      </AnswerSheet>
+    </div>
+  ) : (
+    <ShellRouteContent
+      identity={routeIdentity}
+      pending={navigation.pending}
+      animate={animateRoute}
+      reducedMotion={Boolean(reduce)}
+    >
+      <main
+        id="main-content"
+        data-pane={mode === "tools" ? "tool" : "unity"}
+        className={`flex min-h-0 min-w-0 flex-1 ${
+          mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
+        }`}
+      >
+        <WorkspaceHostProvider host={mode === "tools" ? "tools" : "unity"} navigation={sidebarToggle}>
+          <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
+            {mode === "tools" && workspaceView ? (
+              <FullBleedTool view={workspaceView} />
+            ) : navigation.pending ? (
+              <WorkspaceRouteLoading
+                label="Loading Unity"
+                composition={pathname.startsWith("/pulse/schedule") ? "split" : "single"}
+                controls={pathname.startsWith("/pulse/schedule")}
+              />
+            ) : (
+              children
+            )}
+          </div>
+        </WorkspaceHostProvider>
+      </main>
+    </ShellRouteContent>
+  );
+
   return (
     <RequireAuth>
-      <div className="app-shell-canvas flex h-svh flex-col overflow-hidden">
-        <a
-          href="#main-content"
-          className="focus-visible:bg-primary focus-visible:text-on-primary sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:z-[100] focus-visible:rounded-xl focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium"
-        >
-          Skip to main content
-        </a>
-        {/* Mobile-only drawer trigger: the former top bar's duties (brand,
-            theme, account) live in the sidebar now. */}
-        <button
-          ref={sidebarOpenRef}
-          type="button"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open sidebar"
-          inert={sidebarOpen || undefined}
-          className={`neu-panel bg-surface text-on-surface-variant hover:text-primary fixed top-3 left-3 z-30 flex size-11 items-center justify-center rounded-xl transition-colors duration-150 ${mode === "tools" ? "xl:hidden" : "lg:hidden"}`}
-        >
-          <Icon name="menu" size={21} />
-        </button>
+      <div ref={viewportRef} className="app-shell-canvas app-shell-frame flex h-dvh flex-col overflow-hidden">
+        <nav aria-label="Skip links" inert={sidebarOpen || sheetOpen || undefined} className="shrink-0">
+          <a
+            href="#main-content"
+            className="focus-visible:bg-primary focus-visible:text-on-primary sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:top-2 focus-visible:left-2 focus-visible:z-[100] focus-visible:rounded-xl focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium"
+          >
+            Skip to main content
+          </a>
+        </nav>
+        <SidebarDrawer id={sidebarId} />
 
-        <SidebarDrawer />
-
-        <div inert={sidebarOpen || undefined} className="shell-body min-h-0 flex-1">
+        {/* The flex-item layer keeps sheets above navigation and below the sidebar drawer. */}
+        <div inert={sidebarOpen || undefined} className="shell-body z-10 min-h-0 flex-1">
           <div
-            className="chat-workspace relative min-h-0 min-w-0 flex-1 p-3"
-            style={{ "--sidebar-offset": sessionsCollapsed ? "3.75rem" : "17.75rem" } as React.CSSProperties}
+            data-sidebar-collapsed={sessionsCollapsed || undefined}
+            className="chat-workspace relative min-h-0 min-w-0 flex-1"
           >
             <aside
               aria-label={mode === "ai" ? "Chat sessions" : mode === "tools" ? "Tools" : "Unity"}
-              style={{ width: sessionsCollapsed ? "3rem" : "17rem" }}
               className={`sessions-aside absolute top-3 bottom-3 left-3 z-10 hidden min-h-0 overflow-hidden ${mode === "tools" ? "xl:block" : "lg:block"} ${reduce ? "" : "transition-[width] duration-300 ease-[var(--neu-ease)]"}`}
             >
               <div className="h-full">
                 <LeftSidebar collapsed={sessionsCollapsed} onCollapse={collapseSessions} onExpand={expandSessions} />
               </div>
             </aside>
-            {mode === "ai" ? (
-              <div className="chat-map-area flex min-h-0 min-w-0 flex-1">
-                <main
-                  id="main-content"
-                  data-pane="chat"
-                  className="sidebar-content-offset flex min-h-0 min-w-0 flex-1 lg:min-w-88"
-                  inert={sheetInert || undefined}
+            <div
+              data-shell-route-stage
+              aria-busy={navigation.pending}
+              className="shell-route-stage relative isolate flex min-h-0 min-w-0 flex-1"
+            >
+              {routeContent}
+              {navigation.pending ? (
+                <div
+                  data-shell-navigation-pending={navigation.target ?? ""}
+                  role="status"
+                  aria-label="Loading destination"
+                  className="shell-navigation-progress pointer-events-none absolute inset-x-0 top-0 z-40 h-0.5 overflow-hidden"
                 >
-                  {children}
-                </main>
-                <AnswerSheet
-                  open={answerSheetOpen}
-                  onClose={() => {
-                    collapseRightPane();
-                    setAnswerSheetOpen(false);
-                    setUserDismissedPane(true);
-                  }}
-                  collapsed={rightPaneCollapsed}
-                  view={workspaceView}
-                >
-                  <AnswerCanvas view={workspaceView} />
-                </AnswerSheet>
-              </div>
-            ) : (
-              <main
-                id="main-content"
-                data-pane={mode === "tools" ? "tool" : "unity"}
-                className={`flex min-h-0 min-w-0 flex-1 ${
-                  mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
-                }`}
-              >
-                <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
-                  {mode === "tools" && workspaceView ? <FullBleedTool view={workspaceView} /> : children}
+                  <span className="bg-primary block h-full origin-left rounded-full" />
                 </div>
-              </main>
-            )}
+              ) : null}
+            </div>
           </div>
         </div>
 
+        <div data-mobile-navigation inert={sidebarOpen || sheetOpen || undefined} className="shrink-0 sm:hidden">
+          <ModeToggle presentation="bottom" />
+        </div>
         <LiveRegion />
       </div>
     </RequireAuth>

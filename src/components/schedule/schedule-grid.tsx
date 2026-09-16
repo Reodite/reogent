@@ -5,6 +5,9 @@ import {
   DragOverlayFrame,
   useDragOverlayPhysics,
 } from "@/src/components/dnd/drag-overlay-physics";
+import { Button } from "@/src/components/ui/button";
+import { Heading } from "@/src/components/ui/heading";
+import { SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import {
   buildScheduleGrid,
@@ -69,6 +72,7 @@ interface ScheduleGridProps {
   bands?: ScheduleGridBand[];
   now?: ScheduleGridNow;
   empty?: ScheduleGridEmptyState;
+  loading?: string;
   renderBlockFooter?: (block: ScheduleGridOccurrence) => ReactNode;
   ariaLabel?: string;
   blockContentAlignment?: "start" | "center";
@@ -258,6 +262,7 @@ export function ScheduleGrid({
   bands = [],
   now,
   empty,
+  loading,
   renderBlockFooter,
   ariaLabel = "Weekly schedule",
   blockContentAlignment = "start",
@@ -334,10 +339,10 @@ export function ScheduleGrid({
     <section
       aria-label={ariaLabel}
       data-schedule-grid-frame
-      className="schedule-grid bg-border-subtle flex h-full min-h-0 flex-col overflow-hidden rounded-[0.625rem] p-0.5"
+      className="schedule-grid bg-border-subtle flex h-full min-h-0 flex-col overflow-hidden rounded-[0.875rem] p-0.5"
     >
       <div
-        className="schedule-grid-day-tabs bg-surface mb-0.5 flex shrink-0 gap-1 rounded-lg p-1"
+        className="schedule-grid-day-tabs bg-surface mb-0.5 flex shrink-0 gap-1 rounded-xl p-1"
         role="tablist"
         aria-label="Day"
       >
@@ -350,7 +355,7 @@ export function ScheduleGrid({
             tabIndex={day === selectedDay ? 0 : -1}
             onClick={() => onActiveDayChange(day)}
             onKeyDown={(event) => moveDayTab(event, index)}
-            className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-md px-2 text-xs font-medium focus-visible:ring-2 ${
+            className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-lg px-2 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 ${
               day === selectedDay ? "neu-inset bg-surface-container text-on-surface" : "text-on-surface-variant"
             }`}
           >
@@ -358,7 +363,12 @@ export function ScheduleGrid({
           </button>
         ))}
       </div>
-      <div className="bg-surface min-h-0 flex-1 [scrollbar-gutter:stable] overflow-auto rounded-lg">
+      <section
+        aria-label="Timetable scroll area"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users scroll the timetable before any classes load.
+        tabIndex={0}
+        className="bg-surface focus-visible:ring-primary/40 min-h-0 flex-1 [scrollbar-gutter:stable] overflow-auto rounded-xl focus-visible:ring-2 focus-visible:ring-inset"
+      >
         <div
           className="schedule-grid-columns border-border-subtle bg-surface sticky top-0 z-30 grid border-b"
           style={{ ["--schedule-day-count" as string]: model.days.length }}
@@ -397,7 +407,7 @@ export function ScheduleGrid({
               key={day}
               data-schedule-day
               data-active={day === selectedDay}
-              className="border-border-subtle relative border-l"
+              className={`border-border-subtle relative border-l ${day === selectedDay ? "ui-content-enter" : ""}`}
             >
               {hours.map((minute) => (
                 <div
@@ -420,7 +430,7 @@ export function ScheduleGrid({
                   <div
                     key={band.id}
                     title={band.label}
-                    className="bg-accent-subtle/70 pointer-events-none absolute inset-x-1 rounded-md"
+                    className="ui-content-enter bg-accent-subtle/70 pointer-events-none absolute inset-x-1 rounded-md"
                     style={{
                       top: (band.startMin - model.dayStartMin) * PX_PER_MINUTE,
                       height: Math.max(2, (band.endMin - band.startMin) * PX_PER_MINUTE),
@@ -459,25 +469,29 @@ export function ScheduleGrid({
               ) : null}
             </div>
           ))}
-          {!hasBlocks && empty ? (
+          {!hasBlocks && loading ? (
+            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 flex justify-center sm:top-28">
+              <SkeletonGroup label={loading} className="bg-surface/95 w-full max-w-sm rounded-lg px-5 py-4">
+                <SkeletonText lines={3} />
+              </SkeletonGroup>
+            </div>
+          ) : !hasBlocks && empty ? (
             <div className="pointer-events-none absolute inset-x-4 top-20 z-20 flex justify-center sm:top-28">
               <div className="bg-surface/95 pointer-events-auto max-w-sm rounded-lg px-5 py-4 text-center">
-                <h3 className="text-on-surface text-base font-medium">{empty.title}</h3>
+                <Heading as="h2" size="section">
+                  {empty.title}
+                </Heading>
                 <p className="text-muted mt-1 text-sm leading-relaxed">{empty.description}</p>
                 {empty.actionLabel && empty.onAction ? (
-                  <button
-                    type="button"
-                    onClick={empty.onAction}
-                    className="neu-primary-button bg-primary text-on-primary mt-4 min-h-10 rounded-xl px-4 text-sm font-medium"
-                  >
+                  <Button variant="primary" size="prominent" onClick={empty.onAction} className="mt-4">
                     {empty.actionLabel}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </div>
           ) : null}
         </div>
-      </div>
+      </section>
       {showNow ? <p className="sr-only">{now.label}</p> : null}
     </section>
   );

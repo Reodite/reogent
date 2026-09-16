@@ -1,50 +1,34 @@
 "use client";
 
-import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { PANE_REGISTRY } from "@/src/components/shell/pane-registry";
-import { SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
-import { paneIdToSlug } from "@/src/lib/pane-route";
-import { useRouter } from "next/navigation";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { SidebarItemButton, SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
+import { paneIdToSlug, parseToolPath } from "@/src/lib/pane-route";
 
-export function ToolList({ collapsed = false }: { collapsed?: boolean }) {
-  const { workspaceView, setActiveChannel } = useChatShell();
-  const router = useRouter();
+export function ToolList({ collapsed = false, onSelect }: { collapsed?: boolean; onSelect?: () => void }) {
+  const navigation = useShellNavigation();
+  const activePane = parseToolPath(navigation.displayPathname)?.paneId;
   return (
     <SidebarListNav label="Tools" collapsed={collapsed} toolList>
-      {PANE_REGISTRY.map((entry, i) => {
-        const active = workspaceView?.paneId === entry.id;
+      {PANE_REGISTRY.map((entry) => {
+        const active = activePane === entry.id;
         const slug = paneIdToSlug(entry.id);
         return (
-          <SidebarListItem key={entry.id} index={i}>
-            <button
-              type="button"
+          <SidebarListItem key={entry.id}>
+            <SidebarItemButton
+              label={entry.label}
+              icon={<entry.icon className="size-4 shrink-0" />}
+              active={active}
+              collapsed={collapsed}
               data-tool-id={entry.id}
               aria-pressed={active}
-              aria-current={active ? "true" : undefined}
               disabled={!slug}
               onClick={() => {
                 if (!slug) return;
-                // No explicit state: restore whatever the user last had here.
-                setActiveChannel(entry.id);
-                router.push(`/tools/${slug}`);
+                navigation.push(`/tools/${slug}`);
+                onSelect?.();
               }}
-              className={`focus-visible:ring-primary/40 flex h-9 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
-                collapsed ? "w-9 justify-center" : "w-full gap-2.5 px-3"
-              } ${
-                active
-                  ? "neu-inset bg-surface-container text-on-surface"
-                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-              }`}
-            >
-              <entry.icon className="size-4 shrink-0" />
-              <span
-                className={`text-sm font-medium whitespace-nowrap transition-opacity duration-300 ${
-                  collapsed ? "w-0 overflow-hidden opacity-0" : "opacity-100"
-                }`}
-              >
-                {entry.label}
-              </span>
-            </button>
+            />
           </SidebarListItem>
         );
       })}

@@ -2,7 +2,9 @@
 
 // The recessed chat composer. Enter sends; Shift+Enter adds a line;
 // Cmd/Ctrl+Enter always sends. Submit locks while a request is in flight.
+import { ChatComposerFrame } from "@/src/components/chat/chat-frame";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 
 const PLACEHOLDER = "Ask about courses, routes, tuition...";
@@ -73,6 +75,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     const text = value.trim();
     if (!text || disabled) return;
     setValue("");
+    textareaRef.current?.focus({ preventScroll: true });
     requestAnimationFrame(autosize);
     onSend(text);
   }
@@ -86,7 +89,14 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   }
 
   return (
-    <div className="shrink-0 bg-transparent px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-4">
+    <ChatComposerFrame
+      caption={showDisclaimer ? "AI can make mistakes. Verify important information." : tip ? `Tip: ${tip}` : null}
+      trailing={
+        value.length > 9000 ? (
+          <span className="text-muted ml-auto text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
+        ) : null
+      }
+    >
       <form
         data-thinking={thinking}
         aria-busy={thinking}
@@ -109,36 +119,36 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
           onKeyDown={onKeyDown}
           placeholder={PLACEHOLDER}
           aria-label="Message the assistant"
-          className="text-on-surface placeholder:text-muted relative z-10 block max-h-24 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-3 py-3 text-sm outline-none disabled:opacity-60"
+          className="text-on-surface placeholder:text-muted relative z-10 block max-h-24 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm leading-6 outline-none disabled:opacity-60 sm:py-3 sm:leading-5"
         />
         {onStop ? (
-          <button
-            type="button"
+          <Button
             onClick={onStop}
             aria-label="Stop generating"
-            className="neu-button bg-surface text-on-surface-variant relative z-10 flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-9"
+            size="icon"
+            shadowOn="surface-container-low"
+            className="relative z-10 max-sm:rounded-[0.625rem] sm:rounded-md"
           >
-            <Icon name="stop" size={16} />
-          </button>
+            <span key="stop" aria-hidden="true" className="ui-content-enter inline-flex">
+              <Icon name="stop" size={16} />
+            </span>
+          </Button>
         ) : (
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            size="icon"
+            shadowOn="surface-container-low"
             disabled={!canSend}
             aria-label="Send message"
-            className="neu-primary-button bg-primary text-on-primary relative z-10 flex size-11 shrink-0 items-center justify-center rounded-xl disabled:pointer-events-none disabled:opacity-45 sm:size-9"
+            className="relative z-10 max-sm:rounded-[0.625rem] sm:rounded-md"
           >
-            <Icon name="arrowUp" size={18} />
-          </button>
+            <span key="send" aria-hidden="true" className="ui-content-enter inline-flex">
+              <Icon name="arrowUp" size={18} />
+            </span>
+          </Button>
         )}
       </form>
-      <div className="mt-2 flex items-center justify-between px-1">
-        <p className="text-muted flex-1 text-center text-xs">
-          {showDisclaimer ? "AI can make mistakes. Verify important information." : tip ? `Tip: ${tip}` : null}
-        </p>
-        {value.length > 9000 && (
-          <span className="text-muted ml-auto text-xs tabular-nums">{value.length.toLocaleString()} / 10,000</span>
-        )}
-      </div>
-    </div>
+    </ChatComposerFrame>
   );
 });

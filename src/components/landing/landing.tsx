@@ -5,7 +5,10 @@ import { Icon } from "@/src/components/icons";
 import { ProductMock } from "@/src/components/landing/product-mock";
 import { TopoTexture } from "@/src/components/landing/topo-texture";
 import { ThemeToggle } from "@/src/components/theme-toggle";
-import { motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { ButtonLink } from "@/src/components/ui/button";
+import { LoadingStatus } from "@/src/components/ui/feedback";
+import { InlineAction } from "@/src/components/ui/inline-action";
+import { motion, useInView, useReducedMotion, useScroll, useTransform, type HTMLMotionProps } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -53,7 +56,7 @@ export function Landing() {
           <span className="bg-primary-container text-on-primary-container shadow-inset flex size-9 items-center justify-center rounded-xl">
             <Icon name="school" size={18} />
           </span>
-          <span className="text-primary animate-pulse text-xl font-medium tracking-[-0.02em]">Reodite</span>
+          <LoadingStatus>Opening Reodite…</LoadingStatus>
         </div>
       </div>
     );
@@ -65,17 +68,20 @@ export function Landing() {
 function GuestLink({ className }: { className?: string }) {
   const { continueAsGuest } = useAppAuth();
   return (
-    <button
-      type="button"
-      className={className}
-      onClick={() => continueAsGuest()}
-    >
+    <InlineAction className={className} onClick={() => continueAsGuest()}>
       Continue as guest
-    </button>
+    </InlineAction>
   );
 }
 
-// --- Animated landing content (only mounts when signed out, refs are safe) ---
+function SectionHeading({ className, ...props }: HTMLMotionProps<"h2">) {
+  return (
+    <motion.h2
+      className={`text-on-surface text-2xl font-medium tracking-[-0.02em] sm:text-3xl ${className ?? ""}`}
+      {...props}
+    />
+  );
+}
 
 function LandingContent() {
   const prefersReducedMotion = useReducedMotion();
@@ -117,18 +123,18 @@ function LandingContent() {
   }, []);
 
   return (
-    <div className="landing-root bg-background text-on-surface overflow-hidden">
+    <div className="landing-root bg-background text-on-surface overflow-x-clip">
       <a
         href="#main"
-        className="bg-primary text-on-primary fixed top-2 left-2 z-[60] rounded-lg px-4 py-2 text-sm font-medium opacity-0 focus:opacity-100"
+        className="bg-primary text-on-primary pointer-events-none fixed top-2 left-2 z-[60] rounded-lg px-4 py-2 text-sm font-medium opacity-0 focus:pointer-events-auto focus:opacity-100"
       >
         Skip to content
       </a>
 
       {/* Header */}
-      <header className="pointer-events-none fixed inset-x-0 top-0 z-40">
+      <header className="pointer-events-none sticky top-0 z-40">
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-48"
+          className={`pointer-events-none absolute inset-x-0 top-0 h-48 ${scrolled ? "opacity-100" : "opacity-0"}`}
           style={{
             background:
               "linear-gradient(to bottom in oklch, var(--background) 0%, var(--background) 40%, color-mix(in oklch, var(--background) 70%, transparent) 65%, color-mix(in oklch, var(--background) 30%, transparent) 85%, transparent 100%)",
@@ -139,32 +145,33 @@ function LandingContent() {
             initial={skipAnim ? false : { opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 120, damping: 20 }}
-            className={`pointer-events-auto mx-auto flex h-14 max-w-5xl items-center justify-between rounded-2xl px-4 transition-[background-color,box-shadow] duration-200 ${
+            className={`pointer-events-auto mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-0.5 transition-[background-color,box-shadow] duration-200 ${
               scrolled ? "neu-panel" : ""
             }`}
           >
-            <Link href="/" className="flex items-center gap-2" aria-label="Reodite home">
-              <span className="bg-primary-container text-on-primary-container flex size-8 items-center justify-center rounded-xl">
+            <Link
+              href="/"
+              className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap"
+              aria-label="Reodite home"
+            >
+              <span className="bg-primary-container text-on-primary-container flex size-8 shrink-0 items-center justify-center rounded-xl">
                 <Icon name="school" size={16} />
               </span>
               <span className="text-on-surface text-sm font-medium tracking-[-0.02em]">Reodite</span>
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex max-w-full flex-wrap items-center gap-2">
               <ThemeToggle />
-              <Link
-                href="/login"
-                className="neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-9 items-center rounded-xl px-4 text-sm font-medium"
-              >
+              <ButtonLink href="/login" shadowOn={scrolled ? "surface" : "background"}>
                 Sign in
-              </Link>
+              </ButtonLink>
             </div>
           </motion.nav>
         </div>
       </header>
 
-      <main id="main">
+      <main id="main" className="scroll-mt-48">
         {/* Hero */}
-        <section className="relative flex min-h-[100dvh] flex-col items-center justify-center px-4 sm:px-6">
+        <section className="relative flex min-h-[calc(100dvh-4.25rem)] flex-col items-center justify-center px-4 py-8 sm:px-6">
           {/* Topo texture with drift + fade-in + gradient mask */}
           <motion.div
             initial={skipAnim ? false : { opacity: 0 }}
@@ -220,24 +227,18 @@ function LandingContent() {
                   animate={heroCTAVariant.visible}
                   transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.32 }}
                 >
-                  <Link
-                    href="/signup"
-                    className="neu-primary-button bg-primary text-on-primary flex h-12 items-center rounded-xl px-8 text-base font-medium"
-                  >
+                  <ButtonLink href="/signup" variant="primary" size="large" shadowOn="background">
                     Get started
-                  </Link>
+                  </ButtonLink>
                 </motion.div>
                 <motion.div
                   initial={skipAnim ? false : heroCTAVariant.hidden}
                   animate={heroCTAVariant.visible}
                   transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.36 }}
                 >
-                  <Link
-                    href="/login"
-                    className="neu-button bg-surface text-on-surface flex h-12 items-center rounded-xl px-8 text-base font-medium"
-                  >
+                  <ButtonLink href="/login" size="large" shadowOn="background">
                     Sign in
-                  </Link>
+                  </ButtonLink>
                 </motion.div>
               </motion.div>
               <motion.div
@@ -256,9 +257,7 @@ function LandingContent() {
         <section className="px-4 py-16 sm:px-6 sm:py-24" ref={productSectionRef}>
           <div className="mx-auto max-w-5xl">
             <div className="mx-auto mb-10 max-w-lg text-center sm:mb-12">
-              <h2 className="text-on-surface text-2xl font-medium tracking-[-0.02em] sm:text-3xl">
-                You ask. It finds. The map shows.
-              </h2>
+              <SectionHeading>You ask. It finds. The map shows.</SectionHeading>
               <p className="text-on-surface-variant mt-3 text-sm leading-relaxed sm:text-base">
                 The agent calls real UBC data tools. If the answer involves a place, you see the route.
               </p>
@@ -276,14 +275,14 @@ function LandingContent() {
         {/* Features — staggered entrance */}
         <section className="px-4 py-24 sm:px-6 sm:py-32">
           <div ref={featuresRef} className="mx-auto max-w-3xl">
-            <motion.h2
-              className="text-on-surface text-center text-2xl font-medium tracking-[-0.02em] sm:text-3xl"
+            <SectionHeading
+              className="text-center"
               initial={skipAnim ? false : { opacity: 0, y: 16 }}
               animate={featuresInView || skipAnim ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
               Backed by real data. Drawn on a real map.
-            </motion.h2>
+            </SectionHeading>
 
             <div className="mt-16 grid gap-12 sm:grid-cols-3 sm:gap-8">
               {(
@@ -331,14 +330,13 @@ function LandingContent() {
           className="px-4 pt-24 pb-12 text-center sm:px-6 sm:pt-32 sm:pb-16"
           style={skipAnim ? undefined : { y: ctaParallaxY }}
         >
-          <motion.h2
-            className="text-on-surface text-2xl font-medium tracking-[-0.02em] sm:text-3xl"
+          <SectionHeading
             initial={skipAnim ? false : featureItemVariant.hidden}
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           >
             Stop guessing. Start asking.
-          </motion.h2>
+          </SectionHeading>
           <motion.p
             className="text-on-surface-variant mx-auto mt-4 max-w-xs text-base leading-relaxed"
             initial={skipAnim ? false : featureItemVariant.hidden}
@@ -353,18 +351,12 @@ function LandingContent() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Link
-              href="/signup"
-              className="neu-primary-button bg-primary text-on-primary flex h-12 items-center rounded-xl px-8 text-base font-medium"
-            >
+            <ButtonLink href="/signup" variant="primary" size="large" shadowOn="background">
               Get started free
-            </Link>
-            <Link
-              href="/login"
-              className="neu-button bg-surface text-on-surface flex h-12 items-center rounded-xl px-8 text-base font-medium"
-            >
+            </ButtonLink>
+            <ButtonLink href="/login" size="large" shadowOn="background">
               Sign in
-            </Link>
+            </ButtonLink>
           </motion.div>
           <motion.div
             initial={skipAnim ? false : featureItemVariant.hidden}

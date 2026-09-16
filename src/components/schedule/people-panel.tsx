@@ -1,5 +1,8 @@
 "use client";
 
+import { Checkbox } from "@/src/components/ui/form-controls";
+import { Heading } from "@/src/components/ui/heading";
+import { InlineAction } from "@/src/components/ui/inline-action";
 import { displayHandles } from "@/src/lib/schedule/display";
 import type { Person } from "@/src/lib/schedule/types";
 import { AvatarChip } from "./avatar-chip";
@@ -21,13 +24,13 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
   return (
     <section aria-label="People in this schedule">
       <div className="mb-2 flex min-h-9 items-center justify-between">
-        <h3 className="text-on-surface text-sm font-medium">
+        <Heading as="h3" size="subsection">
           People <span className="text-muted ml-1 text-xs">{people.length}</span>
-        </h3>
+        </Heading>
         {!allOn && (
-          <button type="button" onClick={onEnableAll} className="text-primary text-xs font-medium hover:underline">
+          <InlineAction onClick={onEnableAll} className="ui-content-enter text-xs font-medium">
             Show all
-          </button>
+          </InlineAction>
         )}
       </div>
       <ul className="flex flex-col gap-1">
@@ -37,12 +40,13 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
           return (
             <li key={p.id}>
               <label
-                className={`hover:bg-surface-container focus-within:ring-primary/40 flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 focus-within:ring-2 ${
-                  p.enabled ? "" : "opacity-60"
+                htmlFor={`schedule-person-${p.id}`}
+                className={`hover:bg-surface-container focus-within:ring-primary/40 flex min-h-11 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-[opacity,background-color] duration-150 focus-within:ring-2 ${
+                  p.enabled ? "opacity-100" : "opacity-60"
                 }`}
               >
                 <AvatarChip avatar={p.avatar} size={30} title={displayName} />
-                <span className="flex min-w-0 flex-1 flex-col">
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="text-on-surface truncate text-sm font-medium">
                     {displayName}
                     {p.id === meId && <span className="text-muted ml-1.5 text-xs font-medium">(you)</span>}
@@ -57,12 +61,11 @@ export function PeoplePanel({ people, meId, onToggle, onEnableAll }: Props) {
                     )}
                   </span>
                 </span>
-                <input
-                  type="checkbox"
-                  aria-label={`Show ${displayName} on the calendar`}
+                <Checkbox
+                  id={`schedule-person-${p.id}`}
+                  label={`Show ${displayName} on the calendar`}
                   checked={p.enabled}
                   onChange={(event) => onToggle(p.id, event.target.checked)}
-                  className="accent-primary size-4 shrink-0"
                 />
               </label>
             </li>

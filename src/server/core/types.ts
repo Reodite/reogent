@@ -1,6 +1,7 @@
 // Core types shared by the agent loop, dataset modules, and API handlers.
 
 import type { ChatMessage } from "@/src/shared/types";
+import type { FeatureCollection } from "geojson";
 import type { Meilisearch } from "meilisearch";
 
 export type { ActivityBlock, ChatMessage, SessionSummary, ToolCall } from "@/src/shared/types";
@@ -57,6 +58,8 @@ export type SearchClient = Meilisearch;
 // biome-ignore lint/suspicious/noExplicitAny: raw rows are dataset-specific
 export interface IndexDef<TRaw = any> {
   index: string;
+  /** Atomically replaces the complete snapshot instead of upserting documents. */
+  replace?: boolean;
   /** Meilisearch index settings: searchableAttributes, filterableAttributes, sortableAttributes. */
   settings: {
     searchableAttributes?: string[];
@@ -75,7 +78,8 @@ export interface ToolDef {
 
 export interface GeoArtifact {
   name: string;
-  path: string;
+  path?: string;
+  load?: () => Promise<FeatureCollection>;
 }
 
 export interface DatasetModule {

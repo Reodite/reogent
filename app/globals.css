@@ -1,10 +1,12 @@
 @import "tailwindcss";
+@import "./theme-colors.generated.css";
+@source not "../ubc-unified-data";
 
 /*
  * Design tokens per DESIGN.md: neumorphic depth over a cool-neutral palette.
  *
  * Architecture:
- * - :root / [data-theme="dark"] define raw CSS custom properties (theme-switchable)
+ * - theme-colors.generated.css defines theme colors and contextual shadow pairs
  * - @theme inline maps them to Tailwind v4 utility classes (bg-surface, shadow-sm, etc.)
  * - .neu-* classes are composed multi-property surfaces
  *
@@ -13,60 +15,6 @@
 
 :root {
   color-scheme: light;
-
-  /* Surface palette */
-  --background: #f7f7f5;
-  --surface-container-lowest: #ffffff;
-  --surface-container-low: #f3f3f5;
-  --surface-container: #ededef;
-  --surface-container-high: #e6e6e8;
-  --surface: #fafafa;
-  --surface-bright: #ffffff;
-
-  /* Primary: Muted Indigo */
-  --primary: #4a4e7a;
-  --primary-container: #7a7ea8;
-  --on-primary: #ffffff;
-  --on-primary-container: #1a1d3a;
-
-  /* Secondary: Campus Verdant */
-  --secondary: #2d6b47;
-  --secondary-container: #b0efc2;
-  --on-secondary: #ffffff;
-  --on-secondary-container: #001f0e;
-
-  /* Tertiary: Warm Bark */
-  --tertiary: #7a5733;
-  --tertiary-container: #f4e3cf;
-  --on-tertiary-container: #4a3010;
-
-  /* Event-family accents (calendar only) — aliases of the secondary (academic) and tertiary (holiday) families */
-  --event-academic: var(--secondary);
-  --on-event-academic: var(--on-secondary);
-  --event-academic-container: var(--secondary-container);
-  --event-holiday: var(--tertiary);
-  --on-event-holiday: #ffffff;
-  --event-holiday-container: var(--tertiary-container);
-
-  /* Error: Quiet Ember */
-  --error: #9c4040;
-  --error-container: #ffdad6;
-  --on-error-container: #6e2c2c;
-
-  /* Text and outline */
-  --on-surface: #18191b;
-  --on-surface-variant: #3e4348;
-  --muted: #5a6066;
-  --outline: #6e747a;
-  --outline-variant: #bfc4c9;
-
-  /* Borders */
-  --border: #d9d9dd;
-  --border-subtle: #e8e8ea;
-
-  /* Accents */
-  --accent-subtle: #edeef5;
-  --surface-tint: #4a4e7a;
 
   /* Utility elevation (Tier 1) */
   --elevation-sm: 2px 2px 4px rgba(174, 174, 174, 0.04), -1px -1px 3px rgba(255, 255, 255, 0.25);
@@ -84,56 +32,10 @@
 
   /* Motion */
   --neu-ease: cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* Scrim */
-  --scrim: rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-
-  --background: #121214;
-  --surface-container-lowest: #0e0e10;
-  --surface-container-low: #202024;
-  --surface-container: #26262b;
-  --surface-container-high: #2e2e33;
-  --surface: #1a1a1e;
-  --surface-bright: #36363c;
-
-  --primary: #b0b4d8;
-  --primary-container: #363a5e;
-  --on-primary: #0f1128;
-  --on-primary-container: #d4d6ef;
-  --secondary: #98d4a9;
-  --secondary-container: #155130;
-  --on-secondary: #001f0e;
-  --on-secondary-container: #b0efc2;
-  --tertiary: #ebbe92;
-  --tertiary-container: #4a3623;
-  --on-tertiary-container: #f7dfc3;
-
-  /* Event-family accents — calendar only */
-  --event-academic: var(--secondary);
-  --on-event-academic: var(--on-secondary);
-  --event-academic-container: var(--secondary-container);
-  --event-holiday: var(--tertiary);
-  --on-event-holiday: #161310;
-  --event-holiday-container: var(--tertiary-container);
-  --error: #e0a3a3;
-  --error-container: #93000a;
-  --on-error-container: #ffdad6;
-
-  --on-surface: #e3e2e4;
-  --on-surface-variant: #c2c7cc;
-  --muted: #a6adb3;
-  --outline: #8c9297;
-  --outline-variant: #42484c;
-
-  --border: #2c2c31;
-  --border-subtle: #242428;
-
-  --accent-subtle: #1e1f2a;
-  --surface-tint: #b0b4d8;
 
   --elevation-sm: 2px 2px 4px rgba(16, 16, 19, 0.5), -1px -1px 3px rgba(38, 38, 44, 0.4);
   --elevation-md: 3px 3px 7px rgba(16, 16, 19, 0.5), -2px -2px 5px rgba(38, 38, 44, 0.35);
@@ -148,8 +50,6 @@
   --neu-shadow-deep: rgba(10, 10, 12, 0.65);
   --neu-surface-shadow: 3px 3px 8px var(--neu-shadow), -2px -2px 6px var(--neu-highlight);
   --neu-inset-shadow: inset 1px 1px 3px var(--neu-shadow), inset -1px -1px 3px var(--neu-highlight);
-
-  --scrim: rgba(0, 0, 0, 0.5);
 }
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
@@ -222,6 +122,86 @@
 
 /* ---- Base ---- */
 
+@layer base {
+  :where(
+    a[href]:not([aria-disabled="true"]),
+    button:not(:disabled):not([aria-disabled="true"]),
+    input:is(
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        [type="image"],
+        [type="checkbox"],
+        [type="radio"],
+        [type="file"],
+        [type="color"]
+      ):not(:disabled):not([aria-disabled="true"]),
+    select:not(:disabled):not([aria-disabled="true"]),
+    option:not(:disabled):not([aria-disabled="true"]),
+    label:has(:is(input[type="checkbox"], input[type="radio"], input[type="file"]):not(:disabled)):not(
+        [aria-disabled="true"]
+      ),
+    :is(
+      [role="button"],
+      [role="link"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="menuitemcheckbox"],
+      [role="menuitemradio"],
+      [role="option"],
+      [role="radio"],
+      [role="switch"],
+      [role="checkbox"],
+      [role="treeitem"]
+    ):not([aria-disabled="true"])
+  ):not([inert], [inert] *) {
+    cursor: pointer;
+  }
+
+  details > summary:not([aria-disabled="true"]):not([inert], [inert] *) {
+    cursor: pointer;
+  }
+
+  :where(
+    a[href][aria-disabled="true"],
+    button:is(:disabled, [aria-disabled="true"]),
+    input:is(
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        [type="image"],
+        [type="checkbox"],
+        [type="radio"],
+        [type="file"],
+        [type="color"]
+      ):is(:disabled, [aria-disabled="true"]),
+    select:is(:disabled, [aria-disabled="true"]),
+    option:is(:disabled, [aria-disabled="true"]),
+    label:has(
+      :is(input[type="checkbox"], input[type="radio"], input[type="file"]):is(:disabled, [aria-disabled="true"])
+    ),
+    :is(
+      [role="button"],
+      [role="link"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="menuitemcheckbox"],
+      [role="menuitemradio"],
+      [role="option"],
+      [role="radio"],
+      [role="switch"],
+      [role="checkbox"],
+      [role="treeitem"]
+    )[aria-disabled="true"]
+  ) {
+    cursor: not-allowed;
+  }
+
+  details > summary[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 html,
 body {
   height: 100%;
@@ -231,8 +211,8 @@ body {
   background: var(--background);
   color: var(--on-surface);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -260,7 +240,7 @@ body {
 
 *::-webkit-scrollbar-thumb {
   background-color: var(--outline-variant);
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
@@ -301,6 +281,24 @@ body {
   outline-offset: 2px;
 }
 
+:where(.workspace-page) :focus-visible {
+  scroll-margin-block: 4px;
+}
+
+[data-thinking-scroll]:focus-visible,
+[data-grade-chart-scroll]:focus-visible,
+[data-course-detail-scroll]:focus-visible,
+[data-dialog-scroll]:focus-visible,
+.schedule-toast-stack:focus-visible {
+  outline-offset: -2px;
+}
+
+[data-disclosure-content] > :focus-visible {
+  outline-offset: -2px;
+  --tw-ring-inset: inset;
+  --tw-ring-offset-width: 0px;
+}
+
 html[data-planner-dragging],
 html[data-planner-dragging] body,
 html[data-planner-dragging] body *,
@@ -312,6 +310,11 @@ html[data-schedule-dragging] body * {
 
 .maplibregl-map {
   font: inherit;
+}
+
+.maplibregl-map .maplibregl-ctrl-attrib-button {
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 /* ---- Keyframes ---- */
@@ -401,6 +404,120 @@ details[open] > *:not(summary) {
   }
 }
 
+@keyframes content-opacity-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ui-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ui-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ui-chart-in {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.ui-content-enter {
+  animation: content-opacity-in 180ms ease-out backwards;
+}
+
+.ui-notice-enter {
+  animation: ui-notice-in 200ms var(--neu-ease) backwards;
+}
+
+.ui-popover-enter {
+  animation: ui-popover-in 220ms var(--neu-ease) backwards;
+}
+
+.ui-chart-enter {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: ui-chart-in 320ms var(--neu-ease) backwards;
+}
+
+@supports (interpolate-size: allow-keywords) and selector(details::details-content) {
+  details {
+    interpolate-size: allow-keywords;
+  }
+
+  details::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition:
+      block-size 240ms var(--neu-ease),
+      opacity 160ms ease-out,
+      content-visibility 240ms;
+    transition-behavior: allow-discrete;
+  }
+
+  details[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+
+  details[open] > *:not(summary) {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    details::details-content {
+      transition: none;
+    }
+  }
+}
+
+@keyframes shell-progress-reveal {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shell-progress-travel {
+  from {
+    transform: translateX(-110%) scaleX(0.35);
+  }
+  to {
+    transform: translateX(230%) scaleX(0.8);
+  }
+}
+
+@keyframes skeleton-sheen {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
 /* ---- Reduced motion ---- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -412,7 +529,7 @@ details[open] > *:not(summary) {
     /* biome-ignore lint/complexity/noImportantStyles: see above */
     animation-iteration-count: 1 !important;
     /* biome-ignore lint/complexity/noImportantStyles: see above */
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     /* biome-ignore lint/complexity/noImportantStyles: see above */
     transition-delay: 0ms !important;
     /* biome-ignore lint/complexity/noImportantStyles: see above */
@@ -472,23 +589,21 @@ html.vt-active *::after {
 
 .workspace-surface {
   background-color: var(--surface);
-  border-radius: 1rem;
-  box-shadow: var(--neu-surface-shadow);
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.neu-panel {
-  background-color: var(--surface);
-  box-shadow: var(--neu-surface-shadow);
-}
+@layer components {
+  .neu-panel,
+  .neu-raised {
+    background-color: var(--surface);
+    box-shadow: var(--neu-surface-shadow);
+  }
 
-.neu-raised {
-  background-color: var(--surface);
-  box-shadow: var(--neu-surface-shadow);
-}
-
-.neu-inset {
-  background-color: var(--surface-container-low);
-  box-shadow: var(--neu-inset-shadow);
+  .neu-inset {
+    background-color: var(--surface-container-low);
+    box-shadow: var(--neu-inset-shadow);
+  }
 }
 
 /* Overlay surfaces only: backdrop blur + subtle drop shadow */
@@ -510,39 +625,35 @@ html.vt-active *::after {
     transform 150ms ease-out;
 }
 
-.neu-button:hover {
+.neu-button:not(:disabled):hover {
   box-shadow:
     4px 4px 10px var(--neu-shadow),
     -2px -2px 7px var(--neu-highlight);
 }
 
-.neu-button:active,
+.neu-button:not(:disabled):active,
 .neu-button[aria-pressed="true"] {
   box-shadow: var(--neu-inset-shadow);
   transform: scale(0.98);
 }
 
 .neu-primary-button {
-  box-shadow:
-    0 3px 8px rgba(74, 78, 122, 0.1),
-    -2px -2px 6px var(--neu-highlight);
+  box-shadow: var(--neu-surface-shadow);
   transition:
     filter 150ms ease-out,
     box-shadow 150ms ease-out,
     transform 150ms ease-out;
 }
 
-.neu-primary-button:hover {
+.neu-primary-button:not(:disabled):hover {
   box-shadow:
-    0 4px 10px rgba(74, 78, 122, 0.12),
+    4px 4px 10px var(--neu-shadow),
     -2px -2px 7px var(--neu-highlight);
   filter: brightness(1.03);
 }
 
-.neu-primary-button:active {
-  box-shadow:
-    inset 2px 2px 5px rgba(0, 0, 0, 0.1),
-    inset -1px -1px 4px rgba(255, 255, 255, 0.08);
+.neu-primary-button:not(:disabled):active {
+  box-shadow: var(--neu-inset-shadow);
   transform: scale(0.985);
 }
 
@@ -558,8 +669,146 @@ html.vt-active *::after {
   background-color: var(--background);
 }
 
+.app-shell-frame {
+  background-color: var(--surface);
+}
+
+:where([data-workspace-heading]) > .shell-menu-trigger {
+  margin-block: -0.5rem;
+}
+
+.mobile-mode-bar {
+  background: var(--surface);
+  border-top: 1px solid var(--border-subtle);
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.mobile-mode-bar [data-mode-toggle]::before {
+  content: "";
+  position: absolute;
+  inset: 0.5rem;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  transition: background-color 150ms ease-out;
+}
+
+@media (hover: hover) {
+  .mobile-mode-bar [data-mode-toggle]:hover::before {
+    background-color: var(--surface-container-high);
+  }
+}
+
+.mobile-mode-bar [data-mode-toggle]:active::before {
+  background-color: var(--surface-container-high);
+}
+
+.mobile-mode-bar [data-mode-toggle]:focus-visible {
+  outline: none;
+}
+
+.mobile-mode-bar [data-mode-toggle]:focus-visible::before {
+  outline: 2px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  outline-offset: -2px;
+}
+
+.mobile-mode-indicator {
+  position: absolute;
+  top: 0.25rem;
+  left: 0;
+  width: calc(100% / 3);
+  pointer-events: none;
+  transition: transform 280ms var(--neu-ease);
+}
+
+.mobile-mode-indicator > span {
+  display: block;
+  width: 1.5rem;
+  height: 2px;
+  margin-inline: auto;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.app-notification-stack {
+  bottom: 1rem;
+  max-width: calc(100vw - 2rem);
+}
+
+/* Keep partially visible messages inside the viewport clearance. */
+.schedule-toast-stack {
+  max-width: calc(100vw - 1rem);
+  max-height: max(0px, calc(var(--app-viewport-height, 100dvh) - 2rem - env(safe-area-inset-top)));
+}
+
+.schedule-toast-stack[data-toast-host="answer-canvas"] {
+  position: absolute;
+  bottom: 1rem;
+  max-width: calc(100% - 1rem);
+  max-height: max(0px, calc(100% - 2rem));
+}
+
+.shell-sidebar-drawer {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+}
+
+[data-sidebar-list="collapsed"] {
+  scrollbar-width: none;
+}
+
+[data-sidebar-list="collapsed"]::-webkit-scrollbar {
+  display: none;
+}
+
+[data-sidebar-brand="collapsed"] a:focus-visible {
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+[data-session-actions] {
+  opacity: 1;
+  transition: opacity 150ms ease-out;
+}
+
+@media (min-width: 640px) and (hover: hover) {
+  [data-session-item][data-session-idle] [data-session-actions] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  [data-session-item][data-session-idle]:is(:hover, :focus-within) [data-session-actions] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.shell-sidebar-drawer :where([data-session-item]) [data-sidebar-item] {
+  height: 3rem;
+  padding-right: 3.25rem;
+}
+
+.shell-sidebar-drawer [data-session-editor-controls] {
+  min-height: 3rem;
+}
+
+.shell-sidebar-drawer :where([data-session-actions], [data-session-editor-controls]) > button {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.shell-sidebar-drawer [data-session-editor-controls] > input {
+  height: 2.75rem;
+}
+
 .auth-canvas {
   background-color: var(--background);
+  padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
+}
+
+.auth-canvas :focus {
+  scroll-margin-top: calc(5.75rem + env(safe-area-inset-top));
 }
 
 .chat-message-well {
@@ -570,93 +819,515 @@ html.vt-active *::after {
   overscroll-behavior: contain;
 }
 
+[data-chat-frame] > .chat-message-well:focus-visible {
+  outline-offset: -2px;
+}
+
 .shell-body {
   display: flex;
   min-width: 0;
 }
 
 .chat-workspace {
+  --sidebar-width: 17rem;
+  --sidebar-offset: 17.75rem;
+
   display: flex;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
 }
 
-.schedule-workspace,
-.schedule-planner {
-  container-type: inline-size;
+@media (min-width: 640px) {
+  .app-shell-frame {
+    background-color: var(--background);
+  }
+
+  .chat-workspace {
+    padding: 0.75rem;
+  }
+
+  .workspace-surface {
+    border-radius: 1rem;
+    box-shadow: var(--neu-surface-shadow);
+  }
 }
 
-.schedule-workspace-toggle,
-.schedule-grid-day-tabs {
+.chat-workspace[data-sidebar-collapsed],
+html[data-sidebar-collapsed="true"] .chat-workspace {
+  --sidebar-width: 3rem;
+  --sidebar-offset: 3.75rem;
+}
+
+.sessions-aside {
+  width: var(--sidebar-width);
+}
+
+.prereq-graph-ready {
+  animation: content-opacity-in 160ms ease-out backwards;
+}
+
+.shell-navigation-progress {
+  opacity: 0;
+  animation: shell-progress-reveal 100ms ease-out 80ms forwards;
+}
+
+.shell-navigation-progress > span {
+  width: 45%;
+  animation: shell-progress-travel 900ms ease-in-out 80ms infinite;
+}
+
+.skeleton {
+  background: var(--surface-container);
+  overflow: hidden;
+  position: relative;
+}
+
+.skeleton::after {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 72%, transparent), transparent);
+  content: "";
+  inset: 0;
+  transform: translateX(-120%);
+  animation: skeleton-sheen 1.4s var(--neu-ease) 120ms infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    display: none;
+  }
+}
+
+:where(html[data-shell-mode="ai"]) [data-shell-boot-new] {
+  display: block;
+}
+
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-frame] {
+  padding-inline: 0.125rem;
+}
+
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-brand] {
+  height: 3rem;
+  padding-inline: 0;
+  justify-content: center;
+}
+
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-brand] > :where(:last-child),
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-new] {
   display: none;
 }
 
-[data-schedule-toolbar] [role="tablist"] {
-  gap: 0.25rem;
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-expand] {
+  display: block;
+}
+
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-list] {
+  border-radius: 0.75rem;
   padding: 0.25rem;
-  border-radius: 0.5rem;
-  background: var(--surface-container-low);
-  box-shadow: var(--neu-inset-shadow);
 }
 
-[data-schedule-toolbar] [role="tab"] {
-  min-height: 2.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  box-shadow: none;
+:where(html[data-sidebar-collapsed="true"][data-shell-mode="ai"]) .shell-boot-sidebar [data-shell-boot-list] {
+  visibility: hidden;
 }
 
-[data-schedule-toolbar] [role="tab"][aria-selected="true"] {
-  background: var(--surface);
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-footer] {
+  align-items: center;
+}
+
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-modes] {
+  flex-direction: column;
+}
+
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-modes] > [data-skeleton] {
+  width: 2.25rem;
+  flex: none;
+}
+
+:where(html[data-sidebar-collapsed="true"]) .shell-boot-sidebar [data-shell-boot-account] {
+  width: 2.25rem;
+}
+
+.shell-boot-workspace {
+  display: none;
+}
+
+[data-shell-boot-mode="tools"] .shell-boot-chat,
+[data-shell-boot-mode="unity"] .shell-boot-chat,
+[data-shell-boot-mode="settings"] .shell-boot-chat {
+  display: none;
+}
+
+[data-shell-boot-mode="tools"] .shell-boot-workspace,
+[data-shell-boot-mode="unity"] .shell-boot-workspace,
+[data-shell-boot-mode="settings"] .shell-boot-workspace {
+  display: block;
+}
+
+.workspace-page {
+  container-type: inline-size;
+  animation: content-opacity-in 160ms ease-out backwards;
+}
+
+.workspace-page-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace-page[data-workspace-composition="split"] .workspace-page-body {
+  grid-template-columns: 20rem minmax(0, 1fr);
+}
+
+.workspace-page-toggle {
+  display: none;
+}
+
+.workspace-rail > [data-workspace-panel] {
+  flex: 1 1 0%;
+}
+
+:where([data-workspace-region="rail"], .workspace-rail, [data-workspace-panel], [data-workspace-panel-body]):has(
+  [data-planner-controls]
+) {
+  min-height: min-content;
+}
+
+[data-map-sheet-handle] {
+  display: none;
+}
+
+[data-map-sheet-content] > [data-workspace-panel] {
+  height: 100%;
+}
+
+[data-route-results-scroll] {
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline-variant) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+@container (max-width: 55rem) {
+  .workspace-page-header {
+    padding: 1rem;
+  }
+
+  .workspace-page-layout {
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .workspace-page-toggle {
+    display: flex;
+  }
+
+  .workspace-page[data-workspace-composition="split"] .workspace-page-body {
+    display: block;
+  }
+
+  .workspace-page[data-workspace-composition="split"] .workspace-page-region {
+    display: none;
+    height: 100%;
+  }
+
+  .workspace-page[data-workspace-composition="split"][data-workspace-view="main"] [data-workspace-region="main"],
+  .workspace-page[data-workspace-composition="split"][data-workspace-view="rail"] [data-workspace-region="rail"] {
+    display: block;
+  }
+
+  [data-map-explorer] .workspace-page-toggle {
+    display: none;
+  }
+
+  [data-map-explorer] .workspace-page-body {
+    --map-explore-sheet-height: min(72%, 36rem, calc(100% - 7.5rem));
+    position: relative;
+    display: block;
+    overflow: hidden;
+  }
+
+  [data-map-explorer] .workspace-page[data-workspace-composition="split"] [data-workspace-region="main"] {
+    display: block;
+    height: 100%;
+  }
+
+  [data-map-explorer] .workspace-page[data-workspace-composition="split"] [data-workspace-region="rail"] {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    display: block;
+    height: var(--map-explore-sheet-height);
+    pointer-events: none;
+    transform: translateY(calc(100% - 4rem));
+    transition: transform 280ms var(--neu-ease);
+  }
+
+  [data-map-explorer]
+    .workspace-page[data-workspace-composition="split"][data-workspace-view="rail"]
+    [data-workspace-region="rail"] {
+    transform: translateY(0);
+  }
+
+  [data-map-explore-sheet] {
+    overflow: hidden;
+    pointer-events: auto;
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    border-bottom: 0;
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: var(--neu-surface-shadow);
+  }
+
+  [data-map-sheet-handle] {
+    display: flex;
+  }
+
+  [data-map-explore-sheet][data-sheet-open] [data-map-sheet-handle] {
+    height: 2.75rem;
+    min-height: 2.75rem;
+    justify-content: flex-end;
+    padding: 0.5rem 1rem 0.25rem;
+  }
+
+  [data-map-explore-sheet][data-sheet-open] [data-map-sheet-summary] {
+    display: none;
+  }
+
+  [data-map-explore-sheet][data-sheet-open] [data-map-sheet-chevron] {
+    display: flex;
+  }
+
+  [data-map-sheet-content] {
+    visibility: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+    pointer-events: none;
+  }
+
+  [data-map-explore-sheet][data-sheet-open] [data-map-sheet-content] {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  [data-map-sheet-content] > [data-workspace-panel] {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  [data-map-sheet-content] > [data-workspace-panel] > header {
+    display: none;
+  }
+
+  [data-map-sheet-content] > [data-workspace-panel][data-workspace-panel-leading] > header {
+    display: flex;
+  }
+
+  [data-map-sheet-content] > [data-workspace-panel] > [data-workspace-panel-body] {
+    border-top: 0;
+  }
+
+  [data-map-explorer] [data-map-zoom-controls] {
+    bottom: 5rem;
+  }
+
+  [data-map-explorer] .maplibregl-ctrl-bottom-left {
+    bottom: 4rem;
+  }
+
+  [data-map-explorer]
+    .workspace-page[data-workspace-composition="split"][data-workspace-view="rail"]
+    [data-map-zoom-controls] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  [data-map-explorer]
+    .workspace-page[data-workspace-composition="split"][data-workspace-view="rail"]
+    .maplibregl-ctrl-bottom-left {
+    bottom: calc(var(--map-explore-sheet-height) + 0.5rem);
+  }
+}
+
+:where(.workspace-page:not([data-workspace-host="answer-canvas"])) .workspace-page-layout {
+  padding-top: 0;
+}
+
+@media (max-width: 639px) {
+  .app-shell-frame {
+    position: relative;
+    top: var(--app-viewport-top, 0px);
+  }
+
+  [data-mode-navigation="sidebar"] {
+    display: none;
+  }
+
+  .shell-sidebar-drawer {
+    top: var(--app-viewport-top, 0px);
+    width: min(20rem, calc(100vw - 3rem));
+    height: var(--app-viewport-height, 100dvh);
+    overflow: hidden;
+    padding: env(safe-area-inset-top) 0 max(0.5rem, env(safe-area-inset-bottom)) env(safe-area-inset-left);
+    background: var(--surface);
+    border-radius: 0 1rem 1rem 0;
+    box-shadow: var(--neu-surface-shadow);
+  }
+
+  .shell-sidebar-drawer [data-sidebar-frame] {
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .shell-sidebar-drawer [data-sidebar-list] {
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .shell-sidebar-drawer [data-sidebar-item] {
+    height: 3rem;
+    box-shadow: none;
+  }
+
+  .shell-sidebar-drawer [data-sidebar-item] > span {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  .shell-sidebar-drawer [data-sidebar-item] > svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .shell-sidebar-drawer [data-sidebar-item]:active,
+  .shell-sidebar-drawer [data-session-actions] button:active,
+  .shell-sidebar-drawer [data-session-editing] button:active {
+    background: var(--surface-container);
+  }
+
+  .shell-menu-trigger {
+    margin-inline-start: -0.5rem;
+  }
+
+  .shell-menu-trigger,
+  [data-mobile-mode-navigation] a,
+  .shell-sidebar-drawer button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :is(input, textarea, select) {
+    font-size: 1rem;
+  }
+
+  .app-shell-frame [data-chat-composer-footer] {
+    padding-bottom: 0.75rem;
+  }
+
+  .app-shell-frame [data-map-sheet-content] {
+    padding-bottom: 0;
+  }
+
+  .app-notification-stack {
+    bottom: calc(var(--app-viewport-bottom, 0px) + 3.75rem + 1px + env(safe-area-inset-bottom) + 1rem);
+  }
+
+  .schedule-toast-stack {
+    max-height: max(
+      0px,
+      calc(var(--app-viewport-height, 100dvh) - 5.75rem - 1px - env(safe-area-inset-bottom) - env(safe-area-inset-top))
+    );
+  }
+
+  [data-chat-frame] > .chat-message-well {
+    background: var(--surface);
+    box-shadow: none;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .workspace-page-layout {
+    padding: 0;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"]))
+    .workspace-page-layout
+    > :not(.workspace-page-body) {
+    margin-inline: 1rem;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"]))
+    :is([data-workspace-canvas], [data-workspace-panel]) {
+    background-color: var(--surface);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) [data-workspace-canvas]:focus-visible {
+    outline-offset: -2px;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .workspace-rail {
+    gap: 0;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"]))
+    .workspace-rail
+    > [data-workspace-panel]
+    + [data-workspace-panel] {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) [data-schedule-canvas] {
+    padding: 0;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) [data-schedule-grid-frame] {
+    border-radius: 0;
+    padding: 0;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) [data-schedule-grid-frame] > section {
+    border-radius: 0;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .schedule-grid-day-tabs {
+    border-radius: 0;
+    padding: 0.5rem 1rem;
+    overflow-x: auto;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .schedule-grid-day-tabs > [role="tab"] {
+    min-width: 2.75rem;
+    flex-shrink: 0;
+  }
+}
+
+.calendar-day-agenda {
+  display: none;
+}
+
+.schedule-grid-day-tabs {
+  display: none;
 }
 
 .schedule-grid-columns {
   grid-template-columns: 3.5rem repeat(var(--schedule-day-count), minmax(0, 1fr));
 }
 
-@media (max-width: 1279px) {
-  [data-schedule-host="tools"] [data-schedule-header] {
-    padding-left: 3rem;
-  }
-}
-
-@media (max-width: 1023px) {
-  [data-schedule-host="unity"] [data-schedule-header] {
-    padding-left: 3rem;
-  }
-}
-
 @container (max-width: 55rem) {
-  .schedule-workspace-layout {
-    gap: 0.75rem;
-    padding: 0.75rem;
+  .calendar-month-width {
+    min-width: 36rem;
   }
 
-  [data-schedule-header] {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.75rem;
-  }
-
-  [data-schedule-header-context] p {
+  .calendar-event-labels {
     display: none;
   }
 
-  .schedule-workspace-toggle,
+  .calendar-day-agenda,
   .schedule-grid-day-tabs {
     display: flex;
   }
 
-  .schedule-workspace-body {
-    display: block;
-  }
-
-  .schedule-workspace-controls,
-  .schedule-workspace-canvas {
-    display: none;
-    height: 100%;
-  }
-
-  .schedule-workspace[data-mobile-view="controls"] .schedule-workspace-controls,
-  .schedule-workspace[data-mobile-view="schedule"] .schedule-workspace-canvas {
-    display: block;
+  [data-calendar-grid] {
+    grid-auto-rows: minmax(6rem, 1fr);
   }
 
   .schedule-grid-columns {
@@ -668,66 +1339,25 @@ html.vt-active *::after {
   }
 }
 
-.schedule-view-toggle {
-  display: flex;
-}
-
-.schedule-courses,
-.schedule-timetable {
-  display: none;
-}
-
-.schedule-planner[data-mobile-view="courses"] .schedule-courses {
-  display: flex;
-}
-
-.schedule-planner[data-mobile-view="timetable"] .schedule-timetable {
-  display: block;
-}
-
-.schedule-wide-meta,
-.schedule-conflict-long {
-  display: none;
-}
-
-.schedule-conflict-short {
-  display: inline;
-}
-
-@container (min-width: 40rem) {
-  .schedule-wide-meta,
-  .schedule-conflict-long {
-    display: inline;
-  }
-
-  .schedule-conflict-short {
-    display: none;
-  }
-}
-
-@container (min-width: 56rem) {
-  .schedule-view-toggle,
-  .schedule-single-view-only {
+@media (min-width: 1024px) {
+  [data-shell-boot-mode="ai"] .shell-boot-menu,
+  [data-shell-boot-mode="unity"] .shell-boot-menu,
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-menu {
     display: none;
   }
 
-  .schedule-layout {
-    display: grid;
-    grid-template-columns: 20rem minmax(0, 1fr);
-  }
-
-  .schedule-courses {
-    display: flex;
-    border-right: 1px solid var(--border-subtle);
-    border-bottom: 0;
-  }
-
-  .schedule-timetable {
+  [data-shell-boot-mode="ai"] .shell-boot-sidebar,
+  [data-shell-boot-mode="unity"] .shell-boot-sidebar,
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-sidebar {
     display: block;
   }
-}
 
-@media (min-width: 1024px) {
+  [data-shell-boot-mode="ai"] .shell-boot-main,
+  [data-shell-boot-mode="unity"] .shell-boot-main,
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-main {
+    padding-left: var(--sidebar-offset, 0px);
+  }
+
   .sidebar-content-offset {
     padding-left: var(--sidebar-offset, 0px);
   }
@@ -739,6 +1369,18 @@ html.vt-active *::after {
 }
 
 @media (min-width: 1280px) {
+  [data-shell-boot-mode="tools"] .shell-boot-menu,
+  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-menu {
+    display: none;
+  }
+
+  [data-shell-boot-mode="tools"] .shell-boot-sidebar,
+  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-sidebar {
+    display: block;
+  }
+
+  [data-shell-boot-mode="tools"] .shell-boot-main,
+  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-main,
   .tool-sidebar-content-offset {
     padding-left: var(--sidebar-offset, 0px);
   }
@@ -747,21 +1389,6 @@ html.vt-active *::after {
 @media (min-width: 1280px) and (prefers-reduced-motion: no-preference) {
   .tool-sidebar-content-offset {
     transition: padding-left 0.3s var(--neu-ease);
-  }
-}
-
-.profile-menu-surface {
-  transition:
-    opacity 180ms ease-out,
-    transform 240ms var(--neu-ease),
-    filter 180ms ease-out,
-    visibility 180ms;
-}
-
-@media (min-width: 640px) {
-  /* Prevent deck.gl canvas resize during spring width animation */
-  .map-panel-root > .map-surface-layer canvas {
-    min-width: 40vw;
   }
 }
 
@@ -940,14 +1567,19 @@ html.vt-active *::after {
 }
 
 .assistant-markdown .task-list-item {
-  align-items: flex-start;
-  display: flex;
-  gap: 0.5rem;
+  position: relative;
+  padding-inline-start: calc(0.8125rem + 0.5rem);
 }
 
-.assistant-markdown .task-list-item input {
+.assistant-markdown .task-list-item > input[type="checkbox"],
+.assistant-markdown .task-list-item > p > input[type="checkbox"] {
+  position: absolute;
+  top: 0.32rem;
+  inset-inline-start: 0;
+  width: 0.8125rem;
+  height: 0.8125rem;
+  margin: 0;
   accent-color: var(--primary);
-  margin-top: 0.32rem;
 }
 
 .markdown-image-alt {
@@ -1058,8 +1690,6 @@ html.vt-active *::after {
 /* Print: strip chrome, force readable output */
 @media print {
   .sessions-aside,
-  .map-aside,
-  .map-panel-root,
   .chat-composer,
   header,
   nav,
@@ -1101,14 +1731,10 @@ html.vt-active *::after {
   box-shadow: none;
   background: transparent;
 }
-/* Card outline matches the edge stroke (--outline-variant) and carries a
-   primary-tinted glow so blocks lift off the dotted canvas in both themes. */
+/* Match node outlines to the graph edge color and weight. */
 [data-pane="prereq-tree"] .react-flow__node > section {
   border-color: var(--outline-variant);
-  border-width: 1.5px; /* match the edge stroke weight */
-  box-shadow:
-    0 0 16px color-mix(in srgb, var(--primary) 24%, transparent),
-    var(--neu-surface-shadow);
+  border-width: 1.5px;
 }
 [data-pane="prereq-tree"] .react-flow__edge-path {
   stroke: var(--outline-variant);

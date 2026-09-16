@@ -3,7 +3,7 @@
 exports[`CourseNode variants (REQ-9.4) > renders known variant with a title row (bg-surface) 1`] = `
 <div>
   <section
-    class="neu-raised border-border min-w-[120px] rounded-lg border bg-surface text-on-surface px-3 py-2 text-left"
+    class="neu-raised border-border rounded-lg border bg-surface text-on-surface min-w-[120px] px-3 py-2 text-left"
     data-node-id="n1"
     data-variant="known"
   >
@@ -24,7 +24,7 @@ exports[`CourseNode variants (REQ-9.4) > renders known variant with a title row 
 exports[`CourseNode variants (REQ-9.4) > renders note variant with text prose (bg-surface-container-low text-muted) 1`] = `
 <div>
   <section
-    class="neu-raised border-border min-w-[120px] rounded-lg border bg-surface-container-low text-muted italic px-3 py-2 text-left"
+    class="neu-raised border-border rounded-lg border bg-surface-container-low text-muted italic min-w-[120px] px-3 py-2 text-left"
     data-node-id="n1"
     data-variant="note"
   >
@@ -37,15 +37,15 @@ exports[`CourseNode variants (REQ-9.4) > renders note variant with text prose (b
 </div>
 `;
 
-exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label and title row (bg-primary-container) 1`] = `
+exports[`CourseNode variants (REQ-9.4) > renders root labels on the documented in-app type ramp 1`] = `
 <div>
   <section
-    class="neu-raised border-border min-w-[120px] rounded-lg border bg-primary-container text-on-primary-container px-4 py-3 text-center"
+    class="neu-raised border-border rounded-lg border bg-primary-container text-on-primary-container min-w-[120px] px-4 py-3 text-center"
     data-node-id="n1"
     data-variant="root"
   >
     <div
-      class="text-sm tracking-wide uppercase opacity-70"
+      class="text-xs font-medium tracking-[0.05em] uppercase"
     >
       ROOT
     </div>
@@ -55,7 +55,7 @@ exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label an
       CPSC 320
     </div>
     <div
-      class="border-border border-t leading-snug mt-2 pt-2 text-lg"
+      class="border-border border-t leading-snug mt-2 pt-2 text-base"
     >
       Intermediate Algorithm Design and Analysis
     </div>
@@ -66,7 +66,7 @@ exports[`CourseNode variants (REQ-9.4) > renders root variant with ROOT label an
 exports[`CourseNode variants (REQ-9.4) > renders unknown variant with the (not in calendar) title (bg-error-container) 1`] = `
 <div>
   <section
-    class="neu-raised border-border min-w-[120px] rounded-lg border bg-error-container text-on-error-container px-3 py-2 text-left"
+    class="neu-raised border-border rounded-lg border bg-error-container text-on-error-container min-w-[120px] px-3 py-2 text-left"
     data-node-id="n1"
     data-variant="unknown"
   >

@@ -79,10 +79,71 @@ export interface RouteResponse {
   polyline: import("@/src/shared/types").LngLat[];
 }
 
-// GET /api/building/{code} — per-building popup details (rooms, POIs, availability).
+export interface BuildingSummary {
+  code: string;
+  name: string;
+  shortName: string | null;
+  aliases: string[];
+  address: string | null;
+  postalCode: string | null;
+  usage: string | null;
+  state: string | null;
+  floors: number | null;
+  heightMeters: number | null;
+  centroid: import("@/src/shared/types").LngLat;
+}
+
+export interface EntranceFeatureProperties {
+  id: string;
+  buildingCode: string;
+  entranceType: string | null;
+  doorCount: number | null;
+}
+
+export type EntranceFeatureCollection = import("geojson").FeatureCollection<
+  import("geojson").Point,
+  EntranceFeatureProperties
+>;
+
+export interface EntranceMarker {
+  id: string;
+  buildingCode: string;
+  entranceType: string | null;
+  entrance: import("@/src/shared/types").LngLat;
+  groundArrow: [number, number, number][];
+  doorOutline: [number, number, number][];
+  wallTangent: [number, number];
+  wallDistanceMeters: number;
+}
+
+export type BuildingDataAssociation = "direct" | "official-address" | "location-derived";
+export type BuildingSourceState = "ready" | "unavailable";
+
+export interface BuildingDataProvenance {
+  sourceName: string;
+  refreshedAt: string | null;
+  association: BuildingDataAssociation;
+}
+
+export interface BuildingSourceStatus {
+  state: BuildingSourceState;
+  provenance: BuildingDataProvenance;
+}
+
+export interface OfficialBuildingPhoto {
+  url: string;
+  alt: string;
+  sourceUrl: string;
+  sourceName: string;
+  classification: "ubc-hosted" | "official-service" | "reodite-owned";
+}
+
+// GET /api/building/{code}: building details, rooms, and services.
 
 export interface RoomCard {
-  name: string; // e.g. "AERL 120"
+  name: string;
+  roomNumber: string | null;
+  spaceType: string | null;
   capacity: number | null;
   floor: number | null;
   layout: string | null;
@@ -96,30 +157,63 @@ export interface PoiCard {
   service_type: string | null;
   url: string | null;
   photo: string | null;
-  hours: string | null; // free text — display verbatim
+  hours: string | null;
   contact: string | null;
+  association: "official-address" | "location-derived";
 }
 
-export interface AvailabilityRoomCard {
-  title: string;
-  capacity: number | null;
-  url: string | null;
-  thumbnail: string | null;
-  freeNow: boolean;
-  freeUntil: string | null; // "HH:MM"
-  nextFree: string | null; // "HH:MM"
+export interface BuildingAddress {
+  fullAddress: string;
+  siteName: string | null;
+  primary: boolean;
+  official: boolean;
+  mailing: boolean;
+  pointType: string | null;
+}
+
+export interface BuildingEntranceSummary {
+  id: string;
+  entranceType: string | null;
+  doorCount: number | null;
+  position: import("@/src/shared/types").LngLat;
+}
+
+export interface BuildingProfile extends BuildingSummary {
+  secondaryUsage: string | null;
+  neighbourhood: string | null;
+  jurisdiction: string | null;
+  propertyType: string | null;
+  hasSubbuildings: boolean | null;
+  managingOrganization: string | null;
+  maintenanceOrganization: string | null;
+  constructionStatus: string | null;
+  constructionType: string | null;
+  occupancyDate: string | null;
+  grossAreaSquareMeters: number | null;
+  form: string | null;
+  condition: string | null;
+  greenStatus: string | null;
 }
 
 export interface BuildingDetails {
   code: string;
   name: string;
+  building: BuildingProfile;
+  addresses: BuildingAddress[];
   rooms: RoomCard[];
   pois: PoiCard[];
-  /** Bookable library rooms from the latest snapshot; null when the building has none. */
-  availability: { as_of: string | null; rooms: AvailabilityRoomCard[] } | null;
+  entrances: BuildingEntranceSummary[];
+  photos: OfficialBuildingPhoto[];
+  sourceStatus: {
+    building: BuildingSourceStatus;
+    addresses: BuildingSourceStatus;
+    rooms: BuildingSourceStatus;
+    pois: BuildingSourceStatus;
+    entrances: BuildingSourceStatus;
+  };
 }
 
-export type GeoName = "buildings" | "walking-routes";
+export type GeoName = "buildings" | "entrances" | "walking-routes";
 
 // GET /api/pulse — active-round feed. Vote fields appear only after the caller votes.
 

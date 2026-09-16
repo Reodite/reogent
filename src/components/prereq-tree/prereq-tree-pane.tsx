@@ -3,24 +3,34 @@
 import "reactflow/dist/style.css";
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
+import { CourseSearchField, type Candidate } from "@/src/components/course-search/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { useWorkspaceHost } from "@/src/components/shell/workspace-host";
+import { Button } from "@/src/components/ui/button";
+import { RetryAlert } from "@/src/components/ui/feedback";
+import { Heading } from "@/src/components/ui/heading";
+import { InlineAction } from "@/src/components/ui/inline-action";
 import { announce } from "@/src/components/ui/live-region";
+import { SkeletonList } from "@/src/components/ui/skeleton";
+import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
+import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { isOkanagan } from "@/src/shared/course-code";
+import { useReducedMotion } from "motion/react";
 import {
   Component,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ErrorInfo,
   type FormEvent,
-  type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
 import ReactFlow, {
   Background,
   getNodesBounds,
@@ -41,12 +51,11 @@ import {
   isNoneOrEmpty,
   MIN_ZOOM,
   normalize,
-  SUGGESTION_CAP,
   suggestionPrefix,
   type CourseIndex,
   type Graph,
 } from "./build-graph";
-import { OptionalEdge } from "./edges/OptionalEdge";
+import { OptionalEdge, type OptionalEdgeData } from "./edges/OptionalEdge";
 import { CourseNode } from "./nodes/CourseNode";
 import { DropdownDisjunctionNode, StackedDisjunctionNode } from "./nodes/DisjunctionNode";
 
@@ -58,46 +67,51 @@ const NODE_TYPES = {
 
 const EDGE_TYPES = { optional: OptionalEdge };
 
-/** Frames `bounds` (defaulting to every node) and snaps the camera there — no
- *  animation. The canvas bleeds left under the sidebar (`canvas-extend-sidebar`),
- *  so that strip is measured off and the graph is fitted into what the card
- *  actually shows; the offset is zero when the canvas isn't extended. */
+/** Frames `bounds` (defaulting to every node) and snaps the camera there without animation. */
 function useFitGraph() {
   const { getNodes, setViewport } = useReactFlow();
   const store = useStoreApi();
   return useCallback(
     (bounds?: Rect) => {
-      const { width, height, minZoom, domNode } = store.getState();
+      const { width, height, minZoom } = store.getState();
       if (!width || !height) return;
       const rect = bounds ?? getNodesBounds(getNodes());
       if (!rect.width || !rect.height) return;
-      const host = domNode?.closest(".canvas-extend-sidebar");
-      const hidden = host?.parentElement
-        ? host.parentElement.getBoundingClientRect().left - host.getBoundingClientRect().left
-        : 0;
-      const fit = getViewportForBounds(rect, width - hidden, height, minZoom, FIT_MAX_ZOOM, FIT_PADDING);
-      setViewport({ x: fit.x + hidden, y: fit.y, zoom: fit.zoom });
+      setViewport(getViewportForBounds(rect, width, height, minZoom, FIT_MAX_ZOOM, FIT_PADDING));
     },
     [getNodes, setViewport, store],
   );
 }
 
-/** Auto-fit on root-course change, so every course is framed. Bounds come from
- *  the layout's own bbox rather than ReactFlow's node rects, which lag a frame
- *  behind the measured relayout and would fit a partial graph. `fitKey` re-fires
- *  the fit on root change and once that relayout has settled; selection flips
- *  must not re-fit, so `bbox` rides a ref instead of being a dep. */
-function FitOnChange({ bbox, fitKey, onFitted }: { bbox: Graph["bbox"]; fitKey: string; onFitted: () => void }) {
+/** Centers the root when its measured layout settles so the primary course opens in view. */
+function FitOnChange({
+  bbox,
+  rootBounds,
+  fitKey,
+  onFitted,
+}: {
+  bbox: Graph["bbox"];
+  rootBounds: Rect | null;
+  fitKey: string;
+  onFitted: () => void;
+}) {
   const fitGraph = useFitGraph();
   // Readiness gate: nodes measured means the canvas has a size to fit into.
   const nodesInitialized = useNodesInitialized();
-  const bboxRef = useRef(bbox);
-  bboxRef.current = bbox;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fitKey deliberately re-fires the fit without depending on `bbox` (selection flips must not re-fit).
+  const boundsRef = useRef({ bbox, rootBounds });
+  boundsRef.current = { bbox, rootBounds };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fitKey re-fires without tracking bounds because branch changes must not move the camera.
   useEffect(() => {
-    const b = bboxRef.current;
-    if (!b || !nodesInitialized) return;
-    fitGraph({ x: b.minX, y: b.minY, width: b.maxX - b.minX, height: b.maxY - b.minY });
+    const current = boundsRef.current;
+    if (!current.bbox || !nodesInitialized) return;
+    fitGraph(
+      current.rootBounds ?? {
+        x: current.bbox.minX,
+        y: current.bbox.minY,
+        width: current.bbox.maxX - current.bbox.minX,
+        height: current.bbox.maxY - current.bbox.minY,
+      },
+    );
     // Reveal a frame later: setViewport lands in React Flow's own render pass,
     // so flipping `awaitingFit` in this one can paint the graph before the
     // camera moves — the flash this gate exists to prevent.
@@ -127,6 +141,7 @@ function TreeContextMenu({
   aiLocked: boolean;
 }) {
   const { zoomIn, zoomOut } = useReactFlow();
+  const reducedMotion = useReducedMotion();
   const fitGraph = useFitGraph();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -155,100 +170,102 @@ function TreeContextMenu({
       style={{ left: menu.x, top: menu.y }}
       className="neu-raised bg-surface text-on-surface absolute z-30 min-w-[200px] rounded-lg p-1"
     >
-      {menu.code ? (
-        <>
-          <button
-            type="button"
-            role="menuitem"
-            className={itemClass}
-            onClick={() => {
-              onOpenFinder(menu.code as string);
-              onClose();
-            }}
-          >
-            <Icon name="search" size={16} className="text-on-surface-variant" />
-            Open in Course Finder
-          </button>
-          {aiLocked ? (
-            <button
-              type="button"
-              role="menuitem"
-              disabled
-              aria-disabled="true"
-              title="Sign in to use AI chat"
-              className="text-on-surface flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
-            >
-              <Icon name="chat1" size={16} className="text-on-surface-variant" />
-              Ask AI about this tree
-              <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
-            </button>
-          ) : (
+      <div className="ui-popover-enter">
+        {menu.code ? (
+          <>
             <button
               type="button"
               role="menuitem"
               className={itemClass}
               onClick={() => {
-                onAskAi();
+                onOpenFinder(menu.code as string);
                 onClose();
               }}
             >
-              <Icon name="chat1" size={16} className="text-on-surface-variant" />
-              Ask AI about this tree
+              <Icon name="search" size={16} className="text-on-surface-variant" />
+              Open in Course Finder
             </button>
-          )}
-          <button
-            type="button"
-            role="menuitem"
-            disabled
-            aria-disabled="true"
-            title="Schedule building is coming soon"
-            className="text-on-surface flex w-full cursor-not-allowed items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
-          >
-            <Icon name="calendar" size={16} className="text-on-surface-variant" />
-            Add to Schedule
-            <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
-          </button>
-        </>
-      ) : (
-        <>
-          <button
-            type="button"
-            role="menuitem"
-            className={itemClass}
-            onClick={() => {
-              zoomIn({ duration: 150 });
-              onClose();
-            }}
-          >
-            <Icon name="zoomIn" size={16} className="text-on-surface-variant" />
-            Zoom in
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={itemClass}
-            onClick={() => {
-              zoomOut({ duration: 150 });
-              onClose();
-            }}
-          >
-            <Icon name="zoomOut" size={16} className="text-on-surface-variant" />
-            Zoom out
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className={itemClass}
-            onClick={() => {
-              fitGraph();
-              onClose();
-            }}
-          >
-            <Icon name="fullscreen" size={16} className="text-on-surface-variant" />
-            Fit view
-          </button>
-        </>
-      )}
+            {aiLocked ? (
+              <button
+                type="button"
+                role="menuitem"
+                disabled
+                aria-disabled="true"
+                title="Sign in to use AI chat"
+                className="text-on-surface flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
+              >
+                <Icon name="chat1" size={16} className="text-on-surface-variant" />
+                Ask AI about this tree
+                <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                role="menuitem"
+                className={itemClass}
+                onClick={() => {
+                  onAskAi();
+                  onClose();
+                }}
+              >
+                <Icon name="chat1" size={16} className="text-on-surface-variant" />
+                Ask AI about this tree
+              </button>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              disabled
+              aria-disabled="true"
+              title="Schedule building is coming soon"
+              className="text-on-surface flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
+            >
+              <Icon name="calendar" size={16} className="text-on-surface-variant" />
+              Add to Schedule
+              <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                zoomIn({ duration: reducedMotion ? 0 : 150 });
+                onClose();
+              }}
+            >
+              <Icon name="zoomIn" size={16} className="text-on-surface-variant" />
+              Zoom in
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                zoomOut({ duration: reducedMotion ? 0 : 150 });
+                onClose();
+              }}
+            >
+              <Icon name="zoomOut" size={16} className="text-on-surface-variant" />
+              Zoom out
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className={itemClass}
+              onClick={() => {
+                fitGraph();
+                onClose();
+              }}
+            >
+              <Icon name="fullscreen" size={16} className="text-on-surface-variant" />
+              Fit view
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -268,60 +285,112 @@ class PaneErrorBoundary extends Component<{ children: ReactNode; fallback: React
 
 function NotFoundAlert({ code, onPick }: { code: string; onPick: (code: string) => void }) {
   return (
-    <p role="alert" className="border-error/30 bg-error-container text-error rounded-lg border px-3 py-2 text-sm">
-      {code} isn't in the catalog. Try{" "}
-      <button
-        type="button"
-        className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-        onClick={() => onPick("CPSC 110")}
-      >
-        CPSC 110
-      </button>{" "}
-      or{" "}
-      <button
-        type="button"
-        className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-        onClick={() => onPick("MATH 200")}
-      >
-        MATH 200
-      </button>
-      .
-    </p>
+    <RetryAlert>
+      {code} isn't in the catalog. Try <InlineAction onClick={() => onPick("CPSC 110")}>CPSC 110</InlineAction> or{" "}
+      <InlineAction onClick={() => onPick("MATH 200")}>MATH 200</InlineAction>.
+    </RetryAlert>
   );
 }
 
-/** Keyboard-navigable accordion fallback when the canvas crashes. Children of
- *  a block are the sources of edges targeting it (edges flow prereq → dependent). */
-function AccordionFallback({ graph, rootId }: { graph: { nodes: Node[]; edges: Edge[] }; rootId: string }) {
+/** Keyboard-navigable prerequisite outline and crash fallback. */
+function AccordionFallback({
+  graph,
+  rootId,
+  onOpenCourse,
+}: {
+  graph: { nodes: Node[]; edges: Edge[] };
+  rootId: string;
+  onOpenCourse?: (code: string) => void;
+}) {
   const childrenOf = useMemo(() => {
-    const adj = new Map<string, string[]>();
-    for (const e of graph.edges) {
-      const list = adj.get(e.target);
-      if (list) list.push(e.source);
-      else adj.set(e.target, [e.source]);
+    const adjacency = new Map<string, Edge[]>();
+    for (const edge of graph.edges) {
+      // Layout chains top-level corequisites; disjunction children keep their own targets.
+      const target = edge.data?.semanticTarget ?? edge.target;
+      const children = adjacency.get(target);
+      if (children) children.push(edge);
+      else adjacency.set(target, [edge]);
     }
-    return adj;
+    return adjacency;
   }, [graph]);
-  const byId = useMemo(() => new Map(graph.nodes.map((n) => [n.id, n])), [graph]);
-  const seen = new Set<string>();
-  const renderNode = (id: string): ReactNode => {
-    if (seen.has(id)) return null;
-    seen.add(id);
+  const byId = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph]);
+  const renderNode = (id: string, edge?: Edge, ancestors = new Set<string>()): ReactNode => {
+    if (ancestors.has(id)) return null;
+    // Keep shared courses in each relationship while stopping cycles along the current path.
+    const path = new Set(ancestors).add(id);
     const node = byId.get(id);
     if (!node) return null;
-    const data = node.data as { code?: string; title?: string; text?: string };
-    const kids = childrenOf.get(id) ?? [];
+    const data = node.data as {
+      code?: string;
+      title?: string;
+      text?: string;
+      options?: { display: string }[];
+      selectedIdx?: number;
+      onChange?: (index: number) => void;
+    };
+    const children = childrenOf.get(id) ?? [];
+    const coreq = edge?.id.startsWith("coreq:") || edge?.label === "co-req";
+    const optional = edge?.type === "optional" ? (edge.data as OptionalEdgeData | undefined) : undefined;
+    const requirement = coreq ? "corequisite" : "prerequisite";
+    const label = data.code ?? data.text ?? (data.options ? `Choose one ${requirement}` : id);
     return (
-      <details key={id} className="ml-3 text-sm">
-        <summary className="cursor-pointer font-mono">
-          {data.code ?? data.text ?? id}
-          {data.title ? ` — ${data.title}` : ""}
+      <details
+        key={edge?.type === "optional" ? edge.id : `${requirement}:${id}`}
+        open={id === rootId}
+        className="border-border-subtle bg-surface rounded-lg border text-sm"
+      >
+        <summary className="text-on-surface flex min-h-11 flex-wrap items-center gap-2 px-3 py-2">
+          <span className={`font-mono font-medium ${data.code ? "shrink-0 whitespace-nowrap" : ""}`}>{label}</span>
+          {data.title ? <span className="text-on-surface-variant min-w-0 truncate">{data.title}</span> : null}
+          {coreq ? <span className="text-on-surface-variant text-xs">Corequisite</span> : null}
+          {edge?.type === "optional" ? <span className="text-on-surface-variant text-xs">Optional</span> : null}
         </summary>
-        {kids.map(renderNode)}
+        <div className="border-border-subtle flex flex-col gap-2 border-t p-2 pl-4">
+          {optional ? (
+            <Button
+              size="compact"
+              className="self-start"
+              aria-pressed={!optional.disabled}
+              onClick={() => optional.onToggle(optional.softKey)}
+            >
+              {optional.disabled ? "Show optional subtree" : "Hide optional subtree"}
+            </Button>
+          ) : null}
+          {data.code && onOpenCourse ? (
+            <Button size="compact" className="self-start" onClick={() => onOpenCourse(data.code as string)}>
+              Open course details
+            </Button>
+          ) : null}
+          {data.options && data.onChange ? (
+            <fieldset className="flex flex-col gap-1">
+              <legend className="sr-only">Choose a {requirement} branch</legend>
+              {data.options.map((option, index) => (
+                <button
+                  key={option.display}
+                  type="button"
+                  aria-pressed={index === data.selectedIdx}
+                  onClick={() => data.onChange?.(index)}
+                  className={`focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 py-2 text-left transition-colors duration-150 focus-visible:ring-2 ${
+                    index === data.selectedIdx
+                      ? "neu-inset bg-surface-container text-on-surface"
+                      : "text-on-surface-variant hover:bg-surface-container"
+                  }`}
+                >
+                  {option.display}
+                </button>
+              ))}
+            </fieldset>
+          ) : null}
+          {children.map((child) => renderNode(child.source, child, path))}
+        </div>
       </details>
     );
   };
-  return <div className="text-on-surface overflow-auto">{renderNode(rootId)}</div>;
+  return (
+    <div data-prereq-outline className="text-on-surface flex h-full flex-col gap-2 overflow-auto p-3">
+      {renderNode(rootId)}
+    </div>
+  );
 }
 
 export function PrereqTreePane({
@@ -348,19 +417,32 @@ export function PrereqTreePane({
   onNavigateCourse?: (code: string) => void;
 }) {
   const api = useApi();
+  const { host } = useWorkspaceHost();
+  const toolsMode = host === "tools";
+  const { push: navigate } = useShellNavigation();
+  const shell = useChatShellOptional();
+  const { isGuest } = useAppAuth();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [index, setIndex] = useState<CourseIndex | null>(null);
   const [indexStatus, setIndexStatus] = useState<"loading" | "ready" | "error">("loading");
   const [query, setQuery] = useState(initialQuery || initialRoot);
   const [activeCode, setActiveCode] = useState<string | null>(initialRoot ? normalize(initialRoot) : null);
-  // Last submitted code that wasn't in the catalog (drives the not-found alert).
   const [missingCode, setMissingCode] = useState<string | null>(null);
-  // Type-ahead dropdown state: `suggestOpen` gates visibility (typing/focus
-  // opens; Escape / outside click / pick / submit closes); `highlightIdx` is
-  // the keyboard cursor (-1 = none, Enter falls through to submit).
-  const [suggestOpen, setSuggestOpen] = useState(false);
-  const [highlightIdx, setHighlightIdx] = useState(-1);
-  const suggestBoxRef = useRef<HTMLDivElement | null>(null);
-  const suggestListRef = useRef<HTMLDivElement | null>(null);
+  const [compactView, setCompactView] = useState<"outline" | "map">("outline");
+  const viewSelectedRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!toolsMode) return;
+    const media = window.matchMedia("(min-width: 640px)");
+    const applyDefault = (wide: boolean) => {
+      if (!viewSelectedRef.current) setCompactView(wide ? "map" : "outline");
+    };
+    applyDefault(media.matches);
+    const onChange = (event: MediaQueryListEvent) => applyDefault(event.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [toolsMode]);
   // Per-disjunction selections keyed `${ownerCode}::${path}` — stable across
   // re-renders and root switches; absent key = option 0. Hydrated from the
   // cached pane state so a rebuilt tree keeps its chosen branches.
@@ -372,6 +454,16 @@ export function PrereqTreePane({
   const [softDisabled, setSoftDisabled] = useState<Map<string, boolean>>(
     () => new Map(Object.entries(initialSoftDisabled ?? {})),
   );
+
+  const lastInitialRoot = useRef(initialRoot);
+  useEffect(() => {
+    if (initialRoot === lastInitialRoot.current) return;
+    lastInitialRoot.current = initialRoot;
+    const nextRoot = initialRoot ? normalize(initialRoot) : null;
+    setActiveCode(nextRoot);
+    setQuery(nextRoot ?? "");
+    setMissingCode(null);
+  }, [initialRoot]);
 
   // Report restorable UI state upward whenever it changes. `onUiState` rides a
   // ref so an unstable callback identity can't re-fire the effect.
@@ -426,103 +518,63 @@ export function PrereqTreePane({
   // under each subject.
   const codes = useMemo(() => (index ? [...index.keys()].sort() : []), [index]);
 
-  const suggestions = useMemo(() => {
+  const suggestions = useMemo<Candidate[]>(() => {
     if (!index) return [];
     const prefix = suggestionPrefix(query);
     if (!prefix) return [];
-    const out: { code: string; title: string }[] = [];
+    const matches: Candidate[] = [];
     for (const code of codes) {
       if (!code.startsWith(prefix)) continue;
-      out.push({ code, title: index.get(code)?.title ?? "" });
+      const [subject = "", number = ""] = code.split(/\s+/, 2);
+      matches.push({ code, subject, number, title: index.get(code)?.title ?? "" });
     }
-    return out;
+    return matches;
   }, [codes, index, query]);
-
-  const shownSuggestions = useMemo(() => suggestions.slice(0, SUGGESTION_CAP), [suggestions]);
-
-  // Hide the dropdown when its only row is the code already typed.
-  const suggestVisible =
-    suggestOpen &&
-    shownSuggestions.length > 0 &&
-    !(shownSuggestions.length === 1 && shownSuggestions[0].code === normalize(query));
-
-  // Outside click / Escape close the dropdown.
-  useEffect(() => {
-    if (!suggestOpen) return;
-    function onPointerDown(e: PointerEvent) {
-      if (e.target instanceof globalThis.Node && suggestBoxRef.current?.contains(e.target)) return;
-      setSuggestOpen(false);
-      setHighlightIdx(-1);
-    }
-    function onKeyDown(e: globalThis.KeyboardEvent) {
-      if (e.key === "Escape") {
-        setSuggestOpen(false);
-        setHighlightIdx(-1);
-      }
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [suggestOpen]);
-
-  // Keep the keyboard-highlighted row in view while arrowing through the list.
-  useEffect(() => {
-    if (highlightIdx < 0) return;
-    const el = suggestListRef.current?.querySelector(`[data-idx="${highlightIdx}"]`);
-    el?.scrollIntoView({ block: "nearest" });
-  }, [highlightIdx]);
 
   const activate = useCallback(
     (code: string) => {
       setActiveCode(code);
       setMissingCode(null);
       onChangeRoot?.(code);
+      if (toolsMode) navigate(`/tools/prereq/${courseCodeToSlug(code)}`);
     },
-    [onChangeRoot],
+    [navigate, onChangeRoot, toolsMode],
   );
 
   const pickSuggestion = useCallback(
     (code: string) => {
       setQuery(code);
-      setSuggestOpen(false);
-      setHighlightIdx(-1);
       activate(code);
     },
     [activate],
   );
 
-  function onQueryKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      if (shownSuggestions.length === 0) return;
-      e.preventDefault();
-      setSuggestOpen(true);
-      setHighlightIdx((i) => {
-        const last = shownSuggestions.length - 1;
-        if (e.key === "ArrowDown") return i >= last ? 0 : i + 1;
-        return i <= 0 ? last : i - 1;
-      });
-      return;
-    }
-    if (e.key === "Enter") {
-      // With a highlighted row, Enter picks it; otherwise it falls through
-      // to the form's regular submit.
-      if (suggestVisible && highlightIdx >= 0 && highlightIdx < shownSuggestions.length) {
-        e.preventDefault();
-        pickSuggestion(shownSuggestions[highlightIdx].code);
-      }
-    }
-  }
+  const changeQuery = useCallback(
+    (value: string) => {
+      const next = value.toUpperCase();
+      setQuery(next);
+      if (next.trim() || (!activeCode && !missingCode)) return;
+      setActiveCode(null);
+      setMissingCode(null);
+      onChangeRoot?.("");
+      if (toolsMode) navigate("/tools/prereq");
+    },
+    [activeCode, missingCode, navigate, onChangeRoot, toolsMode],
+  );
+
+  const openInFinder = useCallback(
+    (code: string) => {
+      if (toolsMode) navigate(`/tools/courses/${courseCodeToSlug(code)}`);
+      else shell?.setActiveChannel("course-lookup", { code });
+    },
+    [navigate, shell, toolsMode],
+  );
 
   const rejected = isOkanagan(query.trim());
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
+  function submit(event: FormEvent) {
+    event.preventDefault();
     if (!index || rejected) return;
-    setSuggestOpen(false);
-    setHighlightIdx(-1);
     const code = normalize(query);
     if (index.has(code)) activate(code);
     else {
@@ -567,13 +619,32 @@ export function PrereqTreePane({
       setSelection,
       softDisabled,
       toggleSoft,
-      onNavigateCourse,
+      onNavigateCourse ?? openInFinder,
       measuredHeights,
     );
-  }, [index, activeCode, selections, setSelection, softDisabled, toggleSoft, onNavigateCourse, measuredHeights]);
+  }, [
+    index,
+    activeCode,
+    selections,
+    setSelection,
+    softDisabled,
+    toggleSoft,
+    onNavigateCourse,
+    openInFinder,
+    measuredHeights,
+  ]);
 
   const rootEntry = index && activeCode ? (index.get(activeCode) ?? null) : null;
   const noPrereqs = rootEntry && isNoneOrEmpty(rootEntry.prerequisite) && isNoneOrEmpty(rootEntry.corequisite);
+  const rootNode = graph.nodes.find((node) => node.id === activeCode);
+  const rootBounds: Rect | null = rootNode
+    ? {
+        x: rootNode.position.x,
+        y: rootNode.position.y,
+        width: Number(rootNode.style?.width) || rootNode.width || 300,
+        height: measuredHeights.get(rootNode.id) || rootNode.height || 120,
+      }
+    : null;
 
   // Re-fit the camera once per root after every node has a real measured
   // height (the measured relayout can shift the graph). Latched per root so
@@ -618,11 +689,6 @@ export function PrereqTreePane({
   );
   const onPaneContextMenu = useCallback((e: MouseEvent) => openCtxMenu(e), [openCtxMenu]);
 
-  const shell = useChatShellOptional();
-  const { isGuest } = useAppAuth();
-  // setActiveChannel (not setWorkspaceView) so only `code` is overridden and
-  // the finder's cached state (e.g. session pick) survives the jump.
-  const openInFinder = useCallback((code: string) => shell?.setActiveChannel("course-lookup", { code }), [shell]);
   // Serialize the rendered tree for the agent: nodes keep their identifying
   // fields (course code/title, disjunction options), edges keep direction and
   // the co-req/optional markers. Sent as an Ask AI attachment so the chat
@@ -663,93 +729,91 @@ export function PrereqTreePane({
     });
   }, [shell, graph, activeCode]);
 
-  // The lookup bar portals into the Answer Canvas titlebar slot when hosted
-  // there, so the working area below keeps the full card height (same as the
-  // campus map). Hosts without the slot get the bar floated over the canvas.
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const [slotEl, setSlotEl] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setSlotEl(
-      rootRef.current?.closest("section[data-pane]")?.querySelector<HTMLElement>("[data-pane-titlebar-slot]") ?? null,
-    );
-  }, []);
+  const searchShadowOn = toolsMode ? "surface" : "surface-container-low";
 
   const searchForm = (
-    <form onSubmit={submit} className="mx-auto flex w-full max-w-md gap-2">
-      <div ref={suggestBoxRef} className="relative flex-1">
-        <Icon
-          name="search"
-          className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-        />
-        <input
-          type="text"
+    <form onSubmit={submit} className={`flex w-full items-start gap-2 ${toolsMode ? "max-w-xl" : ""}`}>
+      <div className="min-w-0 flex-1">
+        <CourseSearchField
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value.toUpperCase());
-            setSuggestOpen(true);
-            setHighlightIdx(-1);
-          }}
-          onFocus={() => setSuggestOpen(true)}
-          onKeyDown={onQueryKeyDown}
+          onChange={changeQuery}
+          onSelect={pickSuggestion}
+          status={indexStatus === "loading" ? "loading" : "idle"}
+          list={query.trim() ? { candidates: suggestions, total: suggestions.length } : null}
+          error={null}
+          rejected={rejected}
           placeholder="e.g. CPSC 320"
-          role="combobox"
-          aria-expanded={suggestVisible}
-          aria-autocomplete="list"
-          aria-controls="prereq-suggestions"
-          aria-label="Root course code"
-          aria-invalid={rejected ? "true" : undefined}
-          aria-errormessage={rejected ? "code-error" : undefined}
-          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-9 w-full rounded-lg pr-3 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
+          ariaLabel="Root course code"
+          presentation="overlay"
+          density={toolsMode ? "primary" : "rail"}
+          shadowOn={searchShadowOn}
+          inputRef={searchInputRef}
+          openOnInitialValue={false}
         />
-        {suggestVisible && (
-          <div
-            ref={suggestListRef}
-            id="prereq-suggestions"
-            role="listbox"
-            className="neu-raised bg-surface absolute top-[calc(100%+0.25rem)] right-0 left-0 z-20 max-h-72 overflow-y-auto rounded-lg p-1"
-          >
-            {shownSuggestions.map((s, i) => (
-              <button
-                key={s.code}
-                type="button"
-                data-idx={i}
-                role="option"
-                aria-selected={i === highlightIdx}
-                onClick={() => pickSuggestion(s.code)}
-                onMouseEnter={() => setHighlightIdx(i)}
-                className={`flex w-full items-baseline gap-2 rounded px-3 py-1.5 text-left text-sm ${
-                  i === highlightIdx ? "bg-surface-container-high" : ""
-                }`}
-              >
-                <span className="text-on-surface shrink-0 font-mono">{s.code}</span>
-                <span className="text-on-surface-variant truncate text-xs">{s.title}</span>
-              </button>
-            ))}
-            {suggestions.length > SUGGESTION_CAP && (
-              <p className="text-muted border-border-subtle border-t px-3 py-1.5 text-xs">
-                +{(suggestions.length - SUGGESTION_CAP).toLocaleString()} more — keep typing to narrow
-              </p>
-            )}
-          </div>
-        )}
       </div>
-      <button
-        type="submit"
-        className="neu-button bg-primary text-on-primary h-9 shrink-0 rounded-lg px-3 text-sm font-medium"
-      >
+      <Button type="submit" variant="primary" size={toolsMode ? "field" : "toolbar"} shadowOn={searchShadowOn}>
         Show
-      </button>
+      </Button>
     </form>
   );
 
-  return (
+  const feedback = (
+    <>
+      {indexStatus === "error" ? (
+        <RetryAlert onRetry={() => setLoadNonce((nonce) => nonce + 1)}>Couldn't load the tree.</RetryAlert>
+      ) : null}
+      {indexStatus === "ready" && missingCode ? <NotFoundAlert code={missingCode} onPick={pickSuggestion} /> : null}
+      {indexStatus === "ready" && activeCode && !rootEntry ? (
+        <NotFoundAlert code={activeCode} onPick={pickSuggestion} />
+      ) : null}
+      {noPrereqs && !toolsMode ? (
+        <p className="text-muted bg-surface rounded-lg px-3 py-1.5 text-sm">
+          {activeCode} has no prerequisites or corequisites listed in the calendar.
+        </p>
+      ) : null}
+    </>
+  );
+
+  const noRootState = (
+    <div className="text-muted grid h-full place-items-center px-6 text-center text-sm">
+      Search for a course above to render its prerequisite tree.
+    </div>
+  );
+  const noPrereqState = (
+    <div className="ui-content-enter m-auto flex max-w-md flex-col items-center gap-3 px-6 text-center">
+      <div>
+        <Heading>{activeCode} has no listed prerequisites</Heading>
+        <p className="text-on-surface-variant mt-1 text-sm">
+          The UBC calendar does not list prerequisites or corequisites for this course.
+        </p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button onClick={() => activeCode && openInFinder(activeCode)}>Open course details</Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            searchInputRef.current?.focus();
+            searchInputRef.current?.select();
+          }}
+        >
+          Search another course
+        </Button>
+      </div>
+    </div>
+  );
+
+  const graphSurface = (
     <div ref={rootRef} data-pane="prereq-tree" className="relative h-full w-full overflow-hidden">
-      {/* Working area covers the whole card (like the campus map), on a
-          surface distinct from the card background. */}
       <ReactFlowProvider>
         <div data-prereq-canvas className="bg-surface-container-low absolute inset-0">
-          {graph.nodes.length > 0 ? (
-            <PaneErrorBoundary fallback={<AccordionFallback graph={graph} rootId={activeCode ?? ""} />}>
+          {indexStatus === "loading" ? (
+            <SkeletonList label="Loading course index…" rows={4} />
+          ) : toolsMode && noPrereqs ? (
+            noPrereqState
+          ) : graph.nodes.length > 0 ? (
+            <PaneErrorBoundary
+              fallback={<AccordionFallback graph={graph} rootId={activeCode ?? ""} onOpenCourse={openInFinder} />}
+            >
               <ReactFlow
                 nodes={graph.nodes}
                 edges={graph.edges}
@@ -763,26 +827,26 @@ export function PrereqTreePane({
                 onPaneClick={closeCtxMenu}
                 onMoveStart={closeCtxMenu}
                 minZoom={MIN_ZOOM}
-                nodesFocusable
+                nodesFocusable={false}
+                edgesFocusable={false}
                 elementsSelectable
                 proOptions={{ hideAttribution: true }}
-                className={awaitingFit ? "opacity-0" : undefined}
+                className={awaitingFit ? "invisible" : "prereq-graph-ready"}
               >
                 <Background color="var(--border)" gap={16} />
-                <FitOnChange bbox={graph.bbox} fitKey={fitKey} onFitted={onFitted} />
+                <FitOnChange bbox={graph.bbox} rootBounds={rootBounds} fitKey={fitKey} onFitted={onFitted} />
               </ReactFlow>
+              {awaitingFit ? (
+                <div className="pointer-events-none absolute inset-0">
+                  <SkeletonList label="Preparing prerequisite map" rows={4} />
+                </div>
+              ) : null}
             </PaneErrorBoundary>
-          ) : (
-            indexStatus === "ready" &&
-            !missingCode &&
-            !activeCode && (
-              <div className="text-muted grid h-full place-items-center text-sm">
-                Enter a course code to render its prerequisite graph.
-              </div>
-            )
-          )}
+          ) : indexStatus === "ready" && !missingCode && !activeCode ? (
+            noRootState
+          ) : null}
         </div>
-        {ctxMenu && (
+        {ctxMenu ? (
           <TreeContextMenu
             menu={ctxMenu}
             onClose={closeCtxMenu}
@@ -790,67 +854,81 @@ export function PrereqTreePane({
             onAskAi={askAiAboutTree}
             aiLocked={isGuest}
           />
-        )}
+        ) : null}
       </ReactFlowProvider>
+    </div>
+  );
 
-      {slotEl ? (
-        createPortal(searchForm, slotEl)
-      ) : (
-        <div className="absolute top-3 right-3 left-3 z-20">{searchForm}</div>
-      )}
+  const outlineSurface = noPrereqs ? (
+    noPrereqState
+  ) : graph.nodes.length > 0 ? (
+    <AccordionFallback graph={graph} rootId={activeCode ?? ""} onOpenCourse={openInFinder} />
+  ) : (
+    noRootState
+  );
 
-      <div
-        className={`pointer-events-none absolute right-3 left-3 z-10 mx-auto flex max-w-md flex-col gap-2 ${slotEl ? "top-3" : "top-16"}`}
+  if (toolsMode) {
+    return (
+      <WorkspacePage
+        composition="canvas"
+        title="Prereq tree"
+        description="Choose a course, then trace the prerequisites and corequisites that lead to it."
       >
-        {rejected && (
-          <p
-            id="code-error"
-            role="alert"
-            className="border-error/30 bg-error-container text-error pointer-events-auto rounded-lg border px-3 py-2 text-xs"
-          >
-            Okanagan campus codes aren't in this catalog. Try a Vancouver course.
-          </p>
-        )}
-        {indexStatus === "loading" && (
-          <p
-            className="text-muted bg-surface pointer-events-auto inline-flex items-center gap-1.5 self-center rounded-lg px-3 py-1.5 text-xs"
-            aria-live="polite"
-          >
-            <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
-            Loading course index…
-          </p>
-        )}
-        {indexStatus === "error" && (
-          <p
-            role="alert"
-            className="border-error/30 bg-error-container text-error pointer-events-auto rounded-lg border px-3 py-2 text-sm"
-          >
-            Couldn't load the tree.{" "}
-            <button
-              type="button"
-              className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-              onClick={() => setLoadNonce((n) => n + 1)}
+        <div data-prereq-layout className="flex h-full min-h-0 flex-col gap-2">
+          <div className="mx-4 flex shrink-0 flex-col gap-2 sm:mx-0 @min-[40rem]:flex-row @min-[40rem]:items-center">
+            {searchForm}
+            <fieldset
+              data-prereq-view-toggle
+              className="neu-inset bg-surface-container-low grid shrink-0 grid-cols-2 gap-1 rounded-lg p-1"
             >
-              Retry
-            </button>
-          </p>
-        )}
-        {indexStatus === "ready" && missingCode && (
-          <div className="pointer-events-auto">
-            <NotFoundAlert code={missingCode} onPick={pickSuggestion} />
+              <legend className="sr-only">Prerequisite tree view</legend>
+              {(["outline", "map"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  aria-pressed={compactView === view}
+                  onClick={() => {
+                    viewSelectedRef.current = true;
+                    setCompactView(view);
+                  }}
+                  className={`focus-visible:ring-primary/40 min-h-11 rounded-sm px-4 text-sm font-medium whitespace-nowrap capitalize focus-visible:ring-2 ${
+                    compactView === view ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
+                  }`}
+                >
+                  {view}
+                </button>
+              ))}
+            </fieldset>
           </div>
-        )}
-        {indexStatus === "ready" && activeCode && !rootEntry && (
-          <div className="pointer-events-auto">
-            <NotFoundAlert code={activeCode} onPick={pickSuggestion} />
+          <div data-prereq-feedback className="mx-4 shrink-0 empty:hidden sm:mx-0">
+            {feedback}
           </div>
-        )}
-        {noPrereqs && (
-          <p className="text-muted bg-surface pointer-events-auto self-center rounded-lg px-3 py-1.5 text-sm">
-            {activeCode} has no prerequisites or corequisites listed in the calendar.
-          </p>
-        )}
+          <div data-prereq-compact-view={compactView} className="min-h-0 flex-1">
+            <WorkspaceCanvas overflow="hidden">
+              {indexStatus === "loading" ? (
+                <SkeletonList label="Loading course index…" rows={4} />
+              ) : (
+                <>
+                  <div className={compactView === "outline" ? "ui-content-enter h-full" : "hidden"}>
+                    {outlineSurface}
+                  </div>
+                  <div className={compactView === "map" ? "ui-content-enter h-full" : "hidden"}>{graphSurface}</div>
+                </>
+              )}
+            </WorkspaceCanvas>
+          </div>
+        </div>
+      </WorkspacePage>
+    );
+  }
+
+  return (
+    <div className="bg-surface-container-low flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden">
+      <div className="bg-surface-container-low w-full shrink-0 px-4 pt-2">{searchForm}</div>
+      <div data-prereq-feedback className="flex shrink-0 flex-col gap-2 px-4 empty:hidden">
+        {feedback}
       </div>
+      <div className="min-h-0 flex-1">{graphSurface}</div>
     </div>
   );
 }

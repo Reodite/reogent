@@ -176,6 +176,95 @@ describe("extractors — Property 19, Source-url honesty", () => {
     );
   });
 
+  it.each(["javascript:alert(1)", "data:text/html,example", "file:///tmp/example", "https://user:secret@example.test"])(
+    "omits unsafe source links: %s",
+    (url) => {
+      const seeds = extract("search_ubc_pages")({ pages: [{ title: "Example", url }] }, {});
+      expect(seeds[0].source_url).toBeUndefined();
+    },
+  );
+
+  it("retains public resource retrieval and publisher timestamps", () => {
+    const seeds = extract("search_student_resources")(
+      {
+        resources: [
+          {
+            title: "Example resource",
+            category: "student-support",
+            source_url: "https://example.test/resource",
+            retrieved_at: "2026-09-01T12:00:00Z",
+            source_modified_at: "2026-08-01T12:00:00Z",
+          },
+        ],
+      },
+      {},
+    );
+    expect(seeds).toEqual([
+      expect.objectContaining({
+        label: "Example resource",
+        tool: "search_student_resources",
+        source_url: "https://example.test/resource",
+        detail: expect.objectContaining({
+          category: "student-support",
+          retrieved_at: "2026-09-01T12:00:00Z",
+          source_modified_at: "2026-08-01T12:00:00Z",
+        }),
+      }),
+    ]);
+  });
+
+  it("keeps housing source conditions with each fee citation", () => {
+    const seeds = extract("get_costs")(
+      {
+        kind: "housing",
+        fee_tables: [
+          {
+            title: "Example fees",
+            source_url: "https://example.test/fees",
+            source_context_required: true,
+            retrieved_at: "2026-09-01T12:00:00Z",
+            source_modified_at: "2026-08-01T12:00:00Z",
+          },
+        ],
+      },
+      {},
+    );
+    expect(seeds[0]).toMatchObject({
+      label: "Example fees",
+      source_url: "https://example.test/fees",
+      tool: "get_costs",
+      detail: { retrieved_at: "2026-09-01T12:00:00Z", source_context_required: true },
+    });
+    expect(extract("get_costs")({ kind: "living", living_costs: [] }, {})).toEqual([]);
+  });
+
+  it("attributes library schedules to their dated source snapshot", () => {
+    const seeds = extract("get_library_hours")(
+      {
+        date: "2026-09-05",
+        branches: [
+          {
+            title: "Example library",
+            source_url: "https://example.test/library",
+            retrieved_at: "2026-08-01T12:00:00Z",
+            scheduled: {
+              date: "2026-09-05",
+              source_url: "https://example.test/hours",
+              retrieved_at: "2026-09-01T12:00:00Z",
+            },
+          },
+        ],
+      },
+      {},
+    );
+    expect(seeds[0]).toMatchObject({
+      label: "Example library",
+      source_url: "https://example.test/hours",
+      tool: "get_library_hours",
+      detail: { date: "2026-09-05", retrieved_at: "2026-09-01T12:00:00Z" },
+    });
+  });
+
   it("course extractors omit source_url entirely (no URL field on records)", () => {
     const doc: CourseDoc = {
       code: "CPSC_V 110",
@@ -203,6 +292,38 @@ describe("extractors — Property 19, Source-url honesty", () => {
 });
 
 describe("stampUsed — Property 20, Used-only-after-stamp", () => {
+  it.each(["[1,2]", "[1, 2]", "[ 1 , 2 ]", "[2, 1, 2]"])(
+    "marks sources referenced by grouped citations: %s",
+    (marker) => {
+      const citations: Citation[] = [1, 2, 3].map((index) => ({
+        index,
+        label: `Source ${index}`,
+        kind: "page",
+        tool: "get_library_hours",
+        used: false,
+      }));
+      const stamped = stampUsed(citations, `The schedule is unknown ${marker}.`);
+      expect(stamped.map((citation) => citation.used)).toEqual([true, true, false]);
+      expect(citations.every((citation) => !citation.used)).toBe(true);
+      expect(stamped[2]).toBe(citations[2]);
+    },
+  );
+
+  it("ignores invalid grouped references while retaining valid source indices", () => {
+    const citations: Citation[] = [1, 2].map((index) => ({
+      index,
+      label: `Source ${index}`,
+      kind: "page",
+      tool: "get_library_hours",
+      used: false,
+    }));
+    expect(stampUsed(citations, "Read [1, 0, 99, 9007199254740993].").map((citation) => citation.used)).toEqual([
+      true,
+      false,
+    ]);
+    expect(stampUsed(citations, "[1, x] [1-2] [1, 2")).toBe(citations);
+  });
+
   it("live (pre-stamp) citations carry used false; stamping sets used only for indices present in text", () => {
     fc.assert(
       fc.property(fc.array(arbSeed, { maxLength: 8 }), arbTextWithMarkers, (seeds, text) => {

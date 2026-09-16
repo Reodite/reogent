@@ -49,8 +49,8 @@ function deferred<T>() {
 }
 
 function Harness() {
-  useScheduleSync();
-  return null;
+  const hydrating = useScheduleSync();
+  return <span>{hydrating ? "Hydrating" : "Settled"}</span>;
 }
 
 beforeAll(async () => {
@@ -136,5 +136,33 @@ describe("useScheduleSync", () => {
       expect(store.useSchedule.getState().entries.map((entry) => entry.section)).toEqual(["A_302"]);
     });
     expect(store.useSchedule.getState().replacePending).toBe(true);
+  });
+});
+
+describe("useScheduleSync hydration status", () => {
+  it("settles after server content arrives", async () => {
+    authMock.user.userId = "hydration-status-success";
+    const get = deferred<{ schedule: unknown }>();
+    apiMock.getSchedule.mockReturnValue(get.promise);
+    const view = render(<Harness />);
+    expect(view.getByText("Hydrating")).toBeTruthy();
+    await act(async () => get.resolve({ schedule: { entries: [], activeTerm: "" } }));
+    expect(view.getByText("Settled")).toBeTruthy();
+  });
+
+  it("settles after failure rather than leaving a permanent skeleton", async () => {
+    authMock.user.userId = "hydration-status-failure";
+    apiMock.getSchedule.mockRejectedValue(new Error("offline"));
+    const view = render(<Harness />);
+    expect(view.getByText("Hydrating")).toBeTruthy();
+    expect(await view.findByText("Settled")).toBeTruthy();
+  });
+
+  it("does not hydrate a guest schedule", () => {
+    authMock.isGuest = true;
+    const view = render(<Harness />);
+    expect(view.getByText("Settled")).toBeTruthy();
+    expect(apiMock.getSchedule).not.toHaveBeenCalled();
+    authMock.isGuest = false;
   });
 });

@@ -1,0 +1,135 @@
+// @vitest-environment happy-dom
+import { fireEvent, render } from "@testing-library/react";
+import { createRef } from "react";
+import { describe, expect, it, vi } from "vitest";
+import { Button, ButtonLink } from "./button";
+
+describe("Button", () => {
+  it("renders the shared secondary action by default", () => {
+    const { getByRole } = render(<Button>Continue</Button>);
+    const button = getByRole("button", { name: "Continue" });
+
+    expect(button.getAttribute("type")).toBe("button");
+    expect(button.className).toContain("neu-button");
+    expect(button.className).toContain("bg-surface");
+    expect(button.className).toContain("neu-shadow-on-surface");
+    expect(button.className).toContain("h-11");
+    expect(button.className).toContain("sm:h-9");
+    expect(button.className).toContain("rounded-lg");
+  });
+
+  it("supports primary, ghost, size, and shadow context variants", () => {
+    const { getByRole, rerender } = render(
+      <Button variant="primary" size="large" shadowOn="background">
+        Create account
+      </Button>,
+    );
+    let button = getByRole("button", { name: "Create account" });
+    expect(button.className).toContain("neu-primary-button");
+    expect(button.className).toContain("neu-shadow-on-background");
+    expect(button.className).toContain("h-12");
+
+    rerender(
+      <Button variant="ghost" size="compact">
+        Cancel
+      </Button>,
+    );
+    button = getByRole("button", { name: "Cancel" });
+    expect(button.className).not.toContain("neu-button");
+    expect(button.className).toContain("h-11");
+    expect(button.className).toContain("sm:h-8");
+
+    rerender(<Button variant="danger">Delete</Button>);
+    button = getByRole("button", { name: "Delete" });
+    expect(button.className).toContain("neu-button");
+    expect(button.className).toContain("enabled:hover:text-error");
+    expect(button.className).not.toMatch(/(?:^|\s)hover:text-error(?:\s|$)/);
+  });
+
+  it("passes native props, events, classes, and refs through", () => {
+    const onClick = vi.fn();
+    const ref = createRef<HTMLButtonElement>();
+    const { getByRole } = render(
+      <Button ref={ref} type="submit" className="w-full" aria-describedby="help" onClick={onClick}>
+        Save
+      </Button>,
+    );
+    const button = getByRole("button", { name: "Save" });
+
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(ref.current).toBe(button);
+    expect(button.getAttribute("type")).toBe("submit");
+    expect(button.getAttribute("aria-describedby")).toBe("help");
+    expect(button.className).toContain("w-full");
+  });
+
+  it.each([
+    ["compact", "sm:h-8"],
+    ["toolbar", "sm:h-9"],
+    ["default", "sm:h-9"],
+    ["prominent", "sm:h-10"],
+    ["field", "h-11"],
+    ["large", "h-12"],
+    ["icon", "sm:size-9"],
+    ["denseIcon", "sm:size-8"],
+    ["fieldIcon", "size-11"],
+    ["pill", "sm:min-h-8"],
+  ] as const)("maps the %s size to documented geometry", (size, expectedClass) => {
+    const { getByRole } = render(
+      <Button size={size} aria-label={size === "icon" ? "Open" : undefined}>
+        {size === "icon" ? null : "Action"}
+      </Button>,
+    );
+    const button = getByRole("button");
+    expect(button.className).toContain(expectedClass);
+    expect(button.className).toContain(
+      size === "pill" ? "rounded-full" : size === "large" ? "rounded-xl" : "rounded-lg",
+    );
+  });
+
+  it("shares primary and secondary geometry with navigation links", () => {
+    const { getByRole, rerender } = render(
+      <ButtonLink href="/signup" variant="primary" size="large">
+        Get started
+      </ButtonLink>,
+    );
+    let link = getByRole("link", { name: "Get started" });
+    expect(link.getAttribute("href")).toBe("/signup");
+    expect(link.className).toContain("neu-primary-button");
+    expect(link.className).toContain("h-12");
+
+    rerender(
+      <ButtonLink href="/login" size="default">
+        Sign in
+      </ButtonLink>,
+    );
+    link = getByRole("link", { name: "Sign in" });
+    expect(link.className).toContain("neu-button");
+    expect(link.className).toContain("sm:h-9");
+  });
+
+  it.each(["default", "compact", "pill"] as const)("lets %s size own outline geometry", (size) => {
+    const { getByRole } = render(
+      <Button variant="outline" size={size}>
+        Action
+      </Button>,
+    );
+    const button = getByRole("button");
+    const radii = button.className.split(/\s+/).filter((token) => token.startsWith("rounded-"));
+    expect(radii).toHaveLength(1);
+    expect(button.className).toContain("enabled:active:scale-95");
+  });
+
+  it("provides the shared outline pill contract", () => {
+    const { getByRole } = render(
+      <Button variant="outline" size="pill">
+        Clear filters
+      </Button>,
+    );
+    const button = getByRole("button", { name: "Clear filters" });
+    expect(button.className).toContain("border-primary");
+    expect(button.className).toContain("rounded-full");
+    expect(button.className).toContain("min-h-11");
+  });
+});

@@ -1,4 +1,5 @@
-import type { Meilisearch } from "meilisearch";
+import { randomUUID } from "node:crypto";
+import type { EnqueuedTask, Meilisearch } from "meilisearch";
 import type { DatasetModule, DataWriter } from "./core/types";
 import { recordIndexFreshness } from "./freshness";
 
@@ -9,26 +10,53 @@ export function sanitizeMeiliId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-/** Indexes all dataset modules into Meilisearch. Creates indexes if absent,
- *  applies settings, then adds documents in batches. */
+/**
+ * Indexes datasets sequentially and atomically swaps complete replacement snapshots.
+ * Checks Meilisearch tasks, removes temporary indexes, and aggregates failures after attempting other indexes.
+ */
 export async function runIngest(modules: DatasetModule[], search: Meilisearch, store: DataWriter): Promise<void> {
+  const failures: Error[] = [];
+  const waitForTask = async (task: Promise<EnqueuedTask>) => {
+    const result = await search.tasks.waitForTask((await task).taskUid, { timeout: 300_000, interval: 100 });
+    if (result.status !== "succeeded") {
+      throw new Error(`Task ${result.uid} ${result.status}: ${result.error?.message ?? "No error details"}`, {
+        cause: result.error,
+      });
+    }
+  };
+
+  const ensureIndex = async (name: string) => {
+    try {
+      await waitForTask(search.createIndex(name, { primaryKey: "id" }));
+      console.log(`${name}: created index`);
+    } catch (e) {
+      const cause = e instanceof Error ? e.cause : null;
+      if (typeof cause !== "object" || cause === null || !("code" in cause) || cause.code !== "index_already_exists") {
+        throw e;
+      }
+    }
+  };
+
   for (const module of modules) {
     for (const idx of module.indices) {
+      const target = idx.replace ? `${idx.index}__${randomUUID()}` : idx.index;
+      let temporaryCreated = false;
       try {
-        // Create or update index
-        try {
-          await search.createIndex(idx.index, { primaryKey: "id" });
-          console.log(`${idx.index}: created index`);
-        } catch {
-          // Index already exists
+        if (idx.replace) {
+          await waitForTask(search.createIndex(target, { primaryKey: "id" }));
+          temporaryCreated = true;
+        } else {
+          await ensureIndex(target);
         }
 
-        const index = search.index(idx.index);
-        await index.updateSettings({
-          searchableAttributes: idx.settings.searchableAttributes,
-          filterableAttributes: idx.settings.filterableAttributes,
-          sortableAttributes: idx.settings.sortableAttributes,
-        });
+        const index = search.index(target);
+        await waitForTask(
+          index.updateSettings({
+            searchableAttributes: idx.settings.searchableAttributes,
+            filterableAttributes: idx.settings.filterableAttributes,
+            sortableAttributes: idx.settings.sortableAttributes,
+          }),
+        );
 
         // Batch documents
         let batch: Record<string, unknown>[] = [];
@@ -36,8 +64,7 @@ export async function runIngest(modules: DatasetModule[], search: Meilisearch, s
 
         const flush = async () => {
           if (batch.length === 0) return;
-          const task = await index.addDocuments(batch);
-          await search.tasks.waitForTask(task.taskUid);
+          await waitForTask(index.addDocuments(batch));
           batch = [];
         };
 
@@ -53,19 +80,38 @@ export async function runIngest(modules: DatasetModule[], search: Meilisearch, s
           if (batch.length >= BATCH_DOCS) await flush();
         }
         await flush();
-        console.log(`${idx.index}: indexed ${count} docs`);
 
         if (idx.derive) {
           await idx.derive(store);
           console.log(`${idx.index}: derived artifacts written`);
         }
+        if (idx.replace) {
+          await ensureIndex(idx.index);
+          await waitForTask(search.swapIndexes([{ indexes: [idx.index, target], rename: false }]));
+        }
 
-        // Stamp the snapshot time only after the rebuild fully succeeded, so
-        // a failed ingest never advertises fresh data.
+        // Freshness describes the completed snapshot; cleanup errors do not roll it back.
         await recordIndexFreshness(idx.index);
+        console.log(`${idx.index}: indexed ${count} docs`);
       } catch (e) {
-        console.error(`${idx.index}: failed — ${e instanceof Error ? e.message : e}`);
+        const error = new Error(`${idx.index}: failed: ${e instanceof Error ? e.message : String(e)}`, { cause: e });
+        failures.push(error);
+        console.error(error.message);
+      } finally {
+        if (temporaryCreated) {
+          try {
+            await waitForTask(search.deleteIndex(target));
+          } catch (e) {
+            const error = new Error(
+              `${idx.index}: cleanup failed for ${target}: ${e instanceof Error ? e.message : String(e)}`,
+              { cause: e },
+            );
+            failures.push(error);
+            console.error(error.message);
+          }
+        }
       }
     }
   }
+  if (failures.length > 0) throw new AggregateError(failures, "Ingest failed");
 }

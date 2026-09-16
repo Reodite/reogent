@@ -116,10 +116,15 @@ export const pages: DatasetModule = {
         },
       },
       async execute(input, search) {
-        const filter = input.source ? `source = '${String(input.source)}'` : undefined;
-        const res = await search.index("pages").search(String(input.query), {
+        if (typeof input.query !== "string" || !input.query.trim()) throw new Error("Page search requires query");
+        if (input.source !== undefined && typeof input.source !== "string") throw new Error("source must be a string");
+        const requested = input.limit ?? 5;
+        if (typeof requested !== "number" || !Number.isSafeInteger(requested) || requested < 1)
+          throw new Error("limit must be a positive integer");
+        const filter = input.source ? `source = ${JSON.stringify(input.source)}` : undefined;
+        const res = await search.index("pages").search(input.query.trim(), {
           filter,
-          limit: Math.min(Number(input.limit) || 5, 20),
+          limit: Math.min(requested, 20),
           attributesToHighlight: ["text"],
         });
         const hits = res.hits;

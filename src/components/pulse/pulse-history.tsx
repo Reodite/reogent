@@ -1,10 +1,12 @@
 "use client";
 
 import { useApi } from "@/src/components/providers";
+import { RetryState } from "@/src/components/ui/feedback";
+import { Heading } from "@/src/components/ui/heading";
 import type { PulseHistory as PulseHistoryData } from "@/src/lib/api-types";
 import { useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
-import { ShadowCard } from "./question-card";
+import { PulseCardsLoading, ShadowCard } from "./question-card";
 
 /** Read-only list of locked rounds with their final tallies, under the active feed. */
 export function PulseHistory() {
@@ -26,36 +28,30 @@ export function PulseHistory() {
     void fetchHistory();
   }, [fetchHistory]);
 
-  if (!rounds && !error) return null;
+  const loading = !rounds && !error;
 
   return (
-    <section aria-labelledby="pulse-history-heading" className="mt-6 flex flex-col gap-3">
-      <h2 id="pulse-history-heading" className="text-on-surface text-base font-medium tracking-[-0.01em]">
-        Previous rounds
-      </h2>
-      {error && (
-        <div className="flex flex-col items-center gap-3 py-4">
-          <p className="text-on-surface-variant text-sm">{error}</p>
-          <button
-            type="button"
-            onClick={() => void fetchHistory()}
-            className="neu-button bg-surface text-on-surface min-h-11 rounded-xl px-4 text-sm font-medium"
-          >
-            Try again
-          </button>
-        </div>
-      )}
-      {rounds?.length === 0 && <p className="text-muted py-4 text-center text-sm">No previous rounds yet.</p>}
+    <section aria-labelledby="pulse-history-heading" className="flex flex-col gap-3">
+      <header className="flex flex-col gap-1">
+        <Heading as="h2" size="section" id="pulse-history-heading">
+          Previous rounds
+        </Heading>
+        {rounds?.length === 0 ? <p className="ui-content-enter text-muted text-sm">No previous rounds yet.</p> : null}
+      </header>
+      {loading ? <PulseCardsLoading label="Loading previous rounds" /> : null}
+      {error ? (
+        <RetryState message={error} onRetry={() => void fetchHistory()} compact className="ui-notice-enter py-4" />
+      ) : null}
       {rounds?.map((round) => (
         <div key={round.id} className="flex flex-col gap-3">
-          <h3 className="text-muted text-xs font-medium tracking-[0.05em] uppercase">
+          <Heading as="h3" size="label" tone="muted" className="tracking-[0.05em] uppercase">
             {round.title ??
               new Date(round.published_at).toLocaleDateString(undefined, {
                 month: "short",
                 day: "numeric",
                 year: "numeric",
               })}
-          </h3>
+          </Heading>
           {round.questions.map((q) => (
             <ShadowCard
               key={q.id}

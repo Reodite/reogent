@@ -43,7 +43,11 @@ export async function GET(request: Request): Promise<Response> {
 
     // Session-aware exploratory browse (no query required): mirrors find_courses session sorts.
     const isSessionSort =
-      sort === "students_desc" || sort === "students_asc" || sort === "average_desc" || sort === "average_asc";
+      sort === "code" ||
+      sort === "students_desc" ||
+      sort === "students_asc" ||
+      sort === "average_desc" ||
+      sort === "average_asc";
     if (isSessionSort || (!q && !subject)) {
       const meiliSort =
         sort === "students_desc"

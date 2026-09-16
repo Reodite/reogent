@@ -1,5 +1,6 @@
 import { AppProviders } from "@/src/components/providers";
 import { SHELL_MODE_STORAGE_KEY } from "@/src/lib/shell-mode";
+import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "@/src/lib/sidebar";
 import { THEME_STORAGE_KEY } from "@/src/lib/theme";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
@@ -33,14 +34,13 @@ export const viewport: Viewport = {
   ],
 };
 
-// Runs before first paint: applies stored or system theme, and the shell mode
-// (from URL path first, falling back to the stored preference). The pathname is
-// authoritative so deep links to /tools/<slug> paint in tools mode without a
-// flash — the provider's pathname effect confirms it after hydration.
+// Applies theme and routed shell mode before paint. Utility routes retain the
+// stored mode so their sidebar matches the workspace the user came from.
 const AUTH_KEY = "reodite.auth.user";
 const BOOTSTRAP =
   `try{var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});document.documentElement.dataset.theme=(t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}` +
-  `try{var p=location.pathname||"";var m=p.indexOf("/tools")===0?"tools":(p.indexOf("/chat")===0?"ai":(localStorage.getItem(${JSON.stringify(SHELL_MODE_STORAGE_KEY)})||"ai"));document.documentElement.dataset.shellMode=(m==="tools")?"tools":"ai"}catch(e){document.documentElement.dataset.shellMode="ai"}` +
+  `try{var p=location.pathname||"";var m=p.indexOf("/tools")===0?"tools":(p.indexOf("/pulse")===0?"unity":(p.indexOf("/chat")===0?"ai":(localStorage.getItem(${JSON.stringify(SHELL_MODE_STORAGE_KEY)})||"ai")));document.documentElement.dataset.shellMode=(m==="tools"||m==="unity")?m:"ai"}catch(e){document.documentElement.dataset.shellMode="ai"}` +
+  `try{document.documentElement.dataset.sidebarCollapsed=localStorage.getItem(${JSON.stringify(SIDEBAR_COLLAPSED_STORAGE_KEY)})==="1"?"true":"false"}catch(e){document.documentElement.dataset.sidebarCollapsed="false"}` +
   `try{if(location.pathname==="/"&&localStorage.getItem(${JSON.stringify(AUTH_KEY)}))document.documentElement.dataset.authPending=""}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

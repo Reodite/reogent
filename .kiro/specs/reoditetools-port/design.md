@@ -413,13 +413,13 @@ For all inputs matching `CODE_RE` (with optional `_V`, multi-space, mixed case):
 38. **Soft-tail positive split (top-level clear cases).** For all `s` that END with a top-level `recommended` tail shaped as `X is recommended` / `X strongly recommended` / `X are recommended` (where `X` is a code-bearing expression), `parsePrereq(s)` produces a `Soft`-rooted AST at that tail (the `recommended` clause becomes `kind: 'soft'` at the top level, not a bare literal). (REQ-5.5)
    **Generator:** `arbRecommendedTail: fc.tuple(arbCodeExpr, fc.constantFrom('is recommended', 'is strongly recommended', 'are recommended')).map(([e, t]) => `${displayExpr(e)} ${t}`)` composed with a prefix string from `arbPrereqString`; assert root kind is `'soft'`.
 
-### Domain 3 — Pretty-Printer and Round-Trip (REQ-6)
+### Domain 3: Pretty-Printer and Display Content (REQ-6)
 
 8. **Non-empty label.** For all `Expr e`, `displayExpr(e)` is non-empty. (REQ-6.1, REQ-6.5)
-9. **Round-trip code set.** For all `Expr e` produced by `parsePrereq`, the set of `Code` leaves in `parsePrereq(displayExpr(e))` equals the set of `Code` leaves in `e`. (REQ-6.6 — the canonical parser property)
+9. **Display content preservation.** For all `Expr e`, each `Code` reached through `And`, `Or`, or `Soft` branches appears verbatim in `displayExpr(e)`. `Literal` and `Flattened` nodes retain their text or the empty-text placeholder; a flattened node's `subExpr` does not replace its label. Display labels do not preserve enough structure for a parser round trip. (REQ-6.6)
 10. **Soft-flattening.** For all `Soft(child)`, `displayExpr(Soft(child)) === displayExpr(child)`. (REQ-6.4)
-39. **Code node canonical form output.** For all `Expr e` and every `Code` leaf `c` in `e`, the substring of `displayExpr(e)` corresponding to `c` matches the canonical form defined in Property 1: subject uppercase, single space, no `_V` suffix, no trailing whitespace. (REQ-6.2)
-40. **And/Or separator presence.** For all `Expr e` of kind `And` (resp. `Or`), `displayExpr(e)` contains `' + '` (resp. `' / '`) between every adjacent pair of children's labels. Equivalently, the separator round-trips the AST shape, matching the donor's `.join(' + ')` / `.join(' / ')` at `prereqAst.ts:1368,1370`. (REQ-6.3)
+39. **Code node canonical form output.** For every `Code` leaf `c`, `displayExpr(c)` matches the canonical form defined in Property 1: subject uppercase, single space, no `_V` suffix, no trailing whitespace. (REQ-6.2)
+40. **And/Or separator presence.** For all `Expr e` of kind `And` (resp. `Or`), `displayExpr(e)` contains `' + '` (resp. `' / '`) between every adjacent pair of children's labels. These separators format labels without encoding the full AST shape. (REQ-6.3)
    **Oracle:** `displayExpr(andNode) === andNode.children.map(displayExpr).join(' + ')` for `And`; `' / '` for `Or`. Or-`ui: 'stacked'` is skipped (donor's `.join(' / ')` is ui-invariant at `prereqAst.ts:1370`), so the single `dropdown` `Or` branch covers both.
    **Generator:** `arbExpr: fc.letrec(t => ({ node: fc.oneof(t('code'), t('literal'), fc.array(t('node'), { minLength: 2 }).map(children => ({ kind: 'and', children })), fc.array(t('node'), { minLength: 2 }).map(children => ({ kind: 'or', ui: 'dropdown', children })), t('node').map(child => ({ kind: 'soft', child }))) }))` derived from `arbCode` + `arbLiteral`.
 
@@ -1206,7 +1206,7 @@ All network failures render inline — no global error toast; the chat surface r
 
 ### Fixture corpus
 
-- A `__fixtures__/prereq-strings.json` of ~30 real UBC prerequisite strings (CPSC 110, MATH 200, AANB 500, KIN 320 with mid-clause "recommended", etc.) drives parser snapshots and round-trip tests.
+- `__fixtures__/prereq-strings.json` supplies UBC prerequisite strings for parser snapshots and label-preservation tests. Synthetic expressions cover ambiguous labels and flattened branches.
 - A `__fixtures__/calendar-events.json` of academic + holiday events from a representative year drives calendar month rendering.
 - A `__fixtures__/agent-turns.json` of three assistant turns (one with citations, one without, one with out-of-range markers) drives chip injector + Sources panel tests.
 

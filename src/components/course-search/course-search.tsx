@@ -1,9 +1,14 @@
 "use client";
 
-import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
+import { FloatingPanel } from "@/src/components/ui/floating-panel";
+import { SearchInput, type SearchDensity } from "@/src/components/ui/form-controls";
+import { InlineAction } from "@/src/components/ui/inline-action";
+import { SkeletonList } from "@/src/components/ui/skeleton";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { ApiError } from "@/src/lib/api-types";
+import type { NeumorphicSurfaceToken } from "@/src/shared/color-tokens";
 import { canonicalize, isOkanagan } from "@/src/shared/course-code";
 import {
   useCallback,
@@ -83,14 +88,12 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
           setStatus("loading");
           const my = ++reqToken.current;
           try {
-            const rec = await opts.resolveSingle(`${canonical.subject} ${canonical.number}`);
-            if (my !== reqToken.current) return;
-            setRecord(rec);
-            setList(null);
-            setStatus("idle");
-            return;
-          } catch (e) {
-            if (e instanceof ApiError && e.status === 404) {
+            let rec: CourseDoc;
+            try {
+              rec = await opts.resolveSingle(`${canonical.subject} ${canonical.number}`);
+            } catch (e) {
+              if (my !== reqToken.current) return;
+              if (!(e instanceof ApiError && e.status === 404)) throw e;
               // q-search spans all fields and Meilisearch ranks by
               // relevance, surfacing APSC 160 and ELEC 331 for "CPSC 101".
               // Narrow by subject + exact number so a dead code lands on a
@@ -104,8 +107,12 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
               return;
             }
             if (my !== reqToken.current) return;
-            setRecord(null);
+            setRecord(rec);
             setList(null);
+            setStatus("idle");
+            return;
+          } catch (e) {
+            if (my !== reqToken.current) return;
             setError(e instanceof Error ? e.message : "Lookup failed");
             setStatus("idle");
             return;
@@ -191,8 +198,6 @@ export function useCourseAutocomplete(value: string, opts: UseCourseAutocomplete
         setStatus("idle");
       } catch (e) {
         if (my !== reqToken.current) return;
-        setRecord(null);
-        setList(null);
         setError(e instanceof Error ? e.message : "Lookup failed");
         setStatus("idle");
       }
@@ -237,6 +242,11 @@ export type CourseSearchFieldProps = {
   getCandidatePresentation?: (candidate: Candidate) => CandidatePresentation;
   inputRef?: { current: HTMLInputElement | null };
   monospaceCodes?: boolean;
+  density?: SearchDensity;
+  shadowOn?: NeumorphicSurfaceToken;
+  clearable?: boolean;
+  openOnInitialValue?: boolean;
+  loadingFallback?: ReactNode;
 };
 
 export function CourseSearchField({
@@ -255,12 +265,20 @@ export function CourseSearchField({
   getCandidatePresentation,
   inputRef: externalInputRef,
   monospaceCodes = true,
+  density = "primary",
+  shadowOn = "surface",
+  clearable = true,
+  openOnInitialValue = true,
+  loadingFallback,
 }: CourseSearchFieldProps) {
   const trimmed = value.trim();
   const overlay = presentation === "overlay";
-  const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
   const restoringFocus = useRef(false);
+  const initialValue = useRef(value);
+  const allowAutomaticOpen = useRef(openOnInitialValue);
+  if (value !== initialValue.current || openOnInitialValue) allowAutomaticOpen.current = true;
   const listboxId = useId();
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -278,21 +296,28 @@ export function CourseSearchField({
   useEffect(() => {
     if (presentation !== "overlay") return;
     setActiveIndex(-1);
-    if (value.trim()) setOpen(true);
+    if (value.trim() && allowAutomaticOpen.current) setOpen(true);
   }, [presentation, value]);
 
   useEffect(() => {
-    if (overlay && trimmed && (status === "loading" || !!error || rejected || hasPendingCandidate)) setOpen(true);
+    if (
+      overlay &&
+      allowAutomaticOpen.current &&
+      trimmed &&
+      (status === "loading" || !!error || rejected || hasPendingCandidate)
+    )
+      setOpen(true);
   }, [error, hasPendingCandidate, overlay, rejected, status, trimmed]);
 
-  useEffect(() => {
-    if (!overlay) return;
-    const dismiss = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("pointerdown", dismiss);
-    return () => document.removeEventListener("pointerdown", dismiss);
-  }, [overlay]);
+  useLayoutEffect(() => {
+    if (!showOverlay || activeIndex < 0) return;
+    // Wait for the floating portal to mount and measure its scroll bounds.
+    const frame = requestAnimationFrame(() => {
+      const option = document.getElementById(`${listboxId}-option-${activeIndex}`);
+      if (option && listboxRef.current?.contains(option)) option.scrollIntoView?.({ block: "nearest" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeIndex, listboxId, showOverlay]);
 
   const restoreInputFocus = () => {
     if (document.activeElement === inputRef.current) return;
@@ -318,10 +343,14 @@ export function CourseSearchField({
   };
 
   const handleOverlayKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && showOverlay) {
       event.preventDefault();
       setOpen(false);
       restoreInputFocus();
+      return;
+    }
+    if (event.key === "Tab") {
+      setOpen(false);
       return;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -344,136 +373,139 @@ export function CourseSearchField({
   };
 
   const input = (
-    <div className="relative">
-      <Icon
-        name="search"
-        className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-      />
-      <input
-        ref={(node) => {
-          inputRef.current = node;
-          if (externalInputRef) externalInputRef.current = node;
-        }}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => {
-          if (trimmed && !restoringFocus.current) setOpen(true);
-        }}
-        onKeyDown={handleOverlayKeyDown}
-        placeholder={placeholder}
-        aria-label={ariaLabel}
-        aria-invalid={rejected ? "true" : undefined}
-        aria-errormessage={rejected ? "code-error" : undefined}
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded={showOverlay}
-        aria-controls={listboxId}
-        aria-activedescendant={activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined}
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg pr-9 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
-      />
-      {trimmed && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          aria-label="Clear search"
-          className="text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
-        >
-          <Icon name="close" className="size-4" />
-        </button>
-      )}
-    </div>
+    <SearchInput
+      ref={(node) => {
+        inputRef.current = node;
+        if (externalInputRef) externalInputRef.current = node;
+      }}
+      type="text"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onFocus={
+        overlay
+          ? () => {
+              if (trimmed && !restoringFocus.current) setOpen(true);
+            }
+          : undefined
+      }
+      onKeyDown={overlay ? handleOverlayKeyDown : undefined}
+      onClear={clearable && trimmed ? () => onChange("") : undefined}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      aria-invalid={rejected ? "true" : undefined}
+      aria-errormessage={rejected ? "code-error" : undefined}
+      role={overlay ? "combobox" : undefined}
+      aria-autocomplete={overlay ? "list" : undefined}
+      aria-expanded={overlay ? showOverlay : undefined}
+      aria-controls={overlay ? listboxId : undefined}
+      aria-activedescendant={
+        showOverlay && !rejected && candidates[activeIndex] ? `${listboxId}-option-${activeIndex}` : undefined
+      }
+      aria-busy={status === "loading" || undefined}
+      density={density}
+      shadowOn={shadowOn}
+    />
   );
 
   if (overlay) {
     return (
-      <div ref={rootRef} className="relative">
+      <div>
         {input}
         {showOverlay && (
-          <div
-            id={listboxId}
-            role={status === "idle" && candidates.length > 0 && !error && !rejected ? "listbox" : undefined}
+          <FloatingPanel
+            ref={listboxRef}
+            anchorRef={inputRef}
+            onDismiss={() => setOpen(false)}
+            matchAnchorWidth
+            focusOnOpen={false}
+            role="presentation"
             data-course-list
-            className="border-border-subtle bg-surface absolute top-full z-30 mt-2 max-h-[320px] w-full overflow-y-auto rounded-xl border shadow-lg"
+            style={{ maxHeight: 320 }}
+            className="border-border-subtle bg-surface rounded-xl border shadow-lg"
           >
+            {candidates.length === 0 || rejected ? (
+              <div id={listboxId} role="listbox" aria-label="Course suggestions" aria-busy={status === "loading"} />
+            ) : null}
             {status === "loading" ? (
-              <div role="status" aria-busy="true">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="flex h-11 items-center gap-3 px-3">
-                    <span className="bg-surface-container h-3 w-16 animate-pulse rounded" />
-                    <span className="bg-surface-container h-3 flex-1 animate-pulse rounded" />
-                  </div>
-                ))}
-              </div>
-            ) : rejected ? (
-              <div id="code-error" role="alert" className="text-error flex min-h-11 items-center px-3 text-sm">
+              candidates.length > 0 ? (
+                <LoadingStatus className="px-3 py-2">Updating courses…</LoadingStatus>
+              ) : (
+                <SkeletonList label="Loading course suggestions" padding="sm" />
+              )
+            ) : null}
+            {rejected ? (
+              <div
+                id="code-error"
+                role="alert"
+                className="ui-notice-enter text-error flex min-h-11 items-center px-3 text-sm"
+              >
                 Okanagan campus codes aren't in this catalog. Try a Vancouver course.
               </div>
             ) : error ? (
-              <div role="alert" className="text-error flex min-h-11 items-center px-3 text-sm">
+              <div role="alert" className="ui-notice-enter text-error flex min-h-11 items-center px-3 text-sm">
                 <span className="min-w-0 flex-1">{value} could not be reached.</span>
                 {onRetry && (
-                  <button
-                    type="button"
-                    onPointerDown={(event) => event.preventDefault()}
-                    onClick={onRetry}
-                    className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2"
-                  >
+                  <InlineAction onPointerDown={(event) => event.preventDefault()} onClick={onRetry}>
                     Retry
-                  </button>
+                  </InlineAction>
                 )}
               </div>
-            ) : candidates.length > 0 ? (
+            ) : null}
+            {!rejected && candidates.length > 0 ? (
               <>
-                {candidates.map((candidate, index) => {
-                  const candidatePresentation = presentations[index];
-                  const unavailable = candidatePresentation.disabled || candidatePresentation.pending;
-                  return (
-                    <button
-                      id={`${listboxId}-option-${index}`}
-                      key={candidate.code}
-                      type="button"
-                      role="option"
-                      tabIndex={-1}
-                      aria-selected={activeIndex === index}
-                      aria-disabled={unavailable || undefined}
-                      aria-busy={candidatePresentation.pending || undefined}
-                      disabled={unavailable}
-                      onPointerDown={(event) => event.preventDefault()}
-                      onPointerMove={() => {
-                        if (!unavailable) setActiveIndex(index);
-                      }}
-                      onClick={() => selectCandidate(index)}
-                      className="hover:bg-surface-container-low aria-selected:bg-primary/10 focus-visible:ring-primary/40 flex min-h-12 w-full items-center px-3 py-1.5 text-left focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="flex min-w-0 items-baseline gap-2">
-                          <span
-                            className={`text-on-surface text-body-sm shrink-0 font-medium ${monospaceCodes ? "font-mono" : ""}`}
-                          >
-                            {candidate.code}
+                <div id={listboxId} role="listbox" aria-label="Course suggestions" aria-busy={status === "loading"}>
+                  {candidates.map((candidate, index) => {
+                    const candidatePresentation = presentations[index];
+                    const unavailable = candidatePresentation.disabled || candidatePresentation.pending;
+                    return (
+                      <button
+                        id={`${listboxId}-option-${index}`}
+                        key={candidate.code}
+                        type="button"
+                        role="option"
+                        tabIndex={-1}
+                        aria-selected={activeIndex === index}
+                        aria-disabled={unavailable || undefined}
+                        aria-busy={candidatePresentation.pending || undefined}
+                        disabled={unavailable}
+                        onPointerDown={(event) => event.preventDefault()}
+                        onPointerMove={() => {
+                          if (!unavailable) setActiveIndex(index);
+                        }}
+                        onClick={() => selectCandidate(index)}
+                        className="hover:bg-surface-container-low aria-selected:bg-primary/10 focus-visible:ring-primary/40 flex min-h-12 w-full items-center px-3 py-1.5 text-left focus-visible:ring-2 disabled:opacity-60"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="flex min-w-0 items-baseline gap-2">
+                            <span
+                              className={`text-on-surface text-body-sm shrink-0 font-medium ${monospaceCodes ? "font-mono" : ""}`}
+                            >
+                              {candidate.code}
+                            </span>
+                            <span className="text-on-surface-variant truncate text-xs">{candidate.title}</span>
                           </span>
-                          <span className="text-on-surface-variant truncate text-xs">{candidate.title}</span>
+                          {candidatePresentation.annotation ? (
+                            <span className="text-muted mt-1 block truncate text-xs">
+                              {candidatePresentation.annotation}
+                            </span>
+                          ) : null}
                         </span>
-                        {candidatePresentation.annotation ? (
-                          <span className="text-muted mt-0.5 block truncate text-xs">
-                            {candidatePresentation.annotation}
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })}
+                </div>
                 {candidatePool.length > candidates.length ? (
                   <p className="border-border-subtle text-muted border-t px-3 py-2 text-xs">
                     Keep typing to narrow {list?.total ?? candidatePool.length} results.
                   </p>
                 ) : null}
               </>
-            ) : (
-              <div className="text-muted flex min-h-11 items-center px-3 text-sm">No courses matching {trimmed}.</div>
-            )}
-          </div>
+            ) : status === "idle" && !error && !rejected ? (
+              <div className="ui-content-enter text-muted flex min-h-11 items-center px-3 text-sm">
+                No courses matching {trimmed}.
+              </div>
+            ) : null}
+          </FloatingPanel>
         )}
       </div>
     );
@@ -481,82 +513,45 @@ export function CourseSearchField({
 
   return (
     <>
-      <div className="relative">
-        <Icon
-          name="search"
-          className="text-on-surface-variant pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          aria-label={ariaLabel}
-          aria-invalid={rejected ? "true" : undefined}
-          aria-errormessage={rejected ? "code-error" : undefined}
-          className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 aria-[invalid=true]:ring-error/30 h-11 w-full rounded-lg pr-9 pl-9 text-sm focus-visible:ring-2 focus-visible:ring-offset-1 aria-[invalid=true]:ring-2"
-        />
-        {trimmed && (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            aria-label="Clear search"
-            className="text-on-surface-variant hover:text-on-surface focus-visible:ring-primary/40 absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-md focus-visible:ring-2 focus-visible:ring-offset-1"
-          >
-            <Icon name="close" className="size-4" />
-          </button>
-        )}
-      </div>
+      {input}
 
       {rejected && (
         <p
           id="code-error"
           role="alert"
-          className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-xs"
+          className="ui-notice-enter border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-xs"
         >
           Okanagan campus codes aren't in this catalog. Try a Vancouver course.
         </p>
       )}
 
       {error && (
-        <p
-          role="alert"
-          className="border-error/30 bg-error-container/30 text-error rounded-lg border px-3 py-2 text-sm"
-        >
-          {value} could not be reached.{" "}
-          {onRetry && (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2 focus-visible:ring-offset-1"
-            >
-              Retry
-            </button>
-          )}
-        </p>
+        <RetryAlert variant="soft" onRetry={onRetry}>
+          {value} could not be reached.
+        </RetryAlert>
       )}
 
-      {status === "loading" && (
-        <div role="status" aria-busy="true" className="flex flex-col gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="bg-surface-container-low/60 flex h-11 animate-pulse items-center gap-3 rounded-lg px-3"
-            >
-              <span className="bg-surface-container h-3 w-16 animate-pulse rounded" />
-              <span className="bg-surface-container h-3 flex-1 animate-pulse rounded" />
-            </div>
-          ))}
-        </div>
-      )}
+      {status === "loading" && candidates.length === 0
+        ? (loadingFallback ?? <SkeletonList label="Loading course suggestions" padding="sm" />)
+        : null}
 
-      {list && status === "idle" && list.candidates.length > 0 && (
+      {list && !rejected && list.candidates.length > 0 && (
         <>
-          <p className="text-on-surface-variant px-1 text-xs">
-            {list.candidates.length}
-            {list.candidates.length === 1 ? " match" : " matches"}
-          </p>
-          <div data-course-list className="flex flex-col gap-1.5 overflow-auto">
+          <div className="flex min-h-5 items-center px-1">
+            {status === "loading" ? (
+              <LoadingStatus>Updating courses…</LoadingStatus>
+            ) : (
+              <p className="text-on-surface-variant text-xs">
+                {list.candidates.length}
+                {list.candidates.length === 1 ? " match" : " matches"}
+              </p>
+            )}
+          </div>
+          <div
+            data-course-list
+            aria-busy={status === "loading"}
+            className="ui-content-enter flex flex-col gap-1.5 overflow-auto"
+          >
             {list.candidates.map((c) => (
               <button
                 key={c.code}
@@ -580,7 +575,7 @@ export function CourseSearchField({
       )}
 
       {list && status === "idle" && list.candidates.length === 0 && !error && !rejected && (
-        <p className="text-muted px-1 text-sm">No courses matching {trimmed}.</p>
+        <p className="ui-content-enter text-muted px-1 text-sm">No courses matching {trimmed}.</p>
       )}
 
       {!trimmed && status === "idle" && !error && !rejected && (

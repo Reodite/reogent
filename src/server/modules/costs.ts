@@ -1,6 +1,7 @@
 import type { DatasetModule } from "../core/types";
 import { getIndexFreshness } from "../freshness";
 import { lookupTuition, slugify, type TuitionDoc } from "./tuition";
+import { getHousingFees } from "./undergraduate";
 
 export interface CostEstimateDoc {
   program_id: number;
@@ -140,7 +141,7 @@ export const costs: DatasetModule = {
       spec: {
         name: "get_costs",
         description:
-          "One tool for money questions at UBC: tuition rates (kind 'tuition'), UBC's published first-year cost estimate (kind 'estimate'), living-cost figures (kind 'living'), and Board-approved student fees (kind 'fees'). All amounts in CAD. If kind 'tuition' finds no rate for a program, try kind 'estimate' instead — it covers programs the tuition table doesn't.",
+          "Look up UBC tuition rates (kind 'tuition'), first-year cost estimates ('estimate'), living-cost figures ('living'), student fees ('fees'), or published residence fee observations ('housing'). Housing amounts retain exact cents, period labels and source conditions; they are not individual quotes. Other cost results use CAD. If tuition has no rate for a program, try estimate.",
         inputSchema: {
           json: {
             type: "object",
@@ -149,8 +150,8 @@ export const costs: DatasetModule = {
             properties: {
               kind: {
                 type: "string",
-                enum: ["tuition", "estimate", "living", "fees"],
-                description: 'What to look up: "tuition", "estimate", "living", or "fees"',
+                enum: ["tuition", "estimate", "living", "fees", "housing"],
+                description: 'What to look up: "tuition", "estimate", "living", "fees", or "housing"',
               },
               program_slug: {
                 type: "string",
@@ -177,7 +178,11 @@ export const costs: DatasetModule = {
               },
               query: {
                 type: "string",
-                description: 'fees kind: keywords to match fee names and sections. REQUIRED for kind "fees".',
+                description: "Required for fees or housing: keywords for the fee, residence, room type or period.",
+              },
+              limit: {
+                type: "number",
+                description: "Housing only: maximum fee tables to return (default 10, maximum 30).",
               },
               fees_student_type: {
                 type: "string",
@@ -306,8 +311,10 @@ export const costs: DatasetModule = {
               ...(asOf ? { rates_as_of: asOf } : {}),
             };
           }
+          case "housing":
+            return getHousingFees(input, search);
           default:
-            throw new Error(`Unknown kind "${kind}" — expected tuition, estimate, living, or fees`);
+            throw new Error(`Unknown kind "${kind}"; expected tuition, estimate, living, fees, or housing`);
         }
       },
     },

@@ -17,6 +17,18 @@ import {
 } from "@/src/components/dnd/drag-overlay-physics";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
+import { RetryAlert } from "@/src/components/ui/feedback";
+import { FloatingPanel } from "@/src/components/ui/floating-panel";
+import { Heading } from "@/src/components/ui/heading";
+import { Skeleton, SkeletonGroup, SkeletonList, SkeletonText } from "@/src/components/ui/skeleton";
+import {
+  WorkspaceCanvas,
+  WorkspacePage,
+  WorkspacePanel,
+  WorkspaceRail,
+  type WorkspaceView,
+} from "@/src/components/ui/workspace";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
 import { getProgramIndex, getRequirementsFor, resolveProgram } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
@@ -25,21 +37,23 @@ import {
   closestCenter,
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   pointerWithin,
+  TouchSensor,
   useSensor,
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "motion/react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CourseBlock } from "./course-block";
 import { LookupBlock } from "./lookup-block";
 import { MiniCourseLookup } from "./mini-course-lookup";
 import { PlanStructure } from "./plan-structure";
 import { SEASON_META, usePlanner, type Year } from "./planner-store";
-import { ProgramProgress, ProgramSelectors } from "./program-requirements";
+import { ProgramProgress, ProgramSelectors, ProgramSelectorsLoading } from "./program-requirements";
 import { TrashBin } from "./trash-bin";
 import { usePlanSync } from "./use-plan-sync";
 import { describeIssue, EMPTY_VALIDATION, findDuplicateCourseCodes, type BlockValidation } from "./validation";
@@ -128,6 +142,7 @@ export function DegreePlannerPane() {
   const [courseIndex, setCourseIndex] = useState<Map<string, CourseIndexEntry> | null>(null);
   const [indexError, setIndexError] = useState(false);
   const [loadNonce, setLoadNonce] = useState(0);
+  const [mobileView, setMobileView] = useState<WorkspaceView>("main");
   const [activeDrag, setActiveDrag] = useState<
     { kind: "block"; blockId: string; code: string } | { kind: "lookup"; code: string } | null
   >(null);
@@ -178,9 +193,8 @@ export function DegreePlannerPane() {
   }, [undo, redo]);
 
   const sensors = useSensors(
-    // 4-px activation distance so a click on a block (e.g. to read the
-    // details popup) doesn't immediately start a drag and consume the event.
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
 
   useEffect(() => () => setPlannerDragCursor(false), []);
@@ -334,26 +348,83 @@ export function DegreePlannerPane() {
 
   if (indexError) {
     return (
-      <div className="grid h-full place-items-center p-6">
-        <p role="alert" className="border-error/30 bg-error-container text-error rounded-lg border px-3 py-2 text-sm">
-          Couldn't load the course index.{" "}
-          <button
-            type="button"
-            className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2"
-            onClick={() => setLoadNonce((n) => n + 1)}
-          >
-            Retry
-          </button>
-        </p>
-      </div>
+      <WorkspacePage composition="canvas" title="Degree Planner" description="Plan your UBC degree, term by term.">
+        <WorkspaceCanvas overflow="hidden" padding="md">
+          <div className="grid h-full place-items-center">
+            <RetryAlert onRetry={() => setLoadNonce((nonce) => nonce + 1)}>Couldn't load the course index.</RetryAlert>
+          </div>
+        </WorkspaceCanvas>
+      </WorkspacePage>
     );
   }
   if (!courseIndex) {
     return (
-      <div className="text-muted flex h-full items-center justify-center gap-1.5 p-6 text-sm" aria-live="polite">
-        <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
-        Loading course index…
-      </div>
+      <WorkspacePage
+        composition="split"
+        title="Degree Planner"
+        description="Plan your UBC degree, term by term."
+        view={mobileView}
+        onViewChange={setMobileView}
+        mainLabel="Plan"
+        railLabel="Requirements and courses"
+        toolbar={
+          <div className="flex w-full flex-wrap items-end gap-3">
+            <div className="w-full min-w-0 @min-[55rem]:flex-[1_1_35rem]">
+              <ProgramSelectorsLoading />
+            </div>
+            <Skeleton className="h-11 w-72 rounded-lg sm:h-9" />
+          </div>
+        }
+        rail={
+          <WorkspaceRail>
+            <WorkspacePanel title="Requirements" padding="sm">
+              <SkeletonList label="Loading requirements" padding="none" rows={4} />
+            </WorkspacePanel>
+            <WorkspacePanel
+              title="Find courses"
+              description="Drag a result or use Add"
+              bodyMode="contained"
+              padding="none"
+            >
+              <div className="shrink-0 px-4 py-3">
+                <Skeleton className="h-11 w-full rounded-lg sm:h-9" />
+              </div>
+              <SkeletonList
+                label="Loading courses"
+                padding="none"
+                className="border-border-subtle min-h-0 flex-1 overflow-hidden border-t px-2 py-2"
+              />
+            </WorkspacePanel>
+          </WorkspaceRail>
+        }
+      >
+        <WorkspaceCanvas role="region" aria-label="Degree plan" tabIndex={0} padding="md">
+          <SkeletonGroup
+            label="Loading course index…"
+            className="grid min-h-0 flex-1 gap-4"
+            style={{
+              gridTemplateColumns: `repeat(${years.length}, minmax(18rem, 1fr))`,
+              minWidth: `${years.length * 18 + Math.max(0, years.length - 1)}rem`,
+            }}
+          >
+            {years.map((year) => (
+              <div key={year.id} className="flex min-h-0 flex-col gap-2">
+                <Skeleton className="h-8 w-28" />
+                {year.terms.map((term) => (
+                  <div
+                    key={term.season}
+                    className="neu-inset bg-surface-container-low flex min-h-36 flex-1 flex-col gap-4 rounded-xl p-3"
+                  >
+                    <Skeleton className="h-4 w-24" />
+                    <SkeletonText />
+                  </div>
+                ))}
+                <Skeleton className="h-11 w-full rounded-lg sm:h-9" />
+              </div>
+            ))}
+          </SkeletonGroup>
+        </WorkspaceCanvas>
+      </WorkspacePage>
     );
   }
 
@@ -384,71 +455,79 @@ export function DegreePlannerPane() {
         settle();
       }}
     >
-      <div
-        data-pane-root="degree-planner"
-        className="flex h-full min-h-0 flex-col gap-4 p-6 max-md:overflow-y-auto max-sm:p-4"
-      >
-        <header className="relative z-30 flex shrink-0 flex-col gap-3 max-xl:pl-12">
-          <div>
-            <h2 className="text-on-surface text-xl font-medium tracking-[-0.02em]">Degree Planner</h2>
-            <p className="text-muted text-xs">Plan your UBC degree, term by term.</p>
-          </div>
-          <div className="flex w-full flex-wrap items-end justify-between gap-3">
-            <ProgramSelectors />
+      <WorkspacePage
+        composition="split"
+        title="Degree Planner"
+        description="Plan your UBC degree, term by term."
+        toolbar={
+          <div
+            data-planner-header-controls
+            className="flex w-full flex-col gap-3 @min-[55rem]:flex-row @min-[55rem]:flex-wrap @min-[55rem]:items-end"
+          >
+            <div className="w-full min-w-0 @min-[55rem]:flex-[1_1_35rem]">
+              <ProgramSelectors />
+            </div>
             <ActionsSection
               years={years}
               validations={validations}
               courseIndex={courseIndex}
               onClearAll={() => {
-                const total = years.reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
+                const total = years.reduce((count, year) => {
+                  return count + year.terms.reduce((termCount, term) => termCount + term.blocks.length, 0);
+                }, 0);
                 if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
               }}
             />
           </div>
-        </header>
-
-        <div className="grid min-h-0 flex-1 grid-cols-[20rem_minmax(0,1fr)] gap-4 max-md:flex max-md:flex-none max-md:flex-col">
-          <aside className="grid min-h-0 min-w-0 grid-rows-2 gap-4 max-md:order-2 max-md:h-[44rem] max-md:shrink-0">
-            <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
-              <header className="flex h-12 shrink-0 items-center gap-2 px-4">
-                <h3 className="text-on-surface text-sm font-medium">Requirements</h3>
-              </header>
-              <div className="border-border-subtle min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-2 pb-2">
-                <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
-              </div>
-            </section>
-            <section className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl">
-              <MiniCourseLookup courseIndex={courseIndex} plannedCodes={plannedCodes} />
-            </section>
-          </aside>
-
-          <section
-            aria-label="Degree plan"
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: The scrollable year board needs a keyboard focus target.
-            tabIndex={0}
-            className="border-border bg-surface-container-low/40 relative flex min-h-0 [scrollbar-gutter:stable] flex-col overflow-auto rounded-xl border p-4 max-md:order-1 max-md:min-h-[36rem] max-md:shrink-0"
-          >
+        }
+        view={mobileView}
+        onViewChange={setMobileView}
+        mainLabel="Plan"
+        railLabel="Requirements and courses"
+        rail={
+          <WorkspaceRail>
+            <WorkspacePanel title="Requirements" padding="sm">
+              <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
+            </WorkspacePanel>
+            <WorkspacePanel
+              title="Find courses"
+              description="Drag a result or use Add"
+              bodyMode="contained"
+              padding="none"
+            >
+              <MiniCourseLookup
+                courseIndex={courseIndex}
+                plannedCodes={plannedCodes}
+                onPlaced={() => setMobileView("main")}
+              />
+            </WorkspacePanel>
+          </WorkspaceRail>
+        }
+      >
+        <div className="relative h-full min-h-0">
+          <WorkspaceCanvas role="region" aria-label="Degree plan" tabIndex={0} padding="md">
             <div
-              className="grid min-h-0 flex-1 gap-4"
+              className="grid min-h-min flex-1 gap-4"
               style={{
-                gridTemplateColumns: `repeat(${years.length}, minmax(10.5rem, 1fr))`,
-                minWidth: `${years.length * 10.5 + Math.max(0, years.length - 1)}rem`,
+                gridTemplateColumns: `repeat(${years.length}, minmax(18rem, 1fr))`,
+                minWidth: `${years.length * 18 + Math.max(0, years.length - 1)}rem`,
               }}
             >
               {years.map((year) => (
                 <YearColumn key={year.id} year={year} courseIndex={courseIndex} validations={validations} />
               ))}
             </div>
-            {activeDrag && (
-              <div className="pointer-events-none sticky bottom-2 z-20 mx-auto h-0 w-72">
-                <div className="pointer-events-auto -translate-y-14">
-                  <TrashBin />
-                </div>
-              </div>
-            )}
-          </section>
+          </WorkspaceCanvas>
+          {activeDrag ? (
+            <div
+              data-planner-remove-target
+              className="absolute bottom-4 left-1/2 z-20 w-72 max-w-[calc(100%-2rem)] -translate-x-1/2"
+            >
+              <TrashBin />
+            </div>
+          ) : null}
         </div>
-      </div>
+      </WorkspacePage>
 
       <DragOverlay dropAnimation={activeDrag?.kind === "lookup" ? null : DRAG_DROP_ANIMATION}>
         {activeDrag && (
@@ -468,9 +547,7 @@ export function DegreePlannerPane() {
               />
             )}
             {activeDrag.kind === "lookup" && courseIndex.get(activeDrag.code) && (
-              <div style={{ width: anchor.width || 288 }}>
-                <LookupBlock entry={courseIndex.get(activeDrag.code) as CourseIndexEntry} ghost />
-              </div>
+              <LookupBlock entry={courseIndex.get(activeDrag.code) as CourseIndexEntry} ghost />
             )}
           </DragOverlayFrame>
         )}
@@ -491,6 +568,7 @@ function ActionsSection({
   onClearAll: () => void;
 }) {
   const shell = useChatShellOptional();
+  const reducedMotion = useReducedMotion();
   const major = usePlanner((s) => s.major);
   const addBlocks = usePlanner((s) => s.addBlocks);
   const toggleIgnoreBlock = usePlanner((s) => s.toggleIgnoreBlock);
@@ -501,17 +579,12 @@ function ActionsSection({
   const canRedo = usePlanner((s) => s.future.length > 0);
   const [ignoreOpen, setIgnoreOpen] = useState(false);
   const [structureOpen, setStructureOpen] = useState(false);
+  const structureRef = useRef<HTMLButtonElement>(null);
+  const issuesRef = useRef<HTMLButtonElement>(null);
+  const structureId = useId();
+  const issuesId = useId();
   const [filling, setFilling] = useState(false);
   const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
-
-  useEffect(() => {
-    if (!structureOpen) return;
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setStructureOpen(false);
-    }
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [structureOpen]);
 
   const erroredBlocks = useMemo(() => {
     const out: { id: string; code: string; place: string; issues: string[] }[] = [];
@@ -545,19 +618,12 @@ function ActionsSection({
   function locateBlock(blockId: string) {
     setIgnoreOpen(false);
     setFlashBlockId(blockId);
-    document.querySelector(`[data-block-id="${blockId}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document
+      .querySelector(`[data-block-id="${blockId}"]`)
+      ?.scrollIntoView({ behavior: reducedMotion ? "instant" : "smooth", block: "center" });
     if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
     flashTimer.current = window.setTimeout(() => setFlashBlockId(null), 1500);
   }
-
-  useEffect(() => {
-    if (!ignoreOpen) return;
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setIgnoreOpen(false);
-    }
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [ignoreOpen]);
 
   async function handleAutofill() {
     if (!major) {
@@ -629,163 +695,197 @@ function ActionsSection({
     shell?.askAi("Help me plan my degree:", { title: "Degree course table", content: lines.join("\n").trimEnd() });
   }
 
-  const buttonClass =
-    "neu-button bg-surface text-on-surface-variant hover:text-on-surface flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40";
-
   return (
-    <div className="ml-auto flex flex-wrap items-center justify-end gap-2 max-md:ml-0 max-md:w-full max-md:justify-start">
-      <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-xl p-1">
-        <button
-          type="button"
+    <div className="flex w-full max-w-full min-w-0 flex-nowrap items-center justify-start gap-2 overflow-x-auto pb-1 @min-[55rem]:ml-auto @min-[55rem]:w-auto @min-[55rem]:flex-wrap @min-[55rem]:justify-end @min-[55rem]:overflow-visible @min-[55rem]:pb-0">
+      <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-lg p-1">
+        <Button
+          variant="ghost"
+          size="compact"
+          className="rounded-sm"
           onClick={() => {
             setAutofillResult(null);
             undo();
           }}
           disabled={!canUndo}
           title="Undo (Ctrl+Z)"
-          className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40"
         >
           <Icon name="undo" size={13} />
           Undo
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="ghost"
+          size="compact"
+          className="rounded-sm"
           onClick={() => {
             setAutofillResult(null);
             redo();
           }}
           disabled={!canRedo}
           title="Redo (Ctrl+Shift+Z)"
-          className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex h-8 items-center gap-1 rounded-lg px-2.5 text-xs transition-colors disabled:pointer-events-none disabled:opacity-40"
         >
           <Icon name="redo" size={13} />
           Redo
-        </button>
+        </Button>
       </div>
 
-      <button type="button" onClick={handleAutofill} disabled={filling} className={buttonClass}>
+      <Button size="toolbar" onClick={handleAutofill} disabled={filling}>
         <Icon name="sparkles" size={14} />
         <span>{filling ? "Filling…" : "Autofill"}</span>
-      </button>
+      </Button>
 
       <div className="relative">
-        <button
-          type="button"
+        <Button
+          ref={structureRef}
+          size="toolbar"
           onClick={() => setStructureOpen((open) => !open)}
+          aria-haspopup="dialog"
+          aria-controls={structureOpen ? structureId : undefined}
           aria-expanded={structureOpen}
-          className={buttonClass}
         >
           <Icon name="settings" size={14} />
           <span>Structure</span>
           <Icon name="down" size={12} className={`transition-transform ${structureOpen ? "rotate-180" : ""}`} />
-        </button>
-        {structureOpen && (
-          <div className="neu-panel bg-surface absolute top-10 right-0 z-50 rounded-2xl p-4">
-            <h3 className="text-on-surface mb-3 text-sm font-medium">Plan structure</h3>
-            <PlanStructure />
-          </div>
-        )}
+        </Button>
+        <AnimatePresence initial={false}>
+          {structureOpen && (
+            <FloatingPanel
+              id={structureId}
+              anchorRef={structureRef}
+              onDismiss={() => setStructureOpen(false)}
+              align="end"
+              role="dialog"
+              aria-label="Plan structure"
+              className="neu-panel bg-surface w-72 rounded-2xl p-4"
+            >
+              <Heading as="h3" size="subsection" className="mb-3">
+                Plan structure
+              </Heading>
+              <PlanStructure />
+            </FloatingPanel>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="relative">
-        <button
-          type="button"
+        <Button
+          ref={issuesRef}
+          size="toolbar"
           onClick={() => setIgnoreOpen((open) => !open)}
+          aria-haspopup="dialog"
+          aria-controls={ignoreOpen ? issuesId : undefined}
           aria-expanded={ignoreOpen}
-          className={`${buttonClass} min-w-[92px] justify-center`}
+          className="min-w-[92px]"
         >
           <Icon name="eyeOff" size={14} className={erroredBlocks.length > 0 ? "text-error" : undefined} />
           <span>Issues</span>
           {erroredBlocks.length > 0 && (
-            <span className="bg-error-container text-on-error-container rounded-full px-1.5 text-[11px] tabular-nums">
+            <span className="bg-error-container text-on-error-container rounded-full px-1.5 text-xs tabular-nums">
               {erroredBlocks.length}
             </span>
           )}
-        </button>
-        {ignoreOpen && (
-          <div className="neu-panel bg-surface absolute top-10 right-0 z-50 flex max-h-80 w-80 flex-col gap-1 overflow-y-auto rounded-2xl p-2">
-            <p className="text-on-surface px-2 pt-1 text-xs font-medium">
-              {erroredBlocks.length === 0 ? "No placement issues" : `${erroredBlocks.length} placement issue(s)`}
-            </p>
-            {erroredBlocks.length > 0 && (
-              <p className="text-muted px-2 pb-1 text-[11px]">Select an issue to highlight the course on the board.</p>
-            )}
-            {erroredBlocks.map((block) => (
-              <div
-                key={block.id}
-                className="hover:bg-surface-container-low flex items-start gap-1 rounded-lg px-2 py-1.5"
-              >
-                <button
-                  type="button"
-                  onClick={() => locateBlock(block.id)}
-                  className="min-w-0 flex-1 text-left"
-                  title="Locate on the board"
+        </Button>
+        <AnimatePresence initial={false}>
+          {ignoreOpen && (
+            <FloatingPanel
+              id={issuesId}
+              anchorRef={issuesRef}
+              onDismiss={() => setIgnoreOpen(false)}
+              align="end"
+              role="dialog"
+              aria-label="Placement issues"
+              style={{ maxHeight: 320 }}
+              className="neu-panel bg-surface flex w-80 flex-col gap-1 rounded-2xl p-2"
+            >
+              <p className="text-on-surface px-2 pt-1 text-xs font-medium">
+                {erroredBlocks.length === 0 ? "No placement issues" : `${erroredBlocks.length} placement issue(s)`}
+              </p>
+              {erroredBlocks.length > 0 && (
+                <p className="text-muted px-2 pb-1 text-xs">Select an issue to highlight the course on the board.</p>
+              )}
+              {erroredBlocks.map((block) => (
+                <div
+                  key={block.id}
+                  className="hover:bg-surface-container-low flex items-start gap-1 rounded-lg px-2 py-1.5"
                 >
-                  <p className="text-xs">
-                    <span className="text-on-surface font-mono font-medium">{block.code}</span>
-                    <span className="text-muted"> · {block.place}</span>
-                  </p>
-                  <p className="text-on-surface-variant mt-0.5 text-[11px] leading-snug">
-                    {block.issues.map(describeIssue).join(" ")}
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleIgnoreBlock(block.id)}
-                  title="Mute this issue"
-                  aria-label={`Mute issue for ${block.code}`}
-                  className="text-muted hover:bg-surface-container hover:text-on-surface mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md"
-                >
-                  <Icon name="eyeOff" size={13} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+                  <button
+                    type="button"
+                    onClick={() => locateBlock(block.id)}
+                    className="min-w-0 flex-1 text-left"
+                    title="Locate on the board"
+                  >
+                    <p className="text-xs">
+                      <span className="text-on-surface font-medium">{block.code}</span>
+                      <span className="text-muted"> · {block.place}</span>
+                    </p>
+                    <p className="text-on-surface-variant mt-1 text-xs leading-snug">
+                      {block.issues.map(describeIssue).join(" ")}
+                    </p>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="denseIcon"
+                    onClick={() => toggleIgnoreBlock(block.id)}
+                    title="Mute this issue"
+                    aria-label={`Mute issue for ${block.code}`}
+                    className="mt-0.5"
+                  >
+                    <Icon name="eyeOff" size={13} />
+                  </Button>
+                </div>
+              ))}
+            </FloatingPanel>
+          )}
+        </AnimatePresence>
       </div>
 
-      <button
-        type="button"
+      <Button
+        variant="danger"
+        size="toolbar"
         onClick={() => {
           setAutofillResult(null);
           onClearAll();
         }}
-        className={`${buttonClass} hover:bg-error-container hover:text-error`}
       >
         <Icon name="trash" size={14} />
         <span>Clear</span>
-      </button>
-      <button
-        type="button"
-        onClick={handleAskAi}
-        className="neu-primary-button bg-primary text-on-primary flex h-9 items-center gap-1.5 rounded-lg px-4 text-sm font-medium"
-      >
+      </Button>
+      <Button variant="primary" onClick={handleAskAi}>
         <Icon name="chat1" size={14} />
         <span>Ask AI</span>
-      </button>
-      {autofillResult && <AutofillSummary result={autofillResult} onClose={() => setAutofillResult(null)} />}
+      </Button>
+      <AnimatePresence initial={false}>
+        {autofillResult && <AutofillSummary result={autofillResult} onClose={() => setAutofillResult(null)} />}
+      </AnimatePresence>
     </div>
   );
 }
 
 function AutofillSummary({ result, onClose }: { result: AutofillResult; onClose: () => void }) {
+  const present = useIsPresent();
+  const reducedMotion = useReducedMotion();
   const placed = result.placedCodes.slice(0, 10);
   const remaining = result.remaining.slice(0, 3);
   return (
-    <div
+    <motion.div
+      inert={!present || undefined}
+      aria-hidden={!present || undefined}
+      initial={reducedMotion ? false : { opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: reducedMotion ? 0 : present ? 0.2 : 0.14, ease: [0.16, 1, 0.3, 1] }}
       role="status"
       aria-live="polite"
-      className="border-border bg-surface-container fixed right-5 bottom-5 z-50 w-80 rounded-xl border p-3 shadow-xl"
+      className="app-notification-stack neu-panel bg-surface fixed right-4 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl p-3"
     >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <h3 className="text-on-surface text-sm font-semibold">
+          <Heading as="h3" size="subsection">
             {result.placedCodes.length > 0
               ? `Added ${result.placedCodes.length} courses`
               : result.remaining.length > 0
                 ? "Autofill needs your input"
                 : "Course requirements are covered"}
-          </h3>
+          </Heading>
           {placed.length > 0 && (
             <p className="text-on-surface-variant mt-1 text-xs">
               {placed.join(", ")}
@@ -804,16 +904,18 @@ function AutofillSummary({ result, onClose }: { result: AutofillResult; onClose:
             </p>
           )}
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="denseIcon"
           onClick={onClose}
-          className="text-muted hover:bg-surface-container-high hover:text-on-surface rounded-lg p-1"
           aria-label="Dismiss autofill summary"
+          className="text-muted -mt-1 -mr-1"
         >
           <Icon name="close" size={14} />
-        </button>
+        </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

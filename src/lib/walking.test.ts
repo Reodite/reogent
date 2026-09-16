@@ -6,6 +6,7 @@
 import type { ToolCall } from "@/src/lib/api-types";
 import { featureCentroid, featuresBounds, findBuilding } from "@/src/lib/geo";
 import {
+  drawableRoutePath,
   extractBuildingHighlight,
   extractParkingHighlight,
   extractPeopleHighlight,
@@ -21,7 +22,7 @@ describe("extractWalkingHighlight", () => {
   const healthy: ToolCall = {
     name: "walking_distance",
     input: { from_building: "IKB", to_building: "ICCS" },
-    result: { from: "IKB", to: "ICCS", meters: 790, minutes: 10 },
+    result: { from: "IKB", to: "ICCS", meters: 790, minutes: 10, method: "network" },
   };
 
   it("extracts the highlight from a healthy call", () => {
@@ -31,6 +32,7 @@ describe("extractWalkingHighlight", () => {
       to: "ICCS",
       meters: 790,
       minutes: 10,
+      method: "network",
     });
   });
 
@@ -68,6 +70,7 @@ describe("extractWalkingHighlight", () => {
       to: "ICCS",
       meters: 830,
       minutes: 11,
+      method: null,
     });
   });
 
@@ -77,7 +80,14 @@ describe("extractWalkingHighlight", () => {
       input: {},
       result: { from: "NEST", to: "BUCH", meters: 500, minutes: 7 },
     };
-    expect(extractWalkingHighlight(call)).toEqual({ kind: "route", from: "NEST", to: "BUCH", meters: 500, minutes: 7 });
+    expect(extractWalkingHighlight(call)).toEqual({
+      kind: "route",
+      from: "NEST",
+      to: "BUCH",
+      meters: 500,
+      minutes: 7,
+      method: null,
+    });
   });
 
   it("never fabricates a highlight without both endpoints and numeric measures (property)", () => {
@@ -103,6 +113,56 @@ describe("extractWalkingHighlight", () => {
           );
         },
       ),
+    );
+  });
+});
+
+describe("drawableRoutePath", () => {
+  it("returns network geometry and rejects estimates or malformed coordinates", () => {
+    const network = {
+      from: "A",
+      to: "B",
+      meters: 100,
+      minutes: 2,
+      method: "network" as const,
+      polyline: [
+        [-123.25, 49.26],
+        [-123.24, 49.27],
+      ] as [number, number][],
+    };
+    expect(drawableRoutePath(network)).toEqual(network.polyline);
+    expect(drawableRoutePath({ ...network, method: "estimate" })).toBeNull();
+    expect(
+      drawableRoutePath({
+        ...network,
+        polyline: [
+          [Number.NaN, 49.26],
+          [-123.24, 49.27],
+        ],
+      }),
+    ).toBeNull();
+    expect(drawableRoutePath({ ...network, polyline: [network.polyline[0], network.polyline[0]] })).toBeNull();
+  });
+
+  // Feature: campus-map-explorer, Property 7: Estimated routes never become path geometry.
+  it("emits geometry exactly for valid network routes", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom("network" as const, "estimate" as const),
+        fc.array(
+          fc.tuple(fc.double({ min: -180, max: 180, noNaN: true }), fc.double({ min: -90, max: 90, noNaN: true })),
+          { minLength: 2, maxLength: 20 },
+        ),
+        (method, polyline) => {
+          const result = drawableRoutePath({ from: "A", to: "B", meters: 10, minutes: 1, method, polyline });
+          const [firstLongitude, firstLatitude] = polyline[0];
+          const hasDistance = polyline.some(
+            ([longitude, latitude]) => longitude !== firstLongitude || latitude !== firstLatitude,
+          );
+          expect(result !== null).toBe(method === "network" && hasDistance);
+        },
+      ),
+      { numRuns: 100 },
     );
   });
 });
@@ -307,6 +367,17 @@ describe("extractParkingHighlight", () => {
 });
 
 describe("toolCallToCanvasView", () => {
+  it.each(["network", "estimate", undefined, "unknown"])('preserves validated widget route method "%s"', (method) => {
+    const view = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "route" },
+      result: { type: "route", result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11, method } },
+    } as ToolCall);
+    expect(view?.state.highlight).toMatchObject({
+      method: method === "network" || method === "estimate" ? method : null,
+    });
+  });
+
   const month = new Date().toISOString().slice(0, 7);
 
   function mapKind(view: { paneId: string; state: Record<string, unknown> } | null): string | undefined {
@@ -322,7 +393,14 @@ describe("toolCallToCanvasView", () => {
       result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11 },
     });
     expect(view?.paneId).toBe("map");
-    expect(view?.state.highlight).toEqual({ kind: "route", from: "IBLC", to: "ICCS", meters: 830, minutes: 11 });
+    expect(view?.state.highlight).toEqual({
+      kind: "route",
+      from: "IBLC",
+      to: "ICCS",
+      meters: 830,
+      minutes: 11,
+      method: null,
+    });
   });
 
   it("maps a find_places call to the map pane", () => {
@@ -343,6 +421,53 @@ describe("toolCallToCanvasView", () => {
     });
     expect(view?.paneId).toBe("map");
     expect(mapKind(view)).toBe("buildings");
+  });
+
+  it.each([
+    ["building_detail", false, "building"],
+    ["building_entrances", true, undefined],
+    ["building_spaces", false, "spaces"],
+  ] as const)("maps %s to one rich building highlight", (type, showEntrances, detailKind) => {
+    const view = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type, building_code: "IBLC" },
+      result: {
+        type,
+        result: {
+          building: {
+            code: "IBLC",
+            name: "Irving K. Barber Learning Centre",
+            centroid: [-123.252, 49.267],
+          },
+        },
+      },
+    } as ToolCall);
+    expect(view?.paneId).toBe("map");
+    const highlight = view?.state.highlight as { kind?: string; showEntrances?: boolean; detailKind?: string };
+    expect(highlight.kind).toBe("buildings");
+    expect(Boolean(highlight.showEntrances)).toBe(showEntrances);
+    expect(highlight.detailKind).toBe(detailKind);
+  });
+
+  // Feature: campus-map-explorer, Property 5: Map widget mapping rejects malformed spatial state.
+  it("accepts rich widgets exactly for finite in-range building centroids", () => {
+    fc.assert(
+      fc.property(fc.double({ noNaN: false }), fc.double({ noNaN: false }), (lon, lat) => {
+        const view = toolCallToCanvasView({
+          name: "show_widget",
+          input: { type: "building_entrances", building_code: "IBLC" },
+          result: {
+            type: "building_entrances",
+            result: { building: { code: "IBLC", name: "IKB", centroid: [lon, lat] } },
+          },
+        } as ToolCall);
+        const valid =
+          Number.isFinite(lon) && Number.isFinite(lat) && lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90;
+        expect(view !== null).toBe(valid);
+        if (view) expect(view.state.highlight).toMatchObject({ showEntrances: true });
+      }),
+      { numRuns: 100 },
+    );
   });
 
   it("maps a find_parking call to the map pane", () => {
@@ -386,7 +511,7 @@ describe("toolCallToCanvasView", () => {
     ).toBeNull();
   });
 
-  it("maps show_widget course/courses/prereq_tree/key_dates to their panes", () => {
+  it("maps supported course/courses/key_dates widgets but rejects unsupported prereq_tree", () => {
     const course = toolCallToCanvasView({
       name: "show_widget",
       input: { type: "course" },
@@ -408,8 +533,7 @@ describe("toolCallToCanvasView", () => {
       input: { type: "prereq_tree" },
       result: { type: "prereq_tree", result: { rootCode: "CPSC 320" } },
     } as unknown as ToolCall);
-    expect(prereq?.paneId).toBe("prereq-tree");
-    expect(prereq?.state.root).toBe("CPSC 320");
+    expect(prereq).toBeNull();
 
     const dates = toolCallToCanvasView({
       name: "show_widget",

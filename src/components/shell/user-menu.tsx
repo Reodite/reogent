@@ -3,72 +3,24 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { VersionBadge } from "@/src/components/shell/session-sidebar";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import { FloatingPanel } from "@/src/components/ui/floating-panel";
+import { AnimatePresence } from "motion/react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useId, useRef, useState } from "react";
 
-/**
- * Account trigger at the bottom of the sidebar (below the mode toggle). The
- * menu portals to `document.body` and anchors to the trigger's rect so it
- * escapes the sidebar card's `overflow-hidden`: expanded sidebar opens it
- * upward with the trigger's full width; the collapsed rail opens it as a
- * flyout to the right.
- */
-export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
+/** Opens viewport-bounded account actions and appearance controls from the sidebar. */
+export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const auth = useAppAuth();
+  const navigation = useShellNavigation();
   const [open, setOpen] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-      // Arrow keys cycle through menu items.
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-        if (items.length === 0) return;
-        const index = items.indexOf(document.activeElement as HTMLElement);
-        const step = event.key === "ArrowDown" ? 1 : -1;
-        items[(index + step + items.length) % items.length].focus();
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  const menuId = useId();
 
   const username = auth.user?.username || "User";
   const initial = username.trim().charAt(0).toUpperCase() || "U";
-
-  function toggleOpen() {
-    if (!open) {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (rect) {
-        setMenuStyle(
-          collapsed
-            ? { left: rect.right + 8, bottom: window.innerHeight - rect.bottom, width: 224 }
-            : { left: rect.left, bottom: window.innerHeight - rect.top + 8, width: rect.width },
-        );
-      }
-    }
-    setOpen((value) => !value);
-  }
 
   async function handleSignOut() {
     try {
@@ -85,12 +37,13 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
       <button
         ref={triggerRef}
         type="button"
-        onClick={toggleOpen}
-        aria-haspopup="menu"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="dialog"
+        aria-controls={open ? menuId : undefined}
         aria-expanded={open}
         aria-label="Account menu"
-        className={`focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex h-9 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
-          collapsed ? "w-9 justify-center" : "w-full gap-2.5 px-3"
+        className={`focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex h-11 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
+          collapsed ? "w-11 justify-center sm:w-9" : "w-full gap-2.5 px-3"
         }`}
       >
         <span className="bg-primary-container text-on-primary-container flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-medium">
@@ -106,27 +59,27 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
         )}
       </button>
 
-      {open &&
-        menuStyle &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div
-            ref={menuRef}
-            role="menu"
+      <AnimatePresence initial={false}>
+        {open && (
+          <FloatingPanel
+            id={menuId}
+            anchorRef={triggerRef}
+            onDismiss={() => setOpen(false)}
+            matchAnchorWidth={!collapsed}
+            role="dialog"
             aria-label="Account"
-            style={menuStyle}
-            className="profile-menu-surface glass-neu fixed z-50 max-w-[calc(100vw-2rem)] origin-bottom [animation:menu-in_180ms_ease-out] rounded-2xl p-2 motion-reduce:[animation:none]"
+            className="glass-neu w-64 rounded-2xl p-2"
           >
             <div className="px-3 py-2">
               <p className="text-muted text-xs font-medium">Signed in as</p>
-              <p className="text-body-sm text-on-surface mt-0.5 truncate" title={auth.user?.username ?? undefined}>
+              <p className="text-body-sm text-on-surface mt-1 truncate" title={auth.user?.username ?? undefined}>
                 {username}
               </p>
             </div>
 
             <div className="bg-border-subtle my-1 h-px" />
 
-            <div className="flex items-center justify-between gap-3 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2">
               <span className="text-on-surface-variant text-xs font-medium">Appearance</span>
               <ThemeToggle />
             </div>
@@ -135,9 +88,15 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
 
             <Link
               href="/settings"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.();
+              }}
+              onNavigate={(event) => {
+                event.preventDefault();
+                navigation.push("/settings");
+              }}
+              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
             >
               <Icon name="settings" size={16} className="text-on-surface-variant" />
               Settings
@@ -145,9 +104,8 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
 
             <button
               type="button"
-              role="menuitem"
               onClick={handleSignOut}
-              className="text-on-surface hover:bg-error/10 hover:text-error flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
+              className="text-on-surface hover:bg-error/10 hover:text-error flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
             >
               <Icon name="exit" size={16} className="text-on-surface-variant" />
               Sign out
@@ -160,9 +118,9 @@ export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
               <span className="text-muted text-xs font-medium">Version</span>
               <VersionBadge />
             </div>
-          </div>,
-          document.body,
+          </FloatingPanel>
         )}
+      </AnimatePresence>
     </>
   );
 }

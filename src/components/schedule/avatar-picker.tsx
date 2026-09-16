@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/src/components/ui/button";
 import { AVATAR_COLORS, AVATAR_EMOJI, downscaleImage, initialsFor } from "@/src/lib/schedule/avatar";
 import type { Avatar } from "@/src/lib/schedule/types";
 import { useRef, useState } from "react";
@@ -34,7 +35,7 @@ export function AvatarPicker({ handle, avatar, onChange }: Props) {
                 onChange({ kind: "initials", initials: initialsFor(handle || "??"), color: avatar.color });
               }
             }}
-            className={`neu-button min-h-9 flex-1 rounded-lg px-3 text-xs font-medium text-on-surface${tab === t ? "bg-surface-container-low" : ""}`}
+            className={`neu-button text-on-surface focus-visible:ring-primary/40 min-h-11 flex-1 rounded-lg px-3 text-xs font-medium focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none sm:min-h-9 ${tab === t ? "bg-surface-container-low" : "bg-surface"}`}
           >
             {t}
           </button>
@@ -42,14 +43,14 @@ export function AvatarPicker({ handle, avatar, onChange }: Props) {
       </div>
 
       {tab === "emoji" && (
-        <div className="neu-inset bg-surface-container-low grid max-h-40 grid-cols-8 gap-1 overflow-y-auto rounded-lg p-2">
+        <div className="ui-content-enter neu-inset bg-surface-container-low grid max-h-40 grid-cols-[repeat(auto-fit,minmax(2.75rem,1fr))] gap-1 overflow-y-auto rounded-lg p-2">
           {AVATAR_EMOJI.map((e) => (
             <button
               key={e}
               type="button"
               aria-pressed={avatar.kind === "emoji" && avatar.emoji === e}
               onClick={() => onChange({ kind: "emoji", emoji: e, color: avatar.color })}
-              className={`flex aspect-square items-center justify-center rounded-lg text-lg ${avatar.kind === "emoji" && avatar.emoji === e ? "bg-surface ring-primary/40 shadow-sm ring-2" : "hover:bg-surface"}`}
+              className={`focus-visible:ring-primary/40 flex aspect-square items-center justify-center rounded-lg text-lg focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none ${avatar.kind === "emoji" && avatar.emoji === e ? "bg-surface ring-primary/40 shadow-sm ring-2" : "hover:bg-surface"}`}
             >
               {e}
             </button>
@@ -59,13 +60,9 @@ export function AvatarPicker({ handle, avatar, onChange }: Props) {
 
       {tab === "photo" && (
         <>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="neu-button bg-surface text-on-surface min-h-10 rounded-xl px-4 text-sm font-medium"
-          >
+          <Button size="prominent" className="ui-content-enter" onClick={() => fileRef.current?.click()}>
             {avatar.imageDataUrl ? "Replace photo" : "Upload photo"}
-          </button>
+          </Button>
           <input
             ref={fileRef}
             type="file"
@@ -94,9 +91,14 @@ export function AvatarPicker({ handle, avatar, onChange }: Props) {
             aria-label={`color ${c}`}
             aria-pressed={avatar.color === c}
             onClick={() => onChange({ ...avatar, color: c })}
-            className={`size-6 rounded-full ${avatar.color === c ? "ring-on-surface/60 ring-offset-surface ring-2 ring-offset-2" : ""}`}
-            style={{ background: c }}
-          />
+            className="focus-visible:ring-primary/40 flex size-11 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none sm:size-8"
+          >
+            <span
+              aria-hidden="true"
+              className={`size-6 rounded-full ${avatar.color === c ? "ring-on-surface/60 ring-offset-surface ring-2 ring-offset-2" : ""}`}
+              style={{ background: c }}
+            />
+          </button>
         ))}
       </div>
     </fieldset>

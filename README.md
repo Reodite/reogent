@@ -17,28 +17,43 @@ Built with Next.js 16 (App Router), React 19, and TypeScript.
 | Testing  | Vitest, fast-check (property tests)                   |
 | Lint     | Biome, Prettier                                       |
 
+## Responsive UI
+
+Below 640px, Chat, Tools, Unity, and Settings use flat, edge-to-edge pages above persistent AI/Tools/Unity bottom tabs. Mode links restore each area's last routed screen. Route headers contain a flat menu button; the current mode's destinations open in an edge-attached drawer with touch-sized rows. Header content and command groups keep 16px side insets; the mobile menu's interaction surface extends to 8px edge clearance. Bottom-tab feedback sits 8px inside each full-size hit region, and phone text fields use 16px text. At wider sizes, the shell keeps its 12px gutters, raised panels, and sidebar mode controls.
+
+Shared layout lives in `src/components/ui/workspace.tsx`, `src/components/chat/chat-frame.tsx`, and `app/globals.css`. `WorkspaceHostProvider` supplies header navigation to loaded, pending, and recovery frames. Keep navigation outside pending-only inert regions. `src/components/shell/mode-toggle.tsx` owns both mode presentations, and `use-mobile-viewport.ts` sizes the phone shell and overlays to the reported visible area without constraining pinch zoom. The bottom bar owns the page's bottom safe area. The 55rem workspace container threshold still controls rail/canvas switching.
+
+Shared optical contracts live in `src/components/ui/workspace.tsx`: a 28px title anchor, 16px plain panel insets, and a 2px `frame` canvas surround for timetables. Keep theme groups intrinsic-width. Follow the measured concentric-contour recipes in `DESIGN.md`; independent cards and controls keep their own geometry.
+
+Shared motion lives in `src/components/ui/use-overlay-presence.ts`, `src/components/ui/disclosure.tsx`, and the CSS arrival utilities. Keep `AnimatePresence` outside conditional overlay components, and let the shared primitives release focus and disable exiting controls. Data replacement stays immediate; avoid retaining obsolete search, group, or route content for a fade. Reduced-motion paths cover both entrances and exits.
+
+Development indicators stay disabled so framework chrome does not cover the mobile tabs; Next.js still surfaces compile and runtime errors.
+
+See `DESIGN.md`, `PRODUCT.md`, and `.impeccable/surfaces/` for design contracts. Run `npm test` for shared UI and layout regressions, then check rendered phone and desktop views for overflow and focus placement.
+
 ## Agent and tools
 
 The agent runs a streaming tool-calling loop. Each user message can trigger up to 8 model turns. The model calls tools, receives results, and continues until it can respond. The client receives NDJSON events (`thinking`, `text`, `tool_start`, `tool_end`, `done`).
 
-22 tools across 14 modules:
+The module registry defines data access and presentation tools:
 
-| Module     | Tools                                                          | Data source                                           |
-| ---------- | -------------------------------------------------------------- | ----------------------------------------------------- |
-| courses    | `search_courses`, `get_course`                                 | Course catalog + section schedules                    |
-| tuition    | `get_tuition`                                                  | Tuition rates by program/cohort                       |
-| buildings  | `walking_distance`, `find_building`                            | Building centroids + Dijkstra on a pedestrian network |
-| admissions | `search_programs`, `get_admission_requirements`                | you.ubc.ca program data                               |
-| costs      | `get_cost_estimate`, `get_living_costs`, `search_student_fees` | UBC financial estimates                               |
-| calendar   | `get_key_dates`                                                | Academic calendar dates                               |
-| places     | `find_places`                                                  | Points of interest (cafes, libraries, banks)          |
-| parking    | `find_parking`                                                 | Parking lots with rates and accessibility             |
-| spaces     | `search_study_spaces`, `find_free_rooms`, `get_room_schedule`  | Classrooms + library rooms                            |
-| events     | `search_events`                                                | events.ubc.ca                                         |
-| pages      | `search_ubc_pages`                                             | UBC web pages                                         |
-| grades     | `search_grades`, `get_grades`                                  | UBC pair grade distributions                          |
-| people     | `find_person`                                                  | Faculty/staff profiles from unit directory sites      |
-| food       | `find_food`                                                    | food.ubc.ca outlets                                   |
+| Module          | Tools                                           | Data source                                                        |
+| --------------- | ----------------------------------------------- | ------------------------------------------------------------------ |
+| courses         | `find_courses`, `get_course`                    | Course catalog and section schedules                               |
+| tuition, costs  | `get_costs`                                     | Tuition, cost estimates, student fees and housing fee observations |
+| buildings       | `walking_distance`, `find_building`             | Building coordinates and pedestrian routes                         |
+| admissions      | `find_programs`, `get_admission_requirements`   | Undergraduate programs and requirements                            |
+| calendar        | `get_key_dates`                                 | Academic calendar dates                                            |
+| places, parking | `find_places`                                   | Campus POIs and parking facts                                      |
+| spaces          | `find_study_spaces`                             | Study-area and classroom descriptions                              |
+| events          | `find_events`                                   | Campus events                                                      |
+| pages           | `search_ubc_pages`                              | Official UBC page excerpts                                         |
+| undergraduate   | `search_student_resources`, `get_library_hours` | Housing, libraries, support and policy source/fact records         |
+| grades          | Through `get_course` and grade widgets          | Grade distributions                                                |
+| people          | `find_person`                                   | Faculty/staff directory profiles                                   |
+| food            | `find_food`                                     | Food outlets                                                       |
+| prereq-tree     | `get_prereq_tree`                               | Course prerequisite graph                                          |
+| widgets         | `show_widget`                                   | Presentation of previously retrieved entities                      |
 
 Walking routes use Dijkstra shortest-path on a pedestrian network derived from GeoJSON.
 
@@ -62,12 +77,12 @@ src/
 ├── lib/                      Client utils (API client, formatting, geo)
 └── server/
     ├── agent/                Streaming tool-calling loop
-    ├── modules/              12 data modules (tool definitions + dataset access)
+    ├── modules/              Dataset adapters and tool definitions
     ├── llm/                  LLM adapters (openai, anthropic, google)
     ├── sessions/             Postgres session store
     ├── db/                   Postgres schema + migration
     ├── data.ts               Filesystem store for raw datasets
-    └── search.ts             Meilisearch client
+    └── search.ts             Shared Meilisearch client
 
 scripts/
 └── ingest.ts                 Index datasets into Meilisearch
@@ -76,6 +91,18 @@ scripts/
 ## Data
 
 `ubc-unified-data` is a git submodule holding scraped UBC datasets: courses, tuition, building and walking GeoJSON, study spaces, events, and grade distributions (`data/grades/`, collected from [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data) by the submodule's `grades` collector).
+
+The undergraduate tables contain factual labels, source links, housing fee observations and dated library hours. They do not contain full page bodies. Housing `amount_cents` values retain their exact integer or null value; consult the linked conditions before using a rate. Library `booking_lid` strings belong to a separate namespace from `hours_id`. Hours describe a schedule in `America/Vancouver`, including `closes_next_day`; an absent date remains unknown. See [UNDERGRADUATE-SOURCES.md](ubc-unified-data/UNDERGRADUATE-SOURCES.md) for table contracts.
+
+Room booking availability is outside the dataset and tool scope. Study-space descriptions and scheduled library hours do not establish live vacancy.
+
+Datasets and crawl caches stay outside application images and standalone output. Mount `DATA_PATH` for filesystem-backed tools and ingestion.
+
+### Snapshot replacement
+
+`student_resources`, `housing_fees` and `library_hours` replace their complete snapshots. Ingestion loads and validates a temporary index, waits for its tasks, then swaps it into place. This removes dated records absent from the next library-hours snapshot. A pre-swap failure leaves the previous index active; cleanup errors report failure without rolling back an already published snapshot. Other indexes retain upsert behavior.
+
+Run one ingestion process per destination and allow storage for both generations during replacement. Ingestion requires a writable `DATA_PATH` for derived artifacts; the application can use a read-only data mount. Source `retrieved_at` timestamps remain distinct from index-build times and publisher modification dates.
 
 ## Setup
 
@@ -90,7 +117,9 @@ npm run ingest
 npm run dev
 ```
 
-The server opens at http://localhost:3000 and applies the Postgres schema on startup.
+The server opens at http://localhost:3000 and applies the Postgres schema on startup. The sample environment points host processes at `localhost`; Docker Compose overrides those service URLs with container hostnames.
+
+`npm run ingest` loads the root `.env` when present and preserves variables you set in the shell or Docker. Set `MEILI_MASTER_KEY` to the key used by the Meilisearch service. Ingestion attempts the remaining indexes after a failure and exits nonzero if any index fails.
 
 ### Environment variables
 
@@ -100,14 +129,14 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | `LLM_BASE_URL`      | Base URL for OpenAI-compatible endpoints            |
 | `LLM_MODEL`         | Model identifier                                    |
 | `LLM_API_KEY`       | Provider API key                                    |
-| `DATABASE_URL`      | Postgres connection string                          |
+| `DATABASE_URL`      | Postgres URL (`localhost:5432` on host)             |
 | `POSTGRES_PASSWORD` | Postgres password (docker compose)                  |
-| `MEILI_URL`         | Meilisearch base URL                                |
+| `MEILI_URL`         | Meilisearch URL (`localhost:7700` on host)          |
 | `MEILI_MASTER_KEY`  | Meilisearch master key                              |
 | `MEILI_ENV`         | Meilisearch environment (docker compose)            |
 | `AUTH_ENABLED`      | Set `false` in non-production to bypass auth        |
 | `JWT_SECRET`        | HMAC secret for signing tokens                      |
-| `DATA_PATH`         | Root of the raw dataset files                       |
+| `DATA_PATH`         | Raw data root (`./ubc-unified-data/data` on host)   |
 | `PORT`              | Dev-server port (docker compose)                    |
 
 ## Scripts
@@ -119,27 +148,27 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | `npm run lint`          | Biome lint                                                     |
 | `npm test`              | Vitest (unit tests)                                            |
 | `npm run format`        | Prettier format                                                |
-| `npm run ingest`        | Index datasets into Meilisearch                                |
+| `npm run ingest`        | Index campus datasets into Meilisearch                         |
 | `npm run pulse:publish` | Publish a Pulse question round ([guide](data/pulse/README.md)) |
 
 ## API endpoints
 
-| Method | Path                   | Purpose                                      |
-| ------ | ---------------------- | -------------------------------------------- |
-| POST   | `/api/chat`            | Stream agent response (NDJSON)               |
-| GET    | `/api/sessions`        | List user sessions                           |
-| GET    | `/api/sessions/:id`    | Session messages                             |
-| PATCH  | `/api/sessions/:id`    | Rename a session                             |
-| DELETE | `/api/sessions/:id`    | Delete a session                             |
-| GET    | `/api/route?from=&to=` | Walking-route polyline                       |
-| GET    | `/api/building/:code`  | Building details (rooms, POIs, availability) |
-| GET    | `/api/geo/:name`       | GeoJSON layer                                |
-| GET    | `/api/pulse`           | Active Pulse round with the caller's votes   |
-| POST   | `/api/pulse/vote`      | Record an agree/disagree vote                |
-| GET    | `/api/pulse/history`   | Locked Pulse rounds with final tallies       |
-| POST   | `/api/auth/login`      | Sign in, returns JWT                         |
-| POST   | `/api/auth/register`   | Create account, returns JWT                  |
-| GET    | `/api/preview?url=`    | Resolve og:image for card links              |
+| Method | Path                   | Purpose                                    |
+| ------ | ---------------------- | ------------------------------------------ |
+| POST   | `/api/chat`            | Stream agent response (NDJSON)             |
+| GET    | `/api/sessions`        | List user sessions                         |
+| GET    | `/api/sessions/:id`    | Session messages                           |
+| PATCH  | `/api/sessions/:id`    | Rename a session                           |
+| DELETE | `/api/sessions/:id`    | Delete a session                           |
+| GET    | `/api/route?from=&to=` | Walking-route polyline                     |
+| GET    | `/api/building/:code`  | Building details (rooms, POIs, entrances)  |
+| GET    | `/api/geo/:name`       | GeoJSON layer                              |
+| GET    | `/api/pulse`           | Active Pulse round with the caller's votes |
+| POST   | `/api/pulse/vote`      | Record an agree/disagree vote              |
+| GET    | `/api/pulse/history`   | Locked Pulse rounds with final tallies     |
+| POST   | `/api/auth/login`      | Sign in, returns JWT                       |
+| POST   | `/api/auth/register`   | Create account, returns JWT                |
+| GET    | `/api/preview?url=`    | Resolve og:image for card links            |
 
 ## Example query
 
@@ -148,7 +177,7 @@ How long is the walk from the Buchanan building to ICICS,
 and what Computer Science courses have no prerequisites?
 ```
 
-This triggers `walking_distance` and `search_courses` in a single agent turn.
+This triggers `walking_distance` and `find_courses` in a single agent turn.
 
 ## License
 

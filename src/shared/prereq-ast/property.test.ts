@@ -79,17 +79,93 @@ describe("Property 8: displayExpr is non-empty", () => {
   });
 });
 
-/** Property 9 — Round-trip code set (REQ-6.6): parsePrereq(displayExpr(e)) preserves e's Code-leaf set. */
-describe("Property 9: round-trip code set through displayExpr + parsePrereq", () => {
-  const codeSet = (e: Expr | null): Set<string> => new Set(walkCodeLeaves(e).map((l) => l.leaf.code));
-  it("re-parsing displayExpr(e) preserves e's Code-leaf set", () => {
+/** Property 9 (REQ-6.6): labels preserve displayed code and clause text. */
+describe("Property 9: display content preservation", () => {
+  const displayedText = (expr: Expr): string[] => {
+    if (expr.kind === "code") return [expr.code];
+    if (expr.kind === "soft") return displayedText(expr.child);
+    if (expr.kind === "and" || expr.kind === "or") return expr.children.flatMap(displayedText);
+    return [expr.text || "(empty)"];
+  };
+
+  it("retains code and clause text through displayed branches", () => {
     fc.assert(
-      fc.property(arbExpr, (e0) => {
-        const e = parsePrereq(displayExpr(e0));
-        if (!e) return;
-        expect(codeSet(parsePrereq(displayExpr(e)))).toEqual(codeSet(e));
+      fc.property(arbExpr, (expr) => {
+        const label = displayExpr(expr);
+        for (const text of displayedText(expr)) expect(label).toContain(text);
       }),
     );
+  });
+
+  it("preserves the seeded mixed-literal label", () => {
+    const expr: Expr = {
+      kind: "and",
+      children: [
+        { kind: "literal", text: " " },
+        {
+          kind: "or",
+          ui: "dropdown",
+          children: [
+            { kind: "code", code: "AA 100" },
+            { kind: "literal", text: ".AA00" },
+          ],
+        },
+        { kind: "soft", child: { kind: "code", code: "AA 100" } },
+      ],
+    };
+    expect(displayExpr(expr)).toBe("  + AA 100 / .AA00 + AA 100");
+    for (const text of displayedText(expr)) expect(displayExpr(expr)).toContain(text);
+  });
+
+  it("allows distinct parsed expressions to share a display label", () => {
+    const labels = ["permission. CPSC 110", "permission + CPSC 110"].map((input) => {
+      const expr = parsePrereq(input);
+      if (!expr) throw new Error("Expected a parsed expression");
+      return { label: displayExpr(expr), codes: walkCodeLeaves(expr).map(({ leaf }) => leaf.code) };
+    });
+    expect(labels).toEqual([
+      { label: "permission + CPSC 110", codes: ["CPSC 110"] },
+      { label: "permission + CPSC 110", codes: [] },
+    ]);
+  });
+
+  it.each<{ name: string; expr: Expr; label: string }>([
+    {
+      name: "conjunction",
+      expr: {
+        kind: "and",
+        children: [
+          { kind: "code", code: "MATH 100" },
+          { kind: "code", code: "MATH 101" },
+        ],
+      },
+      label: "MATH 100 + MATH 101",
+    },
+    {
+      name: "disjunction with a soft branch",
+      expr: {
+        kind: "or",
+        ui: "dropdown",
+        children: [
+          { kind: "soft", child: { kind: "code", code: "CPSC 110" } },
+          { kind: "code", code: "MATH 100" },
+        ],
+      },
+      label: "CPSC 110 / MATH 100",
+    },
+    {
+      name: "flattened clause",
+      expr: { kind: "flattened", text: "CPSC_V 110 with permission", subExpr: { kind: "code", code: "CPSC 110" } },
+      label: "CPSC_V 110 with permission",
+    },
+    {
+      name: "literal clause",
+      expr: { kind: "literal", text: "permission + CPSC 110" },
+      label: "permission + CPSC 110",
+    },
+  ])("preserves the $name label", ({ expr, label }) => {
+    expect(displayExpr(expr)).toBe(label);
+    for (const text of displayedText(expr)) expect(label).toContain(text);
   });
 });
 
@@ -107,11 +183,11 @@ describe("Property 10: displayExpr flattens Soft", () => {
 
 /** Property 39 — Code node canonical form output (REQ-6.2): every code leaf renders canonically. */
 describe("Property 39: code leaves render in canonical form", () => {
-  it("every Code leaf's code matches SUBJECT NUM (uppercase, single space, no _V)", () => {
+  it("displays each Code leaf as SUBJECT NUM (uppercase, single space, no _V)", () => {
     fc.assert(
       fc.property(arbExpr, (e) => {
         for (const { leaf } of walkCodeLeaves(e)) {
-          expect(leaf.code).toMatch(/^[A-Z]{2,4} \d{2,4}[A-Z]?$/);
+          expect(displayExpr(leaf)).toMatch(/^[A-Z]{2,4} \d{2,4}[A-Z]?$/);
         }
       }),
     );

@@ -10,6 +10,10 @@
 !.yarn/releases
 !.yarn/versions
 
+# local datasets and collector caches
+/data/
+/.cache/
+
 # testing
 /coverage
 

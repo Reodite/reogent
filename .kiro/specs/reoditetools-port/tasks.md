@@ -66,8 +66,8 @@ Property-based test sub-tasks are annotated with their property number from `des
   - [x]* 4.4 Property test — Soft-tail only at top level
     - **Property 7: mid-clause `recommended` inside unbalanced parens does NOT produce a top-level `Soft` wrapper**
     - **Validates: Requirements REQ-5.6**
-  - [x]* 4.5 Property test — Round-trip code set
-    - **Property 9: Code-leaf set of `parsePrereq(displayExpr(e))` equals that of `e`**
+  - [x]* 4.5 Property test: Display content preservation
+    - **Property 9: Labels retain canonical code text through And/Or/Soft branches and preserve Literal/Flattened text**
     - **Validates: Requirements REQ-6.6**
   - [x]* 4.6 Property test — displayExpr non-empty
     - **Property 8: `displayExpr(e)` non-empty (sentinel for empty-text nodes)**
@@ -82,9 +82,9 @@ Property-based test sub-tasks are annotated with their property number from `des
     - **Validates: Requirements REQ-5.5**
     - Generator: `arbRecommendedTail` from design.md §Domain 2.
   - [x]* 4.10 Property test — Code node canonical form output
-    - **Property 39: `displayExpr(parsePrereq(s))` is in canonical `<subject> <number>` form (subject uppercase, single space, no `_V`, no trailing whitespace)**
+    - **Property 39: `displayExpr(codeNode)` is in canonical `<subject> <number>` form (subject uppercase, single space, no `_V`, no trailing whitespace)**
     - **Validates: Requirements REQ-6.2**
-    - Generator: `arbExpr` from design.md §Domain 3 feeding `parsePrereq` outputs.
+    - Generator: `arbExpr` from design.md §Domain 3; inspect each Code leaf's displayed text.
   - [x]* 4.11 Property test — And/Or separator presence
     - **Property 40: `displayExpr(e)` contains `' + '` between operands whose AST parent is `kind: 'and'` and `' / '` between operands whose parent is `kind: 'or'` (donor's joiners at `prereqAst.ts:1368,1370`)**
     - **Validates: Requirements REQ-6.3**

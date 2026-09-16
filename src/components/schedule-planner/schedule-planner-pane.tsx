@@ -1,14 +1,19 @@
 "use client";
 
-import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-lookup/course-search";
+import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-search/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { ScheduleGrid, type ScheduleGridDragConfig } from "@/src/components/schedule/schedule-grid";
+import { ScheduleToolbarSkeleton } from "@/src/components/schedule/schedule-loading";
 import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/schedule/schedule-workspace";
 import { TermSwitcher } from "@/src/components/schedule/term-switcher";
 import { ToastProvider } from "@/src/components/schedule/toast";
 import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
-import { useDialogFocus } from "@/src/components/schedule/use-dialog-focus";
+import { Button } from "@/src/components/ui/button";
+import { DialogActions, DialogHeader, DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
+import { Field, SelectInput } from "@/src/components/ui/form-controls";
+import { Heading } from "@/src/components/ui/heading";
+import { InfoChip } from "@/src/components/ui/info-chip";
 import type { CourseDoc } from "@/src/lib/api-types";
 import { normalizeDays, sectionGroup } from "@/src/lib/schedule";
 import { selectAutomaticSections } from "@/src/lib/schedule-planner";
@@ -16,8 +21,9 @@ import { resolvePlannerImport, type PlannerImportReview } from "@/src/lib/schedu
 import { buildScheduleGrid } from "@/src/lib/schedule/grid";
 import type { DayCode, Schedule } from "@/src/lib/schedule/types";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
+import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PlannerCourseModule, type PlannerCourseFocusRequest } from "./planner-course-module";
+import { PlannerCourseModule, PlannerCoursesSkeleton, type PlannerCourseFocusRequest } from "./planner-course-module";
 import {
   plannerConflictLabels,
   plannerDragOptions,
@@ -68,7 +74,6 @@ function PlannerImportDialog({
   onClose: () => void;
 }) {
   const [choices, setChoices] = useState<Record<string, string>>({});
-  const dialogRef = useDialogFocus<HTMLDivElement>();
   const unresolved = review.matches.filter((match) => match.status === "ambiguous" && !choices[match.source.id]);
   const selections = review.matches.flatMap((match): ScheduleImportSelection[] => {
     const section =
@@ -78,53 +83,38 @@ function PlannerImportDialog({
     return match.doc && section ? [{ doc: match.doc, section }] : [];
   });
 
-  useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6">
-      <button
-        type="button"
-        aria-label="Cancel Workday import"
-        tabIndex={-1}
-        onClick={onClose}
-        className="bg-on-surface/20 absolute inset-0 cursor-default"
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        tabIndex={-1}
-        aria-modal="true"
+    <DialogRoot onDismiss={onClose} backdropLabel="Cancel Workday import" placement="mobile-sheet">
+      <DialogPanel
         aria-labelledby="schedule-import-title"
-        className="neu-panel bg-surface relative flex max-h-[min(48rem,calc(100dvh-1.5rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl"
+        size="lg"
+        padding="none"
+        className="flex max-h-[min(48rem,calc(100dvh-1.5rem))] flex-col overflow-hidden"
       >
-        <header className="border-border-subtle flex shrink-0 items-start gap-3 border-b p-4 sm:p-5">
-          <div className="min-w-0 flex-1">
-            <h2 id="schedule-import-title" className="text-on-surface text-base font-medium">
-              Review Workday import
-            </h2>
-            <p className="text-muted mt-1 text-sm leading-relaxed">
+        <DialogHeader
+          title="Review Workday import"
+          titleId="schedule-import-title"
+          description={
+            <>
               {review.sourceFileName ?? "Workday schedule"} matched {selections.length} of {review.matches.length}{" "}
               sections.
-            </p>
-          </div>
-          <button
-            type="button"
-            data-dialog-initial-focus
-            onClick={onClose}
-            aria-label="Close Workday import review"
-            className="neu-button text-on-surface-variant grid size-10 shrink-0 place-items-center rounded-xl"
-          >
-            <Icon name="close" className="size-4" />
-          </button>
-        </header>
+            </>
+          }
+          className="border-border-subtle border-b p-4 sm:p-6"
+          closeAction={
+            <Button
+              data-dialog-initial-focus
+              onClick={onClose}
+              aria-label="Close Workday import review"
+              variant="ghost"
+              size="denseIcon"
+            >
+              <Icon name="close" className="size-4" />
+            </Button>
+          }
+        />
 
-        <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
+        <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
           <div className="flex flex-col gap-2">
             {review.matches.map((match) => {
               const meeting = match.source.meetings[0];
@@ -132,39 +122,37 @@ function PlannerImportDialog({
                 ? `${meeting.days.join("/")} · ${minutesToFullLabel(meeting.startMin)}–${minutesToFullLabel(meeting.endMin)}`
                 : "Time TBA";
               const code = normalizeScheduleCode(match.source.courseCode);
+              const selectId = `schedule-import-${match.source.id}`;
               return (
                 <article key={match.source.id} className="bg-surface-container-low rounded-lg p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="text-sm font-medium">{code || match.source.title}</h3>
-                      <p className="text-muted mt-0.5 truncate text-xs">{match.source.title}</p>
+                      <Heading as="h3" size="subsection">
+                        {code || match.source.title}
+                      </Heading>
+                      <p className="text-muted mt-1 truncate text-xs">{match.source.title}</p>
                       <p className="text-on-surface-variant mt-1 text-xs">{meetingLabel}</p>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
-                        match.status === "exact"
-                          ? "bg-accent-subtle text-on-surface-variant"
-                          : match.status === "ambiguous"
-                            ? "bg-tertiary-container text-on-tertiary-container"
-                            : "bg-error-container/60 text-on-error-container"
-                      }`}
+                    <InfoChip
+                      tone={match.status === "exact" ? "neutral" : match.status === "ambiguous" ? "caution" : "error"}
+                      className="shrink-0"
                     >
                       {match.status === "exact"
                         ? "Matched"
                         : match.status === "ambiguous"
                           ? "Choose section"
                           : "Skipped"}
-                    </span>
+                    </InfoChip>
                   </div>
                   {match.status === "ambiguous" ? (
-                    <label className="mt-3 flex flex-col gap-1.5">
-                      <span className="text-on-surface text-xs font-medium">Catalog section</span>
-                      <select
+                    <Field label="Catalog section" htmlFor={selectId} className="mt-3">
+                      <SelectInput
+                        id={selectId}
                         value={choices[match.source.id] ?? ""}
                         onChange={(event) =>
                           setChoices((current) => ({ ...current, [match.source.id]: event.target.value }))
                         }
-                        className="neu-inset bg-surface text-on-surface focus-visible:ring-primary/40 min-h-11 rounded-lg px-3 text-sm focus-visible:ring-2"
+                        shadowOn="surface-container-low"
                       >
                         <option value="">Choose the section from Workday</option>
                         {match.candidates.map((candidate) => (
@@ -172,8 +160,8 @@ function PlannerImportDialog({
                             {importSectionOption(candidate)}
                           </option>
                         ))}
-                      </select>
-                    </label>
+                      </SelectInput>
+                    </Field>
                   ) : null}
                   {match.reason ? <p className="text-muted mt-2 text-xs leading-relaxed">{match.reason}</p> : null}
                   {match.candidates[0]?.status && !/open|active|available/i.test(match.candidates[0].status) ? (
@@ -185,36 +173,35 @@ function PlannerImportDialog({
           </div>
         </div>
 
-        <footer className="border-border-subtle shrink-0 border-t p-4 sm:px-5">
+        <footer className="border-border-subtle shrink-0 border-t p-4 sm:p-6">
           {unresolved.length > 0 ? (
             <p className="text-tertiary mb-3 text-xs">
               Choose a section for {unresolved.length} ambiguous row(s) to continue.
             </p>
           ) : null}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onClose} className="neu-button min-h-10 rounded-xl px-4 text-sm">
+          <DialogActions layout="stack" spacing="none">
+            <Button size="prominent" onClick={onClose}>
               Cancel
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="prominent"
               disabled={selections.length === 0 || unresolved.length > 0}
               onClick={() => onApply(selections, "replace")}
-              className="neu-button text-on-surface min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
             >
               Replace planner
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
+              size="prominent"
               disabled={selections.length === 0 || unresolved.length > 0}
               onClick={() => onApply(selections, "merge")}
-              className="neu-primary-button bg-primary text-on-primary min-h-10 rounded-xl px-4 text-sm font-medium disabled:opacity-45"
             >
               Merge with planner
-            </button>
-          </div>
+            </Button>
+          </DialogActions>
         </footer>
-      </div>
-    </div>
+      </DialogPanel>
+    </DialogRoot>
   );
 }
 
@@ -228,7 +215,7 @@ export function SchedulePlannerPane() {
 }
 
 function SchedulePlannerPaneInner() {
-  useScheduleSync();
+  const hydrating = useScheduleSync();
   const api = useApi();
   const entries = useSchedule((state) => state.entries);
   const activeTerm = useSchedule((state) => state.activeTerm);
@@ -243,6 +230,7 @@ function SchedulePlannerPaneInner() {
   const [query, setQuery] = useState("");
   const [docs, setDocs] = useState<Map<string, CourseDoc>>(new Map());
   const [catalogError, setCatalogError] = useState(false);
+  const [failedCatalogCodes, setFailedCatalogCodes] = useState<Set<string>>(new Set());
   const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
   const [activeDay, setActiveDay] = useState<DayCode>("Mon");
   const [importReview, setImportReview] = useState<PlannerImportReview | null>(null);
@@ -327,7 +315,7 @@ function SchedulePlannerPaneInner() {
 
   useEffect(() => {
     if (!storedCodeKey) return;
-    const codes = storedCodeKey.split("\u0000").filter((code) => !docs.has(code));
+    const codes = storedCodeKey.split("\u0000").filter((code) => !docs.has(code) && !failedCatalogCodes.has(code));
     if (codes.length === 0) return;
     let cancelled = false;
     Promise.allSettled(codes.map((code) => api.getCourse(code))).then((results) => {
@@ -339,12 +327,14 @@ function SchedulePlannerPaneInner() {
         });
         return next;
       });
-      setCatalogError(results.some((result) => result.status === "rejected"));
+      const failed = codes.filter((_, index) => results[index].status === "rejected");
+      setFailedCatalogCodes((current) => new Set([...current, ...failed]));
+      setCatalogError(failed.length > 0);
     });
     return () => {
       cancelled = true;
     };
-  }, [api, docs, storedCodeKey]);
+  }, [api, docs, failedCatalogCodes, storedCodeKey]);
 
   const allTerms = useMemo(() => {
     const terms = entries.map((entry) => entry.term);
@@ -502,28 +492,31 @@ function SchedulePlannerPaneInner() {
 
   const notice =
     stale || catalogError ? (
-      <div className="border-tertiary/20 bg-tertiary-container/40 text-on-tertiary-container flex shrink-0 items-start gap-2 rounded-lg border px-3 py-2 text-xs">
+      <div className="ui-notice-enter border-tertiary/20 bg-tertiary-container/40 text-on-tertiary-container flex shrink-0 items-start gap-2 rounded-lg border px-3 py-2 text-xs">
         <Icon name="alert" className="mt-0.5 size-4 shrink-0" />
         <span className="flex-1">
           {catalogError
             ? "Some course details could not be refreshed. Cached times remain visible."
             : "The catalog changed since your last visit. Review highlighted course details before registering."}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="denseIcon"
           onClick={() => {
             setStale(false);
             setCatalogError(false);
           }}
           aria-label="Dismiss notice"
-          className="focus-visible:ring-primary/40 rounded-md p-1 focus-visible:ring-2"
         >
           <Icon name="close" className="size-3.5" />
-        </button>
+        </Button>
       </div>
     ) : undefined;
 
-  const termToolbar = (
+  const initialLoading = hydrating && entries.length === 0;
+  const termToolbar = initialLoading ? (
+    <ScheduleToolbarSkeleton />
+  ) : (
     <div className="flex min-w-max items-center justify-between gap-4">
       {allTerms.length === 0 ? (
         <span className="text-muted px-2 py-1.5 text-xs">Terms appear after you add a course.</span>
@@ -535,22 +528,25 @@ function SchedulePlannerPaneInner() {
         />
       )}
       {conflictCount > 0 ? (
-        <span
+        <InfoChip
+          tone="error"
           role="status"
           aria-label={`${conflictCount} conflicting ${conflictCount === 1 ? "section" : "sections"}`}
-          className="bg-error-container/60 text-on-error-container inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs"
+          className="shrink-0"
         >
           <Icon name="alert" className="size-3.5" />
           {conflictCount} conflicting {conflictCount === 1 ? "section" : "sections"}
-        </span>
+        </InfoChip>
       ) : null}
     </div>
   );
 
   const controls = (
-    <div data-planner-controls className="flex h-full min-h-0 flex-col overflow-visible">
+    <div data-planner-controls className="flex h-full min-h-min flex-col overflow-visible">
       <section data-planner-search className="relative z-20 shrink-0 p-4 pb-3">
-        <h2 className="mb-2 text-sm font-medium">Find a course</h2>
+        <Heading as="h2" size="subsection" className="mb-2">
+          Find a course
+        </Heading>
         <CourseSearchField
           value={query}
           onChange={setQuery}
@@ -566,6 +562,7 @@ function SchedulePlannerPaneInner() {
           placeholder="CPSC 110, MATH 200, linear algebra"
           ariaLabel="Find a course to schedule"
           presentation="overlay"
+          density="rail"
           record={record}
           getCandidatePresentation={getCandidatePresentation}
           inputRef={searchInputRef}
@@ -581,12 +578,12 @@ function SchedulePlannerPaneInner() {
       <section
         data-planner-course-list
         aria-labelledby="planner-course-list-title"
-        className="border-border-subtle min-h-0 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-4 py-3"
+        className="border-border-subtle min-h-48 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-4 py-3 [contain:size]"
       >
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 id="planner-course-list-title" className="text-sm font-medium">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <Heading as="h2" size="subsection" id="planner-course-list-title">
             Courses in this term
-          </h2>
+          </Heading>
           {visibleEntries.length > 0 ? (
             <span className="text-muted text-xs">{visibleEntries.length} sections</span>
           ) : null}
@@ -596,27 +593,38 @@ function SchedulePlannerPaneInner() {
             const doc = docs.get(code);
             const selected = visibleEntries.filter((entry) => normalizeScheduleCode(entry.code) === code);
             return (
-              <PlannerCourseModule
-                key={code}
-                code={code}
-                title={doc?.title ?? selected[0]?.snapshot.title ?? "Loading course details…"}
-                doc={doc}
-                term={activeTerm}
-                entries={selected}
-                conflictingIds={conflictingIds}
-                conflictLabels={conflictLabels}
-                focusRequest={focusRequest?.code === code ? focusRequest : undefined}
-                onSelectSection={(current, next) => {
-                  if (next && doc) addEntry(doc, next);
-                  else if (current) removeEntry(current.code, current.section, current.term);
-                }}
-                onRemove={() => removeCourse(code, activeTerm)}
-                onFocusHandled={clearCourseFocus}
-              />
+              <div key={code} className="ui-content-enter">
+                <PlannerCourseModule
+                  code={code}
+                  title={doc?.title ?? selected[0]?.snapshot.title ?? code}
+                  catalogError={failedCatalogCodes.has(code)}
+                  onRetry={() =>
+                    setFailedCatalogCodes((current) => {
+                      const next = new Set(current);
+                      next.delete(code);
+                      return next;
+                    })
+                  }
+                  doc={doc}
+                  term={activeTerm}
+                  entries={selected}
+                  conflictingIds={conflictingIds}
+                  conflictLabels={conflictLabels}
+                  focusRequest={focusRequest?.code === code ? focusRequest : undefined}
+                  onSelectSection={(current, next) => {
+                    if (next && doc) addEntry(doc, next);
+                    else if (current) removeEntry(current.code, current.section, current.term);
+                  }}
+                  onRemove={() => removeCourse(code, activeTerm)}
+                  onFocusHandled={clearCourseFocus}
+                />
+              </div>
             );
           })}
-          {pickedCodes.size === 0 ? (
-            <p className="text-muted py-4 text-sm leading-relaxed">
+          {initialLoading ? (
+            <PlannerCoursesSkeleton />
+          ) : pickedCodes.size === 0 ? (
+            <p className="text-muted text-sm leading-relaxed">
               Add a course from search to configure its lecture, lab, and tutorial here.
             </p>
           ) : null}
@@ -624,18 +632,19 @@ function SchedulePlannerPaneInner() {
       </section>
 
       <section data-planner-import className="border-border-subtle shrink-0 border-t p-4">
-        <h2 className="text-on-surface text-sm font-medium">Workday import</h2>
+        <Heading as="h2" size="subsection">
+          Workday import
+        </Heading>
         <p className="text-muted mt-1 mb-2 text-xs leading-relaxed">Add or replace registered sections from Excel.</p>
         {importLoading ? (
-          <div role="status" className="bg-surface-container-low text-muted rounded-lg px-3 py-3 text-sm">
+          <div
+            role="status"
+            className="border-border text-muted flex min-h-20 items-center justify-center rounded-lg border border-dashed px-4 py-3 text-center text-sm"
+          >
             Matching Workday sections to the catalog…
           </div>
         ) : (
-          <UploadDropzone
-            presentation="button"
-            label="Import Workday schedule"
-            onParsed={(schedule) => void prepareImport(schedule)}
-          />
+          <UploadDropzone onParsed={(schedule) => void prepareImport(schedule)} />
         )}
       </section>
     </div>
@@ -666,6 +675,7 @@ function SchedulePlannerPaneInner() {
           ariaLabel="Weekly course schedule"
           blockContentAlignment="center"
           drag={dragConfig}
+          loading={initialLoading ? "Loading your weekly course schedule" : undefined}
           empty={{
             title: "Build your first timetable",
             description: "Search for a course, then choose its lecture, lab, or tutorial.",
@@ -678,9 +688,16 @@ function SchedulePlannerPaneInner() {
         />
       </ScheduleWorkspace>
 
-      {importReview ? (
-        <PlannerImportDialog review={importReview} onApply={applyImport} onClose={() => setImportReview(null)} />
-      ) : null}
+      <AnimatePresence initial={false}>
+        {importReview ? (
+          <PlannerImportDialog
+            key="import-review"
+            review={importReview}
+            onApply={applyImport}
+            onClose={() => setImportReview(null)}
+          />
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

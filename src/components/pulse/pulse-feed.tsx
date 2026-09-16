@@ -1,11 +1,13 @@
 "use client";
 
 import { useApi } from "@/src/components/providers";
+import { RetryState } from "@/src/components/ui/feedback";
 import { announce } from "@/src/components/ui/live-region";
+import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 import { ApiError } from "@/src/lib/api-types";
 import { useCallback, useEffect, useState } from "react";
 import { PulseHistory } from "./pulse-history";
-import { PulseQuestionCard, type PulseCardData } from "./question-card";
+import { PulseCardsLoading, PulseQuestionCard, type PulseCardData } from "./question-card";
 
 interface FeedData {
   round: { id: number; title: string | null } | null;
@@ -84,40 +86,46 @@ export function PulseFeed() {
   const empty = feed && (!feed.round || feed.questions.length === 0);
 
   return (
-    <section aria-label="Pulse" className="flex min-h-0 w-full flex-col overflow-hidden">
-      <div className="flex shrink-0 items-baseline gap-3 bg-transparent px-4 py-3">
-        <h1 className="text-on-surface min-w-0 truncate text-base font-medium tracking-[-0.01em]">Pulse</h1>
-        {feed?.round?.title && <span className="text-muted min-w-0 truncate text-sm">{feed.round.title}</span>}
-      </div>
-      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
-        <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
-          {/* Same box as the empty state, so a round with no questions is a
-              text swap instead of three ghost cards appearing and vanishing. */}
-          {loading && <p className="text-muted py-8 text-center text-sm">Loading questions…</p>}
-          {error && (
-            <div className="flex flex-col items-center gap-3 py-8">
-              <p className="text-on-surface-variant text-sm">{error}</p>
-              <button
-                type="button"
-                onClick={() => void fetchFeed()}
-                className="neu-button bg-surface text-on-surface min-h-11 rounded-xl px-4 text-sm font-medium"
-              >
-                Try again
-              </button>
-            </div>
-          )}
-          {empty && <p className="text-muted py-8 text-center text-sm">No active round right now. Check back soon.</p>}
-          {feed && !empty && (
-            <>
-              <p className="text-muted text-sm">Swipe right to agree, left to disagree. Results show once you vote.</p>
-              {feed.questions.map((q) => (
-                <PulseQuestionCard key={q.id} card={q} onVote={(agree) => void handleVote(q.id, agree)} />
-              ))}
-            </>
-          )}
+    <WorkspacePage
+      composition="single"
+      title="Pulse"
+      description={feed?.round?.title ?? "Vote on the questions UBC students are discussing now."}
+    >
+      <WorkspaceCanvas padding="md">
+        <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            {loading ? <PulseCardsLoading label="Loading questions…" /> : null}
+            {error ? (
+              <RetryState
+                title="Pulse unavailable"
+                message={error}
+                onRetry={() => void fetchFeed()}
+                className="ui-notice-enter py-8"
+              />
+            ) : null}
+            {empty ? (
+              <p className="ui-content-enter text-muted py-8 text-center text-sm">
+                No active round right now. Check back soon.
+              </p>
+            ) : null}
+            {feed && !empty ? (
+              <>
+                <p className="text-muted text-sm">
+                  Swipe right to agree, left to disagree. Results show once you vote.
+                </p>
+                {feed.questions.map((question) => (
+                  <PulseQuestionCard
+                    key={question.id}
+                    card={question}
+                    onVote={(agree) => void handleVote(question.id, agree)}
+                  />
+                ))}
+              </>
+            ) : null}
+          </div>
           <PulseHistory />
         </div>
-      </div>
-    </section>
+      </WorkspaceCanvas>
+    </WorkspacePage>
   );
 }

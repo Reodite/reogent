@@ -29,13 +29,18 @@ afterEach(cleanup);
 describe("PeoplePanel", () => {
   it("uses flat visible checkboxes and toggles the whole labeled row", () => {
     const onToggle = vi.fn();
-    const view = render(<PeoplePanel people={people} meId="u1" onToggle={onToggle} onEnableAll={vi.fn()} />);
+    const onEnableAll = vi.fn();
+    const view = render(<PeoplePanel people={people} meId="u1" onToggle={onToggle} onEnableAll={onEnableAll} />);
 
     expect(view.container.querySelector(".neu-panel")).toBeNull();
     const grace = view.getByRole("checkbox", { name: "Show grace on the calendar" });
     expect((grace as HTMLInputElement).checked).toBe(false);
     fireEvent.click(grace);
     expect(onToggle).toHaveBeenCalledWith("u2", true);
-    expect(view.getByRole("button", { name: "Show all" })).toBeTruthy();
+    const showAll = view.getByRole("button", { name: "Show all" });
+    expect(showAll.className).toContain("min-h-11");
+    expect(showAll.className).toContain("min-w-11");
+    fireEvent.click(showAll);
+    expect(onEnableAll).toHaveBeenCalledOnce();
   });
 });

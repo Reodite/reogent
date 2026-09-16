@@ -15,7 +15,7 @@ export function TrashBin() {
       ref={setNodeRef}
       className={`flex h-12 items-center justify-center rounded-full border-2 border-dashed px-4 text-sm shadow-lg transition-colors ${
         isOver
-          ? "border-error bg-error-container text-error"
+          ? "border-error bg-error-container text-on-error-container"
           : "border-border bg-surface-container-high text-on-surface-variant"
       }`}
     >

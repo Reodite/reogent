@@ -10,7 +10,7 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import { normalizeDays } from "@/src/lib/schedule";
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import {
   claimScheduleOwner,
   clearOwnedScheduleForGuest,
@@ -146,10 +146,11 @@ export function mergeHydratedEntries(
   return [...merged.values()];
 }
 
-export function useScheduleSync(): void {
+export function useScheduleSync(): boolean {
   const api = useApi();
   const { user, isGuest } = useAppAuth();
   const userId = !isGuest && user ? user.userId : null;
+  const [settledFor, setSettledFor] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     if (isGuest) clearOwnedScheduleForGuest();
@@ -257,7 +258,10 @@ export function useScheduleSync(): void {
         // Keep the local cache and retry server hydration on the next mount.
       } finally {
         hydrating = false;
-        if (!cancelled && pending) scheduleFlush();
+        if (!cancelled) {
+          setSettledFor(userId);
+          if (pending) scheduleFlush();
+        }
       }
     })();
 
@@ -267,4 +271,6 @@ export function useScheduleSync(): void {
       if (!hydrating) flush();
     };
   }, [api, userId]);
+
+  return !!userId && hydratedFor !== userId && settledFor !== userId;
 }

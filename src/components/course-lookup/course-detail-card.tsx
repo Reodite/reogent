@@ -1,14 +1,17 @@
 "use client";
 
-import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { GradeDistributionChart } from "@/src/components/course-lookup/grade-distribution-chart";
 import { SectionRow } from "@/src/components/course-lookup/section-row";
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { Heading } from "@/src/components/ui/heading";
+import { InfoChip } from "@/src/components/ui/info-chip";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
+import { useId } from "react";
 
 function FieldRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-1">
       <dt className="text-muted text-xs font-medium tracking-[0.05em] uppercase">{label}</dt>
       <dd className={mono ? "font-mono text-sm" : "text-sm"}>{value}</dd>
     </div>
@@ -16,23 +19,49 @@ function FieldRow({ label, value, mono }: { label: string; value: string; mono?:
 }
 
 function SectionTable({ sections }: { sections: CourseSection[] }) {
+  const headingId = useId();
+  const groups = new Map<string, CourseSection[]>();
+  for (const section of sections) {
+    const term = section.term?.trim() || "Other sections";
+    const group = groups.get(term);
+    if (group) group.push(section);
+    else groups.set(term, [section]);
+  }
+
   return (
-    <table className="w-full text-sm">
-      <caption className="sr-only">Course sections</caption>
-      <thead className="sr-only">
-        <tr>
-          <th>Term</th>
-          <th>Days</th>
-          <th>Time</th>
-          <th>Instructor</th>
-        </tr>
-      </thead>
-      <tbody>
-        {sections.map((s) => (
-          <SectionRow key={`${s.section}-${s.term ?? ""}`} section={s} />
-        ))}
-      </tbody>
-    </table>
+    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+      <Heading as="h3" size="subsection" id={headingId}>
+        Sections
+      </Heading>
+      {[...groups].map(([term, termSections]) => (
+        <details key={term} className="border-border-subtle bg-surface-container-low rounded-lg border">
+          <summary className="text-on-surface flex min-h-11 items-center justify-between gap-3 px-3 text-sm font-medium">
+            <span className="min-w-0 truncate">{term}</span>
+            <span className="text-muted shrink-0 text-xs whitespace-nowrap tabular-nums">
+              {termSections.length} section{termSections.length === 1 ? "" : "s"}
+            </span>
+          </summary>
+          <div className="border-border-subtle overflow-x-auto border-t px-3">
+            <table className="w-full min-w-[36rem] text-sm">
+              <caption className="sr-only">{term} course sections</caption>
+              <thead className="sr-only">
+                <tr>
+                  <th>Term</th>
+                  <th>Days</th>
+                  <th>Time</th>
+                  <th>Instructor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {termSections.map((section) => (
+                  <SectionRow key={`${section.section}-${section.term ?? ""}`} section={section} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      ))}
+    </section>
   );
 }
 
@@ -43,7 +72,7 @@ function formatPct(v: unknown): string | null {
 
 function StatBox({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="neu-inset bg-surface-container-low flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-2 py-2">
+    <div className="neu-inset bg-surface-container-low flex min-w-0 flex-col items-center gap-1 rounded-lg px-2 py-2">
       <span className="text-muted text-xs font-medium tracking-[0.05em] uppercase">{label}</span>
       <span className="text-sm font-medium">{children}</span>
     </div>
@@ -60,6 +89,7 @@ function DefinedStat({ label, value }: { label: string; value: string | null | u
 export function CourseDetailCard({
   record,
   session,
+  onOpenPrereqs,
 }: {
   record: CourseDoc & {
     session?: string;
@@ -77,51 +107,51 @@ export function CourseDetailCard({
     highlightBucket?: string;
   };
   session?: string;
+  onOpenPrereqs?: (code: string) => void;
 }) {
-  const { setActiveChannel } = useChatShell();
   const sess = (session ?? (record as { session?: string }).session) as string | undefined;
   const isRecent = sess ? ["2024W", "2024S", "2025W", "2025S"].includes(sess) : false;
   const buckets = (record as { buckets?: Record<string, number> }).buckets;
   const hasDistribution = buckets != null;
   return (
-    <article className="bg-surface-container-low flex flex-col gap-2.5 rounded-lg p-3">
-      <header className="flex flex-wrap items-baseline gap-1.5">
-        {/* Catalog codes carry a _V campus suffix after the subject; display strips it. */}
-        <h3 className="font-mono text-base leading-tight font-medium">{record.code.replace(/_V(?=\b|$)/, "")}</h3>
-        {sess && (
-          <span className="bg-surface-container text-on-surface-variant rounded-full px-2 py-0.5 text-xs">{sess}</span>
-        )}
-        {record.credits != null && (
-          <span className="bg-surface-container text-on-surface-variant rounded-full px-2 py-0.5 text-xs">
-            {record.credits} cr
-          </span>
-        )}
-        {record.prerequisite && (
-          <button
-            data-action="open-prereq-tree"
-            data-code={record.code}
-            type="button"
-            onClick={() => setActiveChannel("prereq-tree", { root: record.code, selections: {} })}
-            className="text-primary border-primary hover:bg-accent-subtle focus-visible:ring-primary/40 inline-flex min-h-[44px] items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
-          >
-            <Icon name="tree" size={14} /> Prereq Tree
-          </button>
-        )}
+    <article className="flex flex-col gap-3">
+      <header className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-baseline gap-1.5">
+          {/* Catalog codes carry a _V campus suffix after the subject; display strips it. */}
+          <Heading as="h2" size="section" className="font-mono">
+            {record.code.replace(/_V(?=\b|$)/, "")}
+          </Heading>
+          {sess ? <InfoChip>{sess}</InfoChip> : null}
+          {record.credits != null ? <InfoChip>{record.credits} cr</InfoChip> : null}
+          {record.prerequisite && onOpenPrereqs ? (
+            <Button
+              data-action="open-prereq-tree"
+              data-code={record.code}
+              variant="outline"
+              size="pill"
+              onClick={() => onOpenPrereqs(record.code)}
+            >
+              <Icon name="tree" size={14} /> Prereq Tree
+            </Button>
+          ) : null}
+        </div>
+        <p className="text-sm font-medium">{record.title}</p>
+        {record.description && <p className="text-on-surface-variant text-sm leading-relaxed">{record.description}</p>}
       </header>
-      <p className="text-sm font-medium">{record.title}</p>
-      {record.description && <p className="text-on-surface-variant text-sm leading-relaxed">{record.description}</p>}
       {hasDistribution && <CourseStatsBand record={record as unknown as Record<string, unknown>} isRecent={isRecent} />}
-      {hasDistribution && (
+      {buckets ? (
         <GradeDistributionChart
-          buckets={buckets!}
+          buckets={buckets}
           highlightBucket={(record as { highlightBucket?: string }).highlightBucket}
         />
-      )}
-      <dl className="flex flex-col gap-1.5">
-        {record.prerequisite && <FieldRow label="Prerequisite" value={record.prerequisite} mono />}
-        {record.corequisite && <FieldRow label="Corequisite" value={record.corequisite} mono />}
-        {record.terms?.length > 0 && <FieldRow label="Offered" value={record.terms.join(", ")} />}
-      </dl>
+      ) : null}
+      {record.prerequisite || record.corequisite || record.terms?.length > 0 ? (
+        <dl className="flex flex-col gap-2">
+          {record.prerequisite && <FieldRow label="Prerequisite" value={record.prerequisite} mono />}
+          {record.corequisite && <FieldRow label="Corequisite" value={record.corequisite} mono />}
+          {record.terms?.length > 0 && <FieldRow label="Offered" value={record.terms.join(", ")} />}
+        </dl>
+      ) : null}
       {record.sections?.length > 0 && <SectionTable sections={record.sections} />}
     </article>
   );
@@ -150,7 +180,7 @@ function CourseStatsBand({ record, isRecent }: { record: Record<string, unknown>
       </div>
       {isRecent && (
         <details className="group rounded-lg">
-          <summary className="text-on-surface-variant hover:text-on-surface flex min-h-[44px] cursor-pointer list-none items-center justify-end gap-1 text-xs font-medium [&::-webkit-details-marker]:hidden">
+          <summary className="text-on-surface-variant hover:text-on-surface flex min-h-[44px] list-none items-center justify-end gap-1 text-xs font-medium [&::-webkit-details-marker]:hidden">
             Advanced stats
             <Icon name="down" size={14} className="transition-transform duration-150 group-open:rotate-180" />
           </summary>
