@@ -441,6 +441,96 @@ describe("MapArea", () => {
     expect(screen.getByTestId("campus-map").dataset.selected).toBe("IBLC");
   });
 
+  it.each(["iccs", " íccs "])("loads details for normalized URL code %s", async (code) => {
+    const source = { state: "ready", provenance: { sourceName: "UBC Buildings", refreshedAt: null } };
+    api.getGeo.mockResolvedValue({
+      ...buildingGeo,
+      features: [{ ...buildingGeo.features[0], properties: { BLDG_CODE: "ICCS", NAME: "Computer Science" } }],
+    });
+    api.getBuildingDetails.mockResolvedValue({
+      building: { code: "ICCS", name: "Computer Science" },
+      addresses: [],
+      rooms: [],
+      pois: [],
+      photos: [],
+      sourceStatus: { building: source, addresses: source, rooms: source, pois: source },
+    });
+    navigation.params = new URLSearchParams({ building: code });
+    window.history.replaceState(null, "", `/tools/map?${navigation.params}`);
+    const historyLength = window.history.length;
+    renderMap();
+
+    expect(await screen.findByText("UBC Buildings")).toBeTruthy();
+    expect(screen.queryByRole("status", { name: "Loading building details" })).toBeNull();
+    expect(api.getBuildingDetails).toHaveBeenCalledWith("ICCS", expect.any(AbortSignal));
+    expect(new URL(window.location.href).searchParams.get("building")).toBe(code);
+    expect(window.history.length).toBe(historyLength);
+  });
+
+  it("handles normalized history selections, detail failures and unknown codes", async () => {
+    navigation.params = new URLSearchParams("building=IBLC");
+    const view = renderMap();
+    await screen.findByRole("heading", { name: iblc.name });
+    api.getBuildingDetails.mockRejectedValue(new Error("offline"));
+    navigation.params = new URLSearchParams({ building: " nest " });
+    view.rerender(
+      <ChatShellProvider initialMode="tools">
+        <MapArea />
+      </ChatShellProvider>,
+    );
+    expect(await screen.findByText("Couldn't load building details.")).toBeTruthy();
+    expect(api.getBuildingDetails).toHaveBeenLastCalledWith("NEST", expect.any(AbortSignal));
+    expect(screen.getByTestId("campus-map").dataset.selected).toBe("NEST");
+
+    navigation.params = new URLSearchParams("building=UNKNOWN");
+    view.rerender(
+      <ChatShellProvider initialMode="tools">
+        <MapArea />
+      </ChatShellProvider>,
+    );
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "Building “UNKNOWN” is not in the current catalog.",
+    );
+    expect(screen.getByTestId("campus-map").dataset.selected).toBe("");
+    expect(api.getBuildingDetails).toHaveBeenCalledTimes(2);
+  });
+
+  it("waits for the initial favorites load before saving and blocks duplicate saves", async () => {
+    let resolveLoad: (result: { codes: string[] }) => void = () => {};
+    let resolveSave: (result: { codes: string[] }) => void = () => {};
+    api.getBuildingFavorites.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLoad = resolve;
+      }),
+    );
+    api.setBuildingFavorite.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    navigation.params = new URLSearchParams("building=IBLC");
+    renderMap();
+    const save = await screen.findByRole("button", { name: "Save" });
+    fireEvent.click(save);
+    expect(api.setBuildingFavorite).not.toHaveBeenCalled();
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => resolveLoad({ codes: ["CHEM"] }));
+    expect((save as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(save);
+    expect(api.setBuildingFavorite).toHaveBeenCalledWith("IBLC", true);
+    const saved = screen.getByRole("button", { name: "Saved" });
+    expect((saved as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(saved);
+    expect(api.setBuildingFavorite).toHaveBeenCalledOnce();
+    await act(async () => resolveSave({ codes: ["IBLC", "CHEM"] }));
+    expect((screen.getByRole("button", { name: "Saved" }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Back to all buildings" }));
+    expect(screen.getByRole("listbox", { name: "Saved" }).textContent).toContain(iblc.name);
+    expect(screen.getByRole("listbox", { name: "Saved" }).textContent).toContain(chem.name);
+  });
+
   it("changes either endpoint and removes results after routing", async () => {
     navigation.params = new URLSearchParams("building=IBLC");
     renderMap();

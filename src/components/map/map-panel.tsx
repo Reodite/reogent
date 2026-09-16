@@ -20,6 +20,7 @@ import type { BuildingSummary } from "@/src/lib/api-types";
 import {
   buildingsFromGeoJson,
   formatBuildingUrl,
+  normalizeBuildingText,
   parseBuildingParam,
   popularBuildings,
 } from "@/src/lib/building-catalog";
@@ -398,7 +399,9 @@ function CampusMapExplorer() {
   const [routeOrigin, setRouteOrigin] = useState<BuildingSummary | null>(null);
   const [routeField, setRouteField] = useState<RouteEndpoint | null>(null);
   const [endpointError, setEndpointError] = useState<string | null>(null);
-  const [selectedCode, setSelectedCode] = useState<string | null>(() => searchParams.get("building"));
+  const [selectedCode, setSelectedCode] = useState<string | null>(
+    () => normalizeBuildingText(searchParams.get("building") ?? "") || null,
+  );
   const selectedCodeRef = useRef(selectedCode);
   const [railMode, setRailMode] = useState<"discover" | "details" | "directions">(
     selectedCode ? "details" : "discover",
@@ -470,7 +473,7 @@ function CampusMapExplorer() {
   }, [api, catalogNonce]);
 
   useEffect(() => {
-    const code = searchParams.get("building");
+    const code = normalizeBuildingText(searchParams.get("building") ?? "") || null;
     if (code === selectedCodeRef.current) return;
     routeController.current?.abort();
     routeController.current = null;
@@ -668,6 +671,7 @@ function CampusMapExplorer() {
   );
 
   async function toggleFavorite(code: string) {
+    if (favoriteStatus === "loading" || favoriteStatus === "saving") return;
     if (!authenticated) {
       setFavoriteStatus("error");
       return;
