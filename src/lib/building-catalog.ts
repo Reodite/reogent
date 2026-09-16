@@ -10,7 +10,9 @@ function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function nonNegativeNumber(value: unknown): number | null {
+/** Parses numeric source values without converting missing or blank metadata to zero. */
+export function nonNegativeNumber(value: unknown): number | null {
+  if (typeof value !== "number" && (typeof value !== "string" || value.trim() === "")) return null;
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
