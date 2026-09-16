@@ -3,19 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { pages } from "./pages";
 
 function fixture() {
-  const search = vi
-    .fn()
-    .mockResolvedValue({
-      hits: [
-        {
-          title: "Example policy",
-          url: "https://example.test/policy",
-          source: "calendar",
-          date: null,
-          _formatted: { text: "x".repeat(900) },
-        },
-      ],
-    });
+  const search = vi.fn().mockResolvedValue({
+    hits: [
+      {
+        title: "Example policy",
+        url: "https://example.test/policy",
+        source: "calendar",
+        date: null,
+        _formatted: { text: "x".repeat(900) },
+      },
+    ],
+  });
   const index = vi.fn(() => ({ search }));
   return { search, index, client: { index } as unknown as SearchClient };
 }
