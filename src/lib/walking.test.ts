@@ -367,6 +367,17 @@ describe("extractParkingHighlight", () => {
 });
 
 describe("toolCallToCanvasView", () => {
+  it.each(["network", "estimate", undefined, "unknown"])('preserves validated widget route method "%s"', (method) => {
+    const view = toolCallToCanvasView({
+      name: "show_widget",
+      input: { type: "route" },
+      result: { type: "route", result: { from: "IBLC", to: "ICCS", meters: 830, minutes: 11, method } },
+    } as ToolCall);
+    expect(view?.state.highlight).toMatchObject({
+      method: method === "network" || method === "estimate" ? method : null,
+    });
+  });
+
   const month = new Date().toISOString().slice(0, 7);
 
   function mapKind(view: { paneId: string; state: Record<string, unknown> } | null): string | undefined {

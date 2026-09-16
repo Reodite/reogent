@@ -261,7 +261,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
       return rich ? { paneId: "map", state: { highlight: rich } } : null;
     }
     case "route": {
-      const r = data as { from?: string; to?: string; meters?: number; minutes?: number } | undefined;
+      const r = data as { from?: string; to?: string; meters?: number; minutes?: number; method?: unknown } | undefined;
       if (typeof r?.meters !== "number" || typeof r.minutes !== "number" || !r.from || !r.to) return null;
       const highlightRoute: MapHighlight = {
         kind: "route",
@@ -269,7 +269,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
         to: r.to,
         meters: r.meters,
         minutes: r.minutes,
-        method: null,
+        method: r.method === "network" || r.method === "estimate" ? r.method : null,
       };
       return { paneId: "map", state: { highlight: highlightRoute } };
     }
