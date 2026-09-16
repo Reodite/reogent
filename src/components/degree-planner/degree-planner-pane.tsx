@@ -30,7 +30,7 @@ import {
   type WorkspaceView,
 } from "@/src/components/ui/workspace";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
-import { getProgramIndex, getRequirementsFor } from "@/src/lib/program-requirements";
+import { getProgramIndex, getRequirementsFor, resolveProgram } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
 import { isSatisfied, missingPrereqs, parsePrereq } from "@/src/shared/prereq-ast";
 import {
@@ -670,7 +670,8 @@ function ActionsSection({
     const lines: string[] = [];
     if (major) {
       try {
-        const title = (await getProgramIndex()).byUrl.get(major)?.title;
+        const index = await getProgramIndex();
+        const title = resolveProgram(index, major)?.title;
         if (title) lines.push(`Program: ${title}`, "");
       } catch {
         // Program index unavailable — the table alone is still useful.
