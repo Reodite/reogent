@@ -3,7 +3,7 @@ import { getProfile, saveProfile } from "@/src/server/profile";
 import { parseProfile } from "@/src/shared/profile";
 import { json, requireJson, serverError } from "../http";
 
-// A profile is three short fields; anything larger is not a profile.
+// Bound account details and preferences before parsing.
 const MAX_PROFILE_BYTES = 4096;
 
 /** GET /api/profile — the caller's saved profile, or `{ profile: null }`. */

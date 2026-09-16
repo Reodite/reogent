@@ -74,6 +74,12 @@ const system = systemPrompt(new Date("2026-08-18T00:00:00Z"), CITATIONS);
 describe("student profile paragraph", () => {
   const MARKER = "The student's profile:";
 
+  it("includes the preferred name without adding account settings", () => {
+    const prompt = systemPrompt(new Date(), [], { preferred_name: "Sam", theme: "dark", onboarding_completed: true });
+    expect(prompt).toContain('preferred name "Sam"');
+    expect(prompt).not.toContain("onboarding_completed");
+  });
+
   it("lists only the fields that are set", () => {
     expect(
       systemPrompt(new Date(), [], { program: "Computer Science", year: 3, student_type: "international" }),

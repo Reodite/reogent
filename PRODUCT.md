@@ -34,7 +34,23 @@ Users sign in with username and password. The system issues a JWT (HS256, 7-day 
 
 When `AUTH_ENABLED=false` (development), all requests bypass auth with a default user.
 
-Each signed-in user can save a student profile (program, year, domestic/international) from Settings. It is stored in `user_profiles` and appended to the agent's system prompt as defaults for tuition, cost, and program tools, so the agent stops asking for them.
+Each signed-in user can save a preferred name, program, year, and domestic/international tuition default. The server stores these in `user_profiles.data` (JSONB) and includes the personal details in the agent's system prompt.
+
+### First-login onboarding
+
+After signing in or registering, users without `onboarding_completed: true` in their saved profile visit `/onboarding` before entering the app. Guests bypass setup. Accounts created before onboarding also receive setup once; existing profile values prefill the fields. Returning users with a completed profile go straight to their destination.
+
+Setup shows one card at a time:
+
+1. Welcome to Reodite: “Let's customize your experience”.
+2. Personal details: preferred name, year of study, and program.
+3. Preferences: appearance (light, system, dark) and tuition defaults (ask when needed, domestic, international).
+
+Next and Back retain entries while switching cards. Fields are optional. Finish setup saves the details and completion flag together before continuing to the original destination. Skip setup preserves the saved profile and marks setup complete. Failed saves keep the form and entries available for retry. Reloading before completion restarts setup with the last saved profile.
+
+**Synchronization requirement:** onboarding and the site's Settings / Preferences page must use the same field components, validation, API, and database record. Both read and write `/api/profile`; `user_profiles.data` holds `preferred_name`, `program`, `year`, `student_type`, `theme`, and `onboarding_completed`. Settings saves must preserve the completion flag. New preferences must be added to the shared schema and both surfaces together, rather than stored only in an onboarding-specific copy. No database migration is needed for these optional JSONB fields.
+
+Saving appearance applies it to the site and the local theme cache. Signing in on another device loads the database preference. The compact theme switches elsewhere in the app change the current device's appearance; save an account-wide preference from Settings. Profile load failures offer retry and sign-out without overwriting saved values.
 
 ### Session Model
 
@@ -217,7 +233,7 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 
 3. **Session continuity**: Conversation history persists across browser sessions. Students can close the tab, return tomorrow, and continue. The sidebar shows all past sessions grouped by recency.
 
-4. **Minimal friction**: Direct to chat. No onboarding flow, no feature tour, no empty state tutorial. Sign in, type, get an answer. The design is self-explanatory.
+4. **Minimal friction**: First-time users get three short, skippable setup cards. Returning users continue straight to the app. Personal details stay optional and editable in Settings.
 
 5. **Single-material coherence**: Every surface, control, and container shares the same neumorphic treatment. Nothing looks bolted on from a different system.
 

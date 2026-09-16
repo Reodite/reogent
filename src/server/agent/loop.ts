@@ -158,6 +158,7 @@ export function systemPrompt(
     prompt += `\n\nSources this turn:\n${citations.map((c) => `[${c.index}] ${c.label}`).join("\n")}`;
   }
   const facts = [
+    profile?.preferred_name && `preferred name ${JSON.stringify(profile.preferred_name)}`,
     profile?.program && `program ${profile.program}`,
     profile?.year && `year ${profile.year}`,
     profile?.student_type && `${profile.student_type} student`,

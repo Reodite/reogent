@@ -5,11 +5,13 @@
 import { AppAuthProvider, useAppAuth } from "@/src/components/auth/app-auth";
 import { createChatApi, type ChatApi } from "@/src/lib/api";
 import { THEME_STORAGE_KEY } from "@/src/lib/theme";
+import { parseProfile, type StudentProfile, type ThemeMode } from "@/src/shared/profile";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 // ---- Theme ----
 
-export type ThemeMode = "light" | "dark" | "system";
+export type { ThemeMode } from "@/src/shared/profile";
 export type ResolvedTheme = "light" | "dark";
 
 interface ThemeContextValue {
@@ -109,7 +111,103 @@ function ApiProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  return <ApiContext.Provider value={api}>{children}</ApiContext.Provider>;
+  return (
+    <ApiContext.Provider value={api}>
+      <ProfileProvider key={auth.user?.userId ?? "signed-out"}>{children}</ProfileProvider>
+    </ApiContext.Provider>
+  );
+}
+
+interface ProfileContextValue {
+  profile: StudentProfile | null;
+  saveProfile: (profile: StudentProfile) => Promise<void>;
+}
+
+const ProfileContext = createContext<ProfileContextValue | null>(null);
+
+/** Shares the signed-in account's saved profile across onboarding and Settings. */
+export function useProfile(): ProfileContextValue {
+  const context = useContext(ProfileContext);
+  if (!context) throw new Error("useProfile must be used within <AppProviders>");
+  return context;
+}
+
+function ProfileProvider({ children }: { children: ReactNode }) {
+  const api = useApi();
+  const auth = useAppAuth();
+  const { setMode } = useTheme();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const signedIn = auth.status === "signedIn" && !auth.isGuest;
+  const publicPage = pathname === "/" || pathname === "/login" || pathname === "/signup";
+  const needsOnboarding = signedIn && status === "ready" && !profile?.onboarding_completed;
+
+  useEffect(() => {
+    if (!signedIn || status !== "loading") return;
+    let cancelled = false;
+    api.getProfile().then(
+      ({ profile: saved }) => {
+        if (cancelled) return;
+        setProfile(saved);
+        if (saved?.theme) setMode(saved.theme);
+        setStatus("ready");
+      },
+      () => {
+        if (!cancelled) setStatus("error");
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [api, signedIn, setMode, status]);
+
+  useEffect(() => {
+    if (!needsOnboarding || publicPage || pathname === "/onboarding") return;
+    const destination = `${pathname}${window.location.search}${window.location.hash}`;
+    router.replace(`/onboarding?redirect=${encodeURIComponent(destination)}`);
+  }, [needsOnboarding, publicPage, pathname, router]);
+
+  const saveProfile = useCallback(
+    async (next: StudentProfile) => {
+      const parsed = parseProfile(next);
+      if (!parsed.ok) throw new Error(parsed.error);
+      await api.saveProfile(parsed.value);
+      setProfile(parsed.value);
+      if (parsed.value.theme) setMode(parsed.value.theme);
+    },
+    [api, setMode],
+  );
+  const value = useMemo(() => ({ profile, saveProfile }), [profile, saveProfile]);
+
+  if (!publicPage && signedIn && (status !== "ready" || (needsOnboarding && pathname !== "/onboarding"))) {
+    return (
+      <main className="auth-canvas flex min-h-svh flex-col items-center justify-center gap-4 px-6 text-center">
+        <p role={status === "error" ? "alert" : "status"} className="text-on-surface-variant text-sm">
+          {status === "error"
+            ? "Couldn't load your profile. Check your connection and try again."
+            : "Loading your profile…"}
+        </p>
+        {status === "error" && (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setStatus("loading")}
+              className="neu-button h-11 rounded-xl px-4 text-sm"
+            >
+              Try again
+            </button>
+            <button type="button" onClick={auth.signOut} className="h-11 rounded-xl px-4 text-sm">
+              Sign out
+            </button>
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }
 
 export function AppProviders({ children }: { children: ReactNode }) {

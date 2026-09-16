@@ -1,6 +1,7 @@
 "use client";
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
+import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,9 +22,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  const redirect = searchParams.get("redirect") || "/chat";
-  // Validate redirect: allow only relative paths to prevent open redirect
-  const safeRedirect = redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : "/chat";
+  const safeRedirect = safeAuthRedirect(searchParams.get("redirect"));
   const oppositeHref =
     mode === "login"
       ? `/signup?redirect=${encodeURIComponent(safeRedirect)}`

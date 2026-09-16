@@ -4,19 +4,22 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { AuthForm } from "@/src/components/auth/auth-form";
 import { Icon } from "@/src/components/icons";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
 function SignupContent() {
   const auth = useAppAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const destination = safeAuthRedirect(searchParams.get("redirect"));
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (auth.status === "signedIn") router.replace("/chat");
-  }, [auth.status, router]);
+    if (auth.status === "signedIn") router.replace(auth.isGuest ? "/tools" : destination);
+  }, [auth.status, auth.isGuest, destination, router]);
 
   if (auth.status === "initializing" || auth.status === "signedIn") {
     return null;
