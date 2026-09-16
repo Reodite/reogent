@@ -55,7 +55,7 @@ import {
   type CourseIndex,
   type Graph,
 } from "./build-graph";
-import { OptionalEdge } from "./edges/OptionalEdge";
+import { OptionalEdge, type OptionalEdgeData } from "./edges/OptionalEdge";
 import { CourseNode } from "./nodes/CourseNode";
 import { DropdownDisjunctionNode, StackedDisjunctionNode } from "./nodes/DisjunctionNode";
 
@@ -303,19 +303,21 @@ function AccordionFallback({
   onOpenCourse?: (code: string) => void;
 }) {
   const childrenOf = useMemo(() => {
-    const adjacency = new Map<string, string[]>();
+    const adjacency = new Map<string, Edge[]>();
     for (const edge of graph.edges) {
-      const children = adjacency.get(edge.target);
-      if (children) children.push(edge.source);
-      else adjacency.set(edge.target, [edge.source]);
+      // Layout chains top-level corequisites; disjunction children keep their own targets.
+      const target = edge.data?.semanticTarget ?? edge.target;
+      const children = adjacency.get(target);
+      if (children) children.push(edge);
+      else adjacency.set(target, [edge]);
     }
     return adjacency;
   }, [graph]);
   const byId = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph]);
-  const seen = new Set<string>();
-  const renderNode = (id: string): ReactNode => {
-    if (seen.has(id)) return null;
-    seen.add(id);
+  const renderNode = (id: string, edge?: Edge, ancestors = new Set<string>()): ReactNode => {
+    if (ancestors.has(id)) return null;
+    // Keep shared courses in each relationship while stopping cycles along the current path.
+    const path = new Set(ancestors).add(id);
     const node = byId.get(id);
     if (!node) return null;
     const data = node.data as {
@@ -327,14 +329,33 @@ function AccordionFallback({
       onChange?: (index: number) => void;
     };
     const children = childrenOf.get(id) ?? [];
-    const label = data.code ?? data.text ?? (data.options ? "Choose one prerequisite" : id);
+    const coreq = edge?.id.startsWith("coreq:") || edge?.label === "co-req";
+    const optional = edge?.type === "optional" ? (edge.data as OptionalEdgeData | undefined) : undefined;
+    const requirement = coreq ? "corequisite" : "prerequisite";
+    const label = data.code ?? data.text ?? (data.options ? `Choose one ${requirement}` : id);
     return (
-      <details key={id} open={id === rootId} className="border-border-subtle bg-surface rounded-lg border text-sm">
-        <summary className="text-on-surface flex min-h-11 items-center gap-2 px-3 py-2">
+      <details
+        key={edge?.type === "optional" ? edge.id : `${requirement}:${id}`}
+        open={id === rootId}
+        className="border-border-subtle bg-surface rounded-lg border text-sm"
+      >
+        <summary className="text-on-surface flex min-h-11 flex-wrap items-center gap-2 px-3 py-2">
           <span className={`font-mono font-medium ${data.code ? "shrink-0 whitespace-nowrap" : ""}`}>{label}</span>
           {data.title ? <span className="text-on-surface-variant min-w-0 truncate">{data.title}</span> : null}
+          {coreq ? <span className="text-on-surface-variant text-xs">Corequisite</span> : null}
+          {edge?.type === "optional" ? <span className="text-on-surface-variant text-xs">Optional</span> : null}
         </summary>
         <div className="border-border-subtle flex flex-col gap-2 border-t p-2 pl-4">
+          {optional ? (
+            <Button
+              size="compact"
+              className="self-start"
+              aria-pressed={!optional.disabled}
+              onClick={() => optional.onToggle(optional.softKey)}
+            >
+              {optional.disabled ? "Show optional subtree" : "Hide optional subtree"}
+            </Button>
+          ) : null}
           {data.code && onOpenCourse ? (
             <Button size="compact" className="self-start" onClick={() => onOpenCourse(data.code as string)}>
               Open course details
@@ -342,7 +363,7 @@ function AccordionFallback({
           ) : null}
           {data.options && data.onChange ? (
             <fieldset className="flex flex-col gap-1">
-              <legend className="sr-only">Choose a prerequisite branch</legend>
+              <legend className="sr-only">Choose a {requirement} branch</legend>
               {data.options.map((option, index) => (
                 <button
                   key={option.display}
@@ -360,7 +381,7 @@ function AccordionFallback({
               ))}
             </fieldset>
           ) : null}
-          {children.map(renderNode)}
+          {children.map((child) => renderNode(child.source, child, path))}
         </div>
       </details>
     );
