@@ -122,6 +122,8 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
   const [failed, setFailed] = useState(false);
   const [fetchNonce, setFetchNonce] = useState(0);
   const popupRef = useRef<HTMLElement>(null);
+  const roomsUnavailable = details?.sourceStatus?.rooms?.state === "unavailable";
+  const servicesUnavailable = details?.sourceStatus?.pois?.state === "unavailable";
 
   useEffect(() => {
     void fetchNonce;
@@ -218,7 +220,9 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
         ) : null}
         {details && (
           <>
-            {details.rooms.length > 0 && (
+            {roomsUnavailable ? (
+              <p className="ui-content-enter text-error text-sm">Room listings unavailable.</p>
+            ) : details.rooms.length > 0 ? (
               <Section title={`Rooms (${details.rooms.length})`}>
                 <Carousel label="rooms">
                   {details.rooms.map((room) => (
@@ -234,8 +238,10 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
                   ))}
                 </Carousel>
               </Section>
-            )}
-            {details.pois.length > 0 && (
+            ) : null}
+            {servicesUnavailable ? (
+              <p className="ui-content-enter text-error text-sm">Food & service listings unavailable.</p>
+            ) : details.pois.length > 0 ? (
               <Section title={`Food & services (${details.pois.length})`}>
                 <Carousel label="services">
                   {details.pois.map((poi) => (
@@ -250,8 +256,8 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
                   ))}
                 </Carousel>
               </Section>
-            )}
-            {details.rooms.length === 0 && details.pois.length === 0 && (
+            ) : null}
+            {!roomsUnavailable && !servicesUnavailable && details.rooms.length === 0 && details.pois.length === 0 && (
               <p className="ui-content-enter text-on-surface-variant text-sm">
                 No room or service listings for this building.
               </p>
