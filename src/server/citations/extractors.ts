@@ -4,7 +4,7 @@ import type { AdmissionProgramDoc } from "../modules/admissions";
 import type { KeyDateDoc } from "../modules/calendar";
 import type { CourseDoc } from "../modules/courses";
 import type { EventDoc } from "../modules/events";
-import type { PageResult } from "../modules/pages";
+import type { PageDoc } from "../modules/pages";
 
 export type CitationSeed = Omit<Citation, "index" | "used">;
 export type CitationExtractor = (result: unknown, input: unknown) => CitationSeed[];
@@ -15,7 +15,6 @@ type SourceRecord = {
   title: string;
   source_url?: string | null;
   category?: string;
-  subcategory?: string;
   retrieved_at?: string | null;
   source_modified_at?: string | null;
   source_context_required?: boolean;
@@ -24,13 +23,12 @@ type SourceRecord = {
 function sourceSeed(row: SourceRecord, tool: string, date?: string): CitationSeed {
   return {
     label: row.title,
-    kind: row.category === "documents" ? "documents" : "page",
+    kind: "page",
     tool,
     source_url: urlOrNull(row.source_url),
     detail: {
       ...(date ? { date } : {}),
       ...(row.category ? { category: row.category } : {}),
-      ...(row.subcategory ? { subcategory: row.subcategory } : {}),
       ...(row.retrieved_at ? { retrieved_at: row.retrieved_at } : {}),
       ...(row.source_modified_at ? { source_modified_at: row.source_modified_at } : {}),
       ...(typeof row.source_context_required === "boolean"
@@ -48,10 +46,6 @@ const courseSeed = (c: CourseDoc, tool: string): CitationSeed => ({
 });
 
 export const CITATION_EXTRACTORS: Record<string, CitationExtractor> = {
-  get_document: (result) =>
-    result && typeof result === "object" && "title" in result
-      ? [sourceSeed(result as SourceRecord, "get_document")]
-      : [],
   search_student_resources: (result) => {
     const { resources } = (result ?? {}) as { resources?: SourceRecord[] };
     return (resources ?? []).map((row) => sourceSeed(row, "search_student_resources"));
@@ -115,7 +109,13 @@ export const CITATION_EXTRACTORS: Record<string, CitationExtractor> = {
     }));
   },
   search_ubc_pages: (result) => {
-    const { pages } = (result ?? {}) as { pages?: PageResult[] };
-    return (pages ?? []).map((p) => sourceSeed({ ...p, source_url: p.url }, "search_ubc_pages", p.date ?? undefined));
+    const { pages } = (result ?? {}) as { pages?: PageDoc[] };
+    return (pages ?? []).map((p) => ({
+      label: p.title,
+      kind: "page" as CitationKind,
+      tool: "search_ubc_pages",
+      source_url: urlOrNull(p.url),
+      detail: p.date ? { date: p.date } : undefined,
+    }));
   },
 };

@@ -194,20 +194,19 @@ describe("source safety and provenance", () => {
     },
   );
 
-  it.each(["documents", "prose"])("shows Documents with topic and source timestamps for %s citations", (category) => {
+  it("keeps source timestamps distinct for page citations", () => {
     const citation: Citation = {
       ...makeCitations(1, true, true)[0],
-      kind: category,
-      tool: category === "prose" ? "get_prose_article" : "get_document",
+      kind: "page",
+      tool: "search_student_resources",
       detail: {
-        category,
-        subcategory: "workday",
+        category: "student-resources",
         source_modified_at: "2026-08-01T12:00:00Z",
         retrieved_at: "2026-09-01T12:00:00Z",
       },
     };
     const view = render(<SourcesPanel citations={[citation]} />);
-    expect(view.getByText("Documents · workday")).toBeTruthy();
+    expect(view.container.querySelector("[data-source-category]")).toBeNull();
     expect(view.container.querySelector('time[datetime="2026-08-01T12:00:00Z"]')?.parentElement?.textContent).toBe(
       "Source updated 2026-08-01",
     );

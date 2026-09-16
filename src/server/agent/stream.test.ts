@@ -12,35 +12,18 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-it("carries the assigned source marker into follow-up article results without changing stored data", async () => {
+it("carries the assigned source marker into follow-up page results without changing stored data", async () => {
   vi.useFakeTimers();
-  const first = {
-    title: "Example guide",
-    url: "https://example.test/first",
-    category: "documents",
-    subcategory: "workday",
-    original_id: "documents:workday:first",
-  };
-  const second = { ...first, url: "https://example.test/second", original_id: "documents:workday:second" };
-  const article = {
-    title: second.title,
-    category: second.category,
-    subcategory: second.subcategory,
-    original_id: second.original_id,
-    source_url: second.url,
-    content_markdown: "Confirm your selection.",
-  };
+  const first = { title: "Example guide", url: "https://example.test/first", source: "calendar", date: null };
+  const second = { ...first, url: "https://example.test/second" };
+  const followup = { pages: [{ ...second, snippets: ["Confirm your selection."] }] };
   const module: DatasetModule = {
     name: "fixture",
     indices: [],
     tools: [
       {
         spec: { name: "search_ubc_pages", description: "Search fixtures", inputSchema: { json: { type: "object" } } },
-        execute: async () => ({ pages: [first, second] }),
-      },
-      {
-        spec: { name: "get_document", description: "Read fixture", inputSchema: { json: { type: "object" } } },
-        execute: async () => article,
+        execute: async (input) => (input.query === "second guide" ? followup : { pages: [first, second] }),
       },
     ],
   };
@@ -50,12 +33,7 @@ it("carries the assigned source marker into follow-up article results without ch
       yield { type: "stop", reason: "tool_use" };
     })
     .mockImplementationOnce(async function* () {
-      yield {
-        type: "tool_use",
-        toolUseId: "article",
-        name: "get_document",
-        input: { article_id: second.original_id },
-      };
+      yield { type: "tool_use", toolUseId: "followup", name: "search_ubc_pages", input: { query: "second guide" } };
       yield { type: "stop", reason: "tool_use" };
     })
     .mockImplementationOnce(async function* () {
@@ -71,17 +49,13 @@ it("carries the assigned source marker into follow-up article results without ch
   );
   const response = llm.converseStream.mock.calls[2][0].messages
     .flatMap((message) => message.content)
-    .find((block) => block.toolResult?.name === "get_document")?.toolResult;
+    .find((block) => block.toolResult?.toolUseId === "followup")?.toolResult;
   expect(response?.content).toEqual([
-    { json: article },
-    {
-      json: {
-        source_citations: [{ citation: "[2]", label: second.title, source_url: second.url }],
-      },
-    },
+    { json: followup },
+    { json: { source_citations: [{ citation: "[2]", label: second.title, source_url: second.url }] } },
   ]);
   const done = events.find((event) => event.type === "done");
-  expect(done?.tool_calls[1].result).toEqual(article);
+  expect(done?.tool_calls[1].result).toEqual(followup);
   expect(done?.citations.map(({ index, used }) => ({ index, used }))).toEqual([
     { index: 1, used: false },
     { index: 2, used: true },

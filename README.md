@@ -47,8 +47,7 @@ The module registry defines data access and presentation tools:
 | places, parking | `find_places`                                   | Campus POIs and parking facts                                      |
 | spaces          | `find_study_spaces`                             | Study-area and classroom descriptions                              |
 | events          | `find_events`                                   | Campus events                                                      |
-| pages           | `search_ubc_pages`                              | Legacy page excerpts and document metadata                         |
-| documents       | `get_document`                                  | Complete indexed Markdown documents and provenance                 |
+| pages           | `search_ubc_pages`                              | Official UBC page excerpts                                         |
 | undergraduate   | `search_student_resources`, `get_library_hours` | Housing, libraries, support and policy source/fact records         |
 | grades          | Through `get_course` and grade widgets          | Grade distributions                                                |
 | people          | `find_person`                                   | Faculty/staff directory profiles                                   |
@@ -97,21 +96,11 @@ The undergraduate tables contain factual labels, source links, housing fee obser
 
 Room booking availability is outside the dataset and tool scope. Study-space descriptions and scheduled library hours do not establish live vacancy.
 
-### Documents
-
-The data submodule includes the Markdown corpus described in [DOCUMENTS.md](ubc-unified-data/DOCUMENTS.md). `npm run ingest` reads `DATA_PATH/documents/_catalog.json` and its declared article arrays into the `documents` index alongside the other campus datasets. The loader rejects incomplete catalogs, table count/hash mismatches and colliding sanitized IDs. Documents contain article bodies; structured tables contain facts and links. Both can use JSON and CSV exports.
-
-`search_ubc_pages` searches documents and legacy pages through the shared Meilisearch client. It returns article metadata and bounded legacy excerpts, preferring normalized articles for matching canonical URLs or source-record joins. `get_document` retrieves a complete indexed Markdown document using its `documents:<subcategory>:<identity>` original ID and verifies its identity and content hash. Both tools use the same search configuration in development and production; only ingestion reads the corpus files.
-
-Documents retain their source URLs, publisher and retrieval timestamps, source-record joins and conversion warnings. The UI renders safe Markdown without raw HTML or remote image embeds and displays one Documents category with source/topic subcategories. Use the source's scope and dates when answering questions about requirements or availability. Faculty guidance includes `lfs-advising` and `kinesiology-advising`; see [FACULTY-GUIDANCE.md](ubc-unified-data/FACULTY-GUIDANCE.md) for coverage and image, PDF and form limitations.
-
 Datasets and crawl caches stay outside application images and standalone output. Mount `DATA_PATH` for filesystem-backed tools and ingestion.
-
-The document namespace changes the catalog path, index, ID prefix and retrieval tool. Update the data submodule and run normal ingestion before using this version. After the `documents` snapshot publishes and records freshness, ingestion deletes the obsolete `prose` index. A validation or publication failure preserves the old index; a retirement failure reports failure and leaves the new snapshot available for a retry. Coordinate this refresh with application rollout: an older application still queries `prose`. Saved citations and activity keep their source details and display the Documents label; the current agent exposes only `get_document`.
 
 ### Snapshot replacement
 
-`student_resources`, `housing_fees`, `library_hours` and `documents` replace their complete snapshots. Ingestion loads and validates a temporary index, waits for its tasks, then swaps it into place. This removes dated records absent from the next library-hours snapshot. A pre-swap failure leaves the previous index active; cleanup errors report failure without rolling back an already published snapshot. Other indexes retain upsert behavior.
+`student_resources`, `housing_fees` and `library_hours` replace their complete snapshots. Ingestion loads and validates a temporary index, waits for its tasks, then swaps it into place. This removes dated records absent from the next library-hours snapshot. A pre-swap failure leaves the previous index active; cleanup errors report failure without rolling back an already published snapshot. Other indexes retain upsert behavior.
 
 Run one ingestion process per destination and allow storage for both generations during replacement. Ingestion requires a writable `DATA_PATH` for derived artifacts; the application can use a read-only data mount. Source `retrieved_at` timestamps remain distinct from index-build times and publisher modification dates.
 
@@ -159,7 +148,7 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | `npm run lint`          | Biome lint                                                     |
 | `npm test`              | Vitest (unit tests)                                            |
 | `npm run format`        | Prettier format                                                |
-| `npm run ingest`        | Index campus datasets and documents into Meilisearch           |
+| `npm run ingest`        | Index campus datasets into Meilisearch                         |
 | `npm run pulse:publish` | Publish a Pulse question round ([guide](data/pulse/README.md)) |
 
 ## API endpoints

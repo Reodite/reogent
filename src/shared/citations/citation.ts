@@ -19,7 +19,6 @@ export type Citation = {
     number?: string;
     date?: string;
     category?: string;
-    subcategory?: string;
     retrieved_at?: string;
     source_modified_at?: string;
     source_context_required?: boolean;

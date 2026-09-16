@@ -30,21 +30,17 @@ describe("dataset filesystem", () => {
     expect(ignored).toEqual(expect.arrayContaining(["data", "ubc-unified-data", ".cache"]));
   });
 
-  it.each(["development", "production"])("reads documents tables through DATA_PATH in %s", async (environment) => {
+  it.each(["development", "production"])("reads dataset tables through DATA_PATH in %s", async (environment) => {
     vi.stubEnv("NODE_ENV", environment);
-    const catalog = { category: "documents", tables: [] };
-    const articles = [{ title: "Synthetic guide", content_markdown: "## Steps\n\n1. Review requirements.\n" }];
-    await json("documents/_catalog.json", catalog);
-    await json("documents/workday/articles.json", articles);
-    expect(await dataStore().getJson("documents/_catalog.json")).toEqual(catalog);
-    expect(await dataStore().getJson("documents/workday/articles.json")).toEqual(articles);
+    const rows = [{ code: "CPSC 110", title: "Synthetic course" }];
+    await json("academic-calendar/vancouver/courses.json", rows);
+    expect(await dataStore().getJson("academic-calendar/vancouver/courses.json")).toEqual(rows);
   });
 
   it("reports missing datasets and malformed JSON", async () => {
-    await expect(dataStore().getJson("documents/_catalog.json")).rejects.toMatchObject({ code: "ENOENT" });
-    await mkdir(path.join(root, "documents"));
-    await writeFile(path.join(root, "documents/_catalog.json"), "not JSON");
-    await expect(dataStore().getJson("documents/_catalog.json")).rejects.toThrow(SyntaxError);
+    await expect(dataStore().getJson("courses.json")).rejects.toMatchObject({ code: "ENOENT" });
+    await writeFile(path.join(root, "courses.json"), "not JSON");
+    await expect(dataStore().getJson("courses.json")).rejects.toThrow(SyntaxError);
   });
 
   it("uses relative data roots and retains derived artifact writes", async () => {

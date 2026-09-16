@@ -42,12 +42,6 @@ export async function runIngest(modules: DatasetModule[], search: Meilisearch, s
       const target = idx.replace ? `${idx.index}__${randomUUID()}` : idx.index;
       let temporaryCreated = false;
       try {
-        if (
-          idx.formerIndex &&
-          (!idx.replace || modules.some((module) => module.indices.some((active) => active.index === idx.formerIndex)))
-        ) {
-          throw new Error("Index retirement requires a replacement snapshot and an unregistered former index");
-        }
         if (idx.replace) {
           await waitForTask(search.createIndex(target, { primaryKey: "id" }));
           temporaryCreated = true;
@@ -98,16 +92,6 @@ export async function runIngest(modules: DatasetModule[], search: Meilisearch, s
 
         // Freshness describes the completed snapshot; cleanup errors do not roll it back.
         await recordIndexFreshness(idx.index);
-        if (idx.formerIndex) {
-          try {
-            await waitForTask(search.deleteIndex(idx.formerIndex));
-          } catch (e) {
-            const cause = e instanceof Error ? e.cause : null;
-            if (typeof cause !== "object" || cause === null || !("code" in cause) || cause.code !== "index_not_found") {
-              throw new Error(`Retiring ${idx.formerIndex} failed`, { cause: e });
-            }
-          }
-        }
         console.log(`${idx.index}: indexed ${count} docs`);
       } catch (e) {
         const error = new Error(`${idx.index}: failed: ${e instanceof Error ? e.message : String(e)}`, { cause: e });

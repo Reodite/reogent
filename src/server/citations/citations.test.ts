@@ -184,33 +184,6 @@ describe("extractors — Property 19, Source-url honesty", () => {
     },
   );
 
-  it("keeps Documents topic and timestamps through search and full-article citation extraction", () => {
-    const article = {
-      title: "Example procedure",
-      category: "documents",
-      subcategory: "workday",
-      source_url: "https://example.test/procedure",
-      source_modified_at: "2026-08-01T12:00:00Z",
-      retrieved_at: "2026-09-01T12:00:00Z",
-    };
-    const full = extract("get_document")(article, {});
-    const found = extract("search_ubc_pages")(
-      { pages: [{ ...article, url: article.source_url, date: article.source_modified_at }] },
-      {},
-    );
-    for (const seed of [...full, ...found])
-      expect(seed).toMatchObject({
-        kind: "documents",
-        source_url: article.source_url,
-        detail: {
-          category: "documents",
-          subcategory: "workday",
-          retrieved_at: article.retrieved_at,
-          source_modified_at: article.source_modified_at,
-        },
-      });
-  });
-
   it("retains public resource retrieval and publisher timestamps", () => {
     const seeds = extract("search_student_resources")(
       {

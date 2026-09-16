@@ -124,24 +124,13 @@ describe("evidence-only answers", () => {
 describe("source retrieval and attribution", () => {
   it("looks beyond service metadata for instructions before reporting a gap", () => {
     expect(SYSTEM_PROMPT).toContain(
-      "For service setup, login or access instructions, follow source metadata with search_ubc_pages and get_document.",
+      "For service setup, login or access instructions, follow source metadata with search_ubc_pages.",
     );
-    expect(SYSTEM_PROMPT).toContain("After checking the available service records and documents");
+    expect(SYSTEM_PROMPT).toContain("After checking the available service records and page excerpts");
     expect(SYSTEM_PROMPT).toContain('"IT service setup / login / access instructions"');
-    expect(SYSTEM_PROMPT).toContain('subcategory: "it-services"');
-    expect(SYSTEM_PROMPT).toContain("Match the article's source_url to the assigned source index");
-  });
-
-  it("uses full discipline-specific co-op guidance before stating programme criteria", () => {
-    expect(SYSTEM_PROMPT).toContain('"Co-op requirements / application / fees / work terms"');
-    expect(SYSTEM_PROMPT).toContain('subcategory: "science-coop"');
-    expect(SYSTEM_PROMPT).toContain("discipline-specific application page");
-    expect(SYSTEM_PROMPT).toContain("administering co-op program from official directory or program guidance");
-    expect(SYSTEM_PROMPT).toContain("A general application page does not establish every discipline's criteria");
-    expect(SYSTEM_PROMPT).toContain("Read that discipline's article before the general application or deadline pages");
-    expect(SYSTEM_PROMPT).toContain("Report its exact average and course requirements");
-    expect(SYSTEM_PROMPT).toContain("Compare each eligibility requirement with the student's stated details");
-    expect(SYSTEM_PROMPT).toContain("mark unprovided details as unverified");
+    expect(SYSTEM_PROMPT).toContain("If the returned excerpts omit the instructions, state that limitation.");
+    expect(SYSTEM_PROMPT).toContain("Match the source URL to the assigned source index");
+    expect(SYSTEM_PROMPT).not.toMatch(/get_document|get_prose_article|subcategory:/);
   });
 
   it("keeps identically named sources tied to their URLs and assigned indices", () => {

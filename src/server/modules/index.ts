@@ -5,7 +5,6 @@ import { buildings } from "./buildings";
 import { calendar } from "./calendar";
 import { costs } from "./costs";
 import { courses } from "./courses";
-import { documents } from "./documents";
 import { events } from "./events";
 import { food } from "./food";
 import { grades } from "./grades";
@@ -34,7 +33,6 @@ const dataModules: DatasetModule[] = [
   spaces,
   events,
   pages,
-  documents,
   undergraduate,
   grades,
   people,
