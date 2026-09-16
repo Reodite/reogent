@@ -3,6 +3,7 @@ import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Graph } from "./build-graph";
 
 const apiState = vi.hoisted(() => ({
   getCourseIndex: vi.fn() as () => Promise<{ courses: CourseIndexEntry[] }>,
@@ -234,6 +235,139 @@ describe("PrereqTreePane", () => {
       expect(prose.classList.contains("whitespace-nowrap")).toBe(false);
       expect(prose.closest("summary")?.classList.contains("whitespace-nowrap")).toBe(false);
     }
+  });
+
+  it.each([false, true])(
+    "preserves corequisite siblings, their prerequisites, and optional state (%s)",
+    async (disabled) => {
+      apiState.getCourseIndex.mockResolvedValue({
+        courses: [
+          ...COURSES,
+          {
+            code: "CPSC 400",
+            title: "Root course",
+            prerequisite: "MATH 200. STAT 200 is recommended.",
+            corequisite: "CPSC 210 and one of CPSC 221, CPSC 222.",
+          },
+          { code: "CPSC 221", title: "First corequisite choice", prerequisite: "CPSC 121.", corequisite: null },
+          { code: "CPSC 222", title: "Second corequisite choice", prerequisite: "MATH 100.", corequisite: null },
+          { code: "STAT 200", title: "Recommended course", prerequisite: "STAT 100.", corequisite: null },
+        ],
+      });
+      const softKey = "CPSC 400::.and[1].soft";
+      const onUiState = vi.fn();
+      const { container } = render(
+        <PrereqTreePane initialRoot="CPSC 400" initialSoftDisabled={{ [softKey]: disabled }} onUiState={onUiState} />,
+      );
+      await screen.findByTestId("rf-canvas");
+      const graph = flowProps.current as unknown as Graph;
+      const optionalEdge = graph.edges.find((edge) => edge.type === "optional")!;
+      expect(optionalEdge.data).toMatchObject({ softKey, disabled });
+      expect(graph.edges.some((edge) => edge.source === "CPSC 210" && edge.target.startsWith("grp:"))).toBe(true);
+
+      const outline = container.querySelector<HTMLElement>("[data-prereq-outline]")!;
+      const root = within(outline).getByText("CPSC 400").closest("details")!;
+      const sibling = within(root).getByText("CPSC 210").closest("details")!;
+      expect(sibling.parentElement?.closest("details")).toBe(root);
+      const choice = within(root).getByText("Choose one corequisite").closest("details")!;
+      expect(choice.parentElement).toBe(sibling.parentElement);
+      expect(within(sibling.querySelector("summary")!).getByText("Corequisite")).toBeTruthy();
+      expect(within(choice.querySelector("summary")!).getByText("Corequisite")).toBeTruthy();
+      const ownPrerequisite = within(choice).getByText("CPSC 121").closest("details")!;
+      expect(ownPrerequisite.parentElement?.closest("details")).toBe(choice);
+      expect(within(ownPrerequisite).queryByText("Corequisite")).toBeNull();
+      fireEvent.click(choice.querySelector("summary")!);
+      fireEvent.click(within(choice).getByRole("button", { name: "CPSC 222" }));
+      expect(within(choice).getByRole("button", { name: "CPSC 222" }).getAttribute("aria-pressed")).toBe("true");
+      expect(within(choice).queryByText("CPSC 121")).toBeNull();
+      expect(within(choice).getByText("MATH 100").closest("details")?.parentElement?.closest("details")).toBe(choice);
+      expect(sibling.parentElement?.closest("details")).toBe(root);
+
+      const optional = within(root).getByText("STAT 200").closest("details")!;
+      expect(optional.parentElement?.closest("details")).toBe(root);
+      expect(within(optional.querySelector("summary")!).getByText("Optional")).toBeTruthy();
+      fireEvent.click(optional.querySelector("summary")!);
+      const toggle = within(optional).getByRole("button", {
+        name: disabled ? "Show optional subtree" : "Hide optional subtree",
+      });
+      expect(toggle.getAttribute("aria-pressed")).toBe(String(!disabled));
+      expect(within(optional).queryByText("STAT 100") !== null).toBe(!disabled);
+      fireEvent.click(toggle);
+      expect(toggle.getAttribute("aria-pressed")).toBe(String(disabled));
+      expect(toggle.textContent).toBe(disabled ? "Hide optional subtree" : "Show optional subtree");
+      expect(within(optional).queryByText("STAT 100") !== null).toBe(disabled);
+      expect(onUiState).toHaveBeenLastCalledWith(expect.objectContaining({ softDisabled: { [softKey]: !disabled } }));
+      expect(
+        (flowProps.current as unknown as Graph).edges.find((edge) => edge.type === "optional")?.data.disabled,
+      ).toBe(!disabled);
+    },
+  );
+
+  it("retains optional controls when another path requires the same course and stops cycles", async () => {
+    apiState.getCourseIndex.mockResolvedValue({
+      courses: [
+        ...COURSES,
+        {
+          code: "CPSC 400",
+          title: "Root course",
+          prerequisite: "CPSC 210. CPSC 110 is recommended.",
+          corequisite: null,
+        },
+        { code: "CPSC 110", title: "Shared prerequisite", prerequisite: "CPSC 400.", corequisite: null },
+      ],
+    });
+    const { container } = render(<PrereqTreePane initialRoot="CPSC 400" />);
+    await screen.findByTestId("rf-canvas");
+    const outline = container.querySelector<HTMLElement>("[data-prereq-outline]")!;
+    const root = within(outline).getByText("CPSC 400").closest("details")!;
+    const optional = within(root).getByText("Optional").closest("details")!;
+    expect(optional.parentElement?.closest("details")).toBe(root);
+    expect(within(root).getAllByText("CPSC 110", { selector: "summary span" })).toHaveLength(2);
+    expect(within(outline).getAllByText("CPSC 400", { selector: "summary span" })).toHaveLength(1);
+    fireEvent.click(optional.querySelector("summary")!);
+    fireEvent.click(within(optional).getByRole("button", { name: "Hide optional subtree" }));
+    expect(within(optional).getByRole("button", { name: "Show optional subtree" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+  });
+
+  it("keeps selected corequisite disjunction children nested beneath their choice", async () => {
+    apiState.getCourseIndex.mockResolvedValue({
+      courses: [
+        ...COURSES,
+        {
+          code: "CPSC 400",
+          title: "Root course",
+          prerequisite: null,
+          corequisite: "CPSC 210 and either (a) CPSC 110 and CPSC 121 or (b) MATH 200.",
+        },
+      ],
+    });
+    const { container } = render(<PrereqTreePane initialRoot="CPSC 400" />);
+    await screen.findByTestId("rf-canvas");
+    const graph = flowProps.current as unknown as Graph;
+    const group = graph.nodes.find((node) => node.type === "radio")!;
+    expect(graph.edges.filter((edge) => edge.target === group.id)).toHaveLength(3);
+    const outline = container.querySelector<HTMLElement>("[data-prereq-outline]")!;
+    const root = within(outline).getByText("CPSC 400").closest("details")!;
+    const choice = within(root).getByText("Choose one corequisite").closest("details")!;
+    const sibling = within(root).getByText("CPSC 210").closest("details")!;
+    expect(choice.parentElement).toBe(sibling.parentElement);
+    expect(choice.parentElement?.closest("details")).toBe(root);
+    for (const code of ["CPSC 110", "CPSC 121"]) {
+      const child = within(choice).getByText(code).closest("details")!;
+      expect(child.parentElement?.closest("details")).toBe(choice);
+    }
+    fireEvent.click(choice.querySelector("summary")!);
+    fireEvent.click(within(choice).getByRole("button", { name: "MATH 200" }));
+    expect(
+      within(choice)
+        .getByText("MATH 200", { selector: "summary span" })
+        .closest("details")
+        ?.parentElement?.closest("details"),
+    ).toBe(choice);
+    expect(within(choice).queryByText("CPSC 110", { selector: "summary span" })).toBeNull();
+    expect(sibling.parentElement?.closest("details")).toBe(root);
   });
 
   it.each(["tools", "answer-canvas"] as const)("replaces pre-fit failures and preparing UI in %s", async (host) => {

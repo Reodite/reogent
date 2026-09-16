@@ -197,6 +197,37 @@ beforeEach(() => {
 });
 
 describe("loadBuildingDetails", () => {
+  it.each([
+    [null, null],
+    [undefined, null],
+    ["", null],
+    [" ", null],
+    [false, null],
+    [[], null],
+    [0, 0],
+    ["0", 0],
+    ["2", 2],
+  ])("preserves unknown numeric metadata for %j", async (value, expected) => {
+    const source = structuredClone(building);
+    source.features[0].properties = {
+      ...source.features[0].properties,
+      MAX_FLOORS: value,
+      BLDG_HEIGHT: value,
+      GBA: value,
+    };
+    mocks.getBuildingsGeoJson.mockResolvedValue(source);
+    const entrances = structuredClone(entranceCollection);
+    entrances.features[0].properties = { ...entrances.features[0].properties, doorCount: value };
+    mocks.getPublicEntrancesGeoJson.mockResolvedValue(entrances);
+    const details = await loadBuildingDetails(searchClient(), "TEST");
+    expect(details.building).toMatchObject({
+      floors: expected,
+      heightMeters: expected,
+      grossAreaSquareMeters: expected,
+    });
+    expect(details.entrances[0].doorCount).toBe(expected);
+  });
+
   it("assembles documented building, address, room, POI, entrance, photo, and freshness fields", async () => {
     const search = searchClient();
     const details = await loadBuildingDetails(search, "TEST");

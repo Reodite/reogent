@@ -512,7 +512,7 @@ export function BuildingRail(props: BuildingRailProps) {
               <Button
                 variant="outline"
                 size="compact"
-                disabled={props.favoriteStatus === "saving"}
+                disabled={props.favoriteStatus === "loading" || props.favoriteStatus === "saving"}
                 onClick={() => {
                   if (props.selected) props.onToggleFavorite(props.selected.code);
                 }}

@@ -8,7 +8,7 @@ import type {
   PoiCard,
   RoomCard,
 } from "@/src/lib/api-types";
-import { buildingFromFeature } from "@/src/lib/building-catalog";
+import { buildingFromFeature, nonNegativeNumber } from "@/src/lib/building-catalog";
 import { pointInFeature, type BuildingFeature } from "@/src/lib/geo";
 import type { FeatureCollection } from "geojson";
 import type { SearchClient } from "./core/types";
@@ -23,11 +23,6 @@ const POI_KEY = "geospatial/ubcv/locations/geojson/ubcv_poi.geojson";
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function number(value: unknown): number | null {
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function booleanFlag(value: unknown): boolean | null {
@@ -76,7 +71,7 @@ function buildingProfile(feature: BuildingFeature): BuildingProfile | null {
     constructionStatus: text(properties.CONSTR_STATUS),
     constructionType: text(properties.CONSTR_TYPE),
     occupancyDate: text(properties.OCCU_DATE),
-    grossAreaSquareMeters: number(properties.GBA),
+    grossAreaSquareMeters: nonNegativeNumber(properties.GBA),
     form: text(properties.BLDG_FORM),
     condition: text(properties.BLDG_CONDITION),
     greenStatus: text(properties.GREEN_STATUS),
@@ -148,7 +143,7 @@ function entranceSummaries(collection: FeatureCollection, code: string): Buildin
       {
         id: properties.id,
         entranceType: text(properties.entranceType),
-        doorCount: number(properties.doorCount),
+        doorCount: nonNegativeNumber(properties.doorCount),
         position: [longitude, latitude] as [number, number],
       },
     ];

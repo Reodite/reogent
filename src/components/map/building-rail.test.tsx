@@ -607,6 +607,15 @@ describe("BuildingRail", () => {
     expect(screen.getByText(/Straight-line estimate/)).toBeTruthy();
   });
 
+  it.each(["loading", "saving"] as const)("disables Save while favorites are %s", (favoriteStatus) => {
+    const railProps = props({ mode: "details", selected: iblc, favoriteStatus });
+    render(<BuildingRail {...railProps} />);
+    const save = screen.getByRole("button", { name: "Save" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.click(save);
+    expect(railProps.onToggleFavorite).not.toHaveBeenCalled();
+  });
+
   it("exposes every selected-building action", () => {
     const actions = {
       onDirections: vi.fn(),

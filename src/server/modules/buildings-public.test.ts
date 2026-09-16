@@ -36,6 +36,30 @@ const buildings: FeatureCollection = {
 };
 
 describe("public building map data", () => {
+  it.each([
+    [null, null],
+    [undefined, null],
+    ["", null],
+    [" ", null],
+    [false, null],
+    [[], null],
+    [0, 0],
+    ["0", 0],
+    ["2", 2],
+  ])("preserves unknown entrance door counts for %j", (value, expected) => {
+    const result = publicEntrancesGeoJson(buildings, {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [-123.25, 49.26] },
+          properties: { BLDG_UID: "private-uid", STATUS: "Current", NUM_DOORS: value },
+        },
+      ],
+    });
+    expect(result.features[0].properties?.doorCount).toBe(expected);
+  });
+
   it("keeps documented building fields and removes source identifiers", () => {
     const collection = publicBuildingsGeoJson(buildings);
     const properties = collection.features[0]?.properties;

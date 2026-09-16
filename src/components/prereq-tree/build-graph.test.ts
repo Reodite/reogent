@@ -85,6 +85,7 @@ describe("buildGraph (ported reodite logic)", () => {
     expect(other?.target).toBe(toRoot[0].source);
     for (const e of coreqEdges) {
       expect(e.label).toBe("co-req");
+      expect(e.data?.semanticTarget).toBe("ROOT 300");
       expect(e.sourceHandle).toBe("bottom-source");
       expect(e.targetHandle).toBe("top-target");
     }
@@ -92,6 +93,31 @@ describe("buildGraph (ported reodite logic)", () => {
     const ddd = nodeById(g, "DDD 100");
     expect(ddd.position.x).toBe(0);
     expect((ddd.data as { coreq?: boolean }).coreq).toBe(true);
+  });
+
+  it("records semantic targets only for top-level corequisite layout edges", () => {
+    const index = new Map([
+      ...INDEX,
+      course("ROOT 300", "Root Course", null, "DDD 100 and either (a) BBB 100 and CCC 100 or (b) EEE 100."),
+    ]);
+    const graph = buildGraph(
+      "ROOT 300",
+      index,
+      new Map(),
+      () => {},
+      new Map(),
+      () => {},
+    );
+    const group = graph.nodes.find((node) => node.type === "radio")!;
+    const siblingEdge = graph.edges.find((edge) => edge.source === "DDD 100")!;
+    expect(siblingEdge.target).toBe(group.id);
+    expect(siblingEdge.data?.semanticTarget).toBe("ROOT 300");
+    expect(graph.edges.find((edge) => edge.source === group.id)?.data?.semanticTarget).toBe("ROOT 300");
+    for (const code of ["BBB 100", "CCC 100"]) {
+      const edge = graph.edges.find((candidate) => candidate.source === code)!;
+      expect(edge.target).toBe(group.id);
+      expect(edge.data?.semanticTarget).toBeUndefined();
+    }
   });
 
   it("reads left to right: root leftmost, prereq columns extending right, edges flowing prereq → dependent", () => {

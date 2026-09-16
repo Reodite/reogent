@@ -441,6 +441,61 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(getByText(expected)).not.toBeNull();
   });
 
+  it.each([
+    [
+      "building_detail",
+      { rooms: { state: "unavailable" }, pois: { state: "unavailable" }, entrances: { state: "unavailable" } },
+      "Rooms unavailable · Services unavailable · Entrances unavailable",
+    ],
+    [
+      "building_detail",
+      { rooms: { state: "ready" }, pois: { state: "unavailable" }, entrances: { state: "ready" } },
+      "0 rooms · Services unavailable · 0 entrances",
+    ],
+    ["building_spaces", { rooms: { state: "unavailable" } }, "Learning spaces unavailable"],
+    ["building_entrances", { entrances: { state: "unavailable" } }, "Entrances unavailable"],
+    ["building_detail", undefined, "0 rooms · 0 services · 0 entrances"],
+    ["building_spaces", undefined, "0 learning spaces"],
+    ["building_entrances", undefined, "0 verified entrances"],
+  ] as const)("distinguishes unavailable sources from empty %s data: %j", async (type, sourceStatus, expected) => {
+    const { getByText } = renderWidget({
+      name: "show_widget",
+      input: { type, building_code: "IBLC" },
+      result: {
+        type,
+        result: {
+          building: { code: "IBLC", name: "Learning Centre" },
+          rooms: [],
+          room_count: 0,
+          pois: [],
+          entrances: [],
+          sourceStatus,
+        },
+      },
+    });
+    await act(async () => {});
+    expect(getByText(expected)).toBeTruthy();
+  });
+
+  it("retains independent booking counts when learning spaces are unavailable", async () => {
+    const { getByText } = renderWidget({
+      name: "show_widget",
+      input: { type: "building_spaces", building_code: "IBLC" },
+      result: {
+        type: "building_spaces",
+        result: {
+          building: { code: "IBLC" },
+          rooms: [],
+          room_count: 0,
+          bookable_room_count: 2,
+          sourceStatus: { rooms: { state: "unavailable" } },
+        },
+      },
+    });
+    await act(async () => {});
+    expect(getByText("Learning spaces unavailable · 2 bookable rooms")).toBeTruthy();
+  });
+
   it("keeps raw evidence visible when a rich renderer crashes", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     renderers.exploding_widget = () => {

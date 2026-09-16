@@ -109,6 +109,33 @@ describe("BuildingPopup loading", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it.each(["rooms", "pois"] as const)("distinguishes unavailable %s from empty listings", async (section) => {
+    api.getBuildingDetails.mockResolvedValue({
+      ...emptyContent,
+      sourceStatus: { [section]: { state: "unavailable" } },
+    });
+    render(<BuildingPopup building={building} onClose={vi.fn()} />);
+    expect(
+      await screen.findByText(
+        section === "rooms" ? "Room listings unavailable." : "Food & service listings unavailable.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("No room or service listings for this building.")).toBeNull();
+  });
+
+  it("retains available service listings beside an unavailable room section", async () => {
+    api.getBuildingDetails.mockResolvedValue({
+      ...emptyContent,
+      pois: [{ name: "Library help desk" }],
+      sourceStatus: { rooms: { state: "unavailable" }, pois: { state: "ready" } },
+    });
+    render(<BuildingPopup building={building} onClose={vi.fn()} />);
+    expect(await screen.findByText("Room listings unavailable.")).toBeTruthy();
+    expect(screen.getByText("Library help desk")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Food & services (1)" })).toBeTruthy();
+    expect(screen.queryByText("No room or service listings for this building.")).toBeNull();
+  });
+
   it("replaces loading with retry on failure and shows empty content only after success", async () => {
     api.getBuildingDetails.mockRejectedValueOnce(new Error("offline"));
     const view = render(<BuildingPopup building={building} onClose={vi.fn()} />);

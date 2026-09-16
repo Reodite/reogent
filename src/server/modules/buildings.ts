@@ -1,4 +1,4 @@
-import { buildingAliases } from "@/src/lib/building-catalog";
+import { buildingAliases, nonNegativeNumber } from "@/src/lib/building-catalog";
 import { featureCentroid, type BuildingFeature } from "@/src/lib/geo";
 import type { FeatureCollection } from "geojson";
 import type { DatasetModule, SearchClient } from "../core/types";
@@ -122,7 +122,6 @@ export function publicEntrancesGeoJson(
       const code = uidToCode.get(String(properties.BLDG_UID ?? ""));
       const [longitude, latitude] = feature.geometry.coordinates;
       if (!code || !Number.isFinite(longitude) || !Number.isFinite(latitude)) return [];
-      const doorCount = Number(properties.NUM_DOORS);
       return [
         {
           type: "Feature" as const,
@@ -131,7 +130,7 @@ export function publicEntrancesGeoJson(
             id: `${code}-${index}`,
             buildingCode: code,
             entranceType: typeof properties.ENTRANCE_TYPE === "string" ? properties.ENTRANCE_TYPE : null,
-            doorCount: Number.isFinite(doorCount) && doorCount >= 0 ? doorCount : null,
+            doorCount: nonNegativeNumber(properties.NUM_DOORS),
           },
         },
       ];

@@ -812,6 +812,7 @@ export function buildGraph(
         targetById.has(edge.source)
       ) {
         const newTarget = targetById.get(edge.source) as string;
+        edge.data = { ...edge.data, semanticTarget: edge.target };
         edge.target = newTarget;
         edge.id = `coreq:${edge.source}->${newTarget}`;
         edge.targetHandle = "top-target";

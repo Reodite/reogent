@@ -189,6 +189,16 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
         sort,
         faculty: faculty || undefined,
       });
+      if (id !== requestId.current) return;
+      const parsed = canonicalize(query);
+      if (result?.courses?.length === 0 && (parsed?.kind === "subject" || parsed?.kind === "partialCode")) {
+        result = await api.searchCourses({
+          q: parsed.subject,
+          session,
+          sort,
+          faculty: faculty || undefined,
+        });
+      }
     } catch (caught) {
       if (id !== requestId.current) return;
       setError(caught instanceof Error ? caught.message : "Couldn't load courses.");

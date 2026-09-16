@@ -19,6 +19,7 @@ import {
 } from "@/src/components/ui/tool-result-card";
 import {
   isToolError,
+  type BuildingDetails,
   type CourseDoc,
   type SearchCoursesResult,
   type ToolCall,
@@ -357,14 +358,27 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
             bookable_room_count?: number;
             pois?: unknown[];
             entrances?: unknown[];
+            sourceStatus?: Partial<BuildingDetails["sourceStatus"]>;
           }
         | undefined;
       if (!result?.building?.code) return null;
       const counts = [
-        typeof result.room_count === "number" ? `${result.room_count} rooms` : null,
+        result.sourceStatus?.rooms?.state === "unavailable"
+          ? "Rooms unavailable"
+          : typeof result.room_count === "number"
+            ? `${result.room_count} rooms`
+            : null,
         typeof result.bookable_room_count === "number" ? `${result.bookable_room_count} bookable` : null,
-        Array.isArray(result.pois) ? `${result.pois.length} services` : null,
-        Array.isArray(result.entrances) ? `${result.entrances.length} entrances` : null,
+        result.sourceStatus?.pois?.state === "unavailable"
+          ? "Services unavailable"
+          : Array.isArray(result.pois)
+            ? `${result.pois.length} services`
+            : null,
+        result.sourceStatus?.entrances?.state === "unavailable"
+          ? "Entrances unavailable"
+          : Array.isArray(result.entrances)
+            ? `${result.entrances.length} entrances`
+            : null,
       ].filter(Boolean);
       return (
         <ToolResultCard
@@ -381,13 +395,23 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
       );
     }
     case "building_entrances": {
-      const result = data as { building?: { code?: string; name?: string }; entrances?: unknown[] } | undefined;
+      const result = data as
+        | {
+            building?: { code?: string; name?: string };
+            entrances?: unknown[];
+            sourceStatus?: Partial<BuildingDetails["sourceStatus"]>;
+          }
+        | undefined;
       if (!result?.building?.code || !Array.isArray(result.entrances)) return null;
       return (
         <ToolResultCard
           icon="door"
           title={result.building.name ?? result.building.code}
-          metadata={`${result.entrances.length} verified entrance${result.entrances.length === 1 ? "" : "s"}`}
+          metadata={
+            result.sourceStatus?.entrances?.state === "unavailable"
+              ? "Entrances unavailable"
+              : `${result.entrances.length} verified entrance${result.entrances.length === 1 ? "" : "s"}`
+          }
           detail="Accessibility details unavailable in source metadata"
         />
       );
@@ -399,6 +423,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
             rooms?: unknown[];
             room_count?: number;
             rooms_truncated?: boolean;
+            sourceStatus?: Partial<BuildingDetails["sourceStatus"]>;
             bookable_room_count?: number;
             availability?: { rooms?: unknown[]; as_of?: string | null; freshness?: string } | null;
           }
@@ -416,7 +441,9 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
           icon="school"
           title={result.building.name ?? result.building.code}
           metadata={[
-            `${roomCount} learning space${roomCount === 1 ? "" : "s"}`,
+            result.sourceStatus?.rooms?.state === "unavailable"
+              ? "Learning spaces unavailable"
+              : `${roomCount} learning space${roomCount === 1 ? "" : "s"}`,
             bookable !== null ? `${bookable} bookable room${bookable === 1 ? "" : "s"}` : null,
           ]
             .filter(Boolean)

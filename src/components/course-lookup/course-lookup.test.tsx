@@ -334,6 +334,137 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     );
   });
 
+  it.each([
+    {
+      query: "data",
+      narrowed: { subject: "DATA" },
+      q: "DATA",
+      course: makeCourse("CPSC 304", "CPSC", "304", "Introduction to Relational Databases"),
+    },
+    { query: "calc", narrowed: { subject: "CALC" }, q: "CALC", course: sparseRecord },
+    {
+      query: "calc 3",
+      narrowed: { subject: "CALC", number: "3" },
+      q: "CALC",
+      course: makeCourse("MATH 200", "MATH", "200", "Calculus III"),
+    },
+    { query: "CPS", narrowed: { subject: "CPS" }, q: "CPS", course: fullRecord },
+  ])(
+    "tools mode retries an empty $query search as free text with the same controls",
+    async ({ query, narrowed, q, course }) => {
+      shellState.mode = "tools";
+      const controls = { session: "2024W", sort: "average_desc", faculty: "Faculty of Science" };
+      apiState.searchCourses.mockImplementation(async (params: { q?: string }) =>
+        params.q ? { courses: [course], subject_total: 7 } : { courses: [], subject_total: 0 },
+      );
+      render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+      fireEvent.change(screen.getByLabelText("Session"), { target: { value: controls.session } });
+      fireEvent.change(screen.getByLabelText("Sort by"), { target: { value: controls.sort } });
+      fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+      fireEvent.change(screen.getByLabelText("Faculty"), { target: { value: controls.faculty } });
+      await waitFor(() => expect(apiState.searchCourses).toHaveBeenLastCalledWith(controls));
+      apiState.searchCourses.mockClear();
+
+      fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: query } });
+      expect(await screen.findByRole("button", { name: course.code })).not.toBeNull();
+      expect(apiState.searchCourses.mock.calls).toEqual([[{ ...narrowed, ...controls }], [{ q, ...controls }]]);
+      expect(screen.getByText("7 courses · 2024W")).not.toBeNull();
+      expect(screen.queryByText("Updating courses…")).toBeNull();
+    },
+  );
+
+  it.each(["CPSC 999", "CALC 300"])("tools mode keeps a complete-code miss for %s empty", async (query) => {
+    shellState.mode = "tools";
+    apiState.searchCourses.mockResolvedValueOnce({ courses: [fullRecord], subject_total: 1 });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    await screen.findByRole("button", { name: fullRecord.code });
+    apiState.searchCourses.mockClear();
+    apiState.searchCourses.mockImplementation(async (params: { q?: string }) =>
+      params.q ? { courses: [sparseRecord], subject_total: 1 } : { courses: [], subject_total: 0 },
+    );
+
+    fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: query } });
+    expect(await screen.findByText("No courses match this search.")).not.toBeNull();
+    const [subject, number] = query.split(" ");
+    expect(apiState.searchCourses).toHaveBeenCalledExactlyOnceWith({
+      subject,
+      number,
+      session: "2025W",
+      sort: "students_desc",
+      faculty: undefined,
+    });
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it.each(["data", "calc 3"])("tools mode does not fall back after a failed %s search", async (query) => {
+    shellState.mode = "tools";
+    apiState.searchCourses.mockResolvedValueOnce({ courses: [fullRecord], subject_total: 1 });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    await screen.findByRole("button", { name: fullRecord.code });
+    apiState.searchCourses.mockClear();
+    apiState.searchCourses.mockRejectedValueOnce(new Error("offline"));
+    apiState.searchCourses.mockResolvedValue({ courses: [sparseRecord], subject_total: 1 });
+
+    fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: query } });
+    expect(await screen.findByText(/Couldn't refresh courses/)).not.toBeNull();
+    expect(apiState.searchCourses).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: fullRecord.code })).not.toBeNull();
+    expect(screen.queryByText("Updating courses…")).toBeNull();
+  });
+
+  it.each(["resolve", "reject"])("ignores an older title fallback that later %ss", async (outcome) => {
+    shellState.mode = "tools";
+    const fallback = deferred<void>();
+    apiState.searchCourses.mockResolvedValueOnce({ courses: [], subject_total: 0 });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    await screen.findByText("No courses match this search.");
+    apiState.searchCourses.mockClear();
+    apiState.searchCourses.mockImplementation(async (params: { q?: string; subject?: string }) => {
+      if (params.q) {
+        await fallback.promise;
+        if (outcome === "reject") throw new Error("Old fallback failed");
+        return { courses: [sparseRecord], subject_total: 12 };
+      }
+      return params.subject === "DATA"
+        ? { courses: [], subject_total: 0 }
+        : { courses: [fullRecord], subject_total: 1 };
+    });
+
+    fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: "data" } });
+    await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalledWith(expect.objectContaining({ q: "DATA" })));
+    fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: "CPSC 110" } });
+    await screen.findByRole("button", { name: fullRecord.code });
+    await act(async () => fallback.resolve());
+
+    expect(screen.getByRole("button", { name: fullRecord.code })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: sparseRecord.code })).toBeNull();
+    expect(screen.getByText("1 course · 2025W")).not.toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText("Updating courses…")).toBeNull();
+    expect(apiState.searchCourses).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not start a title fallback for an older empty narrowed response", async () => {
+    shellState.mode = "tools";
+    const narrowed = deferred<{ courses: CourseDoc[]; subject_total: number }>();
+    apiState.searchCourses.mockResolvedValueOnce({ courses: [], subject_total: 0 });
+    render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
+    await screen.findByText("No courses match this search.");
+    apiState.searchCourses.mockClear();
+    apiState.searchCourses.mockReturnValueOnce(narrowed.promise);
+    apiState.searchCourses.mockResolvedValue({ courses: [fullRecord], subject_total: 1 });
+
+    fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: "calc 3" } });
+    await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalledOnce());
+    fireEvent.change(screen.getByLabelText("Find a course"), { target: { value: "CPSC 110" } });
+    await screen.findByRole("button", { name: fullRecord.code });
+    await act(async () => narrowed.resolve({ courses: [], subject_total: 0 }));
+
+    expect(apiState.searchCourses).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: fullRecord.code })).not.toBeNull();
+    expect(screen.queryByText("Updating courses…")).toBeNull();
+  });
+
   it("ignores an older unfiltered response after an exact search settles", async () => {
     shellState.mode = "tools";
     const initial = deferred<{ courses: CourseDoc[]; subject_total: number }>();

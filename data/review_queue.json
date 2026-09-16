@@ -1,0 +1,439 @@
+[
+ {
+  "id": "arts-cognitive-systems-cognition-and-brain-stream",
+  "status": "no-requirements",
+  "problems": [],
+  "notes": "Source page (https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-arts/bachelor-arts/cognitive-systems) contains no stream-specific requirements for the Cognition and the Brain stream. It states only that ALL COGS students take five team-taught core courses (COGS_V 200, 300, 303, 401, 402) plus unnamed background courses in computer science, linguistics, philosophy, and psychology, with Math 12 (Principles of Mathematics) required for Arts students entering the CS background courses. No credit values are given for any course and no total credit figure appears anywhere on the page. The page redirects readers to the Faculty of Science entries for computer science and psychology and the Faculty of Arts entries for linguistics, philosophy and psychology for specific program information. Admission normally at the end of second year for B.A. students, based on academic performance. Nothing stream-specific and no credit data is extractable without fabrication."
+ },
+ {
+  "id": "arts-cognitive-systems-language-stream",
+  "status": "no-requirements",
+  "problems": [],
+  "notes": "Source page contains no stream-specific requirements for the Language stream (supervised by Linguistics). It states only the shared five team-taught core courses for all COGS students (COGS_V 200, 300, 303, 401, 402) plus unnamed background courses in computer science, linguistics, philosophy, and psychology, with Math 12 (Principles of Mathematics) required for Arts students entering the CS background courses. No credit values for any course and no total credit figure appear on the page. Specific program information is directed to the Faculty of Science entries for computer science and psychology and the Faculty of Arts entries for linguistics, philosophy and psychology. Admission normally at the end of second year for B.A. students. Nothing stream-specific and no credit data is extractable without fabrication."
+ },
+ {
+  "id": "arts-cognitive-systems-mind-language-and-computation-stream",
+  "status": "no-requirements",
+  "problems": [],
+  "notes": "Source page contains no stream-specific requirements for the Mind, Language, and Computation stream (supervised by Philosophy). It states only the shared five team-taught core courses for all COGS students (COGS_V 200, 300, 303, 401, 402) plus unnamed background courses in computer science, linguistics, philosophy, and psychology, with Math 12 (Principles of Mathematics) required for Arts students entering the CS background courses. No credit values for any course and no total credit figure appear on the page. Specific program information is directed to the Faculty of Science entries for computer science and psychology and the Faculty of Arts entries for linguistics, philosophy and psychology. Admission normally at the end of second year for B.A. students. Nothing stream-specific and no credit data is extractable without fabrication."
+ },
+ {
+  "id": "arts-united-states-studies-minor",
+  "status": "accepted-low-confidence",
+  "notes": "Minor is at least 30 and not more than 42 credits; total_credits records the 30-credit minimum. Stated components: at least 9 credits from ECON_V 101/102 (6), HIST_V 237, POLI_V 220 (3) - the page prints '(6)' beside HIST_V 237, which conflicts with the 3 credits given in the major's table and with HIST 237 being a 3-credit course; treated as 3. At least 18 credits from courses listed for the Major that are numbered 300 or higher; that list is program-designated and maintained off-calendar, so no subject/level rule is encoded (eligibility is not 'any 300+ ECON/HIST/POLI course'). The two stated minima sum to 27, so a third category of 3 unspecified further eligible credits is recorded to reconcile with the 30-credit minimum; the calendar does not say which courses fill it (advisor/program-determined). Prerequisites for courses numbered 300 or higher apply. Confidence low because of the HIST 237 credit-value conflict, the unenumerable eligibility list, and the unspecified residual credits."
+ },
+ {
+  "id": "arts-international-economics-degree",
+  "status": "no-requirements",
+  "problems": [],
+  "notes": "Page contains no requirement details. Full body text is 'Please see the Vancouver School of Economics.' - a pointer to the VSE page. No credits, courses, or categories to extract."
+ },
+ {
+  "id": "fory-forest-operations-major-bsf",
+  "status": "accepted-low-confidence",
+  "notes": "The page gives no standalone Forest Operations Major table; it states the major is divided into two specializations (Harvest Planning & Engineering; Commerce) and provides one table each. Categories below encode ONLY the core shared by both specialization tables (see the two stream variants for full, cohort-specific requirements). Minimum credits for degree differs by specialization: 132 (HP&E) vs 129 (Commerce); 132 recorded here. FRST 452 and FRST 350/351 are shown as 3 credits in the HP&E table but 2 credits in the Commerce table; HP&E values used here. Credit will be given for only one of FRST 350 or FRST 351; students are assigned to the most appropriate of the two by the instructors. Pre-September 2024 cohort only."
+ },
+ {
+  "id": "fory-forest-operations-major",
+  "status": "no-requirements",
+  "problems": [],
+  "notes": "The page describes the Forest Operations major in prose only and states it is divided into two specialization options (Harvest Planning & Engineering; Commerce/Minor in Commerce). The only credit table on the page is the Harvest Planning and Engineering Specialization program (Students Entering From Secondary School, HP&E). No standalone major-level course/credit requirement list exists on this page, and the Commerce specialization table is absent, so no non-fabricated major-level extraction is possible. See the fory-forest-operations-hpe-stream result for the tabulated requirements."
+ },
+ {
+  "id": "fory-urban-forestry-degree",
+  "status": "no-requirements",
+  "problems": [],
+  "notes": "Scraped page (107.md) contains only the degree overview header and a Contents list (Introduction, Admission, Academic Regulations, Degree Requirements) with no requirement text, course codes, or credit values. The Degree Requirements section lives on a separate sub-page not included in this scrape bucket. No requirements extracted."
+ },
+ {
+  "id": "educ-teacher-librarianship-certificate",
+  "status": "no-requirements",
+  "problems": [],
+  "notes": "Scraped page states only 'Students must complete a total of 15 credits, consisting of either:' followed by a bare 'OR' and 'Total Credits: 15' — both alternative course lists (LIBE courses) were lost in scraping. No course codes appear anywhere on the page, so no categories can be extracted without fabricating. Only reliable datum is the 15-credit total. Re-scrape source URL (https://vancouver.calendar.ubc.ca/faculties-colleges-and-schools/faculty-education/certificate-programs/certificate-teacher-librarianship-libe) to capture the two option tables."
+ },
+ {
+  "id": "educ-education-diploma",
+  "status": "accepted-low-confidence",
+  "notes": "Page gives only generic diploma rules; no per-specialization course lists are in the scraped text. Requirement: 30 credits of courses numbered 300 or above with a 65% average. Page adds that in most specializations 12-18 credits are core requirements and 12-18 credits are chosen from approved supporting/related courses, but the specific core/supporting course lists are not given, so that split is recorded in notes rather than as separate categories. Other stated limits (not encoded as categories): max 18 credits of prior UBC coursework not credited to another credential, max 12 transfer credits from other institutions, normally complete within five years. 'Except for designated specializations' qualifies every rule above. No course codes named on the page, so no code verification was needed."
+ },
+ {
+  "id": "arts-anthropology-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): ARCL 495"
+ },
+ {
+  "id": "arts-anthropology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): ARCL 495"
+ },
+ {
+  "id": "arts-anthropological-archaeology-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): ARCL 321"
+ },
+ {
+  "id": "arts-asian-area-studies-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): ASIX 499"
+ },
+ {
+  "id": "arts-asian-language-and-culture-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): ASIX 499"
+ },
+ {
+  "id": "arts-canadian-studies-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): FREN 123, FREN 280, FIST 438, ENGL 470, ENGL 476, FREN 335, GEOG 468, GEOG 497, HIST 411, HIST 414, HIST 415, HIST 419, HIST 469, RELG 420, ECON 436"
+ },
+ {
+  "id": "arts-canadian-studies-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): FREN 123, FREN 280, FIST 438, ENGL 470, ENGL 476, FREN 335, GEOG 468, GEOG 497, HIST 411, HIST 414, HIST 415, HIST 419, HIST 469, RELG 420, ECON 436"
+ },
+ {
+  "id": "arts-cinema-studies-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GERM 304, SCAN 411, ITAL 385, SLAV 307, POLS 424, SPAN 404"
+ },
+ {
+  "id": "arts-cinema-studies-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GERM 304, SCAN 411, ITAL 385, SLAV 307, POLS 424, SPAN 404"
+ },
+ {
+  "id": "arts-cinema-studies-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GERM 304, SCAN 411, ITAL 385, SLAV 307, POLS 424, SPAN 404"
+ },
+ {
+  "id": "arts-critical-studies-in-sexuality-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CSIS 500"
+ },
+ {
+  "id": "arts-german-studies-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GERN 492"
+ },
+ {
+  "id": "arts-history-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): HIST 468"
+ },
+ {
+  "id": "arts-human-geography-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GEOG 439, GEOG 497, GEOG 418"
+ },
+ {
+  "id": "arts-human-geography-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GEOG 418, GEOG 439, GEOG 497"
+ },
+ {
+  "id": "arts-human-geography-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GEOG 439, GEOG 497, GEOG 418"
+ },
+ {
+  "id": "arts-international-relations-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): HIST 408, HIST 409, HIST 432, HIST 402, HIST 404, HIST 406, HIST 418, HIST 441, HIST 460, GEOG 468, HIST 440, HIST 483, ASIA 434, GEOG 497, HIST 411, HIST 444, HIST 468, HIST 469, FNH 460, HIST 464, HIST 355, HIST 439, ITAL 345"
+ },
+ {
+  "id": "arts-international-relations-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): HIST 408, HIST 409, HIST 432, HIST 402, HIST 404, HIST 406, HIST 418, HIST 441, HIST 460, GEOG 468, HIST 440, HIST 483, ASIA 434, GEOG 497, HIST 411, HIST 444, HIST 468, HIST 469, FNH 460, HIST 464, HIST 355, HIST 439, ITAL 345"
+ },
+ {
+  "id": "arts-latin-american-studies-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): SPAN 280, ANTH 323, ANTH 411, FIST 332, FIST 430, FIST 434, HIST 444, PORT 392, PORT 405, SPAN 312, SPAN 364, SPAN 365, SPAN 404, SPAN 406"
+ },
+ {
+  "id": "arts-latin-american-studies-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): SPAN 280, ANTH 323, ANTH 411, FIST 332, FIST 430, FIST 434, HIST 444, PORT 392, PORT 405, SPAN 312, SPAN 364, SPAN 365, SPAN 404, SPAN 406"
+ },
+ {
+  "id": "arts-law-and-society-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): HIST 414, HIST 419, HIST 441, PPGA 391A"
+ },
+ {
+  "id": "arts-mathematics-combined-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): MATH 331"
+ },
+ {
+  "id": "arts-philosophy-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): PHIL 150"
+ },
+ {
+  "id": "arts-philosophy-political-science-combined-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): POLI 349"
+ },
+ {
+  "id": "arts-political-science-international-relations-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): HIST 408, HIST 409, HIST 432"
+ },
+ {
+  "id": "arts-psychology-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): PSYC 304, PSYC 466, PSYC 321, PSYC 463, PSYC 469"
+ },
+ {
+  "id": "arts-psychology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): PSYC 304, PSYC 360, PSYC 466, PSYC 321, PSYC 463, PSYC 469"
+ },
+ {
+  "id": "arts-urban-studies-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): URST 351, GEOB 370"
+ },
+ {
+  "id": "arts-urban-studies-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): ENDS 211, ENDS 220, ENDS 221, ENDS 231, CLST 331, CLST 332, GEOB 401, HIST 439, NEST 319, NEST 402"
+ },
+ {
+  "id": "arts-writing-and-communication-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): COMM 390"
+ },
+ {
+  "id": "arts-film-production-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): SLAV 307, SPAN 404"
+ },
+ {
+  "id": "sci-behavioural-neuroscience-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): PSYC 270, PSYC 321, PSYC 364, PSYC 463, PSYC 466, PSYC 469"
+ },
+ {
+  "id": "sci-behavioural-neuroscience-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): PSYC 270, PSYC 321, PSYC 364, PSYC 463, PSYC 466, PSYC 469"
+ },
+ {
+  "id": "sci-behavioural-neuroscience-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): PSYC 360, PSYC 362, PSYC 364, PSYC 366, PSYC 369, PSYC 372, PSYC 373, PSYC 374, PSYC 375, PSYC 376, PSYC 377, PSYC 378, PSYC 379, PSYC 380, PSYC 381, PSYC 382, PSYC 383, PSYC 384, PSYC 385, PSYC 386, PSYC 387, PSYC 463, PSYC 464, PSYC 465, PSYC 466, PSYC 467, PSYC 468, PSYC 469, PSYC 470, PSYC 471, PSYC 473, PSYC 474, PSYC 475, PSYC 476, PSYC 477, PSYC 478, PSYC 479, PSYC 480, PSYC 481, PSYC 482, PSYC 483, PSYC 484, PSYC 485, PSYC 486, PSYC 487"
+ },
+ {
+  "id": "sci-biology-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-biology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-animal-biology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-cell-and-developmental-biology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-conservation-biology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-ecology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-evolutionary-biology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-marine-biology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-plant-biology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301, BIOL 444"
+ },
+ {
+  "id": "sci-biotechnology-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): COMR 383"
+ },
+ {
+  "id": "sci-chemistry-another-science-subject-combined-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CHEM 113"
+ },
+ {
+  "id": "sci-computer-science-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): STAT 241"
+ },
+ {
+  "id": "sci-computer-science-another-science-subject-combined-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): STAT 241"
+ },
+ {
+  "id": "sci-computer-science-physics-combined-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CHEM 201"
+ },
+ {
+  "id": "sci-computer-science-mathematics-combined-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): MATH 433, MATH 434, MATH 435, MATH 436, MATH 438, MATH 439"
+ },
+ {
+  "id": "sci-computer-science-and-software-engineering-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): STAT 241, EECE 443, EECE 494"
+ },
+ {
+  "id": "sci-computer-science-and-software-engineering-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): EECE 443, EECE 494"
+ },
+ {
+  "id": "sci-data-science-minor",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 436C, COMM 486I, STAT 447B"
+ },
+ {
+  "id": "sci-environmental-sciences-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340, POLI 375A"
+ },
+ {
+  "id": "sci-environmental-sciences-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340, POLI 375A"
+ },
+ {
+  "id": "sci-geographical-sciences-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CPSC 301"
+ },
+ {
+  "id": "sci-geology-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GEOB 270"
+ },
+ {
+  "id": "sci-geological-sciences-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GEOB 270"
+ },
+ {
+  "id": "sci-geology-another-subject-combined-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): GEOB 270"
+ },
+ {
+  "id": "sci-biophysics-combined-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): MICB 424"
+ },
+ {
+  "id": "sci-mathematics-statistics-combined-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): MATH 331, MATH 416, MATH 417, MATH 429, MATH 433, MATH 434, MATH 435, MATH 436, MATH 438, MATH 439"
+ },
+ {
+  "id": "fory-forest-resources-management-cif-concentration",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CONS 340, FNLG 101, FNSP 210"
+ },
+ {
+  "id": "fory-forest-resources-management-minor-commerce",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): FOPR 261, FOPR 262, FRST 270, CONS 340, FNLG 101, FNSP 210, WOOD 474, NRES 340"
+ },
+ {
+  "id": "fory-forest-operations-hpe-bsf",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): CONS 340, NRES 340"
+ },
+ {
+  "id": "fory-bioeconomy-sciences-and-technology-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340"
+ },
+ {
+  "id": "fory-conservation-global-perspectives-stream",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340"
+ },
+ {
+  "id": "fory-forest-management-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340"
+ },
+ {
+  "id": "fory-forest-management-cif-concentration",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340"
+ },
+ {
+  "id": "fory-forest-operations-hpe-stream",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340"
+ },
+ {
+  "id": "fory-forest-sciences-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340"
+ },
+ {
+  "id": "fory-forest-sciences-honours",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340"
+ },
+ {
+  "id": "fory-wood-products-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): WOOD 120"
+ },
+ {
+  "id": "fory-natural-resources-education-dual-degree-conservation",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340, NRES 443, EDUC 403, EDUC 404"
+ },
+ {
+  "id": "fory-natural-resources-education-dual-degree-forest-sciences",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): NRES 340, NRES 239, NRES 339, NRES 443, NRES 490"
+ },
+ {
+  "id": "apsc-manufacturing-engineering-major",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): MANU 230"
+ },
+ {
+  "id": "kin-neuromechanical-physiological-sciences",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): KIN 420"
+ },
+ {
+  "id": "kin-social-behavioural-sciences",
+  "status": "stale-codes",
+  "notes": "Calendar page names courses absent from the current course dataset (retired/renumbered): KIN 468"
+ }
+]
