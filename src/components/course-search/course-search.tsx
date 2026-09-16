@@ -343,7 +343,7 @@ export function CourseSearchField({
   };
 
   const handleOverlayKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && showOverlay) {
       event.preventDefault();
       setOpen(false);
       restoreInputFocus();

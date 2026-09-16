@@ -99,15 +99,25 @@ describe("CourseSearchField overlay", () => {
     const input = screen.getByRole("combobox") as HTMLInputElement;
     await screen.findByRole("listbox");
 
-    fireEvent.keyDown(input, { key: "Escape" });
+    expect(fireEvent.keyDown(input, { key: "Escape" })).toBe(false);
     expect(input.value).toBe("CPSC");
     expect(input.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(input);
+    expect(fireEvent.keyDown(input, { key: "Escape" })).toBe(true);
 
     fireEvent.focus(input);
     expect(input.getAttribute("aria-expanded")).toBe("true");
     fireEvent.pointerDown(document.body);
     expect(input.getAttribute("aria-expanded")).toBe("false");
     expect(baseProps.onSelect).not.toHaveBeenCalled();
+  });
+
+  it("leaves Escape unconsumed when an empty query has no visible overlay", () => {
+    render(<CourseSearchField {...baseProps} value="" list={null} presentation="overlay" />);
+    const input = screen.getByRole("combobox");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(input.getAttribute("aria-expanded")).toBe("false");
+    expect(fireEvent.keyDown(input, { key: "Escape" })).toBe(true);
   });
 
   it("dismisses suggestions when Tab moves to the next field", async () => {
