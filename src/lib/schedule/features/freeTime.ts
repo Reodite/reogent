@@ -11,12 +11,7 @@ export const FREE_WINDOW_START = 8 * 60;
 export const FREE_WINDOW_END = 20 * 60;
 export const MIN_FREE_LENGTH = 30;
 
-/**
- * Intervals where EVERY selected person is free: union all busy intervals per
- * day, coalesce overlaps, then take the complement within the working window.
- * Slivers shorter than MIN_FREE_LENGTH are dropped — a 10-minute gap isn't a
- * usable lunch slot.
- */
+/** Finds intervals when all selected people are free within the window, excluding gaps below minLength. */
 export function commonFreeIntervals(
   blocks: BlockInstance[],
   days: DayCode[],
@@ -26,27 +21,13 @@ export function commonFreeIntervals(
 ): FreeInterval[] {
   const free: FreeInterval[] = [];
   for (const day of days) {
-    const busy = blocks
-      .filter((b) => b.day === day)
-      .map((b) => ({ start: b.startMin, end: b.endMin }))
-      .sort((a, b) => a.start - b.start);
+    const busy = blocks.filter((b) => b.day === day).sort((a, b) => a.startMin - b.startMin);
 
-    // coalesce overlapping/adjacent busy intervals
-    const merged: { start: number; end: number }[] = [];
-    for (const interval of busy) {
-      const last = merged[merged.length - 1];
-      if (last && interval.start <= last.end) {
-        last.end = Math.max(last.end, interval.end);
-      } else {
-        merged.push({ ...interval });
-      }
-    }
-
-    // complement within the window
     let cursor = windowStart;
-    for (const interval of merged) {
-      if (interval.start > cursor) free.push({ day, startMin: cursor, endMin: Math.min(interval.start, windowEnd) });
-      cursor = Math.max(cursor, interval.end);
+    for (const interval of busy) {
+      if (interval.startMin > cursor)
+        free.push({ day, startMin: cursor, endMin: Math.min(interval.startMin, windowEnd) });
+      cursor = Math.max(cursor, interval.endMin);
       if (cursor >= windowEnd) break;
     }
     if (cursor < windowEnd) free.push({ day, startMin: cursor, endMin: windowEnd });
