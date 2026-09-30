@@ -22,6 +22,7 @@ const parser = new XMLParser({
 const MAX_COMPRESSED_BYTES = 10 * 1024 * 1024;
 const MAX_ENTRY_BYTES = 2 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 4 * 1024 * 1024;
+const MAX_GRID_TEXT_UNITS = 2 * 1024 * 1024;
 const MAX_ENTRIES = 128;
 const INPUT_CHUNK_BYTES = 1024;
 const SHEET_PATH = /^xl\/worksheets\/sheet\d+\.xml$/;
@@ -253,6 +254,7 @@ export function readXlsx(buf: ArrayBuffer): SheetGrid {
   const xmlRows = doc?.worksheet?.sheetData?.row ?? [];
 
   const rows: SheetRow[] = [];
+  let textUnits = 0;
   for (const xmlRow of Array.isArray(xmlRows) ? xmlRows : [xmlRows]) {
     const rowNum = parseInt(xmlRow["@_r"] ?? "0", 10);
     const cells: Record<string, string> = {};
@@ -269,7 +271,12 @@ export function readXlsx(buf: ArrayBuffer): SheetGrid {
       } else {
         value = textOf(c.v);
       }
-      if (ref && value !== "") cells[colOf(ref)] = value;
+      if (ref && value !== "") {
+        // Shared-string references can multiply downstream text processing without enlarging the ZIP.
+        textUnits += value.length;
+        if (textUnits > MAX_GRID_TEXT_UNITS) throw new Error("Expanded worksheet text exceeds size limit");
+        cells[colOf(ref)] = value;
+      }
     }
     if (Object.keys(cells).length > 0) rows.push({ rowNum, cells });
   }

@@ -122,6 +122,19 @@ describe("readXlsx", () => {
     expect(read(archive({ [sheetPath]: xml, "xl/worksheets/sheet2.xml": xml })).rows[0].cells.A).toBe("Schedule");
   });
 
+  it("bounds shared-string expansion across cell references", () => {
+    const text = "x".repeat(512 * 1024);
+    const cells = Array.from(
+      { length: 8 },
+      (_, index) => `<c r="${String.fromCharCode(65 + index)}1" t="s"><v>0</v></c>`,
+    ).join("");
+    const bytes = archive({
+      "xl/sharedStrings.xml": `<sst><si><t>${text}</t></si></sst>`,
+      [sheetPath]: `<worksheet><sheetData><row r="1">${cells}</row></sheetData></worksheet>`,
+    });
+    expect(() => read(bytes)).toThrow(/worksheet text.*limit/i);
+  });
+
   it("caps compressed input at the reader boundary", () => {
     expect(() => readXlsx(new ArrayBuffer(10 * MiB + 1))).toThrow(/compressed.*limit/i);
   });
