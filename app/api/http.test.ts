@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readJson, requireJson } from "./http";
+import { json, readJson, requireJson } from "./http";
 
 const encoder = new TextEncoder();
 function request(body?: string | ReadableStream<Uint8Array>, headers: Record<string, string> = {}) {
@@ -14,6 +14,10 @@ function request(body?: string | ReadableStream<Uint8Array>, headers: Record<str
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+});
+
+it("prevents storage of JSON responses containing account data or tokens", () => {
+  expect(json({ token: "fixture" }).headers.get("cache-control")).toBe("no-store");
 });
 
 describe("requireJson", () => {

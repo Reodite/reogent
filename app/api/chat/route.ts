@@ -119,7 +119,7 @@ export async function POST(request: Request): Promise<Response> {
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-store",
         Connection: "keep-alive",
       },
     });

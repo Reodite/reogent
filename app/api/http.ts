@@ -1,6 +1,9 @@
 /** Shared helpers for the route handlers. */
 export const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
+  });
 
 export const serverError = (e: unknown) => {
   console.error(e);
