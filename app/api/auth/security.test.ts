@@ -45,6 +45,17 @@ describe("credential request boundaries", () => {
     expect(getUserByUsername).not.toHaveBeenCalled();
   });
 
+  it("limits account guesses across different trusted client addresses", async () => {
+    vi.stubEnv("TRUSTED_CLIENT_IP_HEADER", "x-real-ip");
+    const { POST } = await import("./login/route");
+    for (let index = 0; index < 11; index++) {
+      const input = request({ username: "alice", password: "wrong-password" });
+      input.headers.set("x-real-ip", `203.0.113.${index}`);
+      expect((await POST(input)).status).toBe(index < 10 ? 401 : 429);
+    }
+    expect(getUserByUsername).toHaveBeenCalledTimes(10);
+  });
+
   it("cannot reset registration limits by changing forwarded headers", async () => {
     const { POST } = await import("./register/route");
     for (let index = 0; index < 5; index++) {

@@ -34,6 +34,20 @@ describe("rate limiter admission boundaries", () => {
     expect(checkRateLimit("overflow", config).allowed).toBe(true);
   });
 
+  it("canonicalizes IPv6 identities and rejects scoped addresses", async () => {
+    vi.stubEnv("TRUSTED_CLIENT_IP_HEADER", "x-real-ip");
+    const { getRateLimitIdentity } = await import("./rate-limit");
+    const identity = (address: string) =>
+      getRateLimitIdentity(
+        new Request("http://localhost", {
+          headers: { "x-real-ip": address },
+        }),
+      );
+    expect(identity("2001:4860:4860:0:0:0:0:8888")).toBe(identity("2001:4860:4860::8888"));
+    expect(identity("2001:4860:4860::8888")).not.toBe("unknown");
+    expect(identity("fe80::1%eth0")).toBe("unknown");
+  });
+
   it("ignores spoofed proxy headers unless an operator names a trusted header", async () => {
     vi.stubEnv("TRUSTED_CLIENT_IP_HEADER", "");
     const { getRateLimitIdentity } = await import("./rate-limit");
