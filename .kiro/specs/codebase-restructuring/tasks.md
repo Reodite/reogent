@@ -23,14 +23,14 @@ Keep the existing directory layout and implement four ownership changes in order
   - [x] 2.3 Run model, co-op, store, planner, and full repository gates; commit and push.
     - _Requirements: 2.2, 2.3, 2.4, 2.5, 5.4, 5.5_
 
-- [ ] 3. Extract whole-plan validation
-  - [ ] 3.1 Move the existing calculation into `validation.ts`, retain the memoized caller, and add direct behavioral examples.
+- [x] 3. Extract whole-plan validation
+  - [x] 3.1 Move the existing calculation into `validation.ts`, retain the memoized caller, and add direct behavioral examples.
     - Preserve traversal, unknown courses, duplicate and ignored issues, and per-term snapshot sharing.
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
-  - [ ] 3.2 Add the generated completion-snapshot check.
+  - [x] 3.2 Add the generated completion-snapshot check.
     - **Property 1: Stable completion snapshots**
     - **Validates: Requirements 3.2, 3.4**
-  - [ ] 3.3 Compare the extracted calculation with its source and run planner plus full repository gates; commit and push.
+  - [x] 3.3 Compare the extracted calculation with its source and run planner plus full repository gates; commit and push.
     - _Requirements: 3.1, 3.3, 3.5, 5.4, 5.5_
 
 - [ ] 4. Extract import-review presentation and finish verification

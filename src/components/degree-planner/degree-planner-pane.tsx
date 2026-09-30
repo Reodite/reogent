@@ -32,7 +32,6 @@ import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofi
 import { getProgramIndex, getRequirementsFor, resolveProgram } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
 import type { CourseIndexEntry } from "@/src/shared/course-index";
-import { isSatisfied, missingPrereqs, parsePrereq } from "@/src/shared/prereq-ast";
 import {
   closestCenter,
   DndContext,
@@ -56,7 +55,7 @@ import { SEASON_META, usePlanner, type Year } from "./planner-store";
 import { ProgramProgress, ProgramSelectors, ProgramSelectorsLoading } from "./program-requirements";
 import { TrashBin } from "./trash-bin";
 import { usePlanSync } from "./use-plan-sync";
-import { describeIssue, EMPTY_VALIDATION, findDuplicateCourseCodes, type BlockValidation } from "./validation";
+import { describeIssue, EMPTY_VALIDATION, validatePlan, type BlockValidation } from "./validation";
 import { YearColumn } from "./year-column";
 
 const ACTIVE_BLOCK_PREFIX = "block:";
@@ -205,50 +204,7 @@ export function DegreePlannerPane() {
   // whenever the years tree changes or the course index resolves.
   const ignoredSet = useMemo(() => new Set(ignoredBlocks), [ignoredBlocks]);
 
-  const validations = useMemo<Map<string, BlockValidation>>(() => {
-    const out = new Map<string, BlockValidation>();
-    if (!courseIndex) return out;
-    const duplicateCodes = findDuplicateCourseCodes(years);
-    const cumulative = new Set<string>();
-    for (const year of years) {
-      for (const term of year.terms) {
-        const codesThisTerm = new Set(term.blocks.map((b) => b.code));
-        const completedBefore = new Set(cumulative);
-        const completedSameOrBefore = new Set([...cumulative, ...codesThisTerm]);
-        for (const block of term.blocks) {
-          const entry = courseIndex.get(block.code);
-          const missing = duplicateCodes.has(block.code) ? ["duplicate course in plan"] : [];
-          if (!entry) {
-            const ignored = ignoredSet.has(block.id);
-            out.set(block.id, {
-              ok: missing.length === 0 || ignored,
-              missing,
-              completedBefore,
-              completedSameOrBefore,
-            });
-            continue;
-          }
-          const prereqAst = parsePrereq(entry.prerequisite);
-          const coreqAst = parsePrereq(entry.corequisite);
-          if (prereqAst && !isSatisfied(prereqAst, completedBefore)) {
-            missing.push(...missingPrereqs(prereqAst, completedBefore).map((m) => `prereq ${m}`));
-          }
-          if (coreqAst && !isSatisfied(coreqAst, completedSameOrBefore)) {
-            missing.push(...missingPrereqs(coreqAst, completedSameOrBefore).map((m) => `coreq ${m}`));
-          }
-          const ignored = ignoredSet.has(block.id);
-          out.set(block.id, {
-            ok: missing.length === 0 || ignored,
-            missing,
-            completedBefore,
-            completedSameOrBefore,
-          });
-        }
-        for (const code of codesThisTerm) cumulative.add(code);
-      }
-    }
-    return out;
-  }, [years, courseIndex, ignoredSet]);
+  const validations = useMemo(() => validatePlan(years, courseIndex, ignoredSet), [years, courseIndex, ignoredSet]);
 
   const plannedCodes = useMemo(() => {
     const out = new Set<string>();
