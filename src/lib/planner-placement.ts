@@ -1,6 +1,6 @@
-import { TERM_CREDIT_TARGET, type Year } from "@/src/components/degree-planner/planner-store";
 import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { isSatisfied, parsePrereq } from "@/src/shared/prereq-ast";
+import { TERM_CREDIT_TARGET, type Year } from "./planner-model";
 
 export interface CourseTarget {
   yearId: string;

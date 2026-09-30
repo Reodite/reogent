@@ -1,6 +1,6 @@
-import { createPlannerYear } from "@/src/components/degree-planner/planner-store";
 import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { describe, expect, it } from "vitest";
+import { createPlannerYear } from "./planner-model";
 import { findCourseTarget } from "./planner-placement";
 
 function course(code: string, prerequisite: string | null = null): CourseIndexEntry {

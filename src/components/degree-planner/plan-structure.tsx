@@ -5,9 +5,9 @@
 // remain editable on the board.
 import { Button } from "@/src/components/ui/button";
 import { Checkbox, SelectInput } from "@/src/components/ui/form-controls";
-import { applyCoopSequence, COOP_SUPPORT } from "@/src/lib/coop";
+import { COOP_SUPPORT } from "@/src/lib/coop";
 import { useState } from "react";
-import { MAX_YEARS, MIN_YEARS, usePlanner } from "./planner-store";
+import { applyCoopSequence, MAX_YEARS, MIN_YEARS, usePlanner } from "./planner-store";
 
 export function PlanStructure() {
   const years = usePlanner((s) => s.years);

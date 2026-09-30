@@ -13,14 +13,14 @@ Keep the existing directory layout and implement four ownership changes in order
   - [x] 1.2 Verify declaration equality, route/pane tests, and full repository gates; commit and push.
     - _Requirements: 1.1, 1.3, 1.4, 5.4, 5.5_
 
-- [ ] 2. Separate the planner model from persistence
-  - [ ] 2.1 Characterize co-op application, extract model declarations and constructors, and move co-op application to the existing store.
+- [x] 2. Separate the planner model from persistence
+  - [x] 2.1 Characterize co-op application, extract model declarations and constructors, and move co-op application to the existing store.
     - Keep store exports compatible and use the model directly from placement, autofill, and co-op calculations.
     - Preserve one `usePlanner` instance and the persisted schema.
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
-  - [ ] 2.2 Add calculation-import isolation checks and Biome boundary rules; verify prohibited-import negative controls.
+  - [x] 2.2 Add calculation-import isolation checks and Biome boundary rules; verify prohibited-import negative controls.
     - _Requirements: 2.1, 5.1, 5.2, 5.3_
-  - [ ] 2.3 Run model, co-op, store, planner, and full repository gates; commit and push.
+  - [x] 2.3 Run model, co-op, store, planner, and full repository gates; commit and push.
     - _Requirements: 2.2, 2.3, 2.4, 2.5, 5.4, 5.5_
 
 - [ ] 3. Extract whole-plan validation
