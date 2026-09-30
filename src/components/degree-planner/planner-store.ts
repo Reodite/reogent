@@ -6,62 +6,41 @@
 // Course metadata (title, credits) is NOT persisted; the planner re-resolves
 // each block's code against the course index at render time so catalog
 // updates flow through to existing plans.
+import { buildCoopSequence, type CoopSequenceResult } from "@/src/lib/coop";
+import {
+  createPlannerYear,
+  DEFAULT_YEARS,
+  isSummer,
+  MAX_YEARS,
+  MIN_YEARS,
+  createPlannerId as newId,
+  createStudyTerm as newTerm,
+  SEASON_ORDER,
+  type PlannedBlock,
+  type Season,
+  type Term,
+  type TermKind,
+  type Year,
+} from "@/src/lib/planner-model";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-// Seasons following the UBC calendar: Winter session terms 1/2, and the
-// optional Summer session (two half-length terms). A year always has the two
-// winter terms; summer terms are added per year on demand.
-export type Season = "w1" | "w2" | "s1" | "s2";
-
-// A term either holds courses ("study") or is a co-op work term. Work terms
-// hold no course blocks; they render as a distinct card and are excluded
-// from credit-load checks. Prereq validation still walks them so a work
-// term never counts its (empty) contents and simply passes time.
-export type TermKind = "study" | "coop";
-
-export interface SeasonMeta {
-  season: Season;
-  short: string;
-  months: string;
-}
-
-export const SEASON_META: Record<Season, SeasonMeta> = {
-  w1: { season: "w1", short: "Winter 1", months: "Sep–Dec" },
-  w2: { season: "w2", short: "Winter 2", months: "Jan–Apr" },
-  s1: { season: "s1", short: "Summer 1", months: "May–Jun" },
-  s2: { season: "s2", short: "Summer 2", months: "Jul–Aug" },
-};
-
-// Chronological season order: Summer 1 comes before Summer 2. Year terms
-// are always stored in this order (winters first, summers last).
-const SEASON_ORDER: Season[] = ["w1", "w2", "s1", "s2"];
-
-// Credit-load sanity bounds per season. Summer terms are half-length, so a
-// full summer term is ~6-8 credits; winter full-time is ~15.
-export const TERM_CREDIT_TARGET: Record<Season, number> = { w1: 15, w2: 15, s1: 7, s2: 7 };
-export const TERM_CREDIT_WARN: Record<Season, number> = { w1: 18, w2: 18, s1: 8, s2: 8 };
-
-export interface PlannedBlock {
-  id: string;
-  code: string;
-}
-
-export interface Term {
-  season: Season;
-  kind: TermKind;
-  blocks: PlannedBlock[];
-  // Transcript course code for a co-op work term (e.g. "ARTC 110"), shown as
-  // a label on the work-term card. Co-op credits don't count toward degree
-  // credits, so this is display-only — never a draggable block.
-  code?: string;
-}
-
-export interface Year {
-  id: string;
-  label: string;
-  terms: Term[];
-}
+export {
+  createPlannerYear,
+  DEFAULT_YEARS,
+  isSummer,
+  MAX_YEARS,
+  MIN_YEARS,
+  SEASON_META,
+  TERM_CREDIT_TARGET,
+  TERM_CREDIT_WARN,
+  type PlannedBlock,
+  type Season,
+  type SeasonMeta,
+  type Term,
+  type TermKind,
+  type Year,
+} from "@/src/lib/planner-model";
 
 // The undoable slice of the plan — everything an action touches. Captured
 // by reference (these fields are always replaced immutably) so snapshots
@@ -151,29 +130,6 @@ export function persistedSlice(s: PlannerState): PersistedPlan {
   };
 }
 
-export const MIN_YEARS = 3;
-export const MAX_YEARS = 6;
-export const DEFAULT_YEARS = 4;
-
-function newId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return Math.random().toString(36).slice(2);
-}
-
-function newTerm(season: Season): Term {
-  return { season, kind: "study", blocks: [] };
-}
-
-export function createPlannerYear(index: number): Year {
-  return {
-    id: newId(),
-    label: `Year ${index + 1}`,
-    terms: [newTerm("w1"), newTerm("w2")],
-  };
-}
-
 function initialYears(): Year[] {
   return Array.from({ length: DEFAULT_YEARS }, (_, i) => createPlannerYear(i));
 }
@@ -215,10 +171,6 @@ function commit(s: PlannerState, patch: Partial<PlannerState> | null): PlannerSt
     past: [...s.past, snapshot(s)].slice(-MAX_HISTORY),
     future: [],
   };
-}
-
-export function isSummer(season: Season): boolean {
-  return season === "s1" || season === "s2";
 }
 
 /** Returns years with every co-op term reset to study, or null when there was nothing to disable. */
@@ -305,6 +257,15 @@ export function migratePersistedPlan(persisted: unknown): PersistedPlan {
       ? raw.checkedRequirements.filter((key): key is string => typeof key === "string")
       : [],
   };
+}
+
+/** Applies a co-op template as one undoable planner action. */
+export function applyCoopSequence(faculty: string): CoopSequenceResult | null {
+  const planner = usePlanner.getState();
+  const result = buildCoopSequence(faculty, planner.years);
+  if (!result) return null;
+  planner.replaceYears(result.years);
+  return result;
 }
 
 export const usePlanner = create<PlannerState>()(

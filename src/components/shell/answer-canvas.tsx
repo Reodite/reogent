@@ -3,10 +3,11 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
-import { PANE_BY_ID, type CanvasView, type PaneState } from "@/src/components/shell/pane-registry";
+import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useWorkspaceHost, WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { Button } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
+import type { CanvasView, PaneState } from "@/src/shared/panes";
 import { useCallback, useRef, useState, type ComponentType } from "react";
 
 /**

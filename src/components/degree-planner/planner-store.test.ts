@@ -1,5 +1,29 @@
-import { describe, expect, it } from "vitest";
-import { disableCoopYears, migratePersistedPlan } from "./planner-store";
+import * as model from "@/src/lib/planner-model";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import * as store from "./planner-store";
+import {
+  applyCoopSequence,
+  createPlannerYear,
+  disableCoopYears,
+  migratePersistedPlan,
+  usePlanner,
+} from "./planner-store";
+
+vi.hoisted(() => {
+  vi.stubGlobal("localStorage", { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() });
+});
+afterAll(() => vi.unstubAllGlobals());
+
+it("re-exports the original planner model values without wrapping or copying them", () => {
+  expect(store.createPlannerYear).toBe(model.createPlannerYear);
+  expect(store.isSummer).toBe(model.isSummer);
+  expect(store.SEASON_META).toBe(model.SEASON_META);
+  expect(store.TERM_CREDIT_TARGET).toBe(model.TERM_CREDIT_TARGET);
+  expect(store.TERM_CREDIT_WARN).toBe(model.TERM_CREDIT_WARN);
+  expect(store.MIN_YEARS).toBe(model.MIN_YEARS);
+  expect(store.MAX_YEARS).toBe(model.MAX_YEARS);
+  expect(store.DEFAULT_YEARS).toBe(model.DEFAULT_YEARS);
+});
 
 describe("migratePersistedPlan", () => {
   it("maps legacy terms and creates both summer terms", () => {
@@ -43,6 +67,36 @@ describe("migratePersistedPlan", () => {
     expect(plan.years[0].terms.map((term) => term.season)).toEqual(["w1", "w2", "s1", "s2"]);
     expect(plan.years[0].terms[3]).toMatchObject({ kind: "coop", code: "COMM 380" });
     expect(plan.coop).toBe(true);
+  });
+});
+
+describe("applyCoopSequence", () => {
+  beforeEach(() => {
+    usePlanner.setState({
+      years: Array.from({ length: 4 }, (_, index) => createPlannerYear(index)),
+      past: [],
+      future: [],
+    });
+  });
+
+  it("keeps occupied study terms and applies the template as one reversible action", () => {
+    const original = usePlanner.getState().years;
+    original[2].terms[1].blocks.push({ id: "occupied", code: "CPSC 313" });
+    const result = applyCoopSequence("The Faculty of Science");
+    expect(result?.skippedTerms).toBe(1);
+    expect(usePlanner.getState().years).toBe(result?.years);
+    expect(usePlanner.getState().years[2].terms[1]).toEqual(original[2].terms[1]);
+    expect(usePlanner.getState().past).toHaveLength(1);
+    usePlanner.getState().undo();
+    expect(usePlanner.getState().years).toBe(original);
+    usePlanner.getState().redo();
+    expect(usePlanner.getState().years).toBe(result?.years);
+  });
+
+  it("leaves the store and history unchanged for unsupported faculties", () => {
+    const original = usePlanner.getState();
+    expect(applyCoopSequence("The School of Kinesiology")).toBeNull();
+    expect(usePlanner.getState()).toBe(original);
   });
 });
 

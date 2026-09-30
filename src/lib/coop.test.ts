@@ -1,6 +1,6 @@
-import { createPlannerYear } from "@/src/components/degree-planner/planner-store";
 import { describe, expect, it } from "vitest";
 import { buildCoopSequence } from "./coop";
+import { createPlannerYear } from "./planner-model";
 
 describe("buildCoopSequence", () => {
   it("rejects faculties without co-op", () => {

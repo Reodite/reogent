@@ -6,7 +6,6 @@ import { CourseExplorer } from "@/src/components/course-lookup/course-explorer";
 import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-search/course-search";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
-import type { PaneState } from "@/src/components/shell/pane-registry";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { Button } from "@/src/components/ui/button";
 import { LoadingStatus, RetryAlert, RetryState } from "@/src/components/ui/feedback";
@@ -17,6 +16,7 @@ import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
 import { defaultSession, SESSIONS } from "@/src/server/course-records";
 import { canonicalize } from "@/src/shared/course-code";
+import type { PaneState } from "@/src/shared/panes";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function SessionPicker({ session, onChange }: { session: string; onChange: (session: string) => void }) {

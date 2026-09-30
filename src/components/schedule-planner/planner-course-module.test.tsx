@@ -115,8 +115,10 @@ describe("PlannerCourseModule", () => {
 
     const lectureSelect = view.getByLabelText<HTMLSelectElement>("Lecture");
     expect(Array.from(lectureSelect.options, (option) => option.textContent)).toEqual(["Choose section", "101", "102"]);
-    expect(lectureSelect.className).toContain("min-h-11");
-    expect(lectureSelect.className).toContain("sm:min-h-9");
+    expect(lectureSelect.classList.contains("h-11")).toBe(true);
+    expect(lectureSelect.classList.contains("sm:h-9")).toBe(true);
+    expect(lectureSelect.classList.contains("neu-inset")).toBe(true);
+    expect(lectureSelect.classList.contains("rounded-lg")).toBe(true);
     const remove = view.getByRole("button", { name: "Remove CPSC 110 from 2026-27 Winter Term 1" });
     expect(remove.className).toContain("size-11");
     expect(remove.className).toContain("sm:size-8");
@@ -167,6 +169,50 @@ describe("PlannerCourseModule", () => {
 
     fireEvent.change(view.getByLabelText("Lecture"), { target: { value: "102" } });
     expect(onSelectSection).toHaveBeenCalledWith(baseProps.entries[0], sections[1]);
+  });
+
+  it("retains unavailable saved sections and links their warning to the native selector", () => {
+    const onSelectSection = vi.fn();
+    const view = render(
+      <PlannerCourseModule
+        {...baseProps}
+        doc={{ ...doc, sections: sections.filter((section) => section.section !== "101") }}
+        onSelectSection={onSelectSection}
+      />,
+    );
+    const select = view.getByLabelText<HTMLSelectElement>("Lecture");
+    expect(select.value).toBe("101");
+    expect(select.options[select.selectedIndex].textContent).toBe("101");
+    expect(select.getAttribute("aria-describedby")).toBe(
+      view.getByText("This saved section is no longer listed in the catalog.").id,
+    );
+    fireEvent.change(select, { target: { value: "" } });
+    expect(onSelectSection).toHaveBeenCalledWith(baseProps.entries[0], null);
+  });
+
+  it("keeps cached sections disabled when catalog loading fails", () => {
+    const onRetry = vi.fn();
+    const view = render(<PlannerCourseModule {...baseProps} doc={undefined} catalogError onRetry={onRetry} />);
+    const select = view.getByLabelText<HTMLSelectElement>("Lecture");
+    expect(select.disabled).toBe(true);
+    expect(select.value).toBe("101");
+    expect(view.getByText("Mon/Wed/Fri · 09:00–10:00")).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "Retry section options" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("preserves conflict paint and warning association", () => {
+    const id = entryId(baseProps.entries[0]);
+    const view = render(
+      <PlannerCourseModule
+        {...baseProps}
+        conflictingIds={new Set([id])}
+        conflictLabels={new Map([[id, ["MATH 100 101"]]])}
+      />,
+    );
+    const select = view.getByLabelText("Lecture");
+    expect(select.classList.contains("ring-error/60")).toBe(true);
+    expect(select.getAttribute("aria-describedby")).toBe(view.getByText("Overlaps MATH 100 101.").id);
   });
 
   it("expands additional component types when one is selected", () => {

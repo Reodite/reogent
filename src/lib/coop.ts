@@ -1,10 +1,4 @@
-import {
-  createPlannerYear,
-  usePlanner,
-  type Season,
-  type Term,
-  type Year,
-} from "@/src/components/degree-planner/planner-store";
+import { createPlannerId, createPlannerYear, isSummer, type Season, type Term, type Year } from "./planner-model";
 
 interface CoopCoursePlacement {
   code: string;
@@ -129,7 +123,7 @@ export function buildCoopSequence(faculty: string, currentYears: Year[]): CoopSe
   info.sequence.forEach(([yearIndex, season], sequenceIndex) => {
     const year = years[yearIndex];
     if (!year) return;
-    const seasons: Season[] = isSummerSeason(season) ? ["s1", "s2"] : [season];
+    const seasons: Season[] = isSummer(season) ? ["s1", "s2"] : [season];
     const terms = seasons.map((value) => ensureTerm(year, value));
     if (terms.some((term) => term.kind === "study" && term.blocks.length > 0)) {
       skippedTerms++;
@@ -151,20 +145,11 @@ export function buildCoopSequence(faculty: string, currentYears: Year[]): CoopSe
     if (!year) continue;
     const term = ensureTerm(year, placement.season);
     if (term.kind !== "study") continue;
-    term.blocks.push({ id: newBlockId(), code: placement.code });
+    term.blocks.push({ id: createPlannerId(), code: placement.code });
     plannedCodes.add(placement.code);
   }
 
   return { years, skippedTerms };
-}
-
-/** Applies a co-op template as one undoable planner action. */
-export function applyCoopSequence(faculty: string): CoopSequenceResult | null {
-  const planner = usePlanner.getState();
-  const result = buildCoopSequence(faculty, planner.years);
-  if (!result) return null;
-  planner.replaceYears(result.years);
-  return result;
 }
 
 function ensureTerm(year: Year, season: Season): Term {
@@ -176,16 +161,6 @@ function ensureTerm(year: Year, season: Season): Term {
   return term;
 }
 
-function isSummerSeason(season: Season): boolean {
-  return season === "s1" || season === "s2";
-}
-
 function seasonOrder(season: Season): number {
   return { w1: 0, w2: 1, s1: 2, s2: 3 }[season];
-}
-
-function newBlockId(): string {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2);
 }

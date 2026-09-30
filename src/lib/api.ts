@@ -1,7 +1,6 @@
 // Typed client for the /api/* contract. GeoJSON responses are cached client-side after the
 // first fetch.
 
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import {
   ApiError,
   type BuildingDetails,
@@ -16,6 +15,7 @@ import {
   type RouteResponse,
   type SessionSummary,
 } from "@/src/lib/api-types";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import type { StudentProfile } from "@/src/shared/profile";
 import type { FeatureCollection } from "geojson";
 

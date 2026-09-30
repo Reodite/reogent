@@ -7,18 +7,8 @@ import { Icon, type IconName } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PrereqTreePane } from "@/src/components/prereq-tree/prereq-tree-pane";
 import { SchedulePlannerPane } from "@/src/components/schedule-planner/schedule-planner-pane";
+import type { PaneId, PaneState } from "@/src/shared/panes";
 import { useCallback, type ComponentType } from "react";
-
-/** Identifies a pane surface registered in {@link PANE_REGISTRY}. The `(string & {})` tail permits entries defined outside this module. */
-export type PaneId =
-  "map" | "course-lookup" | "prereq-tree" | "degree-planner" | "schedule" | "calendar" | (string & {});
-
-/** Per-pane runtime state carried in `activeChannel.state`. Values are whatever the pane needs. */
-export type PaneState = Record<string, unknown>;
-
-/** A pane selection bound to runtime state: the single source of truth for what
- *  the Answer Canvas (AI Mode) or Full-Bleed Tool (Tools Mode) renders. */
-export type CanvasView = { paneId: PaneId; state: PaneState };
 
 export type PaneEntry<S extends PaneState = PaneState> = {
   id: PaneId;

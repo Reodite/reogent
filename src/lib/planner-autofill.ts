@@ -1,6 +1,6 @@
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
-import { TERM_CREDIT_TARGET, type Year } from "@/src/components/degree-planner/planner-store";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { parsePrereq, type Expr } from "@/src/shared/prereq-ast";
+import { TERM_CREDIT_TARGET, type Year } from "./planner-model";
 import { isRequirementMet, requirementKey, type ParsedProgramYears, type YearRequirement } from "./program-years";
 
 export interface AutofillPlacement {

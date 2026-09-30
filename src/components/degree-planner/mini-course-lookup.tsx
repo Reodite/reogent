@@ -2,9 +2,9 @@
 
 // Course search for the planner rail. It accepts Course Finder syntax and
 // title substrings, then exposes unplanned courses as draggable results.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { SearchInput } from "@/src/components/ui/form-controls";
 import { searchCourses } from "@/src/lib/planner-search";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { useMemo } from "react";
 import { LookupBlock } from "./lookup-block";
 import { usePlanner } from "./planner-store";

@@ -1,4 +1,6 @@
-import type { Year } from "./planner-store";
+import type { Year } from "@/src/lib/planner-model";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
+import { isSatisfied, missingPrereqs, parsePrereq } from "@/src/shared/prereq-ast";
 
 // Shared type for the per-block prereq/coreq evaluation result. Computed
 // once per planner render in degree-planner-pane.tsx (memoized) and passed
@@ -32,6 +34,56 @@ export interface BlockValidation {
   missing: string[];
   completedBefore: Set<string>;
   completedSameOrBefore: Set<string>;
+}
+
+/** Evaluates each placement against earlier-term prerequisites and same-or-earlier corequisites without mutating the plan. */
+export function validatePlan(
+  years: Year[],
+  courseIndex: Map<string, CourseIndexEntry> | null,
+  ignoredSet: Set<string>,
+): Map<string, BlockValidation> {
+  const out = new Map<string, BlockValidation>();
+  if (!courseIndex) return out;
+  const duplicateCodes = findDuplicateCourseCodes(years);
+  const cumulative = new Set<string>();
+  for (const year of years) {
+    for (const term of year.terms) {
+      const codesThisTerm = new Set(term.blocks.map((b) => b.code));
+      const completedBefore = new Set(cumulative);
+      const completedSameOrBefore = new Set([...cumulative, ...codesThisTerm]);
+      for (const block of term.blocks) {
+        const entry = courseIndex.get(block.code);
+        const missing = duplicateCodes.has(block.code) ? ["duplicate course in plan"] : [];
+        if (!entry) {
+          const ignored = ignoredSet.has(block.id);
+          out.set(block.id, {
+            ok: missing.length === 0 || ignored,
+            missing,
+            completedBefore,
+            completedSameOrBefore,
+          });
+          continue;
+        }
+        const prereqAst = parsePrereq(entry.prerequisite);
+        const coreqAst = parsePrereq(entry.corequisite);
+        if (prereqAst && !isSatisfied(prereqAst, completedBefore)) {
+          missing.push(...missingPrereqs(prereqAst, completedBefore).map((m) => `prereq ${m}`));
+        }
+        if (coreqAst && !isSatisfied(coreqAst, completedSameOrBefore)) {
+          missing.push(...missingPrereqs(coreqAst, completedSameOrBefore).map((m) => `coreq ${m}`));
+        }
+        const ignored = ignoredSet.has(block.id);
+        out.set(block.id, {
+          ok: missing.length === 0 || ignored,
+          missing,
+          completedBefore,
+          completedSameOrBefore,
+        });
+      }
+      for (const code of codesThisTerm) cumulative.add(code);
+    }
+  }
+  return out;
 }
 
 /** Turns an internal `missing` token into a sentence the user can act on. */

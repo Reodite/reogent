@@ -13,7 +13,6 @@
 //   wrote, and right to include a trailing ")" — so what gets painted
 //   matches what UBC bracketed, regardless of whether their phrasing
 //   uses "either", "one of", "any of", labeled (a)/(b) lists, etc.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
@@ -22,6 +21,7 @@ import { FloatingPanel } from "@/src/components/ui/floating-panel";
 import { Heading } from "@/src/components/ui/heading";
 import { InlineLink } from "@/src/components/ui/inline-action";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { isSatisfied, type Expr } from "@/src/shared/prereq-ast";
 import { Fragment, useEffect, useState, type ReactNode, type RefObject } from "react";
 import { describeIssue } from "./validation";

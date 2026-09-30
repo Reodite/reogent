@@ -8,7 +8,7 @@
 // map's camera + selected building) survive the shell writing `{ highlight }`
 // for the same pane, and vice versa.
 
-import type { PaneState } from "@/src/components/shell/pane-registry";
+import type { PaneState } from "@/src/shared/panes";
 
 const KEY = "reodite.pane-state";
 

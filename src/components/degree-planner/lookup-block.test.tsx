@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LookupBlock } from "./lookup-block";

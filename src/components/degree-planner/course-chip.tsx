@@ -1,9 +1,9 @@
 "use client";
 
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { Disclosure } from "@/src/components/ui/disclosure";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { parsePrereq } from "@/src/shared/prereq-ast";
 import type { DraggableSyntheticListeners } from "@dnd-kit/core";
 import { AnimatePresence } from "motion/react";

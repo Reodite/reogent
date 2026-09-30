@@ -1,6 +1,6 @@
 "use client";
 
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CourseChip } from "./course-chip";

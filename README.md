@@ -88,6 +88,13 @@ scripts/
 └── ingest.ts                 Index datasets into Meilisearch
 ```
 
+### Module ownership
+
+- `src/shared/` owns cross-layer contracts, including course-index and pane state types. Routes and UI registries consume these contracts.
+- `src/lib/` owns client calculations and helpers. Planner calculations use `planner-model.ts`; the feature-local `planner-store.ts` owns Zustand, persistence, migration, and undo/redo.
+- `src/components/ui/` owns shared visual primitives. Feature components compose them and retain feature-specific behavior.
+- Biome rejects `@/` imports from client helpers into routes or components, from shared modules into application layers, and from components into route entrypoints.
+
 ## Data
 
 `ubc-unified-data` is a git submodule holding scraped UBC datasets: courses, tuition, building and walking GeoJSON, study spaces, events, and grade distributions (`data/grades/`, collected from [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data) by the submodule's `grades` collector).

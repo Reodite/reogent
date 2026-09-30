@@ -3,10 +3,10 @@
 // One year column: label + a stack of TermSections (winter pair always,
 // summer session when enabled), plus the per-year summer toggle. Summer
 // presence is per-year — a co-op year may skip it while others keep it.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { isSummer, usePlanner, type Year } from "./planner-store";
 import { TermSection } from "./term-section";

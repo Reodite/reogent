@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import { FullBleedTool } from "@/src/components/shell/full-bleed-tool";
-import type { CanvasView } from "@/src/components/shell/pane-registry";
+import type { CanvasView } from "@/src/shared/panes";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 

@@ -2,10 +2,9 @@
 
 // Year-by-year requirement checklist. Course rows support drag-add and
 // click-add; manual checks cover transfer credit and non-course requirements.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
-import { CheckboxMark as PlannerCheckboxMark } from "@/src/components/ui/form-controls";
+import { CheckboxMark as PlannerCheckboxMark, SelectInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
 import { findCourseTarget } from "@/src/lib/planner-placement";
 import {
@@ -14,6 +13,7 @@ import {
   type ParsedProgramYears,
   type YearRequirement,
 } from "@/src/lib/program-years";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState, type ReactNode } from "react";
@@ -253,12 +253,14 @@ function CourseRequirementRow({
         credits={item.credits}
         secondary={
           (choices.length > 1 || partial) && (
-            <span className="text-muted mt-0.5 flex items-center gap-1 text-xs">
+            <span className="text-muted mt-0.5 flex flex-wrap items-center gap-1 text-xs">
               {choices.length > 1 && (
-                <select
+                <SelectInput
+                  controlSize="compact"
+                  width="auto"
                   value={selectedCode}
                   onChange={(event) => setChosenCode(event.target.value)}
-                  className="neu-inset bg-surface-container-low text-on-surface h-6 max-w-full rounded-md px-1 text-xs"
+                  className="max-w-full min-w-0"
                   aria-label="Course alternative"
                 >
                   {choices.map((code) => (
@@ -266,7 +268,7 @@ function CourseRequirementRow({
                       {code}
                     </option>
                   ))}
-                </select>
+                </SelectInput>
               )}
               {partial && <span>{partial}</span>}
             </span>

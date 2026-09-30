@@ -6,7 +6,7 @@
 // is nothing to close, so the pane gets the full card height. Panes with a
 // titlebar portal (prereq tree) fall back to their own in-pane chrome here.
 import { AnswerCanvas } from "@/src/components/shell/answer-canvas";
-import type { CanvasView } from "@/src/components/shell/pane-registry";
+import type { CanvasView } from "@/src/shared/panes";
 
 export function FullBleedTool({ view }: { view: CanvasView | null }) {
   return <AnswerCanvas view={view} titlebar={false} />;
