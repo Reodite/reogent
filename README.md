@@ -119,12 +119,15 @@ Requirements: Node.js 24, Docker.
 npm install
 git submodule update --init
 cp .env.example .env
+# Configure the secrets in .env before starting services.
 docker compose up -d postgres meilisearch
 npm run ingest
 npm run dev
 ```
 
-The server opens at http://localhost:3000 and applies the Postgres schema on startup. The sample environment points host processes at `localhost`; Docker Compose overrides those service URLs with container hostnames.
+Generate a separate value with `openssl rand -hex 32` for `POSTGRES_PASSWORD`, `MEILI_MASTER_KEY`, and `JWT_SECRET`. Set the Postgres password in `DATABASE_URL` too. Docker Compose refuses missing database or search credentials and binds their host ports to loopback. The development container also binds to loopback; keep development servers off public networks.
+
+The server opens at http://localhost:3000 and applies the Postgres schema on startup. The sample environment points host processes at `localhost`; Docker Compose overrides those service URLs with container hostnames. Put production traffic behind an HTTPS reverse proxy; configure TLS, HSTS, request/concurrency limits, and firewall rules there. Changing `POSTGRES_PASSWORD` in `.env` does not rotate an existing database user's password. Rotate it in Postgres and update dependent configuration together.
 
 `npm run ingest` loads the root `.env` when present and preserves variables you set in the shell or Docker. Set `MEILI_MASTER_KEY` to the key used by the Meilisearch service. Ingestion attempts the remaining indexes after a failure and exits nonzero if any index fails.
 
