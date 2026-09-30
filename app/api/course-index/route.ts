@@ -1,4 +1,4 @@
-import { rateLimitResponse } from "@/src/server/rate-limit";
+import { getRateLimitIdentity, rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
 import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { serverError } from "../http";
@@ -40,7 +40,7 @@ async function loadIndex(): Promise<CourseIndexEntry[]> {
  *  The Prereq Tree pane loads this once and builds graphs + type-ahead suggestions client-side. */
 export async function GET(request: Request): Promise<Response> {
   try {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ip = getRateLimitIdentity(request);
     const limited = rateLimitResponse(`course-index:${ip}`, COURSE_INDEX_LIMIT);
     if (limited) return limited;
     const courses = await loadIndex();

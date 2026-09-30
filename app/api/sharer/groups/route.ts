@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { createGroup, listGroups } from "@/src/server/sharer/store";
-import { json, requireJson, serverError } from "../../http";
+import { json, readJson, requireJson, serverError } from "../../http";
 
 /** GET /api/sharer/groups — groups the caller belongs to. */
 export async function GET(request: Request): Promise<Response> {
@@ -21,12 +21,9 @@ export async function POST(request: Request): Promise<Response> {
     const ctError = requireJson(request);
     if (ctError) return ctError;
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return json({ error: "Invalid JSON body" }, 400);
-    }
+    const result = await readJson(request);
+    if (result instanceof Response) return result;
+    const { body } = result;
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return json({ error: "Body must be an object" }, 400);
     }

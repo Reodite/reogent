@@ -1,7 +1,7 @@
 import { requireUser } from "@/src/server/auth";
 import { castVote } from "@/src/server/pulse/store";
 import { rateLimitResponse } from "@/src/server/rate-limit";
-import { json, requireJson, serverError } from "../../http";
+import { json, readJson, requireJson, serverError } from "../../http";
 
 // Generous enough to swipe through a full round quickly; blocks scripted tally-stuffing.
 const VOTE_LIMIT = { windowMs: 60_000, maxRequests: 60 };
@@ -17,12 +17,9 @@ export async function POST(request: Request): Promise<Response> {
     const limited = rateLimitResponse(`pulse-vote:${user.sub}`, VOTE_LIMIT);
     if (limited) return limited;
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return json({ error: "Request body must be valid JSON" }, 400);
-    }
+    const parsed = await readJson(request);
+    if (parsed instanceof Response) return parsed;
+    const { body } = parsed;
     const { question_id: questionId, agree } = (body ?? {}) as { question_id?: unknown; agree?: unknown };
     if (!Number.isInteger(questionId) || typeof agree !== "boolean") {
       return json({ error: "Body must include an integer question_id and a boolean agree" }, 400);

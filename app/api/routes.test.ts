@@ -13,6 +13,7 @@ vi.mock("@/src/server/sessions/store", () => ({
   getSessionMessages: vi.fn(async (_sub: string, id: string) =>
     id === "mine" ? [{ role: "user", content: "q" }] : null,
   ),
+  canWriteSession: vi.fn(async () => true),
   appendExchange: vi.fn(async () => {}),
   updateSessionTitle: vi.fn(async () => {}),
 }));
@@ -119,7 +120,7 @@ describe("POST /api/chat", () => {
     consoleError.mockRestore();
     expect(res.status).toBe(200);
     const events = await readStream(res);
-    expect(events).toContainEqual({ type: "error", message: "bedrock down" });
+    expect(events).toContainEqual({ type: "error", message: "Could not complete the response. Please try again." });
   });
 });
 

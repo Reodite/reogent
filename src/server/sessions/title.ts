@@ -4,7 +4,12 @@ import { updateSessionTitle } from "../sessions/store";
 const TITLE_PROMPT = `Generate a short title (max 60 chars) for this conversation based on the user's question and the assistant's response. Return ONLY the title text, no quotes, no punctuation at the end.`;
 
 /** Fire-and-forget: generates a title from the first exchange and updates the DB. */
-export function generateSessionTitle(sessionId: string, userMessage: string, assistantMessage: string): void {
+export function generateSessionTitle(
+  userId: string,
+  sessionId: string,
+  userMessage: string,
+  assistantMessage: string,
+): void {
   void (async () => {
     try {
       const result = await converse({
@@ -29,7 +34,7 @@ export function generateSessionTitle(sessionId: string, userMessage: string, ass
         .replace(/^["']|["']$/g, "") // strip wrapping quotes
         .slice(0, 60);
       if (raw) {
-        await updateSessionTitle(sessionId, raw);
+        await updateSessionTitle(userId, sessionId, raw);
       }
     } catch (e) {
       console.error("[title-gen] Failed to generate session title:", e);

@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { getPlan, savePlan } from "@/src/server/plans";
-import { json, requireJson, serverError } from "../http";
+import { json, readJson, requireJson, serverError } from "../http";
 
 // Generous ceiling for a serialized plan (a full 6-year board is a few KB);
 // blocks arbitrary-blob abuse of the JSONB column.
@@ -25,14 +25,9 @@ export async function PUT(request: Request): Promise<Response> {
     const ctError = requireJson(request);
     if (ctError) return ctError;
 
-    const text = await request.text();
-    if (text.length > MAX_PLAN_BYTES) return json({ error: "Plan too large" }, 413);
-    let body: unknown;
-    try {
-      body = JSON.parse(text);
-    } catch {
-      return json({ error: "Invalid JSON body" }, 400);
-    }
+    const result = await readJson(request, MAX_PLAN_BYTES);
+    if (result instanceof Response) return result;
+    const { body } = result;
     // Minimal shape check — the plan is otherwise opaque client state.
     if (!body || typeof body !== "object" || !Array.isArray((body as { years?: unknown }).years)) {
       return json({ error: "Body must be a plan object with a years array" }, 400);

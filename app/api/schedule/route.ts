@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { getSchedule, saveSchedule } from "@/src/server/schedules";
-import { json, requireJson, serverError } from "../http";
+import { json, readJson, requireJson, serverError } from "../http";
 
 // Generous ceiling for a serialized schedule (a few terms of picked sections
 // is a few KB); blocks arbitrary-blob abuse of the JSONB column.
@@ -61,14 +61,9 @@ export async function PUT(request: Request): Promise<Response> {
     const ctError = requireJson(request);
     if (ctError) return ctError;
 
-    const text = await request.text();
-    if (text.length > MAX_SCHEDULE_BYTES) return json({ error: "Schedule too large" }, 413);
-    let body: unknown;
-    try {
-      body = JSON.parse(text);
-    } catch {
-      return json({ error: "Invalid JSON body" }, 400);
-    }
+    const result = await readJson(request, MAX_SCHEDULE_BYTES);
+    if (result instanceof Response) return result;
+    const { body } = result;
     // Shape check — second-level fields are populated client-side and
     // re-resolved against the catalog on read.
     if (

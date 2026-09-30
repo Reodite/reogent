@@ -1,7 +1,7 @@
 import { requireUser } from "@/src/server/auth";
 import { listBuildingFavorites, setBuildingFavorite } from "@/src/server/building-favorites";
 import { getBuildingsGeoJson } from "@/src/server/modules/buildings";
-import { json, requireJson, serverError } from "../http";
+import { json, readJson, requireJson, serverError } from "../http";
 
 const MAX_BODY_BYTES = 256;
 
@@ -33,14 +33,9 @@ export async function PUT(request: Request): Promise<Response> {
     if (user instanceof Response) return user;
     const contentTypeError = requireJson(request);
     if (contentTypeError) return contentTypeError;
-    const text = await request.text();
-    if (text.length > MAX_BODY_BYTES) return json({ error: "Favorite request too large" }, 413);
-    let body: unknown;
-    try {
-      body = JSON.parse(text);
-    } catch {
-      return json({ error: "Invalid JSON body" }, 400);
-    }
+    const result = await readJson(request, MAX_BODY_BYTES);
+    if (result instanceof Response) return result;
+    const { body } = result;
     if (!body || typeof body !== "object" || typeof (body as { saved?: unknown }).saved !== "boolean") {
       return json({ error: "Favorite request requires code and saved state" }, 400);
     }
