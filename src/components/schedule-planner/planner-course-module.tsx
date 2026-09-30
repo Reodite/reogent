@@ -2,6 +2,7 @@
 
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
+import { SelectInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
 import { InfoChip } from "@/src/components/ui/info-chip";
 import { Skeleton, SkeletonFields, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
@@ -118,19 +119,19 @@ function PlannerSectionRow({
         </label>
         {catalogStatus === "loading" ? (
           <SkeletonGroup label={`Loading ${sectionGroupLabel(group).toLowerCase()} section options`}>
-            <Skeleton className="h-11 w-28 rounded-md sm:h-9" />
+            <Skeleton className="h-11 w-28 rounded-lg sm:h-9" />
           </SkeletonGroup>
         ) : (
-          <select
+          <SelectInput
+            controlSize="compact"
+            width="auto"
             disabled={catalogStatus !== "ready"}
             ref={inputRef}
             id={fieldId}
             value={current?.section ?? ""}
             aria-describedby={warning ? `${fieldId}-warning` : undefined}
             onChange={(event) => onSelect(options.find((section) => section.section === event.target.value) ?? null)}
-            className={`border-border bg-surface text-on-surface focus-visible:ring-primary/40 min-h-11 max-w-[11rem] min-w-0 rounded-md border px-2 text-xs focus-visible:ring-2 focus-visible:ring-offset-1 sm:min-h-9 ${
-              conflict ? "ring-error/60 ring-2" : ""
-            }`}
+            className={`max-w-[11rem] min-w-0 ${conflict ? "ring-error/60 ring-2" : ""}`}
           >
             <option value="">Choose section</option>
             {current && !liveCurrent ? <option value={current.section}>{current.section}</option> : null}
@@ -139,7 +140,7 @@ function PlannerSectionRow({
                 {section.section}
               </option>
             ))}
-          </select>
+          </SelectInput>
         )}
       </div>
       {summary ? (
@@ -326,7 +327,7 @@ export function PlannerCoursesSkeleton() {
           <div className="border-border-subtle border-t px-3 py-2.5">
             <div className="flex items-center justify-between gap-2">
               <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-11 w-28 rounded-md sm:h-9" />
+              <Skeleton className="h-11 w-28 rounded-lg sm:h-9" />
             </div>
             <Skeleton className="mt-1 h-4 w-2/3" />
           </div>

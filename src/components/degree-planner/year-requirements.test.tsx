@@ -59,6 +59,12 @@ describe("requirement row compositions", () => {
     expect(courseRow.hasAttribute("data-requirement-key")).toBe(true);
     expect(courseLabel.closest("button")).toBeNull();
     const alternative = within(courseRow).getByRole("combobox", { name: "Course alternative" });
+    expect(alternative.closest("button")).toBeNull();
+    expect(alternative.classList.contains("neu-inset")).toBe(true);
+    expect(alternative.classList.contains("rounded-lg")).toBe(true);
+    expect(alternative.classList.contains("h-11")).toBe(true);
+    expect(alternative.classList.contains("sm:h-9")).toBe(true);
+    expect(alternative.classList.contains("focus-visible:ring-2")).toBe(true);
     fireEvent.change(alternative, { target: { value: "MATH 180" } });
     const add = within(courseRow).getByRole("button", { name: "Add MATH 180 to the plan" });
     expect(add.className).toContain("size-11");
@@ -83,6 +89,19 @@ describe("requirement row compositions", () => {
       expect(credits.className).toContain("pt-2");
       expect(credits.className).toContain("text-right");
     }
+  });
+
+  it("uses a remaining course when the selected alternative leaves the catalog", () => {
+    const view = render(<YearRequirements {...props} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Course alternative" }), {
+      target: { value: "MATH 180" },
+    });
+    view.rerender(
+      <YearRequirements {...props} courseIndex={new Map([...courseIndex].filter(([code]) => code !== "MATH 180"))} />,
+    );
+    expect(screen.queryByRole("combobox", { name: "Course alternative" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add MATH 100 to the plan" }));
+    expect(state.addBlock).toHaveBeenCalledWith("first", 0, "MATH 100");
   });
 
   it("keeps planned completion inert and manual completion reversible with phrasing-only text", () => {
