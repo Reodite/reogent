@@ -33,10 +33,10 @@ Keep the existing directory layout and implement four ownership changes in order
   - [x] 3.3 Compare the extracted calculation with its source and run planner plus full repository gates; commit and push.
     - _Requirements: 3.1, 3.3, 3.5, 5.4, 5.5_
 
-- [ ] 4. Extract import-review presentation and finish verification
-  - [ ] 4.1 Add cancellation/reopening characterization, then move the dialog and private formatter into `planner-import-dialog.tsx` without changing JSX or parent orchestration.
+- [x] 4. Extract import-review presentation and finish verification
+  - [x] 4.1 Add cancellation/reopening characterization, then move the dialog and private formatter into `planner-import-dialog.tsx` without changing JSX or parent orchestration.
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
-  - [ ] 4.2 Compare moved declarations and run dialog, schedule, and full repository gates plus an isolated production build; commit and push.
+  - [x] 4.2 Compare moved declarations and run dialog, schedule, and full repository gates plus an isolated production build; commit and push.
     - _Requirements: 4.1, 4.3, 4.4, 4.5, 5.4, 5.5_
 
 ## Notes

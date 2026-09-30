@@ -61,7 +61,7 @@ Restructure Reodite without changing student-facing behavior. Keep the current t
 1. THE Import_Review SHALL retain its existing rendered markup, shared primitives, labels, focus behavior, and dismissal behavior.
 2. WHILE ambiguous rows lack selections, THE Import_Review SHALL disable merge and replace and retain skipped-row explanations.
 3. WHEN the user applies an import, THE Import_Review SHALL pass the existing ordered selections and chosen mode to the parent callback.
-4. WHEN the user cancels and reopens a review, THE Import_Review SHALL preserve the schedule and start with fresh temporary choices.
+4. WHEN the user cancels and reopens a review after the previous dialog unmounts, THE Import_Review SHALL preserve the schedule and start with fresh temporary choices.
 5. THE Application SHALL retain catalog loading, reconciliation, store application, view changes, and overlay-presence ownership in the parent pane.
 
 ### Requirement 5: Maintainable boundaries and verification

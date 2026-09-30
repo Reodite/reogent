@@ -79,6 +79,25 @@ afterEach(() => {
 });
 
 describe("Planner import review", () => {
+  it("keeps the schedule unchanged on cancel and clears choices after the dialog unmounts", async () => {
+    useSchedule.getState().addEntry(doc, doc.sections[0]);
+    const original = useSchedule.getState().entries;
+    render(<SchedulePlannerPane />);
+    fireEvent.click(screen.getByRole("button", { name: "Import fixture" }));
+    const dialog = await screen.findByRole("dialog", { name: "Review Workday import" });
+    fireEvent.change(within(dialog).getByLabelText("Catalog section"), { target: { value: "L1B" } });
+    expect(within(dialog).getByRole<HTMLButtonElement>("button", { name: "Merge with planner" }).disabled).toBe(false);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel", exact: true }));
+    await waitFor(() => expect(dialog.isConnected).toBe(false));
+    expect(useSchedule.getState().entries).toBe(original);
+
+    fireEvent.click(screen.getByRole("button", { name: "Import fixture" }));
+    const reopened = await screen.findByRole("dialog", { name: "Review Workday import" });
+    expect(within(reopened).getByLabelText<HTMLSelectElement>("Catalog section").value).toBe("");
+    expect(within(reopened).getByRole<HTMLButtonElement>("button", { name: "Merge with planner" }).disabled).toBe(true);
+    expect(useSchedule.getState().entries).toBe(original);
+  });
+
   it.each(["Merge with planner", "Replace planner"])(
     "requires an ambiguous choice before %s and preserves skipped rows",
     async (action) => {

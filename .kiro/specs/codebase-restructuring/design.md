@@ -132,7 +132,7 @@ Use one fast-check property for membership and input preservation together. Sepa
 
 **Condition:** Ambiguous rows lack a choice or no sections match.
 **Response:** Keep merge/replace disabled and retain skipped-row explanations.
-**Recovery:** Cancellation leaves the schedule unchanged; reopening starts with fresh temporary choices.
+**Recovery:** Cancellation leaves the schedule unchanged. Reopening after the exit completes and the dialog unmounts starts with fresh temporary choices. Pre-extraction characterization showed that reopening during the exit retains the mounted dialog's choices; preserve that interrupted-exit behavior in this structural change.
 
 ## Testing Strategy
 
