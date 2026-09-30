@@ -154,6 +154,10 @@ Request throttling ignores forwarding headers by default and uses a shared anony
 
 New passwords require at least 12 characters and at most 72 UTF-8 bytes. Existing bcrypt hashes cannot recover any password suffix beyond 72 bytes; rotate affected legacy credentials. Login retains compatibility with existing passwords.
 
+## Security
+
+Read [SECURITY.md](SECURITY.md) before deployment for the audit findings, verification limits, and required infrastructure controls. Keep private browser data on a trusted browser profile. The planner preserves ambiguous legacy data under `reodite-planner.unowned-backup` for manual recovery and does not upload it into the next signed-in account.
+
 ## Scripts
 
 | Command                 | Action                                                         |
