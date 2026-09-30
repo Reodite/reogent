@@ -2,8 +2,8 @@
 // emit map highlight state) and the chat panel (which clears it when the
 // latest response has no map-driving call).
 
-import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { isToolError, type RouteResponse, type ToolCall, type WalkingDistanceResult } from "@/src/lib/api-types";
+import type { CanvasView } from "@/src/shared/panes";
 import type { LngLat } from "@/src/shared/types";
 
 interface WalkingHighlight {

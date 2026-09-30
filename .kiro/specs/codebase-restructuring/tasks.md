@@ -6,11 +6,11 @@ Keep the existing directory layout and implement four ownership changes in order
 
 ## Tasks
 
-- [ ] 1. Decouple shared contracts from entrypoints
-  - [ ] 1.1 Add course-index characterization and move the unchanged course and pane declarations to their shared owners; migrate consumers.
+- [x] 1. Decouple shared contracts from entrypoints
+  - [x] 1.1 Add course-index characterization and move the unchanged course and pane declarations to their shared owners; migrate consumers.
     - Preserve route processing, registration, and runtime component imports.
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
-  - [ ] 1.2 Verify declaration equality, route/pane tests, and full repository gates; commit and push.
+  - [x] 1.2 Verify declaration equality, route/pane tests, and full repository gates; commit and push.
     - _Requirements: 1.1, 1.3, 1.4, 5.4, 5.5_
 
 - [ ] 2. Separate the planner model from persistence

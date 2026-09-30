@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { requirementKey, type ParsedProgramYears, type YearRequirement } from "@/src/lib/program-years";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Year } from "./planner-store";

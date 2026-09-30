@@ -8,9 +8,9 @@
 // Two render forms:
 //  - study: the normal block list with a season header + credit summary
 //  - coop: a compact work-term card; not a drop target, holds no blocks
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { useDndMonitor, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useState } from "react";

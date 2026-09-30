@@ -4,7 +4,6 @@
 // requirements show category credit bars; prose requirements show a parsed
 // year-by-year checklist or a flat course fallback. The progress view also
 // shows degree-wide rules and the selected minor's requirements.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { RetryAlert } from "@/src/components/ui/feedback";
 import { Field, TextInput } from "@/src/components/ui/form-controls";
@@ -27,6 +26,7 @@ import {
   type RequirementCategory,
 } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { usePlanner } from "./planner-store";
 import { YearRequirements } from "./year-requirements";

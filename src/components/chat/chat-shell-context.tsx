@@ -10,7 +10,6 @@
 // are the agent-driven and Tools-mode entry points.
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
-import type { CanvasView, PaneId, PaneState } from "@/src/components/shell/pane-registry";
 import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { useShellMode } from "@/src/components/shell/use-shell-mode";
@@ -20,6 +19,7 @@ import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import { LAST_CHAT_PATH_KEY, type ShellMode } from "@/src/lib/shell-mode";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { MapHighlight } from "@/src/lib/walking";
+import type { CanvasView, PaneId, PaneState } from "@/src/shared/panes";
 import {
   createContext,
   useCallback,

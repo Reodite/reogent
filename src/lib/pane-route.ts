@@ -1,5 +1,5 @@
-import type { PaneId } from "@/src/components/shell/pane-registry";
 import { canonicalize } from "@/src/shared/course-code";
+import type { PaneId } from "@/src/shared/panes";
 
 /** URL slugs exposed under `/tools/<slug>`. Keys are the public path segments,
  *  values are the {@link PaneId} registered in {@link PANE_REGISTRY}. */

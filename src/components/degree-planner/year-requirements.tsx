@@ -2,7 +2,6 @@
 
 // Year-by-year requirement checklist. Course rows support drag-add and
 // click-add; manual checks cover transfer credit and non-course requirements.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { CheckboxMark as PlannerCheckboxMark, SelectInput } from "@/src/components/ui/form-controls";
@@ -14,6 +13,7 @@ import {
   type ParsedProgramYears,
   type YearRequirement,
 } from "@/src/lib/program-years";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState, type ReactNode } from "react";

@@ -1,4 +1,4 @@
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { displayExpr, MAX_DEPTH, parsePrereq, type Expr } from "@/src/shared/prereq-ast";
 import type { Edge, Node } from "reactflow";
 import type { OptionalEdgeData } from "./edges/OptionalEdge";

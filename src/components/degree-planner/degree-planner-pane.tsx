@@ -8,7 +8,6 @@
 // (sortable course blocks, draggable lookup results, ghost overlay) and
 // two drop targets (term sections, trash bin). onDragEnd switches on the
 // active.id prefix and the over.id to route the move/add/delete.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import {
   DRAG_DROP_ANIMATION,
@@ -32,6 +31,7 @@ import {
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
 import { getProgramIndex, getRequirementsFor, resolveProgram } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { isSatisfied, missingPrereqs, parsePrereq } from "@/src/shared/prereq-ast";
 import {
   closestCenter,

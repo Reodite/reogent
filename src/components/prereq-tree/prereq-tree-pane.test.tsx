@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Graph } from "./build-graph";

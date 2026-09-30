@@ -3,7 +3,7 @@
 // the code/subject/filter conventions of the Course Finder plus a free-text
 // title fallback so "linear algebra" surfaces MATH 152 etc.
 
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 
 export type ParsedQuery =
   | { kind: "none" }

@@ -1,5 +1,5 @@
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { createPlannerYear } from "@/src/components/degree-planner/planner-store";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { describe, expect, it } from "vitest";
 import { buildAutofillPlan } from "./planner-autofill";
 import { parseProgramYears, type ParsedProgramYears, type YearRequirement } from "./program-years";

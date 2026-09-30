@@ -1,9 +1,9 @@
 "use client";
 
-import type { CanvasView } from "@/src/components/shell/pane-registry";
 import { lockBodyScroll } from "@/src/components/ui/body-scroll-lock";
 import { canRestoreFocus } from "@/src/components/ui/dialog";
 import { tabStops } from "@/src/components/ui/floating-panel";
+import type { CanvasView } from "@/src/shared/panes";
 import {
   useEffect,
   useLayoutEffect,

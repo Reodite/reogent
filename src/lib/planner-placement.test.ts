@@ -1,5 +1,5 @@
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { createPlannerYear } from "@/src/components/degree-planner/planner-store";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { describe, expect, it } from "vitest";
 import { findCourseTarget } from "./planner-placement";
 
