@@ -162,28 +162,27 @@ export function getPublicEntrancesGeoJson(): Promise<FeatureCollection> {
 /** Exact code, then acronym alias ("IKB" → IBLC), then fuzzy name search. */
 export async function resolveBuilding(search: SearchClient, query: string): Promise<BuildingDoc> {
   const norm = query.trim().toUpperCase();
-  try {
-    return (await search.index("buildings").getDocument(norm)) as unknown as BuildingDoc;
-  } catch {
-    const alias = await search.index("buildings").search("", {
-      filter: `aliases = '${norm}'`,
-      limit: 1,
-    });
-    const aliasHit = alias.hits[0];
-    if (aliasHit) return aliasHit as unknown as BuildingDoc;
-    const res = await search.index("buildings").search(query, { limit: 1 });
-    const hit = res.hits[0];
-    if (!hit) {
-      // Surface the closest real name so the model can retry with something
-      // that actually exists instead of guessing more codes.
-      const suggest = await search.index("buildings").search(query.slice(0, 4), { limit: 3 });
-      const names = (suggest.hits as unknown as BuildingDoc[]).map((b) => b.name).filter(Boolean);
-      throw new Error(
-        `Unknown building: "${query}"${names.length > 0 ? `. Closest matches: ${names.join("; ")}` : ""}`,
-      );
+  if (/^[A-Z0-9_-]{1,8}$/.test(norm)) {
+    try {
+      return (await search.index("buildings").getDocument(norm)) as unknown as BuildingDoc;
+    } catch {
+      const alias = await search.index("buildings").search("", {
+        filter: `aliases = '${norm}'`,
+        limit: 1,
+      });
+      const aliasHit = alias.hits[0];
+      if (aliasHit) return aliasHit as unknown as BuildingDoc;
     }
-    return hit as unknown as BuildingDoc;
   }
+  const res = await search.index("buildings").search(query, { limit: 1 });
+  const hit = res.hits[0];
+  if (!hit) {
+    // Surface the closest real name so the model can retry with an existing building.
+    const suggest = await search.index("buildings").search(query.slice(0, 4), { limit: 3 });
+    const names = (suggest.hits as unknown as BuildingDoc[]).map((b) => b.name).filter(Boolean);
+    throw new Error(`Unknown building: "${query}"${names.length > 0 ? `. Closest matches: ${names.join("; ")}` : ""}`);
+  }
+  return hit as unknown as BuildingDoc;
 }
 
 export const buildings: DatasetModule = {

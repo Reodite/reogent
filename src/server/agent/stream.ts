@@ -55,10 +55,10 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   const lastUserMsg = (messages[messages.length - 1]?.content ?? "").trim().toLowerCase();
   const isGreeting = lastUserMsg.length < 3 || /^(hi|hello|hey|greetings|sup|yo)\b/.test(lastUserMsg);
 
-  for (let i = 0; ; i++) {
+  for (let i = 0; i < ITERATION_LIMIT; i++) {
     if (i > 0) yield { type: "turn_start" as const };
 
-    if (i === ITERATION_LIMIT) {
+    if (i === ITERATION_LIMIT - 1) {
       convo.push({
         role: "user",
         content: [
@@ -201,6 +201,11 @@ Rules:
       return;
     }
 
+    if (toolCalls.length + toolUses.length > TOOL_CALL_BUDGET) {
+      yield { type: "error", message: "Response limit reached. Please ask a narrower question." };
+      return;
+    }
+
     for (const { name, input } of toolUses) {
       yield { type: "tool_start", name, input };
     }
@@ -280,4 +285,5 @@ Rules:
       fullText = "";
     }
   }
+  yield { type: "error", message: "Response limit reached. Please ask a narrower question." };
 }

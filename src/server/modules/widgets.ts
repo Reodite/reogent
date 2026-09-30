@@ -36,7 +36,9 @@ async function richBuildingDetails(search: SearchClient, input: Record<string, u
   const code = String(input.building_code ?? "")
     .trim()
     .toUpperCase();
-  if (!code) throw new Error("Rich building widgets require building_code from find_building");
+  if (!/^[A-Z0-9_-]{1,8}$/.test(code)) {
+    throw new Error("Rich building widgets require building_code from find_building");
+  }
   let document: Record<string, unknown>;
   try {
     document = (await search.index("buildings").getDocument(code)) as Record<string, unknown>;
