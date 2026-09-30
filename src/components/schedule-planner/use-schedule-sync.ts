@@ -10,10 +10,8 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import { normalizeDays } from "@/src/lib/schedule";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  claimScheduleOwner,
-  clearOwnedScheduleForGuest,
   componentKey,
   courseTermKey,
   entryId,
@@ -26,7 +24,8 @@ import {
 
 const SAVE_DEBOUNCE_MS = 1000;
 
-let hydratedFor: string | null = null;
+// Auth sessions get distinct API instances; pane remounts reuse the same one.
+let hydratedApi: Api | null = null;
 
 function sameSynced(a: SyncedSchedule, b: SyncedSchedule): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -150,27 +149,25 @@ export function useScheduleSync(): boolean {
   const api = useApi();
   const { user, isGuest } = useAppAuth();
   const userId = !isGuest && user ? user.userId : null;
-  const [settledFor, setSettledFor] = useState<string | null>(null);
-
-  useLayoutEffect(() => {
-    if (isGuest) clearOwnedScheduleForGuest();
-  }, [isGuest]);
+  const [settledApi, setSettledApi] = useState<Api | null>(null);
 
   useEffect(() => {
     if (!userId) return;
 
-    claimScheduleOwner(userId);
     let cancelled = false;
     let unsubscribe: (() => void) | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let pending: { schedule: SyncedSchedule; revision: number } | null = null;
-    let hydrating = hydratedFor !== userId;
+    let hydrating = hydratedApi !== api;
     let applyingServer = false;
 
     const flush = () => {
       if (timer) clearTimeout(timer);
       timer = null;
-      if (!pending) return;
+      if (!pending || useSchedule.getState().ownerId !== userId) {
+        pending = null;
+        return;
+      }
       const save = pending;
       pending = null;
       api
@@ -192,7 +189,8 @@ export function useScheduleSync(): boolean {
 
     unsubscribe = useSchedule.subscribe((state, prev) => {
       const next = syncedSlice(state);
-      if (sameSynced(next, syncedSlice(prev)) || applyingServer) return;
+      if (state.ownerId !== userId || prev.ownerId !== userId || sameSynced(next, syncedSlice(prev)) || applyingServer)
+        return;
       pending = { schedule: next, revision: state.revision };
       if (!hydrating) scheduleFlush();
     });
@@ -207,11 +205,11 @@ export function useScheduleSync(): boolean {
       if (!hydrating) return;
       try {
         const { schedule } = await api.getSchedule();
-        if (cancelled) return;
+        if (cancelled || useSchedule.getState().ownerId !== userId) return;
         if (isSyncedSchedule(schedule)) {
           const currentCache = new Map(useSchedule.getState().entries.map((entry) => [entryId(entry), entry]));
           const resolved = await resolveEntries(api, schedule.entries, currentCache);
-          if (cancelled) return;
+          if (cancelled || useSchedule.getState().ownerId !== userId) return;
 
           applyingServer = true;
           const current = useSchedule.getState();
@@ -253,13 +251,13 @@ export function useScheduleSync(): boolean {
           const current = useSchedule.getState();
           pending = { schedule: syncedSlice(current), revision: current.revision };
         }
-        hydratedFor = userId;
+        hydratedApi = api;
       } catch {
         // Keep the local cache and retry server hydration on the next mount.
       } finally {
         hydrating = false;
         if (!cancelled) {
-          setSettledFor(userId);
+          setSettledApi(api);
           if (pending) scheduleFlush();
         }
       }
@@ -272,5 +270,5 @@ export function useScheduleSync(): boolean {
     };
   }, [api, userId]);
 
-  return !!userId && hydratedFor !== userId && settledFor !== userId;
+  return !!userId && hydratedApi !== api && settledApi !== api;
 }

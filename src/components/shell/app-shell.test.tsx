@@ -6,11 +6,13 @@ import { ShellNavigationProvider } from "@/src/components/shell/shell-navigation
 import { WorkspacePage } from "@/src/components/ui/workspace";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { renderToString } from "react-dom/server";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 // Heavy sub-trees are stubbed so the assertions target AppShell's composition
 // (regions + #main-content + sheet/drawer), not the pane internals.
-vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: "signedIn" }) }));
+const auth = vi.hoisted(() => ({ status: "signedIn" }));
+vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => auth }));
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
 vi.mock("@/src/components/map/map-panel", () => ({
   MapArea: () => (
@@ -133,6 +135,7 @@ afterEach(() => {
   mem.clear();
   vi.clearAllMocks();
   cleanup();
+  auth.status = "signedIn";
   mediaQueries.clear();
   viewportWidth = 390;
   document.body.style.overflow = "";
@@ -183,6 +186,19 @@ function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
   if (!link) throw new Error(`Missing ${label} mode link`);
   return link;
 }
+
+it("gates private content during SSR, initialization and signout", () => {
+  auth.status = "initializing";
+  expect(renderToString(<ShellFixture />)).not.toContain("chat-children");
+  const view = renderShell(true);
+  expect(view.queryByTestId("chat-children")).toBeNull();
+  auth.status = "signedIn";
+  view.rerender(<ShellFixture />);
+  expect(view.queryByTestId("chat-children")).not.toBeNull();
+  auth.status = "signedOut";
+  view.rerender(<ShellFixture />);
+  expect(view.queryByTestId("chat-children")).toBeNull();
+});
 
 describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("inline AI renders chat + Answer Canvas with the skip target on chat", () => {

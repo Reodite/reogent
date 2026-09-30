@@ -14,7 +14,8 @@ const apiMock = vi.hoisted(() => ({
 }));
 
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => authMock }));
-vi.mock("@/src/components/providers", () => ({ useApi: () => apiMock }));
+let api: typeof apiMock;
+vi.mock("@/src/components/providers", () => ({ useApi: () => api }));
 
 let store: typeof import("./schedule-store");
 let useScheduleSync: typeof import("./use-schedule-sync").useScheduleSync;
@@ -75,11 +76,14 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  api = { ...apiMock };
+  authMock.user.userId = "sync-test-user";
+  authMock.isGuest = false;
   apiMock.getSchedule.mockReset();
   apiMock.saveSchedule.mockReset().mockResolvedValue(undefined);
   apiMock.getCourse.mockReset();
   store.useSchedule.setState({
-    ownerId: null,
+    ownerId: authMock.user.userId,
     dirty: false,
     revision: 0,
     selectedComponents: [],
@@ -141,7 +145,6 @@ describe("useScheduleSync", () => {
 
 describe("useScheduleSync hydration status", () => {
   it("settles after server content arrives", async () => {
-    authMock.user.userId = "hydration-status-success";
     const get = deferred<{ schedule: unknown }>();
     apiMock.getSchedule.mockReturnValue(get.promise);
     const view = render(<Harness />);
@@ -151,7 +154,6 @@ describe("useScheduleSync hydration status", () => {
   });
 
   it("settles after failure rather than leaving a permanent skeleton", async () => {
-    authMock.user.userId = "hydration-status-failure";
     apiMock.getSchedule.mockRejectedValue(new Error("offline"));
     const view = render(<Harness />);
     expect(view.getByText("Hydrating")).toBeTruthy();

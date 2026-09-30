@@ -52,8 +52,10 @@ function setRedirect(redirect: string) {
   navigation.search = new URLSearchParams({ redirect }).toString();
 }
 
+const studentToken = `header.${btoa(JSON.stringify({ sub: "student-id", exp: 4_000_000_000 }))}.signature`;
+
 function storeUser(isGuest = false) {
-  localStorage.setItem("reodite.auth.token", isGuest ? "guest" : "token");
+  localStorage.setItem("reodite.auth.token", isGuest ? "guest" : studentToken);
   localStorage.setItem(
     "reodite.auth.user",
     JSON.stringify({ username: isGuest ? "Guest" : "student", userId: isGuest ? "guest" : "student-id" }),
@@ -62,7 +64,7 @@ function storeUser(isGuest = false) {
 
 function submitForm(action: string) {
   fireEvent.change(screen.getByRole("textbox", { name: "Username" }), { target: { value: " student " } });
-  fireEvent.change(screen.getByLabelText(/Password/), { target: { value: "secret" } });
+  fireEvent.change(screen.getByLabelText(/Password/), { target: { value: "long-enough-password" } });
   fireEvent.click(screen.getByRole("button", { name: action }));
 }
 
@@ -139,11 +141,11 @@ describe.each([
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/auth/${mode}`,
       expect.objectContaining({
-        body: JSON.stringify({ username: "student", password: "secret" }),
+        body: JSON.stringify({ username: "student", password: "long-enough-password" }),
       }),
     );
     expect(navigation.router.replace).not.toHaveBeenCalled();
-    respond(Response.json({ token: "token", username: "student", userId: "student-id" }));
+    respond(Response.json({ token: studentToken, username: "student", userId: "student-id" }));
 
     await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith("/settings"));
     expect(navigation.router.replace.mock.calls).toEqual([["/settings"]]);
@@ -206,7 +208,7 @@ describe.each([
     "/settings\u007f",
   ])("uses /chat for missing or untrusted redirect %j", async (redirect) => {
     if (redirect !== undefined) setRedirect(redirect);
-    fetchMock.mockResolvedValue(Response.json({ token: "token", username: "student", userId: "student-id" }));
+    fetchMock.mockResolvedValue(Response.json({ token: studentToken, username: "student", userId: "student-id" }));
     renderPage();
     expect(screen.getByRole("link", { name: link }).getAttribute("href")).toBe(`/${opposite}?redirect=%2Fchat`);
     submitForm(action);
