@@ -2,15 +2,15 @@
 
 // The recessed chat composer. Enter sends; Shift+Enter adds a line;
 // Cmd/Ctrl+Enter always sends. Submit locks while a request is in flight.
+import { useAppAuth } from "@/src/components/auth/app-auth";
 import { ChatComposerFrame } from "@/src/components/chat/chat-frame";
 import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent } from "react";
 
 const PLACEHOLDER = "Ask about courses, routes, tuition...";
-// Unsent composer text survives tab swaps and reloads; cleared on send.
-// one global draft, not per-conversation — split the key by session
-// id if per-chat drafts ever matter.
+// Account drafts survive tab swaps and reloads until send. Guest drafts stay
+// in memory; the unowned legacy key is never restored.
 const DRAFT_KEY = "reodite.chat-draft";
 
 export interface ChatInputHandle {
@@ -30,7 +30,11 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
   { disabled, thinking, showDisclaimer, tip, onSend, onStop },
   ref,
 ) {
-  const [value, setValue] = useState("");
+  const { user } = useAppAuth();
+  const ownerId = user?.userId ?? null;
+  const draftKey = ownerId && ownerId !== "guest" ? `${DRAFT_KEY}:${encodeURIComponent(ownerId)}` : null;
+  const [draft, setValue] = useState<string | null>(null);
+  const value = draft ?? "";
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useImperativeHandle(ref, () => ({ focus: () => textareaRef.current?.focus() }), []);
@@ -42,32 +46,28 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
     node.style.height = `${Math.min(node.scrollHeight, 96)}px`;
   }, []);
 
-  // Restore the draft after mount (effect, not initializer, so SSR markup
-  // matches); saves skip the mount commit so the pre-restore "" doesn't wipe it.
+  // The auth provider remounts descendants on identity changes. Restore after
+  // mount for matching SSR markup and skip saves until restoration completes.
   useEffect(() => {
+    let value = "";
     try {
-      const draft = window.localStorage.getItem(DRAFT_KEY);
-      if (draft) {
-        setValue(draft);
-        requestAnimationFrame(autosize);
-      }
+      if (draftKey) value = window.localStorage.getItem(draftKey) ?? "";
     } catch {
-      // Storage unavailable — start empty.
+      // Start empty when storage is unavailable.
     }
-  }, [autosize]);
-  const skipDraftSave = useRef(true);
+    setValue(value);
+    const frame = requestAnimationFrame(autosize);
+    return () => cancelAnimationFrame(frame);
+  }, [draftKey, autosize]);
   useEffect(() => {
-    if (skipDraftSave.current) {
-      skipDraftSave.current = false;
-      return;
-    }
+    if (!draftKey || draft === null) return;
     try {
-      if (value) window.localStorage.setItem(DRAFT_KEY, value);
-      else window.localStorage.removeItem(DRAFT_KEY);
+      if (draft) window.localStorage.setItem(draftKey, draft);
+      else window.localStorage.removeItem(draftKey);
     } catch {
-      // Storage unavailable — draft just won't persist.
+      // Keep the draft in memory when storage is unavailable.
     }
-  }, [value]);
+  }, [draft, draftKey]);
 
   const canSend = !disabled && value.trim().length > 0;
 

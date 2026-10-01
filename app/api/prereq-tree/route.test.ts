@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const buildPrereqGraph = vi.fn();
 vi.mock("@/src/server/prereq/build-graph", () => ({
@@ -13,7 +13,9 @@ const req = (query = "", headers: Record<string, string> = {}) =>
 
 beforeEach(() => {
   buildPrereqGraph.mockReset();
+  vi.stubEnv("TRUSTED_CLIENT_IP_HEADER", "x-real-ip");
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("GET /api/prereq-tree", () => {
   it("200 without auth — public endpoint", async () => {
@@ -78,7 +80,7 @@ describe("GET /api/prereq-tree", () => {
     });
     const ipReq = () =>
       new Request("http://localhost/api/prereq-tree?root=CPSC+110", {
-        headers: { "x-forwarded-for": "10.0.0.7" },
+        headers: { "x-real-ip": "10.0.0.7" },
       });
     for (let i = 0; i < 10; i++) {
       const res = await GET(ipReq());

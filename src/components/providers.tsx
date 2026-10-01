@@ -5,7 +5,7 @@
 import { AppAuthProvider, useAppAuth } from "@/src/components/auth/app-auth";
 import { createChatApi, type ChatApi } from "@/src/lib/api";
 import { THEME_STORAGE_KEY } from "@/src/lib/theme";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 // ---- Theme ----
 
@@ -92,23 +92,21 @@ export function useApi(): ChatApi {
 }
 
 function ApiProvider({ children }: { children: ReactNode }) {
-  const auth = useAppAuth();
-  const authRef = useRef(auth);
-  authRef.current = auth;
+  const { getToken, signOut, isGuest } = useAppAuth();
 
   const api = useMemo(() => {
     try {
       return createChatApi({
-        getToken: () => authRef.current.getToken(),
+        getToken,
         onUnauthorized: () => {
-          if (authRef.current.user?.userId !== "guest") authRef.current.signOut();
+          if (!isGuest) signOut();
         },
       });
     } catch (e) {
       console.error("Failed to create API client:", e);
       return null;
     }
-  }, []);
+  }, [getToken, signOut, isGuest]);
 
   if (!api) {
     return (

@@ -1,4 +1,5 @@
 import { requireUser } from "@/src/server/auth";
+import { rateLimitResponse } from "@/src/server/rate-limit";
 import { CODE_PATTERN, getGroupForMember, joinGroup, leaveGroup } from "@/src/server/sharer/store";
 import { json, serverError } from "../../../http";
 
@@ -28,6 +29,8 @@ export async function POST(request: Request, { params }: Ctx): Promise<Response>
     const { code } = await params;
     if (!CODE_PATTERN.test(code)) return json({ error: "Invalid group code" }, 400);
 
+    const limited = rateLimitResponse(`join-group:${user.sub}`, { windowMs: 60_000, maxRequests: 10 });
+    if (limited) return limited;
     const group = await joinGroup(user.sub, code);
     if (!group) return json({ error: "Unknown group" }, 404);
     return json({ group });

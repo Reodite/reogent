@@ -14,6 +14,7 @@ import { buildCalendar, expandBlocks } from "@/src/lib/schedule/calendar/buildCa
 import {
   normalizePerson,
   sharerFetch,
+  SharerFetchError,
   type GroupDetail,
   type GroupSummary,
   type WirePerson,
@@ -39,13 +40,14 @@ import { UploadDropzone } from "./upload-dropzone";
 const ProfileModal = lazy(() => import("./profile-modal").then((module) => ({ default: module.ProfileModal })));
 
 interface Props {
-  /** A 6-char group code from `/pulse/schedule/[code]`; opening it auto-joins the caller. */
+  /** A 6-char group code from `/pulse/schedule/[code]`; nonmembers must confirm before joining. */
   groupCode?: string;
 }
 
 type GroupViewState =
   | { status: "empty"; code: null; generation: number }
   | { status: "loading"; code: string; generation: number }
+  | { status: "invitation"; code: string; generation: number; joining: boolean; message: string }
   | { status: "ready"; code: string; generation: number; group: GroupDetail }
   | { status: "error"; code: string; generation: number; message: string };
 
@@ -85,6 +87,7 @@ function ScheduleAppInner({ groupCode }: Props) {
   const initialCode = groupCode ?? null;
   const selectionRef = useRef({ code: initialCode, generation: initialCode ? 1 : 0 });
   const refreshToken = useRef(0);
+  const joinRequest = useRef<AbortController | null>(null);
   const [groupView, setGroupView] = useState<GroupViewState>(() =>
     initialCode
       ? { status: "loading", code: initialCode, generation: 1 }
@@ -114,6 +117,8 @@ function ScheduleAppInner({ groupCode }: Props) {
   }, [request]);
 
   const selectGroup = useCallback((code: string | null) => {
+    joinRequest.current?.abort();
+    joinRequest.current = null;
     const generation = selectionRef.current.generation + 1;
     selectionRef.current = { code, generation };
     setGroupView(code ? { status: "loading", code, generation } : { status: "empty", code: null, generation });
@@ -123,13 +128,19 @@ function ScheduleAppInner({ groupCode }: Props) {
   }, []);
 
   const fetchGroup = useCallback(
-    async (code: string, join = true) => {
-      // Opening a link joins once; polling uses the read-only member endpoint.
-      const result = await request<{ group: GroupDetail }>(`/groups/${code}`, { method: join ? "POST" : "GET" });
-      return result.group;
+    async (code: string) => {
+      try {
+        const result = await request<{ group: GroupDetail }>(`/groups/${code}`, { method: "GET" });
+        return result.group;
+      } catch (error) {
+        if (error instanceof SharerFetchError && error.status === 404) return null;
+        throw error;
+      }
     },
     [request],
   );
+
+  useEffect(() => () => joinRequest.current?.abort(), []);
 
   useEffect(() => {
     void bootNonce;
@@ -171,7 +182,11 @@ function ScheduleAppInner({ groupCode }: Props) {
         if (cancelled) return;
         const selected = selectionRef.current;
         if (selected.code !== code || selected.generation !== generation) return;
-        setGroupView({ status: "ready", code, generation, group: nextGroup });
+        setGroupView(
+          nextGroup
+            ? { status: "ready", code, generation, group: nextGroup }
+            : { status: "invitation", code, generation, joining: false, message: "" },
+        );
       })
       .catch((error) => {
         if (cancelled) return;
@@ -192,8 +207,8 @@ function ScheduleAppInner({ groupCode }: Props) {
       if (document.visibilityState === "hidden") return;
       const token = ++refreshToken.current;
       try {
-        const nextGroup = await fetchGroup(code, false);
-        if (cancelled || token !== refreshToken.current) return;
+        const nextGroup = await fetchGroup(code);
+        if (!nextGroup || cancelled || token !== refreshToken.current) return;
         const selected = selectionRef.current;
         if (selected.code !== code || selected.generation !== generation) return;
         setGroupView((current) =>
@@ -244,6 +259,42 @@ function ScheduleAppInner({ groupCode }: Props) {
   function switchGroup(code: string) {
     selectGroup(code);
     navigation.push(`/pulse/schedule/${code}`);
+  }
+
+  function cancelInvitation() {
+    if (joinRequest.current) return;
+    const next = groups.find((candidate) => candidate.code !== activeCode)?.code ?? null;
+    selectGroup(next);
+    navigation.replace(next ? `/pulse/schedule/${next}` : "/pulse/schedule");
+  }
+
+  async function joinInvitedGroup() {
+    if (groupView.status !== "invitation" || joinRequest.current) return;
+    const { code, generation } = groupView;
+    const selected = selectionRef.current;
+    if (selected.code !== code || selected.generation !== generation) return;
+    const controller = new AbortController();
+    joinRequest.current = controller;
+    setGroupView({ ...groupView, joining: true, message: "" });
+    try {
+      const { group: joinedGroup } = await request<{ group: GroupDetail }>(`/groups/${code}`, {
+        method: "POST",
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
+      });
+      if (controller.signal.aborted) return;
+      setGroupView({ status: "ready", code, generation, group: joinedGroup });
+      try {
+        await refreshGroups();
+      } catch (error) {
+        if (!controller.signal.aborted) toast(messageOf(error), "error");
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setGroupView({ status: "invitation", code, generation, joining: false, message: messageOf(error) });
+      }
+    } finally {
+      if (joinRequest.current === controller) joinRequest.current = null;
+    }
   }
 
   async function saveSchedule(handle: string, avatar: Avatar) {
@@ -366,23 +417,28 @@ function ScheduleAppInner({ groupCode }: Props) {
   const empty =
     groupView.status === "loading"
       ? undefined
-      : groupView.status === "error"
+      : groupView.status === "invitation"
         ? {
-            title: `${groupLabel} is unavailable`,
-            description: `Group ${groupView.code} could not be opened. Check the code or choose another group in Controls.`,
-            actionLabel: "Open controls",
-            onAction: () => setMobileView("controls"),
+            title: "Review this invitation",
+            description: "Join only if you want to share your schedule with this group.",
           }
-        : scheduleEmptyState({
-            group,
-            groupError,
-            me: mePerson,
-            nobodyImported,
-            allPeopleFiltered,
-            tbaOnly,
-            onImport: () => setMobileView("controls"),
-            onCreate: () => setShowCreate(true),
-          });
+        : groupView.status === "error"
+          ? {
+              title: `${groupLabel} is unavailable`,
+              description: `Group ${groupView.code} could not be opened. Check the code or choose another group in Controls.`,
+              actionLabel: "Open controls",
+              onAction: () => setMobileView("controls"),
+            }
+          : scheduleEmptyState({
+              group,
+              groupError,
+              me: mePerson,
+              nobodyImported,
+              allPeopleFiltered,
+              tbaOnly,
+              onImport: () => setMobileView("controls"),
+              onCreate: () => setShowCreate(true),
+            });
   const nowLine = termIsLive
     ? {
         day: dayCodeOf(now),
@@ -634,6 +690,42 @@ function ScheduleAppInner({ groupCode }: Props) {
         )}
       </AnimatePresence>
       <AnimatePresence key={groupView.generation} initial={false}>
+        {groupView.status === "invitation" && (
+          <DialogRoot
+            key="invitation"
+            onDismiss={cancelInvitation}
+            dismissDisabled={groupView.joining}
+            backdropLabel="Cancel schedule invitation"
+            returnFocusFallback={() =>
+              document.getElementById("schedule-group") ?? document.getElementById("schedule-code")
+            }
+          >
+            <DialogPanel aria-label={`Join group ${groupView.code}?`} aria-busy={groupView.joining} size="md">
+              <DialogHeader
+                title={`Join group ${groupView.code}?`}
+                description="Group members can see your current and future uploaded class times and rooms until you leave the group. Join only if you trust everyone with this link."
+              />
+              {groupView.message && (
+                <p role="alert" className="text-error mt-4 text-sm">
+                  {groupView.message}
+                </p>
+              )}
+              <DialogActions layout="stack">
+                <Button
+                  data-dialog-initial-focus
+                  size="prominent"
+                  disabled={groupView.joining}
+                  onClick={cancelInvitation}
+                >
+                  Cancel
+                </Button>
+                <Button variant="primary" size="prominent" disabled={groupView.joining} onClick={joinInvitedGroup}>
+                  {groupView.joining ? "Joining…" : "Join and share my schedule"}
+                </Button>
+              </DialogActions>
+            </DialogPanel>
+          </DialogRoot>
+        )}
         {detail && <BlockDetail key="block-detail" block={detail} onClose={() => setDetail(null)} />}
       </AnimatePresence>
     </>

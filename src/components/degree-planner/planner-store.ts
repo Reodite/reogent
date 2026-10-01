@@ -52,6 +52,8 @@ export interface PlanSnapshot {
 }
 
 interface PlannerState {
+  /** Local cache owner. Null denotes an explicit guest plan. Never sent to the server. */
+  ownerId: string | null;
   years: Year[];
   faculty: string | null;
   major: string | null;
@@ -100,8 +102,7 @@ interface PlannerState {
   redo: () => void;
 }
 
-/** The durable slice of planner state — what localStorage keeps and what the
- *  server stores per account. Excludes the session-only undo/redo stacks. */
+/** Server plan payload. Excludes local ownership and session-only undo/redo stacks. */
 export type PersistedPlan = Pick<
   PlannerState,
   | "years"
@@ -268,9 +269,40 @@ export function applyCoopSequence(faculty: string): CoopSequenceResult | null {
   return result;
 }
 
+function hasPlannerOwner(value: unknown): value is { ownerId: string | null } {
+  if (!value || typeof value !== "object") return false;
+  const ownerId = (value as { ownerId?: unknown }).ownerId;
+  return ownerId === null || (typeof ownerId === "string" && ownerId.length > 0);
+}
+
+function localPlannerState(persisted: unknown) {
+  // Untagged caches cannot prove guest ownership. Keep them out of the store;
+  // authenticated users recover their server plan through usePlanSync.
+  return hasPlannerOwner(persisted)
+    ? { ...migratePersistedPlan(persisted), ownerId: persisted.ownerId }
+    : { ...migratePersistedPlan(null), ownerId: null };
+}
+
+function preserveUnownedPlanner(key: string, raw: string | null): void {
+  if (raw === null) return;
+  let persisted: unknown;
+  try {
+    persisted = JSON.parse(raw)?.state;
+  } catch {
+    // Preserve malformed caches for manual recovery too.
+  }
+  if (hasPlannerOwner(persisted)) return;
+  const backupKey = `${key}.unowned-backup`;
+  const backup = localStorage.getItem(backupKey);
+  if (backup === raw) return;
+  if (backup !== null) throw new Error("An unowned planner backup already exists");
+  localStorage.setItem(backupKey, raw);
+}
+
 export const usePlanner = create<PlannerState>()(
   persist(
     (set) => ({
+      ownerId: null,
       years: initialYears(),
       faculty: null,
       major: null,
@@ -514,13 +546,58 @@ export const usePlanner = create<PlannerState>()(
     }),
     {
       name: "reodite-planner",
-      storage: createJSONStorage(() => localStorage),
-      version: 2,
-      // The history stacks (past/future) are intentionally omitted so undo
-      // state never bloats localStorage and a reload starts with a clean
-      // history. Same slice the account sync sends to the server.
-      partialize: persistedSlice,
-      migrate: (persisted) => migratePersistedPlan(persisted),
+      storage: createJSONStorage(() => ({
+        getItem: (key) => {
+          try {
+            const raw = localStorage.getItem(key);
+            preserveUnownedPlanner(key, raw);
+            return raw;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (key, value) => {
+          try {
+            preserveUnownedPlanner(key, localStorage.getItem(key));
+            localStorage.setItem(key, value);
+          } catch {
+            // Keep in-memory changes without overwriting an unbacked cache.
+          }
+        },
+        removeItem: (key) => {
+          try {
+            preserveUnownedPlanner(key, localStorage.getItem(key));
+            localStorage.removeItem(key);
+          } catch {}
+        },
+      })),
+      version: 3,
+      partialize: (state) => ({ ...persistedSlice(state), ownerId: state.ownerId }),
+      migrate: localPlannerState,
+      merge: (persisted, current) => ({
+        ...current,
+        ...localPlannerState(persisted),
+        past: [],
+        future: [],
+        flashBlockId: null,
+      }),
     },
   ),
 );
+
+function resetPlanner(ownerId: string | null): void {
+  usePlanner.setState({ ...migratePersistedPlan(null), ownerId, past: [], future: [], flashBlockId: null });
+}
+
+/** Claims explicit guest data; clears another account's plan and undo history. */
+export function claimPlannerOwner(userId: string): void {
+  const { ownerId } = usePlanner.getState();
+  if (ownerId === userId) return;
+  if (ownerId === null) usePlanner.setState({ ownerId: userId });
+  else resetPlanner(userId);
+}
+
+/** Clears account-owned plans before publishing signed-out or guest auth state. */
+export function clearOwnedPlannerForGuest(): void {
+  if (usePlanner.getState().ownerId !== null) resetPlanner(null);
+}

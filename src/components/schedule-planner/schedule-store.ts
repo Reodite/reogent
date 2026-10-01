@@ -308,7 +308,27 @@ export const useSchedule = create<ScheduleState>()(
     }),
     {
       name: "reodite-schedule",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => ({
+        getItem: (key) => {
+          try {
+            return localStorage.getItem(key);
+          } catch {
+            return null;
+          }
+        },
+        setItem: (key, value) => {
+          try {
+            localStorage.setItem(key, value);
+          } catch {
+            // Keep in-memory ownership changes when storage is unavailable.
+          }
+        },
+        removeItem: (key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch {}
+        },
+      })),
       version: 3,
       migrate: migrateScheduleState,
     },

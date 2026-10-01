@@ -6,15 +6,22 @@ const { getDocuments, index, rateLimitResponse } = vi.hoisted(() => ({
   rateLimitResponse: vi.fn(),
 }));
 vi.mock("@/src/server/search", () => ({ getSearch: () => ({ index }) }));
-vi.mock("@/src/server/rate-limit", () => ({ rateLimitResponse }));
+vi.mock("@/src/server/rate-limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/src/server/rate-limit")>()),
+  rateLimitResponse,
+}));
 
 beforeEach(() => {
   vi.resetModules();
+  vi.stubEnv("TRUSTED_CLIENT_IP_HEADER", "");
   index.mockReset().mockReturnValue({ getDocuments });
   getDocuments.mockReset();
   rateLimitResponse.mockReset().mockReturnValue(null);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 const request = () =>
   new Request("http://localhost/api/course-index", { headers: { "x-forwarded-for": "192.0.2.1, 192.0.2.2" } });
@@ -48,7 +55,7 @@ describe("GET /api/course-index", () => {
     expect(getDocuments).toHaveBeenCalledTimes(2);
     expect(rateLimitResponse).toHaveBeenCalledTimes(2);
     expect(rateLimitResponse).toHaveBeenCalledWith(
-      "course-index:192.0.2.1",
+      "course-index:unknown",
       expect.objectContaining({ windowMs: 60000 }),
     );
   });

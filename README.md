@@ -119,32 +119,44 @@ Requirements: Node.js 24, Docker.
 npm install
 git submodule update --init
 cp .env.example .env
+# Configure the secrets in .env before starting services.
 docker compose up -d postgres meilisearch
 npm run ingest
 npm run dev
 ```
 
-The server opens at http://localhost:3000 and applies the Postgres schema on startup. The sample environment points host processes at `localhost`; Docker Compose overrides those service URLs with container hostnames.
+Generate a separate value with `openssl rand -hex 32` for `POSTGRES_PASSWORD`, `MEILI_MASTER_KEY`, and `JWT_SECRET`. Set the Postgres password in `DATABASE_URL` too. Docker Compose refuses missing database or search credentials and binds their host ports to loopback. The development container also binds to loopback; keep development servers off public networks.
+
+The server opens at http://localhost:3000 and applies the Postgres schema on startup. The sample environment points host processes at `localhost`; Docker Compose overrides those service URLs with container hostnames. Put production traffic behind an HTTPS reverse proxy; configure TLS, HSTS, request/concurrency limits, and firewall rules there. Changing `POSTGRES_PASSWORD` in `.env` does not rotate an existing database user's password. Rotate it in Postgres and update dependent configuration together.
 
 `npm run ingest` loads the root `.env` when present and preserves variables you set in the shell or Docker. Set `MEILI_MASTER_KEY` to the key used by the Meilisearch service. Ingestion attempts the remaining indexes after a failure and exits nonzero if any index fails.
 
 ### Environment variables
 
-| Variable            | Description                                         |
-| ------------------- | --------------------------------------------------- |
-| `LLM_API_TYPE`      | `openai`, `anthropic`, or `google` (default openai) |
-| `LLM_BASE_URL`      | Base URL for OpenAI-compatible endpoints            |
-| `LLM_MODEL`         | Model identifier                                    |
-| `LLM_API_KEY`       | Provider API key                                    |
-| `DATABASE_URL`      | Postgres URL (`localhost:5432` on host)             |
-| `POSTGRES_PASSWORD` | Postgres password (docker compose)                  |
-| `MEILI_URL`         | Meilisearch URL (`localhost:7700` on host)          |
-| `MEILI_MASTER_KEY`  | Meilisearch master key                              |
-| `MEILI_ENV`         | Meilisearch environment (docker compose)            |
-| `AUTH_ENABLED`      | Set `false` in non-production to bypass auth        |
-| `JWT_SECRET`        | HMAC secret for signing tokens                      |
-| `DATA_PATH`         | Raw data root (`./ubc-unified-data/data` on host)   |
-| `PORT`              | Dev-server port (docker compose)                    |
+| Variable                   | Description                                                      |
+| -------------------------- | ---------------------------------------------------------------- |
+| `LLM_API_TYPE`             | `openai`, `anthropic`, or `google` (default openai)              |
+| `LLM_BASE_URL`             | Base URL for OpenAI-compatible endpoints                         |
+| `LLM_MODEL`                | Model identifier                                                 |
+| `LLM_API_KEY`              | Provider API key                                                 |
+| `DATABASE_URL`             | Postgres URL (`localhost:5432` on host)                          |
+| `POSTGRES_PASSWORD`        | Postgres password (docker compose)                               |
+| `MEILI_URL`                | Meilisearch URL (`localhost:7700` on host)                       |
+| `MEILI_MASTER_KEY`         | Meilisearch master key                                           |
+| `MEILI_ENV`                | Meilisearch environment (docker compose)                         |
+| `AUTH_ENABLED`             | Set `false` in non-production to bypass auth                     |
+| `JWT_SECRET`               | Random HMAC signing secret; at least 32 bytes in production      |
+| `DATA_PATH`                | Raw data root (`./ubc-unified-data/data` on host)                |
+| `PORT`                     | Dev-server port (docker compose)                                 |
+| `TRUSTED_CLIENT_IP_HEADER` | Optional proxy-overwritten single-IP header, such as `x-real-ip` |
+
+Request throttling ignores forwarding headers by default and uses a shared anonymous bucket. For per-client limits, set `TRUSTED_CLIENT_IP_HEADER` only when your reverse proxy overwrites that header with one validated client IP and blocks direct application access. Do not pass through client-supplied values or comma-separated forwarding chains. The in-process limiter resets on restart and does not coordinate replicas; enforce distributed abuse and concurrency limits at the edge.
+
+New passwords require at least 12 characters and at most 72 UTF-8 bytes. Existing bcrypt hashes cannot recover any password suffix beyond 72 bytes; rotate affected legacy credentials. Login retains compatibility with existing passwords.
+
+## Security
+
+Read [SECURITY.md](SECURITY.md) before deployment for the audit findings, verification limits, and required infrastructure controls. Keep private browser data on a trusted browser profile. The planner preserves ambiguous legacy data under `reodite-planner.unowned-backup` for manual recovery and does not upload it into the next signed-in account.
 
 ## Scripts
 

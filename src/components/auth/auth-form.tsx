@@ -105,18 +105,18 @@ export function AuthForm({ mode }: AuthFormProps) {
         />
       </Field>
       <Field
-        label={<>Password{mode === "signup" && <span className="text-muted ml-1">(6+ characters)</span>}</>}
+        label={<>Password{mode === "signup" && <span className="text-muted ml-1">(12+ characters)</span>}</>}
         htmlFor="auth-password"
       >
         <TextInput
           id="auth-password"
           type="password"
           autoComplete={mode === "login" ? "current-password" : "new-password"}
-          maxLength={128}
+          maxLength={mode === "signup" ? 72 : 128}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          minLength={6}
+          minLength={mode === "signup" ? 12 : 6}
           aria-invalid={!!error}
           aria-describedby={error ? "auth-error" : undefined}
           shadowOn="background"

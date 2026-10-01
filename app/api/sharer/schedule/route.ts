@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { getPerson, savePerson } from "@/src/server/sharer/store";
-import { json, requireJson, serverError } from "../../http";
+import { json, readJson, requireJson, serverError } from "../../http";
 
 // A full Workday schedule serializes to a few KB; the cap blocks abuse of
 // the JSONB column rather than any real schedule.
@@ -72,14 +72,9 @@ export async function PUT(request: Request): Promise<Response> {
     const ctError = requireJson(request);
     if (ctError) return ctError;
 
-    const text = await request.text();
-    if (text.length > MAX_SCHEDULE_BYTES) return json({ error: "Schedule too large" }, 413);
-    let body: unknown;
-    try {
-      body = JSON.parse(text);
-    } catch {
-      return json({ error: "Invalid JSON body" }, 400);
-    }
+    const result = await readJson(request, MAX_SCHEDULE_BYTES);
+    if (result instanceof Response) return result;
+    const { body } = result;
     if (!isRecord(body)) return json({ error: "Body must be an object" }, 400);
     const { handle, avatar, schedule } = body;
     if (typeof handle !== "string" || handle.trim().length === 0 || handle.length > 64) {

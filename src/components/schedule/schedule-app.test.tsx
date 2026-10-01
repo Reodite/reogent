@@ -151,14 +151,14 @@ function stubSharerFetch({
 }: {
   me?: ReturnType<typeof wirePerson> | null;
   groups?: typeof summaries;
-  loadGroup: (code: string) => Promise<Response>;
+  loadGroup: (code: string, init: RequestInit) => Promise<Response>;
 }) {
   const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     if (url.endsWith("/schedule")) return Promise.resolve(json({ person: me }));
     if (url.endsWith("/groups") && !init?.method) return Promise.resolve(json({ groups }));
     const match = url.match(/\/groups\/([0-9A-Za-z]{6})$/);
-    if (match?.[1] && (init?.method === "POST" || init?.method === "GET")) return loadGroup(match[1]);
+    if (match?.[1] && (init?.method === "POST" || init?.method === "GET")) return loadGroup(match[1], init);
     throw new Error(`unexpected request: ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -170,6 +170,165 @@ function controlOrder(container: HTMLElement) {
     .filter((element) => !element.parentElement?.closest("[data-control-section]"))
     .map((element) => element.getAttribute("data-control-section"));
 }
+
+describe("ScheduleApp invitation consent", () => {
+  it("opens an unknown link with GET and requests consent without exposing members", async () => {
+    const fetchMock = stubSharerFetch({
+      groups: [],
+      loadGroup: (code, init) =>
+        Promise.resolve(
+          init.method === "GET"
+            ? json({ error: "Not a member of this group" }, 404)
+            : json({ group: group(code, "Private group") }),
+        ),
+    });
+    render(<ScheduleApp groupCode="DDDDDD" />);
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/DDDDDD"))).toBe(true));
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    const dialog = await screen.findByRole("dialog", { name: "Join group DDDDDD?" });
+    expect(dialog.textContent).toContain("current and future uploaded class times and rooms");
+    expect(screen.queryByText("Private group")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" })));
+  });
+
+  it("joins once after explicit consent and blocks duplicate clicks while pending", async () => {
+    const joined = deferredResponse();
+    const fetchMock = stubSharerFetch({
+      groups: [],
+      loadGroup: (_code, init) =>
+        init.method === "POST" ? joined.promise : Promise.resolve(json({ error: "Not a member" }, 404)),
+    });
+    render(<ScheduleApp groupCode="DDDDDD" />);
+    const consent = await screen.findByRole("button", { name: "Join and share my schedule" });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+
+    act(() => {
+      fireEvent.click(consent);
+      fireEvent.click(consent);
+    });
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1));
+    expect((screen.getByRole("button", { name: "Joining…" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => joined.resolve(json({ group: group("DDDDDD", "Joined group") })));
+    expect(await screen.findByRole("heading", { name: "Joined group" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it.each(["Cancel", "Escape"])("dismisses with %s without joining or reopening the same link", async (action) => {
+    const fetchMock = stubSharerFetch({
+      groups: [],
+      loadGroup: async () => json({ error: "Not a member" }, 404),
+    });
+    const view = render(<ScheduleApp groupCode="DDDDDD" />);
+    const cancel = await screen.findByRole("button", { name: "Cancel" });
+    if (action === "Cancel") fireEvent.click(cancel);
+    else fireEvent.keyDown(cancel, { key: "Escape" });
+    view.rerender(<ScheduleApp groupCode="DDDDDD" />);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(router.replace).toHaveBeenCalledWith("/pulse/schedule");
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it("requires consent after manually entering a group code", async () => {
+    const fetchMock = stubSharerFetch({
+      groups: [],
+      loadGroup: (code, init) =>
+        Promise.resolve(
+          init.method === "GET" ? json({ error: "Not a member" }, 404) : json({ group: group(code, "Manual group") }),
+        ),
+    });
+    render(<ScheduleApp />);
+    const code = await screen.findByRole("textbox", { name: "Join with a code" });
+    fireEvent.change(code, { target: { value: "DDDDDD" } });
+    fireEvent.click(screen.getByRole("button", { name: "Join" }));
+    const consent = await screen.findByRole("button", { name: "Join and share my schedule" });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    fireEvent.click(consent);
+    expect(await screen.findByRole("heading", { name: "Manual group" })).toBeTruthy();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+  });
+
+  it("uses GET for an existing membership, group switches, and focus refreshes", async () => {
+    const fetchMock = stubSharerFetch({
+      loadGroup: async (code) => json({ group: group(code, code === "AAAAAA" ? "Group A" : "Group B") }),
+    });
+    render(<ScheduleApp groupCode="AAAAAA" />);
+    await screen.findByRole("heading", { name: "Group A" });
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), { target: { value: "BBBBBB" } });
+    await screen.findByRole("heading", { name: "Group B" });
+    await act(async () => {});
+    fireEvent.focus(window);
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/BBBBBB"))).toHaveLength(2),
+    );
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("ignores a stale nonmember response after another group opens", async () => {
+    const stale = deferredResponse();
+    const fetchMock = stubSharerFetch({
+      loadGroup: (code) =>
+        code === "DDDDDD" ? stale.promise : Promise.resolve(json({ group: group(code, "Group B") })),
+    });
+    const view = render(<ScheduleApp groupCode="DDDDDD" />);
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/DDDDDD"))).toBe(true));
+    view.rerender(<ScheduleApp groupCode="BBBBBB" />);
+    await screen.findByRole("heading", { name: "Group B" });
+    await act(async () => stale.resolve(json({ error: "Not a member" }, 404)));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it("discards an old invitation when the selected code changes", async () => {
+    const fetchMock = stubSharerFetch({ loadGroup: async () => json({ error: "Not a member" }, 404) });
+    const view = render(<ScheduleApp groupCode="DDDDDD" />);
+    const oldConsent = await screen.findByRole("button", { name: "Join and share my schedule" });
+    view.rerender(<ScheduleApp groupCode="EEEEEE" />);
+    fireEvent.click(oldConsent);
+    await screen.findByRole("dialog", { name: "Join group EEEEEE?" });
+    expect(screen.queryByRole("dialog", { name: "Join group DDDDDD?", hidden: true })).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it.each(["switch", "unmount"])("aborts a consented request on %s and ignores its late response", async (change) => {
+    const joined = deferredResponse();
+    const fetchMock = stubSharerFetch({
+      loadGroup: (code, init) => {
+        if (code === "BBBBBB") return Promise.resolve(json({ group: group(code, "Group B") }));
+        return init.method === "POST" ? joined.promise : Promise.resolve(json({ error: "Not a member" }, 404));
+      },
+    });
+    const view = render(<ScheduleApp groupCode="DDDDDD" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Join and share my schedule" }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1));
+    const joinSignal = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")?.[1]?.signal;
+    expect(joinSignal?.aborted).toBe(false);
+    if (change === "switch") {
+      view.rerender(<ScheduleApp groupCode="BBBBBB" />);
+      await screen.findByRole("heading", { name: "Group B" });
+    } else view.unmount();
+    expect(joinSignal?.aborted).toBe(true);
+    await act(async () => joined.resolve(json({ group: group("DDDDDD", "Stale joined group") })));
+    expect(screen.queryByText("Stale joined group")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+  });
+
+  it("keeps a failed join in the confirmation dialog without retrying automatically", async () => {
+    const fetchMock = stubSharerFetch({ loadGroup: async () => json({ error: "Unknown group" }, 404), groups: [] });
+    render(<ScheduleApp groupCode="DDDDDD" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Join and share my schedule" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Unknown group");
+    expect((screen.getByRole("button", { name: "Join and share my schedule" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+  });
+});
 
 describe("ScheduleApp group loading", () => {
   it("reserves boot controls and toolbar inside the workspace without an extra notice", async () => {
