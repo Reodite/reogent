@@ -19,6 +19,12 @@ export type Citation = {
     number?: string;
     date?: string;
     category?: string;
+    original_id?: string;
+    subcategory?: string;
+    source_id?: string;
+    hostname?: string;
+    document_category?: string;
+    content_sha256?: string;
     retrieved_at?: string;
     source_modified_at?: string;
     source_context_required?: boolean;

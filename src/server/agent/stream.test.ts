@@ -1,6 +1,10 @@
+import { createHash } from "node:crypto";
 import { afterEach, expect, it, vi } from "vitest";
 import type { DatasetModule, SearchClient } from "../core/types";
+import { sanitizeMeiliId } from "../ingest";
 import type { LlmAdapter } from "../llm/types";
+import { documents, type DocumentDoc } from "../modules/documents";
+import { pages } from "../modules/pages";
 import { ITERATION_LIMIT } from "./loop";
 import { streamAgent } from "./stream";
 
@@ -109,3 +113,89 @@ it("carries the assigned source marker into follow-up page results without chang
     { index: 2, used: true },
   ]);
 });
+
+it.each(["prose:workday:registration", `documents:official-web:${"b".repeat(24)}`])(
+  "reads indexed Markdown and preserves follow-up marker [2] for %s without a widget",
+  async (original_id) => {
+    vi.useFakeTimers();
+    const title = "Registration guide";
+    const content_markdown = "# Registration\n\n1. Confirm your selection.\n\nKeep the stated faculty conditions.";
+    const article: DocumentDoc = {
+      original_id,
+      category: "documents",
+      subcategory: "workday",
+      format: "markdown",
+      source_id: "workday",
+      upstream_id: "registration",
+      title,
+      content_markdown,
+      content_sha256: createHash("sha256").update(`${title}\n${content_markdown}`).digest("hex"),
+      source_url: "https://workday.students.ubc.ca/registration?view=student",
+      api_url: null,
+      campus: "vancouver",
+      audience: "students",
+      source_modified_at: "2026-08-01T12:00:00Z",
+      retrieved_at: "2026-09-01T12:00:00Z",
+      source_records: [],
+      links: [],
+      warnings: [],
+      ...(original_id.startsWith("documents:")
+        ? { hostname: "workday.students.ubc.ca", document_category: "support", subcategory: "support" }
+        : {}),
+    };
+    const stored = { id: sanitizeMeiliId(original_id), ...article };
+    const getDocument = vi.fn().mockResolvedValue(stored);
+    const index = vi.fn(() => ({ getDocument }));
+    const multiSearch = vi.fn().mockResolvedValue({
+      hits: [
+        { title, source: "calendar", url: "https://vancouver.calendar.ubc.ca/other-guide", date: null },
+        { ...article, _formatted: { search_sections: { part_0: "…<mark>Registration</mark> guidance…" } } },
+      ],
+    });
+    llm.converseStream
+      .mockImplementationOnce(async function* () {
+        yield { type: "tool_use", toolUseId: "search", name: "search_ubc_pages", input: { query: "registration" } };
+        yield { type: "stop", reason: "tool_use" };
+      })
+      .mockImplementationOnce(async function* () {
+        yield { type: "tool_use", toolUseId: "read", name: "get_document", input: { article_id: original_id } };
+        yield { type: "stop", reason: "tool_use" };
+      })
+      .mockImplementationOnce(async function* () {
+        yield { type: "text", delta: "Confirm your selection and keep the faculty conditions [2]." };
+        yield { type: "stop", reason: "end_turn" };
+      });
+    const events = await Array.fromAsync(
+      streamAgent([{ role: "user", content: "Read the registration steps." }], {
+        modules: [pages, documents],
+        search: { index, multiSearch } as unknown as SearchClient,
+      }),
+    );
+    expect(index).toHaveBeenCalledExactlyOnceWith("documents");
+    expect(getDocument).toHaveBeenCalledExactlyOnceWith(sanitizeMeiliId(original_id));
+    expect(multiSearch).toHaveBeenCalledTimes(1);
+    const request = llm.converseStream.mock.calls[2][0];
+    const read = request.messages
+      .flatMap((message) => message.content)
+      .find((block) => block.toolResult?.toolUseId === "read")?.toolResult;
+    expect(read?.content).toEqual([
+      { json: article },
+      { json: { source_citations: [{ citation: "[2]", label: title, source_url: article.source_url }] } },
+    ]);
+    expect(request.system).toContain(`[2] ${title} (${article.source_url})`);
+    const done = events.find((event) => event.type === "done");
+    expect(done?.tool_calls.map(({ name }) => name)).toEqual(["search_ubc_pages", "get_document"]);
+    expect(JSON.stringify(done?.tool_calls[0].result)).not.toContain(content_markdown);
+    expect(done?.tool_calls[1].result).toEqual(article);
+    expect(done?.citations.map(({ index, used }) => ({ index, used }))).toEqual([
+      { index: 1, used: false },
+      { index: 2, used: true },
+    ]);
+    expect(done?.citations[1].detail).toMatchObject({
+      original_id,
+      subcategory: article.subcategory,
+      retrieved_at: article.retrieved_at,
+    });
+    expect(stored).not.toHaveProperty("source_citations");
+  },
+);

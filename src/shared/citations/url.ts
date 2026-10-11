@@ -9,3 +9,14 @@ export function safeSourceUrl(value: unknown): string | undefined {
     return undefined;
   }
 }
+
+/** Normalizes source identity while preserving query-selected views. */
+export function canonicalSourceUrl(value: unknown): string | undefined {
+  const source = safeSourceUrl(value);
+  if (!source) return undefined;
+  const url = new URL(source);
+  url.hash = "";
+  url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+  url.searchParams.sort();
+  return url.href;
+}
