@@ -138,7 +138,12 @@ describe("source retrieval and attribution", () => {
   });
 
   it("searches broadly and checks more than the first page before reporting missing evidence", () => {
-    expect(SYSTEM_PROMPT).toContain("Start with a broad search without source, subcategory or hostname filters");
+    expect(SYSTEM_PROMPT).toContain("start with a broad search without source, subcategory or hostname filters");
+    expect(SYSTEM_PROMPT).toContain("If the user explicitly names a website, pass it as hostname");
+    expect(SYSTEM_PROMPT).toContain("Do not stop at a relevant snippet");
+    expect(SYSTEM_PROMPT).toContain("If the user asks according to a named website, search with that hostname");
+    expect(SYSTEM_PROMPT).toContain("Do not expand labels from memory");
+    expect(SYSTEM_PROMPT).toContain("Search with two to five distinctive topic keywords");
     expect(SYSTEM_PROMPT).toContain("all document topics and official hosts");
     expect(SYSTEM_PROMPT).toContain("No default audience, date, category or hostname cutoff applies");
     expect(SYSTEM_PROMPT).toContain("including research, opportunities and institutional news");

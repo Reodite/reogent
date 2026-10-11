@@ -114,6 +114,107 @@ it("carries the assigned source marker into follow-up page results without chang
   ]);
 });
 
+it.each(["cited", "uncited", "read-error", "refusal", "widget"])(
+  "requires full document reads after a %s draft",
+  async (mode) => {
+    vi.useFakeTimers();
+    const article = {
+      original_id: "prose:workday:steps",
+      title: "Guide",
+      source_url: "https://example.ubc.ca/steps",
+      content_markdown: "Confirm your selection. Conditions apply.",
+    };
+    const execute = vi.fn(async () => {
+      if (mode === "read-error") throw new Error("Document unavailable");
+      return article;
+    });
+    const fixture: DatasetModule = {
+      name: "fixture",
+      indices: [],
+      tools: [
+        {
+          spec: pages.tools[0].spec,
+          execute: async () => ({
+            pages: [
+              {
+                ...article,
+                original_id: "prose:workday:unrelated",
+                source_url: "https://example.ubc.ca/other",
+                url: "https://example.ubc.ca/other",
+                content_markdown: undefined,
+              },
+              { ...article, url: article.source_url, content_markdown: undefined },
+            ],
+          }),
+        },
+        { spec: documents.tools[0].spec, execute },
+        {
+          spec: { name: "show_widget", description: "Render a card", inputSchema: { json: {} } },
+          execute: async () => ({ kind: "card" }),
+        },
+      ],
+    };
+    const answer = async function* () {
+      yield { type: "text" as const, delta: "Confirm your selection [2]." };
+      yield { type: "stop" as const, reason: "end_turn" };
+    };
+    llm.converseStream
+      .mockImplementation(answer)
+      .mockImplementationOnce(async function* () {
+        yield { type: "tool_use", toolUseId: "search", name: "search_ubc_pages", input: { query: "guide" } };
+        yield { type: "stop", reason: "tool_use" };
+      })
+      .mockImplementationOnce(async function* () {
+        if (mode === "widget") yield { type: "tool_use", toolUseId: "card", name: "show_widget", input: {} };
+        yield {
+          type: "text",
+          delta: mode === "uncited" ? "I could not verify any steps." : "Confirm your selection [2].",
+        };
+        yield { type: "stop", reason: mode === "widget" ? "tool_use" : "end_turn" };
+      })
+      .mockImplementationOnce(
+        mode === "refusal"
+          ? answer
+          : async function* () {
+              yield {
+                type: "tool_use",
+                toolUseId: "read",
+                name: "get_document",
+                input: { article_id: article.original_id },
+              };
+              yield { type: "stop", reason: "tool_use" };
+            },
+      );
+    const events = await Array.fromAsync(
+      streamAgent([{ role: "user", content: "Explain the steps." }], {
+        modules: [fixture],
+        search: {} as SearchClient,
+      }),
+    );
+    if (mode !== "widget") {
+      expect(events).toContainEqual({ type: "text_clear" });
+      expect(llm.converseStream.mock.calls[2][0].forceToolUse).toBe(true);
+      expect(JSON.stringify(llm.converseStream.mock.calls[2][0].messages)).toContain(
+        "Before answering, call get_document",
+      );
+    }
+    if (mode === "read-error" || mode === "refusal") {
+      expect(events.some((event) => event.type === "done")).toBe(false);
+      expect(events.at(-1)).toEqual({
+        type: "error",
+        message: "Could not verify the full source documents. Please ask a narrower question.",
+      });
+    } else {
+      const done = events.find((event) => event.type === "done");
+      expect(done?.tool_calls.map((tool) => tool.name)).toEqual(
+        mode === "widget" ? ["search_ubc_pages", "show_widget", "get_document"] : ["search_ubc_pages", "get_document"],
+      );
+      expect(done?.citations.find((citation) => citation.index === 2)?.used).toBe(true);
+      expect(execute).toHaveBeenCalledTimes(1);
+    }
+  },
+);
+
 it.each(["prose:workday:registration", `documents:official-web:${"b".repeat(24)}`])(
   "reads indexed Markdown and preserves follow-up marker [2] for %s without a widget",
   async (original_id) => {
