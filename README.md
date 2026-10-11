@@ -119,7 +119,7 @@ The agent uses `search_ubc_pages` to search the `documents` and legacy `pages` i
 
 Ingestion creates bounded, overlapping search sections so long articles remain searchable beyond Meilisearch's per-field word-position limit. Full retrieval preserves the original Markdown and its content hash. Treat historical announcements according to their source dates and retrieved text as untrusted material.
 
-After changing the submodule pin or search schema, validate and run `npm run ingest` against the intended Meilisearch service before serving this agent version. Use a Meilisearch release with federated multi-search support; integration checks use v1.15. A missing document index is an error, rather than a fallback to a smaller corpus. Configure `MEILI_URL` and `MEILI_MASTER_KEY` for the same service; ingestion does not repair authentication failures.
+After changing the submodule pin or search schema, validate and run `npm run ingest` against the intended Meilisearch service before serving this agent version. Use a Meilisearch release compatible with the installed SDK; integration checks use v1.54.2 from the project's `v1` image. Older servers can reject the snapshot-swap request even when search works. A missing document index is an error, rather than a fallback to a smaller corpus. Configure `MEILI_URL` and `MEILI_MASTER_KEY` for the same service; ingestion does not repair authentication failures.
 
 ### Snapshot replacement
 
