@@ -168,13 +168,11 @@ describe("complete searchable text", () => {
 describe("indexed full document retrieval", () => {
   const tool = documents.tools[0];
   function client(value = transformDocument(row()).doc) {
-    const getDocument = vi
-      .fn()
-      .mockResolvedValue({
-        ...value,
-        id: sanitizeMeiliId(value.original_id),
-        search_sections: documentSearchSections(value.content_markdown),
-      });
+    const getDocument = vi.fn().mockResolvedValue({
+      ...value,
+      id: sanitizeMeiliId(value.original_id),
+      search_sections: documentSearchSections(value.content_markdown),
+    });
     const index = vi.fn(() => ({ getDocument }));
     return { getDocument, index, search: { index } as unknown as SearchClient };
   }
