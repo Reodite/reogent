@@ -39,6 +39,10 @@ type Result = {
   corpus: { index: string; filter: string | null }[];
   pagination: { offset: number; limit: number; raw_count: number; next_offset: number | null };
   coverage: string;
+  next_step: string;
+  query: string;
+  match_type: string;
+  search_note?: string;
 };
 const tool = pages.tools[0];
 
@@ -120,6 +124,8 @@ describe("federated page search", () => {
     expect(JSON.stringify(result)).not.toContain("Full body");
     expect(JSON.stringify(result)).not.toContain("Full legacy body");
     expect(JSON.stringify(result)).not.toContain("_formatted");
+    expect(result.next_step).toContain("call get_document(article_id: original_id) before answering");
+    expect(result.next_step).toContain("use fewer topic keywords or the user's explicit hostname");
   });
 
   it("keeps matching text inside the bound even when a cropped excerpt starts with a long token", async () => {
@@ -231,6 +237,40 @@ describe("federated page search", () => {
     expect(result.corpus).toEqual([{ index: "documents", filter: 'hostname = "it.ubc.ca"' }]);
     expect(result.pagination.next_offset).toBeNull();
     expect(result.coverage).toContain("Relax filters or rephrase");
+  });
+
+  it("distinguishes a hostname keyword miss from an unindexed source", async () => {
+    const f = fixture();
+    f.multiSearch
+      .mockResolvedValueOnce({ hits: [] })
+      .mockResolvedValueOnce({ hits: [{ ...article, hostname: "example.ubc.ca" }] });
+    const result = (await tool.execute({ query: "missing procedure", hostname: "example.ubc.ca" }, f.client)) as Result;
+    expect(f.multiSearch).toHaveBeenCalledTimes(2);
+    expect(f.multiSearch.mock.calls[0][0].queries[0].q).toBe("missing procedure");
+    expect(f.multiSearch.mock.calls[1][0].queries).toEqual([
+      expect.objectContaining({ q: "", filter: 'hostname = "example.ubc.ca"', indexUid: "documents" }),
+    ]);
+    expect(result.pages[0].original_id).toBe(article.original_id);
+    expect(result.query).toBe("");
+    expect(result.match_type).toBe("hostname_inventory");
+    expect(result.search_note).toContain("not keyword matches");
+  });
+
+  it("paginates an explicitly requested host inventory without broadening its scope", async () => {
+    const f = fixture([article]);
+    const result = (await tool.execute({ query: "", hostname: "example.ubc.ca", offset: 5 }, f.client)) as Result;
+    expect(f.multiSearch).toHaveBeenCalledTimes(1);
+    expect(f.multiSearch.mock.calls[0][0]).toMatchObject({
+      federation: { offset: 5 },
+      queries: [expect.objectContaining({ q: "", filter: 'hostname = "example.ubc.ca"' })],
+    });
+    expect(result.match_type).toBe("hostname_inventory");
+  });
+
+  it("does not substitute a host inventory at the end of keyword pagination", async () => {
+    const f = fixture([]);
+    await tool.execute({ query: "policy", hostname: "example.ubc.ca", offset: 20 }, f.client);
+    expect(f.multiSearch).toHaveBeenCalledTimes(1);
   });
 
   it("propagates a missing documents index instead of falling back to legacy results", async () => {

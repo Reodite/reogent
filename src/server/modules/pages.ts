@@ -179,12 +179,16 @@ export const pages: DatasetModule = {
       spec: {
         name: "search_ubc_pages",
         description:
-          "Search all indexed document topics, official UBC hosts and legacy pages together, ranked by relevance. No audience, date, category or host restriction applies by default. Returns metadata and short matching excerpts, not full documents. Read a document with get_document using its complete original_id before describing procedures or requirements. Start without filters; narrow only when needed. Use next_offset for more results and relax filters or rephrase before reporting missing evidence. Use dedicated structured tools such as get_costs for facts they provide. Cite returned source URLs.",
+          "Search all indexed document topics, official UBC hosts and legacy pages together, ranked by relevance. No audience, date, category or host restriction applies by default. Returns metadata and short matching excerpts, not full documents. After finding a relevant document, call get_document with its complete original_id before answering. Snippets select documents; they do not replace reading their conditions. Use hostname when the user explicitly names a website; otherwise start without filters. Use next_offset for more results and relax filters or rephrase before reporting missing evidence. Use dedicated structured tools such as get_costs for facts they provide. Cite returned source URLs.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
-              query: { type: "string", description: "Keywords to search page titles and text for" },
+              query: {
+                type: "string",
+                description:
+                  "Two to five distinctive topic keywords, such as co-op employers or unofficial transcript. This is indexed keyword search, not a web search engine. Omit generic question wording, UBC, central, URLs and hostnames. Do not use site: operators; use hostname for an explicitly named site. Shorten an irrelevant query before declaring missing evidence. With hostname, query may be empty to browse that site's indexed documents.",
+              },
               source: {
                 type: "string",
                 description:
@@ -198,7 +202,7 @@ export const pages: DatasetModule = {
               hostname: {
                 type: "string",
                 description:
-                  "Optional exact official document hostname, copied from a result. Searches documents only. Omit for all hosts.",
+                  "Exact official hostname explicitly supplied by the user or copied from a result. Put a named website here, not in query. Searches that host's documents only. Omit when no specific website is requested.",
               },
               limit: { type: "integer", minimum: 1, description: "Max results (default 5, capped at 20)" },
               offset: {
@@ -212,7 +216,8 @@ export const pages: DatasetModule = {
         },
       },
       async execute(input, search) {
-        if (typeof input.query !== "string" || !input.query.trim()) throw new Error("Page search requires query");
+        if (typeof input.query !== "string" || (!input.query.trim() && typeof input.hostname !== "string"))
+          throw new Error("Page search requires keywords, or an empty query with hostname to browse a source");
         for (const key of ["source", "subcategory", "hostname"] as const) {
           if (input[key] !== undefined && (typeof input[key] !== "string" || !input[key].trim()))
             throw new Error(`${key} must be a nonempty string`);
@@ -274,7 +279,15 @@ export const pages: DatasetModule = {
             highlightPreTag: "<mark>",
             highlightPostTag: "</mark>",
           });
-        const result = await search.multiSearch<FederatedMultiSearchParams, DocumentDoc | PageDoc>(request);
+        let result = await search.multiSearch<FederatedMultiSearchParams, DocumentDoc | PageDoc>(request);
+        let effectiveQuery = query;
+        if (hostname && query && offset === 0 && result.hits.length === 0) {
+          effectiveQuery = "";
+          result = await search.multiSearch<FederatedMultiSearchParams, DocumentDoc | PageDoc>({
+            ...request,
+            queries: [{ ...request.queries[0], q: "" }],
+          });
+        }
         const hits = result.hits.map((hit): PageResult => {
           if ("original_id" in hit) {
             const doc = hit as Hit<DocumentDoc & { search_sections: Record<string, string> }>;
@@ -302,6 +315,16 @@ export const pages: DatasetModule = {
         });
         return {
           pages: deduplicatePages(hits),
+          query: effectiveQuery,
+          match_type: effectiveQuery ? "keyword" : "hostname_inventory",
+          search_note:
+            effectiveQuery !== query
+              ? result.hits.length
+                ? "No keyword matches. These are indexed documents from the requested hostname, not keyword matches. Read relevant articles before claiming the source lacks information. Continue browsing with query set to the returned empty string and next_offset."
+                : "No indexed documents found for this exact hostname. This does not establish whether its live website has the information."
+              : undefined,
+          next_step:
+            "For a relevant hit with original_id, call get_document(article_id: original_id) before answering from that document. These excerpts can omit conditions. If hits are irrelevant, use fewer topic keywords or the user's explicit hostname; do not infer that its documents are absent.",
           corpus: request.queries.map(({ indexUid, filter }) => ({ index: indexUid, filter: filter ?? null })),
           pagination: {
             offset,
