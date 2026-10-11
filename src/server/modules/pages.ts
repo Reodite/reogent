@@ -36,7 +36,6 @@ const SUMMARY_FIELDS = [
   "source_modified_at",
   "retrieved_at",
   "source_records",
-  "links",
   "warnings",
   "hostname",
   "document_category",

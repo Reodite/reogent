@@ -15,6 +15,7 @@ const article = {
   content_sha256: "a".repeat(64),
   source_records: [{ path: "academic-calendar/vancouver/pages.json", id: "7" }],
   warnings: ["Preserve the source's conditions"],
+  links: [{ text: "Full article navigation", url: "https://example.ubc.ca/deep-link" }],
   content_markdown: "Full body must not leave search",
   _formatted: { search_sections: { part_0: "…The <mark>policy</mark> applies to the stated period…" } },
 };
@@ -99,6 +100,8 @@ describe("federated page search", () => {
       ]),
     );
     expect(documentQuery.attributesToRetrieve).not.toContain("content_markdown");
+    expect(documentQuery.attributesToRetrieve).not.toContain("links");
+    expect(result.pages[0]).not.toHaveProperty("links");
     expect(documentQuery.attributesToRetrieve).not.toContain("*");
     expect(pageQuery.attributesToRetrieve).not.toContain("text");
     expect(documentQuery).toMatchObject({
