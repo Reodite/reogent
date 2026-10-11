@@ -12,7 +12,7 @@ import { runIngest } from "./ingest";
 vi.mock("./freshness", () => ({ recordIndexFreshness: vi.fn() }));
 
 function fixture(rowCount = 1) {
-  const store: DataWriter = { getJson: vi.fn(), putJson: vi.fn() };
+  const store: DataWriter = { getJson: vi.fn(), getText: vi.fn(), list: vi.fn(), putJson: vi.fn() };
   const makeIndex = (name: string, settingsTask: number, documentTask: number, rows: number) => {
     let taskUid = documentTask;
     const definition = {

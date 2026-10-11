@@ -264,6 +264,8 @@ function hoursHit() {
 
 function fakeStore(tables: Record<string, unknown>) {
   return {
+    getText: vi.fn(),
+    list: vi.fn(),
     getJson: vi.fn(async (key: string) => {
       if (!Object.hasOwn(tables, key)) throw new Error(`Unexpected table: ${key}`);
       return tables[key];
