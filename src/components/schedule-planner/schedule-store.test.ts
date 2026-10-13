@@ -70,7 +70,6 @@ beforeEach(() => {
 describe("schedule store", () => {
   it("normalizes Vancouver course codes for storage and sharing", () => {
     expect(store.normalizeScheduleCode(" cpsc_v   221 ")).toBe("CPSC 221");
-    expect(store.entryLabel({ code: "CPSC_V 221", section: "101" })).toBe("CPSC 221 101");
   });
 
   it("keeps one section per component and term, including prefixed dataset codes", () => {

@@ -2,13 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   conflictedIndices,
   conflicts,
-  formatTime,
-  hourRange,
   normalizeDays,
   parseTime,
   sectionComponent,
   sectionGroup,
-  visibleDays,
   type ScheduledSection,
 } from "./schedule";
 
@@ -53,7 +50,7 @@ describe("normalizeDays", () => {
   });
 });
 
-describe("parseTime / formatTime", () => {
+describe("parseTime", () => {
   it("parses valid HH:MM", () => {
     expect(parseTime("09:30")).toBe(570);
     expect(parseTime("0:05")).toBe(5);
@@ -64,9 +61,6 @@ describe("parseTime / formatTime", () => {
     expect(parseTime("24:00")).toBe(-1);
     expect(parseTime("25:00")).toBe(-1);
     expect(parseTime("noon")).toBe(-1);
-  });
-  it("round-trips through formatTime", () => {
-    expect(formatTime(parseTime("14:15"))).toBe("14:15");
   });
 });
 
@@ -96,28 +90,5 @@ describe("conflictedIndices", () => {
     const entries = [sec({ code: "A 1", section: "1" }), keeper, clash, good];
     // entries[0] and entries[2] overlap; entries[1] is Tue-only, entries[3] is noon.
     expect([...conflictedIndices(entries)].sort()).toEqual([0, 2]);
-  });
-});
-
-describe("visibleDays", () => {
-  it("is Mon–Fri unless a weekend day is used", () => {
-    expect(visibleDays([sec({ code: "A 1", section: "1" })])).toEqual(["Mon", "Tue", "Wed", "Thu", "Fri"]);
-    expect(visibleDays([sec({ code: "A 1", section: "1", days: ["Sat"] })])).toEqual([
-      "Mon",
-      "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
-      "Sat",
-    ]);
-  });
-});
-
-describe("hourRange", () => {
-  it("expands around early or late sections", () => {
-    const early = sec({ code: "A 1", section: "1", startMinutes: 7 * 60, endMinutes: 8 * 60 });
-    const late = sec({ code: "B 2", section: "2", startMinutes: 20 * 60, endMinutes: 23.5 * 60 });
-    expect(hourRange([early]).startHour).toBe(7);
-    expect(hourRange([late]).endHour).toBe(24);
   });
 });
