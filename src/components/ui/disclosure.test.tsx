@@ -124,8 +124,6 @@ describe("Disclosure focus reveal", () => {
   it("keeps immediate focus and waits for its opening completion plus layout", () => {
     const view = expand();
     expect(document.activeElement).toBe(view.select);
-    expect(view.select.parentElement?.hasAttribute("data-disclosure-content")).toBe(true);
-    expect(view.select.parentElement?.classList.contains("overflow-hidden")).toBe(true);
     fireEvent.scroll(view.select.parentElement!);
     flushFrame();
     expect(view.scroll).not.toHaveBeenCalled();

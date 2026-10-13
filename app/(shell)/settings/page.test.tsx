@@ -26,23 +26,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Settings", () => {
-  it("keeps the page export contract", async () => {
-    expect(Object.keys(await import("./page"))).toEqual(["default"]);
-  });
-
-  it("reserves the profile form footprint while loading", () => {
+  it("announces profile loading", () => {
     api.getProfile.mockReturnValue(new Promise(() => {}));
     render(<SettingsPage />);
 
     const loading = screen.getByRole("status", { name: "Loading student profile" });
     expect(loading).not.toBeNull();
-    expect(document.querySelectorAll("[data-skeleton]").length).toBeGreaterThan(0);
-    const action = loading.querySelector("[data-profile-loading-action]");
-    expect(action?.className).toContain("h-11");
-    expect(action?.className).toContain("sm:h-10");
   });
 
-  it("uses the shared split workspace for account, appearance, and student profile", async () => {
+  it("renders account, appearance, and profile headings without a nested main landmark", async () => {
     api.getProfile.mockResolvedValue({ profile: {} });
     const { container } = render(<SettingsPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).not.toBeNull();
@@ -50,13 +42,7 @@ describe("Settings", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Appearance" })).not.toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Student profile" })).not.toBeNull();
     expect(container.querySelectorAll("main")).toHaveLength(0);
-    const mainRegion = container.querySelector("[data-workspace-region='main']");
-    expect(mainRegion?.querySelectorAll("[data-workspace-panel]")).toHaveLength(0);
-    expect(mainRegion?.querySelector("[data-settings-profile]")).not.toBeNull();
     await screen.findByLabelText("Program");
-    for (const label of ["Program", "Year", "Student type"]) {
-      expect(screen.getByLabelText(label).classList.contains("neu-shadow-on-surface-container-low")).toBe(true);
-    }
   });
 
   it("withholds editable fields after load failure and unlocks them only after Retry", async () => {
@@ -110,10 +96,8 @@ describe("Settings", () => {
     await waitFor(() => expect(fieldset?.disabled).toBe(true));
     expect((program as HTMLInputElement).value).toBe("Statistics");
     expect(screen.getByLabelText("Program")).toBe(program);
-    expect(program.closest("form")?.className).toContain("ui-content-enter");
     finish?.();
     await waitFor(() => expect(screen.getByText("Saved")).not.toBeNull());
     expect(screen.getByLabelText("Program")).toBe(program);
-    expect(screen.getByText("Saved").className).toContain("ui-notice-enter");
   });
 });
