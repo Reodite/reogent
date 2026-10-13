@@ -157,7 +157,6 @@ export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) 
         : "ai";
 
   const splitWorkspace =
-    utilityPage === "settings" ||
     pathname === "/tools/map" ||
     pathname === "/tools/calendar" ||
     pathname === "/tools/planner" ||

@@ -975,6 +975,10 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   grid-template-columns: 20rem minmax(0, 1fr);
 }
 
+.workspace-page:is([data-workspace-host="settings"], [data-workspace-host="account"]) [data-workspace-canvas] {
+  padding-top: 2rem;
+}
+
 .workspace-page-toggle {
   display: none;
 }

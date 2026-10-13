@@ -103,18 +103,16 @@ describe("shell loading surfaces", () => {
     expect(tabs?.className).not.toMatch(/gap-1|px-2/);
   });
 
-  it.each([
-    ["/settings", "split"],
-    ["/account", "single"],
-  ])("reserves utility workspace geometry for %s", (pathname, composition) => {
+  it.each(["/settings", "/account"])("reserves single-card utility geometry for %s", (pathname) => {
     const { container } = render(<ShellBootLoading pathname={pathname} />);
     expect(container.querySelector("[data-shell-boot-loading]")?.getAttribute("data-shell-boot-mode")).toBe("utility");
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-host")).toBe(
       pathname.slice(1),
     );
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe(
-      composition,
-    );
+    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("single");
+    expect(container.querySelectorAll("[data-workspace-canvas]")).toHaveLength(1);
+    expect(container.querySelector("[data-workspace-region='rail']")).toBeNull();
+    expect(container.querySelector("[data-workspace-view-toggle]")).toBeNull();
   });
 
   it("selects boot geometry from the requested destination", () => {

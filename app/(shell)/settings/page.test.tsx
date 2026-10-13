@@ -46,19 +46,22 @@ describe("Settings", () => {
     expect(action?.className).toContain("sm:h-10");
   });
 
-  it("keeps appearance and student profile without an account card or sign-out action", async () => {
+  it("groups appearance and student profile as sections in a single card", async () => {
     api.getProfile.mockResolvedValue({ profile: {} });
     const { container } = render(<SettingsPage />);
+    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("single");
+    expect(container.querySelectorAll("[data-workspace-canvas]")).toHaveLength(1);
+    expect(container.querySelector("[data-workspace-region='rail']")).toBeNull();
+    expect(container.querySelector("[data-workspace-view-toggle]")).toBeNull();
+    expect(container.querySelector("[data-workspace-panel]")).toBeNull();
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).not.toBeNull();
     expect(screen.queryByRole("heading", { level: 2, name: "Account" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Appearance" })).not.toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: "Appearance" })).not.toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: "Student profile" })).not.toBeNull();
     expect(container.querySelectorAll("main")).toHaveLength(0);
-    const mainRegion = container.querySelector("[data-workspace-region='main']");
-    expect(mainRegion?.querySelectorAll("[data-workspace-panel]")).toHaveLength(0);
-    expect(mainRegion?.querySelector("[data-settings-profile]")).not.toBeNull();
+    const canvas = container.querySelector("[data-workspace-canvas]");
+    expect(canvas?.contains(screen.getByRole("region", { name: "Appearance" }))).toBe(true);
+    expect(canvas?.contains(screen.getByRole("region", { name: "Student profile" }))).toBe(true);
+    expect(canvas?.contains(screen.getByTestId("theme-toggle"))).toBe(true);
     await screen.findByLabelText("What are you studying?");
     for (const label of ["What should we call you?", "What are you studying?", "Year of study", "Tuition defaults"]) {
       expect(screen.getByLabelText(label).classList.contains("neu-shadow-on-surface-container-low")).toBe(true);
@@ -72,6 +75,7 @@ describe("Settings", () => {
     render(<SettingsPage />);
 
     expect(await screen.findByText("Profile unavailable")).not.toBeNull();
+    expect(screen.getByTestId("theme-toggle")).not.toBeNull();
     expect(screen.queryByLabelText("What are you studying?")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));

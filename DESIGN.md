@@ -553,7 +553,8 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 
 - **Utility routes**: Account and Settings use the authenticated shell before mode-dependent content. Retain the existing AI, Tools, or Unity sidebar and cached workspace state without marking a prior tool row current. Browser Back restores the prior destination and mode.
 - **Account composition**: Use the shared single workspace and inset canvas with a centered, readable content column. Follow identity and creation date with Student profile and Activity definition lists, separated by thin rules. Stack fields on phones and use two columns from 640px. Place Edit profile beside the section heading and route it to Settings. Keep Sign out available during loading and recovery; show guests a sign-in link without requesting private details. Display the token tracking start date beside its coverage note.
-- **Settings composition**: The shared split workspace places Appearance in the 20rem rail and Student profile in the inset canvas. Compact users switch between Student profile and Appearance through the standard 44px control.
+- **Settings composition**: Use one inset canvas with a centered, readable column. Stack Appearance and Student profile as labeled sections separated by a thin rule. Keep both sections in the same scrollable card at every viewport width.
+- **Card insets**: Account and Settings use 32px top padding and 16px side and bottom padding inside the canvas. Retain the same insets and single-card composition in loading states.
 - **Profile safety**: Profile fields do not render until saved defaults load successfully. Failure shows the shared Retry state and keeps editing locked; saving disables the complete fieldset without clearing values. Program, year, and student type use shared labeled fields.
 
 ### Map, Pulse, and Creators

@@ -276,7 +276,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {navigation.pending ? (
               <WorkspaceRouteLoading
                 label={utilityPage === "account" ? "Loading Account" : "Loading Settings"}
-                composition={utilityPage === "account" ? "single" : "split"}
+                composition="single"
               />
             ) : (
               children
