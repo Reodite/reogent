@@ -313,18 +313,22 @@ export function buildGraph(
   type QItem = { code: string; parsed: CourseIndexEntry; depth: number };
   const queue: QItem[] = [{ code: rootCode, parsed: root, depth: 0 }];
 
-  while (queue.length > 0) {
-    const cur = queue.shift() as QItem;
-    if (cur.depth >= MAX_DEPTH) continue;
-    const ast = parsePrereq(cur.parsed.prerequisite);
-    if (!ast) continue;
-    walkAst(ast, cur.code, cur.depth + 1, "", cur.code);
+  function expandQueuedCourses(): void {
+    while (queue.length > 0) {
+      const cur = queue.shift() as QItem;
+      if (cur.depth >= MAX_DEPTH) continue;
+      const ast = parsePrereq(cur.parsed.prerequisite);
+      if (!ast) continue;
+      walkAst(ast, cur.code, cur.depth + 1, "", cur.code);
+    }
   }
+  expandQueuedCourses();
 
-  // Direct corequisites of the root only — coreqs are taken alongside, not
-  // "before", so their own coreq trees aren't expanded (their prereq chains are).
+  // Expand the root's corequisites and their prerequisite chains, but not
+  // corequisites of other courses. Preserve prerequisite-first traversal.
   const coreqAst = parsePrereq(root.corequisite);
   if (coreqAst) walkAst(coreqAst, rootCode, 0, "coreq", rootCode, true);
+  expandQueuedCourses();
 
   function walkAst(
     expr: Expr,
