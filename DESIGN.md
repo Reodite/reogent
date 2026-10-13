@@ -659,7 +659,7 @@ Verified entrance points project to the nearest exterior or courtyard footprint 
 
 Use the full-width avatar and username row, or an icon-only trigger in the collapsed sidebar. The avatar uses the existing primary-container material. Keep the trigger's 44px phone target and neutral hover/press feedback.
 
-Use a labeled non-modal account dialog with appearance radios and Settings and Account links. Show the username without a sign-in caption. Use native links and buttons inside it, preserve theme-radio arrow keys, and keep Tab order natural. Match the anchor width with the `.glass-neu rounded-2xl p-2` material. Use the shared overlay-presence animation for entry and exit, without a second local keyframe. Show placement visibility immediately so initial focus can enter; never transition that visibility flag. Escape closes the account dialog before the drawer, including when focus rests on its trigger. Put Sign out on the Account page with the shared danger-button treatment.
+Use a labeled non-modal account dialog with appearance radios and Settings and Account links. Keep the username in the sidebar trigger. Start the popup with Appearance. Use native links and buttons inside it, preserve theme-radio arrow keys, and keep Tab order natural. Match the anchor width with the `.glass-neu rounded-2xl p-2` material. Use the shared overlay-presence animation for entry and exit, without a second local keyframe. Show placement visibility immediately so initial focus can enter; never transition that visibility flag. Escape closes the account dialog before the drawer, including when focus rests on its trigger. Put Sign out on the Account page with the shared danger-button treatment.
 
 ## Motion
 

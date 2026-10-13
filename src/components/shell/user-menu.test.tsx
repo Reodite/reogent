@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { UserMenu } from "@/src/components/shell/user-menu";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/src/components/auth/app-auth", () => ({
@@ -22,7 +22,9 @@ describe("UserMenu", () => {
     const popup = getByRole("dialog", { name: "Account" });
     expect(document.activeElement).toBe(popup);
     const appearance = getByRole("radiogroup");
-    expect(popup.contains(appearance)).toBe(true);
+    expect(within(trigger).getByText("max")).not.toBeNull();
+    expect(within(popup).queryByText("max")).toBeNull();
+    expect(popup.firstElementChild?.contains(appearance)).toBe(true);
     expect(appearance.parentElement?.classList.contains("flex-wrap")).toBe(true);
     expect(appearance.parentElement?.classList.contains("gap-y-2")).toBe(true);
     expect(getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/settings");
