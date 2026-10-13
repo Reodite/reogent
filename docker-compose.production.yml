@@ -1,0 +1,30 @@
+# Merge with docker-compose.yml for production only.
+# Tune caps for the host; reserve RAM for the OS, Docker and separate ingestion.
+services:
+  app:
+    cpus: "${APP_CPUS:-1.0}"
+    mem_limit: "${APP_MEMORY_MB:-1024}m"
+    environment:
+      APP_MEMORY_MB: "${APP_MEMORY_MB:-1024}"
+      NODE_HEAP_MB: "${NODE_HEAP_MB:-640}"
+      NODE_OPTIONS: "--max-old-space-size=${NODE_HEAP_MB:-640}"
+      DB_POOL_MAX: "${DB_POOL_MAX:-10}"
+      DB_POOL_TIMEOUT_MS: "${DB_POOL_TIMEOUT_MS:-5000}"
+
+  postgres:
+    cpus: "${POSTGRES_CPUS:-1.0}"
+    mem_limit: "${POSTGRES_MEMORY_MB:-512}m"
+    command:
+      - postgres
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-40}
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}
+
+  meilisearch:
+    cpus: "${MEILI_CPUS:-1.0}"
+    mem_limit: "${MEILI_MEMORY_MB:-2048}m"
+    environment:
+      MEILI_MAX_INDEXING_MEMORY: "${MEILI_MAX_INDEXING_MEMORY:-768MiB}"
+      MEILI_MAX_INDEXING_THREADS: "${MEILI_MAX_INDEXING_THREADS:-1}"
+      MEILI_HTTP_PAYLOAD_SIZE_LIMIT: "${INGEST_MAX_REQUEST_BYTES:-100000000}"

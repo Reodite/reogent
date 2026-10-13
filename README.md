@@ -48,10 +48,14 @@ Host processes use loopback service URLs; Compose replaces them with container h
 | `CHAT_TIMEOUT_MS`      | `180000` | Deadline before agent completion, in milliseconds |
 | `TITLE_MAX_CONCURRENT` | `2`      | Concurrent background title operations            |
 | `TITLE_TIMEOUT_MS`     | `15000`  | Title-generation deadline, in milliseconds        |
+| `DB_POOL_MAX`          | `10`     | Connections in the shared process-local pool      |
+| `DB_POOL_TIMEOUT_MS`   | `5000`   | Connection acquisition timeout, in milliseconds   |
 
 Counts must be positive safe integers. Timer durations must fit 1–2,147,483,647 milliseconds. Excess chats receive 503 with `Retry-After`; per-user rate limits still return 429. Full title capacity leaves the existing fallback title unchanged.
 
 You'll receive `done` after the required save succeeds. Disconnecting after agent completion does not discard that save attempt. Cancellation stops provider requests and new tool dispatch; tool and database operations that cannot abort can retain a slot until they settle.
+
+Database acquisition has a deadline; queries retain their existing behavior without automatic mutation retries. Keep the pool limit below Postgres's connection limit, allowing for administration and other clients.
 
 The browser and Google idle limits remain 60 and 15 seconds. Application read watchdogs clear when reads settle. The Google SDK retains its internal unref'd 20-second attempt timer until it fires; its API exposes no timer disposer.
 
@@ -132,6 +136,23 @@ Run one ingestion process per destination and allow disk space for both generati
 The Dockerfile builds a standalone Node application and runs it as a non-root user. Compose mounts datasets without write access for the app. Build before deployment rather than competing with the live database/search engine for resources.
 
 Use `npm run build`: its postbuild step removes environment files that Next copies into standalone output outside trace exclusions. Supply secrets at runtime. The runner needs `.next/standalone`, `.next/static`, and `public`, including both MapLibre worker modules; the Dockerfile copies these assets. Tests, specs, local tooling, and mounted datasets stay outside the release. Inspect local artifact sizes with `du -sb .next/standalone .next/static public`.
+
+Use the production-only resource override; leave it out of development commands:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.production.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --build app
+```
+
+| Service     | CPU cap | RAM cap   | Internal limits                                 |
+| ----------- | ------- | --------- | ----------------------------------------------- |
+| App         | 1       | 1,024 MiB | 640 MiB Node old-space; 10 database connections |
+| Postgres    | 1       | 512 MiB   | 40 connections; 128 MB shared buffers           |
+| Meilisearch | 1       | 2,048 MiB | 768 MiB indexing memory; 1 indexing thread      |
+
+Tune the variables in [`docker-compose.production.yml`](docker-compose.production.yml) for your host. Reserve RAM for the OS, Docker, native allocations, and separate ingestion; these defaults do not establish host capacity. Keep indexing memory below search-container memory. The production override also aligns Meilisearch's HTTP payload ceiling with `INGEST_MAX_REQUEST_BYTES`.
+
+`APP_MEMORY_MB` and `NODE_HEAP_MB` use positive integer MiB budgets. Set both when configuring memory. Compose supplies Node's `--max-old-space-size`; outside Compose, set it through `NODE_OPTIONS`. Startup exits on invalid budgets, including a declared old-space budget or actual V8 heap limit at or above app memory. Leave headroom for V8's young generation and memory outside the heap. Development without these variables remains unconstrained.
 
 Place the app behind an HTTPS reverse proxy with unbuffered chat streaming, request and connection limits, and the controls in [SECURITY.md](SECURITY.md). Apply the same settings to the search endpoint used by ingestion and the app. Read-only app credentials and ingestion/admin credentials have different privileges.
 

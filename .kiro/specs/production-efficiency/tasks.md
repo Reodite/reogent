@@ -33,11 +33,11 @@ Apply focused TypeScript changes to existing owners. Reuse tests and tools; add 
   - [x] 4.2 Narrow external-data tracing and release exclusions; inspect build output and required runtime assets.
     - Use installed Next.js guidance and existing security/build checks.
     - _Requirements: 2.1, 2.2, 2.3, 8.3_
-- [ ] 5. Bound ingestion and deployment resources
+- [x] 5. Bound ingestion and deployment resources
   - [x] 5.1 Add byte-aware ingestion batches and extend existing ingestion tests for limits and publication safety.
     - Preserve full content, single-document exceptions, and atomic replacement behavior.
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 7.1_
-  - [ ] 5.2 Wire explicit pool/acquisition limits and production Compose resource settings with validation.
+  - [x] 5.2 Wire explicit pool/acquisition limits and production Compose resource settings with validation.
     - Keep development separate; document defaults and required host-specific overrides beside the implementation.
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
 - [ ] 6. Verify the integrated change
