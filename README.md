@@ -162,6 +162,6 @@ Place the app behind an HTTPS reverse proxy with unbuffered chat streaming, requ
 - [DESIGN.md](DESIGN.md): tokens and shared UI contracts; surface briefs own feature details.
 - [SECURITY.md](SECURITY.md): deployment controls, security limitations, and account-data recovery.
 - [AGENTS.md](AGENTS.md): contributor rules and verification/commit conventions.
-- [Production-efficiency plan](.kiro/specs/production-efficiency/tasks.md): active optimization work, not shipped behavior.
+- [Production-efficiency checklist](.kiro/specs/production-efficiency/tasks.md): implementation and verification results.
 
 Built for UBC CIC Hackathon 2026.
