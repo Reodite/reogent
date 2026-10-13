@@ -50,8 +50,9 @@ export async function courseAverage(search: SearchClient, subject: string, cours
     filter: `subject = '${gsSubject(subject)}' AND course = '${course}'`,
     sort: ["year:desc"],
     limit: 200,
+    attributesToRetrieve: ["avg", "enrolled"],
   });
-  const rows = res.hits as unknown as GradeRow[];
+  const rows = res.hits as unknown as Pick<GradeRow, "avg" | "enrolled">[];
   if (rows.length === 0) return null;
   let weightedSum = 0;
   let totalEnrolled = 0;
@@ -76,8 +77,9 @@ export async function courseGrades(
     filter: `subject = '${gsSubject(subject)}' AND course = '${course}'`,
     sort: ["year:desc"],
     limit: 200,
+    attributesToRetrieve: ["avg", "enrolled", "median", "year", "distribution"],
   });
-  const rows = res.hits as unknown as GradeRow[];
+  const rows = res.hits as unknown as Pick<GradeRow, "avg" | "enrolled" | "median" | "year" | "distribution">[];
   if (rows.length === 0) return null;
   let weightedSum = 0;
   let totalEnrolled = 0;
