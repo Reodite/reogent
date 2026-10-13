@@ -248,8 +248,15 @@ export const courses: DatasetModule = {
               credits: { type: "number", description: "Exact credit count filter, e.g. 3" },
               term: { type: "string", description: 'Term filter, e.g. "1", "2", "1-2"' },
               has_no_prereqs: { type: "boolean", description: "If true, only courses with no prerequisites" },
-              min_grade_avg: { type: "number", description: "Minimum average, e.g. 80" },
-              max_grade_avg: { type: "number", description: "Maximum average" },
+              min_grade_avg: {
+                type: "number",
+                description:
+                  "Minimum average, e.g. 80. Uses the selected session for session browsing and pooled historical grades for grade_avg sorts.",
+              },
+              max_grade_avg: {
+                type: "number",
+                description: "Maximum average, using the same scope as min_grade_avg.",
+              },
               sort: {
                 type: "string",
                 enum: [
@@ -287,6 +294,15 @@ export const courses: DatasetModule = {
           sort,
           limit,
         } = input as Record<string, unknown>;
+        if (
+          (min_grade_avg !== undefined && (typeof min_grade_avg !== "number" || !Number.isFinite(min_grade_avg))) ||
+          (max_grade_avg !== undefined && (typeof max_grade_avg !== "number" || !Number.isFinite(max_grade_avg)))
+        ) {
+          throw new Error("Grade bounds must be finite numbers");
+        }
+        if (min_grade_avg !== undefined && max_grade_avg !== undefined && min_grade_avg > max_grade_avg) {
+          throw new Error("Grade bounds must have minimum at or below maximum");
+        }
         const requestedSession = typeof rawSession === "string" ? rawSession.trim() : "";
         if (requestedSession && !isSession(requestedSession)) {
           throw new Error(
@@ -307,17 +323,15 @@ export const courses: DatasetModule = {
           sortBy === "average_desc" ||
           sortBy === "average_asc" ||
           sortBy === "code";
-        const needsGradeJoin =
-          sortBy === "grade_avg_desc" ||
-          sortBy === "grade_avg_asc" ||
-          min_grade_avg !== undefined ||
-          max_grade_avg !== undefined;
+        const isPooledSort = sortBy === "grade_avg_desc" || sortBy === "grade_avg_asc";
+        const needsGradeJoin = isPooledSort || min_grade_avg !== undefined || max_grade_avg !== undefined;
 
-        // Faculty only exists in the session index, not the catalogue.
-        // Route to session index when faculty is specified.
-        const useSessionIndex = isSessionSort || (faculty && !needsGradeJoin);
+        // Faculty metadata and session averages live in the session index.
+        const useSessionIndex = isSessionSort || (faculty && !isPooledSort);
         if (useSessionIndex) {
           if (faculty) filters.push(`faculty = '${String(faculty).replace(/'/g, "\\'")}'`);
+          if (min_grade_avg !== undefined) filters.push(`average >= ${min_grade_avg}`);
+          if (max_grade_avg !== undefined) filters.push(`average <= ${max_grade_avg}`);
           const meiliSort =
             sortBy === "students_desc"
               ? ["reported:desc"]
@@ -399,8 +413,8 @@ export const courses: DatasetModule = {
               avg_grade: await courseAverage(search, c.subject, c.number),
             })),
           );
-          const min = min_grade_avg !== undefined ? Number(min_grade_avg) : Number.NEGATIVE_INFINITY;
-          const max = max_grade_avg !== undefined ? Number(max_grade_avg) : Number.POSITIVE_INFINITY;
+          const min = min_grade_avg ?? Number.NEGATIVE_INFINITY;
+          const max = max_grade_avg ?? Number.POSITIVE_INFINITY;
           const ranked = withGrades.filter(
             (r): r is { course: CourseDoc; avg_grade: number } =>
               r.avg_grade !== null && r.avg_grade >= min && r.avg_grade <= max,

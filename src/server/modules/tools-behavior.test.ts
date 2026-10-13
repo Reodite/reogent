@@ -120,6 +120,11 @@ function matchClause(doc: Record<string, unknown>, clause: string): boolean {
     const v = doc[ge[1]];
     return typeof v === "number" && v >= Number(ge[2]);
   }
+  const le = clause.match(/^(\w+) <= ([\d.]+)$/);
+  if (le) {
+    const v = doc[le[1]];
+    return typeof v === "number" && v <= Number(le[2]);
+  }
   const eq = clause.match(/^(\w+) = '?([^']*)'?$/);
   if (eq) {
     const raw = eq[2];
@@ -176,6 +181,40 @@ describe("find_courses (agent-tool-redesign)", () => {
       expect(out.courses.map((entry) => entry.code)).toEqual(["CPSC_V 110", "CPSC_V 210"]);
     },
   );
+
+  it.each([{ sort: "students_desc" }, { faculty: "Faculty of Science" }])(
+    "applies session grade bounds before limiting results for %j",
+    async (input) => {
+      const search = fakeSearch({
+        course_sessions: [
+          course("CPSC_V 210", { session: "2025W", faculty: "Faculty of Science", average: 60 }),
+          course("CPSC_V 110", { session: "2025W", faculty: "Faculty of Science", average: 88 }),
+          course("CPSC_V 310", { session: "2025W", faculty: "Faculty of Science", average: 95 }),
+        ],
+        grades: [
+          { subject: "CPSC", course: "210", enrolled: 10, avg: 85 },
+          { subject: "CPSC", course: "110", enrolled: 10, avg: 40 },
+        ],
+      });
+      const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+      const out = (await tool.execute(
+        { session: "2025W", min_grade_avg: 80, max_grade_avg: 90, limit: 1, ...input },
+        search,
+      )) as { courses: { code: string; grade_avg: number }[] };
+      expect(out.courses.map(({ code, grade_avg }) => ({ code, grade_avg }))).toEqual([
+        { code: "CPSC_V 110", grade_avg: 88 },
+      ]);
+    },
+  );
+
+  it.each([
+    { min_grade_avg: Number.POSITIVE_INFINITY },
+    { max_grade_avg: "bad" },
+    { min_grade_avg: 90, max_grade_avg: 80 },
+  ])("rejects invalid grade bounds: %j", async (input) => {
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+    await expect(tool.execute({ sort: "code", ...input }, fakeSearch({}))).rejects.toThrow(/grade bounds/i);
+  });
 
   it("filters on level, credits, and has_no_prereqs", async () => {
     const search = fakeSearch(courseFixture);
