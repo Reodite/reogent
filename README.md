@@ -188,6 +188,38 @@ Read [SECURITY.md](SECURITY.md) before deployment for the audit findings, verifi
 | `npm run validate:documents` | Validate all published prose and host documents offline        |
 | `npm run pulse:publish`      | Publish a Pulse question round ([guide](data/pulse/README.md)) |
 
+## Announcements
+
+Unity lists **Announcements** first in its navigation. `/pulse/announcements` shows newest-first cards; each card links to `/pulse/announcements/<filename-without-extension>`.
+
+To publish an entry:
+
+1. Copy `content/announcements/welcome-to-announcements.md` to a new `.md` file in the same folder. Use a lowercase, hyphenated filename such as `schedule-update.md`. Keep that filename after publishing so shared links remain valid.
+2. Edit the JSON metadata between the `---` lines. `title`, `date`, `summary`, and `author` are required, non-empty strings. Use a real `YYYY-MM-DD` date. The feed sorts by date descending, then filename for entries on the same date.
+3. Write the full post below the metadata in Markdown. Start sections at `##`; the page supplies the main title. Links, lists, images, tables, and fenced code blocks work. Raw HTML does not render.
+4. Preview `/pulse/announcements` in the dev server. Run `npm test` and `npm run build`, then commit and deploy to publish.
+
+For example:
+
+```text
+---
+{
+  "title": "Your announcement title",
+  "date": "2026-10-13",
+  "summary": "A short description for the card.",
+  "author": "Reodite team"
+}
+---
+
+Write the full announcement here.
+
+## Details
+
+Include instructions, links, or screenshots that help readers use the update.
+```
+
+The metadata uses JSON, including double quotes, rather than YAML. Invalid files fail validation with their filename. Files in this folder are published content: keep drafts outside it. Dates control ordering, not scheduled publication. Announcements ship with the app and need no database migration or ingestion step; do not put private information in these files.
+
 ## API endpoints
 
 | Method | Path                   | Purpose                                    |

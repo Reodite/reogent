@@ -46,6 +46,7 @@ const ICON_MAP = {
   pencil: "pencil-line",
   externalLink: "external-link-line",
   group: "group-line",
+  announcement: "announcement-line",
   teacup: "teacup-line",
   lock: "lock-line",
   zoomIn: "zoom-in-line",

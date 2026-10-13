@@ -2,5 +2,6 @@
   "useTabs": false,
   "tabWidth": 2,
   "printWidth": 120,
-  "plugins": ["@ianvs/prettier-plugin-sort-imports", "prettier-plugin-tailwindcss"]
+  "plugins": ["@ianvs/prettier-plugin-sort-imports", "prettier-plugin-tailwindcss"],
+  "overrides": [{ "files": "content/announcements/*.md", "options": { "trailingComma": "none" } }]
 }

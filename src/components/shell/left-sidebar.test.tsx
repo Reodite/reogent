@@ -486,6 +486,27 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(modeLink(view.container, "Tools").getAttribute("aria-current")).toBe("page");
   });
 
+  it.each(["/pulse/announcements", "/pulse/announcements/welcome"])(
+    "puts Announcements first and marks it current at %s",
+    (path) => {
+      pathname.value = path;
+      const onClose = vi.fn();
+      const view = render(
+        <ChatShellProvider initialMode="unity">
+          <LeftSidebar onClose={onClose} />
+        </ChatShellProvider>,
+      );
+      const nav = view.getByRole("navigation", { name: "Community" });
+      const announcement = view.getByRole("button", { name: "Announcements" });
+      expect(nav.querySelector("button")).toBe(announcement);
+      expect(announcement.getAttribute("aria-current")).toBe("page");
+      expect(view.getByRole("button", { name: "Pulse" }).getAttribute("aria-current")).toBeNull();
+      fireEvent.click(announcement);
+      expect(routerPush).toHaveBeenCalledWith("/pulse/announcements");
+      expect(onClose).toHaveBeenCalledOnce();
+    },
+  );
+
   it("marks shared schedule links as part of Schedule", () => {
     pathname.value = "/pulse/schedule/ABC123";
     localStorage.setItem(SHELL_MODE_STORAGE_KEY, "unity");

@@ -11,6 +11,7 @@ import { UserMenu } from "@/src/components/shell/user-menu";
 import { Button } from "@/src/components/ui/button";
 
 const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
+  { path: "/pulse/announcements", label: "Announcements", icon: "announcement" },
   { path: "/pulse", label: "Pulse", icon: "group" },
   { path: "/pulse/schedule", label: "Schedule", icon: "calendar" },
   { path: "/pulse/creators", label: "Creators", icon: "teacup" },
