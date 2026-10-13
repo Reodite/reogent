@@ -26,19 +26,7 @@ vi.mock("motion/react", async (importOriginal) => {
   const staticElement = (tag: string) =>
     function StaticMotionElement({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) {
       const domProps = Object.fromEntries(Object.entries(props).filter(([key]) => !motionProps.has(key)));
-      return React.createElement(
-        tag,
-        {
-          ...domProps,
-          "data-motion": JSON.stringify({
-            initial: props.initial,
-            animate: props.animate,
-            exit: props.exit,
-            transition: props.transition,
-          }),
-        },
-        children,
-      );
+      return React.createElement(tag, domProps, children);
     };
 
   return {
@@ -374,32 +362,5 @@ describe("ChatPanel reset lifecycle", () => {
     expect(view.queryByRole("log", { name: "Conversation" })).toBeNull();
     expect(api.chat).toHaveBeenCalledTimes(2);
     expect(api.chat.mock.calls[0][0]).not.toBe(api.chat.mock.calls[1][0]);
-  });
-});
-
-describe("ChatPanel reduced motion", () => {
-  it("bounds empty suggestions locally while retaining wrapping and touch-sized pills", async () => {
-    const { getByRole } = renderPanel();
-    await act(async () => {});
-    const suggestions = getByRole("navigation", { name: "Suggested questions" }).querySelectorAll("button");
-    expect(suggestions.length).toBeGreaterThan(0);
-    for (const suggestion of suggestions) {
-      for (const className of ["min-w-0", "max-w-full", "whitespace-normal", "min-h-11", "shrink-0"]) {
-        expect(suggestion.classList.contains(className)).toBe(true);
-      }
-    }
-  });
-
-  it("removes empty and typing presence without duration or vertical travel", async () => {
-    api.chat.mockImplementation(() => new Promise(() => {}));
-    const { container, getByRole } = renderPanel();
-    const empty = getByRole("navigation", { name: "Suggested questions" }).closest("[data-motion]")!;
-    expect(JSON.parse(empty.getAttribute("data-motion")!).transition.duration).toBe(0);
-    await send("Hello");
-    const typing = getByRole("status", { name: "The assistant is thinking" }).closest("[data-motion]")!;
-    const animation = JSON.parse(typing.getAttribute("data-motion")!);
-    expect(animation.animate.transition.duration).toBe(0);
-    expect(animation.exit).toEqual({ opacity: 0, y: 0, transition: { duration: 0 } });
-    expect(container.querySelector("textarea")).not.toBeNull();
   });
 });

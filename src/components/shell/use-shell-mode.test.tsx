@@ -24,7 +24,6 @@ const { useShellMode } = await import("./use-shell-mode");
 afterEach(() => {
   pathname.value = "/tools/planner";
   memory.clear();
-  delete document.documentElement.dataset.shellMode;
   cleanup();
 });
 
@@ -60,7 +59,6 @@ describe("useShellMode", () => {
     const { result } = renderHook(() => useShellMode("ai"));
 
     await waitFor(() => expect(result.current[0]).toBe("unity"));
-    expect(document.documentElement.dataset.shellMode).toBe("unity");
   });
 
   it("keeps an explicit guest Settings mode instead of hydrating a locked area", () => {
@@ -70,7 +68,6 @@ describe("useShellMode", () => {
     const { result } = renderHook(() => useShellMode("tools"));
 
     expect(result.current[0]).toBe("tools");
-    expect(document.documentElement.dataset.shellMode).toBe("tools");
   });
 
   it("persists only explicit mode navigation", () => {

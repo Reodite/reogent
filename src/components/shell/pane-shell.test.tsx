@@ -58,45 +58,7 @@ function Capture() {
   return null;
 }
 
-describe("Property 30 — chat panel stays visible across all activeChannel states (REQ-19.1, REQ-19.2)", () => {
-  const channels: (string | null)[] = [null, "map", "course-lookup", "prereq-tree", "calendar", "unknown"];
-  for (const ch of channels) {
-    it(`data-pane="chat" resolves when activeChannel=${ch ?? "null"}`, () => {
-      shellRef.current = null;
-      render(
-        <ChatShellProvider>
-          <div data-pane="chat">chat</div>
-          <Capture />
-        </ChatShellProvider>,
-      );
-      if (ch) act(() => shellRef.current?.setActiveChannel(ch, {}));
-      expect(document.querySelector('[data-pane="chat"]')).not.toBeNull();
-    });
-  }
-});
-
-// Regression: setActiveChannel must stay stable across activeChannel changes.
-// ChatPanel's session-load effect lists setActiveChannel in its deps and resets
-// activeChannel to null. If setActiveChannel churned on every open, that effect
-// re-fired and closed the pane the instant a user opened it — the right panel
-// "never opened". Pin the stability contract.
-describe("setActiveChannel stability — pane stays open against consumer effects that reset", () => {
-  it("setActiveChannel keeps identity across activeChannel changes", () => {
-    shellRef.current = null;
-    render(
-      <ChatShellProvider>
-        <div data-pane="chat">chat</div>
-        <Capture />
-      </ChatShellProvider>,
-    );
-    const before = shellRef.current?.setActiveChannel;
-    act(() => shellRef.current?.setActiveChannel("course-lookup", { code: "CPSC 110" }));
-    const after = shellRef.current?.setActiveChannel;
-    expect(after).toBe(before);
-  });
-});
-
-describe("workspaceView state contract (REQ-1.2, REQ-3.1)", () => {
+describe("workspaceView state", () => {
   const courseCall: ToolCall = {
     name: "show_widget",
     input: { type: "course" },

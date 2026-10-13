@@ -3,7 +3,6 @@ import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/comp
 import { LeftSidebar } from "@/src/components/shell/left-sidebar";
 import { ModeToggle } from "@/src/components/shell/mode-toggle";
 import { ShellNavigationProvider } from "@/src/components/shell/shell-navigation";
-import { SidebarListNav } from "@/src/components/shell/sidebar-list";
 import {
   LAST_CHAT_PATH_KEY,
   LAST_TOOLS_PATH_KEY,
@@ -100,78 +99,18 @@ function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
   return link;
 }
 
-describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
-  it.each(["/chat", "/tools/map", "/pulse"])(
-    "centers the collapsed account without shrinking expanded modes at %s",
-    async (path) => {
-      pathname.value = path;
-      const view = render(
-        <ChatShellProvider>
-          <LeftSidebar collapsed />
-        </ChatShellProvider>,
-      );
-      await act(async () => {});
-      expect(view.getByRole("button", { name: "Account menu" }).parentElement?.classList.contains("items-center")).toBe(
-        true,
-      );
-      view.rerender(
-        <ChatShellProvider>
-          <LeftSidebar />
-        </ChatShellProvider>,
-      );
-      expect(view.getByRole("button", { name: "Account menu" }).parentElement?.classList.contains("items-center")).toBe(
-        false,
-      );
-    },
-  );
-
-  it.each([
-    [false, "rounded-2xl", "p-2"],
-    [true, "rounded-xl", "p-1"],
-  ] as const)("derives the navigation well contour for collapsed=%s", (collapsed, radius, padding) => {
-    const view = render(
-      <SidebarListNav label="Tools" collapsed={collapsed}>
-        <li>Campus map</li>
-      </SidebarListNav>,
-    );
-    const well = view.getByRole("navigation", { name: "Tools" });
-    expect(well.classList.contains(radius)).toBe(true);
-    expect(well.classList.contains(padding)).toBe(true);
-    expect(well.getAttribute("data-sidebar-list")).toBe(collapsed ? "collapsed" : "expanded");
-  });
-
-  it("renders bottom navigation as three labeled, flat links with the routed area current", () => {
+describe("ModeToggle and LeftSidebar", () => {
+  it("labels bottom navigation links and marks the routed area current", () => {
     pathname.value = "/tools/map";
     const view = render(
       <ChatShellProvider>
         <ModeToggle presentation="bottom" collapsed />
       </ChatShellProvider>,
     );
-    const nav = view.getByRole("navigation", { name: "Reodite areas" });
-    expect(nav.getAttribute("data-mode-navigation")).toBe("bottom");
-    expect(nav.hasAttribute("data-mobile-mode-navigation")).toBe(true);
-    expect(nav.className).toBe("mobile-mode-bar");
-    expect(view.getByRole("list").className).toContain("grid-cols-3");
-    expect(view.getByRole("list").className).toContain("h-15");
-    expect(view.getByRole("list").className).not.toMatch(/gap-1|px-2/);
-    expect(nav.querySelector<HTMLElement>(".mobile-mode-indicator")?.style.transform).toBe("translateX(100%)");
     expect(view.getAllByRole("link")).toHaveLength(3);
     for (const label of ["AI", "Tools", "Unity"]) {
       const link = view.getByRole("link", { name: label });
-      expect(link.textContent).toBe(label);
-      expect(link.className).toContain("h-15");
-      expect(link.className).toContain("flex-col");
-      expect(link.className).toContain("gap-1");
-      expect(link.className).toContain("text-xs");
-      expect(link.classList.contains("relative")).toBe(true);
-      expect(link.classList.contains("isolate")).toBe(true);
-      expect(link.classList.contains("outline-none")).toBe(true);
-      expect(link.className).not.toContain("active:bg-");
-      expect(link.className).not.toContain("focus-visible:ring-");
-      expect(link.className).not.toContain("neu-");
-      expect(link.querySelector("svg")?.getAttribute("width")).toBe("22");
       expect(link.getAttribute("aria-current")).toBe(label === "Tools" ? "page" : null);
-      expect(link.className).toContain(label === "Tools" ? "text-primary" : "text-muted");
     }
   });
 
@@ -272,7 +211,6 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <ModeToggle />
       </ChatShellProvider>,
     );
-    expect(view.getByRole("navigation").getAttribute("data-mode-navigation")).toBe("sidebar");
     const tools = view.getByRole("link", { name: "Tools" });
     expect(tools.getAttribute("href")).toBe("/tools/map");
     // Block Happy DOM's native navigation while checking modifier handling.

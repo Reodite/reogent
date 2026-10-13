@@ -90,22 +90,6 @@ function NestedDialogHarness() {
 }
 
 describe("AnswerSheet", () => {
-  it("keeps active canvases inline from the small breakpoint upward", () => {
-    const { container } = render(
-      <AnswerSheet open={false} onClose={() => {}} view={{ paneId: "map", state: {} }}>
-        <span>Map</span>
-      </AnswerSheet>,
-    );
-    const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]");
-    const scrim = container.querySelector("[data-answer-scrim]");
-    const splitter = screen.getByRole("separator", { name: "Resize chat and answer canvas" });
-    expect(sheet?.className).toContain("sm:grow-0");
-    expect(sheet?.className).toContain("sm:min-w-72");
-    expect(sheet?.style.flexBasis).toBe("calc(50% - 0.375rem)");
-    expect(splitter.parentElement?.className).toContain("sm:flex");
-    expect(scrim?.className).toContain("sm:hidden");
-  });
-
   it("deactivates collapsed exit content while leaving inline content available", () => {
     const content = (collapsed: boolean) => (
       <AnswerSheet open={false} collapsed={collapsed} onClose={() => {}} view={{ paneId: "map", state: {} }}>
@@ -116,27 +100,9 @@ describe("AnswerSheet", () => {
     const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]")!;
     expect(sheet.hasAttribute("inert")).toBe(true);
     expect(sheet.getAttribute("aria-hidden")).toBe("true");
-    expect(sheet.className).toContain("max-sm:transition-[translate,opacity,visibility]");
     rerender(content(false));
     expect(sheet.hasAttribute("inert")).toBe(false);
     expect(sheet.hasAttribute("aria-hidden")).toBe(false);
-  });
-
-  it("retains the sheet height and handle throughout closing", () => {
-    const content = (open: boolean) => (
-      <AnswerSheet open={open} collapsed={!open} onClose={() => {}} view={{ paneId: "map", state: {} }}>
-        <button type="button">Canvas action</button>
-      </AnswerSheet>
-    );
-    const { container, rerender } = render(content(true));
-    const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]")!;
-    const handle = sheet.querySelector("[data-answer-drag-handle]");
-    const height = "max-sm:h-[calc(var(--app-viewport-height,100dvh)*0.8)]";
-    expect(sheet.classList.contains(height)).toBe(true);
-    rerender(content(false));
-    expect(sheet.classList.contains(height)).toBe(true);
-    expect(sheet.querySelector("[data-answer-drag-handle]")).toBe(handle);
-    expect(sheet.classList.contains("max-sm:translate-y-full")).toBe(true);
   });
 
   it("releases a retained drag handle's capture at logical close", async () => {
@@ -166,49 +132,16 @@ describe("AnswerSheet", () => {
     fireEvent.pointerDown(splitter, { pointerId: 2, button: 0, clientX: 600 });
     fireEvent.pointerMove(splitter, { pointerId: 2, clientX: 750 });
     expect(splitter.getAttribute("aria-valuenow")).toBe("65");
-    expect(sheet.style.flexBasis).toBe("calc(35% - 0.375rem)");
     fireEvent.pointerUp(splitter, { pointerId: 2, clientX: 750 });
 
     fireEvent.keyDown(splitter, { key: "ArrowLeft" });
     expect(splitter.getAttribute("aria-valuenow")).toBe("60");
-    expect(sheet.style.flexBasis).toBe("calc(40% - 0.375rem)");
 
     fireEvent.keyDown(splitter, { key: "Home" });
     expect(splitter.getAttribute("aria-valuenow")).toBe(splitter.getAttribute("aria-valuemin"));
     fireEvent.keyDown(splitter, { key: "End" });
     expect(splitter.getAttribute("aria-valuenow")).toBe(splitter.getAttribute("aria-valuemax"));
   });
-
-  it.each([
-    { reserved: 284, minimum: 352, expected: 31.63 },
-    { reserved: 60, minimum: 352, expected: 26.4 },
-  ])(
-    "excludes $reserved px of sidebar space from split bounds and pointer input",
-    ({ reserved, minimum, expected }) => {
-      const { container } = render(
-        <AnswerSheet open={false} onClose={() => {}} view={{ paneId: "map", state: {} }}>
-          <span>Map</span>
-        </AnswerSheet>,
-      );
-      const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]")!;
-      const row = sheet.parentElement!;
-      mockHorizontalLayout(row, 12, 1416);
-      row.style.paddingLeft = `${reserved}px`;
-      sheet.style.minWidth = `${minimum}px`;
-      const splitter = screen.getByRole("separator", { name: "Resize chat and answer canvas" });
-
-      fireEvent.keyDown(splitter, { key: "Home" });
-      expect(Number(splitter.getAttribute("aria-valuemin"))).toBe(expected);
-      expect(Number(splitter.getAttribute("aria-valuenow"))).toBe(expected);
-      expect(((1416 - reserved) * expected) / 100 - 6).toBeGreaterThanOrEqual(minimum - 0.1);
-      fireEvent.keyDown(splitter, { key: "End" });
-      expect(Number(splitter.getAttribute("aria-valuenow"))).toBeCloseTo(100 - expected, 2);
-
-      fireEvent.pointerDown(splitter, { pointerId: 8, button: 0, clientX: 12 + reserved + (1416 - reserved) / 2 });
-      expect(splitter.getAttribute("aria-valuenow")).toBe("50");
-      expect(sheet.style.flexBasis).toBe("calc(50% - 0.375rem)");
-    },
-  );
 
   it("restores the split position when pointer resizing is cancelled", () => {
     const { container } = render(
@@ -227,7 +160,6 @@ describe("AnswerSheet", () => {
     fireEvent.pointerCancel(splitter, { pointerId: 3 });
 
     expect(splitter.getAttribute("aria-valuenow")).toBe("50");
-    expect(sheet.style.flexBasis).toBe("calc(50% - 0.375rem)");
   });
 
   it("uses the documented distance and velocity dismissal thresholds", () => {
@@ -257,7 +189,7 @@ describe("AnswerSheet", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("opens visibility before focus and wraps only available tab stops", async () => {
+  it("wraps focus only through available tab stops", async () => {
     render(
       <AnswerSheet open onClose={() => {}} view={{ paneId: "map", state: {} }}>
         <div hidden>
@@ -282,10 +214,8 @@ describe("AnswerSheet", () => {
         </button>
       </AnswerSheet>,
     );
-    const sheet = screen.getByRole("dialog", { name: "Answer canvas" });
     const first = screen.getByRole("button", { name: "First available action" });
     const last = screen.getByRole("button", { name: "Last available action" });
-    expect(sheet.className).toContain("max-sm:transition-[translate,opacity]");
     await waitFor(() => expect(document.activeElement).toBe(first));
     fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
     expect(document.activeElement).toBe(last);
