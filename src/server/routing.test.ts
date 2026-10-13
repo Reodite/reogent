@@ -1,5 +1,5 @@
 import { haversineMetersObj, type LngLat } from "@/src/shared/types";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildGraph, nearestEntrancePair, routeOnGraph, shortestPath } from "./routing";
 
 // A small L-shaped network near UBC: A --- B --- C, plus a disconnected segment.
@@ -14,6 +14,65 @@ const ISLAND: LngLat[] = [
 ];
 
 const features = [line([A, B]), line([B, C]), line(ISLAND)];
+const getJson = vi.hoisted(() => vi.fn());
+vi.mock("./data", () => ({ dataStore: () => ({ getJson }) }));
+
+describe("route dataset reuse", () => {
+  const ttl = 10 * 60 * 1000;
+  const from = { code: "FROM", lon: A[0], lat: A[1] };
+  const to = { code: "TO", lon: C[0], lat: C[1] };
+  const dataset = (key: string) => (key.endsWith(".geojson") ? { features } : { FROM: [B], TO: [C] });
+
+  beforeEach(() => {
+    vi.resetModules();
+    getJson.mockReset();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-01-01"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("shares cold and expired loads and starts the TTL after completion", async () => {
+    const { route, WALKING_ROUTES_KEY, BUILDING_ENTRANCES_KEY } = await import("./routing");
+    for (let cycle = 1; cycle <= 2; cycle++) {
+      const gate = Promise.withResolvers<void>();
+      getJson.mockImplementation(async (key: string) => {
+        await gate.promise;
+        return dataset(key);
+      });
+      const requests = Array.from({ length: 10 }, () => route(from, to));
+      vi.setSystemTime(Date.now() + ttl + 1);
+      requests.push(route(from, to));
+      gate.resolve();
+      for (const result of await Promise.all(requests)) {
+        expect(result.method).toBe("network");
+        expect(result.polyline[0]).toEqual(B);
+      }
+      vi.setSystemTime(Date.now() + ttl - 1);
+      await route(from, to);
+      for (const key of [WALKING_ROUTES_KEY, BUILDING_ENTRANCES_KEY]) {
+        expect(getJson.mock.calls.filter(([name]) => name === key)).toHaveLength(cycle);
+      }
+      vi.setSystemTime(Date.now() + 1);
+    }
+  });
+
+  it.each(["graph", "entrances"])("retries a failed %s load and preserves the entrance fallback", async (failed) => {
+    const { route, WALKING_ROUTES_KEY, BUILDING_ENTRANCES_KEY } = await import("./routing");
+    const failedKey = failed === "graph" ? WALKING_ROUTES_KEY : BUILDING_ENTRANCES_KEY;
+    let fail = true;
+    getJson.mockImplementation(async (key: string) => {
+      if (key === failedKey && fail) {
+        fail = false;
+        throw new Error("Dataset unavailable");
+      }
+      return dataset(key);
+    });
+    if (failed === "graph") await expect(route(from, to)).rejects.toThrow("Dataset unavailable");
+    else expect((await route(from, to)).polyline[0]).toEqual(A);
+    expect((await route(from, to)).polyline[0]).toEqual(B);
+    expect(getJson.mock.calls.filter(([key]) => key === failedKey)).toHaveLength(2);
+  });
+});
 
 describe("routing graph", () => {
   it("shares nodes between segments that meet at the same coordinate", () => {

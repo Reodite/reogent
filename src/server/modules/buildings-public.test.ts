@@ -1,5 +1,5 @@
 import type { FeatureCollection } from "geojson";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { publicBuildingsGeoJson, publicEntrancesGeoJson } from "./buildings";
 
 const buildings: FeatureCollection = {
@@ -34,6 +34,62 @@ const buildings: FeatureCollection = {
     },
   ],
 };
+
+const getJson = vi.hoisted(() => vi.fn());
+vi.mock("../data", () => ({ dataStore: () => ({ getJson }) }));
+
+describe("building dataset reuse", () => {
+  const ttl = 10 * 60 * 1000;
+  const dataset = (key: string) =>
+    key.endsWith("ubcv_buildings.geojson") ? buildings : { type: "FeatureCollection", features: [] };
+
+  beforeEach(() => {
+    vi.resetModules();
+    getJson.mockReset();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-01-01"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("shares cold and expired loads across public consumers until completion-based expiry", async () => {
+    const { getPublicBuildingsGeoJson, getPublicEntrancesGeoJson } = await import("./buildings");
+    const load = () => Promise.all([getPublicBuildingsGeoJson(), getPublicEntrancesGeoJson()]);
+    for (let cycle = 1; cycle <= 2; cycle++) {
+      const gate = Promise.withResolvers<void>();
+      getJson.mockImplementation(async (key: string) => {
+        await gate.promise;
+        return dataset(key);
+      });
+      const requests = Array.from({ length: 10 }, load);
+      vi.setSystemTime(Date.now() + ttl + 1);
+      requests.push(load());
+      gate.resolve();
+      for (const [publicBuildings, entrances] of await Promise.all(requests)) {
+        expect(publicBuildings).toEqual(publicBuildingsGeoJson(buildings));
+        expect(entrances).toEqual({ type: "FeatureCollection", features: [] });
+      }
+      vi.setSystemTime(Date.now() + ttl - 1);
+      await load();
+      expect(getJson).toHaveBeenCalledTimes(cycle * 2);
+      vi.setSystemTime(Date.now() + 1);
+    }
+  });
+
+  it.each(["buildings", "entraces"])("evicts a failed %s load so a later request can retry", async (failed) => {
+    const { getPublicEntrancesGeoJson } = await import("./buildings");
+    let fail = true;
+    getJson.mockImplementation(async (key: string) => {
+      if (key.endsWith(`${failed}.geojson`) && fail) {
+        fail = false;
+        throw new Error("Dataset unavailable");
+      }
+      return dataset(key);
+    });
+    await expect(getPublicEntrancesGeoJson()).rejects.toThrow("Dataset unavailable");
+    await expect(getPublicEntrancesGeoJson()).resolves.toEqual({ type: "FeatureCollection", features: [] });
+    expect(getJson.mock.calls.filter(([key]) => key.endsWith(`${failed}.geojson`))).toHaveLength(2);
+  });
+});
 
 describe("public building map data", () => {
   it.each([

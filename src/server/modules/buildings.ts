@@ -32,14 +32,17 @@ export function transformBuilding(f: Feature): { id: string; doc: BuildingDoc } 
 }
 
 let geoPromise: Promise<FeatureCollection> | undefined;
-let geoLoadedAt = 0;
+let geoLoadedAt: number | undefined;
 const GEO_TTL_MS = 10 * 60 * 1000;
 
 /** Cached raw buildings GeoJSON — footprints for point-in-polygon joins
  *  (e.g. which POIs sit inside a building). Same TTL pattern as the
  *  routing graph. */
 export function getBuildingsGeoJson(): Promise<FeatureCollection> {
-  if (geoPromise && Date.now() - geoLoadedAt > GEO_TTL_MS) geoPromise = undefined;
+  if (geoLoadedAt !== undefined && Date.now() - geoLoadedAt >= GEO_TTL_MS) {
+    geoPromise = undefined;
+    geoLoadedAt = undefined;
+  }
   geoPromise ??= dataStore()
     .getJson(BUILDINGS_KEY)
     .then((geo) => {
@@ -143,14 +146,18 @@ export async function getPublicBuildingsGeoJson(): Promise<FeatureCollection> {
 }
 
 let entrancesPromise: Promise<FeatureCollection> | undefined;
-let entrancesLoadedAt = 0;
+let entrancesLoadedAt: number | undefined;
 
 export function getPublicEntrancesGeoJson(): Promise<FeatureCollection> {
-  if (entrancesPromise && Date.now() - entrancesLoadedAt > GEO_TTL_MS) entrancesPromise = undefined;
+  if (entrancesLoadedAt !== undefined && Date.now() - entrancesLoadedAt >= GEO_TTL_MS) {
+    entrancesPromise = undefined;
+    entrancesLoadedAt = undefined;
+  }
   entrancesPromise ??= Promise.all([getBuildingsGeoJson(), dataStore().getJson(ENTRANCES_KEY)])
     .then(([buildingsCollection, entrancesCollection]) => {
+      const entrances = publicEntrancesGeoJson(buildingsCollection, entrancesCollection as FeatureCollection);
       entrancesLoadedAt = Date.now();
-      return publicEntrancesGeoJson(buildingsCollection, entrancesCollection as FeatureCollection);
+      return entrances;
     })
     .catch((error) => {
       entrancesPromise = undefined;

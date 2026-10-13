@@ -242,7 +242,7 @@ export function nearestEntrancePair(fromEntrances: LngLat[], toEntrances: LngLat
 }
 
 let graphPromise: Promise<Graph> | undefined;
-let graphLoadedAt = 0;
+let graphLoadedAt: number | undefined;
 
 /** Cache TTL in milliseconds. Reloads the graph after this period. */
 const GRAPH_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -250,14 +250,16 @@ const GRAPH_TTL_MS = 10 * 60 * 1000; // 10 minutes
 /** Lazy-loaded graph from the derived walking-routes artifact in the data store.
  *  Reloads after GRAPH_TTL_MS to pick up re-ingested data. */
 function getGraph(): Promise<Graph> {
-  if (graphPromise && Date.now() - graphLoadedAt > GRAPH_TTL_MS) {
+  if (graphLoadedAt !== undefined && Date.now() - graphLoadedAt >= GRAPH_TTL_MS) {
     graphPromise = undefined;
+    graphLoadedAt = undefined;
   }
   graphPromise ??= dataStore()
     .getJson(WALKING_ROUTES_KEY)
     .then((geo) => {
+      const graph = buildGraph((geo as { features: Feature[] }).features);
       graphLoadedAt = Date.now();
-      return buildGraph((geo as { features: Feature[] }).features);
+      return graph;
     })
     .catch((e) => {
       graphPromise = undefined;
@@ -267,14 +269,15 @@ function getGraph(): Promise<Graph> {
 }
 
 let entrancesPromise: Promise<Record<string, LngLat[]>> | undefined;
-let entrancesLoadedAt = 0;
+let entrancesLoadedAt: number | undefined;
 
 /** Lazy-loaded building-entrance map (derived/building-entrances.json).
  *  Resolves to {} when the artifact is missing (pre-ingest) so routing
  *  falls back to centroids. */
 function getEntrances(): Promise<Record<string, LngLat[]>> {
-  if (entrancesPromise && Date.now() - entrancesLoadedAt > GRAPH_TTL_MS) {
+  if (entrancesLoadedAt !== undefined && Date.now() - entrancesLoadedAt >= GRAPH_TTL_MS) {
     entrancesPromise = undefined;
+    entrancesLoadedAt = undefined;
   }
   entrancesPromise ??= dataStore()
     .getJson(BUILDING_ENTRANCES_KEY)
