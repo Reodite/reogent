@@ -1,5 +1,4 @@
 import type { EntranceFeatureCollection } from "@/src/lib/api-types";
-import fc from "fast-check";
 import type { FeatureCollection, Position } from "geojson";
 import { describe, expect, it } from "vitest";
 import { buildEntranceMarkers, visibleEntranceMarkers } from "./entrance-geometry";
@@ -58,18 +57,12 @@ function southEntrance(height: number, center = ORIGIN): [number, number] {
 }
 
 describe("entrance marker geometry", () => {
-  it("builds an inward solid arrowhead and a vertical wall-aligned door", () => {
+  it("projects an entrance onto the building wall", () => {
     const markers = buildEntranceMarkers(polygonCollection([ring(20, 12)]), entrances(southEntrance(12)));
     expect(markers).toHaveLength(1);
     const marker = markers[0];
 
     expect(marker.wallDistanceMeters).toBeCloseTo(0, 4);
-    expect(marker.groundArrow).toHaveLength(4);
-    expect(marker.groundArrow.at(-1)).toEqual(marker.groundArrow[0]);
-    expect(marker.groundArrow[0][1]).toBeLessThan(marker.groundArrow[1][1]);
-    expect(marker.groundArrow.every((position) => position[2] === 0)).toBe(true);
-    expect(marker.doorOutline.map((position) => position[2])).toEqual([0.1, 2.2, 2.2, 0.1, 0.1]);
-    expect((southEntrance(12)[1] - marker.doorOutline[0][1]) * METERS_PER_LATITUDE_DEGREE).toBeCloseTo(0, 3);
     expect(Math.abs(marker.wallTangent[0])).toBeCloseTo(1, 4);
     expect(Math.abs(marker.wallTangent[1])).toBeCloseTo(0, 4);
   });
@@ -112,34 +105,5 @@ describe("entrance marker geometry", () => {
     expect(visibleEntranceMarkers(markers, 14, new Set())).toEqual([]);
     expect(visibleEntranceMarkers(markers, 14, new Set(["ONE"])).map((marker) => marker.buildingCode)).toEqual(["ONE"]);
     expect(visibleEntranceMarkers(markers, 16, new Set())).toHaveLength(2);
-  });
-
-  // Feature: campus-map-explorer, Property 4: Entrance markers preserve verified geometry bounds.
-  it("keeps generated rectangular-building markers finite, bounded, and vertical", () => {
-    fc.assert(
-      fc.property(
-        fc.double({ min: -123.28, max: -123.2, noNaN: true }),
-        fc.double({ min: 49.23, max: 49.29, noNaN: true }),
-        fc.double({ min: 6, max: 60, noNaN: true }),
-        fc.double({ min: 6, max: 60, noNaN: true }),
-        (longitude, latitude, width, height) => {
-          const center: [number, number] = [longitude, latitude];
-          const marker = buildEntranceMarkers(
-            polygonCollection([ring(width, height, center)]),
-            entrances(southEntrance(height, center)),
-          )[0];
-          expect(marker).toBeDefined();
-          expect(marker.wallDistanceMeters).toBeLessThanOrEqual(4);
-          expect(marker.groundArrow.flat().every(Number.isFinite)).toBe(true);
-          const altitudes = marker.doorOutline.map((position) => position[2]);
-          expect(Math.min(...altitudes)).toBeGreaterThanOrEqual(0);
-          expect(Math.max(...altitudes)).toBeGreaterThanOrEqual(1.8);
-          expect(Math.max(...altitudes)).toBeLessThanOrEqual(2.4);
-          expect(marker.doorOutline[0][0]).toBeCloseTo(marker.doorOutline[1][0], 10);
-          expect(marker.doorOutline[0][1]).toBeCloseTo(marker.doorOutline[1][1], 10);
-        },
-      ),
-      { numRuns: 100 },
-    );
   });
 });

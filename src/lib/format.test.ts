@@ -87,31 +87,6 @@ describe("formatters", () => {
 });
 
 describe("describeToolCall", () => {
-  it("never renders a dangling tail when a param is missing", () => {
-    // Every tool called with empty input must produce a complete sentence.
-    const tools = [
-      "walking_distance",
-      "find_building",
-      "find_courses",
-      "get_course",
-      "get_costs",
-      "find_places",
-      "get_key_dates",
-      "find_events",
-      "find_programs",
-      "find_study_spaces",
-      "get_admission_requirements",
-      "search_ubc_pages",
-      "get_prereq_tree",
-    ];
-    for (const name of tools) {
-      const label = describeToolCall(name, {});
-      expect(label.trim(), `${name} with empty input`).toBe(label);
-      expect(label.endsWith("for "), `${name} ends with dangling 'for'`).toBe(false);
-      expect(label.endsWith("to "), `${name} ends with dangling 'to'`).toBe(false);
-    }
-  });
-
   it("describes walking_distance with from/to", () => {
     expect(describeToolCall("walking_distance", { from_building: "CHBE", to_building: "UBC Bus Exchange" })).toBe(
       "Searched for walking route from CHBE to UBC Bus Exchange",

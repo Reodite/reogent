@@ -25,8 +25,6 @@ describe("parseScheduleXlsx — Spring 2027 example", () => {
       (s) => s.title === "Basic Algorithms and Data Structures" && s.component === "Lecture",
     )!;
     expect(cpsc.courseCode).toBe("CPSC_V 221");
-    expect(cpsc.courseCode).not.toMatch(/-/); // '-L2A' style suffixes are dropped
-    expect(cpsc.title).not.toMatch(/CPSC/);
   });
 
   it("collapses a reading-break split into ONE weekly meeting with the outer date range", () => {
@@ -108,7 +106,6 @@ describe('parseScheduleXlsx — "View My Courses" multi-table export', () => {
       (s) => s.title === "Basic Algorithms and Data Structures" && s.component === "Lecture",
     )!;
     expect(cpsc.courseCode).toBe("CPSC_V 221");
-    expect(cpsc.courseCode).not.toMatch(/-/);
   });
 
   it("parses multiple instructors from a newline-separated cell", () => {

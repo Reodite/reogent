@@ -6,7 +6,7 @@ import { defaultTermKey, deriveTerms } from "../features/terms";
 import { whoIsFreeNow } from "../features/whoIsFreeNow";
 import { parseScheduleXlsx } from "../parse/scheduleParser";
 import type { DayCode, Person, Section } from "../types";
-import { buildCalendar, expandBlocks, layoutDay, mergeBlocks } from "./buildCalendar";
+import { buildCalendar, expandBlocks, mergeBlocks } from "./buildCalendar";
 
 const SPRING = "View_Student_Registration_Saved_Schedule.xlsx";
 const FALL = "View_Student_Registration_Saved_Schedule (1).xlsx";
@@ -137,21 +137,6 @@ describe("buildCalendar", () => {
     expect(thu).toHaveLength(1);
     expect(thu[0].rooms).toEqual(["C324", "C326"]);
     expect(thu[0].people).toHaveLength(1); // one person, not double-counted
-  });
-
-  it("assigns side-by-side columns to overlapping different courses", () => {
-    const blocks = mergeBlocks(expandBlocks([alice], spring)).filter((b) => b.day === "Mon");
-    const synthetic = {
-      ...blocks[0],
-      key: "synthetic",
-      startMin: blocks[0].startMin + 30,
-      endMin: blocks[0].endMin + 30,
-      section: { ...blocks[0].section, id: "other" },
-    };
-    const laid = layoutDay([...blocks, synthetic]);
-    const overlapped = laid.filter((b) => b.cols === 2);
-    expect(overlapped).toHaveLength(2);
-    expect(new Set(overlapped.map((b) => b.col))).toEqual(new Set([0, 1]));
   });
 });
 

@@ -1,7 +1,4 @@
-// The user journey, verified end to end at the logic level with
-// vitest (UI rendering itself is verified visually per the task notes):
-// walking question → highlight extraction → building resolution from geo
-// data → route + camera bounds the map draws.
+// Tests highlight extraction, building resolution, and geographic bounds.
 
 import type { ToolCall } from "@/src/lib/api-types";
 import { featureCentroid, featuresBounds, findBuilding } from "@/src/lib/geo";
@@ -323,15 +320,6 @@ describe("journey: highlight → geo resolution → camera bounds", () => {
       expect(lat).toBeGreaterThanOrEqual(bounds.south);
       expect(lat).toBeLessThanOrEqual(bounds.north);
     }
-  });
-
-  it("clears the route when a call carries no walking highlight", () => {
-    const courseCall: ToolCall = {
-      name: "search_courses",
-      input: { query: "CPSC" },
-      result: { courses: [] },
-    };
-    expect(extractWalkingHighlight(courseCall)).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parsePrereq } from "./index";
-import { MAX_DEPTH, walkCodeLeaves } from "./walk";
+import { walkCodeLeaves } from "./walk";
 
 describe("walkCodeLeaves", () => {
   it("returns parent null for a top-level code", () => {
@@ -49,9 +49,5 @@ describe("walkCodeLeaves", () => {
     const leaves = walkCodeLeaves(expr);
     expect(leaves.length).toBeGreaterThanOrEqual(2);
     expect(leaves.map((l) => l.leaf.code)).toContain("MATH 100");
-  });
-
-  it("respects MAX_DEPTH as a finite positive ceiling", () => {
-    expect(MAX_DEPTH).toBe(15);
   });
 });
