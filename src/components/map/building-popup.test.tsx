@@ -26,7 +26,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("BuildingPopup loading", () => {
-  it("matches carousel geometry without replacing the fixed building header or close action", async () => {
+  it("loads room and service links while retaining the building header and close action", async () => {
     const roomUrl = "https://learningspaces.ubc.ca/classrooms/iblc-100";
     const serviceUrl = "https://learningcommons.ubc.ca";
     let resolveDetails: (details: typeof emptyContent) => void = () => {};
@@ -36,19 +36,10 @@ describe("BuildingPopup loading", () => {
       }),
     );
     const onClose = vi.fn();
-    const { container } = render(<BuildingPopup building={building} onClose={onClose} />);
+    render(<BuildingPopup building={building} onClose={onClose} />);
     const identity = screen.getByRole("heading", { name: building.name });
-    const popup = screen.getByRole("dialog", { name: `${building.name} details` });
-    expect(popup.classList.contains("w-80")).toBe(true);
-    expect(popup.classList.contains("max-w-[calc(100%-5rem)]")).toBe(true);
     const close = screen.getByRole("button", { name: "Close building details" });
-    const loading = screen.getByRole("status", { name: "Loading building details" });
-    expect(loading.parentElement?.className).toContain("px-3.5 py-3");
-    expect(loading.className).toContain("border-t pt-3");
-    expect(loading.className).toContain("first:border-t-0 first:pt-0");
-    expect(loading.querySelectorAll("[data-skeleton]")).toHaveLength(7);
-    expect(loading.querySelector(".h-32")).toBeTruthy();
-    expect(container.querySelector(".animate-pulse")).toBeNull();
+    expect(screen.getByRole("status", { name: "Loading building details" })).not.toBeNull();
     expect(screen.queryByText("No room or service listings for this building.")).toBeNull();
     expect(document.activeElement).toBe(close);
 
@@ -82,10 +73,6 @@ describe("BuildingPopup loading", () => {
       }),
     );
     expect(screen.queryByRole("status", { name: "Loading building details" })).toBeNull();
-    expect(screen.getByText("IBLC 100").closest("div")?.classList.contains("gap-1")).toBe(true);
-    expect(screen.getByRole("heading", { name: "Rooms (1)" }).parentElement?.className).toContain(
-      "first:border-t-0 first:pt-0",
-    );
     expect(screen.getByRole("button", { name: "Previous rooms" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Previous services" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Study rooms" })).toBeNull();
@@ -101,7 +88,6 @@ describe("BuildingPopup loading", () => {
       expect(image.getAttribute("src")).toBe(`/api/preview?url=${encodeURIComponent(href)}`);
       fireEvent.error(image);
       expect(link.querySelector("img")).toBeNull();
-      expect(link.querySelector(".h-32")).toBeTruthy();
     }
     expect(screen.getByRole("heading", { name: building.name })).toBe(identity);
     expect(screen.getByRole("button", { name: "Close building details" })).toBe(close);

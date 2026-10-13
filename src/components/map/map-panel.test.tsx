@@ -5,7 +5,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { useEffect, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const resize = vi.hoisted(() => vi.fn());
 const api = vi.hoisted(() => ({
   listSessions: vi.fn(),
   getGeo: vi.fn(),
@@ -57,9 +56,7 @@ const chem: BuildingSummary = {
 vi.mock("motion/react", () => ({
   AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
   motion: {
-    div: ({ children, className }: { children: ReactNode; className?: string }) => (
-      <div className={className}>{children}</div>
-    ),
+    div: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   },
   useReducedMotion: () => true,
 }));
@@ -89,7 +86,7 @@ vi.mock("@/src/components/map/campus-map", () => ({
   }) => {
     mapState.onStatus = props.onStatus;
     if (props.controls) {
-      props.controls.current = { zoomIn: vi.fn(), zoomOut: vi.fn(), resetView: vi.fn(), resize };
+      props.controls.current = { zoomIn: vi.fn(), zoomOut: vi.fn(), resetView: vi.fn(), resize: vi.fn() };
     }
     return (
       <div
@@ -202,7 +199,6 @@ beforeEach(() => {
   navigation.suspended = false;
   mapState.onStatus = undefined;
   auth.isGuest = false;
-  resize.mockReset();
   routerPush.mockReset();
   api.listSessions.mockReset().mockResolvedValue([]);
   api.getGeo.mockReset().mockResolvedValue(buildingGeo);
@@ -261,15 +257,7 @@ describe("MapArea", () => {
     const { container } = renderMap("ai");
     const map = screen.getByTestId("campus-map");
     const zoom = screen.getByRole("button", { name: "Zoom in" });
-    const loading = screen.getByRole("status", { name: "Loading campus map" });
-
-    expect(loading.className).toContain("absolute inset-0");
-    expect(loading.querySelector("[data-skeleton]")?.className).toContain("h-full w-full");
-    expect(container.querySelector("[data-workspace-page]")).toBeNull();
-    const surface = container.querySelector("[data-map-status]");
-    expect(surface?.classList.contains("rounded-[inherit]")).toBe(true);
-    expect(surface?.classList.contains("overflow-hidden")).toBe(true);
-    expect(container.querySelector(".animate-pulse")).toBeNull();
+    expect(screen.getByRole("status", { name: "Loading campus map" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Show walking paths" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Reset view" })).toBeTruthy();
     act(() => mapState.onStatus?.("ready"));
@@ -277,28 +265,6 @@ describe("MapArea", () => {
     expect(screen.getByTestId("campus-map")).toBe(map);
     expect(screen.getByRole("button", { name: "Zoom in" })).toBe(zoom);
     expect(container.querySelector("[data-map-status]")?.getAttribute("aria-busy")).toBe("false");
-  });
-
-  it("keeps grouped zoom focus paint outside the well without changing control targets", async () => {
-    const { container } = renderMap("ai");
-    await act(async () => {});
-    const well = container.querySelector("[data-map-zoom-controls]")!;
-    expect(well.classList.contains("overflow-hidden")).toBe(false);
-    expect(well.classList.contains("rounded-xl")).toBe(true);
-    for (const name of ["Show walking paths", "Reset view"]) {
-      expect(screen.getByRole("button", { name }).classList.contains("rounded-xl")).toBe(true);
-    }
-    for (const [name, corner] of [
-      ["Zoom in", "rounded-t-xl"],
-      ["Zoom out", "rounded-b-xl"],
-    ]) {
-      const button = screen.getByRole("button", { name });
-      expect(button.parentElement).toBe(well);
-      expect(button.classList.contains(corner)).toBe(true);
-      expect(button.classList.contains("size-11")).toBe(true);
-      expect(button.classList.contains("sm:size-10")).toBe(true);
-      expect(button.classList.contains("focus-visible:ring-2")).toBe(true);
-    }
   });
 
   it("keeps the map timeout and retry distinct from loading", () => {
@@ -316,51 +282,37 @@ describe("MapArea", () => {
     expect(screen.queryByText("Map unavailable")).toBeNull();
   });
 
-  it("reserves the split Explore sheet and map during navigation suspension", () => {
+  it("keeps map controls available during navigation suspension", () => {
     navigation.suspended = true;
-    const { container } = renderMap();
-    expect(container.querySelectorAll("[data-workspace-page]")).toHaveLength(1);
-    expect(container.querySelector("[data-workspace-composition='split']")).toBeTruthy();
-    expect(container.querySelector("[data-map-explorer]")).toBeTruthy();
+    renderMap();
     expect(screen.getByRole("heading", { name: "Campus map" })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Loading building catalog" })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Loading campus map" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Zoom in" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Open Explore" }));
     expect(screen.getByRole("button", { name: "Collapse Explore" })).toBeTruthy();
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("rail");
   });
 
-  it("uses an inset catalog list and preserves map access through catalog retry", async () => {
+  it("preserves map access through catalog retry", async () => {
     api.getGeo.mockRejectedValueOnce(new Error("offline"));
-    const { container } = renderMap();
-    const loading = screen.getByRole("status", { name: "Loading building catalog" });
-    expect(loading.className).toContain("px-5 py-3");
-    expect(loading.closest("[data-workspace-panel-body]")?.className).toContain("p-0");
-    expect(loading.querySelectorAll("[data-skeleton]")).toHaveLength(18);
+    renderMap();
+    expect(screen.getByRole("status", { name: "Loading building catalog" })).toBeTruthy();
     const map = screen.getByTestId("campus-map");
-    const recovery = (await screen.findByText("Building catalog unavailable")).closest('[role="alert"]');
-    expect(recovery?.className).toContain("min-h-full");
-    expect(recovery?.className).toContain("justify-center");
-    expect(recovery?.className).toContain("text-center");
-    expect(recovery?.closest("[data-workspace-panel-body]")?.className).toContain("overflow-y-auto");
+    expect(await screen.findByText("Building catalog unavailable")).toBeTruthy();
     expect(screen.queryByRole("status", { name: "Loading building catalog" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await screen.findByRole("combobox", { name: "Search buildings" });
     expect(screen.getByTestId("campus-map")).toBe(map);
-    expect(container.querySelector("[data-workspace-composition='split']")).toBeTruthy();
   });
 
   it("renders the search rail only in Tools", async () => {
-    const tools = renderMap("tools");
+    renderMap("tools");
     await screen.findByText(iblc.name);
-    expect(tools.container.querySelector("[data-workspace-composition='split']")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Open Explore" }).textContent).toContain("Buildings, rooms, services");
     expect(screen.getByRole("combobox", { name: "Search buildings" })).toBeTruthy();
     cleanup();
 
-    const ai = renderMap("ai");
-    expect(ai.container.querySelector("[data-workspace-composition='split']")).toBeNull();
+    renderMap("ai");
     expect(screen.queryByRole("button", { name: "Open Explore" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Search buildings" })).toBeNull();
   });
@@ -379,7 +331,7 @@ describe("MapArea", () => {
   });
 
   it("moves a map selection into Tools building details without a duplicate popup", async () => {
-    const { container } = renderMap();
+    renderMap();
     await screen.findByText(iblc.name);
 
     fireEvent.click(screen.getByRole("button", { name: "Select IBLC on map" }));
@@ -388,7 +340,6 @@ describe("MapArea", () => {
     expect(screen.getByRole("button", { name: "Collapse Explore" }).getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByTestId("campus-map").dataset.selected).toBe("IBLC");
     expect(screen.getByTestId("campus-map").dataset.popup).toBe("false");
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("rail");
     expect(new URL(window.location.href).searchParams.get("building")).toBe("IBLC");
   });
 

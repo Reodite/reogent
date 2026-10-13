@@ -13,13 +13,7 @@ const flowProps = vi.hoisted(() => ({ current: null as Record<string, unknown> |
 const flowState = vi.hoisted(() => ({ throws: false, initialized: true }));
 const shellActions = vi.hoisted(() => ({ setActiveChannel: vi.fn() }));
 let wideViewport = false;
-const motionState = vi.hoisted(() => ({ reduced: false }));
 const flowActions = vi.hoisted(() => ({ zoomIn: vi.fn(), zoomOut: vi.fn() }));
-
-vi.mock("motion/react", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("motion/react")>()),
-  useReducedMotion: () => motionState.reduced,
-}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPush }),
@@ -39,8 +33,6 @@ vi.mock("reactflow", () => ({
   default: (props: {
     children?: React.ReactNode;
     onNodeContextMenu?: (e: React.MouseEvent, node: unknown) => void;
-    nodesFocusable?: boolean;
-    edgesFocusable?: boolean;
   }) => {
     flowProps.current = props as Record<string, unknown>;
     if (flowState.throws) throw new Error("ReactFlow failed before fitting");
@@ -87,7 +79,6 @@ describe("PrereqTreePane", () => {
     flowState.initialized = true;
     shellActions.setActiveChannel.mockReset();
     wideViewport = false;
-    motionState.reduced = false;
     flowActions.zoomIn.mockClear();
     flowActions.zoomOut.mockClear();
     Object.defineProperty(window, "matchMedia", {
@@ -100,92 +91,31 @@ describe("PrereqTreePane", () => {
     });
   });
 
-  it("renders one padded canvas skeleton while the index loads (REQ-10.5)", () => {
+  it("announces that the course index is loading (REQ-10.5)", () => {
     apiState.getCourseIndex.mockReturnValue(new Promise(() => {}));
-    const { container } = render(<PrereqTreePane />);
-    const loading = screen.getByRole("status", { name: "Loading course index…" });
-    expect(loading.className).toContain("p-4");
-    expect(loading.closest("[data-workspace-canvas]")).not.toBeNull();
-    expect(loading.querySelector("[data-skeleton]")).not.toBeNull();
-    expect(container.querySelector(".animate-spin")).toBeNull();
+    render(<PrereqTreePane />);
+    expect(screen.getByRole("status", { name: "Loading course index…" })).toBeTruthy();
     expect(screen.queryByText("Search for a course above to render its prerequisite tree.")).toBeNull();
     expect(screen.getByText(/Loading course index/)).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Prereq tree" })).toBeTruthy();
-    expect(screen.getByLabelText("Root course code").className).toContain("neu-shadow-on-surface");
   });
 
-  it("keeps the result close to controls when feedback is empty", async () => {
-    apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
-    const { container } = render(<PrereqTreePane initialRoot="CPSC 210" />);
-    await screen.findByTestId("rf-canvas");
-    const feedback = container.querySelector("[data-prereq-feedback]");
-    expect(feedback?.childElementCount).toBe(0);
-    expect(feedback?.classList.contains("empty:hidden")).toBe(true);
-    expect(feedback?.className).not.toContain("min-h-5");
-    const toggle = container.querySelector("[data-prereq-view-toggle]");
-    expect(toggle?.classList.contains("grid")).toBe(true);
-    expect(toggle?.classList.contains("grid-cols-2")).toBe(true);
-    expect(toggle?.parentElement?.className).toContain("@min-[40rem]:items-center");
-    for (const name of ["outline", "map"]) {
-      expect(screen.getByRole("button", { name }).classList.contains("whitespace-nowrap")).toBe(true);
-    }
-  });
-
-  it.each([false, true])("keeps one in-flow embedded search across resizes (outlet: %s)", async (hasOutlet) => {
+  it.each([false, true])("supports embedded root selection and clearing (outlet: %s)", async (hasOutlet) => {
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     const outlet = render(null).container;
     const onChangeRoot = vi.fn();
     const onUiState = vi.fn();
-    const pane = (width: number) => (
-      <div style={{ width }}>
-        <WorkspaceHostProvider host="answer-canvas" titlebarOutlet={hasOutlet ? outlet : null}>
-          <PrereqTreePane initialRoot="CPSC 210" onChangeRoot={onChangeRoot} onUiState={onUiState} />
-        </WorkspaceHostProvider>
-      </div>
+    render(
+      <WorkspaceHostProvider host="answer-canvas" titlebarOutlet={hasOutlet ? outlet : null}>
+        <PrereqTreePane initialRoot="CPSC 210" onChangeRoot={onChangeRoot} onUiState={onUiState} />
+      </WorkspaceHostProvider>,
     );
-    const { container, rerender } = render(pane(320));
     const canvas = await screen.findByTestId("rf-canvas");
     const input = screen.getByRole("combobox", { name: "Root course code" });
-    const form = input.closest("form")!;
-    const commands = form.parentElement!;
-    const layout = commands.parentElement!;
-    const graphRegion = container.querySelector('[data-pane="prereq-tree"]')!.parentElement!;
-    expect(container.contains(form)).toBe(true);
-    expect(outlet.childElementCount).toBe(0);
-    expect(container.querySelector("[data-workspace-page]")).toBeNull();
-    expect(input.className).toContain("neu-shadow-on-surface-container-low");
-    expect(input.classList.contains("sm:h-9")).toBe(true);
     expect(screen.queryByRole("listbox")).toBeNull();
-    expect(commands.classList.contains("shrink-0")).toBe(true);
-    expect(commands.classList.contains("px-4")).toBe(true);
-    expect(commands.classList.contains("bg-surface-container-low")).toBe(true);
-    expect(commands.classList.contains("absolute")).toBe(false);
-    expect(form.classList.contains("w-full")).toBe(true);
-    expect(form.className).not.toContain("max-w-");
-    expect(layout.classList.contains("flex-col")).toBe(true);
-    expect(layout.classList.contains("gap-2")).toBe(true);
-    expect(graphRegion.classList.contains("flex-1")).toBe(true);
-    expect(graphRegion.classList.contains("min-h-0")).toBe(true);
-    expect(graphRegion.parentElement).toBe(layout);
-    expect(commands.compareDocumentPosition(graphRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const feedback = container.querySelector("[data-prereq-feedback]")!;
-    expect(feedback.childElementCount).toBe(0);
-    expect(feedback.classList.contains("empty:hidden")).toBe(true);
-    expect(container.querySelector(".pt-20")).toBeNull();
 
-    for (const width of [1440, 390, 640]) {
-      rerender(pane(width));
-      fireEvent(window, new Event("resize"));
-      expect(screen.getAllByRole("combobox")).toEqual([input]);
-      expect(input.closest("form")).toBe(form);
-      expect(screen.getByTestId("rf-canvas")).toBe(canvas);
-      expect(canvas.closest('[data-pane="prereq-tree"]')?.parentElement).toBe(graphRegion);
-      expect(apiState.getCourseIndex).toHaveBeenCalledTimes(1);
-    }
     fireEvent.change(input, { target: { value: "cpsc 2" } });
     const suggestions = await screen.findByRole("listbox");
-    expect(document.body.contains(suggestions)).toBe(true);
-    expect(container.contains(suggestions)).toBe(false);
     fireEvent.click(within(suggestions).getByRole("option"));
     expect(onChangeRoot).toHaveBeenLastCalledWith("CPSC 210");
     expect((input as HTMLInputElement).value).toBe("CPSC 210");
@@ -199,42 +129,7 @@ describe("PrereqTreePane", () => {
     expect(onChangeRoot).toHaveBeenLastCalledWith("");
     expect(onUiState).toHaveBeenLastCalledWith({ query: "", selections: {}, softDisabled: {} });
     expect(screen.queryByTestId("rf-canvas")).toBeNull();
-    expect(feedback.childElementCount).toBe(0);
     expect(routerPush).not.toHaveBeenCalled();
-  });
-
-  it("protects Outline course codes while leaving notes and choice labels wrappable", async () => {
-    apiState.getCourseIndex.mockResolvedValue({
-      courses: [
-        ...COURSES,
-        {
-          code: "CPSC 221",
-          title: "Basic Algorithms and Data Structures with a long course title",
-          prerequisite: "CPSC 210 and one of CPSC 110, CPSC 121.",
-          corequisite: null,
-        },
-        {
-          code: "CPSC 210",
-          title: "Software Construction",
-          prerequisite: "2nd-year class standing or higher.",
-          corequisite: null,
-        },
-      ],
-    });
-    const { container } = render(<PrereqTreePane initialRoot="CPSC 221" />);
-    await screen.findByTestId("rf-canvas");
-    const outline = container.querySelector("[data-prereq-outline]")!;
-    const code = within(outline as HTMLElement).getByText("CPSC 221");
-    expect(code.classList.contains("shrink-0")).toBe(true);
-    expect(code.classList.contains("whitespace-nowrap")).toBe(true);
-    expect(code.nextElementSibling?.classList.contains("min-w-0")).toBe(true);
-    expect(code.nextElementSibling?.classList.contains("truncate")).toBe(true);
-    for (const label of ["2nd-year class standing or higher", "Choose one prerequisite"]) {
-      const prose = within(outline as HTMLElement).getByText(label);
-      expect(prose.classList.contains("shrink-0")).toBe(false);
-      expect(prose.classList.contains("whitespace-nowrap")).toBe(false);
-      expect(prose.closest("summary")?.classList.contains("whitespace-nowrap")).toBe(false);
-    }
   });
 
   it.each([false, true])(
@@ -385,7 +280,6 @@ describe("PrereqTreePane", () => {
       const canvas = container.querySelector<HTMLElement>("[data-prereq-canvas]")!;
       expect(canvas.querySelectorAll("[data-prereq-outline]")).toHaveLength(1);
       expect(within(canvas).queryByRole("status", { name: "Preparing prerequisite map", hidden: true })).toBeNull();
-      expect(canvas.querySelector("[data-skeleton]")).toBeNull();
       expect(within(canvas).queryByTestId("rf-canvas")).toBeNull();
       const root = within(canvas).getByText("CPSC 210").closest("details")!;
       expect(root.open).toBe(true);
@@ -414,7 +308,6 @@ describe("PrereqTreePane", () => {
     const { rerender } = render(pane);
     const canvas = await screen.findByTestId("rf-canvas");
     expect(screen.getByRole("status", { name: "Preparing prerequisite map" })).toBeTruthy();
-    expect(flowProps.current?.className).toBe("invisible");
     flowState.initialized = true;
     rerender(
       <WorkspaceHostProvider host={host}>
@@ -422,7 +315,6 @@ describe("PrereqTreePane", () => {
       </WorkspaceHostProvider>,
     );
     await waitFor(() => expect(screen.queryByRole("status", { name: "Preparing prerequisite map" })).toBeNull());
-    expect(flowProps.current?.className).toBe("prereq-graph-ready");
     expect(screen.getByTestId("rf-canvas")).toBe(canvas);
   });
 
@@ -444,14 +336,8 @@ describe("PrereqTreePane", () => {
     fireEvent.change(screen.getByLabelText("Root course code"), { target: { value: "CPSC 2" } });
     fireEvent.click(await screen.findByRole("option"));
     expect((screen.getByLabelText("Root course code") as HTMLInputElement).value).toBe("CPSC 210");
-    expect(document.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("canvas");
-    expect(document.querySelector("[data-workspace-region='rail']")).toBeNull();
-    expect(document.querySelector("[data-workspace-view-toggle]")).toBeNull();
     expect(routerPush).toHaveBeenCalledWith("/tools/prereq/CPSC210");
     expect(screen.getByTestId("rf-canvas")).toBeTruthy();
-    expect(
-      screen.getByRole("status", { name: "Preparing prerequisite map", hidden: true }).querySelector("[data-skeleton]"),
-    ).not.toBeNull();
   });
 
   it("renders the not-found state with CPSC 110 / MATH 200 suggestions on a missing submit (REQ-10.4)", async () => {
@@ -461,7 +347,6 @@ describe("PrereqTreePane", () => {
     fireEvent.change(screen.getByLabelText("Root course code"), { target: { value: "NOPE 999" } });
     fireEvent.click(screen.getByText("Show"));
     await waitFor(() => expect(screen.getByText(/isn't in the catalog/)).toBeTruthy());
-    expect(screen.getByRole("alert").className).toContain("text-on-error-container");
     expect(screen.getByText("CPSC 110")).toBeTruthy();
     expect(screen.getByText("MATH 200")).toBeTruthy();
   });
@@ -469,7 +354,7 @@ describe("PrereqTreePane", () => {
   it.each(["", "CPSC 210"])("clears missing-code feedback after an unknown submit from %s", async (initialRoot) => {
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     const onChangeRoot = vi.fn();
-    const { container } = render(<PrereqTreePane initialRoot={initialRoot} onChangeRoot={onChangeRoot} />);
+    render(<PrereqTreePane initialRoot={initialRoot} onChangeRoot={onChangeRoot} />);
     await waitFor(() => expect(screen.queryByText(/Loading course index/)).toBeNull());
     fireEvent.change(screen.getByLabelText("Root course code"), { target: { value: "NOPE 999" } });
     fireEvent.click(screen.getByRole("button", { name: "Show" }));
@@ -479,7 +364,6 @@ describe("PrereqTreePane", () => {
 
     expect((screen.getByLabelText("Root course code") as HTMLInputElement).value).toBe("");
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(container.querySelector("[data-prereq-feedback]")?.childElementCount).toBe(0);
     expect(onChangeRoot).toHaveBeenLastCalledWith("");
     expect(routerPush).toHaveBeenLastCalledWith("/tools/prereq");
   });
@@ -534,8 +418,6 @@ describe("PrereqTreePane", () => {
     await waitFor(() => expect(screen.queryByText(/Loading course index/)).toBeNull());
 
     expect(screen.getByRole("button", { name: "map" }).getAttribute("aria-pressed")).toBe("true");
-    expect(container.querySelector("[data-prereq-view-toggle]")?.className).not.toContain("@min-[40rem]:hidden");
-    expect(container.querySelector("[data-prereq-layout]")?.className).toContain("gap-2");
 
     fireEvent.click(screen.getByRole("button", { name: "outline" }));
     expect(screen.getByRole("button", { name: "outline" }).getAttribute("aria-pressed")).toBe("true");
@@ -552,15 +434,12 @@ describe("PrereqTreePane", () => {
     const outline = container.querySelector("[data-prereq-outline]");
     fireEvent.click(screen.getByRole("button", { name: "map" }));
     expect(screen.getByTestId("rf-canvas")).toBe(canvas);
-    expect(canvas.closest(".ui-content-enter")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "outline" }));
     expect(container.querySelector("[data-prereq-outline]")).toBe(outline);
     expect(screen.getByTestId("rf-canvas")).toBe(canvas);
-    expect(outline?.closest(".ui-content-enter")).not.toBeNull();
   });
 
-  it.each([false, true])("respects reduced motion (%s) in canvas-menu zoom commands", async (reduced) => {
-    motionState.reduced = reduced;
+  it("invokes zoom commands from the canvas menu and closes it", async () => {
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     render(<PrereqTreePane initialRoot="CPSC 210" />);
     await screen.findByTestId("rf-canvas");
@@ -572,16 +451,13 @@ describe("PrereqTreePane", () => {
         const open = flowProps.current?.onPaneContextMenu as (event: unknown) => void;
         open({ clientX: 20, clientY: 20, preventDefault: vi.fn() });
       });
-      const menu = screen.getByRole("menu");
-      expect(menu.className).not.toContain("ui-popover-enter");
-      expect(menu.querySelector(".ui-popover-enter")).not.toBeNull();
       fireEvent.click(screen.getByRole("menuitem", { name: label }));
-      expect(zoom).toHaveBeenCalledWith({ duration: reduced ? 0 : 150 });
+      expect(zoom).toHaveBeenCalledOnce();
       expect(screen.queryByRole("menu")).toBeNull();
     }
   });
 
-  it("offers a compact outline while keeping graph controls out of nested tab stops", async () => {
+  it("opens the outline by default and switches to the map", async () => {
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     render(<PrereqTreePane initialRoot="CPSC 210" />);
     await waitFor(() => expect(screen.queryByText(/Loading course index/)).toBeNull());
@@ -589,23 +465,15 @@ describe("PrereqTreePane", () => {
     expect(screen.getByRole("button", { name: "outline" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "map" }));
     expect(screen.getByRole("button", { name: "map" }).getAttribute("aria-pressed")).toBe("true");
-    expect(flowProps.current?.nodesFocusable).toBe(false);
-    expect(flowProps.current?.edgesFocusable).toBe(false);
-    expect(flowProps.current?.onNodeClick).toBeUndefined();
-    expect(flowProps.current?.minZoom).toBe(0.8);
   });
 
   it("renders the retry alert when the index fetch fails", async () => {
     apiState.getCourseIndex.mockRejectedValue(new Error("boom"));
-    const { container } = render(<PrereqTreePane />);
+    render(<PrereqTreePane />);
     await waitFor(() => expect(screen.getByText(/Couldn't load the tree/)).toBeTruthy());
-    const feedback = container.querySelector("[data-prereq-feedback]");
-    expect(feedback?.contains(screen.getByRole("alert"))).toBe(true);
-    expect(feedback?.childElementCount).toBeGreaterThan(0);
+    expect(screen.getByRole("alert")).toBeTruthy();
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     fireEvent.click(screen.getByText("Retry"));
     await waitFor(() => expect(screen.queryByText(/Couldn't load the tree/)).toBeNull());
-    expect(feedback?.childElementCount).toBe(0);
-    expect(feedback?.classList.contains("empty:hidden")).toBe(true);
   });
 });

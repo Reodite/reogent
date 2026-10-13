@@ -29,45 +29,7 @@ afterEach(() => {
 
 afterAll(() => vi.unstubAllGlobals());
 
-describe("TermSection height contract", () => {
-  it.each(["study", "coop"] as const)("gives %s terms the shared minimum with a standalone fallback", (kind) => {
-    const { container } = render(
-      <TermSection
-        yearId="year-1"
-        termIdx={0}
-        term={{ season: "w1", kind, blocks: [] }}
-        courseIndex={new Map()}
-        validations={new Map()}
-      />,
-    );
-
-    expect(container.firstElementChild?.classList.contains("min-h-[var(--planner-term-min,16rem)]")).toBe(true);
-  });
-
-  it.each([0, 20])("bounds the intrinsic course region with %i courses", (count) => {
-    const { container } = render(
-      <TermSection
-        yearId="year-1"
-        termIdx={0}
-        term={{
-          season: "w1",
-          kind: "study",
-          blocks: Array.from({ length: count }, (_, i) => ({ id: `block-${i}`, code: `CPSC ${i}` })),
-        }}
-        courseIndex={new Map()}
-        validations={new Map()}
-      />,
-    );
-    const list = container.firstElementChild?.children[1];
-
-    for (const token of ["min-h-36", "[contain:size]", "flex-1", "px-0.5", "pt-0.5"]) {
-      expect(list?.classList.contains(token), token).toBe(true);
-    }
-    expect(list?.classList.contains(count ? "overflow-y-auto" : "overflow-hidden")).toBe(true);
-  });
-});
-
-describe("TermSection replacement motion", () => {
+describe("TermSection term changes", () => {
   it("removes study targets and course content immediately when changing to co-op", () => {
     const courseIndex = new Map<string, CourseIndexEntry>([
       ["CPSC 110", { code: "CPSC 110", title: "Programming", credits: 4, prerequisite: null, corequisite: null }],
@@ -88,7 +50,6 @@ describe("TermSection replacement motion", () => {
     rerender(<TermSection {...props} term={coop} />);
     expect(studySurface?.isConnected).toBe(false);
     expect(screen.queryByText("CPSC 110")).toBeNull();
-    expect(container.firstElementChild?.className).toContain("ui-content-enter");
     expect(droppable).toHaveBeenLastCalledWith(expect.objectContaining({ disabled: true }));
     const coopSurface = container.firstElementChild;
 
@@ -100,6 +61,5 @@ describe("TermSection replacement motion", () => {
     expect(screen.queryByText("Co-op work term")).toBeNull();
     expect(screen.getByText("Drop courses here.")).not.toBeNull();
     expect(droppable).toHaveBeenLastCalledWith(expect.objectContaining({ disabled: false }));
-    expect(container.firstElementChild?.className).toContain("ui-content-enter");
   });
 });

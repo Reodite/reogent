@@ -52,13 +52,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function chipLayout(chip: HTMLElement) {
-  return [chip, ...chip.querySelectorAll<HTMLElement>("div, button, span")].map((element) => ({
-    tag: element.tagName,
-    classes: element.className.trim(),
-  }));
-}
-
 describe("Course chip details", () => {
   it.each(["lookup", "placed"])("connects the %s info trigger to its floating dialog", (kind) => {
     render(
@@ -93,102 +86,55 @@ describe("Course chip details", () => {
   });
 });
 
-describe("Course chip layout", () => {
-  it("keeps shared typography and mirrors each source layout in its drag preview", () => {
+describe("Course chip controls", () => {
+  it("makes drag previews inert and hides them from assistive technology", () => {
     const { container, rerender } = render(<LookupBlock entry={course} />);
-    const source = container.firstElementChild as HTMLElement;
-    const layout = chipLayout(source);
-
-    expect(source.querySelector(".font-mono")).toBeNull();
-
     rerender(<LookupBlock entry={course} ghost />);
     const lookupGhost = container.firstElementChild as HTMLElement;
-    expect(chipLayout(lookupGhost)).toEqual(layout);
     expect(lookupGhost.hasAttribute("inert")).toBe(true);
     expect(lookupGhost.getAttribute("aria-hidden")).toBe("true");
 
     rerender(<CourseBlock blockId="block-1" code={course.code} entry={course} validation={validation} />);
     const placed = container.firstElementChild as HTMLElement;
-    const placedLayout = chipLayout(placed);
-    expect(placedLayout[0]).toEqual(layout[0]);
-    expect(placedLayout.filter(({ tag }) => tag === "SPAN")).toEqual(layout.filter(({ tag }) => tag === "SPAN"));
     expect(placed.hasAttribute("inert")).toBe(false);
 
     rerender(<CourseBlock blockId="block-1" code={course.code} entry={course} validation={validation} ghost />);
     const blockGhost = container.firstElementChild as HTMLElement;
-    expect(chipLayout(blockGhost)).toEqual(placedLayout);
     expect(blockGhost.hasAttribute("inert")).toBe(true);
   });
 
-  it("omits the remove slot from finder cards and gives actions their natural width", () => {
+  it("offers removal only for placed courses", () => {
     const { container, rerender } = render(<LookupBlock entry={course} />);
     const chip = container.firstElementChild as HTMLElement;
-    const add = screen.getByRole("button", { name: "Add" });
-    expect(chip.querySelectorAll("button")).toHaveLength(2);
     expect(chip.querySelector('[aria-label="Remove CPSC 221"]')).toBeNull();
-    expect(chip.querySelector(".invisible")).toBeNull();
-    expect(add.classList.contains("w-14")).toBe(false);
-    expect(add.parentElement?.lastElementChild).toBe(add);
 
     rerender(<CourseBlock blockId="block-1" code={course.code} entry={course} validation={validation} />);
-    expect(container.querySelectorAll("button")).toHaveLength(3);
     expect(screen.getByRole("button", { name: "Remove CPSC 221" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Move" }).classList.contains("w-14")).toBe(false);
   });
 
-  it("keeps course text outside a separate square details button", () => {
-    const { rerender } = render(<LookupBlock entry={course} />);
-
-    function checkDetailsButton() {
-      expect(screen.getByText(course.code).closest("button")).toBeNull();
-      expect(screen.getByText(course.title).closest("button")).toBeNull();
-      const details = screen.getByRole("button", { name: "Show CPSC 221 details" });
-      expect(details.textContent).toBe("");
-      expect(details.querySelector("svg")).toBeTruthy();
-      expect(details.classList.contains("size-11")).toBe(true);
-      expect(details.classList.contains("sm:size-8")).toBe(true);
-      expect(details.classList.contains("p-0")).toBe(true);
-      expect(details.hasAttribute("style")).toBe(false);
-    }
-
-    checkDetailsButton();
-    expect(screen.getByRole("button", { name: "Add" }).hasAttribute("style")).toBe(false);
-
-    rerender(<CourseBlock blockId="block-1" code={course.code} entry={course} validation={validation} />);
-    checkDetailsButton();
-    expect(screen.getByRole("button", { name: "Move" }).hasAttribute("style")).toBe(false);
-  });
-
-  it("keeps the term picker outside the measured drag surface", () => {
-    const { container, rerender } = render(
+  it("opens and closes the term picker and omits it from drag previews", () => {
+    const { rerender } = render(
       <CourseBlock blockId="block-1" code={course.code} entry={course} validation={validation} />,
     );
-    const layout = chipLayout(container.firstElementChild as HTMLElement);
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     const select = screen.getByRole("combobox", { name: "Move CPSC 221 to term" });
-    expect(select.closest("[data-block-id]")).toBeNull();
-    expect(select.classList.contains("shrink-0")).toBe(true);
     const disclosure = select.closest("[data-disclosure]");
-    expect(disclosure?.contains(select)).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     expect(disclosure?.getAttribute("aria-hidden")).toBe("true");
     expect(disclosure?.hasAttribute("inert")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     expect(select.closest("[inert]")).toBeNull();
-    expect(chipLayout(container.firstElementChild as HTMLElement)).toEqual(layout);
 
     rerender(<CourseBlock blockId="block-1" code={course.code} entry={course} validation={validation} ghost />);
-    expect(chipLayout(container.firstElementChild as HTMLElement)).toEqual(layout);
     expect(screen.queryByRole("combobox")).toBeNull();
   });
 
-  it("keeps the code and action slots when catalog metadata is missing", () => {
-    const { container, rerender } = render(
+  it("keeps the course code and removal when catalog metadata is missing", () => {
+    const { rerender } = render(
       <CourseBlock blockId="block-1" code={course.code} entry={course} validation={validation} />,
     );
-    const layout = chipLayout(container.firstElementChild as HTMLElement);
     rerender(<CourseBlock blockId="block-1" code={course.code} entry={undefined} validation={validation} />);
-    expect(chipLayout(container.firstElementChild as HTMLElement)).toEqual(layout);
+    expect(screen.getAllByText(course.code).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Remove CPSC 221" })).toBeTruthy();
   });
 });

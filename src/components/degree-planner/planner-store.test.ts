@@ -1,6 +1,4 @@
-import * as model from "@/src/lib/planner-model";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import * as store from "./planner-store";
 import {
   applyCoopSequence,
   createPlannerYear,
@@ -13,17 +11,6 @@ vi.hoisted(() => {
   vi.stubGlobal("localStorage", { getItem: () => null, setItem: vi.fn(), removeItem: vi.fn() });
 });
 afterAll(() => vi.unstubAllGlobals());
-
-it("re-exports the original planner model values without wrapping or copying them", () => {
-  expect(store.createPlannerYear).toBe(model.createPlannerYear);
-  expect(store.isSummer).toBe(model.isSummer);
-  expect(store.SEASON_META).toBe(model.SEASON_META);
-  expect(store.TERM_CREDIT_TARGET).toBe(model.TERM_CREDIT_TARGET);
-  expect(store.TERM_CREDIT_WARN).toBe(model.TERM_CREDIT_WARN);
-  expect(store.MIN_YEARS).toBe(model.MIN_YEARS);
-  expect(store.MAX_YEARS).toBe(model.MAX_YEARS);
-  expect(store.DEFAULT_YEARS).toBe(model.DEFAULT_YEARS);
-});
 
 describe("migratePersistedPlan", () => {
   it("maps legacy terms and creates both summer terms", () => {

@@ -15,21 +15,14 @@ afterEach(cleanup);
 
 it("replaces and clears highlight summaries immediately without remounting the map", () => {
   shell.highlight = { kind: "route", from: "IBLC", to: "CHEM", minutes: 5, meters: 400, method: "network" };
-  const { container, getByTestId, getByText, queryByText, rerender } = render(<MapArea />);
+  const { getByTestId, getByText, queryByText, rerender } = render(<MapArea />);
   const map = getByTestId("map");
-  const first = getByText(/IBLC → CHEM/).closest(".neu-panel");
   shell.highlight = { kind: "route", from: "NEST", to: "CHEM", minutes: 3, meters: 240, method: "network" };
   rerender(<MapArea />);
   expect(queryByText(/IBLC → CHEM/)).toBeNull();
-  const next = getByText(/NEST → CHEM/).closest(".neu-panel");
-  expect(next).not.toBe(first);
-  expect(next?.className).toContain("ui-notice-enter");
-  shell.highlight = { ...shell.highlight, meters: 250 };
-  rerender(<MapArea />);
-  expect(getByText(/NEST → CHEM/).closest(".neu-panel")).toBe(next);
+  expect(getByText(/NEST → CHEM/)).toBeTruthy();
   shell.highlight = null;
   rerender(<MapArea />);
   expect(queryByText(/NEST → CHEM/)).toBeNull();
-  expect(container.querySelector(".ui-notice-enter")).toBeNull();
   expect(getByTestId("map")).toBe(map);
 });

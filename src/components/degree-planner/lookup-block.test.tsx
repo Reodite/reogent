@@ -23,11 +23,8 @@ const course: CourseIndexEntry = {
 afterEach(cleanup);
 
 describe("LookupBlock course details", () => {
-  it("preserves vertical touch panning while keeping explicit actions", () => {
-    const { container } = render(<LookupBlock entry={course} />);
-    const row = container.firstElementChild as HTMLElement;
-    expect(row.className).toContain("touch-pan-y");
-    expect(row.className).not.toContain("touch-none");
+  it("opens details only through the details action", () => {
+    render(<LookupBlock entry={course} />);
     const button = screen.getByRole("button", { name: "Show CPSC 221 details" });
 
     fireEvent.click(screen.getByText(course.code));

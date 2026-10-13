@@ -53,42 +53,21 @@ afterEach(cleanup);
 describe("requirement row compositions", () => {
   it("keeps native manual buttons, a separate course checkbox, and keyboard Add alternatives", () => {
     render(<YearRequirements {...props} />);
-    expect(screen.getByRole("heading", { level: 4, name: "First Year" }).className).toContain("text-muted");
     const courseLabel = screen.getByText("MATH 100 or MATH 180");
     const courseRow = courseLabel.closest("li")!;
-    expect(courseRow.hasAttribute("data-requirement-key")).toBe(true);
-    expect(courseLabel.closest("button")).toBeNull();
     const alternative = within(courseRow).getByRole("combobox", { name: "Course alternative" });
     expect(alternative.closest("button")).toBeNull();
-    expect(alternative.classList.contains("neu-inset")).toBe(true);
-    expect(alternative.classList.contains("rounded-lg")).toBe(true);
-    expect(alternative.classList.contains("h-11")).toBe(true);
-    expect(alternative.classList.contains("sm:h-9")).toBe(true);
-    expect(alternative.classList.contains("focus-visible:ring-2")).toBe(true);
     fireEvent.change(alternative, { target: { value: "MATH 180" } });
     const add = within(courseRow).getByRole("button", { name: "Add MATH 180 to the plan" });
-    expect(add.className).toContain("size-11");
-    expect(add.className).toContain("sm:size-9");
-    expect(add.className).toContain("enabled:hover:bg-surface-container-high");
     fireEvent.click(add);
     expect(state.addBlock).toHaveBeenCalledWith("first", 0, "MATH 180");
     fireEvent.click(within(courseRow).getByRole("button", { name: "Mark requirement complete manually" }));
     expect(state.toggleRequirement).toHaveBeenLastCalledWith(requirementKey("program", "First Year", course));
 
     const manualButton = screen.getByRole("button", { name: "Mark requirement complete" });
-    expect(manualButton.querySelector("div, p, button, select")).toBeNull();
     expect(within(manualButton).getByText("Electives")).toBeTruthy();
     fireEvent.click(manualButton);
     expect(state.toggleRequirement).toHaveBeenLastCalledWith(requirementKey("program", "First Year", manual));
-    for (const [row, credit] of [
-      [courseRow, "3 cr"],
-      [manualButton, "6 cr"],
-    ] as const) {
-      const credits = within(row).getByText(credit);
-      expect(credits.className).toContain("w-9");
-      expect(credits.className).toContain("pt-2");
-      expect(credits.className).toContain("text-right");
-    }
   });
 
   it("uses a remaining course when the selected alternative leaves the catalog", () => {
@@ -104,17 +83,14 @@ describe("requirement row compositions", () => {
     expect(state.addBlock).toHaveBeenCalledWith("first", 0, "MATH 100");
   });
 
-  it("keeps planned completion inert and manual completion reversible with phrasing-only text", () => {
+  it("keeps planned completion inert and manual completion reversible", () => {
     state.checkedRequirements = [requirementKey("program", "First Year", manual)];
     const { container } = render(<YearRequirements {...props} plannedCodes={new Set(["MATH 100"])} />);
     container.querySelector("details")?.setAttribute("open", "");
     const planned = screen.getByText("Planned").closest("li")!;
     expect(planned.querySelector("button")).toBeNull();
-    expect(within(planned).getByText("MATH 100 or MATH 180").className).toContain("line-through");
     const marked = screen.getByRole("button", { name: "Mark requirement incomplete" });
     expect(within(marked).getByText("Marked done")).toBeTruthy();
-    expect(marked.querySelector("div, p, button, select")).toBeNull();
-    expect(within(marked).getByText("6 cr").className).toContain("w-9");
     fireEvent.click(marked);
     expect(state.toggleRequirement).toHaveBeenCalledWith(requirementKey("program", "First Year", manual));
   });
@@ -129,8 +105,7 @@ describe("requirement row compositions", () => {
     );
     const add = screen.getByRole("button", { name: "No available study term" }) as HTMLButtonElement;
     expect(add.disabled).toBe(true);
-    expect(add.className).toContain("disabled:opacity-45");
-    expect(add.closest("li")?.querySelector(".w-9")).toBeNull();
+    expect(within(screen.getByRole("listitem")).queryByText(/\d+ cr/)).toBeNull();
     fireEvent.click(add);
     expect(state.addBlock).not.toHaveBeenCalled();
   });

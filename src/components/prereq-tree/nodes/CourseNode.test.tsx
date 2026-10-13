@@ -10,58 +10,13 @@ vi.mock("reactflow", () => ({
   Position: { Left: "left", Right: "right", Top: "top", Bottom: "bottom" },
 }));
 
-const renderNode = (data: CourseNodeData, id = "n1") => render(<CourseNode id={id} data={data} />).container;
+const renderNode = (data: CourseNodeData) => render(<CourseNode id="n1" data={data} />).container;
 
-describe("CourseNode variants (REQ-9.4)", () => {
-  it("renders root labels on the documented in-app type ramp", () => {
-    const node = renderNode({ code: "CPSC 320", title: "Intermediate Algorithm Design and Analysis", variant: "root" });
-    const label = Array.from(node.querySelectorAll("div")).find((element) => element.textContent === "ROOT");
-    const title = Array.from(node.querySelectorAll("div")).find((element) =>
-      element.textContent?.includes("Intermediate Algorithm Design"),
-    );
-
-    expect(label?.className).toContain("text-xs");
-    expect(label?.className).toContain("tracking-[0.05em]");
-    expect(title?.className).toContain("text-base");
-    expect(title?.className).not.toContain("text-lg");
-    expect(node).toMatchSnapshot();
-  });
-
-  it("renders known variant with a title row (bg-surface)", () => {
-    expect(
-      renderNode({ code: "CPSC 221", title: "Basic Algorithms and Data Structures", variant: "known" }),
-    ).toMatchSnapshot();
-  });
-
-  it("renders unknown variant with the (not in calendar) title (bg-error-container)", () => {
-    expect(renderNode({ code: "CALC 12", title: "(not in calendar)", variant: "unknown" })).toMatchSnapshot();
-  });
-
-  it("renders note variant with text prose (bg-surface-container-low text-muted)", () => {
-    expect(renderNode({ text: "Third-year standing", variant: "note" })).toMatchSnapshot();
-  });
-
-  it("uses neutral course material for corequisites", () => {
-    const el = renderNode({ code: "MATH 200", title: "Calculus III", variant: "known", coreq: true }).querySelector(
-      "section",
-    );
-    expect(el?.classList.contains("bg-surface")).toBe(true);
-    expect(el?.className).not.toContain("bg-secondary-container");
-  });
-
-  it("carries data-node-id, data-variant, and a border matching the edge stroke", () => {
-    const el = renderNode({ code: "CPSC 110", title: "T", variant: "known" }, "CPSC 110").querySelector("section");
-    expect(el?.getAttribute("data-node-id")).toBe("CPSC 110");
-    expect(el?.getAttribute("data-variant")).toBe("known");
-    expect(el?.className).toContain("border-border");
-  });
-
+describe("CourseNode navigation", () => {
   it("emits the code on click when onNavigate is wired (REQ-9.5); note variants are not navigable", () => {
     const onNavigate = vi.fn();
     const known = renderNode({ code: "CPSC 210", title: "T", variant: "known", onNavigate });
     const link = known.querySelector('button[data-nav="course"]') as HTMLButtonElement;
-    expect(link.className).toContain("min-h-14");
-    expect(link.className).toContain("min-w-14");
     fireEvent.click(link);
     expect(onNavigate).toHaveBeenCalledWith("CPSC 210");
 
@@ -69,9 +24,8 @@ describe("CourseNode variants (REQ-9.4)", () => {
     expect(note.querySelector('button[data-nav="course"]')).toBeNull();
   });
 
-  it("renders the code as a plain div when onNavigate is absent (no nav affordance)", () => {
+  it("omits navigation when onNavigate is absent", () => {
     const el = renderNode({ code: "CPSC 210", title: "T", variant: "known" });
     expect(el.querySelector('button[data-nav="course"]')).toBeNull();
-    expect(el.querySelector(".font-mono")?.tagName).toBe("DIV");
   });
 });

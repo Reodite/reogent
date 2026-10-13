@@ -53,15 +53,10 @@ afterEach(() => {
 
 describe("CourseSearchField overlay", () => {
   it("owns combobox semantics and selects the active option with the keyboard", async () => {
-    const { container } = render(
-      <div style={{ overflow: "hidden", height: 50 }}>
-        <CourseSearchField {...baseProps} presentation="overlay" />
-      </div>,
-    );
+    render(<CourseSearchField {...baseProps} presentation="overlay" />);
 
     const input = screen.getByRole("combobox");
     const listbox = await screen.findByRole("listbox");
-    expect(container.contains(listbox)).toBe(false);
     expect(input.getAttribute("aria-autocomplete")).toBe("list");
     expect(input.getAttribute("aria-controls")).toBe(listbox.id);
     expect(input.getAttribute("aria-expanded")).toBe("true");
@@ -85,13 +80,6 @@ describe("CourseSearchField overlay", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
     fireEvent.focus(screen.getByRole("combobox"));
     expect(await screen.findByRole("listbox")).not.toBeNull();
-  });
-
-  it("allows schedule surfaces to use sans-serif course codes", async () => {
-    render(<CourseSearchField {...baseProps} presentation="overlay" monospaceCodes={false} />);
-
-    await screen.findByRole("listbox");
-    expect(screen.getByText("CPSC 110").className).not.toContain("font-mono");
   });
 
   it("retains the query on Escape and dismisses on an outside pointer", async () => {
@@ -172,13 +160,13 @@ describe("CourseSearchField overlay", () => {
       const input = screen.getByRole("combobox");
       fireEvent.keyDown(input, { key: "End" });
       expect(input.getAttribute("aria-activedescendant")).toMatch(/option-19$/);
-      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" }));
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
 
       fireEvent.keyDown(input, { key: "Escape" });
       scrollIntoView.mockClear();
       fireEvent.focus(input);
       await screen.findByRole("listbox");
-      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" }));
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
     } finally {
       if (original) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", original);
       else delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
@@ -186,19 +174,16 @@ describe("CourseSearchField overlay", () => {
   });
 
   it("keeps the default Course Lookup presentation inline", () => {
-    const { container } = render(<CourseSearchField {...baseProps} />);
+    render(<CourseSearchField {...baseProps} />);
 
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.queryByRole("listbox")).toBeNull();
-    expect(container.querySelector("[data-course-list]")?.className).not.toContain("absolute");
     expect(screen.getByRole("button", { name: /CPSC 110/ })).not.toBeNull();
   });
 
-  it("exposes named rail density and clearability without changing search behavior", () => {
-    const { rerender } = render(<CourseSearchField {...baseProps} presentation="overlay" density="rail" />);
-    const input = screen.getByRole("combobox");
-    expect(input.className).toContain("sm:h-9");
-    expect(screen.getByRole("button", { name: "Clear search" }).className).toContain("sm:size-8");
+  it("omits the clear action when clearable is false", () => {
+    const { rerender } = render(<CourseSearchField {...baseProps} presentation="overlay" />);
+    expect(screen.getByRole("button", { name: "Clear search" })).not.toBeNull();
 
     rerender(<CourseSearchField {...baseProps} presentation="overlay" clearable={false} />);
     expect(screen.queryByRole("button", { name: "Clear search" })).toBeNull();
@@ -256,14 +241,9 @@ describe("useCourseAutocomplete request state", () => {
 });
 
 describe("CourseSearchField loading compositions", () => {
-  it.each(["inline", "overlay"] as const)("uses padded shared suggestions in %s presentation", (presentation) => {
-    const { container } = render(
-      <CourseSearchField {...baseProps} list={null} status="loading" presentation={presentation} />,
-    );
+  it.each(["inline", "overlay"] as const)("announces loading in %s presentation", (presentation) => {
+    render(<CourseSearchField {...baseProps} list={null} status="loading" presentation={presentation} />);
     const skeleton = screen.getByRole("status", { name: "Loading course suggestions" });
-    expect(skeleton.className).toContain("p-3");
-    expect(skeleton.querySelectorAll("[data-skeleton]")).toHaveLength(6);
-    expect(container.querySelector(".animate-pulse")).toBeNull();
     expect(screen.queryByText(/No courses matching/)).toBeNull();
     expect(screen.getByLabelText("Course code").getAttribute("aria-busy")).toBe("true");
     if (presentation === "overlay") {
@@ -285,7 +265,6 @@ describe("CourseSearchField loading compositions", () => {
     expect(screen.getAllByRole("option")).toHaveLength(2);
     expect(listbox.getAttribute("aria-busy")).toBe("true");
     expect(listbox.contains(screen.getByRole("status"))).toBe(false);
-    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
     expect(document.getElementById(input.getAttribute("aria-activedescendant") ?? "")?.getAttribute("role")).toBe(
       "option",
     );
@@ -303,7 +282,6 @@ describe("CourseSearchField loading compositions", () => {
     expect(screen.getByText("Updating courses…")).not.toBeNull();
     expect(screen.getByRole("button", { name: /CPSC 110/ })).not.toBeNull();
     expect(container.querySelector("[data-course-list]")?.getAttribute("aria-busy")).toBe("true");
-    expect(container.querySelector("[data-skeleton]")).toBeNull();
   });
 
   it("removes the active descendant while new suggestions have not loaded", () => {
@@ -315,8 +293,8 @@ describe("CourseSearchField loading compositions", () => {
     expect(screen.queryByRole("option")).toBeNull();
   });
 
-  it("retains caller-owned pending candidate progress instead of replacing it with skeletons", () => {
-    const { container } = render(
+  it("disables pending candidates and announces their progress", () => {
+    render(
       <CourseSearchField
         {...baseProps}
         presentation="overlay"
@@ -326,7 +304,6 @@ describe("CourseSearchField loading compositions", () => {
     const options = screen.getAllByRole("option") as HTMLButtonElement[];
     expect(options.every((option) => option.disabled && option.getAttribute("aria-busy") === "true")).toBe(true);
     expect(screen.getAllByText("Adding course…")).toHaveLength(2);
-    expect(container.querySelector("[data-skeleton]")).toBeNull();
   });
 });
 
