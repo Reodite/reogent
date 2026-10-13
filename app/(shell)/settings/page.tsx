@@ -120,7 +120,11 @@ export default function SettingsPage() {
   const auth = useAppAuth();
 
   return (
-    <WorkspacePage composition="single" title="Settings" description="Manage your student defaults and appearance.">
+    <WorkspacePage
+      composition="single"
+      title="Settings"
+      description={auth.isGuest ? "Choose your appearance." : "Manage your student defaults and appearance."}
+    >
       <WorkspaceCanvas padding="md">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
           <section aria-labelledby="settings-appearance-title" className="flex flex-col gap-4">
@@ -135,23 +139,18 @@ export default function SettingsPage() {
               <ThemeToggle />
             </div>
           </section>
-          <section
-            data-settings-profile
-            aria-labelledby="settings-profile-title"
-            className="border-border-subtle flex flex-col gap-4 border-t pt-6"
-          >
-            <header className="flex flex-col gap-1">
+          {!auth.isGuest && (
+            <section
+              data-settings-profile
+              aria-labelledby="settings-profile-title"
+              className="border-border-subtle flex flex-col gap-4 border-t pt-6"
+            >
               <Heading as="h2" size="section" id="settings-profile-title">
                 Student profile
               </Heading>
-              {auth.isGuest ? (
-                <p className="text-on-surface-variant text-sm">
-                  Guest sessions do not save student defaults. Sign in to set your program, year, and student type.
-                </p>
-              ) : null}
-            </header>
-            {!auth.isGuest ? <ProfileForm /> : null}
-          </section>
+              <ProfileForm />
+            </section>
+          )}
         </div>
       </WorkspaceCanvas>
     </WorkspacePage>

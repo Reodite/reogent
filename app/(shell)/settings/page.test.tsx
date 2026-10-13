@@ -34,6 +34,23 @@ describe("Settings", () => {
     expect(Object.keys(await import("./page"))).toEqual(["default"]);
   });
 
+  it("shows only appearance for guests without loading personalization", () => {
+    auth.isGuest = true;
+    const { container } = render(<SettingsPage />);
+
+    expect(screen.getByRole("region", { name: "Appearance" })).not.toBeNull();
+    expect(screen.getByTestId("theme-toggle")).not.toBeNull();
+    expect(screen.queryByRole("region", { name: "Student profile" })).toBeNull();
+    expect(container.querySelector("[data-settings-profile]")).toBeNull();
+    expect(screen.queryByLabelText("What should we call you?")).toBeNull();
+    expect(screen.queryByLabelText("What are you studying?")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading student profile" })).toBeNull();
+    expect(screen.queryByText(/student defaults/i)).toBeNull();
+    expect(api.getProfile).not.toHaveBeenCalled();
+    expect(api.saveProfile).not.toHaveBeenCalled();
+  });
+
   it("reserves the profile form footprint while loading", () => {
     api.getProfile.mockReturnValue(new Promise(() => {}));
     render(<SettingsPage />);

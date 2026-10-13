@@ -10,7 +10,7 @@ import {
   LAST_UNITY_PATH_KEY,
   SHELL_MODE_STORAGE_KEY,
 } from "@/src/lib/shell-mode";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -175,42 +175,22 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     }
   });
 
-  it.each(["AI", "Unity"])("shows the %s guest hint on a touch click without hover or focus", (label) => {
+  it.each([
+    ["sidebar", false],
+    ["sidebar", true],
+    ["bottom", false],
+  ] as const)("omits guest mode navigation for %s with collapsed=%s", (presentation, collapsed) => {
     auth.isGuest = true;
     pathname.value = "/tools/map";
     const view = render(
       <ChatShellProvider>
-        <ModeToggle presentation="bottom" />
+        <ModeToggle presentation={presentation} collapsed={collapsed} />
       </ChatShellProvider>,
     );
-    const link = view.getByRole("link", { name: label });
-    fireEvent.pointerDown(link, { pointerType: "touch" });
-    fireEvent.pointerUp(link, { pointerType: "touch" });
-    expect(fireEvent.click(link)).toBe(false);
-    const tooltip = view.getByRole("tooltip");
-    expect(tooltip.textContent).toBe(`Sign in to use ${label}.`);
-    expect(link.getAttribute("aria-describedby")).toBe(tooltip.id);
-    expect(view.container.contains(tooltip)).toBe(false);
-    fireEvent.pointerLeave(link, { pointerType: "touch" });
-    fireEvent.mouseLeave(link);
-    expect(view.getByRole("tooltip")).toBe(tooltip);
+    expect(view.container.childElementCount).toBe(0);
+    expect(view.queryByRole("navigation", { name: "Reodite areas" })).toBeNull();
+    expect(view.queryByRole("tooltip")).toBeNull();
     expect(routerPush).not.toHaveBeenCalled();
-  });
-
-  it("keeps current hint references unique while the previous hint exits", () => {
-    auth.isGuest = true;
-    pathname.value = "/tools/map";
-    const view = render(
-      <ChatShellProvider>
-        <ModeToggle presentation="bottom" />
-      </ChatShellProvider>,
-    );
-    fireEvent.focus(view.getByRole("link", { name: "AI" }));
-    fireEvent.focus(view.getByRole("link", { name: "Unity" }));
-    const hints = [...document.querySelectorAll<HTMLElement>('[role="tooltip"]')];
-    expect(new Set(hints.map((hint) => hint.id)).size).toBe(hints.length);
-    const currentId = view.getByRole("link", { name: "Unity" }).getAttribute("aria-describedby");
-    expect(document.getElementById(currentId ?? "")?.textContent).toBe("Sign in to use Unity.");
   });
 
   it.each([
@@ -325,44 +305,15 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(modeLink(view.container, "Tools").getAttribute("aria-current")).toBe("page");
   });
 
-  it("exposes collapsed mode names and sign-in hints outside the sidebar", async () => {
-    auth.isGuest = true;
-    const { container, getByRole } = render(
-      <ChatShellProvider>
-        <div style={{ width: 48, overflow: "hidden" }}>
-          <ModeToggle collapsed />
-        </div>
-      </ChatShellProvider>,
-    );
-    const ai = getByRole("link", { name: "AI" });
-    fireEvent.focus(ai);
-    const tooltip = getByRole("tooltip");
-    expect(container.contains(tooltip)).toBe(false);
-    expect(tooltip.textContent).toBe("Sign in to use AI.");
-    expect(ai.getAttribute("aria-describedby")).toBe(tooltip.id);
-    fireEvent.blur(ai);
-    expect(tooltip.hasAttribute("inert")).toBe(true);
-    expect(tooltip.getAttribute("aria-hidden")).toBe("true");
-    await waitFor(() => expect(document.querySelector('[role="tooltip"]')).toBeNull());
-  });
-
-  it("blocks modified and auxiliary activation for guest-locked destinations", () => {
-    auth.isGuest = true;
+  it("keeps collapsed mode names accessible for signed-in users", () => {
     const view = render(
-      <ChatShellProvider initialMode="tools">
-        <ModeToggle />
+      <ChatShellProvider>
+        <ModeToggle collapsed />
       </ChatShellProvider>,
     );
-    const aiLink = modeLink(view.container, "AI");
-    const modifiedClick = new MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true });
-    const auxiliaryClick = new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 });
-
-    aiLink.dispatchEvent(modifiedClick);
-    aiLink.dispatchEvent(auxiliaryClick);
-
-    expect(modifiedClick.defaultPrevented).toBe(true);
-    expect(auxiliaryClick.defaultPrevented).toBe(true);
-    expect(routerPush).not.toHaveBeenCalled();
+    for (const label of ["AI", "Tools", "Unity"]) {
+      expect(view.getByRole("link", { name: label }).textContent).toBe("");
+    }
   });
 
   it("allows the retained mode link to leave Settings", () => {
@@ -415,6 +366,38 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(view.container.querySelector('[data-testid="session-list"]')).toBeNull();
     expect(view.container.querySelector("[data-tool-list]")).not.toBeNull();
   });
+
+  it.each(["/tools/map", "/account", "/settings"])(
+    "keeps the guest sidebar tools-only at %s despite a saved Unity mode",
+    (path) => {
+      auth.isGuest = true;
+      pathname.value = path;
+      localStorage.setItem(SHELL_MODE_STORAGE_KEY, "unity");
+      const onClose = vi.fn();
+      const view = render(
+        <ChatShellProvider>
+          <LeftSidebar onClose={onClose} />
+        </ChatShellProvider>,
+      );
+      expect(view.getByRole("navigation", { name: "Tools" })).not.toBeNull();
+      expect(view.queryByTestId("session-list")).toBeNull();
+      expect(view.queryByRole("navigation", { name: "Community" })).toBeNull();
+      expect(view.queryByRole("navigation", { name: "Reodite areas" })).toBeNull();
+      expect(view.getByRole("button", { name: "Account menu" })).not.toBeNull();
+
+      view.rerender(
+        <ChatShellProvider>
+          <LeftSidebar collapsed onClose={onClose} />
+        </ChatShellProvider>,
+      );
+      expect(view.getByRole("navigation", { name: "Tools" }).getAttribute("data-sidebar-list")).toBe("collapsed");
+      expect(view.container.querySelector("[data-mode-toggle]")).toBeNull();
+      expect(view.getByRole("button", { name: "Account menu" })).not.toBeNull();
+      fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement);
+      expect(routerPush).toHaveBeenCalledWith("/tools/prereq");
+      expect(onClose).toHaveBeenCalledOnce();
+    },
+  );
 
   it("ToolList selection navigates by URL and closes its host drawer", () => {
     const onClose = vi.fn();

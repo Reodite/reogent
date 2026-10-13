@@ -169,6 +169,7 @@ function SidebarDrawer({ id }: { id: string }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { isGuest } = useAppAuth();
   const {
     sidebarOpen,
     setSidebarOpen,
@@ -352,7 +353,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <RequireAuth>
-      <div ref={viewportRef} className="app-shell-canvas app-shell-frame flex h-dvh flex-col overflow-hidden">
+      <div
+        ref={viewportRef}
+        className={`app-shell-canvas app-shell-frame flex h-dvh flex-col overflow-hidden ${isGuest ? "max-sm:pb-[env(safe-area-inset-bottom)]" : ""}`}
+      >
         <nav aria-label="Skip links" inert={sidebarOpen || sheetOpen || undefined} className="shrink-0">
           <a
             href="#main-content"
@@ -397,9 +401,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <div data-mobile-navigation inert={sidebarOpen || sheetOpen || undefined} className="shrink-0 sm:hidden">
-          <ModeToggle presentation="bottom" />
-        </div>
+        {!isGuest && (
+          <div data-mobile-navigation inert={sidebarOpen || sheetOpen || undefined} className="shrink-0 sm:hidden">
+            <ModeToggle presentation="bottom" />
+          </div>
+        )}
         <LiveRegion />
       </div>
     </RequireAuth>

@@ -85,12 +85,18 @@ describe("Account", () => {
     expect(screen.getByText("Pulse questions answered").nextElementSibling?.textContent).toBe("0");
   });
 
-  it("does not request private details for a guest", () => {
+  it("omits personalization and private requests for a guest", () => {
     auth.isGuest = true;
     render(<AccountPage />);
     expect(screen.getByRole("heading", { name: "Guest session" })).not.toBeNull();
     expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/login?redirect=%2Faccount");
     expect(api.getAccount).not.toHaveBeenCalled();
+    expect(screen.queryByRole("region", { name: "Student profile" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Activity" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Edit profile" })).toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading account details" })).toBeNull();
+    expect(screen.queryByText("@ada")).toBeNull();
+    expect(screen.queryByText("Computer Science")).toBeNull();
     expect(screen.queryByText("Tokens spent")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(auth.signOut).toHaveBeenCalledOnce();

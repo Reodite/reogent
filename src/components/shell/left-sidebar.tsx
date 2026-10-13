@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
 import { ModeToggle } from "@/src/components/shell/mode-toggle";
@@ -87,7 +88,9 @@ export function LeftSidebar({
   onExpand?: () => void;
   onClose?: () => void;
 }) {
-  const { mode } = useChatShell();
+  const { mode: shellMode } = useChatShell();
+  const { isGuest } = useAppAuth();
+  const mode = isGuest ? "tools" : shellMode;
   const footer = (
     <div className={`flex flex-col gap-2 ${collapsed ? "items-center" : ""}`}>
       <ModeToggle collapsed={collapsed} onNavigate={onClose} />

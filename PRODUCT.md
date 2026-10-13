@@ -36,11 +36,13 @@ When `AUTH_ENABLED=false` (development), all requests bypass auth with a default
 
 Each signed-in user can save a preferred name, program, year, and domestic/international tuition default. The server stores these in `user_profiles.data` (JSONB) and includes the personal details in the agent's system prompt.
 
+Guests use Tools and keep access to Settings and Account. Hide AI, Tools, and Unity mode controls in guest sessions, including the phone bottom bar.
+
 ### Account details
 
 Open Account from the sidebar popup to see your username, preferred name, student profile, creation date, tokens spent, and Pulse questions answered. Account contains Sign out and an Edit profile link to Settings. Settings retains student defaults and appearance controls.
 
-The authenticated `/api/account` endpoint returns the caller's details. Each account accumulates provider-reported tokens across chat turns and conversation titles, independent of conversation deletion. Show the tracking start date; earlier and unreported usage are unavailable. Pulse counts include stored answers in active and locked rounds. Guests see a sign-in prompt without private data requests.
+The authenticated `/api/account` endpoint returns the caller's details. Each account accumulates provider-reported tokens across chat turns and conversation titles, independent of conversation deletion. Show the tracking start date; earlier and unreported usage are unavailable. Pulse counts include stored answers in active and locked rounds. Guests see a sign-in prompt without private data requests. Guest Settings shows Appearance only; omit the Student profile section and personalization fields.
 
 ### First-login onboarding
 
@@ -99,7 +101,7 @@ The app has three zones, left to right:
 
 - **Desktop (>=1024px)**: Sidebar + Chat + Visual Pane (when active). Sidebar is collapsible (flex layout with animated width). Visual pane transitions width.
 - **Tablet (640-1024px)**: Sidebar is a drawer (hidden by default, triggered by menu button). Chat + Visual Pane side-by-side.
-- **Mobile (<640px)**: Chat, Tools, Unity, and Settings use flat, edge-to-edge main views above persistent AI, Tools, and Unity bottom tabs. Each mode restores its last routed screen; Settings keeps the prior mode without replacing that saved destination. A flat menu button in the route header opens the current mode's destinations in an edge-attached drawer. Keep text and control insets, 44px action targets, 48px drawer rows, and 60px mode targets. The bottom bar owns the bottom safe area. Size the shell and fixed overlays to the browser's reported visual viewport at normal scale, with the visual pane at 80% height. Keep contained cards and input depth. From 640px upward, retain the existing panel layout and sidebar mode controls.
+- **Mobile (<640px)**: Chat, Tools, Unity, and Settings use flat, edge-to-edge main views above persistent AI, Tools, and Unity bottom tabs for signed-in users. Each mode restores its last routed screen; Settings keeps the prior mode without replacing that saved destination. A flat menu button in the route header opens the current mode's destinations in an edge-attached drawer. Keep text and control insets, 44px action targets, 48px drawer rows, and 60px mode targets. Reserve the bottom safe area in the mode bar for signed-in users and in the shell for guests. Size the shell and fixed overlays to the browser's reported visual viewport at normal scale, with the visual pane at 80% height. Keep contained cards and input depth. From 640px upward, retain the existing panel layout and sidebar mode controls.
 
 ## Capabilities and Constraints
 

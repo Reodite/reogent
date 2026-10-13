@@ -11,7 +11,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 // Heavy sub-trees are stubbed so the assertions target AppShell's composition
 // (regions + #main-content + sheet/drawer), not the pane internals.
-const auth = vi.hoisted(() => ({ status: "signedIn" }));
+const auth = vi.hoisted(() => ({ status: "signedIn", isGuest: false }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => auth }));
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
 vi.mock("@/src/components/map/map-panel", () => ({
@@ -136,6 +136,7 @@ afterEach(() => {
   vi.clearAllMocks();
   cleanup();
   auth.status = "signedIn";
+  auth.isGuest = false;
   mediaQueries.clear();
   viewportWidth = 390;
   document.body.style.overflow = "";
@@ -316,6 +317,28 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     viewport.height = 250;
     viewport.dispatchEvent(new Event("resize"));
     expect(frame?.style.height).toBe("");
+  });
+
+  it.each([false, true])("keeps guest tools and drawer access without a mode bar at wide=%s", (wide) => {
+    auth.isGuest = true;
+    pathname.value = "/tools/map";
+    const view = renderShell(wide);
+    expect(view.getByTestId("map-area")).not.toBeNull();
+    expect(view.container.querySelector("[data-mode-toggle]")).toBeNull();
+    expect(view.container.querySelector("[data-mobile-navigation]")).toBeNull();
+    expect(view.container.querySelector(".app-shell-frame")?.className).toContain(
+      "max-sm:pb-[env(safe-area-inset-bottom)]",
+    );
+    expect(view.container.querySelector("aside")?.getAttribute("aria-label")).toBe("Tools");
+    if (!wide) {
+      const menu = view.getByRole("button", { name: "Open sidebar" });
+      fireEvent.click(menu);
+      const drawer = view.getByRole("dialog", { name: "Tools" });
+      expect(drawer.querySelector("[data-tool-list]")).not.toBeNull();
+      expect(drawer.querySelector("[data-mode-navigation]")).toBeNull();
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(document.activeElement).toBe(menu);
+    }
   });
 
   it("places the menu in the header and gates bottom navigation behind overlays", () => {
