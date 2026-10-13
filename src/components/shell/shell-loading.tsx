@@ -6,6 +6,7 @@ import { useMobileViewport } from "@/src/components/shell/use-mobile-viewport";
 import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { Skeleton, SkeletonText } from "@/src/components/ui/skeleton";
 import { WorkspaceCanvas, WorkspacePage, WorkspacePanel, WorkspaceRail } from "@/src/components/ui/workspace";
+import { utilityPageForPath } from "@/src/lib/shell-mode";
 
 const COMPOSER_SKELETON = (
   <ChatComposerFrame caption={<Skeleton className="mx-auto h-4 w-56" />}>
@@ -146,16 +147,17 @@ export function AnswerCanvasLoading() {
 /** Matches shell geometry during local-auth hydration instead of painting a blank page. */
 export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) {
   const viewportRef = useMobileViewport();
+  const utilityPage = utilityPageForPath(pathname);
   const mode = pathname.startsWith("/tools")
     ? "tools"
     : pathname.startsWith("/pulse")
       ? "unity"
-      : pathname === "/settings"
-        ? "settings"
+      : utilityPage
+        ? "utility"
         : "ai";
 
   const splitWorkspace =
-    mode === "settings" ||
+    utilityPage === "settings" ||
     pathname === "/tools/map" ||
     pathname === "/tools/calendar" ||
     pathname === "/tools/planner" ||
@@ -216,7 +218,7 @@ export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) 
           </aside>
           <main className="shell-boot-main flex min-h-0 min-w-0 flex-1">
             <WorkspaceHostProvider
-              host={mode === "ai" ? "chat" : mode === "unity" ? "unity" : mode === "settings" ? "settings" : "tools"}
+              host={mode === "ai" ? "chat" : mode === "unity" ? "unity" : (utilityPage ?? "tools")}
               navigation={sidebarToggle}
             >
               <div className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">

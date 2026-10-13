@@ -952,13 +952,13 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 
 [data-shell-boot-mode="tools"] .shell-boot-chat,
 [data-shell-boot-mode="unity"] .shell-boot-chat,
-[data-shell-boot-mode="settings"] .shell-boot-chat {
+[data-shell-boot-mode="utility"] .shell-boot-chat {
   display: none;
 }
 
 [data-shell-boot-mode="tools"] .shell-boot-workspace,
 [data-shell-boot-mode="unity"] .shell-boot-workspace,
-[data-shell-boot-mode="settings"] .shell-boot-workspace {
+[data-shell-boot-mode="utility"] .shell-boot-workspace {
   display: block;
 }
 
@@ -1342,19 +1342,19 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 @media (min-width: 1024px) {
   [data-shell-boot-mode="ai"] .shell-boot-menu,
   [data-shell-boot-mode="unity"] .shell-boot-menu,
-  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-menu {
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="utility"] .shell-boot-menu {
     display: none;
   }
 
   [data-shell-boot-mode="ai"] .shell-boot-sidebar,
   [data-shell-boot-mode="unity"] .shell-boot-sidebar,
-  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-sidebar {
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="utility"] .shell-boot-sidebar {
     display: block;
   }
 
   [data-shell-boot-mode="ai"] .shell-boot-main,
   [data-shell-boot-mode="unity"] .shell-boot-main,
-  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-main {
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="utility"] .shell-boot-main {
     padding-left: var(--sidebar-offset, 0px);
   }
 
@@ -1370,17 +1370,17 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 
 @media (min-width: 1280px) {
   [data-shell-boot-mode="tools"] .shell-boot-menu,
-  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-menu {
+  html[data-shell-mode="tools"] [data-shell-boot-mode="utility"] .shell-boot-menu {
     display: none;
   }
 
   [data-shell-boot-mode="tools"] .shell-boot-sidebar,
-  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-sidebar {
+  html[data-shell-mode="tools"] [data-shell-boot-mode="utility"] .shell-boot-sidebar {
     display: block;
   }
 
   [data-shell-boot-mode="tools"] .shell-boot-main,
-  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-main,
+  html[data-shell-mode="tools"] [data-shell-boot-mode="utility"] .shell-boot-main,
   .tool-sidebar-content-offset {
     padding-left: var(--sidebar-offset, 0px);
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { parseShellMode, SHELL_MODE_STORAGE_KEY, type ShellMode } from "@/src/lib/shell-mode";
+import { parseShellMode, SHELL_MODE_STORAGE_KEY, utilityPageForPath, type ShellMode } from "@/src/lib/shell-mode";
 import { usePathname } from "next/navigation";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
@@ -23,8 +23,8 @@ export function useShellMode(
   const committedPathname = paths?.committedPathname ?? currentPathname;
   const displayPathname = paths?.displayPathname ?? committedPathname;
   const [rememberedMode, setRememberedMode] = useState<ShellMode>(initial);
-  const hydrateStoredModeOnSettings = useRef(committedPathname === "/settings" && initial === "ai");
-  const settingsHydrated = useRef(false);
+  const hydrateStoredModeOnUtility = useRef(utilityPageForPath(committedPathname) !== null && initial === "ai");
+  const utilityHydrated = useRef(false);
   const routedDisplayMode = shellModeForPath(displayPathname);
   const displayMode = routedDisplayMode ?? rememberedMode;
 
@@ -34,8 +34,9 @@ export function useShellMode(
       setRememberedMode(committedMode);
       return;
     }
-    if (committedPathname !== "/settings" || !hydrateStoredModeOnSettings.current || settingsHydrated.current) return;
-    settingsHydrated.current = true;
+    if (!utilityPageForPath(committedPathname) || !hydrateStoredModeOnUtility.current || utilityHydrated.current)
+      return;
+    utilityHydrated.current = true;
     try {
       setRememberedMode(parseShellMode(window.localStorage.getItem(SHELL_MODE_STORAGE_KEY)));
     } catch {

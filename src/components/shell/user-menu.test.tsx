@@ -15,7 +15,7 @@ afterEach(cleanup);
 
 describe("UserMenu", () => {
   it("composes account actions and appearance as a labeled dialog", () => {
-    const { getByRole, queryByRole } = render(<UserMenu />);
+    const { getByRole, queryByRole, queryByText } = render(<UserMenu />);
     const trigger = getByRole("button", { name: "Account menu" });
     expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
     fireEvent.click(trigger);
@@ -26,8 +26,20 @@ describe("UserMenu", () => {
     expect(appearance.parentElement?.classList.contains("flex-wrap")).toBe(true);
     expect(appearance.parentElement?.classList.contains("gap-y-2")).toBe(true);
     expect(getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/settings");
-    expect(getByRole("button", { name: "Sign out" })).not.toBeNull();
+    expect(getByRole("link", { name: "Account" }).getAttribute("href")).toBe("/account");
+    expect(queryByRole("button", { name: "Sign out" })).toBeNull();
+    expect(queryByText("Signed in as")).toBeNull();
     expect(queryByRole("menuitem")).toBeNull();
+  });
+
+  it("closes the popup and its sidebar drawer when Account opens", () => {
+    const onNavigate = vi.fn();
+    const { getByRole, queryByRole } = render(<UserMenu onNavigate={onNavigate} />);
+    fireEvent.click(getByRole("button", { name: "Account menu" }));
+    fireEvent.click(getByRole("link", { name: "Account" }));
+    expect(onNavigate).toHaveBeenCalledOnce();
+    expect(queryByRole("dialog", { name: "Account" })).toBeNull();
+    expect(getByRole("button", { name: "Account menu" }).getAttribute("aria-expanded")).toBe("false");
   });
 
   it("keeps appearance arrow keys inside the radio group", () => {

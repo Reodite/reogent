@@ -416,16 +416,16 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
   });
 
-  it("renders Settings as a utility workspace without exposing the prior tool as current", () => {
+  it.each(["settings", "account"])("renders %s without exposing the prior tool as current", (utilityPage) => {
     const view = renderShell(true);
     fireEvent.click(modeLink(view.container, "Tools"));
     fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement);
 
-    pathname.value = "/settings";
+    pathname.value = `/${utilityPage}`;
     view.rerender(<ShellFixture />);
 
     expect(view.container.querySelectorAll("main")).toHaveLength(1);
-    expect(view.container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("settings");
+    expect(view.container.querySelector("#main-content")?.getAttribute("data-pane")).toBe(utilityPage);
     expect(view.container.querySelector("#main-content")?.getAttribute("data-shell-mode")).toBe("tools");
     expect(view.container.querySelector("[data-workspace-surface]")).not.toBeNull();
     expect(view.container.querySelector('[data-testid="chat-children"]')).not.toBeNull();

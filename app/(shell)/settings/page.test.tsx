@@ -46,11 +46,13 @@ describe("Settings", () => {
     expect(action?.className).toContain("sm:h-10");
   });
 
-  it("uses the shared split workspace for account, appearance, and student profile", async () => {
+  it("keeps appearance and student profile without an account card or sign-out action", async () => {
     api.getProfile.mockResolvedValue({ profile: {} });
     const { container } = render(<SettingsPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).not.toBeNull();
-    expect(screen.getByRole("heading", { level: 2, name: "Account" })).not.toBeNull();
+    expect(screen.queryByRole("heading", { level: 2, name: "Account" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Appearance" })).not.toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Appearance" })).not.toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Student profile" })).not.toBeNull();
     expect(container.querySelectorAll("main")).toHaveLength(0);

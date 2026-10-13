@@ -125,39 +125,18 @@ function ProfileForm() {
 export default function SettingsPage() {
   const auth = useAppAuth();
   const [mobileView, setMobileView] = useState<WorkspaceView>("main");
-  const username = auth.user?.username || "User";
-  const initial = username.trim().charAt(0).toUpperCase() || "U";
 
   return (
     <WorkspacePage
       composition="split"
       title="Settings"
-      description="Manage your account, student defaults, and appearance."
+      description="Manage your student defaults and appearance."
       view={mobileView}
       onViewChange={setMobileView}
       mainLabel="Student profile"
-      railLabel="Account and appearance"
+      railLabel="Appearance"
       rail={
         <WorkspaceRail>
-          <WorkspacePanel title="Account" padding="md">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <span className="bg-primary-container text-on-primary-container flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-medium">
-                  {initial}
-                </span>
-                <div className="min-w-0 space-y-1">
-                  <p className="text-on-surface truncate text-sm font-medium" title={username}>
-                    {username}
-                  </p>
-                  <p className="text-muted text-xs">{auth.isGuest ? "Guest session" : "Signed in"}</p>
-                </div>
-              </div>
-              <Button variant="danger" size="field" onClick={auth.signOut}>
-                <Icon name="exit" size={16} />
-                Sign out
-              </Button>
-            </div>
-          </WorkspacePanel>
           <WorkspacePanel title="Appearance" padding="md">
             <div className="flex flex-col gap-3">
               <div className="space-y-1">

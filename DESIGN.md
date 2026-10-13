@@ -549,10 +549,11 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 - **Import**: Both routes parse Workday Excel exports in the browser. First imports and replacements use the same dashed drop area, with an 80px minimum height, 4px between label and hint, and native file-picker and drag-and-drop access. Matching progress and loading placeholders retain that footprint. Planner imports reconcile term, component, days, and times with catalog identifiers, require a choice for ambiguous matches, list skipped rows, and ask whether to merge or replace before one atomic update. Sharer imports remain read-only calendar data.
 - **Responsive flow**: At the shared 55rem container width, the rail and canvas become explicit 44px Schedule and Controls views while both remain mounted. Use 16px spacing and open Schedule first with one day column. Below 640px, retain the header and view-switch insets while making the timetable full-width. Keep day tabs at least 44px wide and horizontally scrollable when weekend tabs do not fit. Preserve term, day, form, and scroll state across view changes.
 
-### Settings
+### Account and Settings
 
-- **Utility route**: Settings renders inside the authenticated shell before mode-dependent content. It keeps the existing AI, Tools, or Unity sidebar and cached workspace state without marking a prior tool row current. Browser Back restores the same route, mode, active pane, query, and scroll position.
-- **Composition**: The shared split workspace places Account and Appearance in two equal 20rem rail panels and Student Profile in the inset canvas. Compact users switch between Student profile and Account & appearance through the standard 44px control.
+- **Utility routes**: Account and Settings use the authenticated shell before mode-dependent content. Retain the existing AI, Tools, or Unity sidebar and cached workspace state without marking a prior tool row current. Browser Back restores the prior destination and mode.
+- **Account composition**: Use the shared single workspace and inset canvas with a centered, readable content column. Follow identity and creation date with Student profile and Activity definition lists, separated by thin rules. Stack fields on phones and use two columns from 640px. Place Edit profile beside the section heading and route it to Settings. Keep Sign out available during loading and recovery; show guests a sign-in link without requesting private details. Display the token tracking start date beside its coverage note.
+- **Settings composition**: The shared split workspace places Appearance in the 20rem rail and Student profile in the inset canvas. Compact users switch between Student profile and Appearance through the standard 44px control.
 - **Profile safety**: Profile fields do not render until saved defaults load successfully. Failure shows the shared Retry state and keeps editing locked; saving disables the complete fieldset without clearing values. Program, year, and student type use shared labeled fields.
 
 ### Map, Pulse, and Creators
@@ -657,7 +658,7 @@ Verified entrance points project to the nearest exterior or courtyard footprint 
 
 Use the full-width avatar and username row, or an icon-only trigger in the collapsed sidebar. The avatar uses the existing primary-container material. Keep the trigger's 44px phone target and neutral hover/press feedback.
 
-The account popover is a labeled non-modal dialog because it combines appearance radios with Settings and Sign out actions. Use native links and buttons inside it, preserve theme-radio arrow keys, and keep Tab order natural. Its `.glass-neu rounded-2xl p-2` material matches the anchor width. Use the shared overlay-presence animation for entry and exit, without a second local keyframe. Show placement visibility immediately so initial focus can enter; never transition that visibility flag. Escape closes the account dialog before the drawer, including when focus rests on its trigger. Sign out retains the error-colored hover treatment.
+Use a labeled non-modal account dialog with appearance radios and Settings and Account links. Show the username without a sign-in caption. Use native links and buttons inside it, preserve theme-radio arrow keys, and keep Tab order natural. Match the anchor width with the `.glass-neu rounded-2xl p-2` material. Use the shared overlay-presence animation for entry and exit, without a second local keyframe. Show placement visibility immediately so initial focus can enter; never transition that visibility flag. Escape closes the account dialog before the drawer, including when focus rests on its trigger. Put Sign out on the Account page with the shared danger-button treatment.
 
 ## Motion
 

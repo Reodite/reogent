@@ -103,6 +103,20 @@ describe("shell loading surfaces", () => {
     expect(tabs?.className).not.toMatch(/gap-1|px-2/);
   });
 
+  it.each([
+    ["/settings", "split"],
+    ["/account", "single"],
+  ])("reserves utility workspace geometry for %s", (pathname, composition) => {
+    const { container } = render(<ShellBootLoading pathname={pathname} />);
+    expect(container.querySelector("[data-shell-boot-loading]")?.getAttribute("data-shell-boot-mode")).toBe("utility");
+    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-host")).toBe(
+      pathname.slice(1),
+    );
+    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe(
+      composition,
+    );
+  });
+
   it("selects boot geometry from the requested destination", () => {
     const { container } = render(<ShellBootLoading pathname="/tools/map" />);
 

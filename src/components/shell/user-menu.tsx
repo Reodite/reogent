@@ -15,22 +15,11 @@ export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolea
   const auth = useAppAuth();
   const navigation = useShellNavigation();
   const [open, setOpen] = useState(false);
-  const [signOutError, setSignOutError] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
 
   const username = auth.user?.username || "User";
   const initial = username.trim().charAt(0).toUpperCase() || "U";
-
-  async function handleSignOut() {
-    try {
-      setSignOutError(false);
-      auth.signOut();
-      setOpen(false);
-    } catch {
-      setSignOutError(true);
-    }
-  }
 
   return (
     <>
@@ -71,8 +60,7 @@ export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolea
             className="glass-neu w-64 rounded-2xl p-2"
           >
             <div className="px-3 py-2">
-              <p className="text-muted text-xs font-medium">Signed in as</p>
-              <p className="text-body-sm text-on-surface mt-1 truncate" title={auth.user?.username ?? undefined}>
+              <p className="text-body-sm text-on-surface truncate" title={auth.user?.username ?? undefined}>
                 {username}
               </p>
             </div>
@@ -102,15 +90,21 @@ export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolea
               Settings
             </Link>
 
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="text-on-surface hover:bg-error/10 hover:text-error flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
+            <Link
+              href="/account"
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.();
+              }}
+              onNavigate={(event) => {
+                event.preventDefault();
+                navigation.push("/account");
+              }}
+              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
             >
-              <Icon name="exit" size={16} className="text-on-surface-variant" />
-              Sign out
-            </button>
-            {signOutError && <p className="text-error mt-1 px-3 text-xs">Sign out failed. Try again.</p>}
+              <Icon name="user" size={16} className="text-on-surface-variant" />
+              Account
+            </Link>
 
             <div className="bg-border-subtle my-1 h-px" />
 

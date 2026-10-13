@@ -36,6 +36,12 @@ When `AUTH_ENABLED=false` (development), all requests bypass auth with a default
 
 Each signed-in user can save a preferred name, program, year, and domestic/international tuition default. The server stores these in `user_profiles.data` (JSONB) and includes the personal details in the agent's system prompt.
 
+### Account details
+
+Open Account from the sidebar popup to see your username, preferred name, student profile, creation date, tokens spent, and Pulse questions answered. Account contains Sign out and an Edit profile link to Settings. Settings retains student defaults and appearance controls.
+
+The authenticated `/api/account` endpoint returns the caller's details. Each account accumulates provider-reported tokens across chat turns and conversation titles, independent of conversation deletion. Show the tracking start date; earlier and unreported usage are unavailable. Pulse counts include stored answers in active and locked rounds. Guests see a sign-in prompt without private data requests.
+
 ### First-login onboarding
 
 After signing in or registering, users without `onboarding_completed: true` in their saved profile visit `/onboarding` before entering the app. Guests bypass setup. Accounts created before onboarding also receive setup once; existing profile values prefill the fields. Returning users with a completed profile go straight to their destination.
@@ -50,7 +56,7 @@ Next and Back retain entries while switching cards. Fields are optional. Finish 
 
 **Synchronization requirement:** onboarding and the site's Settings / Preferences page must use the same field components, validation, API, and database record. Both read and write `/api/profile`; `user_profiles.data` holds `preferred_name`, `program`, `year`, `student_type`, `theme`, and `onboarding_completed`. Settings saves must preserve the completion flag. New preferences must be added to the shared schema and both surfaces together, rather than stored only in an onboarding-specific copy. No database migration is needed for these optional JSONB fields.
 
-Appearance changes apply immediately through the shared theme toggle, with a ripple transition unless reduced motion is enabled. The device setting supplies the initial Light or Dark choice; the local cache retains it without following later device changes. Finish setup and Save profile persist the current appearance to the account. Signing in on another device loads that account preference. Profile reads omit unsupported appearance values so existing accounts can use the initial device choice. Profile load failures offer retry and sign-out without overwriting saved values.
+Appearance changes apply immediately through the shared theme toggle, with a ripple transition unless reduced motion is enabled. The device setting supplies the initial Light or Dark choice; the local cache retains it without following later device changes. Finish setup and Save profile persist the current appearance to the account. Signing in on another device loads that account preference. Profile reads omit unsupported appearance values so existing accounts can use the initial device choice. Profile load failures offer retry without overwriting saved values.
 
 ### Session Model
 
