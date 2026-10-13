@@ -58,20 +58,6 @@ export function gradeClass(avg: number | null | undefined): string {
   return "horrible-average";
 }
 
-export function getTermLabel(term: unknown): string {
-  if (term === undefined || term === null) return "N/A";
-  if (typeof term === "number") return term === 1 ? "1" : "2";
-  if (typeof term === "string") return term === "1-2" ? "Both" : term;
-  if (Array.isArray(term)) {
-    const has1 = (term as unknown[]).includes(1);
-    const has2 = (term as unknown[]).includes(2);
-    if (has1 && has2) return "1,2";
-    if (has1) return "1";
-    if (has2) return "2";
-  }
-  return "N/A";
-}
-
 function parseLevel(code: string): number | null {
   const m = code.match(/\d{3}/);
   return m ? Math.floor(Number.parseInt(m[0], 10) / 100) * 100 : null;
@@ -138,12 +124,6 @@ export type CourseCalRow = {
   prerequisite?: string;
   related?: { course_code?: string };
 };
-
-function facultyOfSubject(subjectV: string, subjectRows: SubjectRow[]): string | null {
-  const hit = subjectRows.find((s) => s.name === subjectV);
-  void hit;
-  return null;
-}
 
 /**
  * Build Vancouver per-session records by aggregating grade distributions by
@@ -237,7 +217,7 @@ export function buildRecordsFromDistributions(opts: {
       level: parseLevel(code),
       title: rows[0]?.title ?? cal?.field_course_title ?? code,
       description: (cal?.description_text as string) ?? null,
-      faculty: facultyOfSubject(subject, opts.calSubjects ?? []),
+      faculty: null,
       session,
       term: null,
       credits: null,
@@ -256,9 +236,4 @@ export function buildRecordsFromDistributions(opts: {
     });
   }
   return out;
-}
-
-/** Faculty display name without the honorary-science suffix (mirrors dataService.getBaseFaculty). */
-export function baseFaculty(faculty: string): string {
-  return faculty.replace(" (Honorary Science Credit)", "");
 }
