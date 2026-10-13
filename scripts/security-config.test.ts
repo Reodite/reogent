@@ -1,4 +1,8 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import nextConfig from "../next.config";
 
@@ -36,5 +40,25 @@ describe("deployment security defaults", () => {
 
   it("excludes environment variants from container build contexts", () => {
     expect(read(".dockerignore").split("\n")).toContain(".env*");
+  });
+
+  it("removes copied environment files without changing runtime assets or operator configuration", () => {
+    const root = mkdtempSync(join(tmpdir(), "standalone-cleanup-"));
+    try {
+      const output = join(root, ".next/standalone");
+      mkdirSync(output, { recursive: true });
+      writeFileSync(join(root, ".env"), "operator configuration");
+      for (const file of [".env", ".env.production", ".env.local", "server.js"]) {
+        writeFileSync(join(output, file), file);
+      }
+      execFileSync(process.execPath, [fileURLToPath(new URL("./clean-standalone.mjs", import.meta.url))], {
+        cwd: root,
+      });
+      expect(readdirSync(output)).toEqual(["server.js"]);
+      expect(readFileSync(join(output, "server.js"), "utf8")).toBe("server.js");
+      expect(readFileSync(join(root, ".env"), "utf8")).toBe("operator configuration");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

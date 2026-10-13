@@ -3,7 +3,18 @@ import pkg from "./package.json" with { type: "json" };
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  outputFileTracingExcludes: { "/*": ["./data/**/*", "./ubc-unified-data/**/*", "./.cache/**/*"] },
+  outputFileTracingExcludes: {
+    "/*": [
+      "./data/**/*",
+      "./ubc-unified-data/**/*",
+      "./.cache/**/*",
+      "./.env*",
+      "./{.agents,.claude,.kiro,.impeccable,.git,__fixtures__,coverage}/**/*",
+      "./{app,src,scripts}/**/*.test.{ts,tsx}",
+      "./**/__snapshots__/**/*",
+      "./*.md",
+    ],
+  },
   devIndicators: false,
   poweredByHeader: false,
   headers: async () => [

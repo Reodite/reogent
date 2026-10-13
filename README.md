@@ -125,6 +125,8 @@ Run one ingestion process per destination and allow disk space for both generati
 
 The Dockerfile builds a standalone Node application and runs it as a non-root user. Compose mounts datasets without write access for the app. Build before deployment rather than competing with the live database/search engine for resources.
 
+Use `npm run build`: its postbuild step removes environment files that Next copies into standalone output outside trace exclusions. Supply secrets at runtime. The runner needs `.next/standalone`, `.next/static`, and `public`, including both MapLibre worker modules; the Dockerfile copies these assets. Tests, specs, local tooling, and mounted datasets stay outside the release. Inspect local artifact sizes with `du -sb .next/standalone .next/static public`.
+
 Place the app behind an HTTPS reverse proxy with unbuffered chat streaming, request and connection limits, and the controls in [SECURITY.md](SECURITY.md). Apply the same settings to the search endpoint used by ingestion and the app. Read-only app credentials and ingestion/admin credentials have different privileges.
 
 ## Documentation

@@ -26,11 +26,11 @@ Apply focused TypeScript changes to existing owners. Reuse tests and tools; add 
     - Keep completed persistence independent of later disconnects and avoid saving incomplete replies.
     - Extend existing route/title tests for the changed lifecycle and limit behavior.
     - _Requirements: 1.2, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 7.1_
-- [ ] 4. Reduce eager loading and packaging
+- [x] 4. Reduce eager loading and packaging
   - [x] 4.1 Lazy-load pane implementations and remove the eager map bypass; adapt existing pane tests.
     - Preserve navigation, loading/recovery geometry, direct URLs, and state retention.
     - _Requirements: 1.3, 5.1, 5.2, 5.3_
-  - [ ] 4.2 Narrow external-data tracing and release exclusions; inspect build output and required runtime assets.
+  - [x] 4.2 Narrow external-data tracing and release exclusions; inspect build output and required runtime assets.
     - Use installed Next.js guidance and existing security/build checks.
     - _Requirements: 2.1, 2.2, 2.3, 8.3_
 - [ ] 5. Bound ingestion and deployment resources
