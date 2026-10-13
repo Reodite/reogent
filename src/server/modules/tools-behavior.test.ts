@@ -140,7 +140,7 @@ function course(code: string, overrides: Record<string, unknown> = {}): Record<s
     code,
     subject,
     number,
-    level: Number(number.match(/\d/)?.[0] + "00"),
+    level: Number(`${number.match(/\d/)?.[0]}00`),
     title: `Course ${code}`,
     description: "desc",
     credits: 3,
@@ -294,19 +294,11 @@ describe("get_costs (agent-tool-redesign)", () => {
 
   it("falls back to a fuzzy program-name match for tuition", async () => {
     const tool = costs.tools.find((t) => t.spec.name === "get_costs")!;
-    const search = fakeSearch(tuitionFixture);
-    // First slug query hits nothing, fuzzy search returns the real program.
-    const fuzzy = {
-      ...tuitionFixture,
-      tuition: [...tuitionFixture.tuition],
-    };
-    const s2 = fakeSearch(fuzzy);
     const out = (await tool.execute(
       { kind: "tuition", program_slug: "science", student_type: "domestic", cohort_year: 2026 },
-      s2,
+      fakeSearch(tuitionFixture),
     )) as { amount_cad: number };
     expect(out.amount_cad).toBe(150);
-    // fuzzy path still needs SOME hit from the search; verify it didn't throw "No tuition"
   });
 
   it("returns found:false when tuition has no matching record and no fuzzy hit", async () => {

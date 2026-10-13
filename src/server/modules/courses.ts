@@ -1,14 +1,11 @@
 import { formatSeconds } from "../core/time";
 import type { DatasetModule, SearchClient } from "../core/types";
 import {
-  BUCKET_KEYS,
   buildRecordsFromDistributions,
   defaultSession,
   isSession,
-  type BucketKey,
   type CourseCalRow,
   type Session,
-  type SubjectRow,
 } from "../course-records";
 import { getIndexFreshness } from "../freshness";
 import { courseAverage, courseGrades } from "./grades";
@@ -118,10 +115,7 @@ export function joinCourses(tables: {
     });
   }
 
-  // Scheduled courses missing from the calendar catalogue (21% of sections)
-  // still get a doc, synthesized from the schedule table — its description at
-  // 86% fill and prerequisites at 40% are worse than the calendar's, but far
-  // better than the course not existing.
+  // Use schedule metadata for courses missing from the calendar catalogue.
   const schedByCode = new Map<string, Row>();
   for (const c of tables.schedCourses) {
     if (c.field_course_code && !schedByCode.has(c.field_course_code)) schedByCode.set(c.field_course_code, c);
@@ -148,7 +142,7 @@ export function joinCourses(tables: {
   return [...docs.values()];
 }
 
-/** Section times go to the model as human-readable HH:MM (Requirement 3.7). */
+/** Presents section times as human-readable HH:MM strings for the model. */
 export function presentCourse(doc: CourseDoc, maxSections = Number.POSITIVE_INFINITY) {
   const sections = doc.sections.slice(0, maxSections).map(({ start_seconds, end_seconds, ...rest }) => ({
     ...rest,
