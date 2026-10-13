@@ -6,8 +6,8 @@ Apply focused TypeScript changes to existing owners. Reuse tests and tools; add 
 
 ## Tasks
 
-- [ ] 1. Finish cleanup
-  - [ ] 1.1 Consolidate documentation, remove stale paths, and prune visual, implementation-shape, duplicate, and meaningless test assertions.
+- [x] 1. Finish cleanup
+  - [x] 1.1 Consolidate documentation, remove stale paths, and prune visual, implementation-shape, duplicate, and meaningless test assertions.
     - Keep active specs short and preserve operational/security guidance.
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 8.1, 8.2_
 - [ ] 2. Fix dataset reuse
