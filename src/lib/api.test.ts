@@ -59,6 +59,76 @@ describe("course catalog reuse", () => {
   });
 });
 
+describe("chat stream resources", () => {
+  it("clears each read watchdog, preserves split UTF-8 and malformed-line handling, and releases the reader", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({
+      start: (stream) => {
+        controller = stream;
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(body)),
+    );
+    const api = createChatApi({ getToken: async () => "jwt" });
+    const onDelta = vi.fn();
+    const result = api.chat("session", [], { onDelta });
+    const encoder = new TextEncoder();
+    try {
+      for (const byte of encoder.encode('invalid\n{"type":"text","delta":"café"}\n')) {
+        controller.enqueue(Uint8Array.of(byte));
+      }
+      await vi.waitFor(() => expect(onDelta).toHaveBeenCalledWith("café"));
+      expect(vi.getTimerCount()).toBe(1);
+    } finally {
+      controller.enqueue(encoder.encode('{"type":"done","message":"café","tool_calls":[],"citations":[]}\n'));
+      controller.close();
+      await result;
+    }
+    expect(await result).toMatchObject({ message: "café", tool_calls: [], citations: [] });
+    expect(vi.getTimerCount()).toBe(0);
+    expect(body.locked).toBe(false);
+  });
+
+  it.each(["protocol", "reader", "stall", "overflow"])("cleans up a %s failure without masking it", async (failure) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const cancel = vi.fn(() => {
+      throw new Error("Cleanup failed");
+    });
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        if (failure === "reader") controller.error(new Error("Read failed"));
+        if (failure === "protocol")
+          controller.enqueue(new TextEncoder().encode('{"type":"error","message":"Provider failed"}\n'));
+        if (failure === "overflow") controller.enqueue(new TextEncoder().encode("x".repeat(1_048_577)));
+      },
+      cancel,
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(body)),
+    );
+    const api = createChatApi({ getToken: async () => "jwt" });
+    const message = {
+      protocol: "Provider failed",
+      reader: "Read failed",
+      stall: "Stream stalled",
+      overflow: "Stream line exceeded",
+    }[failure];
+    const rejection = expect(api.chat("session", [])).rejects.toThrow(message);
+    if (failure === "stall") {
+      await vi.waitFor(() => expect(body.locked).toBe(true));
+      await vi.advanceTimersByTimeAsync(60_000);
+    }
+    await rejection;
+    expect(vi.getTimerCount()).toBe(0);
+    expect(body.locked).toBe(false);
+    if (failure !== "reader") expect(cancel).toHaveBeenCalledOnce();
+  });
+});
+
 describe("public map API client", () => {
   it("loads public map data without requesting an account token", async () => {
     const getToken = vi.fn(async () => null);

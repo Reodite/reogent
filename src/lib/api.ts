@@ -208,66 +208,73 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     const STALL_TIMEOUT_MS = 60_000;
     const MAX_LINE_BYTES = 1_048_576; // 1 MB
 
-    for (;;) {
-      // Abort if no data arrives within 60s
-      const readPromise = reader.read();
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new ApiError(504, "Stream stalled — no data received for 60s")), STALL_TIMEOUT_MS),
-      );
-      const { done, value } = await Promise.race([readPromise, timeout]);
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+    try {
+      for (;;) {
+        let watchdog: ReturnType<typeof setTimeout> | undefined;
+        const timeout = new Promise<never>((_, reject) => {
+          watchdog = setTimeout(
+            () => reject(new ApiError(504, "Stream stalled — no data received for 60s")),
+            STALL_TIMEOUT_MS,
+          );
+        });
+        const { done, value } = await Promise.race([reader.read(), timeout]).finally(() => clearTimeout(watchdog));
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
 
-      // Guard against unbounded single-line buffering
-      if (buffer.length > MAX_LINE_BYTES) {
-        reader.cancel();
-        throw new ApiError(500, "Stream line exceeded 1 MB limit");
-      }
+        // Guard against unbounded single-line buffering
+        if (buffer.length > MAX_LINE_BYTES) {
+          throw new ApiError(500, "Stream line exceeded 1 MB limit");
+        }
 
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const event = JSON.parse(line);
-          if (event.type === "text" && callbacks?.onDelta) {
-            callbacks.onDelta(event.delta);
-          } else if (event.type === "text_clear" && callbacks?.onTextClear) {
-            callbacks.onTextClear();
-          } else if (event.type === "thinking" && callbacks?.onThinking) {
-            callbacks.onThinking(event.delta);
-          } else if (event.type === "tool_start" && callbacks?.onToolStart) {
-            callbacks.onToolStart(event.name, event.input);
-          } else if (event.type === "tool_end" && callbacks?.onToolEnd) {
-            callbacks.onToolEnd(event.name, event.result);
-          } else if (event.type === "citations" && callbacks?.onCitations) {
-            callbacks.onCitations(event.citations);
-          } else if (event.type === "turn_start" && callbacks?.onTurnStart) {
-            callbacks.onTurnStart();
-          } else if (event.type === "done") {
-            result = {
-              message: event.message,
-              tool_calls: event.tool_calls,
-              citations: event.citations,
-              warning: event.warning,
-              follow_ups: event.follow_ups,
-            };
-            if (callbacks?.onCitations && event.citations) {
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line);
+            if (event.type === "text" && callbacks?.onDelta) {
+              callbacks.onDelta(event.delta);
+            } else if (event.type === "text_clear" && callbacks?.onTextClear) {
+              callbacks.onTextClear();
+            } else if (event.type === "thinking" && callbacks?.onThinking) {
+              callbacks.onThinking(event.delta);
+            } else if (event.type === "tool_start" && callbacks?.onToolStart) {
+              callbacks.onToolStart(event.name, event.input);
+            } else if (event.type === "tool_end" && callbacks?.onToolEnd) {
+              callbacks.onToolEnd(event.name, event.result);
+            } else if (event.type === "citations" && callbacks?.onCitations) {
               callbacks.onCitations(event.citations);
+            } else if (event.type === "turn_start" && callbacks?.onTurnStart) {
+              callbacks.onTurnStart();
+            } else if (event.type === "done") {
+              result = {
+                message: event.message,
+                tool_calls: event.tool_calls,
+                citations: event.citations,
+                warning: event.warning,
+                follow_ups: event.follow_ups,
+              };
+              if (callbacks?.onCitations && event.citations) {
+                callbacks.onCitations(event.citations);
+              }
+            } else if (event.type === "error") {
+              throw new ApiError(500, event.message);
             }
-          } else if (event.type === "error") {
-            throw new ApiError(500, event.message);
+          } catch (e) {
+            if (e instanceof ApiError) throw e;
+            // skip malformed lines
           }
-        } catch (e) {
-          if (e instanceof ApiError) throw e;
-          // skip malformed lines
         }
       }
-    }
 
-    if (!result) throw new ApiError(500, "Stream ended without a done event");
-    return result;
+      if (!result) throw new ApiError(500, "Stream ended without a done event");
+      return result;
+    } finally {
+      // Ignore cancellation failures without waiting for transport shutdown.
+      void reader.cancel().catch(() => {});
+      reader.releaseLock();
+    }
   }
 
   return {
