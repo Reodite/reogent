@@ -42,10 +42,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# impeccable design tooling state (keep design.json only)
+# local design review state
 .impeccable/critique/
 
-# opencode local runtime (ralph-loop state)
+# local agent runtime state
 .opencode/
 
 # maplibre worker modules synced from node_modules by prebuild/predev
