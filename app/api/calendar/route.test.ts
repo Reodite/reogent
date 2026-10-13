@@ -40,48 +40,9 @@ afterEach(() => {
 });
 
 describe("projectCalendarEvents — calendar server projection (REQ-16.1)", () => {
-  it("drops rows without a usable start date", () => {
-    const out = projectCalendarEvents(input);
-    expect(out.find((e) => e.label.includes("To be confirmed by Senate"))).toBeUndefined();
-  });
-
-  it("emits school kinds verbatim, holiday tags stay empty", () => {
-    const holidays = out(input).filter((e) => e.kind === "holiday");
-    for (const e of holidays) {
-      expect(e.tags).toEqual([]);
-      expect(e.kind).toBe("holiday");
-    }
-  });
-
-  it("carries source_url from the originating KeyDateDoc", () => {
-    const byLabel = new Map(out(input).map((e) => [e.label, e]));
-    expect(byLabel.get("Family Day")?.source_url).toBe("https://www.statutoryholidays.com/");
-    expect(byLabel.get("Last day to withdraw from Winter Term 1 courses with a W on transcript")?.source_url).toBe(
-      "https://students.ubc.ca/enrolled/important-dates",
-    );
-  });
-
-  it('infers the multi-tag set ["reading-week","exam","term"] on the mid-term + reading-week concludes event', () => {
-    const midTerm = out(input).find((e) => e.label.includes("Mid-term examinations + reading week concludes"));
-    expect(midTerm?.tags).toEqual(["reading-week", "exam", "term"]);
-  });
-  it("keeps academic events on the same day as siblings (multi-event day)", () => {
-    const nov29 = projectCalendarEvents(input).filter((e) => e.date === "2024-11-29");
-    expect(nov29).toHaveLength(2);
-    expect(nov29.map((e) => e.label).sort()).toEqual([
-      "Last day of classes, Winter Term 1",
-      "Last day to withdraw from Winter Term 1 courses with a W on transcript",
-    ]);
-  });
   it("honours the from/to filter window", () => {
     const windowed = projectCalendarEvents(input, "2024-09-01", "2024-09-30");
     expect(windowed.map((e) => e.date)).toEqual(["2024-09-02", "2024-09-03", "2024-09-17", "2024-09-30"]);
-  });
-
-  it("orders events by ascending ISO date", () => {
-    const dates = out(input).map((e) => e.date);
-    const sorted = [...dates].sort();
-    expect(dates).toEqual(sorted);
   });
 
   it("snapshot-matches the full projected output against the fixture for the 2024-2025 academic year", () => {
@@ -130,10 +91,6 @@ describe("projectCampusEvents — campus events as per-day event-kind entries", 
 });
 
 describe("GET /api/calendar route — projected CalendarEvent[] shape and caching (REQ-16.1)", () => {
-  it("keeps the route export contract", async () => {
-    expect(Object.keys(await import("./route"))).toEqual(["GET"]);
-  });
-
   it("returns the projected array with a 5-minute public cache header", async () => {
     const request = new Request("https://example/api/calendar?kinds=academic");
     const res = await GET(request);

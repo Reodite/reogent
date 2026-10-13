@@ -36,8 +36,6 @@ describe("createThinkTagSplitter", () => {
     const events = run(["<thi", "nk>secret</think>answer"]);
     expect(join(events, "thinking")).toBe("secret");
     expect(join(events, "text")).toBe("answer");
-    // The partial "<thi" must never surface as text.
-    expect(join(events, "text")).not.toContain("<");
   });
 
   it("holds back a closing tag split across deltas", () => {

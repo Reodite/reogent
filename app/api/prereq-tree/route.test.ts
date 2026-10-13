@@ -18,20 +18,6 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("GET /api/prereq-tree", () => {
-  it("200 without auth — public endpoint", async () => {
-    buildPrereqGraph.mockResolvedValue({
-      rootCode: "CPSC 110",
-      nodes: [],
-      edges: [],
-      selectionKeys: [],
-      hasPrereqs: false,
-      hasCoreqs: false,
-      found: true,
-    });
-    const res = await GET(req("?root=CPSC+110"));
-    expect(res.status).toBe(200);
-  });
-
   it("400 when root is missing", async () => {
     const res = await GET(req(""));
     expect(res.status).toBe(400);

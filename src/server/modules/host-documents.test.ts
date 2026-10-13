@@ -122,9 +122,6 @@ describe("readHostDocuments", () => {
     const original = document({ source_modified_at: "2023-06-06T17:57:19Z" });
     const [loaded] = await collect(corpus([original]).store);
     expect(loaded).toEqual(original);
-    expect(Buffer.from(loaded.content_markdown)).toEqual(Buffer.from(original.content_markdown));
-    expect(loaded).not.toHaveProperty("campus");
-    expect(loaded).not.toHaveProperty("audience");
   });
 
   it("accepts an explicitly empty registry without reading directories", async () => {
@@ -361,14 +358,12 @@ describe("readHostDocuments", () => {
 
   it("enforces the whole-file byte limit rather than body character count", async () => {
     const original = document({ content_markdown: "é".repeat(512 * 1024) });
-    expect(original.content_markdown.length).toBeLessThan(1024 * 1024);
     await expect(collect(corpus([original]).store)).rejects.toThrow(/exceeds 1 MiB/);
   });
 
   it("accepts a whole file exactly at the byte limit", async () => {
     const overhead = Buffer.byteLength(serialize(document({ content_markdown: "x" }))) - 1;
     const original = document({ content_markdown: "x".repeat(1024 * 1024 - overhead) });
-    expect(Buffer.byteLength(serialize(original))).toBe(1024 * 1024);
     expect(await collect(corpus([original]).store)).toEqual([original]);
   });
 

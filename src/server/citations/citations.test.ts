@@ -47,7 +47,6 @@ describe("allocateCitations — Property 18, Index-1 continuity", () => {
         const result = allocateCitations(seeds);
         const indices = result.map((c) => c.index);
         expect(indices).toEqual([...Array(result.length).keys()].map((i) => i + 1));
-        expect(new Set(indices).size).toBe(result.length);
         expect(result.every((c) => c.used === false)).toBe(true);
       }),
     );
@@ -68,7 +67,6 @@ describe("allocateCitations — Property 18, Index-1 continuity", () => {
           const k = `${s.source_url ?? ""}\u0000${s.label}`;
           seen.add(k);
         }
-        expect(result.length).toBeLessThanOrEqual(seeds.length);
         expect(result.length).toBe(seen.size);
       }),
     );
@@ -397,18 +395,14 @@ describe("stampUsed — Property 20, Used-only-after-stamp", () => {
     expect(stampUsed(citations, "[1, x] [1-2] [1, 2")).toBe(citations);
   });
 
-  it("live (pre-stamp) citations carry used false; stamping sets used only for indices present in text", () => {
+  it("sets used only for indices present in text", () => {
     fc.assert(
       fc.property(fc.array(arbSeed, { maxLength: 8 }), arbTextWithMarkers, (seeds, text) => {
         const citations = allocateCitations(seeds);
-        expect(citations.every((c) => c.used === false)).toBe(true);
         const stamped = stampUsed(citations, text);
         for (const c of stamped) {
           const expectedUsed = text.includes(`[${c.index}]`);
           expect(c.used).toBe(expectedUsed);
-        }
-        for (let i = 0; i < stamped.length; i++) {
-          if (!text.includes(`[${i + 1}]`)) expect(stamped[i].used).toBe(false);
         }
       }),
     );

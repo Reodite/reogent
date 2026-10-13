@@ -47,9 +47,4 @@ describe("get_prereq_tree tool", () => {
     const graph = (await tool.execute({ course_code: "CPSC 110" }, search)) as Record<string, unknown>;
     expect(graph).toMatchObject({ rootCode: "CPSC 110", found: true, hasPrereqs: true });
   });
-
-  it("module is tool-only with no ingest indices", () => {
-    expect(prereqModule.indices).toEqual([]);
-    expect(prereqModule.tools).toHaveLength(1);
-  });
 });

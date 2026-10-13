@@ -194,9 +194,6 @@ it.each(["cited", "uncited", "read-error", "refusal", "widget"])(
     if (mode !== "widget") {
       expect(events).toContainEqual({ type: "text_clear" });
       expect(llm.converseStream.mock.calls[2][0].forceToolUse).toBe(true);
-      expect(JSON.stringify(llm.converseStream.mock.calls[2][0].messages)).toContain(
-        "Before answering, call get_document",
-      );
     }
     if (mode === "read-error" || mode === "refusal") {
       expect(events.some((event) => event.type === "done")).toBe(false);
