@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { EnqueuedTask, Meilisearch } from "meilisearch";
 import type { DatasetModule, DataWriter } from "./core/types";
 import { recordIndexFreshness } from "./freshness";
+import { positiveIntegerEnv } from "./resource-limits";
 
 const BATCH_DOCS = 500;
 
@@ -15,6 +16,11 @@ export function sanitizeMeiliId(id: string): string {
  * Checks Meilisearch tasks, removes temporary indexes, and aggregates failures after attempting other indexes.
  */
 export async function runIngest(modules: DatasetModule[], search: Meilisearch, store: DataWriter): Promise<void> {
+  const batchTargetBytes = positiveIntegerEnv("INGEST_BATCH_BYTES", 8 * 1024 * 1024);
+  const maxRequestBytes = positiveIntegerEnv("INGEST_MAX_REQUEST_BYTES", 100_000_000);
+  if (batchTargetBytes > maxRequestBytes) {
+    throw new Error("INGEST_BATCH_BYTES must not exceed INGEST_MAX_REQUEST_BYTES");
+  }
   const failures: Error[] = [];
   const waitForTask = async (task: Promise<EnqueuedTask>) => {
     const result = await search.tasks.waitForTask((await task).taskUid, { timeout: 300_000, interval: 100 });
@@ -58,14 +64,15 @@ export async function runIngest(modules: DatasetModule[], search: Meilisearch, s
           }),
         );
 
-        // Batch documents
         let batch: Record<string, unknown>[] = [];
+        let batchBytes = 2; // JSON array brackets.
         let count = 0;
 
         const flush = async () => {
           if (batch.length === 0) return;
           await waitForTask(index.addDocuments(batch));
           batch = [];
+          batchBytes = 2;
         };
 
         for await (const raw of idx.read(store)) {
@@ -75,9 +82,18 @@ export async function runIngest(modules: DatasetModule[], search: Meilisearch, s
           // `id` field (events use "events.ubc.ca?id=N") which would otherwise
           // override the sanitized primary key and make Meilisearch reject the
           // batch with an invalid-document-identifier error.
-          batch.push({ ...t.doc, id: sanitizeMeiliId(t.id) });
+          const doc = { ...t.doc, id: sanitizeMeiliId(t.id) };
+          const docBytes = Buffer.byteLength(JSON.stringify(doc), "utf8");
+          if (docBytes + 2 > maxRequestBytes) {
+            throw new Error(
+              `document ${doc.id} requires ${docBytes + 2} bytes, exceeding INGEST_MAX_REQUEST_BYTES (${maxRequestBytes})`,
+            );
+          }
+          if (batch.length > 0 && batchBytes + 1 + docBytes > batchTargetBytes) await flush();
+          batchBytes += docBytes + (batch.length > 0 ? 1 : 0);
+          batch.push(doc);
           count++;
-          if (batch.length >= BATCH_DOCS) await flush();
+          if (batch.length >= BATCH_DOCS || batchBytes >= batchTargetBytes) await flush();
         }
         await flush();
 

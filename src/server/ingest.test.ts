@@ -68,12 +68,17 @@ function replacementFixture(rowCount = 1) {
 }
 
 beforeEach(() => {
+  vi.stubEnv("INGEST_BATCH_BYTES", undefined);
+  vi.stubEnv("INGEST_MAX_REQUEST_BYTES", undefined);
   vi.mocked(recordIndexFreshness).mockReset().mockResolvedValue(undefined);
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 describe("ingest command environment", () => {
   it.each([
@@ -185,6 +190,117 @@ describe("runIngest", () => {
     );
     expect(f.store.getJson).not.toHaveBeenCalled();
     expect(f.store.putJson).not.toHaveBeenCalled();
+  });
+
+  it.each([0, -1])("bounds UTF-8 JSON batches at the two-document boundary offset %i", async (offset) => {
+    const f = replacementFixture();
+    const rows = Array.from({ length: 4 }, (_, i) => ({
+      id: `é?${i}`,
+      title: `雪𠮷"\\\n${i}`,
+      kind: "event",
+    }));
+    const docs = rows.map((row, i) => ({ ...row, id: `__${i}` }));
+    const target = Buffer.byteLength(JSON.stringify(docs.slice(0, 2)), "utf8") + offset;
+    vi.stubEnv("INGEST_BATCH_BYTES", String(target));
+    vi.stubEnv("INGEST_MAX_REQUEST_BYTES", String(target));
+    f.first.definition.read.mockImplementation(async function* () {
+      yield* rows;
+    });
+    const pending = Promise.withResolvers<Pick<Task, "uid" | "status" | "error">>();
+    f.waitForTask.mockImplementation(async (uid) =>
+      uid === 3 ? pending.promise : { uid, status: "succeeded", error: null },
+    );
+
+    const ingest = runIngest(f.modules, f.search, f.store);
+    try {
+      await vi.waitFor(() => expect(f.first.addDocuments).toHaveBeenCalledOnce());
+      expect(f.first.addDocuments.mock.calls[0][0]).toEqual(docs.slice(0, offset === 0 ? 2 : 1));
+      expect(f.first.definition.derive).not.toHaveBeenCalled();
+      expect(f.swapIndexes).not.toHaveBeenCalled();
+    } finally {
+      pending.resolve({ uid: 3, status: "succeeded", error: null });
+      await ingest;
+    }
+
+    const batches = f.first.addDocuments.mock.calls.map(([batch]) => batch);
+    expect(batches.map((batch) => batch.length)).toEqual(offset === 0 ? [2, 2] : [1, 1, 1, 1]);
+    expect(batches.flat()).toEqual(docs);
+    for (const batch of batches) expect(Buffer.byteLength(JSON.stringify(batch), "utf8")).toBeLessThanOrEqual(target);
+  });
+
+  it("sends an above-target document alone at the request limit without truncation", async () => {
+    const f = replacementFixture();
+    const small = { id: "small", title: "Event", kind: "event" };
+    const large = { id: "large", title: '雪"\\\n'.repeat(100), kind: "event" };
+    vi.stubEnv("INGEST_BATCH_BYTES", String(Buffer.byteLength(JSON.stringify([small, small]))));
+    vi.stubEnv("INGEST_MAX_REQUEST_BYTES", String(Buffer.byteLength(JSON.stringify([large]))));
+    f.first.definition.read.mockImplementation(async function* () {
+      yield* [small, large, small];
+    });
+
+    await expect(runIngest(f.modules, f.search, f.store)).resolves.toBeUndefined();
+
+    expect(f.first.addDocuments.mock.calls.map(([docs]) => docs)).toEqual([[small], [large], [small]]);
+    expect(f.waitForTask.mock.calls.map(([uid]) => uid)).toEqual([5, 2, 3, 4, 5, 1, 6, 7, 101, 102, 103]);
+    expect(f.swapIndexes).toHaveBeenCalledOnce();
+    expect(vi.mocked(recordIndexFreshness).mock.calls).toEqual([["first"], ["second"]]);
+  });
+
+  it("preserves the live snapshot when a document exceeds the request limit by one byte", async () => {
+    const f = replacementFixture();
+    const small = { id: "small", title: "Event", kind: "event" };
+    const large = { id: "large", title: "雪".repeat(100), kind: "event" };
+    const bytes = Buffer.byteLength(JSON.stringify([large]));
+    vi.stubEnv("INGEST_BATCH_BYTES", String(Buffer.byteLength(JSON.stringify([small])) + 1));
+    vi.stubEnv("INGEST_MAX_REQUEST_BYTES", String(bytes - 1));
+    f.first.definition.read.mockImplementation(async function* () {
+      yield* [small, small, large];
+    });
+
+    await expect(runIngest(f.modules, f.search, f.store)).rejects.toMatchObject({
+      errors: [
+        expect.objectContaining({
+          message: expect.stringContaining(`document large requires ${bytes} bytes`),
+          cause: expect.objectContaining({
+            message: expect.stringContaining(`INGEST_MAX_REQUEST_BYTES (${bytes - 1})`),
+          }),
+        }),
+      ],
+    });
+
+    expect(f.first.addDocuments.mock.calls.map(([docs]) => docs)).toEqual([[small]]);
+    expect(f.first.definition.derive).not.toHaveBeenCalled();
+    expect(f.swapIndexes).not.toHaveBeenCalled();
+    const staging = f.createIndex.mock.calls[0][0];
+    expect(f.createIndex.mock.calls.map(([name]) => name)).toEqual([staging, "second"]);
+    expect(f.deleteIndex).toHaveBeenCalledExactlyOnceWith(staging);
+    expect(f.second.definition.derive).toHaveBeenCalledExactlyOnceWith(f.store);
+    expect(vi.mocked(recordIndexFreshness).mock.calls).toEqual([["second"]]);
+  });
+
+  it.each(["INGEST_BATCH_BYTES", "INGEST_MAX_REQUEST_BYTES"])("rejects invalid %s before publication", async (name) => {
+    const f = replacementFixture();
+    vi.stubEnv(name, "0");
+
+    await expect(runIngest(f.modules, f.search, f.store)).rejects.toThrow(`${name} must be an integer`);
+
+    expect(f.createIndex).not.toHaveBeenCalled();
+    expect(f.search.index).not.toHaveBeenCalled();
+    expect(recordIndexFreshness).not.toHaveBeenCalled();
+  });
+
+  it("rejects a batch target above the request limit before publication", async () => {
+    const f = replacementFixture();
+    vi.stubEnv("INGEST_BATCH_BYTES", "101");
+    vi.stubEnv("INGEST_MAX_REQUEST_BYTES", "100");
+
+    await expect(runIngest(f.modules, f.search, f.store)).rejects.toThrow(
+      "INGEST_BATCH_BYTES must not exceed INGEST_MAX_REQUEST_BYTES",
+    );
+
+    expect(f.createIndex).not.toHaveBeenCalled();
+    expect(f.search.index).not.toHaveBeenCalled();
+    expect(recordIndexFreshness).not.toHaveBeenCalled();
   });
 
   it.each(["queued", "HTTP"])("accepts only index_already_exists during %s creation", async (outcome) => {

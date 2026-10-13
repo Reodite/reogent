@@ -115,6 +115,12 @@ Undergraduate tables hold factual labels, links, housing-fee observations, and d
 
 Degree-planner files combine raw, derived, and curated data. Follow [the maintenance guide](scripts/degree-data/README.md) before regenerating them. Study-space descriptions, parking facts, and library schedules do not establish live availability.
 
+### Batch limits
+
+Ingestion confirms each request before submitting the next. Ordinary batches contain at most 500 documents and `INGEST_BATCH_BYTES` bytes of UTF-8 JSON, including brackets and commas. The default target is 8,388,608 bytes (8 MiB). A larger document travels alone, without truncation, up to `INGEST_MAX_REQUEST_BYTES` (default 100,000,000 bytes, matching Meilisearch). A document above that ceiling fails before a replacement swap.
+
+Both limits must be positive safe integers, with the batch target at or below the request ceiling. Match the ceiling to Meilisearch and any intervening proxy; increase their payload allowances together when needed.
+
 ### Snapshot publication
 
 `documents`, `student_resources`, `housing_fees`, and `library_hours` replace complete snapshots. Ingestion loads a temporary index, waits for validation/tasks, derives required artifacts, and swaps the replacement into the live name. A pre-swap failure preserves the previous snapshot. Post-swap cleanup failure reports an error without undoing publication. Other indexes retain upsert behavior.
