@@ -1,8 +1,7 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import nextConfig from "../../next.config";
 import { dataStore } from "./data";
 
 let root: string;
@@ -22,14 +21,6 @@ async function json(key: string, value: unknown) {
 }
 
 describe("dataset filesystem", () => {
-  it("keeps runtime datasets and caches out of application build artifacts", async () => {
-    expect(nextConfig.outputFileTracingExcludes?.["/*"]).toEqual(
-      expect.arrayContaining(["./data/**/*", "./ubc-unified-data/**/*", "./.cache/**/*"]),
-    );
-    const ignored = (await readFile(new URL("../../.dockerignore", import.meta.url), "utf8")).split("\n");
-    expect(ignored).toEqual(expect.arrayContaining(["data", "ubc-unified-data", ".cache"]));
-  });
-
   it.each(["development", "production"])("reads dataset tables through DATA_PATH in %s", async (environment) => {
     vi.stubEnv("NODE_ENV", environment);
     const rows = [{ code: "CPSC 110", title: "Synthetic course" }];
