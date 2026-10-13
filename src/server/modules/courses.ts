@@ -2,6 +2,7 @@ import { formatSeconds } from "../core/time";
 import type { DatasetModule, SearchClient } from "../core/types";
 import {
   buildRecordsFromDistributions,
+  courseRecordId,
   defaultSession,
   isSession,
   type CourseCalRow,
@@ -504,14 +505,9 @@ export const courses: DatasetModule = {
         // Session-enriched grade/distribution for the requested session
         let sessRec: Record<string, unknown> | null = null;
         try {
-          const codeNorm = String(input.course_code ?? "")
-            .trim()
-            .toUpperCase()
-            .replace(/\s+/g, " ");
-          const id = `${codeNorm.replace(" ", "_")}__${session}`;
-          // sanitize as courseRecordId does (space -> _ already, session safe)
-          const sid = id.replace(/[^a-zA-Z0-9_-]/g, "_");
-          sessRec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
+          sessRec = (await search
+            .index("course_sessions")
+            .getDocument(courseRecordId(doc.code, session))) as unknown as Record<string, unknown>;
         } catch {
           // not offered in this session — fall through to pooled
         }

@@ -9,9 +9,11 @@ vi.mock("jose", () => ({
 }));
 
 const search = vi.fn();
-vi.mock("@/src/server/search", () => ({ getSearch: () => ({ index: () => ({ search }) }) }));
+const getDocument = vi.fn();
+vi.mock("@/src/server/search", () => ({ getSearch: () => ({ index: () => ({ search, getDocument }) }) }));
 
 const { GET } = await import("./route");
+const { GET: getCourseDetail } = await import("./[code]/route");
 
 const req = (query: string, auth: boolean | string = true) =>
   new Request(`http://localhost/api/courses${query}`, {
@@ -25,6 +27,22 @@ function fakeCourse(code: string, subject: string, number: string) {
 beforeEach(() => {
   verify.mockReset().mockResolvedValue({ payload: { sub: "u1", username: "testuser" } });
   search.mockReset();
+  getDocument.mockReset();
+});
+
+describe("GET /api/courses/[code]", () => {
+  it.each(["CPSC 110", " cpsc_v   110 "])("uses the session record for the accepted alias %j", async (code) => {
+    search.mockResolvedValue({ hits: [fakeCourse("CPSC_V 110", "CPSC_V", "110")] });
+    getDocument.mockImplementation(async (id: string) => {
+      if (id !== "CPSC_110__2025W") throw new Error("Not found");
+      return { code: "CPSC 110", average: 83.9, reported: 234 };
+    });
+    const response = await getCourseDetail(req(`/${encodeURIComponent(code)}?session=2025W`), {
+      params: Promise.resolve({ code }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ code: "CPSC 110", session: "2025W", average: 83.9, reported: 234 });
+  });
 });
 
 describe("GET /api/courses", () => {

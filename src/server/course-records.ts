@@ -89,12 +89,14 @@ export interface CourseRecord {
   id: string;
 }
 
-function sanitizeId(id: string): string {
-  return id.replace(/[^a-zA-Z0-9_-]/g, "_");
-}
-
+/** Canonicalizes Vancouver course aliases into a session document ID. */
 export function courseRecordId(code: string, session: Session): string {
-  return sanitizeId(`${code}__${session}`);
+  const normalized = code
+    .trim()
+    .toUpperCase()
+    .replace(/_V(?=\s)/, "")
+    .replace(/\s+/g, " ");
+  return `${normalized}__${session}`.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
 // Raw shape of grades/distributions.json (minimal fields we aggregate)

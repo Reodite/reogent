@@ -321,6 +321,43 @@ describe("find_courses (agent-tool-redesign)", () => {
 });
 
 describe("get_course (agent-tool-redesign)", () => {
+  it.each(["get_course", "grade_distribution"])(
+    "preserves session grades for campus-suffixed %s lookups",
+    async (kind) => {
+      const search = fakeSearch({
+        courses: [course("CPSC_V 110")],
+        course_sessions: [
+          { id: "CPSC_110__2025W", code: "CPSC 110", average: 83.9, reported: 234, buckets: { "80-84": 234 } },
+        ],
+        grades: [
+          {
+            subject: "CPSC",
+            course: "110",
+            year: 2019,
+            enrolled: 100,
+            avg: 70,
+            median: 71,
+            distribution: { "68-71": 100 },
+          },
+        ],
+      });
+      const input = {
+        course_code: " cpsc_v   110 ",
+        course: " cpsc_v   110 ",
+        session: "2025W",
+        type: "grade_distribution",
+      };
+      if (kind === "get_course") {
+        const tool = courses.tools.find((entry) => entry.spec.name === kind)!;
+        expect(await tool.execute(input, search)).toMatchObject({ session: "2025W", average: 83.9, grade_avg: 83.9 });
+      } else {
+        expect(await createWidgetsModule().tools[0].execute(input, search)).toMatchObject({
+          result: { session: "2025W", average: 83.9, buckets: { "80-84": 234 } },
+        });
+      }
+    },
+  );
+
   it("returns grade_summary and grade_distribution when include_grades is set", async () => {
     const search = fakeSearch({
       courses: [course("CPSC_V 110", { prerequisite: null })],

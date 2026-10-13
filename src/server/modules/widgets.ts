@@ -1,6 +1,13 @@
 import { loadBuildingDetails } from "../building-details";
 import type { DatasetModule, SearchClient } from "../core/types";
-import { BUCKET_KEYS, defaultSession, isSession, type BucketKey, type Session } from "../course-records";
+import {
+  BUCKET_KEYS,
+  courseRecordId,
+  defaultSession,
+  isSession,
+  type BucketKey,
+  type Session,
+} from "../course-records";
 import { sanitizeMeiliId } from "../ingest";
 import { route } from "../routing";
 import { resolveBuilding } from "./buildings";
@@ -237,10 +244,8 @@ export function createWidgetsModule(): DatasetModule {
               const rawSession = typeof input.session === "string" ? input.session.trim() : "";
               if (rawSession && !isSession(rawSession)) throw new Error(`Unknown session "${rawSession}"`);
               const session = (rawSession || defaultSession()) as Session;
-              // Session records are keyed by the user-facing code (no campus
-              // suffix): get_course stores "EOSC_111__2025W", not "EOSC_V_...".
               const bareSubject = doc.subject.replace(/_[VKF]$/i, "").toUpperCase();
-              const sid = `${bareSubject}_${doc.number}__${session}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+              const sid = courseRecordId(`${bareSubject} ${doc.number}`, session);
               let rec: Record<string, unknown> | null = null;
               try {
                 rec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
@@ -479,7 +484,7 @@ export function createWidgetsModule(): DatasetModule {
               if (hb && !(BUCKET_KEYS as readonly string[]).includes(hb)) {
                 throw new Error(`Unknown bucket "${hb}". Valid buckets: ${BUCKET_KEYS.join(", ")}`);
               }
-              const sid = `${code.toUpperCase().replace(/\s+/g, "_")}__${session}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+              const sid = courseRecordId(code, session);
               let rec: Record<string, unknown> | null = null;
               try {
                 rec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
