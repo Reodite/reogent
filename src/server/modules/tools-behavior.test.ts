@@ -15,11 +15,9 @@ import { spaces } from "./spaces";
 import { createWidgetsModule } from "./widgets";
 
 /**
- * A SearchClient whose every index serves canned hits and documents, honoring
- * the filter subset the tools emit: `field = 'x'`, `field = x`, `field >= x`,
- * `field IS NULL`, and AND-combinations. `search` records the options passed,
- * and can return `_formatted` for highlight-paging tools when the fixture sets
- * it. Tracks per-index call counts so tests can assert routing.
+ * Serves fixtures through equality, range, null, membership and AND filters.
+ * Matches text without filters, applies code ordering and paging, and returns
+ * requested text snippets. Tracks per-index access counts for routing checks.
  */
 function fakeSearch(data: Record<string, unknown[]>): SearchClient & {
   calls: () => Record<string, number>;
@@ -98,6 +96,8 @@ function matchClauseDocs(doc: Record<string, unknown>, filter: string): boolean 
 }
 
 function matchClause(doc: Record<string, unknown>, clause: string): boolean {
+  const membership = clause.match(/^(\w+) IN (\[.*\])$/);
+  if (membership) return (JSON.parse(membership[2]) as unknown[]).includes(doc[membership[1]]);
   const isNull = clause.match(/^(\w+) IS NULL$/);
   if (isNull) {
     const v = doc[isNull[1]];
@@ -240,6 +240,44 @@ describe("find_courses (agent-tool-redesign)", () => {
     };
     expect(out.courses.map((c) => c.code)).toEqual(["CPSC_V 210", "CPSC_V 110"]);
     expect(out.courses[0].grade_avg).toBe(80);
+  });
+
+  it("matches faculty session codes before pooled ranking and limiting", async () => {
+    const search = fakeSearch({
+      ...courseFixture,
+      course_sessions: [
+        { code: "CPSC 110", session: "2025W", faculty: "Faculty of Science" },
+        { code: "CPSC 210", session: "2025W", faculty: "Faculty of Arts" },
+        { code: "CPSC 310", session: "2025W", faculty: "Faculty of Science" },
+      ],
+      grades: [
+        { subject: "CPSC", course: "110", year: 2025, enrolled: 10, avg: 80 },
+        { subject: "CPSC", course: "210", year: 2025, enrolled: 10, avg: 95 },
+        { subject: "CPSC", course: "310", year: 2025, enrolled: 10, avg: 90 },
+      ],
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+    const input = { session: "2025W", faculty: "Faculty of Science", sort: "grade_avg_desc", limit: 1 };
+    const out = (await tool.execute(input, search)) as { courses: { code: string; grade_avg: number }[] };
+    expect(out.courses.map(({ code, grade_avg }) => ({ code, grade_avg }))).toEqual([
+      { code: "CPSC_V 310", grade_avg: 90 },
+    ]);
+    await expect(tool.execute({ ...input, faculty: "Unknown faculty" }, search)).rejects.toThrow(/No courses matched/);
+  });
+
+  it("discloses the catalogue cap when faculty matching excludes the sampled courses", async () => {
+    const search = fakeSearch({
+      courses: Array.from({ length: 2101 }, (_, i) => course(`CPSC_V ${1000 + i}`)),
+      course_sessions: [{ code: "CPSC 3100", session: "2025W", faculty: "Faculty of Science" }],
+      grades: [{ subject: "CPSC", course: "3100", year: 2025, enrolled: 10, avg: 90 }],
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+    const out = (await tool.execute(
+      { session: "2025W", faculty: "Faculty of Science", sort: "grade_avg_desc" },
+      search,
+    )) as { courses: unknown[]; note?: string };
+    expect(out.courses).toEqual([]);
+    expect(out.note).toContain("results may be incomplete");
   });
 
   it("ranks a high-average course far down code order (regression: pool truncation)", async () => {

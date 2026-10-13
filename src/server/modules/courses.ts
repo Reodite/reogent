@@ -325,11 +325,12 @@ export const courses: DatasetModule = {
           sortBy === "code";
         const isPooledSort = sortBy === "grade_avg_desc" || sortBy === "grade_avg_asc";
         const needsGradeJoin = isPooledSort || min_grade_avg !== undefined || max_grade_avg !== undefined;
+        const facultyFilter = faculty ? `faculty = ${JSON.stringify(String(faculty))}` : undefined;
 
         // Faculty metadata and session averages live in the session index.
         const useSessionIndex = isSessionSort || (faculty && !isPooledSort);
         if (useSessionIndex) {
-          if (faculty) filters.push(`faculty = '${String(faculty).replace(/'/g, "\\'")}'`);
+          if (facultyFilter) filters.push(facultyFilter);
           if (min_grade_avg !== undefined) filters.push(`average >= ${min_grade_avg}`);
           if (max_grade_avg !== undefined) filters.push(`average <= ${max_grade_avg}`);
           const meiliSort =
@@ -388,6 +389,7 @@ export const courses: DatasetModule = {
           const POOL_CAP = 2000;
           const candidates: CourseDoc[] = [];
           let offset = 0;
+          let scanned = 0;
           let estimated = Number.POSITIVE_INFINITY;
           for (;;) {
             const catRes = await search.index("courses").search(query ? String(query) : "", {
@@ -398,15 +400,26 @@ export const courses: DatasetModule = {
               attributesToRetrieve: undefined,
             });
             estimated = catRes.estimatedTotalHits;
-            candidates.push(...(catRes.hits as unknown as CourseDoc[]));
+            let page = catRes.hits as unknown as CourseDoc[];
+            scanned += page.length;
+            if (facultyFilter && page.length > 0) {
+              const codes = [...new Set(page.flatMap(({ code }) => [code, code.replace(/_V(?=\s)/, "")]))];
+              const members = await search.index("course_sessions").search("", {
+                filter: `session = '${session}' AND ${facultyFilter} AND code IN ${JSON.stringify(codes)}`,
+                limit: codes.length,
+                attributesToRetrieve: ["code"],
+              });
+              const matching = new Set(members.hits.map((hit) => String(hit.code).replace(/_V(?=\s)/, "")));
+              page = page.filter(({ code }) => matching.has(code.replace(/_V(?=\s)/, "")));
+            }
+            candidates.push(...page);
             offset += POOL_PAGE;
-            if (catRes.hits.length < POOL_PAGE) break;
-            if (candidates.length >= POOL_CAP) break;
+            if (catRes.hits.length < POOL_PAGE || scanned >= POOL_CAP) break;
           }
-          if (candidates.length === 0) {
+          const truncated = scanned < estimated;
+          if (candidates.length === 0 && !truncated) {
             throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"}`);
           }
-          const truncated = candidates.length < estimated;
           const withGrades = await Promise.all(
             candidates.map(async (c) => ({
               course: c,
@@ -433,7 +446,7 @@ export const courses: DatasetModule = {
             ...(asOf ? { catalog_as_of: asOf } : {}),
             ...(truncated
               ? {
-                  note: `Sorting was evaluated over the first ${POOL_CAP} matching courses; results may be incomplete.`,
+                  note: `Sorting was evaluated over the first ${scanned} catalogue matches; results may be incomplete.`,
                 }
               : {}),
           };
