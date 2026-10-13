@@ -1,4 +1,5 @@
 import { uuid } from "@/src/lib/uuid";
+import { recordTokenUsage } from "@/src/server/account";
 import { streamAgent } from "@/src/server/agent/stream";
 import { requireUser } from "@/src/server/auth";
 import type { ActivityBlock } from "@/src/server/core/types";
@@ -65,6 +66,10 @@ export async function POST(request: Request): Promise<Response> {
           const activity: ActivityBlock[] = [];
 
           for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch(), profile })) {
+            if (event.type === "usage") {
+              await recordTokenUsage(user.sub, event.totalTokens);
+              continue;
+            }
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
             if (event.type === "thinking") {
               const last = activity[activity.length - 1];

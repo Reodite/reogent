@@ -11,6 +11,42 @@ import { streamAgent } from "./stream";
 const llm = vi.hoisted(() => ({ converseStream: vi.fn<LlmAdapter["converseStream"]>() }));
 vi.mock("../llm", () => ({ converse: vi.fn(), converseStream: llm.converseStream }));
 
+it("forwards usage for each model turn, including tool calls and the final answer", async () => {
+  llm.converseStream
+    .mockImplementationOnce(async function* () {
+      yield { type: "tool_use", toolUseId: "one", name: "lookup", input: {} };
+      yield { type: "usage", totalTokens: 100 };
+      yield { type: "stop", reason: "tool_use" };
+    })
+    .mockImplementationOnce(async function* () {
+      yield { type: "text", delta: "Answer" };
+      yield { type: "stop", reason: "end_turn" };
+      yield { type: "usage", totalTokens: 200 };
+    });
+  const events = await Array.fromAsync(
+    streamAgent([{ role: "user", content: "Find a course" }], {
+      modules: [
+        {
+          name: "test",
+          indices: [],
+          tools: [
+            {
+              spec: { name: "lookup", description: "Fixture", inputSchema: { json: {} } },
+              execute: async () => ({ found: true }),
+            },
+          ],
+        },
+      ],
+      search: {} as SearchClient,
+    }),
+  );
+  expect(events.filter((event) => event.type === "usage")).toEqual([
+    { type: "usage", totalTokens: 100 },
+    { type: "usage", totalTokens: 200 },
+  ]);
+  expect(events.at(-1)?.type).toBe("done");
+});
+
 it("stops a model that ignores tool removal at the hard turn limit", async () => {
   vi.useFakeTimers();
   let turn = 0;

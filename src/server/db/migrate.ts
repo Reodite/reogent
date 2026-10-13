@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tokens_spent BIGINT NOT NULL DEFAULT 0 CHECK (tokens_spent >= 0);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_tracking_started_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE TABLE IF NOT EXISTS sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id),
@@ -65,6 +68,7 @@ CREATE TABLE IF NOT EXISTS pulse_votes (
   PRIMARY KEY (question_id, user_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_pulse_votes_user ON pulse_votes(user_id);
 CREATE INDEX IF NOT EXISTS idx_pulse_questions_round ON pulse_questions(round_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pulse_rounds_one_active ON pulse_rounds(status) WHERE status = 'active';
 

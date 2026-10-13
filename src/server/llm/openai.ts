@@ -107,7 +107,7 @@ export function createOpenAIAdapter(): LlmAdapter {
     }
 
     const stopReason = choice.finish_reason === "tool_calls" ? "tool_use" : "end_turn";
-    return { stopReason, message: { role: "assistant" as const, content } };
+    return { stopReason, message: { role: "assistant" as const, content }, totalTokens: res.usage?.total_tokens };
   };
 
   async function* converseStream(req: {
@@ -126,14 +126,17 @@ export function createOpenAIAdapter(): LlmAdapter {
       // memory. Later turns revert to auto (called by loop.ts after a nudge).
       ...(req.forceToolUse && tools ? { tool_choice: "required" as const } : {}),
       stream: true,
+      stream_options: { include_usage: true },
     });
 
+    let totalTokens: number | undefined;
     const toolCalls = new Map<number, { id: string; name: string; args: string }>();
     // Reclassifies inline <think>…</think> in content as thinking; buffers
     // partial tags across chunk boundaries so a split tag never leaks.
     const splitter = createThinkTagSplitter();
 
     for await (const chunk of stream) {
+      totalTokens = chunk.usage?.total_tokens ?? totalTokens;
       const delta = chunk.choices[0]?.delta;
       if (!delta) continue;
 
@@ -180,6 +183,7 @@ export function createOpenAIAdapter(): LlmAdapter {
         yield { type: "stop", reason };
       }
     }
+    if (totalTokens !== undefined) yield { type: "usage", totalTokens };
   }
 
   return { converse, converseStream };

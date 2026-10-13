@@ -16,7 +16,7 @@ import {
   type SessionSummary,
 } from "@/src/lib/api-types";
 import type { CourseIndexEntry } from "@/src/shared/course-index";
-import type { StudentProfile } from "@/src/shared/profile";
+import type { AccountDetails, StudentProfile } from "@/src/shared/profile";
 import type { FeatureCollection } from "geojson";
 
 export interface ChatApi {
@@ -94,6 +94,8 @@ export interface ChatApi {
   saveSchedule(schedule: unknown): Promise<void>;
   /** PUT /api/plan — replaces the caller's saved degree plan. */
   savePlan(plan: unknown): Promise<void>;
+  /** Fetches the caller's account details and recorded activity. */
+  getAccount(): Promise<AccountDetails>;
   /** GET /api/profile — the caller's student profile, or null. */
   getProfile(): Promise<{ profile: StudentProfile | null }>;
   /** PUT /api/profile — replaces the caller's student profile. */
@@ -314,6 +316,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     savePlan: (plan) => request<void>("/plan", { method: "PUT", body: JSON.stringify(plan) }),
     getSchedule: () => request<{ schedule: unknown | null }>("/schedule"),
     saveSchedule: (schedule) => request<void>("/schedule", { method: "PUT", body: JSON.stringify(schedule) }),
+    getAccount: () => request<AccountDetails>("/account"),
     getProfile: () => request<{ profile: StudentProfile | null }>("/profile"),
     saveProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
   };

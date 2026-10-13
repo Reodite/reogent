@@ -7,8 +7,10 @@ const mocks = vi.hoisted(() => ({
   generateSessionTitle: vi.fn(),
   streamAgent: vi.fn(),
   getProfile: vi.fn(),
+  recordTokenUsage: vi.fn(),
 }));
 vi.mock("@/src/server/auth", () => ({ requireUser: async () => ({ sub: "u1" }) }));
+vi.mock("@/src/server/account", () => ({ recordTokenUsage: mocks.recordTokenUsage }));
 vi.mock("@/src/server/rate-limit", () => ({ rateLimitResponse: () => null }));
 vi.mock("@/src/server/sessions/store", () => ({
   canWriteSession: mocks.canWriteSession,
@@ -81,6 +83,23 @@ describe("chat session ownership", () => {
     expect(mocks.canWriteSession).not.toHaveBeenCalled();
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
     expect(mocks.appendExchange.mock.calls[0][1]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it.each([false, true])("records each turn's usage even if a later turn fails: %s", async (fail) => {
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "usage", totalTokens: 100 };
+      yield { type: "usage", totalTokens: 250 };
+      if (fail) throw new Error("Provider failed");
+      yield { type: "done", message: "answer", tool_calls: [], citations };
+    });
+    const response = await POST(request());
+    const body = await response.text();
+    expect(mocks.recordTokenUsage.mock.calls).toEqual([
+      ["u1", 100],
+      ["u1", 250],
+    ]);
+    expect(body).not.toContain('"type":"usage"');
+    expect(mocks.appendExchange).toHaveBeenCalledTimes(fail ? 0 : 1);
   });
 
   it("does not expose provider credentials or internal errors", async () => {

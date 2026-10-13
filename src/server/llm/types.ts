@@ -11,7 +11,8 @@ export type ConverseStreamEvent =
       /** Gemini thought signature to echo back with this call in history. */
       thoughtSignature?: string;
     }
-  | { type: "stop"; reason: string };
+  | { type: "stop"; reason: string }
+  | { type: "usage"; totalTokens: number };
 
 export interface LlmAdapter {
   converse: ConverseFn;

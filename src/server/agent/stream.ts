@@ -19,6 +19,7 @@ type StreamEvent =
   | { type: "tool_end"; name: string; result: unknown }
   | { type: "citations"; citations: Citation[] }
   | { type: "turn_start" }
+  | { type: "usage"; totalTokens: number }
   | {
       type: "done";
       message: string;
@@ -110,6 +111,8 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
           },
         });
         toolUses.push(event);
+      } else if (event.type === "usage") {
+        yield event;
       } else if (event.type === "stop") {
         stopReason = event.reason;
       }
@@ -212,6 +215,9 @@ Rules:
             messages: [{ role: "user", content: [{ text: summary }] }],
             toolSpecs: [],
           });
+          if (followUpResult.totalTokens !== undefined) {
+            yield { type: "usage", totalTokens: followUpResult.totalTokens };
+          }
           const raw = (followUpResult.message.content ?? [])
             .map((b) => b.text)
             .filter(Boolean)

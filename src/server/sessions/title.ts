@@ -1,3 +1,4 @@
+import { recordTokenUsage } from "../account";
 import { converse } from "../llm";
 import { updateSessionTitle } from "../sessions/store";
 
@@ -26,6 +27,7 @@ export function generateSessionTitle(
         ],
         toolSpecs: [],
       });
+      await recordTokenUsage(userId, result.totalTokens);
       const raw = (result.message.content ?? [])
         .map((b) => b.text)
         .filter(Boolean)

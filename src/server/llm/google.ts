@@ -151,7 +151,11 @@ export function createGoogleAdapter(): LlmAdapter {
     }
 
     const stopReason = hasToolUse ? "tool_use" : "end_turn";
-    return { stopReason, message: { role: "assistant" as const, content } };
+    return {
+      stopReason,
+      message: { role: "assistant" as const, content },
+      totalTokens: response.usageMetadata?.totalTokenCount,
+    };
   };
 
   async function* converseStream(req: {
@@ -179,6 +183,7 @@ export function createGoogleAdapter(): LlmAdapter {
     );
 
     let hasToolUse = false;
+    let totalTokens: number | undefined;
 
     // Idle watchdog: flash models occasionally connect then stop sending
     // chunks. Rather than hang the agent loop forever, give up waiting after
@@ -193,6 +198,7 @@ export function createGoogleAdapter(): LlmAdapter {
         ),
       ])) as IteratorResult<GenerateContentResponse>;
       if (next.done) break;
+      totalTokens = next.value.usageMetadata?.totalTokenCount ?? totalTokens;
       for (const part of next.value.candidates?.[0]?.content?.parts ?? []) {
         if (part.text) {
           yield { type: "text", delta: part.text };
@@ -209,6 +215,7 @@ export function createGoogleAdapter(): LlmAdapter {
       }
     }
 
+    if (totalTokens !== undefined) yield { type: "usage", totalTokens };
     yield { type: "stop", reason: hasToolUse ? "tool_use" : "end_turn" };
   }
 

@@ -16,6 +16,16 @@ export interface StudentProfile {
   onboarding_completed?: boolean;
 }
 
+/** The signed-in user's identity, saved student profile, and recorded activity. */
+export interface AccountDetails {
+  username: string;
+  createdAt: string | null;
+  profile: StudentProfile | null;
+  tokensSpent: number;
+  tokenTrackingStartedAt: string;
+  pulseQuestionsAnswered: number;
+}
+
 const MAX_PROGRAM_CHARS = 120;
 const KEYS = new Set(["preferred_name", "program", "year", "student_type", "theme", "onboarding_completed"]);
 
