@@ -325,7 +325,9 @@ export const courses: DatasetModule = {
                 ? ["reported:asc"]
                 : sortBy === "average_desc"
                   ? ["average:desc"]
-                  : (["average:asc"] as string[]);
+                  : sortBy === "average_asc"
+                    ? ["average:asc"]
+                    : ["code:asc"];
           const sessionFilter = `session = '${session}'`;
           const filterStr = filters.length > 0 ? `${sessionFilter} AND ${filters.join(" AND ")}` : sessionFilter;
           const res = await search.index("course_sessions").search(query ? String(query) : "", {
@@ -359,9 +361,7 @@ export const courses: DatasetModule = {
           return { courses, session };
         }
 
-        // Exploratory browse: session sorts allow no query/filter (table renders on load).
-        const allowEmpty = useSessionIndex;
-        if (!query && filters.length === 0 && !needsGradeJoin && !allowEmpty) {
+        if (!query && filters.length === 0 && !needsGradeJoin) {
           throw new Error("Provide a query or at least one filter (subject, level, credits, term, or has_no_prereqs)");
         }
 

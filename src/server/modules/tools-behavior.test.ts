@@ -162,6 +162,21 @@ const courseFixture: Record<string, unknown[]> = {
 };
 
 describe("find_courses (agent-tool-redesign)", () => {
+  it.each([{ sort: "code" }, { faculty: "Faculty of Science" }])(
+    "orders session browsing by code for %j",
+    async (input) => {
+      const search = fakeSearch({
+        course_sessions: [
+          course("CPSC_V 210", { session: "2025W", faculty: "Faculty of Science", average: 60 }),
+          course("CPSC_V 110", { session: "2025W", faculty: "Faculty of Science", average: 80 }),
+        ],
+      });
+      const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+      const out = (await tool.execute({ session: "2025W", ...input }, search)) as { courses: { code: string }[] };
+      expect(out.courses.map((entry) => entry.code)).toEqual(["CPSC_V 110", "CPSC_V 210"]);
+    },
+  );
+
   it("filters on level, credits, and has_no_prereqs", async () => {
     const search = fakeSearch(courseFixture);
     const tool = courses.tools.find((t) => t.spec.name === "find_courses")!;
