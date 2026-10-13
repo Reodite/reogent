@@ -7,7 +7,7 @@ vi.mock("@/src/components/auth/app-auth", () => ({
   useAppAuth: () => ({ user: { username: "max", userId: "1" }, signOut: () => {} }),
 }));
 vi.mock("@/src/components/providers", () => ({
-  useTheme: () => ({ mode: "system", setMode: vi.fn() }),
+  useTheme: () => ({ mode: "light", setMode: vi.fn() }),
 }));
 vi.mock("@/src/components/shell/session-sidebar", () => ({ VersionBadge: () => null }));
 
@@ -33,9 +33,9 @@ describe("UserMenu", () => {
   it("keeps appearance arrow keys inside the radio group", () => {
     const { getByRole } = render(<UserMenu />);
     fireEvent.click(getByRole("button", { name: "Account menu" }));
-    const auto = getByRole("radio", { name: "Auto" });
-    auto.focus();
-    fireEvent.keyDown(auto, { key: "ArrowDown" });
+    const light = getByRole("radio", { name: "Light" });
+    light.focus();
+    fireEvent.keyDown(light, { key: "ArrowDown" });
     expect(document.activeElement).toBe(getByRole("radio", { name: "Dark" }));
   });
 });

@@ -42,15 +42,15 @@ After signing in or registering, users without `onboarding_completed: true` in t
 
 Setup shows one card at a time:
 
-1. Welcome to Reodite: “Let's customize your experience”.
-2. Personal details: preferred name, year of study, and program.
-3. Preferences: appearance (light, system, dark) and tuition defaults (ask when needed, domestic, international).
+1. A centered “Welcome to Reodite” title and “Let's customize your experience” subheading.
+2. About you: preferred name, year of study (an integer from 1 to 10), program, and tuition defaults (ask when needed, domestic, international).
+3. Preferences: a single Light/Dark appearance pill with sun and moon icons.
 
-Next and Back retain entries while switching cards. Fields are optional. Finish setup saves the details and completion flag together before continuing to the original destination. Skip setup preserves the saved profile and marks setup complete. Failed saves keep the form and entries available for retry. Reloading before completion restarts setup with the last saved profile.
+Next and Back retain entries while switching cards. Fields are optional. Finish setup saves the details and completion flag together before continuing to the original destination. Skip setup preserves saved personal details, saves the current appearance, and marks setup complete. Failed saves keep the form and entries available for retry. Reloading before completion restarts setup with the last saved profile.
 
 **Synchronization requirement:** onboarding and the site's Settings / Preferences page must use the same field components, validation, API, and database record. Both read and write `/api/profile`; `user_profiles.data` holds `preferred_name`, `program`, `year`, `student_type`, `theme`, and `onboarding_completed`. Settings saves must preserve the completion flag. New preferences must be added to the shared schema and both surfaces together, rather than stored only in an onboarding-specific copy. No database migration is needed for these optional JSONB fields.
 
-Saving appearance applies it to the site and the local theme cache. Signing in on another device loads the database preference. The compact theme switches elsewhere in the app change the current device's appearance; save an account-wide preference from Settings. Profile load failures offer retry and sign-out without overwriting saved values.
+Appearance changes apply immediately through the shared theme toggle, with a ripple transition unless reduced motion is enabled. The device setting supplies the initial Light or Dark choice; the local cache retains it without following later device changes. Finish setup and Save profile persist the current appearance to the account. Signing in on another device loads that account preference. Profile reads omit unsupported appearance values so existing accounts can use the initial device choice. Profile load failures offer retry and sign-out without overwriting saved values.
 
 ### Session Model
 

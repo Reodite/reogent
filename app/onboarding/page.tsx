@@ -1,9 +1,10 @@
 "use client";
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
-import { PreferenceFields, ProfileFields } from "@/src/components/auth/profile-fields";
+import { ProfileFields } from "@/src/components/auth/profile-fields";
 import { Icon } from "@/src/components/icons";
 import { useProfile, useTheme } from "@/src/components/providers";
+import { ThemeToggle } from "@/src/components/theme-toggle";
 import { Button } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import { safeAuthRedirect } from "@/src/lib/auth-redirect";
@@ -23,7 +24,7 @@ function OnboardingContent() {
   const destination = safeAuthRedirect(searchParams.get("redirect"));
   const reducedMotion = useReducedMotion();
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<StudentProfile>(() => ({ ...profile, theme: profile?.theme ?? mode }));
+  const [draft, setDraft] = useState<StudentProfile>(() => ({ ...profile }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const focusHeading = useCallback((heading: HTMLHeadingElement | null) => heading?.focus(), []);
@@ -41,7 +42,7 @@ function OnboardingContent() {
     try {
       await saveProfile({
         ...(skip ? profile : draft),
-        theme: skip ? (profile?.theme ?? mode) : draft.theme,
+        theme: mode,
         onboarding_completed: true,
       });
       router.replace(destination);
@@ -86,33 +87,35 @@ function OnboardingContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Heading as="h1" size="title" ref={focusHeading} tabIndex={-1} className="outline-none">
-              {step === 0 ? "Welcome to Reodite" : step === 1 ? "A little about you" : "Make yourself at home"}
-            </Heading>
             {step === 0 ? (
-              <div className="mt-4 flex min-h-56 flex-col gap-4">
-                <p className="text-on-surface text-xl tracking-[-0.02em]">Let&apos;s customize your experience</p>
-                <p className="text-muted max-w-sm text-sm leading-relaxed">
-                  Tell us a little about yourself for answers that fit your studies and preferences.
-                </p>
-                <p className="text-muted mt-auto text-sm">
-                  Everything is optional. You can update your choices in Settings anytime.
-                </p>
+              <div className="flex min-h-56 flex-col items-center justify-center gap-3 text-center">
+                <Heading as="h1" size="title" ref={focusHeading} tabIndex={-1} className="outline-none">
+                  Welcome to Reodite
+                </Heading>
+                <p className="text-muted text-sm">Let&apos;s customize your experience</p>
               </div>
             ) : (
-              <fieldset disabled={saving} className="mt-3 min-w-0">
-                <legend className="sr-only">{STEPS[step]}</legend>
-                <p className="text-muted mb-6 text-sm">
-                  {step === 1
-                    ? "Share what you'd like. You can leave any field blank."
-                    : "Choose your appearance and defaults. You can change these in Settings anytime."}
-                </p>
-                {step === 1 ? (
-                  <ProfileFields profile={draft} onChange={setDraft} />
-                ) : (
-                  <PreferenceFields profile={draft} onChange={setDraft} />
-                )}
-              </fieldset>
+              <>
+                <Heading as="h1" size="title" ref={focusHeading} tabIndex={-1} className="outline-none">
+                  {step === 1 ? "A little about you" : "Make yourself at home"}
+                </Heading>
+                <fieldset disabled={saving} className="mt-3 min-w-0">
+                  <legend className="sr-only">{STEPS[step]}</legend>
+                  <p className="text-muted mb-6 text-sm">
+                    {step === 1
+                      ? "Share what you'd like. You can leave any field blank."
+                      : "Choose your appearance. You can change it in Settings anytime."}
+                  </p>
+                  {step === 1 ? (
+                    <ProfileFields profile={draft} onChange={setDraft} />
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-on-surface text-sm font-medium">Appearance</span>
+                      <ThemeToggle showLabels />
+                    </div>
+                  )}
+                </fieldset>
+              </>
             )}
           </motion.div>
           {error && (

@@ -11,7 +11,7 @@ vi.mock("@/src/components/auth/app-auth", () => ({
   useAppAuth: () => ({ status: "signedOut", isGuest: false, continueAsGuest: vi.fn() }),
 }));
 vi.mock("@/src/components/providers", () => ({
-  useTheme: () => ({ mode: "system", setMode }),
+  useTheme: () => ({ mode: "dark", setMode }),
 }));
 vi.mock("@/src/components/landing/product-mock", () => ({ ProductMock: () => null }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
@@ -65,7 +65,7 @@ describe("Landing spacing contracts", () => {
     expect(Array.from(theme.parentElement!.classList)).toEqual(
       expect.arrayContaining(["ml-auto", "max-w-full", "flex-wrap", "gap-2"]),
     );
-    expect(Array.from(theme.classList)).toEqual(expect.arrayContaining(["w-max", "shrink-0", "grid-cols-3"]));
+    expect(Array.from(theme.classList)).toEqual(expect.arrayContaining(["w-max", "shrink-0", "grid-cols-2"]));
     for (const radio of within(theme).getAllByRole("radio")) {
       expect(radio.classList.contains("size-11")).toBe(true);
     }

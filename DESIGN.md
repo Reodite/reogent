@@ -414,16 +414,16 @@ Fallback: without `backdrop-filter` support, renders as solid `var(--surface)`.
 
 For close parallel corners, use `inner radius = outer radius − inset`. Measure the inset between border-box edges, including real borders and padding. Compare the corresponding corner centers in both axes. Shadows and focus rings do not change that distance. Independent cards, avatars, fields, interior rows, and offset panels do not inherit a concentricity requirement.
 
-| Matched contour                                   | Outer radius | Inset | Inner radius |
-| ------------------------------------------------- | ------------ | ----- | ------------ |
-| Expanded navigation well and edge row             | 16px         | 8px   | 8px          |
-| Collapsed navigation well                         | 12px         | 4px   | 8px          |
-| Workspace, prerequisite, term, and theme segments | 8px          | 4px   | 4px          |
-| Timetable canvas and grid frame                   | 16px         | 2px   | 14px         |
-| Timetable frame and scroll field                  | 14px         | 2px   | 12px         |
-| Timetable day strip and selected day              | 12px         | 4px   | 8px          |
-| Single-line composer and action, phone            | 16px         | 6px   | 10px         |
-| Single-line composer and action, wider screen     | 16px         | 10px  | 6px          |
+| Matched contour                               | Outer radius | Inset | Inner radius |
+| --------------------------------------------- | ------------ | ----- | ------------ |
+| Expanded navigation well and edge row         | 16px         | 8px   | 8px          |
+| Collapsed navigation well                     | 12px         | 4px   | 8px          |
+| Workspace, prerequisite, and term segments    | 8px          | 4px   | 4px          |
+| Timetable canvas and grid frame               | 16px         | 2px   | 14px         |
+| Timetable frame and scroll field              | 14px         | 2px   | 12px         |
+| Timetable day strip and selected day          | 12px         | 4px   | 8px          |
+| Single-line composer and action, phone        | 16px         | 6px   | 10px         |
+| Single-line composer and action, wider screen | 16px         | 10px  | 6px          |
 
 Keep a 28px title anchor in `WorkspacePage`. Center leading controls on that anchor while preserving their full hit targets and the description below the title. Use the panel header's 16px horizontal inset for plain rail content, discovery searches, and control groups. Default panel bodies use 16px padding; dense lists keep their explicit 8px variant and contained bodies own their internal spacing. Loading search frames match the loaded field's position and responsive height.
 
@@ -543,7 +543,7 @@ Use `TextInput`, `SelectInput`, `SearchInput`, `Field`, and `Checkbox` from `src
 - **Week canvas**: The grid renders Monday through Friday, adding both weekend columns when needed. A 56px time gutter anchors an 8 AM–10 PM minimum range at 54px per hour. Day headers and the time gutter stay visible while the canvas scrolls. The grid remains visible in loading and empty states.
 - **Block anatomy**: Planner blocks center the course code and `section · type` on both axes; meetings below the tall threshold place all three on one line without changing time geometry. Sharer blocks keep course and component at the top left because Workday data carries no section identifier. On tall blocks, use up to four 16px avatars plus the remaining count when the footer has at least 6rem of content width; otherwise show the total participant count. Keep the footer at the bottom right and the full roster in accessible labels and details. Full title, time, location, status, and people remain in accessible labels or read-only details. Blocks retain the documented course-color edge and surface mix; conflicts use the error ring.
 - **Sharer flow**: Sharer controls remain read-only and follow one order: group, management, people, common free time, Right now, then personal import. People and live status use flat 44px rows without nested panels. Render the Right now section only for a live selected term with an enabled person who has a schedule; omit its padding and divider when ineligible. Grid, common-free calculations, and Right now share the same enabled-person set. Name the bounded common-free-time list and keep it keyboard-focusable. Keyed loading clears old group content before a new selector value appears; Share is the sole header action.
-- **Radius hierarchy**: 16px for protected modals, mobile sheets, and peer outer panels/canvases; 14px for the inset timetable frame; 12px for its scroll field/day strip and independent floating search; 8px for ordinary actions, course modules, fields, rows, blocks, and selected days; 6px for independent compact subcontrols; 4px for selected term/view/theme cells inside an 8px group with 4px padding. Full radius belongs to status pills, avatars, and identity dots.
+- **Radius hierarchy**: 16px for protected modals, mobile sheets, and peer outer panels/canvases; 14px for the inset timetable frame; 12px for its scroll field/day strip and independent floating search; 8px for ordinary actions, course modules, fields, rows, blocks, and selected days; 6px for independent compact subcontrols; 4px for selected term/view cells inside an 8px group with 4px padding. Full radius belongs to appearance controls, status pills, avatars, and identity dots.
 - **Notifications**: Keep up to three readable messages in one named keyboard-scrollable stack. Keep the scrollport at least 16px inside its vertical bounds, including above phone navigation, so partially visible messages retain clearance. Include the internal shadow gutter in that bound. Hold expired messages while pointer or keyboard focus remains inside, then remove overdue entries; keep unexpired deadlines. Embedded notifications use the Answer Canvas content bounds and remain inside its focus/inert ownership. Other notification components retain their positioning.
 - **Typography**: Schedule titles use the 20px title step; section headings and buttons use 14px; helper copy uses 13px; labels and metadata use 12px. Planner and sharer surfaces use Aspekta throughout, including course codes, section identifiers, times, rooms, and counts. Schedule controls use no tracked uppercase labels and no text below 12px.
 - **Import**: Both routes parse Workday Excel exports in the browser. First imports and replacements use the same dashed drop area, with an 80px minimum height, 4px between label and hint, and native file-picker and drag-and-drop access. Matching progress and loading placeholders retain that footprint. Planner imports reconcile term, component, days, and times with catalog identifiers, require a choice for ambiguous matches, list skipped rows, and ask whether to merge or replace before one atomic update. Sharer imports remain read-only calendar data.
@@ -616,9 +616,9 @@ Prose within assistant bubbles at `0.875rem`, `line-height: 1.65` (slightly more
 
 ### Theme Toggle
 
-Use an intrinsic-width `w-max shrink-0` grid with three equal tracks, 2px gaps, 4px padding, and the shared 8px control-frame radius. Radios use 44px phone/32px wider-screen squares and a 4px inset radius. The resulting group measures 144px/108px wide; each radio fills its track. Selected: `neu-raised bg-surface text-primary`. Unselected: `text-on-surface-variant hover:text-on-surface`. Options: light, system, dark. Keep the group compact inside Settings as well as the account popup. Let the popup's Appearance row wrap with an 8px row gap when its label and control do not fit; do not squeeze the radio tracks.
+Use one intrinsic-width `w-max shrink-0` pill with two equal tracks, a 2px gap, and 4px padding. Light uses the sun icon; Dark uses the moon. Compact radios use 44px phone/32px wider-screen circles, giving the group a 98px/74px width. Onboarding adds visible labels in 44px-high segments. Selected: `neu-raised bg-surface text-primary`. Unselected: `text-on-surface-variant hover:text-on-surface`. Keep the group compact inside Settings and the account popup. Let the popup's Appearance row wrap with an 8px row gap when needed; do not squeeze the radio tracks. Resolve the device appearance once when no explicit choice exists, then retain Light or Dark in the local cache.
 
-View-transition ripple on theme change: `startViewTransition` with `--ripple-x`/`--ripple-y` CSS variables driving `clip-path: circle()` expansion at 400ms ease-in-out.
+Apply appearance immediately with `startViewTransition` and a synchronous React update. Use `--ripple-x`/`--ripple-y` to expand `clip-path: circle()` over 400ms ease-in-out from the pointer, or the chosen radio's center for keyboard input. Keep arrow-key selection and roving focus inside the group. Reduced-motion users and browsers without view transitions switch immediately.
 
 ### Signature: Thinking Orb
 

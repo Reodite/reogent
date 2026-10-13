@@ -1,7 +1,7 @@
 "use client";
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
-import { PreferenceFields, ProfileFields } from "@/src/components/auth/profile-fields";
+import { ProfileFields } from "@/src/components/auth/profile-fields";
 import { Icon } from "@/src/components/icons";
 import { useApi, useProfile, useTheme } from "@/src/components/providers";
 import { ThemeToggle } from "@/src/components/theme-toggle";
@@ -30,15 +30,6 @@ function ProfileFormLoading() {
           <Skeleton className="h-11 w-full rounded-lg" />
         </div>
       ))}
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-20" />
-        <div className="grid grid-cols-3 gap-2">
-          {["light", "system", "dark"].map((theme) => (
-            <Skeleton key={theme} className="h-11 rounded-lg" />
-          ))}
-        </div>
-        <Skeleton className="h-3 w-4/5" />
-      </div>
       <div className="flex flex-col gap-1.5">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-11 w-full rounded-lg" />
@@ -55,14 +46,15 @@ function ProfileForm() {
   const api = useApi();
   const { saveProfile } = useProfile();
   const { mode } = useTheme();
-  const [profile, setProfile] = useState<StudentProfile>(() => ({ theme: mode }));
+  const [profile, setProfile] = useState<StudentProfile>({});
   const [status, setStatus] = useState<ProfileStatus>("loading");
+  const [savedMode, setSavedMode] = useState(mode);
 
   const loadProfile = useCallback(async () => {
     setStatus("loading");
     try {
       const response = await api.getProfile();
-      setProfile((current) => ({ ...response.profile, theme: response.profile?.theme ?? current.theme }));
+      setProfile(response.profile ?? {});
       setStatus("idle");
     } catch {
       setStatus("load-error");
@@ -83,7 +75,8 @@ function ProfileForm() {
     if (status === "loading" || status === "load-error" || status === "saving") return;
     setStatus("saving");
     try {
-      await saveProfile(profile);
+      await saveProfile({ ...profile, theme: mode });
+      setSavedMode(mode);
       setStatus("saved");
     } catch {
       setStatus("error");
@@ -105,20 +98,20 @@ function ProfileForm() {
   }
 
   const saving = status === "saving";
+  const saved = status === "saved" && savedMode === mode;
   return (
     <form onSubmit={handleSubmit} aria-busy={saving} className="ui-content-enter flex flex-col gap-3">
       <fieldset disabled={saving} className="flex flex-col gap-3 disabled:opacity-70">
         <ProfileFields profile={profile} onChange={updateProfile} shadowOn="surface-container-low" />
-        <PreferenceFields profile={profile} onChange={updateProfile} shadowOn="surface-container-low" />
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" variant="primary" size="prominent">
             <Icon name="check" size={16} />
             {saving ? "Saving…" : "Save profile"}
           </Button>
           <p role="status" className={`text-xs ${status === "error" ? "text-error" : "text-muted"}`}>
-            {status === "saved" || status === "error" ? (
+            {saved || status === "error" ? (
               <span key={status} className="ui-notice-enter inline-block">
-                {status === "saved" ? "Saved" : "Couldn't save. Try again."}
+                {saved ? "Saved" : "Couldn't save. Try again."}
               </span>
             ) : null}
           </p>
@@ -169,7 +162,7 @@ export default function SettingsPage() {
             <div className="flex flex-col gap-3">
               <div className="space-y-1">
                 <p className="text-on-surface text-sm font-medium">Theme</p>
-                <p className="text-muted text-xs">Light, match system, or dark</p>
+                <p className="text-muted text-xs">Choose light or dark</p>
               </div>
               <ThemeToggle />
             </div>

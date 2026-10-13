@@ -13,7 +13,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 // ---- Theme ----
 
 export type { ThemeMode } from "@/src/shared/profile";
-export type ResolvedTheme = "light" | "dark";
+export type ResolvedTheme = ThemeMode;
 
 interface ThemeContextValue {
   theme: ResolvedTheme;
@@ -21,7 +21,7 @@ interface ThemeContextValue {
   setMode: (mode: ThemeMode) => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({ theme: "light", mode: "system", setMode: () => {} });
+const ThemeContext = createContext<ThemeContextValue>({ theme: "light", mode: "light", setMode: () => {} });
 const THEME_COLORS: Record<ResolvedTheme, string> = { light: "#f7f7f5", dark: "#121214" };
 
 export function useTheme(): ThemeContextValue {
@@ -33,24 +33,11 @@ function systemTheme(): ResolvedTheme {
 }
 
 function ThemeProvider({ children }: { children: ReactNode }) {
-  // Initial values mirror what the pre-paint bootstrap script already applied,
-  // so hydration never stomps a dark page with the light default.
-  const [mode, setModeState] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return "system";
-    try {
-      const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-      return stored === "light" || stored === "dark" ? stored : "system";
-    } catch {
-      return "system";
-    }
-  });
-  const [theme, setTheme] = useState<ResolvedTheme>(() => {
-    if (typeof document === "undefined") return "light";
-    return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
-  });
+  const [mode, setModeState] = useState<ThemeMode>("light");
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+  const setMode = useCallback((next: ThemeMode) => {
+    setModeState(next);
+    document.documentElement.dataset.theme = next;
     const metas = Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'));
     if (metas.length === 0) {
       const meta = document.createElement("meta");
@@ -58,29 +45,26 @@ function ThemeProvider({ children }: { children: ReactNode }) {
       document.head.append(meta);
       metas.push(meta);
     }
-    for (const meta of metas) meta.content = THEME_COLORS[theme];
-  }, [theme]);
-
-  useEffect(() => {
-    if (mode !== "system") return;
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => setTheme(systemTheme());
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, [mode]);
-
-  const setMode = useCallback((next: ThemeMode) => {
-    setModeState(next);
-    setTheme(next === "system" ? systemTheme() : next);
+    for (const meta of metas) meta.content = THEME_COLORS[next];
     try {
-      if (next === "system") window.localStorage.removeItem(THEME_STORAGE_KEY);
-      else window.localStorage.setItem(THEME_STORAGE_KEY, next);
+      window.localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
-      // Preference just won't persist.
+      // Keep the choice in memory when storage is unavailable.
     }
   }, []);
 
-  const value = useMemo(() => ({ theme, mode, setMode }), [theme, mode, setMode]);
+  useEffect(() => {
+    // Read preferences after hydration without replacing the pre-paint theme.
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    } catch {
+      // Use the device's initial appearance when storage is unavailable.
+    }
+    setMode(stored === "light" || stored === "dark" ? stored : systemTheme());
+  }, [setMode]);
+
+  const value = useMemo(() => ({ theme: mode, mode, setMode }), [mode, setMode]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
@@ -183,9 +167,8 @@ function ProfileProvider({ children }: { children: ReactNode }) {
       if (!parsed.ok) throw new Error(parsed.error);
       await api.saveProfile(parsed.value);
       setProfile(parsed.value);
-      if (parsed.value.theme) setMode(parsed.value.theme);
     },
-    [api, setMode],
+    [api],
   );
   const value = useMemo(() => ({ profile, saveProfile }), [profile, saveProfile]);
 

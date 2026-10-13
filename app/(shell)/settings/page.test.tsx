@@ -13,7 +13,7 @@ const auth = vi.hoisted(() => ({
 vi.mock("@/src/components/providers", () => ({
   useApi: () => api,
   useProfile: () => ({ saveProfile: api.saveProfile }),
-  useTheme: () => ({ mode: "system" }),
+  useTheme: () => ({ mode: "light" }),
 }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => auth }));
 vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => <div data-testid="theme-toggle" /> }));

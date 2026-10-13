@@ -3,7 +3,7 @@ import SettingsPage from "@/app/(shell)/settings/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { AppProviders } from "@/src/components/providers";
 import type { StudentProfile } from "@/src/shared/profile";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -33,6 +33,7 @@ vi.mock("motion/react", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  document.documentElement.dataset.theme = "light";
   state.pathname = "/onboarding";
   state.search = "redirect=%2Ftools%2Fcalendar";
   state.auth = { status: "signedIn", isGuest: false, user: { userId: "u1", username: "sam" }, signOut: vi.fn() };
@@ -58,6 +59,40 @@ function next() {
 }
 
 describe("first-login onboarding", () => {
+  it("centers just the welcome title and subheading", async () => {
+    await start();
+    const heading = screen.getByRole("heading", { name: "Welcome to Reodite" });
+    const welcome = heading.parentElement!;
+    expect(welcome.classList.contains("text-center")).toBe(true);
+    expect(welcome.classList.contains("justify-center")).toBe(true);
+    expect(welcome.querySelectorAll("p")).toHaveLength(1);
+    expect(welcome.querySelector("p")?.textContent).toBe("Let's customize your experience");
+    expect(screen.queryByText(/Everything is optional/)).toBeNull();
+    expect(screen.queryByText(/Tell us a little about yourself/)).toBeNull();
+  });
+
+  it.each([
+    ["", true],
+    ["1", true],
+    ["10", true],
+    ["0", false],
+    ["11", false],
+    ["2.5", false],
+  ])("validates year %j before continuing: %s", async (year, valid) => {
+    await start();
+    next();
+    const field = screen.getByRole("spinbutton", { name: "Year of study" }) as HTMLInputElement;
+    expect(field.min).toBe("1");
+    expect(field.max).toBe("10");
+    expect(field.step).toBe("1");
+    expect(field.placeholder).not.toContain("optional");
+    fireEvent.change(field, { target: { value: year } });
+    expect(field.checkValidity()).toBe(valid);
+    next();
+    expect(screen.queryByRole("heading", { name: "Make yourself at home" }) !== null).toBe(valid);
+    expect(state.api.saveProfile).not.toHaveBeenCalled();
+  });
+
   it("keeps entries across Next and Back, and saves all cards before continuing", async () => {
     await start();
     const back = screen.getByRole("button", { name: "Back to welcome" }) as HTMLButtonElement;
@@ -70,17 +105,21 @@ describe("first-login onboarding", () => {
     fireEvent.change(screen.getByLabelText("What should we call you?"), { target: { value: "Sam" } });
     fireEvent.change(screen.getByLabelText("Year of study"), { target: { value: "3" } });
     fireEvent.change(screen.getByLabelText("What are you studying?"), { target: { value: "Computer Science" } });
-    next();
-    fireEvent.click(screen.getByLabelText("Dark"));
     fireEvent.change(screen.getByRole("combobox", { name: /Tuition defaults/ }), {
       target: { value: "international" },
     });
+    next();
+    expect(screen.queryByLabelText("Tuition defaults")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("campus.theme")).toBe("dark");
     fireEvent.click(screen.getByRole("button", { name: "Back to personal details" }));
     expect((screen.getByLabelText("What should we call you?") as HTMLInputElement).value).toBe("Sam");
-    expect((screen.getByLabelText("Year of study") as HTMLSelectElement).value).toBe("3");
+    expect((screen.getByRole("spinbutton", { name: "Year of study" }) as HTMLInputElement).value).toBe("3");
+    expect((screen.getByLabelText("Tuition defaults") as HTMLSelectElement).value).toBe("international");
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "A little about you" }));
     next();
-    expect((screen.getByLabelText("Dark") as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("true");
     expect(state.api.saveProfile).not.toHaveBeenCalled();
     let resolveSave!: () => void;
     state.api.saveProfile.mockImplementationOnce(
@@ -130,7 +169,7 @@ describe("first-login onboarding", () => {
       expect(state.api.saveProfile).toHaveBeenCalledWith({
         program: "Arts",
         year: 2,
-        theme: "system",
+        theme: "light",
         onboarding_completed: true,
       }),
     );
@@ -208,12 +247,44 @@ describe("first-login onboarding", () => {
     );
     const field = await screen.findByLabelText("What should we call you?");
     expect((field as HTMLInputElement).value).toBe("Sam");
-    expect((screen.getByLabelText("Dark", { selector: "input" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getAllByRole("radiogroup", { name: "Appearance" })).toHaveLength(1);
+    expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("true");
     fireEvent.change(field, { target: { value: "Alex" } });
-    fireEvent.click(screen.getByLabelText("Light", { selector: "input" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Light" }));
+    expect(document.documentElement.dataset.theme).toBe("light");
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
     await screen.findByText("Saved");
     expect(state.api.saveProfile).toHaveBeenCalledWith({ ...profile, preferred_name: "Alex", theme: "light" });
     expect(document.documentElement.dataset.theme).toBe("light");
+    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    expect(screen.queryByText("Saved")).toBeNull();
+  });
+
+  it("keeps a newer appearance choice when an earlier Settings save finishes", async () => {
+    state.pathname = "/settings";
+    state.api.getProfile.mockResolvedValue({ profile: { theme: "light", onboarding_completed: true } });
+    let finishSave!: () => void;
+    state.api.saveProfile.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    render(
+      <AppProviders>
+        <SettingsPage />
+      </AppProviders>,
+    );
+    await screen.findByLabelText("Year of study");
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    await act(async () => finishSave());
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("campus.theme")).toBe("dark");
+    expect(state.api.saveProfile).toHaveBeenCalledWith({ theme: "light", onboarding_completed: true });
+    expect(screen.queryByText("Saved")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+    await screen.findByText("Saved");
+    expect(state.api.saveProfile).toHaveBeenLastCalledWith({ theme: "dark", onboarding_completed: true });
   });
 });

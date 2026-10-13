@@ -28,21 +28,20 @@ export function ProfileFields({ profile, onChange, shadowOn = "surface" }: Profi
         />
       </Field>
       <Field label="Year of study" htmlFor={`${id}-year`}>
-        <SelectInput
+        <TextInput
           id={`${id}-year`}
           shadowOn={shadowOn}
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={10}
+          step={1}
+          placeholder="1–10"
           value={profile.year ?? ""}
           onChange={(event) =>
-            onChange({ ...profile, year: event.target.value ? Number(event.target.value) : undefined })
+            onChange({ ...profile, year: event.target.value ? event.target.valueAsNumber : undefined })
           }
-        >
-          <option value="">Choose your year (optional)</option>
-          {[1, 2, 3, 4, 5, 6, 7].map((year) => (
-            <option key={year} value={year}>
-              Year {year}
-            </option>
-          ))}
-        </SelectInput>
+        />
       </Field>
       <Field label="What are you studying?" htmlFor={`${id}-program`}>
         <TextInput
@@ -54,47 +53,6 @@ export function ProfileFields({ profile, onChange, shadowOn = "surface" }: Profi
           onChange={(event) => onChange({ ...profile, program: event.target.value })}
         />
       </Field>
-    </div>
-  );
-}
-
-/** Preferences use the same fields and values in onboarding and Settings. */
-export function PreferenceFields({ profile, onChange, shadowOn = "surface" }: ProfileFieldsProps) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-6">
-      <fieldset>
-        <legend className="text-on-surface mb-2 text-sm font-medium">Appearance</legend>
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              ["light", "Light"],
-              ["system", "System"],
-              ["dark", "Dark"],
-            ] as const
-          ).map(([value, label]) => (
-            <label
-              key={value}
-              className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg px-2 text-sm neu-shadow-on-${shadowOn} ${
-                (profile.theme ?? "system") === value
-                  ? "neu-inset bg-surface-container text-primary"
-                  : "neu-raised bg-surface text-on-surface-variant"
-              }`}
-            >
-              <input
-                type="radio"
-                name={`${id}-theme`}
-                value={value}
-                checked={(profile.theme ?? "system") === value}
-                onChange={() => onChange({ ...profile, theme: value })}
-                className="accent-primary"
-              />
-              {label}
-            </label>
-          ))}
-        </div>
-        <p className="text-muted mt-2 text-xs">System follows your device&apos;s light or dark setting.</p>
-      </fieldset>
       <Field
         label="Tuition defaults"
         htmlFor={`${id}-student-type`}

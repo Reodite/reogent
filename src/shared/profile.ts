@@ -2,14 +2,14 @@
 // cost, and program tools instead of asking. Stored as one JSONB row per user.
 
 export type StudentType = "domestic" | "international";
-/** Saved appearance preference; system follows the device. */
-export type ThemeMode = "light" | "dark" | "system";
+/** Explicit appearance preference, initialized from the device when unset. */
+export type ThemeMode = "light" | "dark";
 
 /** Account details and preferences shared by onboarding, Settings, and the database. */
 export interface StudentProfile {
   preferred_name?: string;
   program?: string;
-  /** Year of study, 1–7. */
+  /** Year of study, an integer from 1 to 10. */
   year?: number;
   student_type?: StudentType;
   theme?: ThemeMode;
@@ -30,7 +30,7 @@ const MAX_PROGRAM_CHARS = 120;
 const KEYS = new Set(["preferred_name", "program", "year", "student_type", "theme", "onboarding_completed"]);
 
 /** Validates an untrusted profile. Rejects unknown keys, invalid field types or
- * lengths, years outside 1–7, and unsupported student types or themes.
+ * lengths, years outside 1–10, and unsupported student types or themes.
  * Trims names and programs and omits blank strings. */
 export function parseProfile(body: unknown): { ok: true; value: StudentProfile } | { ok: false; error: string } {
   if (!body || typeof body !== "object" || Array.isArray(body)) return { ok: false, error: "Body must be an object" };
@@ -54,8 +54,8 @@ export function parseProfile(body: unknown): { ok: true; value: StudentProfile }
     if (program) value.program = program;
   }
   if (raw.year !== undefined) {
-    if (!Number.isInteger(raw.year) || (raw.year as number) < 1 || (raw.year as number) > 7) {
-      return { ok: false, error: "year must be an integer from 1 to 7" };
+    if (!Number.isInteger(raw.year) || (raw.year as number) < 1 || (raw.year as number) > 10) {
+      return { ok: false, error: "year must be an integer from 1 to 10" };
     }
     value.year = raw.year as number;
   }
@@ -66,8 +66,8 @@ export function parseProfile(body: unknown): { ok: true; value: StudentProfile }
     value.student_type = raw.student_type;
   }
   if (raw.theme !== undefined) {
-    if (raw.theme !== "light" && raw.theme !== "dark" && raw.theme !== "system") {
-      return { ok: false, error: "theme must be light, dark, or system" };
+    if (raw.theme !== "light" && raw.theme !== "dark") {
+      return { ok: false, error: "theme must be light or dark" };
     }
     value.theme = raw.theme;
   }

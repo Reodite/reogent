@@ -3,10 +3,12 @@
 import type { StudentProfile } from "@/src/shared/profile";
 import { getPool } from "./db";
 
-/** The caller's saved profile, or null when none exists. */
+/** Returns the saved profile without unsupported appearance values, or null when none exists. */
 export async function getProfile(userId: string): Promise<StudentProfile | null> {
   const { rows } = await getPool().query(`SELECT data FROM user_profiles WHERE user_id = $1`, [userId]);
-  return rows.length > 0 ? (rows[0].data as StudentProfile) : null;
+  if (rows.length === 0) return null;
+  const { theme, ...profile } = rows[0].data as StudentProfile;
+  return theme === "light" || theme === "dark" ? { ...profile, theme } : profile;
 }
 
 /** Upserts the caller's profile. */
