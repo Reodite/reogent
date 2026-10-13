@@ -3,10 +3,42 @@ import { AVATAR_COLORS, AVATAR_EMOJI } from "@/src/lib/schedule/avatar";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AvatarPicker } from "./avatar-picker";
+import { ToastProvider } from "./toast";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("AvatarPicker", () => {
+  it("announces conversion failure without replacing the selected avatar", async () => {
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:avatar");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    vi.spyOn(HTMLImageElement.prototype, "decode").mockResolvedValue();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockImplementation(() => {
+      throw new DOMException("Tainted canvas", "SecurityError");
+    });
+    const onChange = vi.fn();
+    const { container } = render(
+      <ToastProvider>
+        <AvatarPicker
+          handle="Ada"
+          avatar={{ kind: "image", imageDataUrl: "data:image/jpeg;base64,previous", color: AVATAR_COLORS[0] }}
+          onChange={onChange}
+        />
+      </ToastProvider>,
+    );
+    fireEvent.change(container.querySelector('input[type="file"]')!, {
+      target: { files: [new File(["image"], "avatar.svg", { type: "image/svg+xml" })] },
+    });
+    await screen.findByText("Could not read that image.");
+    expect(screen.getByRole("status", { name: "Notifications" }).textContent).toContain("Could not read that image.");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("switches avatar modes and reports generated initials", () => {
     const onChange = vi.fn();
     render(
