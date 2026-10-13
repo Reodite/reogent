@@ -32,6 +32,17 @@ vi.mock("@/src/components/calendar/calendar-pane", () => ({
   ),
 }));
 vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({ CourseLookupPane: () => null }));
+const plannerReady = vi.hoisted(() => Promise.withResolvers<void>());
+vi.mock("@/src/components/degree-planner/degree-planner-pane", async () => {
+  await plannerReady.promise;
+  return {
+    DegreePlannerPane: () => (
+      <WorkspacePage composition="canvas" title="Degree planner">
+        <div data-testid="planner-pane" />
+      </WorkspacePage>
+    ),
+  };
+});
 vi.mock("@/src/components/shell/session-sidebar", () => ({
   useSidebarCollapsed: () => [false, () => {}],
   BrandHeader: ({ trailing }: { trailing?: ReactNode }) => trailing,
@@ -200,6 +211,17 @@ it("gates private content during SSR, initialization and signout", () => {
 });
 
 describe("AppShell navigation", () => {
+  it("preserves sidebar trigger focus when a lazy tool finishes loading", async () => {
+    pathname.value = "/tools/planner";
+    const view = renderShell(false);
+    const trigger = view.getByRole("button", { name: "Open sidebar" });
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+    await act(async () => plannerReady.resolve());
+    await view.findByTestId("planner-pane");
+    expect(document.activeElement).toBe(view.getByRole("button", { name: "Open sidebar" }));
+  });
+
   it("inline AI renders chat + Answer Canvas with the skip target on chat", () => {
     const { container, getByTestId } = renderShell(true);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("chat");

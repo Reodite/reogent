@@ -27,7 +27,7 @@ import { tabStops } from "@/src/components/ui/floating-panel";
 import { LiveRegion } from "@/src/components/ui/live-region";
 import { useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 /** Gate: initializing → null (brief); signed out → redirect to login. */
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -189,6 +189,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const animateRoute = hasNavigated || routeIdentity !== initialRouteIdentityRef.current;
   const [sessionsCollapsed, setSessionsCollapsed] = useSidebarCollapsed();
   const sidebarOpenRef = useRef<HTMLButtonElement>(null);
+  // Suspense can blur a hidden trigger before detaching its ref.
+  const sidebarTriggerFocused = useRef(false);
+  const setSidebarTrigger = useCallback((node: HTMLButtonElement | null) => {
+    sidebarOpenRef.current = node;
+    if (node && sidebarTriggerFocused.current) {
+      sidebarTriggerFocused.current = false;
+      queueMicrotask(() => {
+        if (sidebarOpenRef.current === node && document.activeElement === document.body) node.focus();
+      });
+    }
+  }, []);
   const sidebarId = useId();
   const viewportRef = useMobileViewport();
   const desktopSidebarQuery = mode === "tools" ? "(min-width: 1280px)" : "(min-width: 1024px)";
@@ -242,7 +253,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const sidebarToggle = (
     <Button
-      ref={sidebarOpenRef}
+      ref={setSidebarTrigger}
+      onFocus={() => {
+        sidebarTriggerFocused.current = true;
+      }}
+      onBlur={(event) => {
+        sidebarTriggerFocused.current = event.relatedTarget === null;
+      }}
       onClick={() => setSidebarOpen(true)}
       aria-label="Open sidebar"
       aria-expanded={sidebarOpen}
