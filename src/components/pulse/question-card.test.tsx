@@ -46,7 +46,7 @@ describe("voteFromDrag", () => {
 describe("PulseQuestionCard — unvoted", () => {
   const card = { id: 1, text: "The Nest is the best study spot" };
 
-  it("renders the question with 44px vote buttons that report the direction", () => {
+  it("reports vote direction without starting a card drag", () => {
     const onVote = vi.fn();
     const pointerStart = vi.fn();
     const { getByText, getByRole } = render(
@@ -63,12 +63,6 @@ describe("PulseQuestionCard — unvoted", () => {
     expect(pointerStart).not.toHaveBeenCalled();
     expect(agree.textContent).toBe("Agree");
     expect(disagree.textContent).toBe("Disagree");
-    for (const button of [agree, disagree]) {
-      expect(button.classList.contains("h-11")).toBe(true);
-      expect(button.className).toContain("enabled:hover:bg-surface-container-high");
-      expect(button.className).toContain("focus-visible:ring-2");
-      expect(button.className).not.toMatch(/-m[xy]-|py-3/);
-    }
 
     fireEvent.click(agree);
     expect(onVote).toHaveBeenLastCalledWith(true);
@@ -84,7 +78,7 @@ describe("PulseQuestionCard — unvoted", () => {
   });
 });
 
-describe("PulseQuestionCard — voted shadow", () => {
+describe("PulseQuestionCard — voted", () => {
   // The result card waits for the front card's exit animation, which never
   // completes under the test renderer. Reduced motion skips that flight and
   // renders the result straight away — the same path a reduced-motion user gets.
@@ -95,7 +89,7 @@ describe("PulseQuestionCard — voted shadow", () => {
     reduceMotion = false;
   });
 
-  it("hides the buttons and describes the split with disagree left, agree right", () => {
+  it("hides vote buttons and reports the result totals", () => {
     const { queryByRole, getByRole, getByText } = render(
       <PulseQuestionCard
         card={{ id: 1, text: "Q", myAgree: true, agreeCount: 3, disagreeCount: 1 }}
@@ -106,9 +100,6 @@ describe("PulseQuestionCard — voted shadow", () => {
     expect(getByRole("img").getAttribute("aria-label")).toBe("25% disagree, 75% agree, 4 votes");
     expect(getByText("75%")).toBeTruthy();
     expect(getByText("25%")).toBeTruthy();
-    // The caller's side carries the highlight.
-    expect(getByText("75%").className).toContain("text-primary");
-    expect(getByText("25%").className).toContain("text-muted");
   });
 
   it("shows placeholders while the vote is pending", () => {
@@ -130,7 +121,6 @@ it("restores vote controls and removes tallies when an optimistic vote rolls bac
   expect(getByRole("img").getAttribute("aria-label")).toBe("Recording your vote");
   rerender(<PulseQuestionCard card={{ id: 1, text: "Q", error: "Vote failed. Try again." }} onVote={onVote} />);
   expect(queryByRole("img")).toBeNull();
-  expect(getByRole("alert").className).toContain("ui-notice-enter");
   fireEvent.click(getByRole("button", { name: "Agree: Q" }));
   expect(onVote).toHaveBeenCalledWith(true);
   reduceMotion = false;

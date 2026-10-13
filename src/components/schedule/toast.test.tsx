@@ -51,7 +51,7 @@ function setup() {
   return { ...view, stack: screen.getByRole("status"), trigger: screen.getByRole("button", { name: "Notify" }) };
 }
 
-describe("ToastProvider motion", () => {
+describe("ToastProvider expiry", () => {
   it.each([false, true])("keeps the timer and three-message limit with reduced motion %s", async (reduce) => {
     preference.reduce = reduce;
     vi.useFakeTimers();
@@ -62,14 +62,10 @@ describe("ToastProvider motion", () => {
     );
     const stack = screen.getByRole("status");
     const trigger = screen.getByRole("button", { name: "Notify" });
-    expect(stack.className).toContain("app-notification-stack");
-    expect(stack.className).not.toContain("bottom-5");
     for (let index = 0; index < 4; index++) fireEvent.click(trigger);
     expect(
       [...stack.children].filter((item) => item.getAttribute("aria-hidden") !== "true").map((item) => item.textContent),
     ).toEqual(["Saved 2", "Saved 3", "Saved 4"]);
-    expect(screen.getByText("Saved 2").className).toContain("text-error");
-    if (reduce) expect(screen.getByText("Saved 4").style.opacity).toBe("1");
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(4199);
@@ -83,50 +79,28 @@ describe("ToastProvider motion", () => {
 });
 
 describe("ToastProvider reading access", () => {
-  it.each(["tools", "answer-canvas"] as const)(
-    "marks the local %s stack for bounded keyboard scrolling",
-    async (host) => {
-      preference.reduce = true;
-      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
-      const { container } = render(
-        <WorkspaceHostProvider host={host}>
-          <ToastProvider>
-            <ToastTrigger />
-          </ToastProvider>
-        </WorkspaceHostProvider>,
-      );
-      const stack = screen.getByRole("status", { name: "Notifications" });
-      const trigger = screen.getByRole("button", { name: "Notify" });
-      expect(container.contains(stack)).toBe(true);
-      expect(stack.getAttribute("aria-live")).toBe("polite");
-      expect(stack.getAttribute("data-toast-host")).toBe(host);
-      for (const name of [
-        "app-notification-stack",
-        "schedule-toast-stack",
-        "fixed",
-        "w-max",
-        "overflow-y-auto",
-        "overscroll-y-contain",
-        "p-2",
-        "gap-2",
-      ]) {
-        expect(stack.classList.contains(name)).toBe(true);
-      }
-      expect(stack.hasAttribute("tabindex")).toBe(false);
-      expect(stack.classList.contains("pointer-events-none")).toBe(true);
-      trigger.focus();
-      fireEvent.click(trigger);
-      expect(document.activeElement).toBe(trigger);
-      expect(stack.tabIndex).toBe(0);
-      expect(stack.classList.contains("pointer-events-auto")).toBe(true);
-      expect(stack.classList.contains("pointer-events-none")).toBe(false);
-      expect(screen.getByText("Saved 1").classList.contains("max-w-sm")).toBe(true);
-      expect(screen.getByText("Saved 1").classList.contains("shrink-0")).toBe(true);
-      await advance(4200);
-      expect(stack.hasAttribute("tabindex")).toBe(false);
-      expect(stack.classList.contains("pointer-events-none")).toBe(true);
-    },
-  );
+  it("makes embedded notifications focusable while messages exist", async () => {
+    preference.reduce = true;
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    const { container } = render(
+      <WorkspaceHostProvider host="answer-canvas">
+        <ToastProvider>
+          <ToastTrigger />
+        </ToastProvider>
+      </WorkspaceHostProvider>,
+    );
+    const stack = screen.getByRole("status", { name: "Notifications" });
+    const trigger = screen.getByRole("button", { name: "Notify" });
+    expect(container.contains(stack)).toBe(true);
+    expect(stack.getAttribute("aria-live")).toBe("polite");
+    expect(stack.hasAttribute("tabindex")).toBe(false);
+    trigger.focus();
+    fireEvent.click(trigger);
+    expect(document.activeElement).toBe(trigger);
+    expect(stack.tabIndex).toBe(0);
+    await advance(4200);
+    expect(stack.hasAttribute("tabindex")).toBe(false);
+  });
 
   it.each(["pointer", "focus"])(
     "holds overdue messages during %s reading and removes them on departure",

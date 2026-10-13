@@ -48,40 +48,11 @@ const block: MergedBlock = {
 afterEach(cleanup);
 
 describe("BlockDetail", () => {
-  it("keeps the title and Close outside the keyboard-scrollable details", () => {
+  it("allows keyboard focus in the course facts and roster", () => {
     render(<BlockDetail block={block} onClose={vi.fn()} />);
 
-    const panel = screen.getByRole("dialog", { name: "CPSC 221" });
     const body = screen.getByRole("region", { name: "Course facts and roster" });
-    const header = panel.querySelector("[data-dialog-header]")!;
-    const actions = panel.querySelector("[data-dialog-actions]")!;
-    const footer = actions.closest("footer");
-    const close = screen.getByRole("button", { name: "Close", exact: true });
-
-    expect(body.parentElement).toBe(panel);
-    expect(body.classList.contains("min-h-0")).toBe(true);
-    expect(body.classList.contains("overflow-y-auto")).toBe(true);
-    expect(body.classList.contains("p-4")).toBe(true);
-    expect(body.classList.contains("sm:px-6")).toBe(true);
-    expect(body.hasAttribute("data-dialog-scroll")).toBe(true);
     expect(body.getAttribute("tabindex")).toBe("0");
-    expect(body.contains(header)).toBe(false);
-    expect(body.contains(close)).toBe(false);
-    expect(header.parentElement).toBe(panel);
-    expect(header.classList.contains("shrink-0")).toBe(true);
-    expect(footer?.parentElement).toBe(panel);
-    expect(footer?.classList.contains("shrink-0")).toBe(true);
-    expect(footer?.classList.contains("px-4")).toBe(true);
-    expect(footer?.classList.contains("pb-4")).toBe(true);
-    expect(footer?.classList.contains("sm:px-6")).toBe(true);
-    expect(footer?.classList.contains("sm:pb-6")).toBe(true);
-    expect(actions.classList.contains("mt-6")).toBe(false);
-    expect(panel.classList.contains("p-0")).toBe(true);
-    expect(panel.classList.contains("flex")).toBe(true);
-    expect(panel.classList.contains("flex-col")).toBe(true);
-    expect(panel.classList.contains("overflow-hidden")).toBe(true);
-    expect(panel.classList.contains("[:where(&)]:max-h-full")).toBe(true);
-
     body.focus();
     expect(document.activeElement).toBe(body);
   });

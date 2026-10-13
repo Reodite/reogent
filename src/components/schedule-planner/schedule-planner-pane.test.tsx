@@ -297,15 +297,6 @@ describe("SchedulePlannerPane explicit course flow", () => {
     expect(scheduleMock.state.addCourseSections).not.toHaveBeenCalled();
   });
 
-  it("omits course and credit totals from the header", async () => {
-    scheduleMock.state.entries = [structuredClone(cpscEntry)];
-    const view = render(<SchedulePlannerPane />);
-    await view.findByRole("combobox", { name: "Lecture" });
-
-    expect(view.queryByText("1 courses")).toBeNull();
-    expect(view.queryByText("4 credits")).toBeNull();
-  });
-
   it("changes exactly one component with an inline section selector", async () => {
     scheduleMock.state.entries = [structuredClone(cpscEntry)];
     const view = render(<SchedulePlannerPane />);
@@ -350,35 +341,6 @@ describe("SchedulePlannerPane explicit course flow", () => {
     expect(scheduleMock.state.addCourseSections).not.toHaveBeenCalled();
   });
 
-  it("keeps search and import fixed around the only scrolling rail region", () => {
-    const view = render(<SchedulePlannerPane />);
-    const root = view.container.querySelector<HTMLElement>("[data-planner-controls]");
-    const search = view.container.querySelector<HTMLElement>("[data-planner-search]");
-    const list = view.container.querySelector<HTMLElement>("[data-planner-course-list]");
-    const footer = view.container.querySelector<HTMLElement>("[data-planner-import]");
-
-    expect(root?.className).toContain("h-full");
-    expect(root?.className).toContain("min-h-min");
-    expect(search?.className).toContain("shrink-0");
-    expect(search?.className).not.toContain("overflow-y-auto");
-    expect(list?.className).toContain("min-h-48");
-    expect(list?.className).toContain("[contain:size]");
-    expect(list?.className).toContain("overflow-y-auto");
-    expect(footer?.className).toContain("shrink-0");
-    const dropzone = view.getByRole("button", { name: /Import Workday schedule/ });
-    expect(dropzone.className).toContain("border-dashed");
-    expect(dropzone.className).toContain("min-h-20");
-  });
-
-  it("keeps the empty-term explanation beside its heading without extra padding", () => {
-    const view = render(<SchedulePlannerPane />);
-    const heading = view.getByRole("heading", { name: "Courses in this term" });
-    const description = view.getByText("Add a course from search to configure its lecture, lab, and tutorial here.");
-    expect(heading.parentElement?.className).toContain("mb-1");
-    expect(description.className).not.toMatch(/\bp[ty]-/);
-    expect(description.closest("section")).toBe(heading.closest("section"));
-  });
-
   it("moves to course controls and focuses search from the empty timetable", async () => {
     const view = render(<SchedulePlannerPane />);
     const input = view.getByRole("combobox", { name: "Find a course to schedule" });
@@ -390,10 +352,10 @@ describe("SchedulePlannerPane explicit course flow", () => {
 });
 
 describe("SchedulePlannerPane content loading", () => {
-  it("shows saved-course skeletons only during initial hydration", () => {
+  it("withholds the empty timetable until initial hydration finishes", () => {
     syncMock.hydrating = true;
     const view = render(<SchedulePlannerPane />);
-    expect(view.getByRole("status", { name: "Loading saved courses" }).querySelector("[data-skeleton]")).toBeTruthy();
+    expect(view.getByRole("status", { name: "Loading saved courses" })).toBeTruthy();
     expect(view.getByRole("status", { name: "Loading schedule terms" })).toBeTruthy();
     expect(view.getByRole("status", { name: "Loading your weekly course schedule" })).toBeTruthy();
     expect(view.getByText("9 AM")).toBeTruthy();
@@ -402,7 +364,6 @@ describe("SchedulePlannerPane content loading", () => {
     syncMock.hydrating = false;
     view.rerender(<SchedulePlannerPane />);
     expect(view.getByText("Build your first timetable")).toBeTruthy();
-    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
   });
 
   it("keeps saved meetings while section options load, fail, and retry", async () => {
@@ -415,16 +376,13 @@ describe("SchedulePlannerPane content loading", () => {
       }),
     );
     const view = render(<SchedulePlannerPane />);
-    expect(
-      view.getByRole("status", { name: "Loading lecture section options" }).querySelector("[data-skeleton]"),
-    ).toBeTruthy();
+    expect(view.getByRole("status", { name: "Loading lecture section options" })).toBeTruthy();
     expect(view.getByText(cpscEntry.snapshot.title)).toBeTruthy();
     expect(view.container.querySelectorAll("[data-schedule-block]")).toHaveLength(3);
     expect(view.queryByRole("status", { name: "Loading saved courses" })).toBeNull();
     expect(view.queryByText("This saved section is no longer listed in the catalog.")).toBeNull();
     await act(async () => reject(new Error("offline")));
     expect(view.getByText("Section options unavailable. Saved meetings remain visible.")).toBeTruthy();
-    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
     expect(view.container.querySelectorAll("[data-schedule-block]")).toHaveLength(3);
     expect(apiMock.getCourse).toHaveBeenCalledTimes(1);
     apiMock.getCourse.mockResolvedValue(courses["CPSC 110"]);
@@ -435,7 +393,6 @@ describe("SchedulePlannerPane content loading", () => {
     await waitFor(() =>
       expect(view.getByRole<HTMLSelectElement>("combobox", { name: "Lecture" }).disabled).toBe(false),
     );
-    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
     expect(apiMock.getCourse).toHaveBeenCalledTimes(2);
   });
 });

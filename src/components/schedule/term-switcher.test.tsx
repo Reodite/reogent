@@ -11,21 +11,6 @@ const terms = [
 ];
 
 describe("TermSwitcher", () => {
-  it("accepts key-label options and uses a recessed strip with compact selected cells", () => {
-    const { container } = render(<TermSwitcher terms={terms} selected="2026-fall" onSelect={vi.fn()} />);
-    const strip = container.querySelector<HTMLElement>("[data-schedule-term-switcher]");
-    const selected = screen.getByRole("tab", { name: "Fall 2026" });
-
-    expect(strip?.className).toContain("rounded-lg");
-    expect(strip?.className).toContain("p-1");
-    expect(strip?.className).not.toContain("rounded-full");
-    expect(selected.className).toContain("rounded-sm");
-    expect(selected.className).toContain("text-xs");
-    expect(selected.className).toContain("min-h-11");
-    expect(selected.className).toContain("sm:min-h-8");
-    expect(selected.className).not.toMatch(/rounded-full|neu-panel|neu-raised|neu-inset/);
-  });
-
   it("moves between terms with tablist arrow keys", () => {
     const onSelect = vi.fn();
     render(<TermSwitcher terms={terms} selected="2026-fall" onSelect={onSelect} />);

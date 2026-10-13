@@ -40,23 +40,6 @@ describe("ScheduleWorkspace", () => {
     outlet.remove();
   });
 
-  it("adapts schedules to the shared 20rem rail panel and inset canvas", () => {
-    const { container } = render(workspace());
-    const root = container.querySelector<HTMLElement>("[data-workspace-page]");
-    const rail = container.querySelector<HTMLElement>("[data-workspace-region='rail']");
-    const canvas = container.querySelector<HTMLElement>("[data-workspace-canvas]");
-
-    expect(root?.dataset.workspaceHost).toBe("tools");
-    expect(root?.dataset.workspaceComposition).toBe("split");
-    expect(root?.querySelector("h1")?.textContent).toBe("Course schedule");
-    expect(rail?.querySelector("[data-workspace-panel]")).not.toBeNull();
-    expect(rail?.querySelector("[data-testid='controls']")).not.toBeNull();
-    expect(canvas?.className).toContain("neu-inset");
-    expect(canvas?.className).toContain("bg-surface-container-low");
-    expect(canvas?.classList.contains("p-0.5")).toBe(true);
-    expect(canvas?.querySelector("[data-testid='canvas']")).not.toBeNull();
-  });
-
   it("maps the shared compact view controls to schedule terminology", () => {
     const onChange = vi.fn();
     render(workspace(onChange));

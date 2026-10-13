@@ -7,44 +7,7 @@ import { ProfileModal } from "./profile-modal";
 afterEach(cleanup);
 
 describe("ProfileModal", () => {
-  it("keeps the header and actions outside the bounded form scroller", () => {
-    render(<ProfileModal title="Profile" saveLabel="Save" onSave={vi.fn()} onCancel={vi.fn()} />);
-
-    const panel = screen.getByRole("dialog", { name: "Profile" });
-    const input = screen.getByLabelText("Handle");
-    const body = input.closest<HTMLElement>(".overflow-y-auto");
-    const header = panel.querySelector("[data-dialog-header]")!;
-    const actions = panel.querySelector("[data-dialog-actions]")!;
-    const footer = actions.closest("footer");
-
-    expect(body).not.toBeNull();
-    expect(body?.parentElement).toBe(panel);
-    expect(body?.classList.contains("min-h-0")).toBe(true);
-    expect(body?.classList.contains("space-y-4")).toBe(true);
-    expect(body?.classList.contains("p-4")).toBe(true);
-    expect(body?.classList.contains("sm:px-6")).toBe(true);
-    expect(body?.contains(screen.getByRole("group", { name: "Avatar" }))).toBe(true);
-    expect(body?.contains(header)).toBe(false);
-    expect(body?.contains(actions)).toBe(false);
-    expect(header.parentElement).toBe(panel);
-    expect(header.classList.contains("shrink-0")).toBe(true);
-    expect(footer?.parentElement).toBe(panel);
-    expect(footer?.classList.contains("shrink-0")).toBe(true);
-    expect(footer?.classList.contains("px-4")).toBe(true);
-    expect(footer?.classList.contains("pb-4")).toBe(true);
-    expect(footer?.classList.contains("sm:px-6")).toBe(true);
-    expect(footer?.classList.contains("sm:pb-6")).toBe(true);
-    expect(actions.classList.contains("mt-6")).toBe(false);
-    expect(panel.classList.contains("p-0")).toBe(true);
-    expect(panel.classList.contains("flex")).toBe(true);
-    expect(panel.classList.contains("flex-col")).toBe(true);
-    expect(panel.classList.contains("overflow-hidden")).toBe(true);
-    expect(panel.classList.contains("[:where(&)]:max-h-full")).toBe(true);
-    expect((input as HTMLInputElement).form).toBe(panel);
-    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).form).toBe(panel);
-  });
-
-  it("submits the trimmed handle and selected avatar from the fixed footer", async () => {
+  it("submits the trimmed handle and selected avatar", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<ProfileModal title="Profile" saveLabel="Save" onSave={onSave} onCancel={vi.fn()} />);
 

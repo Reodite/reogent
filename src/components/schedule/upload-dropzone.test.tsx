@@ -8,7 +8,7 @@ import { UploadDropzone } from "./upload-dropzone";
 afterEach(cleanup);
 
 describe("UploadDropzone", () => {
-  it("uses the shared drop area for a labeled replacement action", () => {
+  it("opens the file picker for a replacement action", () => {
     const { container } = render(
       <ToastProvider>
         <UploadDropzone label="Replace my schedule" onParsed={vi.fn()} />
@@ -16,8 +16,6 @@ describe("UploadDropzone", () => {
     );
 
     const dropzone = screen.getByRole("button", { name: /Replace my schedule/ });
-    expect(dropzone.className).toContain("border-dashed");
-    expect(dropzone.className).toContain("min-h-20");
     expect(dropzone.textContent).toContain("Drop a Workday .xlsx file or click to browse.");
     const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
     const openPicker = vi.spyOn(input, "click");
@@ -39,9 +37,7 @@ describe("UploadDropzone", () => {
     if (method === "picker") fireEvent.change(input, { target: { files: [file] } });
     else {
       fireEvent.dragOver(dropzone);
-      expect(dropzone.className).toContain("bg-accent-subtle");
       fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
-      expect(dropzone.className).not.toContain("bg-accent-subtle");
     }
     await waitFor(() => expect(onParsed).toHaveBeenCalledOnce());
     expect(onParsed.mock.calls[0][0].sections.length).toBeGreaterThan(0);

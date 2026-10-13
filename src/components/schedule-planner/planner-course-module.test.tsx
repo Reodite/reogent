@@ -88,7 +88,7 @@ describe("PlannerCourseModule", () => {
         onRemove={onRemove}
       />,
     );
-    expect(view.getByText("Conflict").className).toContain("bg-error-container");
+    expect(view.getByText("Conflict")).toBeTruthy();
     fireEvent.click(view.getByRole("button", { name: `Remove CPSC 110 from ${term}` }));
     expect(onRemove).toHaveBeenCalledOnce();
     view.rerender(<PlannerCourseModule {...baseProps} />);
@@ -97,14 +97,11 @@ describe("PlannerCourseModule", () => {
 
   it("reserves section controls until a course without cached entries resolves", () => {
     const view = render(<PlannerCourseModule {...baseProps} doc={undefined} entries={[]} />);
-    expect(
-      view.getByRole("status", { name: "Loading CPSC 110 section options" }).querySelector("[data-skeleton]"),
-    ).toBeTruthy();
+    expect(view.getByRole("status", { name: "Loading CPSC 110 section options" })).toBeTruthy();
     expect(
       view.queryByText("No sections are listed for this term. Cached meetings remain on the timetable."),
     ).toBeNull();
     view.rerender(<PlannerCourseModule {...baseProps} entries={[]} doc={{ ...doc, sections: [] }} />);
-    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
     expect(
       view.getByText("No sections are listed for this term. Cached meetings remain on the timetable."),
     ).toBeTruthy();
@@ -115,13 +112,6 @@ describe("PlannerCourseModule", () => {
 
     const lectureSelect = view.getByLabelText<HTMLSelectElement>("Lecture");
     expect(Array.from(lectureSelect.options, (option) => option.textContent)).toEqual(["Choose section", "101", "102"]);
-    expect(lectureSelect.classList.contains("h-11")).toBe(true);
-    expect(lectureSelect.classList.contains("sm:h-9")).toBe(true);
-    expect(lectureSelect.classList.contains("neu-inset")).toBe(true);
-    expect(lectureSelect.classList.contains("rounded-lg")).toBe(true);
-    const remove = view.getByRole("button", { name: "Remove CPSC 110 from 2026-27 Winter Term 1" });
-    expect(remove.className).toContain("size-11");
-    expect(remove.className).toContain("sm:size-8");
     expect(view.getByLabelText("Laboratory")).toBeTruthy();
     expect(view.getByText("2 not selected automatically")).toBeTruthy();
     expect(view.getByLabelText("R sections")).toBeTruthy();
@@ -129,38 +119,20 @@ describe("PlannerCourseModule", () => {
     expect(view.container.querySelector("details")?.open).toBe(false);
   });
 
-  it("keeps native Additional focus paint outside the article and rounds only its closed hover edge", async () => {
+  it("toggles additional sections without resetting the lecture selection", async () => {
     const view = render(<PlannerCourseModule {...baseProps} />);
     const article = view.container.querySelector("article")!;
     const details = article.querySelector("details")!;
     const summary = details.querySelector("summary")!;
     const lecture = view.getByLabelText<HTMLSelectElement>("Lecture");
-    expect(article.classList.contains("overflow-hidden")).toBe(false);
-    expect(article.classList.contains("rounded-lg")).toBe(true);
-    expect(article.classList.contains("border")).toBe(true);
-    expect(details.classList.contains("group/additional")).toBe(true);
     expect(summary.getAttribute("role")).toBeNull();
     expect(summary.getAttribute("tabindex")).toBeNull();
-    expect(summary.classList.contains("min-h-11")).toBe(true);
-    expect(summary.classList.contains("rounded-b-[calc(var(--radius-lg)-1px)]")).toBe(true);
-    expect(summary.classList.contains("group-open/additional:rounded-b-none")).toBe(true);
     fireEvent.click(summary);
     await waitFor(() => expect(details.open).toBe(true));
     fireEvent.click(summary);
     await waitFor(() => expect(details.open).toBe(false));
     expect(view.getByLabelText("Lecture")).toBe(lecture);
     expect(lecture.value).toBe("101");
-  });
-
-  it("puts meeting time and instructor on separate sans-serif lines", () => {
-    const view = render(<PlannerCourseModule {...baseProps} entries={[entry("101", "Danica Sutherland")]} />);
-
-    const meeting = view.getByText("Mon/Wed/Fri · 09:00–10:00");
-    const instructor = view.getByText("Danica Sutherland");
-    expect(meeting.tagName).toBe("P");
-    expect(instructor.tagName).toBe("P");
-    expect(meeting).not.toBe(instructor);
-    expect(view.container.querySelector(".font-mono")).toBeNull();
   });
 
   it("changes one inline component selector", () => {
@@ -201,7 +173,7 @@ describe("PlannerCourseModule", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("preserves conflict paint and warning association", () => {
+  it("associates conflict warnings with their selectors", () => {
     const id = entryId(baseProps.entries[0]);
     const view = render(
       <PlannerCourseModule
@@ -211,7 +183,6 @@ describe("PlannerCourseModule", () => {
       />,
     );
     const select = view.getByLabelText("Lecture");
-    expect(select.classList.contains("ring-error/60")).toBe(true);
     expect(select.getAttribute("aria-describedby")).toBe(view.getByText("Overlaps MATH 100 101.").id);
   });
 

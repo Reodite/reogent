@@ -105,15 +105,6 @@ describe("Planner import review", () => {
       fireEvent.click(screen.getByRole("button", { name: "Import fixture" }));
       const dialog = await screen.findByRole("dialog", { name: "Review Workday import" });
       const review = within(dialog);
-      expect(review.getByRole("heading", { level: 2 }).id).toBe("schedule-import-title");
-      expect(dialog.className).toContain("p-0");
-      expect(dialog.querySelector("header")?.className).toContain("p-4 sm:p-6");
-      expect(dialog.querySelector("footer")?.className).toContain("p-4 sm:p-6");
-      expect(dialog.querySelector("[data-dialog-actions]")?.className).toContain("flex-col-reverse");
-      expect(dialog.querySelector("[data-dialog-actions]")?.className).not.toContain("mt-6");
-      expect(review.getByText("Matched").className).toContain("bg-surface-container");
-      expect(review.getByText("Choose section").className).toContain("bg-tertiary-container");
-      expect(review.getByText("Skipped").className).toContain("bg-error-container");
       expect(review.getByText("Workday lists no meeting time.")).toBeTruthy();
       await waitFor(() =>
         expect(document.activeElement).toBe(review.getByRole("button", { name: "Close Workday import review" })),

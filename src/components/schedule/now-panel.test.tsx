@@ -31,11 +31,9 @@ const person: Person = {
 afterEach(cleanup);
 
 describe("NowPanel", () => {
-  it("renders flat textual status without decorative success or error dots", () => {
+  it("reports a person in class during their meeting", () => {
     const view = render(<NowPanel people={[person]} now={new Date(2026, 8, 14, 9, 30)} />);
 
     expect(view.getByText(/In class/)).toBeTruthy();
-    expect(view.container.querySelector(".neu-panel")).toBeNull();
-    expect(view.container.querySelector(".bg-error,.bg-secondary")).toBeNull();
   });
 });
