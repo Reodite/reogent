@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DatasetModule, SearchClient } from "../core/types";
 import { executeTool, isToolError } from "./executor";
 
@@ -8,8 +8,10 @@ const search = {} as SearchClient;
 const spec = (name: string) => ({ name, description: "d", inputSchema: { json: {} } });
 
 describe("tool executor", () => {
-  // Feature: reodite, Property 4: Tool failures are contained
-  it("Property 4: throwing tools, unknown tools, and empty results never escape as exceptions", async () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] }));
+  afterEach(() => vi.useRealTimers());
+
+  it("contains tool failures and clears their watchdogs", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.oneof(
@@ -38,6 +40,7 @@ describe("tool executor", () => {
           expect(isToolError(result)).toBe(true);
           const err = result as { status: "error"; message: string };
           expect(err.message.length).toBeGreaterThan(0);
+          expect(vi.getTimerCount()).toBe(0);
         },
       ),
       { numRuns: 150 },
@@ -49,5 +52,16 @@ describe("tool executor", () => {
       { name: "m", indices: [], tools: [{ spec: spec("ok"), execute: async () => ({ hits: 3 }) }] },
     ];
     expect(await executeTool(modules, "ok", {}, search)).toEqual({ hits: 3 });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("returns a tool error after thirty seconds without a result", async () => {
+    const modules: DatasetModule[] = [
+      { name: "m", indices: [], tools: [{ spec: spec("stall"), execute: () => new Promise(() => {}) }] },
+    ];
+    const result = executeTool(modules, "stall", {}, search);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(await result).toEqual({ status: "error", message: "Tool timed out" });
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
