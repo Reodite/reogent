@@ -36,9 +36,6 @@ export function suggestionPrefix(query: string): string | null {
   return m[2] ? `${m[1]} ${m[2]}` : m[1];
 }
 
-/** Cap on rendered type-ahead rows; a footer row tells the user to keep typing. */
-export const SUGGESTION_CAP = 100;
-
 export interface Graph {
   nodes: Node[];
   edges: Edge[];
