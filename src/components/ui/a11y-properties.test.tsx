@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { announce, LiveRegion, readAnnouncement } from "@/src/components/ui/live-region";
+import { announce, LiveRegion } from "@/src/components/ui/live-region";
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -12,7 +12,6 @@ describe("live region announcements", () => {
     expect(region.getAttribute("aria-live")).toBe("polite");
     act(() => announce("Sources panel expanded"));
     expect(region.textContent).toBe("Sources panel expanded");
-    expect(readAnnouncement()).toBe("Sources panel expanded");
     act(() => announce("Sources panel collapsed"));
     expect(region.textContent).toBe("Sources panel collapsed");
   });

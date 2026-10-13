@@ -1,4 +1,3 @@
-import type { Avatar } from "./types";
 import { fnv1a } from "./util/hash";
 
 /** accent palette for initials chips and borders */
@@ -161,10 +160,6 @@ export function initialsFor(handle: string): string {
 export function colorFor(handle: string): string {
   const idx = parseInt(fnv1a(handle.trim().toLowerCase()), 16) % AVATAR_COLORS.length;
   return AVATAR_COLORS[idx];
-}
-
-export function defaultAvatar(handle: string): Avatar {
-  return { kind: "initials", initials: initialsFor(handle), color: colorFor(handle) };
 }
 
 const AVATAR_SIZE = 96;

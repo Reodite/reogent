@@ -16,11 +16,6 @@ export function minutesToFullLabel(min: number): string {
   return `${minutesToLabel(min)} ${ampm}`;
 }
 
-/** '9:30–11:00' style compact range */
-export function rangeLabel(startMin: number, endMin: number): string {
-  return `${minutesToLabel(startMin)}–${minutesToLabel(endMin)}`;
-}
-
 /** Date -> local ISO 'YYYY-MM-DD' */
 export function toISODate(d: Date): string {
   const y = d.getFullYear();
