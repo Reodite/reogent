@@ -196,6 +196,37 @@ describe("per-provider SDK forwarding", () => {
     },
   );
 
+  it("preserves assistant text and tool calls when sending OpenAI history", async () => {
+    await createOpenAIAdapter().converse({
+      system,
+      toolSpecs: [],
+      messages: [
+        ...emptyMsgs,
+        {
+          role: "assistant",
+          content: [
+            { text: "Checking " },
+            { toolUse: { toolUseId: "call-1", name: "get_course", input: { course_code: "CPSC 110" } } },
+            { text: "the course." },
+          ],
+        },
+        { role: "user", content: [{ toolResult: { toolUseId: "call-1", content: [{ json: { credits: 4 } }] } }] },
+      ],
+    });
+    expect(oaiRec.calls[0].messages).toEqual([
+      { role: "system", content: system },
+      { role: "user", content: "hi" },
+      {
+        role: "assistant",
+        content: "Checking the course.",
+        tool_calls: [
+          { id: "call-1", type: "function", function: { name: "get_course", arguments: '{"course_code":"CPSC 110"}' } },
+        ],
+      },
+      { role: "tool", tool_call_id: "call-1", content: '[{"credits":4}]' },
+    ]);
+  });
+
   it("rejects caller cancellation when OpenAI swallows the abort as EOF", async () => {
     const controller = new AbortController();
     const reason = new Error("Caller cancelled");
