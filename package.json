@@ -16,6 +16,7 @@
     "lint": "biome lint .",
     "test": "vitest run --passWithNoTests",
     "ingest": "node --env-file-if-exists=.env --import tsx scripts/ingest.ts",
+    "validate:documents": "node --env-file-if-exists=.env --import tsx scripts/validate-documents.ts",
     "pulse:publish": "tsx scripts/pulse-publish.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

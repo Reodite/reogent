@@ -213,6 +213,79 @@ describe("extractors — Property 19, Source-url honesty", () => {
     ]);
   });
 
+  it("keeps document search and full reads on the same assigned citation", () => {
+    const document = {
+      original_id: "prose:workday:registration",
+      title: "Registration guide",
+      category: "documents",
+      subcategory: "workday",
+      source_id: "workday",
+      source_url: "https://workday.students.ubc.ca/registration?view=student",
+      retrieved_at: "2026-09-01T12:00:00Z",
+      source_modified_at: "2026-08-01T12:00:00Z",
+      content_sha256: "a".repeat(64),
+    };
+    const searchSeeds = extract("search_ubc_pages")(
+      { pages: [{ ...document, url: "https://example.test/alias", snippets: ["Match"] }] },
+      {},
+    );
+    const readSeeds = extract("get_document")(
+      { ...document, content_markdown: "# Registration\n1. Confirm your selection." },
+      {},
+    );
+    expect(searchSeeds[0].source_url).toBe(document.source_url);
+    expect(readSeeds[0]).toEqual({ ...searchSeeds[0], tool: "get_document" });
+    const citations = allocateCitations([
+      { label: "Prior source", kind: "page", tool: "search_ubc_pages", source_url: "https://example.test/prior" },
+      ...searchSeeds,
+      ...readSeeds,
+    ]);
+    expect(citations).toHaveLength(2);
+    expect(citations[1]).toMatchObject({
+      index: 2,
+      label: document.title,
+      source_url: document.source_url,
+      detail: {
+        original_id: document.original_id,
+        category: "documents",
+        subcategory: "workday",
+        source_id: "workday",
+        retrieved_at: document.retrieved_at,
+        source_modified_at: document.source_modified_at,
+        content_sha256: document.content_sha256,
+      },
+    });
+  });
+
+  it("retains host categories and dates without merging query-selected document views", () => {
+    const document = {
+      original_id: `documents:official-web:${"b".repeat(24)}`,
+      title: "Support guide",
+      category: "documents",
+      subcategory: "support",
+      document_category: "support",
+      hostname: "it.ubc.ca",
+      source_id: "it.ubc.ca",
+      source_url: "https://it.ubc.ca/guide?view=student",
+      retrieved_at: "2026-09-01T12:00:00Z",
+      source_modified_at: "2024-01-01T00:00:00Z",
+    };
+    const seeds = [
+      ...extract("get_document")(document, {}),
+      ...extract("get_document")({ ...document, source_url: "https://it.ubc.ca/guide?view=staff" }, {}),
+    ];
+    expect(allocateCitations(seeds)).toHaveLength(2);
+    expect(seeds[0].detail).toMatchObject({
+      hostname: "it.ubc.ca",
+      document_category: "support",
+      subcategory: "support",
+      source_modified_at: document.source_modified_at,
+      retrieved_at: document.retrieved_at,
+    });
+    expect(extract("get_document")({ error: "Document not found" }, {})).toEqual([]);
+    expect(extract("get_document")(undefined, {})).toEqual([]);
+  });
+
   it("keeps housing source conditions with each fee citation", () => {
     const seeds = extract("get_costs")(
       {

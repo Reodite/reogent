@@ -77,6 +77,7 @@ describe("module registry consistency", () => {
         "find_events",
         "get_key_dates",
         "search_ubc_pages",
+        "get_document",
         "search_student_resources",
         "get_library_hours",
         "find_person",
@@ -86,11 +87,12 @@ describe("module registry consistency", () => {
     );
   });
 
-  it("keeps document corpus integration outside the UI registry", () => {
-    expect(modules.map((module) => module.name)).not.toEqual(expect.arrayContaining(["documents"]));
-    expect(modules.map((module) => module.name)).not.toEqual(expect.arrayContaining(["prose"]));
-    expect(modules.flatMap((module) => module.indices.map((index) => index.index))).not.toContain("documents");
-    expect(modules.flatMap((module) => module.tools.map((tool) => tool.spec.name))).not.toContain("get_document");
+  it("indexes complete documents alongside structured facts and legacy pages", () => {
+    const documentModule = modules.find((module) => module.name === "documents");
+    expect(documentModule?.indices).toHaveLength(1);
+    expect(documentModule?.indices[0]).toMatchObject({ index: "documents", replace: true });
+    expect(documentModule?.tools.map((tool) => tool.spec.name)).toEqual(["get_document"]);
+    expect(modules.map((module) => module.name)).toEqual(expect.arrayContaining(["pages", "undergraduate"]));
   });
 
   it("every tool spec has typed, described properties and a required list", () => {

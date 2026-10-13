@@ -37,6 +37,23 @@ describe("dataset filesystem", () => {
     expect(await dataStore().getJson("academic-calendar/vancouver/courses.json")).toEqual(rows);
   });
 
+  it("lists and reads exact UTF-8 Markdown through DATA_PATH", async () => {
+    const body = "---\n{}\n---\n# Guide\n\nCafé steps.\n";
+    await mkdir(path.join(root, "documents/support/example.ubc.ca"), { recursive: true });
+    await writeFile(path.join(root, "documents/support/example.ubc.ca/b.md"), body);
+    await writeFile(path.join(root, "documents/support/example.ubc.ca/a.md"), "Guide without final newline");
+    expect(await dataStore().list("documents/support/example.ubc.ca")).toEqual(["a.md", "b.md"]);
+    expect(await dataStore().getText("documents/support/example.ubc.ca/b.md")).toBe(body);
+    expect(await dataStore().getText("documents/support/example.ubc.ca/a.md")).toBe("Guide without final newline");
+  });
+
+  it("rejects malformed UTF-8 and missing Markdown inputs", async () => {
+    await writeFile(path.join(root, "invalid.md"), Buffer.from([0xc3, 0x28]));
+    await expect(dataStore().getText("invalid.md")).rejects.toThrow();
+    await expect(dataStore().getText("missing.md")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(dataStore().list("missing")).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("reports missing datasets and malformed JSON", async () => {
     await expect(dataStore().getJson("courses.json")).rejects.toMatchObject({ code: "ENOENT" });
     await writeFile(path.join(root, "courses.json"), "not JSON");

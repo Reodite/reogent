@@ -47,7 +47,8 @@ The module registry defines data access and presentation tools:
 | places, parking | `find_places`                                   | Campus POIs and parking facts                                      |
 | spaces          | `find_study_spaces`                             | Study-area and classroom descriptions                              |
 | events          | `find_events`                                   | Campus events                                                      |
-| pages           | `search_ubc_pages`                              | Official UBC page excerpts                                         |
+| pages           | `search_ubc_pages`                              | Relevance-ranked search across all indexed prose and legacy pages  |
+| documents       | `get_document`                                  | Complete Markdown articles with original source provenance         |
 | undergraduate   | `search_student_resources`, `get_library_hours` | Housing, libraries, support and policy source/fact records         |
 | grades          | Through `get_course` and grade widgets          | Grade distributions                                                |
 | people          | `find_person`                                   | Faculty/staff directory profiles                                   |
@@ -105,9 +106,24 @@ Room booking availability is outside the dataset and tool scope. Study-space des
 
 Datasets and crawl caches stay outside application images and standalone output. Mount `DATA_PATH` for filesystem-backed tools and ingestion.
 
+### Prose knowledge base
+
+Default ingestion reads both published prose contracts under `DATA_PATH`:
+
+- `prose/_catalog.json` declares source-based article tables, including Workday, advising, housing and student services.
+- `official-hosts.json` declares Markdown roots across support, academics, opportunities, research, news and stories. A host can span several category directories.
+
+Run `npm run validate:documents` before ingestion to check the complete catalog and host inventory offline. Missing files, count mismatches, invalid identities or content hashes stop publication. The loader preserves source URLs, nullable dates, extraction warnings and source-record references. See [PROSE.md](ubc-unified-data/PROSE.md) and [HOST-DOCUMENTS.md](ubc-unified-data/HOST-DOCUMENTS.md) for the producer contracts. Coverage means the published collections, not all UBC websites.
+
+The agent uses `search_ubc_pages` to search the `documents` and legacy `pages` indexes in one relevance-ranked Meilisearch request. The default covers all indexed topics and hosts, with no audience or date cutoff. Optional filters narrow the scope; `next_offset` requests another result page. If a hostname search finds no keyword matches, the tool returns a labeled inventory of that host's documents. Continue browsing with the returned empty `query` and `next_offset`. Search returns metadata and query-centered excerpts. The agent then calls `get_document` with the complete `original_id` before describing procedures or eligibility rules. Before finalizing a document-based answer, the agent checks that it has read the cited documents. It retracts an unverified draft and requests full reads once. If the next answer still relies on unread documents, it returns an error. Full retrieval uses Meilisearch and needs no corpus files at runtime. Dedicated tools still handle structured courses, costs, hours and other facts.
+
+Ingestion creates bounded, overlapping search sections so long articles remain searchable beyond Meilisearch's per-field word-position limit. Full retrieval preserves the original Markdown and its content hash. Treat historical announcements according to their source dates and retrieved text as untrusted material.
+
+After changing the submodule pin or search schema, validate and run `npm run ingest` against the intended Meilisearch service before serving this agent version. Use a Meilisearch release compatible with the installed SDK; integration checks use v1.54.2 from the project's `v1` image. Older servers can reject the snapshot-swap request even when search works. A missing document index is an error, rather than a fallback to a smaller corpus. Configure `MEILI_URL` and `MEILI_MASTER_KEY` for the same service; ingestion does not repair authentication failures.
+
 ### Snapshot replacement
 
-`student_resources`, `housing_fees` and `library_hours` replace their complete snapshots. Ingestion loads and validates a temporary index, waits for its tasks, then swaps it into place. This removes dated records absent from the next library-hours snapshot. A pre-swap failure leaves the previous index active; cleanup errors report failure without rolling back an already published snapshot. Other indexes retain upsert behavior.
+`documents`, `student_resources`, `housing_fees` and `library_hours` replace their complete snapshots. Ingestion loads and validates a temporary index, waits for its tasks, then swaps it into place. This removes dated records absent from the next library-hours snapshot. A pre-swap failure leaves the previous index active; cleanup errors report failure without rolling back an already published snapshot. Other indexes retain upsert behavior.
 
 Run one ingestion process per destination and allow storage for both generations during replacement. Ingestion requires a writable `DATA_PATH` for derived artifacts; the application can use a read-only data mount. Source `retrieved_at` timestamps remain distinct from index-build times and publisher modification dates.
 
@@ -121,6 +137,7 @@ git submodule update --init
 cp .env.example .env
 # Configure the secrets in .env before starting services.
 docker compose up -d postgres meilisearch
+npm run validate:documents
 npm run ingest
 npm run dev
 ```
@@ -160,15 +177,16 @@ Read [SECURITY.md](SECURITY.md) before deployment for the audit findings, verifi
 
 ## Scripts
 
-| Command                 | Action                                                         |
-| ----------------------- | -------------------------------------------------------------- |
-| `npm run dev`           | Start dev server                                               |
-| `npm run build`         | Production build                                               |
-| `npm run lint`          | Biome lint                                                     |
-| `npm test`              | Vitest (unit tests)                                            |
-| `npm run format`        | Prettier format                                                |
-| `npm run ingest`        | Index campus datasets into Meilisearch                         |
-| `npm run pulse:publish` | Publish a Pulse question round ([guide](data/pulse/README.md)) |
+| Command                      | Action                                                         |
+| ---------------------------- | -------------------------------------------------------------- |
+| `npm run dev`                | Start dev server                                               |
+| `npm run build`              | Production build                                               |
+| `npm run lint`               | Biome lint                                                     |
+| `npm test`                   | Vitest (unit tests)                                            |
+| `npm run format`             | Prettier format                                                |
+| `npm run ingest`             | Index campus datasets into Meilisearch                         |
+| `npm run validate:documents` | Validate all published prose and host documents offline        |
+| `npm run pulse:publish`      | Publish a Pulse question round ([guide](data/pulse/README.md)) |
 
 ## API endpoints
 

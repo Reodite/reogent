@@ -637,25 +637,26 @@ describe("get_key_dates (agent-tool-redesign)", () => {
 });
 
 describe("search_ubc_pages (agent-tool-redesign)", () => {
-  it("returns highlighted snippets and filters by source", async () => {
+  it("returns cropped matching snippets through federation", async () => {
     const tool = pages.tools.find((t) => t.spec.name === "search_ubc_pages")!;
-    const search = fakeSearch({
-      pages: [
-        {
-          id: "p1",
-          source: "student-services",
-          title: "Bursary",
-          url: "https://b",
-          text: "Bursary program",
-          date: null,
-        },
-      ],
-    });
+    const search = {
+      multiSearch: async () => ({
+        hits: [
+          {
+            source: "student-services",
+            title: "Bursary",
+            url: "https://b",
+            _formatted: { text: "…<mark>Bursary</mark> program…" },
+            date: null,
+          },
+        ],
+      }),
+    } as unknown as SearchClient;
     const out = (await tool.execute({ query: "bursary", source: "student-services" }, search)) as {
       pages: { snippets: string[] }[];
     };
     expect(out.pages.length).toBe(1);
-    expect(out.pages[0].snippets.length).toBeGreaterThanOrEqual(1);
+    expect(out.pages[0].snippets).toEqual(["…<mark>Bursary</mark> program…"]);
   });
 });
 

@@ -46,6 +46,9 @@ export type ConverseFn = (req: {
 
 export interface DataReader {
   getJson(key: string): Promise<unknown>;
+  getText(key: string): Promise<string>;
+  /** Lists immediate entry names within a dataset directory. */
+  list(key: string): Promise<string[]>;
 }
 
 export interface DataWriter extends DataReader {
