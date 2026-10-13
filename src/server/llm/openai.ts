@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
-import type { ContentBlock, ConverseMessage, ToolSpec } from "../core/types";
+import type { ContentBlock, ConverseFn, ConverseMessage, ToolSpec } from "../core/types";
 import { createThinkTagSplitter, stripThinkTags } from "./think-tags";
 import type { ConverseStreamEvent, LlmAdapter } from "./types";
 
@@ -68,21 +68,18 @@ export function createOpenAIAdapter(): LlmAdapter {
 
   const getModel = () => process.env.LLM_MODEL || "llama3.1";
 
-  const converse = async ({
-    messages,
-    system,
-    toolSpecs,
-  }: {
-    messages: ConverseMessage[];
-    system: string;
-    toolSpecs: ToolSpec[];
-  }) => {
-    const res = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: toOpenAIMessages(messages, system),
-      tools: toolSpecs.length ? toOpenAITools(toolSpecs) : undefined,
-      parallel_tool_calls: toolSpecs.length > 0 ? true : undefined,
-    });
+  const converse: ConverseFn = async ({ messages, system, toolSpecs, signal }) => {
+    signal?.throwIfAborted();
+    const res = await getClient().chat.completions.create(
+      {
+        model: getModel(),
+        messages: toOpenAIMessages(messages, system),
+        tools: toolSpecs.length ? toOpenAITools(toolSpecs) : undefined,
+        parallel_tool_calls: toolSpecs.length > 0 ? true : undefined,
+      },
+      { signal },
+    );
+    signal?.throwIfAborted();
 
     const choice = res.choices[0];
     const content: ContentBlock[] = [];
@@ -110,23 +107,24 @@ export function createOpenAIAdapter(): LlmAdapter {
     return { stopReason, message: { role: "assistant" as const, content } };
   };
 
-  async function* converseStream(req: {
-    messages: ConverseMessage[];
-    system: string;
-    toolSpecs: ToolSpec[];
-    forceToolUse?: boolean;
-  }): AsyncGenerator<ConverseStreamEvent> {
+  async function* converseStream(
+    req: Parameters<LlmAdapter["converseStream"]>[0],
+  ): AsyncGenerator<ConverseStreamEvent> {
+    req.signal?.throwIfAborted();
     const tools = req.toolSpecs.length ? toOpenAITools(req.toolSpecs) : undefined;
-    const stream = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: toOpenAIMessages(req.messages, req.system),
-      tools,
-      parallel_tool_calls: !!tools,
-      // Force the first turn to call a tool so the model can't answer from
-      // memory. Later turns revert to auto (called by loop.ts after a nudge).
-      ...(req.forceToolUse && tools ? { tool_choice: "required" as const } : {}),
-      stream: true,
-    });
+    const stream = await getClient().chat.completions.create(
+      {
+        model: getModel(),
+        messages: toOpenAIMessages(req.messages, req.system),
+        tools,
+        parallel_tool_calls: !!tools,
+        // Force the first turn to call a tool so the model can't answer from
+        // memory. Later turns revert to auto (called by loop.ts after a nudge).
+        ...(req.forceToolUse && tools ? { tool_choice: "required" as const } : {}),
+        stream: true,
+      },
+      { signal: req.signal },
+    );
 
     const toolCalls = new Map<number, { id: string; name: string; args: string }>();
     // Reclassifies inline <think>…</think> in content as thinking; buffers
@@ -134,6 +132,7 @@ export function createOpenAIAdapter(): LlmAdapter {
     const splitter = createThinkTagSplitter();
 
     for await (const chunk of stream) {
+      req.signal?.throwIfAborted();
       const delta = chunk.choices[0]?.delta;
       if (!delta) continue;
 
@@ -176,10 +175,14 @@ export function createOpenAIAdapter(): LlmAdapter {
         }
         toolCalls.clear();
 
+        req.signal?.throwIfAborted();
         const reason = finishReason === "tool_calls" ? "tool_use" : "end_turn";
         yield { type: "stop", reason };
+        return;
       }
     }
+    // The SDK can swallow a transport abort and end iteration without an error.
+    req.signal?.throwIfAborted();
   }
 
   return { converse, converseStream };

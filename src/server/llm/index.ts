@@ -1,4 +1,4 @@
-import type { ConverseFn, ConverseMessage, ToolSpec } from "../core/types";
+import type { ConverseFn } from "../core/types";
 import type { ConverseStreamEvent, LlmAdapter } from "./types";
 
 let adapter: LlmAdapter | undefined;
@@ -31,11 +31,6 @@ function getAdapter(): LlmAdapter {
 
 export const converse: ConverseFn = (req) => getAdapter().converse(req);
 
-export function converseStream(req: {
-  messages: ConverseMessage[];
-  system: string;
-  toolSpecs: ToolSpec[];
-  forceToolUse?: boolean;
-}): AsyncGenerator<ConverseStreamEvent> {
+export function converseStream(req: Parameters<LlmAdapter["converseStream"]>[0]): AsyncGenerator<ConverseStreamEvent> {
   return getAdapter().converseStream(req);
 }

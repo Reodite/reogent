@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ContentBlock, ConverseMessage, ToolSpec } from "../core/types";
+import type { ContentBlock, ConverseFn, ConverseMessage, ToolSpec } from "../core/types";
 import type { ConverseStreamEvent, LlmAdapter } from "./types";
 
 type AnthropicMessage = Anthropic.MessageParam;
@@ -67,22 +67,19 @@ export function createAnthropicAdapter(): LlmAdapter {
 
   const getModel = () => process.env.LLM_MODEL || "claude-sonnet-4-20250514";
 
-  const converse = async ({
-    messages,
-    system,
-    toolSpecs,
-  }: {
-    messages: ConverseMessage[];
-    system: string;
-    toolSpecs: ToolSpec[];
-  }) => {
-    const res = await getClient().messages.create({
-      model: getModel(),
-      max_tokens: 16384,
-      system,
-      messages: toAnthropicMessages(messages),
-      ...(toolSpecs.length ? { tools: toAnthropicTools(toolSpecs) } : {}),
-    });
+  const converse: ConverseFn = async ({ messages, system, toolSpecs, signal }) => {
+    signal?.throwIfAborted();
+    const res = await getClient().messages.create(
+      {
+        model: getModel(),
+        max_tokens: 16384,
+        system,
+        messages: toAnthropicMessages(messages),
+        ...(toolSpecs.length ? { tools: toAnthropicTools(toolSpecs) } : {}),
+      },
+      { signal },
+    );
+    signal?.throwIfAborted();
 
     const content: ContentBlock[] = [];
     for (const block of res.content) {
@@ -103,24 +100,27 @@ export function createAnthropicAdapter(): LlmAdapter {
     return { stopReason, message: { role: "assistant" as const, content } };
   };
 
-  async function* converseStream(req: {
-    messages: ConverseMessage[];
-    system: string;
-    toolSpecs: ToolSpec[];
-  }): AsyncGenerator<ConverseStreamEvent> {
-    const stream = getClient().messages.stream({
-      model: getModel(),
-      max_tokens: 16384,
-      system: req.system,
-      messages: toAnthropicMessages(req.messages),
-      ...(req.toolSpecs.length ? { tools: toAnthropicTools(req.toolSpecs) } : {}),
-    });
+  async function* converseStream(
+    req: Parameters<LlmAdapter["converseStream"]>[0],
+  ): AsyncGenerator<ConverseStreamEvent> {
+    req.signal?.throwIfAborted();
+    const stream = getClient().messages.stream(
+      {
+        model: getModel(),
+        max_tokens: 16384,
+        system: req.system,
+        messages: toAnthropicMessages(req.messages),
+        ...(req.toolSpecs.length ? { tools: toAnthropicTools(req.toolSpecs) } : {}),
+      },
+      { signal: req.signal },
+    );
 
     let currentToolId = "";
     let currentToolName = "";
     let currentToolInput = "";
 
     for await (const event of stream) {
+      req.signal?.throwIfAborted();
       if (event.type === "content_block_start") {
         const block = event.content_block;
         if (block.type === "thinking") {
@@ -154,10 +154,13 @@ export function createAnthropicAdapter(): LlmAdapter {
         }
       } else if (event.type === "message_stop") {
         const msg = await stream.finalMessage();
+        req.signal?.throwIfAborted();
         const reason = msg.stop_reason === "tool_use" ? "tool_use" : "end_turn";
         yield { type: "stop", reason };
+        return;
       }
     }
+    req.signal?.throwIfAborted();
   }
 
   return { converse, converseStream };

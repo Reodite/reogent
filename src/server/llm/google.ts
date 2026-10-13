@@ -6,7 +6,7 @@ import {
   type GenerateContentResponse,
   type Part,
 } from "@google/genai";
-import type { ContentBlock, ConverseMessage, ToolSpec } from "../core/types";
+import type { ContentBlock, ConverseFn, ConverseMessage, ToolSpec } from "../core/types";
 import type { ConverseStreamEvent, LlmAdapter } from "./types";
 
 function toGoogleContents(messages: ConverseMessage[]): Content[] {
@@ -86,20 +86,20 @@ export function createGoogleAdapter(): LlmAdapter {
 
   const isTransientError = (e: unknown): boolean => {
     const msg = e instanceof Error ? e.message : String(e);
-    // Quota exhaustion and hung/aborted requests are both worth retrying on
-    // the next key; anything else is a real failure.
+    // Retry quota exhaustion and transport timeouts on the next key.
+    // withKeyRotation excludes explicit caller cancellation.
     return /429|RESOURCE_EXHAUSTED|quota|timeout|aborted|ETIMEDOUT/i.test(msg);
   };
 
-  /** Runs fn, rotating to the next API key on quota/stall errors (one attempt
-   *  per key) so one exhausted account or hung connection doesn't fail the
-   *  request. */
-  async function withKeyRotation<T>(fn: (client: GoogleGenAI) => Promise<T>): Promise<T> {
+  /** Retries quota and transport timeout errors once per key, unless the caller cancels. */
+  async function withKeyRotation<T>(fn: (client: GoogleGenAI) => Promise<T>, signal?: AbortSignal): Promise<T> {
     let lastError: unknown;
     for (let attempt = 0; attempt < Math.max(clients.length, 1); attempt++) {
+      signal?.throwIfAborted();
       try {
         return await fn(nextClient());
       } catch (e) {
+        signal?.throwIfAborted();
         lastError = e;
         if (!isTransientError(e)) throw e;
       }
@@ -109,27 +109,23 @@ export function createGoogleAdapter(): LlmAdapter {
 
   const uniqueId = (name: string) => `call_${name}_${++callCounter}`;
 
-  const converse = async ({
-    messages,
-    system,
-    toolSpecs,
-  }: {
-    messages: ConverseMessage[];
-    system: string;
-    toolSpecs: ToolSpec[];
-  }) => {
+  const converse: ConverseFn = async ({ messages, system, toolSpecs, signal }) => {
     const tools = toolSpecs.length ? [{ functionDeclarations: toGoogleTools(toolSpecs) }] : undefined;
 
-    const response = await withKeyRotation((client) =>
-      client.models.generateContent({
-        model: modelName,
-        contents: toGoogleContents(messages),
-        config: {
-          systemInstruction: system,
-          ...(tools ? { tools } : {}),
-        },
-      }),
+    const response = await withKeyRotation(
+      (client) =>
+        client.models.generateContent({
+          model: modelName,
+          contents: toGoogleContents(messages),
+          config: {
+            systemInstruction: system,
+            abortSignal: signal,
+            ...(tools ? { tools } : {}),
+          },
+        }),
+      signal,
     );
+    signal?.throwIfAborted();
 
     const content: ContentBlock[] = [];
     let hasToolUse = false;
@@ -154,62 +150,90 @@ export function createGoogleAdapter(): LlmAdapter {
     return { stopReason, message: { role: "assistant" as const, content } };
   };
 
-  async function* converseStream(req: {
-    messages: ConverseMessage[];
-    system: string;
-    toolSpecs: ToolSpec[];
-    forceToolUse?: boolean;
-  }): AsyncGenerator<ConverseStreamEvent> {
+  async function* converseStream(
+    req: Parameters<LlmAdapter["converseStream"]>[0],
+  ): AsyncGenerator<ConverseStreamEvent> {
     const tools = req.toolSpecs.length ? [{ functionDeclarations: toGoogleTools(req.toolSpecs) }] : undefined;
+    const owned = new AbortController();
+    const signal = req.signal ? AbortSignal.any([req.signal, owned.signal]) : owned.signal;
+    let iterator: AsyncIterator<GenerateContentResponse> | undefined;
 
-    const stream = await withKeyRotation((client) =>
-      client.models.generateContentStream({
-        model: modelName,
-        contents: toGoogleContents(req.messages),
-        config: {
-          systemInstruction: req.system,
-          ...(tools ? { tools } : {}),
-          // Force at least one tool call so data questions can't be answered
-          // from memory. Mirrors OpenAI's tool_choice: "required".
-          ...(req.forceToolUse && tools
-            ? { toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } }
-            : {}),
-        },
-      }),
-    );
+    try {
+      const stream = await withKeyRotation(
+        (client) =>
+          client.models.generateContentStream({
+            model: modelName,
+            contents: toGoogleContents(req.messages),
+            config: {
+              systemInstruction: req.system,
+              abortSignal: signal,
+              ...(tools ? { tools } : {}),
+              // Force at least one tool call so data questions can't be answered
+              // from memory. Mirrors OpenAI's tool_choice: "required".
+              ...(req.forceToolUse && tools
+                ? { toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } }
+                : {}),
+            },
+          }),
+        signal,
+      );
+      iterator = stream[Symbol.asyncIterator]();
+      let hasToolUse = false;
+      let hasFinishReason = false;
 
-    let hasToolUse = false;
-
-    // Idle watchdog: flash models occasionally connect then stop sending
-    // chunks. Rather than hang the agent loop forever, give up waiting after
-    // STREAM_IDLE_MS of silence and finish with whatever arrived.
-    const STREAM_IDLE_MS = 15_000;
-    const iterator = stream[Symbol.asyncIterator]();
-    while (true) {
-      const next = (await Promise.race([
-        iterator.next(),
-        new Promise<{ done: true; value?: never }>((resolve) =>
-          setTimeout(() => resolve({ done: true }), STREAM_IDLE_MS),
-        ),
-      ])) as IteratorResult<GenerateContentResponse>;
-      if (next.done) break;
-      for (const part of next.value.candidates?.[0]?.content?.parts ?? []) {
-        if (part.text) {
-          yield { type: "text", delta: part.text };
-        } else if (part.functionCall?.name) {
-          hasToolUse = true;
-          yield {
-            type: "tool_use",
-            toolUseId: uniqueId(part.functionCall.name),
-            name: part.functionCall.name,
-            input: (part.functionCall.args ?? {}) as Record<string, unknown>,
-            ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
-          };
+      while (true) {
+        signal.throwIfAborted();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let onAbort: (() => void) | undefined;
+        let next: IteratorResult<GenerateContentResponse>;
+        try {
+          next = await Promise.race([
+            iterator.next(),
+            new Promise<never>((_, reject) => {
+              onAbort = () => reject(signal.reason);
+              signal.addEventListener("abort", onAbort, { once: true });
+              signal.throwIfAborted();
+              timer = setTimeout(() => reject(new Error("Google stream idle timeout")), 15_000);
+            }),
+          ]);
+        } finally {
+          clearTimeout(timer);
+          if (onAbort) signal.removeEventListener("abort", onAbort);
         }
+        signal.throwIfAborted();
+        if (next.done) break;
+        const candidate = next.value.candidates?.[0];
+        if (candidate?.finishReason && candidate.finishReason !== "FINISH_REASON_UNSPECIFIED") hasFinishReason = true;
+        for (const part of candidate?.content?.parts ?? []) {
+          signal.throwIfAborted();
+          if (part.text) {
+            yield { type: "text", delta: part.text };
+          } else if (part.functionCall?.name) {
+            hasToolUse = true;
+            yield {
+              type: "tool_use",
+              toolUseId: uniqueId(part.functionCall.name),
+              name: part.functionCall.name,
+              input: (part.functionCall.args ?? {}) as Record<string, unknown>,
+              ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
+            };
+          }
+        }
+        if (hasFinishReason) break;
+      }
+
+      signal.throwIfAborted();
+      if (!hasFinishReason) throw new Error("Google stream ended before completion");
+      yield { type: "stop", reason: hasToolUse ? "tool_use" : "end_turn" };
+    } finally {
+      owned.abort();
+      // Pending SDK reads can leave return unresolved, so cleanup must not wait for it.
+      try {
+        void iterator?.return?.().catch(() => {});
+      } catch {
+        // Ignore cleanup failures to preserve the result or primary error.
       }
     }
-
-    yield { type: "stop", reason: hasToolUse ? "tool_use" : "end_turn" };
   }
 
   return { converse, converseStream };

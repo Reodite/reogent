@@ -34,9 +34,11 @@ interface StreamAgentDeps {
   search: SearchClient;
   /** The caller's saved profile; null or absent means no defaults in the prompt. */
   profile?: StudentProfile | null;
+  signal?: AbortSignal;
 }
 
 export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDeps): AsyncGenerator<StreamEvent> {
+  const { signal } = deps;
   const toolSpecs = deps.modules.flatMap((m) => m.tools.map((t) => t.spec));
   const convo: ConverseMessage[] = messages.map((m) => ({
     role: m.role,
@@ -59,6 +61,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   const isGreeting = lastUserMsg.length < 3 || /^(hi|hello|hey|greetings|sup|yo)\b/.test(lastUserMsg);
 
   for (let i = 0; i < ITERATION_LIMIT; i++) {
+    signal?.throwIfAborted();
     if (i > 0) yield { type: "turn_start" as const };
 
     if (i === ITERATION_LIMIT - 1) {
@@ -83,14 +86,17 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
       input: Record<string, unknown>;
       thoughtSignature?: string;
     }[] = [];
-    let stopReason = "end_turn";
+    let stopReason: string | undefined;
 
+    signal?.throwIfAborted();
     for await (const event of converseStream({
       messages: convo,
       system: systemPrompt(new Date(), allocateCitations(pendingCitations), deps.profile ?? null),
       toolSpecs: budgetExceeded ? [] : toolSpecs,
       forceToolUse: !budgetExceeded && ((i === 0 && !isGreeting) || requireDocumentTool),
+      signal,
     })) {
+      signal?.throwIfAborted();
       if (event.type === "thinking") {
         yield { type: "thinking", delta: event.delta };
       } else if (event.type === "text") {
@@ -114,6 +120,8 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
         stopReason = event.reason;
       }
     }
+    signal?.throwIfAborted();
+    if (stopReason === undefined) throw new Error("Model stream ended without a stop event");
     requireDocumentTool = false;
     if (iterText.trim()) blocks.push({ text: iterText });
 
@@ -211,6 +219,7 @@ Rules:
             system: FOLLOW_UP_SYSTEM,
             messages: [{ role: "user", content: [{ text: summary }] }],
             toolSpecs: [],
+            signal,
           });
           const raw = (followUpResult.message.content ?? [])
             .map((b) => b.text)
@@ -228,7 +237,9 @@ Rules:
           // Best-effort
         }
       }
+      signal?.throwIfAborted();
       yield { type: "citations", citations: finalCitations };
+      signal?.throwIfAborted();
       yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations, follow_ups };
       return;
     }
@@ -239,10 +250,12 @@ Rules:
     }
 
     for (const { name, input } of toolUses) {
+      signal?.throwIfAborted();
       yield { type: "tool_start", name, input };
     }
     const execResults = await Promise.all(
       toolUses.map(async ({ name, input }) => {
+        signal?.throwIfAborted();
         const key = `${name}:${JSON.stringify(input)}`;
         if (callCache.has(key)) return callCache.get(key);
         const result = await executeTool(deps.modules, name, input, deps.search);
@@ -250,11 +263,13 @@ Rules:
         return result;
       }),
     );
+    signal?.throwIfAborted();
     const widgetIdx = toolUses.findIndex((tu) => tu.name === "show_widget");
     const widgetSucceeded = widgetIdx >= 0 && !isToolError(execResults[widgetIdx]);
 
     const results: ContentBlock[] = [];
     for (let i = 0; i < toolUses.length; i++) {
+      signal?.throwIfAborted();
       const { toolUseId, name, input } = toolUses[i];
       const result = execResults[i];
       toolCalls.push({ name, input, result });
@@ -307,7 +322,9 @@ Rules:
           citation.used && citation.detail?.original_id && !openedDocuments.has(citation.detail.original_id),
       );
       if (!hasUnreadSource) {
+        signal?.throwIfAborted();
         yield { type: "citations", citations: finalCitations };
+        signal?.throwIfAborted();
         yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations };
         return;
       }
@@ -332,5 +349,6 @@ Rules:
       fullText = "";
     }
   }
+  signal?.throwIfAborted();
   yield { type: "error", message: "Response limit reached. Please ask a narrower question." };
 }

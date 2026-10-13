@@ -40,6 +40,7 @@ export type ConverseFn = (req: {
   messages: ConverseMessage[];
   system: string;
   toolSpecs: ToolSpec[];
+  signal?: AbortSignal;
 }) => Promise<{ stopReason: string; message: ConverseMessage }>;
 
 // Dataset module system

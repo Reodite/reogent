@@ -1,5 +1,5 @@
 import type { Citation } from "@/src/shared/citations/citation";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { systemPrompt } from "./loop";
 
 const CITATIONS: Citation[] = [
@@ -23,16 +23,37 @@ const CITATIONS: Citation[] = [
 
 const emptyMsgs = [{ role: "user" as const, content: [{ text: "hi" }] }];
 
-const anthRec = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
-const oaiRec = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
+const anthRec = vi.hoisted(() => ({
+  calls: [] as Array<Record<string, unknown>>,
+  options: [] as Array<{ signal?: AbortSignal } | undefined>,
+}));
+const oaiRec = vi.hoisted(() => ({
+  calls: [] as Array<Record<string, unknown>>,
+  options: [] as Array<{ signal?: AbortSignal } | undefined>,
+  onStreamEnd: undefined as (() => void) | undefined,
+}));
 const googleRec = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
 
 vi.mock("@anthropic-ai/sdk", () => ({
   default: class {
     messages = {
-      async create(req: Record<string, unknown>) {
+      async create(req: Record<string, unknown>, options?: { signal?: AbortSignal }) {
         anthRec.calls.push(req);
+        anthRec.options.push(options);
         return { content: [{ type: "text", text: "ok" }], stop_reason: "end_turn" };
+      },
+      stream(req: Record<string, unknown>, options?: { signal?: AbortSignal }) {
+        anthRec.calls.push(req);
+        anthRec.options.push(options);
+        return {
+          async *[Symbol.asyncIterator]() {
+            yield { type: "content_block_delta", delta: { type: "text_delta", text: "ok" } };
+            yield { type: "message_stop" };
+          },
+          async finalMessage() {
+            return { stop_reason: "end_turn" };
+          },
+        };
       },
     };
   },
@@ -42,8 +63,19 @@ vi.mock("openai", () => ({
   default: class {
     chat = {
       completions: {
-        async create(req: Record<string, unknown>) {
+        async create(req: Record<string, unknown>, options?: { signal?: AbortSignal }) {
           oaiRec.calls.push(req);
+          oaiRec.options.push(options);
+          if (req.stream) {
+            return (async function* () {
+              yield { choices: [{ delta: { content: "ok" } }] };
+              if (oaiRec.onStreamEnd) {
+                oaiRec.onStreamEnd();
+                return;
+              }
+              yield { choices: [{ delta: {}, finish_reason: "stop" }] };
+            })();
+          }
           return { choices: [{ message: { content: "ok" }, finish_reason: "stop" }] };
         },
       },
@@ -57,6 +89,12 @@ vi.mock("@google/genai", () => ({
       async generateContent(req: Record<string, unknown>) {
         googleRec.calls.push(req);
         return { candidates: [{ content: { parts: [{ text: "ok" }] } }] };
+      },
+      async generateContentStream(req: Record<string, unknown>) {
+        googleRec.calls.push(req);
+        return (async function* () {
+          yield { candidates: [{ content: { parts: [{ text: "ok" }] }, finishReason: "STOP" }] };
+        })();
       },
     };
   },
@@ -100,29 +138,75 @@ describe("source retrieval and attribution", () => {
   });
 });
 
-describe("15.10 Per-provider system-prompt parity smoke", () => {
-  it("Anthropic forwards the system string (contract + live citation list) to its SDK verbatim", async () => {
-    const adapter = createAnthropicAdapter();
-    await adapter.converse({ messages: emptyMsgs, system, toolSpecs: [] });
-    expect(anthRec.calls).toHaveLength(1);
-    const sent = anthRec.calls[0].system as string;
-    expect(sent).toBe(system);
+describe("per-provider SDK forwarding", () => {
+  beforeEach(() => {
+    anthRec.calls.length = 0;
+    anthRec.options.length = 0;
+    oaiRec.calls.length = 0;
+    oaiRec.options.length = 0;
+    oaiRec.onStreamEnd = undefined;
+    googleRec.calls.length = 0;
   });
 
-  it("OpenAI forwards the system string as the leading system message verbatim", async () => {
-    const adapter = createOpenAIAdapter();
-    await adapter.converse({ messages: emptyMsgs, system, toolSpecs: [] });
-    expect(oaiRec.calls).toHaveLength(1);
-    const messages = oaiRec.calls[0].messages as Array<{ role: string; content: string }>;
-    expect(messages[0].role).toBe("system");
-    expect(messages[0].content).toBe(system);
-  });
+  it.each(["converse", "converseStream"] as const)(
+    "Anthropic %s forwards the system string and request signal",
+    async (method) => {
+      const adapter = createAnthropicAdapter();
+      const { signal } = new AbortController();
+      const req = { messages: emptyMsgs, system, toolSpecs: [], signal };
+      if (method === "converseStream") await Array.fromAsync(adapter.converseStream(req));
+      else await adapter.converse(req);
+      expect(anthRec.calls).toHaveLength(1);
+      expect(anthRec.calls[0].system).toBe(system);
+      expect(anthRec.options[0]?.signal).toBe(signal);
+    },
+  );
 
-  it("Google forwards the system string in systemInstruction verbatim", async () => {
-    const adapter = createGoogleAdapter();
-    await adapter.converse({ messages: emptyMsgs, system, toolSpecs: [] });
-    expect(googleRec.calls).toHaveLength(1);
-    const sent = googleRec.calls[0].config.systemInstruction as string;
-    expect(sent).toBe(system);
+  it.each(["converse", "converseStream"] as const)(
+    "OpenAI %s forwards the leading system message and request signal",
+    async (method) => {
+      const adapter = createOpenAIAdapter();
+      const { signal } = new AbortController();
+      const req = { messages: emptyMsgs, system, toolSpecs: [], signal };
+      if (method === "converseStream") await Array.fromAsync(adapter.converseStream(req));
+      else await adapter.converse(req);
+      expect(oaiRec.calls).toHaveLength(1);
+      const messages = oaiRec.calls[0].messages as Array<{ role: string; content: string }>;
+      expect(messages[0]).toEqual({ role: "system", content: system });
+      expect(oaiRec.options[0]?.signal).toBe(signal);
+    },
+  );
+
+  it.each(["converse", "converseStream"] as const)(
+    "Google %s forwards systemInstruction and request cancellation",
+    async (method) => {
+      const adapter = createGoogleAdapter();
+      const controller = new AbortController();
+      const req = { messages: emptyMsgs, system, toolSpecs: [], signal: controller.signal };
+      const stream = method === "converseStream" ? adapter.converseStream(req) : undefined;
+      if (stream) await stream.next();
+      else await adapter.converse(req);
+      expect(googleRec.calls).toHaveLength(1);
+      const config = googleRec.calls[0].config as { systemInstruction: string; abortSignal?: AbortSignal };
+      expect(config.systemInstruction).toBe(system);
+      expect(config.abortSignal?.aborted).toBe(false);
+      controller.abort();
+      expect(config.abortSignal?.aborted).toBe(true);
+      if (stream) await stream.return();
+    },
+  );
+
+  it("rejects caller cancellation when OpenAI swallows the abort as EOF", async () => {
+    const controller = new AbortController();
+    const reason = new Error("Caller cancelled");
+    oaiRec.onStreamEnd = () => controller.abort(reason);
+    const stream = createOpenAIAdapter().converseStream({
+      messages: emptyMsgs,
+      system,
+      toolSpecs: [],
+      signal: controller.signal,
+    });
+    expect((await stream.next()).value).toEqual({ type: "text", delta: "ok" });
+    await expect(stream.next()).rejects.toBe(reason);
   });
 });

@@ -11,6 +11,76 @@ import { streamAgent } from "./stream";
 const llm = vi.hoisted(() => ({ converseStream: vi.fn<LlmAdapter["converseStream"]>() }));
 vi.mock("../llm", () => ({ converse: vi.fn(), converseStream: llm.converseStream }));
 
+it.each(["before-model", "model-text", "tool-start", "tool-result", "completion"])(
+  "stops work and withholds completion when cancelled at %s",
+  async (point) => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const reason = new Error("Exchange cancelled");
+    const closed = vi.fn();
+    const execute = vi.fn(async () => {
+      if (point === "tool-result") controller.abort(reason);
+      return { kind: "card" };
+    });
+    llm.converseStream.mockImplementation(async function* () {
+      try {
+        if (point === "model-text") yield { type: "text", delta: "Partial" };
+        else yield { type: "tool_use", toolUseId: "card", name: "show_widget", input: {} };
+        yield { type: "stop", reason: point === "model-text" ? "end_turn" : "tool_use" };
+      } finally {
+        closed();
+      }
+    });
+    const events: string[] = [];
+    if (point === "before-model") controller.abort(reason);
+    const collect = async () => {
+      for await (const event of streamAgent([{ role: "user", content: "Show a course" }], {
+        modules: [
+          {
+            name: "fixture",
+            indices: [],
+            tools: [{ spec: { name: "show_widget", description: "Fixture", inputSchema: { json: {} } }, execute }],
+          },
+        ],
+        search: {} as SearchClient,
+        signal: controller.signal,
+      })) {
+        events.push(event.type);
+        if (
+          (point === "model-text" && event.type === "text") ||
+          (point === "tool-start" && event.type === "tool_start") ||
+          (point === "completion" && event.type === "citations")
+        )
+          controller.abort(reason);
+      }
+    };
+    await expect(collect()).rejects.toBe(reason);
+    expect(events).not.toContain("done");
+    expect(execute).toHaveBeenCalledTimes(point === "tool-result" || point === "completion" ? 1 : 0);
+    expect(llm.converseStream).toHaveBeenCalledTimes(point === "before-model" ? 0 : 1);
+    if (point !== "before-model") {
+      expect(llm.converseStream.mock.calls[0][0].signal).toBe(controller.signal);
+      expect(closed).toHaveBeenCalledOnce();
+    }
+  },
+);
+
+it("rejects provider EOF without a stop event instead of completing a partial answer", async () => {
+  vi.useFakeTimers();
+  llm.converseStream.mockImplementation(async function* () {
+    yield { type: "text", delta: "Partial" };
+  });
+  await expect(
+    Array.fromAsync(
+      streamAgent([{ role: "user", content: "Explain courses" }], {
+        modules: [],
+        search: {} as SearchClient,
+      }),
+    ),
+  ).rejects.toThrow("without a stop event");
+  expect(llm.converseStream).toHaveBeenCalledOnce();
+});
+
 it("stops a model that ignores tool removal at the hard turn limit", async () => {
   vi.useFakeTimers();
   let turn = 0;

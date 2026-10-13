@@ -1,4 +1,4 @@
-import type { ConverseFn, ConverseMessage, ToolSpec } from "../core/types";
+import type { ConverseFn } from "../core/types";
 
 export type ConverseStreamEvent =
   | { type: "thinking"; delta: string }
@@ -15,10 +15,5 @@ export type ConverseStreamEvent =
 
 export interface LlmAdapter {
   converse: ConverseFn;
-  converseStream(req: {
-    messages: ConverseMessage[];
-    system: string;
-    toolSpecs: ToolSpec[];
-    forceToolUse?: boolean;
-  }): AsyncGenerator<ConverseStreamEvent>;
+  converseStream(req: Parameters<ConverseFn>[0] & { forceToolUse?: boolean }): AsyncGenerator<ConverseStreamEvent>;
 }

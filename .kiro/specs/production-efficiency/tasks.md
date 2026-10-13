@@ -19,7 +19,7 @@ Apply focused TypeScript changes to existing owners. Reuse tests and tools; add 
     - Reuse existing API/pane tests; cover concurrent reuse, retry, and token rejection.
     - _Requirements: 4.2, 4.3, 4.4_
 - [ ] 3. Fix stream resource ownership
-  - [ ] 3.1 Clean up browser/provider timers and readers, and pass optional cancellation through all adapters and the agent.
+  - [x] 3.1 Clean up browser/provider timers and readers, and pass optional cancellation through all adapters and the agent.
     - Preserve successful events and source checks; add focused timer/abort regressions.
     - _Requirements: 1.1, 3.1, 3.2, 3.3, 3.10_
   - [ ] 3.2 Add route backpressure, validated chat/title limits and deadlines, and exact-once capacity release.
