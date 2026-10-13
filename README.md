@@ -40,6 +40,21 @@ Generate separate secrets for Postgres, Meilisearch, and JWT signing, for exampl
 
 Host processes use loopback service URLs; Compose replaces them with container hostnames. `npm run ingest` loads an optional root `.env` and preserves inherited environment variables.
 
+### Request resources
+
+| Variable               | Default  | Purpose                                           |
+| ---------------------- | -------- | ------------------------------------------------- |
+| `CHAT_MAX_CONCURRENT`  | `8`      | Admitted exchanges per server process             |
+| `CHAT_TIMEOUT_MS`      | `180000` | Deadline before agent completion, in milliseconds |
+| `TITLE_MAX_CONCURRENT` | `2`      | Concurrent background title operations            |
+| `TITLE_TIMEOUT_MS`     | `15000`  | Title-generation deadline, in milliseconds        |
+
+Counts must be positive safe integers. Timer durations must fit 1–2,147,483,647 milliseconds. Excess chats receive 503 with `Retry-After`; per-user rate limits still return 429. Full title capacity leaves the existing fallback title unchanged.
+
+You'll receive `done` after the required save succeeds. Disconnecting after agent completion does not discard that save attempt. Cancellation stops provider requests and new tool dispatch; tool and database operations that cannot abort can retain a slot until they settle.
+
+The browser and Google idle limits remain 60 and 15 seconds. Application read watchdogs clear when reads settle. The Google SDK retains its internal unref'd 20-second attempt timer until it fires; its API exposes no timer disposer.
+
 ## Commands
 
 | Command                                            | Purpose                                                       |
