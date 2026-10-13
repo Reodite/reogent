@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
   "css": {
     "parser": {
       "tailwindDirectives": true
@@ -87,6 +87,6 @@
     "enabled": false
   },
   "files": {
-    "includes": ["app/**", "src/**", "scripts/**", "!!.next", "!ubc-unified-data", "!ubc-unified-data/**"]
+    "includes": ["app/**", "src/**", "scripts/**", "!!.next", "!ubc-unified-data"]
   }
 }
