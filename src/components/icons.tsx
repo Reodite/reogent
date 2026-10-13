@@ -6,6 +6,7 @@ import icons from "@iconify-json/mingcute/icons.json";
 // Map of app icon names to mingcute icon IDs
 const ICON_MAP = {
   arrowUp: "arrow-up-line",
+  arrowLeft: "arrow-left-line",
   stop: "stop-fill",
   add: "add-line",
   chat1: "chat-1-line",
@@ -21,6 +22,7 @@ const ICON_MAP = {
   alert: "alert-line",
   school: "school-line",
   menu: "menu-line",
+  more: "more-1-line",
   close: "close-line",
   left: "left-line",
   right: "right-line",
@@ -38,6 +40,7 @@ const ICON_MAP = {
   check: "check-line",
   computer: "computer-line",
   calendar: "calendar-2-line",
+  calendarWeek: "calendar-week-line",
   tree: "tree-line",
   pencil: "pencil-line",
   externalLink: "external-link-line",
@@ -57,6 +60,13 @@ const ICON_MAP = {
   checkbox: "checkbox-line",
   circle: "round-line",
   file: "file-line",
+  briefcase: "briefcase-line",
+  warning: "warning-line",
+  share: "share-forward-line",
+  bookmark: "bookmark-line",
+  bookmarkFill: "bookmark-fill",
+  door: "door-line",
+  camera: "camera-line",
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

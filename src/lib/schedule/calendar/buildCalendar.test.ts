@@ -1,0 +1,203 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { commonFreeIntervals } from "../features/freeTime";
+import { defaultTermKey, deriveTerms } from "../features/terms";
+import { whoIsFreeNow } from "../features/whoIsFreeNow";
+import { parseScheduleXlsx } from "../parse/scheduleParser";
+import type { DayCode, Person, Section } from "../types";
+import { buildCalendar, expandBlocks, layoutDay, mergeBlocks } from "./buildCalendar";
+
+const SPRING = "View_Student_Registration_Saved_Schedule.xlsx";
+const FALL = "View_Student_Registration_Saved_Schedule (1).xlsx";
+
+const COGS = "Research Methods in Cognitive Systems";
+const PHIL = "Enriched Symbolic Logic";
+
+function loadExample(name: string): ArrayBuffer {
+  const buf = readFileSync(join(__dirname, "../examples", name));
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+}
+
+function makePerson(id: string, handle: string, file: string): Person {
+  return {
+    id,
+    handle,
+    avatar: { kind: "initials", initials: handle.slice(0, 2).toUpperCase(), color: "#f4845f" },
+    schedule: parseScheduleXlsx(loadExample(file), file),
+    updatedAt: "2026-06-01T00:00:00.000Z",
+    enabled: true,
+  };
+}
+
+const alice = makePerson("a1", "alice", SPRING);
+const bob = makePerson("b2", "bob", FALL);
+const aliceTwin = makePerson("c3", "casey", SPRING); // same courses as alice
+
+describe("terms", () => {
+  it("derives both terms from the group", () => {
+    const terms = deriveTerms([alice, bob]);
+    expect(terms.map((t) => t.label)).toEqual(["Fall 2026", "Spring 2027"]);
+    expect(terms[1].start).toBe("2027-01-01");
+    expect(terms[1].end).toBe("2027-04-30");
+  });
+
+  it("defaults to the term containing today, else nearest upcoming", () => {
+    const terms = deriveTerms([alice, bob]);
+    expect(defaultTermKey(terms, "2026-10-15")).toBe("2026-fall");
+    expect(defaultTermKey(terms, "2026-06-04")).toBe("2026-fall"); // before both -> upcoming
+    expect(defaultTermKey(terms, "2027-02-15")).toBe("2027-spring"); // mid-term
+    expect(defaultTermKey(terms, "2028-01-01")).toBe("2027-spring"); // after both -> latest
+  });
+
+  it("places a full-year section in Fall and Spring without leaking Spring-only classes into Fall", () => {
+    const aliceSchedule = alice.schedule;
+    if (!aliceSchedule) throw new Error("alice fixture has no schedule");
+    const fullYearSection: Section = {
+      ...aliceSchedule.sections[0],
+      id: "full-year",
+      termStart: "2026-09-08",
+      termEnd: "2027-04-09",
+    };
+    const fullYearPerson: Person = {
+      ...alice,
+      id: "full-year-person",
+      schedule: { ...aliceSchedule, sections: [fullYearSection] },
+    };
+    const terms = deriveTerms([fullYearPerson, alice]);
+    expect(terms.map((term) => term.key)).toEqual(["2026-fall", "2027-spring"]);
+
+    const fall = terms[0];
+    const fallBlocks = expandBlocks([fullYearPerson, alice], fall);
+    expect(fallBlocks.some((block) => block.section.id === "full-year")).toBe(true);
+    expect(fallBlocks.some((block) => block.person.id === alice.id)).toBe(false);
+  });
+});
+
+describe("buildCalendar", () => {
+  const terms = deriveTerms([alice, bob, aliceTwin]);
+  const spring = terms.find((t) => t.key === "2027-spring")!;
+
+  it("merges identical sections across people into one block with both avatars", () => {
+    const model = buildCalendar([alice, aliceTwin], spring);
+    const monday = model.blocksByDay.get("Mon")!;
+    const cogs = monday.find((b) => b.section.title === COGS);
+    expect(cogs).toBeDefined();
+    expect(cogs!.people.map((p) => p.handle)).toEqual(["alice", "casey"]);
+  });
+
+  it("renders each section as ONE weekly block per day", () => {
+    const model = buildCalendar([alice], spring);
+    const monday = model.blocksByDay.get("Mon")!;
+    const cogsBlocks = monday.filter((b) => b.section.title === COGS);
+    expect(cogsBlocks).toHaveLength(1);
+    expect(cogsBlocks[0].people).toHaveLength(1);
+  });
+
+  it("filters by term", () => {
+    const model = buildCalendar([alice, bob], spring);
+    const all = [...model.blocksByDay.values()].flat();
+    expect(all.some((b) => b.section.title === PHIL)).toBe(false); // bob is Fall-only
+    expect(all.some((b) => b.section.title === COGS)).toBe(true);
+  });
+
+  it("excludes disabled people", () => {
+    const model = buildCalendar([{ ...alice, enabled: false }, aliceTwin], spring);
+    const monday = model.blocksByDay.get("Mon")!;
+    const cogs = monday.find((b) => b.section.title === COGS)!;
+    expect(cogs.people.map((p) => p.handle)).toEqual(["casey"]);
+  });
+
+  it("collapses a lab listed in two rooms into ONE block naming both rooms", () => {
+    // Workday lists some labs (e.g. a chem lab spanning adjacent rooms) as two
+    // same-day/time meeting patterns differing only by room. That must render
+    // as one block, not overlapping duplicates.
+    const section: Section = {
+      id: "chem-lab",
+      courseCode: "CHEM_V 203",
+      title: "Introduction to Organic Chemistry",
+      component: "Laboratory",
+      instructors: ["Kayli Johnson"],
+      termStart: "2026-09-08",
+      termEnd: "2026-12-07",
+      meetings: [
+        { days: ["Thu"] as DayCode[], startMin: 570, endMin: 750, buildingCode: "CHEM", room: "C324", raw: "" },
+        { days: ["Thu"] as DayCode[], startMin: 570, endMin: 750, buildingCode: "CHEM", room: "C326", raw: "" },
+      ],
+    };
+    const sam: Person = {
+      id: "p1",
+      handle: "sam",
+      avatar: { kind: "initials", initials: "SA", color: "#43aa8b" },
+      schedule: { sections: [section], importedAt: "2026-07-07T00:00:00.000Z" },
+      updatedAt: "2026-07-07T00:00:00.000Z",
+      enabled: true,
+    };
+    const thu = mergeBlocks(expandBlocks([sam], null)).filter((b) => b.day === "Thu");
+    expect(thu).toHaveLength(1);
+    expect(thu[0].rooms).toEqual(["C324", "C326"]);
+    expect(thu[0].people).toHaveLength(1); // one person, not double-counted
+  });
+
+  it("assigns side-by-side columns to overlapping different courses", () => {
+    const blocks = mergeBlocks(expandBlocks([alice], spring)).filter((b) => b.day === "Mon");
+    const synthetic = {
+      ...blocks[0],
+      key: "synthetic",
+      startMin: blocks[0].startMin + 30,
+      endMin: blocks[0].endMin + 30,
+      section: { ...blocks[0].section, id: "other" },
+    };
+    const laid = layoutDay([...blocks, synthetic]);
+    const overlapped = laid.filter((b) => b.cols === 2);
+    expect(overlapped).toHaveLength(2);
+    expect(new Set(overlapped.map((b) => b.col))).toEqual(new Set([0, 1]));
+  });
+});
+
+describe("commonFreeIntervals", () => {
+  const terms = deriveTerms([alice]);
+  const spring = terms.find((t) => t.key === "2027-spring")!;
+
+  it("finds gaps between classes within the window", () => {
+    const blocks = expandBlocks([alice], spring);
+    const free = commonFreeIntervals(blocks, ["Mon"]);
+    // alice Mon: 9:30-11:00 COGS, 13:00-14:00 CPSC, 14:00-15:00 STAT
+    expect(free).toEqual([
+      { day: "Mon", startMin: 480, endMin: 570 },
+      { day: "Mon", startMin: 660, endMin: 780 },
+      { day: "Mon", startMin: 900, endMin: 1200 },
+    ]);
+  });
+
+  it("drops slivers below the minimum length", () => {
+    const blocks = expandBlocks([alice], spring);
+    const free = commonFreeIntervals(blocks, ["Mon"], 555, 1200); // window starts 9:15 -> 15min sliver
+    expect(free.some((f) => f.startMin === 555)).toBe(false);
+  });
+});
+
+describe("whoIsFreeNow", () => {
+  it("reports in-class vs free with term awareness", () => {
+    // Wed 2027-01-13 10:00 — alice is in COGS (9:30-11:00 Mon Wed)
+    const inClass = whoIsFreeNow([alice], new Date(2027, 0, 13, 10, 0));
+    expect(inClass[0].current?.section.title).toBe(COGS);
+    expect(inClass[0].current?.pattern.room).toBe("D322");
+
+    // Wed 2026-06-03 10:00 — outside alice's term entirely: free
+    const offTerm = whoIsFreeNow([alice], new Date(2026, 5, 3, 10, 0));
+    expect(offTerm[0].current).toBeNull();
+    expect(offTerm[0].next).toBeNull();
+
+    // Wed 2027-01-13 8:00 — before class: free, next is COGS at 9:30
+    const morning = whoIsFreeNow([alice], new Date(2027, 0, 13, 8, 0));
+    expect(morning[0].current).toBeNull();
+    expect(morning[0].next?.pattern.startMin).toBe(570);
+  });
+
+  it("sorts free people before in-class people", () => {
+    const statuses = whoIsFreeNow([alice, bob], new Date(2027, 0, 13, 10, 0));
+    expect(statuses[0].person.handle).toBe("bob"); // bob's term is over -> free
+    expect(statuses[1].person.handle).toBe("alice");
+  });
+});

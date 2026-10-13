@@ -1,26 +1,18 @@
 "use client";
 
-// Building popup for the campus map: click a footprint → header card with the
-// building's vitals plus swipeable carousels of rooms (Find a Space), bookable
-// study rooms (LibCal availability snapshot), and food & services (POIs).
-// Ported from the LLM-VIZ-PRACTICE popup, restyled to this app's tokens.
-//
-// Card images: when a card has a link, the image comes from /api/preview?url=
-// (server-side og:image resolution — stored thumbnails are signed URLs that go
-// stale); otherwise the stored photo. The image slot is always reserved: a
-// placeholder shows until load and stays on failure.
+// Shows building details with room and service carousels. Linked cards resolve
+// preview images through `/api/preview`; other cards use stored photos and
+// preserve the image slot on load failure.
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
-import type { BuildingDetails } from "@/src/lib/api-types";
+import { Button } from "@/src/components/ui/button";
+import { RetryState } from "@/src/components/ui/feedback";
+import { Heading } from "@/src/components/ui/heading";
+import { Skeleton, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
+import type { BuildingDetails, BuildingSummary } from "@/src/lib/api-types";
 import { useEffect, useRef, useState } from "react";
 
-export interface SelectedBuilding {
-  code: string;
-  name: string;
-  usage: string | null;
-  floors: string | null;
-  address: string | null;
-}
+export type SelectedBuilding = Pick<BuildingSummary, "code" | "name" | "usage" | "floors" | "address" | "centroid">;
 
 function Carousel({ label, children }: { label: string; children: React.ReactNode[] }) {
   const scroller = useRef<HTMLDivElement>(null);
@@ -62,7 +54,6 @@ function DetailCard({
   title,
   sub,
   meta,
-  dot,
 }: {
   /** Image URL, already chosen by the caller (direct photo or preview proxy). */
   src?: string | null;
@@ -70,15 +61,17 @@ function DetailCard({
   title: string;
   sub?: string | null;
   meta?: string | null;
-  dot?: "free" | "busy";
 }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const body = (
     <>
       <div className="bg-surface-container relative h-32 shrink-0 overflow-hidden">
-        <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-35" aria-hidden="true">
-          🏛
+        <span
+          className="text-on-surface-variant absolute inset-0 flex items-center justify-center opacity-35"
+          aria-hidden="true"
+        >
+          <Icon name="camera" size={24} />
         </span>
         {src && !failed && (
           // biome-ignore lint/performance/noImgElement: images come from arbitrary external hosts — next/image would need a remotePattern per host
@@ -92,15 +85,8 @@ function DetailCard({
           />
         )}
       </div>
-      <div className="flex flex-col gap-0.5 px-2.5 py-2">
+      <div className="flex flex-col gap-1 px-2.5 py-2">
         <span className="text-on-surface flex items-center gap-1.5 text-sm font-medium">
-          {dot && (
-            // The sub line states the availability in words; the dot is decoration.
-            <span
-              className={`size-2 shrink-0 rounded-full ${dot === "free" ? "bg-secondary" : "bg-error"}`}
-              aria-hidden="true"
-            />
-          )}
           <span className="truncate">{title}</span>
         </span>
         {sub && <span className="text-on-surface-variant text-xs">{sub}</span>}
@@ -119,13 +105,12 @@ function DetailCard({
   );
 }
 
-function Section({ title, note, children }: { title: string; note?: string | null; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-border-subtle border-t pt-2.5">
-      <h3 className="text-on-surface mb-2 text-sm font-medium">
+    <section className="ui-content-enter border-border-subtle border-t pt-3 first:border-t-0 first:pt-0">
+      <Heading as="h3" size="subsection" className="mb-2">
         {title}
-        {note && <span className="text-muted ml-1.5 text-xs font-normal">{note}</span>}
-      </h3>
+      </Heading>
       {children}
     </section>
   );
@@ -137,6 +122,8 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
   const [failed, setFailed] = useState(false);
   const [fetchNonce, setFetchNonce] = useState(0);
   const popupRef = useRef<HTMLElement>(null);
+  const roomsUnavailable = details?.sourceStatus?.rooms?.state === "unavailable";
+  const servicesUnavailable = details?.sourceStatus?.pois?.state === "unavailable";
 
   useEffect(() => {
     void fetchNonce;
@@ -144,7 +131,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
     setDetails(null);
     setFailed(false);
     api
-      .getBuildingDetails(building.code)
+      .getBuildingDetails(building.code, controller.signal)
       .then((d) => {
         if (!controller.signal.aborted) setDetails(d);
       })
@@ -156,7 +143,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
     };
   }, [api, building.code, fetchNonce]);
 
-  // Focus trap + Escape to close
+  // Moves focus to Close and lets Escape dismiss the non-modal inspector.
   useEffect(() => {
     const el = popupRef.current;
     if (!el) return;
@@ -172,63 +159,70 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
     return () => el.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  const availability = details?.availability;
   return (
     <aside
       ref={popupRef}
       role="dialog"
       aria-modal="false"
       aria-label={`${building.name} details`}
-      className="neu-panel canvas-left-inset absolute top-3 bottom-6 left-3 z-20 flex w-80 max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl"
+      className="ui-popover-enter neu-panel absolute top-3 bottom-6 left-3 z-20 flex w-80 max-w-[calc(100%-5rem)] flex-col overflow-hidden rounded-2xl"
     >
       <div className="border-border-subtle flex items-start gap-2.5 border-b px-3.5 py-3">
         <span className="bg-secondary-container text-on-secondary-container mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md">
           <Icon name="building1" size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-on-surface truncate text-base leading-snug font-medium">{building.name}</h2>
-          <p className="text-on-surface-variant mt-0.5 truncate font-mono text-xs">
+          <Heading as="h2" size="section" className="truncate">
+            {building.name}
+          </Heading>
+          <p className="text-on-surface-variant mt-1 truncate font-mono text-xs">
             {[building.code, building.usage].filter(Boolean).join(" · ")}
           </p>
           {(building.floors || building.address) && (
-            <p className="text-muted mt-0.5 truncate text-xs">
+            <p className="text-muted mt-1 truncate text-xs">
               {[building.floors && `${building.floors} floors`, building.address].filter(Boolean).join(" · ")}
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close building details"
-          className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-primary flex size-9 shrink-0 items-center justify-center rounded-md transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-        >
+        <Button onClick={onClose} aria-label="Close building details" variant="ghost" size="icon">
           <Icon name="close" size={16} />
-        </button>
+        </Button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [overscroll-behavior-y:contain] px-3.5 py-3">
         {!details && !failed && (
-          <div className="flex flex-col gap-2" role="status" aria-label="Loading details">
-            <div className="bg-surface-container h-32 animate-pulse rounded-lg" />
-            <div className="bg-surface-container h-4 w-2/3 animate-pulse rounded" />
-          </div>
+          <SkeletonGroup
+            label="Loading building details"
+            className="border-border-subtle border-t pt-3 first:border-t-0 first:pt-0"
+          >
+            <Skeleton className="mb-2 h-5 w-28" />
+            <div className="flex items-center gap-1">
+              <Skeleton className="size-11 rounded-full" />
+              <div className="bg-surface-container-low min-w-0 flex-1 overflow-hidden rounded-lg">
+                <Skeleton className="h-32 w-full rounded-none" />
+                <div className="px-2.5 py-2">
+                  <SkeletonText lines={3} />
+                </div>
+              </div>
+              <Skeleton className="size-11 rounded-full" />
+            </div>
+          </SkeletonGroup>
         )}
-        {failed && (
-          <div className="flex flex-col items-start gap-2">
-            <p className="text-on-surface-variant text-sm">Couldn&apos;t load details for this building.</p>
-            <button
-              type="button"
-              onClick={() => setFetchNonce((n) => n + 1)}
-              className="neu-button bg-surface text-on-surface flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
-            >
-              <Icon name="refresh2" size={14} />
-              Retry
-            </button>
-          </div>
-        )}
+        {failed ? (
+          <RetryState
+            className="ui-notice-enter"
+            message="Couldn't load details for this building."
+            onRetry={() => setFetchNonce((nonce) => nonce + 1)}
+            retryLabel="Retry"
+            align="start"
+            compact
+          />
+        ) : null}
         {details && (
           <>
-            {details.rooms.length > 0 && (
+            {roomsUnavailable ? (
+              <p className="ui-content-enter text-error text-sm">Room listings unavailable.</p>
+            ) : details.rooms.length > 0 ? (
               <Section title={`Rooms (${details.rooms.length})`}>
                 <Carousel label="rooms">
                   {details.rooms.map((room) => (
@@ -244,35 +238,10 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
                   ))}
                 </Carousel>
               </Section>
-            )}
-            {availability && availability.rooms.length > 0 && (
-              <Section
-                title="Study rooms"
-                note={availability.as_of ? `as of ${availability.as_of.slice(0, 10)}` : null}
-              >
-                <Carousel label="study rooms">
-                  {availability.rooms.map((room) => (
-                    <DetailCard
-                      key={room.title}
-                      // LibCal catalog thumbnails are stable direct URLs; LibCal pages rarely expose og:image
-                      src={room.thumbnail ?? (room.url ? preview(room.url) : null)}
-                      href={room.url}
-                      title={room.title}
-                      dot={room.freeNow ? "free" : "busy"}
-                      sub={
-                        room.freeNow
-                          ? `free until ${room.freeUntil ?? "end of day"}`
-                          : room.nextFree
-                            ? `free at ${room.nextFree}`
-                            : "booked today"
-                      }
-                      meta={`${room.capacity ?? "?"} people · book on LibCal`}
-                    />
-                  ))}
-                </Carousel>
-              </Section>
-            )}
-            {details.pois.length > 0 && (
+            ) : null}
+            {servicesUnavailable ? (
+              <p className="ui-content-enter text-error text-sm">Food & service listings unavailable.</p>
+            ) : details.pois.length > 0 ? (
               <Section title={`Food & services (${details.pois.length})`}>
                 <Carousel label="services">
                   {details.pois.map((poi) => (
@@ -287,9 +256,11 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
                   ))}
                 </Carousel>
               </Section>
-            )}
-            {details.rooms.length === 0 && !availability?.rooms.length && details.pois.length === 0 && (
-              <p className="text-on-surface-variant text-sm">No room or service listings for this building.</p>
+            ) : null}
+            {!roomsUnavailable && !servicesUnavailable && details.rooms.length === 0 && details.pois.length === 0 && (
+              <p className="ui-content-enter text-on-surface-variant text-sm">
+                No room or service listings for this building.
+              </p>
             )}
           </>
         )}

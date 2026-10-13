@@ -7,9 +7,9 @@ import { modules } from "@/src/server/modules";
 import { getProfile } from "@/src/server/profile";
 import { rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
-import { appendExchange } from "@/src/server/sessions/store";
+import { appendExchange, canWriteSession } from "@/src/server/sessions/store";
 import { generateSessionTitle } from "@/src/server/sessions/title";
-import { json, requireJson, serverError } from "../http";
+import { json, readJson, requireJson, serverError } from "../http";
 
 const MAX_BODY_BYTES = 256 * 1024; // 256 KB
 const CHAT_LIMIT = { windowMs: 60_000, maxRequests: 20 };
@@ -19,26 +19,21 @@ export async function POST(request: Request): Promise<Response> {
     const ctError = requireJson(request);
     if (ctError) return ctError;
 
-    // Reject oversized bodies before parsing
-    const contentLength = request.headers.get("content-length");
-    if (contentLength && parseInt(contentLength, 10) > MAX_BODY_BYTES) {
-      return json({ error: "Request body exceeds 256 KB limit" }, 413);
-    }
-
     const user = await requireUser(request);
     if (user instanceof Response) return user;
 
     const limited = rateLimitResponse(`chat:${user.sub}`, CHAT_LIMIT);
     if (limited) return limited;
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return json({ error: "Request body must be valid JSON" }, 400);
-    }
+    const result = await readJson(request, MAX_BODY_BYTES);
+    if (result instanceof Response) return result;
+    const { body } = result;
     const parsed = validateChatRequest(body);
     if (!parsed.ok) return json({ error: parsed.error }, 400);
+
+    if (parsed.value.session_id && !(await canWriteSession(user.sub, parsed.value.session_id))) {
+      return json({ error: "Session not found" }, 404);
+    }
 
     const sessionId = parsed.value.session_id ?? uuid();
     const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
@@ -109,16 +104,11 @@ export async function POST(request: Request): Promise<Response> {
             // Generate a proper title on first exchange (fire-and-forget)
             const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;
             if (isFirstExchange) {
-              generateSessionTitle(sessionId, lastUser.content, doneEvent.message);
+              generateSessionTitle(user.sub, sessionId, lastUser.content, doneEvent.message);
             }
           }
-        } catch (e) {
-          // Strip file paths and internal details before sending to client
-          const raw = e instanceof Error ? e.message : "Internal server error";
-          const message = raw
-            .replace(/\/[\w./-]+/g, "[path]")
-            .replace(/at .+:\d+:\d+/g, "")
-            .slice(0, 200);
+        } catch {
+          const message = "Could not complete the response. Please try again.";
           controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error", message })}\n`));
         } finally {
           controller.close();
@@ -129,7 +119,7 @@ export async function POST(request: Request): Promise<Response> {
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-store",
         Connection: "keep-alive",
       },
     });

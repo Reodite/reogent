@@ -1,89 +1,115 @@
 "use client";
 
-// "Plan structure" preferences block — year count + terms per year. Lives
-// at the top of the Info sidebar tab so the structural controls are grouped
-// with the program selectors. Shrinking either dimension can drop already-
-// planned blocks, so both selectors guard the change with a confirm naming
-// the loss.
-import { MAX_TERMS, MAX_YEARS, MIN_TERMS, MIN_YEARS, usePlanner } from "./planner-store";
-
-const SELECT_CLASS =
-  "neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 rounded-lg px-2 py-1 text-sm focus-visible:ring-2";
+// Plan-wide structure controls: year count, co-op participation, and a
+// faculty-specific co-op sequence helper. Summer sessions and work terms
+// remain editable on the board.
+import { Button } from "@/src/components/ui/button";
+import { Checkbox, SelectInput } from "@/src/components/ui/form-controls";
+import { COOP_SUPPORT } from "@/src/lib/coop";
+import { useState } from "react";
+import { applyCoopSequence, MAX_YEARS, MIN_YEARS, usePlanner } from "./planner-store";
 
 export function PlanStructure() {
   const years = usePlanner((s) => s.years);
-  const termsPerYear = usePlanner((s) => s.termsPerYear);
   const setYearCount = usePlanner((s) => s.setYearCount);
-  const setTermsPerYear = usePlanner((s) => s.setTermsPerYear);
+  const faculty = usePlanner((s) => s.faculty);
+  const coop = usePlanner((s) => s.coop);
+  const setCoop = usePlanner((s) => s.setCoop);
+  const [sequenceMessage, setSequenceMessage] = useState<string | null>(null);
+
+  // Co-op support uses the faculty names derived by the program index.
+  const coopInfo = faculty ? COOP_SUPPORT[faculty] : undefined;
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-on-surface text-sm font-semibold">Structure</h3>
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Years</span>
-          <select
-            value={years.length}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              if (next >= years.length) {
-                setYearCount(next);
-                return;
-              }
-              const droppedBlocks = years
-                .slice(next)
-                .reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
-              if (
-                droppedBlocks > 0 &&
-                !window.confirm(`Reducing to ${next} years will discard ${droppedBlocks} planned course(s). Continue?`)
-              ) {
-                return;
-              }
+    <div className="flex min-w-0 flex-col gap-3">
+      <label htmlFor="planner-year-count" className="flex items-center justify-between gap-2 text-sm">
+        <span className="text-on-surface-variant text-xs">Years in plan</span>
+        <SelectInput
+          id="planner-year-count"
+          value={years.length}
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            if (next >= years.length) {
               setYearCount(next);
+              return;
+            }
+            const droppedBlocks = years
+              .slice(next)
+              .reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
+            if (
+              droppedBlocks > 0 &&
+              !window.confirm(`Reducing to ${next} years will discard ${droppedBlocks} planned course(s). Continue?`)
+            ) {
+              return;
+            }
+            setYearCount(next);
+          }}
+          controlSize="compact"
+          width="auto"
+        >
+          {Array.from({ length: MAX_YEARS - MIN_YEARS + 1 }, (_, i) => MIN_YEARS + i).map((n) => (
+            <option key={n} value={n}>
+              {n} years
+            </option>
+          ))}
+        </SelectInput>
+      </label>
+
+      <div className="flex flex-col gap-1">
+        <label
+          htmlFor="planner-coop"
+          className={`hover:bg-surface-container-low flex min-h-11 items-center gap-1 rounded-lg px-1 text-left ${
+            !coopInfo && !coop ? "opacity-50" : ""
+          }`}
+        >
+          <Checkbox
+            id="planner-coop"
+            checked={coop}
+            disabled={!coopInfo && !coop}
+            onChange={(event) => {
+              setCoop(event.target.checked);
+              setSequenceMessage(null);
             }}
-            className={SELECT_CLASS}
-          >
-            {Array.from({ length: MAX_YEARS - MIN_YEARS + 1 }, (_, i) => MIN_YEARS + i).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+          />
+          <span className="text-on-surface text-xs">Co-op program</span>
         </label>
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-on-surface-variant text-xs">Terms</span>
-          <select
-            value={termsPerYear}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              if (next >= termsPerYear) {
-                setTermsPerYear(next);
-                return;
-              }
-              const droppedBlocks = years.reduce(
-                (n, y) => n + y.terms.slice(next).reduce((m, t) => m + t.blocks.length, 0),
-                0,
-              );
-              if (
-                droppedBlocks > 0 &&
-                !window.confirm(
-                  `Reducing to ${next} term${next === 1 ? "" : "s"} per year will discard ${droppedBlocks} planned course(s). Continue?`,
-                )
-              ) {
-                return;
-              }
-              setTermsPerYear(next);
-            }}
-            className={SELECT_CLASS}
-          >
-            {Array.from({ length: MAX_TERMS - MIN_TERMS + 1 }, (_, i) => MIN_TERMS + i).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+        {faculty == null && (
+          <p className="ui-content-enter text-muted text-xs">Select a faculty to check co-op availability.</p>
+        )}
+        {faculty != null && coopInfo == null && (
+          <p className="ui-content-enter text-muted text-xs">This faculty has no co-op program.</p>
+        )}
+        {faculty != null && coopInfo != null && coop && (
+          <div key={faculty} className="ui-content-enter flex flex-col gap-1">
+            <p className="text-muted text-xs">{coopInfo.blurb}</p>
+            <Button
+              size="compact"
+              wrap
+              onClick={() => {
+                const result = applyCoopSequence(faculty);
+                setSequenceMessage(
+                  result?.skippedTerms
+                    ? `Applied the sequence and kept ${result.skippedTerms} occupied term(s) unchanged.`
+                    : "Applied the co-op sequence. You can edit each work term on the board.",
+                );
+              }}
+              className="h-auto min-h-11 justify-start py-2 text-left sm:h-auto"
+            >
+              Apply typical {coopInfo.shortLabel} sequence
+            </Button>
+            {sequenceMessage && (
+              <p key={sequenceMessage} className="ui-notice-enter text-on-surface-variant text-xs" role="status">
+                {sequenceMessage}
+              </p>
+            )}
+          </div>
+        )}
       </div>
+
+      <p className="text-muted text-xs">
+        Add summer sessions beneath a year. Use “Mark as co-op work term” inside any study term to customize the
+        sequence.
+      </p>
     </div>
   );
 }

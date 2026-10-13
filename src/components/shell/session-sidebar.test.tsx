@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { useSidebarCollapsed, VersionBadge } from "./session-sidebar";
+import { BrandHeader, useSidebarCollapsed, VersionBadge } from "./session-sidebar";
 
 // happy-dom (via Node's experimental path) does not provide localStorage in
 // this Node build without --localstorage-file; install an in-memory polyfill so
@@ -24,6 +24,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   mem.clear();
+  delete document.documentElement.dataset.sidebarCollapsed;
 });
 
 afterEach(() => {
@@ -61,6 +62,22 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
     expect(screen.getByTestId("state").textContent).toBe("expanded");
   });
 
+  it("synchronizes collapsed geometry when another tab changes storage", () => {
+    mem.set("reogent.sidebar.collapsed", "1");
+    render(<Probe />);
+    expect(screen.getByTestId("state").textContent).toBe("collapsed");
+
+    mem.set("reogent.sidebar.collapsed", "0");
+    act(() =>
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: "reogent.sidebar.collapsed", oldValue: "1", newValue: "0" }),
+      ),
+    );
+
+    expect(screen.getByTestId("state").textContent).toBe("expanded");
+    expect(document.documentElement.dataset.sidebarCollapsed).toBe("false");
+  });
+
   it("round-trips collapse across remount: toggle collapsed → remount stays collapsed; toggle expanded → remount stays expanded", () => {
     render(<Probe />);
     expect(screen.getByTestId("state").textContent).toBe("expanded");
@@ -68,6 +85,7 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
     fireEvent.click(screen.getByRole("button", { name: "toggle" }));
     expect(screen.getByTestId("state").textContent).toBe("collapsed");
     expect(mem.get("reogent.sidebar.collapsed")).toBe("1");
+    expect(document.documentElement.dataset.sidebarCollapsed).toBe("true");
 
     cleanup();
     render(<Probe />);
@@ -75,10 +93,25 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
 
     fireEvent.click(screen.getByRole("button", { name: "toggle" }));
     expect(mem.get("reogent.sidebar.collapsed")).toBe("0");
+    expect(document.documentElement.dataset.sidebarCollapsed).toBe("false");
 
     cleanup();
     render(<Probe />);
     expect(screen.getByTestId("state").textContent).toBe("expanded");
+  });
+});
+
+describe("BrandHeader geometry", () => {
+  it.each([false, true])("uses the correct header height when collapsed=%s", (collapsed) => {
+    render(<BrandHeader collapsed={collapsed} />);
+    const link = screen.getByRole("link", { name: "Go to Reodite homepage" });
+    const header = link.closest("[data-sidebar-brand]")!;
+    expect(header.classList.contains(collapsed ? "h-12" : "h-15")).toBe(true);
+    expect(header.classList.contains(collapsed ? "h-15" : "h-12")).toBe(false);
+    expect(link.firstElementChild?.classList.contains("size-9")).toBe(true);
+    expect(header.getAttribute("data-sidebar-brand")).toBe(collapsed ? "collapsed" : "expanded");
+    expect(link.classList.contains("w-11")).toBe(collapsed);
+    expect(link.classList.contains("rounded-xl")).toBe(collapsed);
   });
 });
 

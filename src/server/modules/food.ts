@@ -33,7 +33,7 @@ export function transformFood(row: Row): { id: string; doc: FoodDoc } | null {
 const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /** Borrows coordinates and hours from the campus POI whose name matches the outlet's. */
-// ponytail: name-join heuristic against the poi index, one search per outlet (39 outlets); replace when food.ubc.ca exposes coordinates
+// Name-join heuristic against the poi index, one search per outlet; replace when food.ubc.ca exposes coordinates.
 async function withCoordinates(search: SearchClient, outlets: FoodDoc[]): Promise<FoodHit[]> {
   return Promise.all(
     outlets.map(async (outlet) => {

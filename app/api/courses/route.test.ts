@@ -75,6 +75,27 @@ describe("GET /api/courses", () => {
     });
   });
 
+  it("keeps code-sorted exact searches on session records", async () => {
+    search.mockResolvedValue({
+      hits: [
+        { ...fakeCourse("CPSC_V 320", "CPSC_V", "320"), session: "2025W", reported: 721, average: 74.8 },
+        { ...fakeCourse("CPSC_V 321", "CPSC_V", "321"), session: "2025W", reported: 400, average: 78 },
+      ],
+      estimatedTotalHits: 2,
+    });
+
+    const res = await GET(req("?subject=CPSC&number=320&session=2025W&sort=code"));
+    const body = await res.json();
+
+    expect(body.courses).toHaveLength(1);
+    expect(body.courses[0]).toMatchObject({ number: "320", reported: 721, average: 74.8 });
+    expect(search).toHaveBeenCalledWith("", {
+      filter: "session = '2025W' AND subject = 'CPSC_V'",
+      sort: ["code:asc"],
+      limit: 1000,
+    });
+  });
+
   it("preserves the subject-only 200-cap with estimated total", async () => {
     search.mockResolvedValue({ hits: [], estimatedTotalHits: 168 });
     const res = await GET(req("?subject=CPSC"));

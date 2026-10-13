@@ -6,7 +6,9 @@
 
 "use client";
 
+import { AssistantIdentity } from "@/src/components/chat/assistant-identity";
 import { Icon } from "@/src/components/icons";
+import { ToolResultCard } from "@/src/components/ui/tool-result-card";
 import { motion, type MotionValue } from "motion/react";
 import Image from "next/image";
 
@@ -58,30 +60,24 @@ export function ProductMock({ inView, chatZ, mapZ }: ProductMockProps) {
             animate={inView ? msgVariant.visible : msgVariant.hidden}
             transition={{ duration: 0.5, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="mb-2 flex items-center gap-2">
-              <span className="bg-primary-container text-on-primary-container flex size-7 items-center justify-center rounded-lg text-[0.6875rem] font-medium">
-                R
-              </span>
-              <span className="text-muted text-xs font-medium">Reodite</span>
-            </div>
+            <AssistantIdentity />
             <div className="bg-surface max-w-[88%] rounded-[16px_16px_16px_5px] px-4 py-3">
               <p className="text-on-surface text-sm leading-relaxed">
                 ICCS to the AMS Nest is about <span className="font-mono">680 m</span>, roughly a{" "}
                 <span className="font-medium">9 minute walk</span> heading north through campus.
               </p>
               {/* Walking distance card */}
-              <div className="bg-surface-container-low mt-3 flex items-center gap-3 rounded-lg p-3">
-                <span className="bg-secondary-container text-on-secondary-container flex size-9 shrink-0 items-center justify-center rounded-lg">
-                  <Icon name="walk" size={18} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="text-on-surface block text-base font-medium">9 min walk</span>
-                  <span className="text-on-surface-variant block truncate text-xs">680 m · ICCS → Nest</span>
-                </span>
-                <span className="border-primary text-primary shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium">
-                  Show on map
-                </span>
-              </div>
+              <ToolResultCard
+                icon="walk"
+                title={<span className="font-mono">9 min walk</span>}
+                metadata={<span className="font-mono">680 m · ICCS → Nest</span>}
+                className="mt-3"
+                action={
+                  <span className="border-primary text-primary inline-flex min-h-11 shrink-0 items-center rounded-full border px-3 py-1.5 text-xs font-medium sm:min-h-8">
+                    Show on map
+                  </span>
+                }
+              />
             </div>
           </motion.div>
 

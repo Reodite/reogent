@@ -1,14 +1,33 @@
 "use client";
 
-// Desktop/tablet collapsible map card, mobile bottom sheet, floating controls,
-// and text fallback for map load failures.
+// Hosts a Tools-only building explorer and the AI map-only canvas over one map renderer.
+import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
+import {
+  BuildingRail,
+  type BuildingDetailsState,
+  type BuildingRouteState,
+  type RouteEndpoint,
+} from "@/src/components/map/building-rail";
 import { CampusMap, type MapControls, type MapStatus } from "@/src/components/map/campus-map";
+import { useApi } from "@/src/components/providers";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { RetryState } from "@/src/components/ui/feedback";
+import { Skeleton, SkeletonGroup, SkeletonList } from "@/src/components/ui/skeleton";
+import { WorkspaceCanvas, WorkspacePage, WorkspacePanel } from "@/src/components/ui/workspace";
+import type { BuildingSummary } from "@/src/lib/api-types";
+import {
+  buildingsFromGeoJson,
+  formatBuildingUrl,
+  normalizeBuildingText,
+  parseBuildingParam,
+  popularBuildings,
+} from "@/src/lib/building-catalog";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
-import type { MapHighlight } from "@/src/lib/walking";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { drawableRoutePath, type MapHighlight } from "@/src/lib/walking";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 /** Primary label for a map highlight (title line). */
 function highlightTitle(h: MapHighlight): string {
@@ -21,7 +40,10 @@ function highlightTitle(h: MapHighlight): string {
 
 /** Secondary label for a map highlight (detail line). */
 function highlightSubtitle(h: MapHighlight): string {
-  if (h.kind === "route") return `${formatMeters(h.meters)} · ${h.from} → ${h.to}`;
+  if (h.kind === "route") {
+    const label = h.method === "estimate" ? "Straight-line estimate" : "Walking route";
+    return `${label} · ${formatMeters(h.meters)} · ${h.from} → ${h.to}`;
+  }
   if (h.kind === "buildings") return h.buildings.map((b) => b.code).join(" · ");
   return h.near ? `near ${h.near}` : (h.places[0]?.name ?? "");
 }
@@ -29,7 +51,9 @@ function highlightSubtitle(h: MapHighlight): string {
 /** Text-only fallback description when the map fails to load. */
 function highlightFallback(h: MapHighlight): string {
   if (h.kind === "route") {
-    return `${formatMeters(h.meters)}, about ${formatMinutes(h.minutes)} walking from ${h.from} to ${h.to}.`;
+    return h.method === "estimate"
+      ? `Straight-line estimate: ${formatMeters(h.meters)} between ${h.from} and ${h.to}.`
+      : `${formatMeters(h.meters)}, about ${formatMinutes(h.minutes)} walking from ${h.from} to ${h.to}.`;
   }
   if (h.kind === "buildings") return h.buildings.map((b) => `${b.name} (${b.code})`).join(", ");
   return h.places.map((p) => p.name).join(", ") + (h.near ? ` — near ${h.near}` : "");
@@ -53,7 +77,7 @@ function GlassButton({
       aria-label={label}
       title={label}
       aria-pressed={pressed}
-      className={`focus-visible:ring-primary/40 neu-panel flex size-10 items-center justify-center rounded-2xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
+      className={`focus-visible:ring-primary/40 neu-panel flex size-11 items-center justify-center rounded-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-10 ${
         pressed ? "text-primary" : "text-on-surface-variant hover:text-primary"
       }`}
     >
@@ -62,9 +86,7 @@ function GlassButton({
   );
 }
 
-function RouteInfoCard() {
-  const { highlight } = useChatShell();
-  const reduce = useReducedMotion();
+function RouteInfoCard({ highlight }: { highlight: MapHighlight | null }) {
   const key = highlight
     ? highlight.kind === "route"
       ? `${highlight.from}-${highlight.to}`
@@ -74,15 +96,11 @@ function RouteInfoCard() {
     : "";
 
   return (
-    <AnimatePresence mode="wait">
+    <>
       {highlight && (
-        <motion.div
-          key={key}
-          initial={reduce ? false : { opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="neu-panel flex items-center gap-2.5 rounded-2xl px-3 py-2"
+        <div
+          key={`${highlight.kind}:${key}`}
+          className="ui-notice-enter neu-panel flex items-center gap-2.5 rounded-2xl px-3 py-2"
         >
           <span className="bg-secondary-container text-on-secondary-container flex size-8 items-center justify-center rounded-md">
             <Icon name={highlight.kind === "route" ? "walk" : "location"} size={18} />
@@ -93,42 +111,169 @@ function RouteInfoCard() {
             </span>
             <span className="text-on-surface-variant block truncate text-xs">{highlightSubtitle(highlight)}</span>
           </span>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }
 
-function MapFallback({ onRetry }: { onRetry?: () => void }) {
-  const { highlight } = useChatShell();
+function MapExploreSheet({
+  open,
+  mode,
+  selected,
+  route,
+  onOpenChange,
+  children,
+}: {
+  open: boolean;
+  mode: "discover" | "details" | "directions";
+  selected: BuildingSummary | null;
+  route: BuildingRouteState;
+  onOpenChange: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  const contentId = useId();
+  const handleRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previousOpenRef = useRef(open);
+  const routeReady = route.status === "network" || route.status === "estimate";
+  const routeEstimate = route.status === "estimate";
+  const title = routeReady
+    ? routeEstimate
+      ? `${formatMeters(route.route.meters)} estimate`
+      : `${formatMinutes(route.route.minutes)} walk`
+    : mode === "details" && selected
+      ? selected.name
+      : mode === "directions"
+        ? "Directions"
+        : "Explore campus";
+  const subtitle = routeReady
+    ? routeEstimate
+      ? `${route.from.code} → ${route.to.code} · Straight-line only`
+      : `${route.from.code} → ${route.to.code} · ${formatMeters(route.route.meters)}`
+    : mode === "details"
+      ? "Building details"
+      : mode === "directions"
+        ? route.status === "loading"
+          ? "Finding a walking route…"
+          : "Choose a starting building"
+        : "Buildings, rooms, services";
+
+  useEffect(() => {
+    const wasOpen = previousOpenRef.current;
+    previousOpenRef.current = open;
+    if (!wasOpen || open || !contentRef.current?.contains(document.activeElement)) return;
+    const handle = handleRef.current;
+    if (handle && window.getComputedStyle(handle).display !== "none") handle.focus();
+  }, [open]);
+
   return (
-    <div
-      role="status"
-      className="bg-surface-container-low flex h-full flex-col items-center justify-center gap-2 px-6 text-center"
+    <fieldset
+      data-map-explore-sheet
+      data-sheet-open={open || undefined}
+      className="m-0 flex h-full min-h-0 min-w-0 flex-col border-0 p-0"
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !open || event.defaultPrevented) return;
+        event.preventDefault();
+        onOpenChange(false);
+        requestAnimationFrame(() => handleRef.current?.focus());
+      }}
     >
-      <Icon name="wifiOff" size={32} className="text-muted" />
-      <p className="text-body-sm text-on-surface-variant">Map couldn&apos;t load. Route details are shown below.</p>
-      {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="neu-button bg-surface text-on-surface mt-2 flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-medium"
+      <legend className="sr-only">Explore panel</legend>
+      <button
+        ref={handleRef}
+        type="button"
+        data-map-sheet-handle
+        aria-expanded={open}
+        aria-controls={contentId}
+        aria-label={open ? "Collapse Explore" : "Open Explore"}
+        onClick={() => onOpenChange(!open)}
+        className="focus-visible:ring-primary/40 relative min-h-16 w-full shrink-0 items-center gap-3 px-4 pt-3 pb-2 text-left focus-visible:ring-2 focus-visible:ring-inset"
+      >
+        <span className="bg-outline/35 absolute top-1.5 left-1/2 h-1 w-9 -translate-x-1/2 rounded-full" aria-hidden />
+        <span
+          data-map-sheet-summary
+          className="bg-primary-container text-on-primary-container flex size-9 shrink-0 items-center justify-center rounded-lg"
         >
-          <Icon name="refresh2" size={14} />
-          Retry
-        </button>
-      )}
-      {highlight && <p className="text-on-surface max-w-60 text-sm">{highlightFallback(highlight)}</p>}
-    </div>
+          <Icon
+            name={routeEstimate ? "location" : routeReady ? "walk" : mode === "details" ? "location" : "search"}
+            size={18}
+          />
+        </span>
+        <span data-map-sheet-summary className="min-w-0 flex-1">
+          <span className="text-on-surface block truncate text-sm font-medium">{title}</span>
+          <span className="text-muted block truncate text-xs">{subtitle}</span>
+        </span>
+        <span data-map-sheet-chevron className="text-on-surface-variant shrink-0">
+          <Icon name="down" size={16} className={`transition-transform duration-200 ${open ? "" : "rotate-180"}`} />
+        </span>
+      </button>
+      <div ref={contentRef} id={contentId} data-map-sheet-content className="min-h-0 flex-1">
+        {children}
+      </div>
+    </fieldset>
   );
 }
 
-function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) {
-  const { highlight, focusNonce } = useChatShell();
+function MapFallback({ highlight, onRetry }: { highlight: MapHighlight | null; onRetry?: () => void }) {
+  if (!onRetry) return null;
+  return (
+    <RetryState
+      icon="wifiOff"
+      title="Map unavailable"
+      message={
+        highlight ? "The map couldn't load. Route details remain available below." : "The campus map couldn't load."
+      }
+      onRetry={onRetry}
+      retryLabel="Retry"
+      className="bg-surface-container-low h-full justify-center px-6"
+    >
+      {highlight ? <p className="text-on-surface max-w-60 text-sm">{highlightFallback(highlight)}</p> : null}
+    </RetryState>
+  );
+}
+
+interface MapSurfaceProps {
+  hideHighlightCard?: boolean;
+  highlight?: MapHighlight | null;
+  selectedBuilding?: BuildingSummary | null;
+  onBuildingSelect?: (building: BuildingSummary | null) => void;
+  showBuildingPopup?: boolean;
+  controlsRef?: React.RefObject<MapControls | null>;
+}
+
+function MapSurface({
+  hideHighlightCard,
+  highlight: highlightOverride,
+  selectedBuilding,
+  onBuildingSelect,
+  showBuildingPopup,
+  controlsRef,
+}: MapSurfaceProps) {
+  const shell = useChatShell();
+  const highlight = highlightOverride === undefined ? shell.highlight : highlightOverride;
+  const focusNonce = shell.focusNonce;
   const [showRoutes, setShowRoutes] = useState(false);
   const [status, setStatus] = useState<MapStatus>("loading");
   const [mapKey, setMapKey] = useState(0);
-  const controls = useRef<MapControls | null>(null);
+  const internalControls = useRef<MapControls | null>(null);
+  const controls = controlsRef ?? internalControls;
+  const surfaceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    if (!surface || typeof ResizeObserver === "undefined") return;
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => controls.current?.resize());
+    });
+    observer.observe(surface);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [controls]);
 
   // Timeout: if map stays loading for 15s, treat as error
   useEffect(() => {
@@ -143,9 +288,14 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
   }
 
   return (
-    <div className="relative h-full w-full" aria-busy={status === "loading"} data-map-status={status}>
+    <div
+      ref={surfaceRef}
+      className="relative h-full w-full overflow-hidden rounded-[inherit]"
+      aria-busy={status === "loading"}
+      data-map-status={status}
+    >
       {status === "error" ? (
-        <MapFallback onRetry={retryMap} />
+        <MapFallback highlight={highlight} onRetry={retryMap} />
       ) : (
         <>
           <CampusMap
@@ -153,17 +303,22 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
             highlight={highlight}
             focusNonce={focusNonce}
             showRoutes={showRoutes}
+            selectedBuilding={selectedBuilding}
+            onBuildingSelect={onBuildingSelect}
+            showBuildingPopup={showBuildingPopup}
             onStatus={setStatus}
             controls={controls}
           />
           {status === "loading" && (
-            <div className="bg-surface-container-low absolute inset-0 animate-pulse" aria-hidden="true" />
+            <SkeletonGroup label="Loading campus map" className="pointer-events-none absolute inset-0">
+              <Skeleton className="h-full w-full rounded-none" />
+            </SkeletonGroup>
           )}
 
-          {/* Route info — floating top-left (hidden in mobile sheet where header shows it) */}
-          {!hideOverlayControls && (
-            <div className="canvas-left-inset absolute top-3 left-3 z-10 max-w-[75%]">
-              <RouteInfoCard />
+          {/* AI keeps a compact highlight summary; Tools uses its rail or bottom sheet. */}
+          {!hideHighlightCard && (
+            <div className="absolute top-3 left-3 z-10 max-w-[75%]">
+              <RouteInfoCard highlight={highlight} />
             </div>
           )}
 
@@ -179,12 +334,12 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
           </div>
 
           {/* Zoom — floating bottom-right */}
-          <div className="neu-panel absolute right-3 bottom-6 z-10 flex flex-col overflow-hidden rounded-xl">
+          <div data-map-zoom-controls className="neu-panel absolute right-3 bottom-6 z-10 flex flex-col rounded-xl">
             <button
               type="button"
               aria-label="Zoom in"
               onClick={() => controls.current?.zoomIn()}
-              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-11 items-center justify-center rounded-t-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-10"
             >
               <Icon name="add" size={20} />
             </button>
@@ -193,7 +348,7 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
               type="button"
               aria-label="Zoom out"
               onClick={() => controls.current?.zoomOut()}
-              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-10 items-center justify-center transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+              className="focus-visible:ring-primary/40 text-on-surface-variant hover:text-primary flex size-11 items-center justify-center rounded-b-xl transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-10"
             >
               <Icon name="minimize" size={20} />
             </button>
@@ -204,12 +359,530 @@ function MapSurface({ hideOverlayControls }: { hideOverlayControls?: boolean }) 
   );
 }
 
-/** Registry-facing map pane. Shutdown of the active widget routes through the
- * shell's workspaceView + the Answer Canvas header collapse button. */
-export function MapArea() {
+function writeBuildingParam(building: BuildingSummary | null): void {
+  const url = new URL(window.location.href);
+  if (building) url.searchParams.set("building", building.code);
+  else url.searchParams.delete("building");
+  window.history.pushState(null, "", url);
+}
+
+function BuildingCatalogLoading() {
   return (
-    <div className="relative h-full w-full">
-      <MapSurface />
+    <WorkspacePanel title="Explore" bodyMode="contained" padding="none">
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="shrink-0 px-4 py-3">
+          <Skeleton className="h-11 w-full rounded-lg sm:h-9" />
+        </div>
+        <SkeletonList
+          label="Loading building catalog"
+          rows={6}
+          icon
+          padding="none"
+          className="min-h-0 flex-1 overflow-hidden px-5 py-3"
+        />
+      </div>
+    </WorkspacePanel>
+  );
+}
+
+function CampusMapExplorer() {
+  const api = useApi();
+  const auth = useAppAuth();
+  const navigation = useShellNavigation();
+  const searchParams = useSearchParams();
+  const shell = useChatShell();
+  const [catalog, setCatalog] = useState<BuildingSummary[]>([]);
+  const [catalogStatus, setCatalogStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [catalogNonce, setCatalogNonce] = useState(0);
+  const [query, setQuery] = useState("");
+  const [routeQuery, setRouteQuery] = useState("");
+  const [routeOrigin, setRouteOrigin] = useState<BuildingSummary | null>(null);
+  const [routeField, setRouteField] = useState<RouteEndpoint | null>(null);
+  const [endpointError, setEndpointError] = useState<string | null>(null);
+  const [selectedCode, setSelectedCode] = useState<string | null>(
+    () => normalizeBuildingText(searchParams.get("building") ?? "") || null,
+  );
+  const selectedCodeRef = useRef(selectedCode);
+  const [railMode, setRailMode] = useState<"discover" | "details" | "directions">(
+    selectedCode ? "details" : "discover",
+  );
+  const [sheetOpen, setSheetOpen] = useState(Boolean(selectedCode));
+  const [details, setDetails] = useState<BuildingDetailsState>({ status: "idle" });
+  const [detailsNonce, setDetailsNonce] = useState(0);
+  const [favoriteCodes, setFavoriteCodes] = useState<string[]>([]);
+  const [favoriteStatus, setFavoriteStatus] = useState<"idle" | "loading" | "saving" | "error">("idle");
+  const [route, setRoute] = useState<BuildingRouteState>({ status: "idle" });
+  const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied" | "copy" | "error">("idle");
+  const controls = useRef<MapControls | null>(null);
+  const routeController = useRef<AbortController | null>(null);
+  const authenticated = auth.status === "signedIn" && !auth.isGuest;
+  const selected = useMemo(() => parseBuildingParam(selectedCode, catalog), [catalog, selectedCode]);
+  const favoriteSet = useMemo(() => new Set(favoriteCodes), [favoriteCodes]);
+  const curated = useMemo(() => popularBuildings(catalog), [catalog]);
+  const selectionError =
+    catalogStatus === "ready" && selectedCode && !selected
+      ? `Building “${selectedCode}” is not in the current catalog.`
+      : null;
+  const routeHighlight = useMemo<MapHighlight | null>(() => {
+    if (route.status !== "network" && route.status !== "estimate") return null;
+    const path = drawableRoutePath(route.route);
+    return {
+      kind: "route",
+      from: route.route.from,
+      to: route.route.to,
+      meters: route.route.meters,
+      minutes: route.route.minutes,
+      method: route.route.method,
+      ...(path ? { path } : {}),
+    };
+  }, [route]);
+  const mapHighlight = useMemo<MapHighlight | null>(() => {
+    if (routeHighlight) return routeHighlight;
+    if (!selected) return shell.highlight;
+    return {
+      kind: "buildings",
+      buildings: [
+        {
+          code: selected.code,
+          name: selected.name,
+          lon: selected.centroid[0],
+          lat: selected.centroid[1],
+        },
+      ],
+    };
+  }, [routeHighlight, selected, shell.highlight]);
+
+  useEffect(() => {
+    void catalogNonce;
+    let cancelled = false;
+    setCatalogStatus("loading");
+    api
+      .getGeo("buildings")
+      .then((collection) => {
+        if (cancelled) return;
+        const next = buildingsFromGeoJson(collection);
+        setCatalog(next);
+        setCatalogStatus(next.length > 0 ? "ready" : "error");
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, catalogNonce]);
+
+  useEffect(() => {
+    const code = normalizeBuildingText(searchParams.get("building") ?? "") || null;
+    if (code === selectedCodeRef.current) return;
+    routeController.current?.abort();
+    routeController.current = null;
+    setRoute({ status: "idle" });
+    setRouteOrigin(null);
+    setRouteField(null);
+    setRouteQuery("");
+    setEndpointError(null);
+    setShareStatus("idle");
+    selectedCodeRef.current = code;
+    setSelectedCode(code);
+    setRailMode(code ? "details" : "discover");
+    setSheetOpen(Boolean(code));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!selected) {
+      setDetails({ status: "idle" });
+      return;
+    }
+    void detailsNonce;
+    const controller = new AbortController();
+    const code = selected.code;
+    setDetails({ status: "loading" });
+    api
+      .getBuildingDetails(code, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted && selectedCodeRef.current === code) setDetails({ status: "ready", data });
+      })
+      .catch((error) => {
+        if (
+          !controller.signal.aborted &&
+          selectedCodeRef.current === code &&
+          !(error instanceof DOMException && error.name === "AbortError")
+        ) {
+          setDetails({ status: "error" });
+        }
+      });
+    return () => controller.abort();
+  }, [api, detailsNonce, selected]);
+
+  useEffect(() => {
+    if (!authenticated) {
+      setFavoriteCodes([]);
+      setFavoriteStatus("idle");
+      return;
+    }
+    let cancelled = false;
+    setFavoriteStatus("loading");
+    api
+      .getBuildingFavorites()
+      .then(({ codes }) => {
+        if (cancelled) return;
+        setFavoriteCodes(codes);
+        setFavoriteStatus("idle");
+      })
+      .catch(() => {
+        if (!cancelled) setFavoriteStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, authenticated]);
+
+  const abortRouteRequest = useCallback(() => {
+    routeController.current?.abort();
+    routeController.current = null;
+  }, []);
+
+  useEffect(() => () => abortRouteRequest(), [abortRouteRequest]);
+
+  const selectBuilding = useCallback(
+    (building: BuildingSummary | null) => {
+      abortRouteRequest();
+      setRoute({ status: "idle" });
+      setRouteOrigin(null);
+      setRouteField(null);
+      setRouteQuery("");
+      setEndpointError(null);
+      setShareStatus("idle");
+      const code = building?.code ?? null;
+      const changed = code !== selectedCodeRef.current;
+      selectedCodeRef.current = code;
+      setSelectedCode(code);
+      setRailMode(building ? "details" : "discover");
+      if (building) setSheetOpen(true);
+      if (changed) writeBuildingParam(building);
+    },
+    [abortRouteRequest],
+  );
+
+  const runRoute = useCallback(
+    (origin: BuildingSummary, destination: BuildingSummary) => {
+      if (origin.code === destination.code) {
+        setEndpointError("Choose two different buildings.");
+        setSheetOpen(true);
+        return;
+      }
+      abortRouteRequest();
+      const controller = new AbortController();
+      routeController.current = controller;
+      setEndpointError(null);
+      setRouteOrigin(origin);
+      setRoute({ status: "loading", from: origin, to: destination });
+      api
+        .getRoute(origin.code, destination.code, controller.signal)
+        .then((result) => {
+          if (controller.signal.aborted || routeController.current !== controller) return;
+          const path = drawableRoutePath(result);
+          if (result.method === "network" && !path) {
+            routeController.current = null;
+            setRoute({ status: "error", from: origin, to: destination });
+            return;
+          }
+          routeController.current = null;
+          const status = result.method === "network" ? "network" : "estimate";
+          setRoute({ status, from: origin, to: destination, route: result });
+          if (status === "network") setSheetOpen(false);
+        })
+        .catch((error) => {
+          if (
+            routeController.current === controller &&
+            !controller.signal.aborted &&
+            !(error instanceof DOMException && error.name === "AbortError")
+          ) {
+            routeController.current = null;
+            setRoute({ status: "error", from: origin, to: destination });
+          }
+        });
+    },
+    [abortRouteRequest, api],
+  );
+
+  const editRouteField = useCallback(
+    (field: RouteEndpoint | null) => {
+      if (!field) {
+        setRouteField(null);
+        setRouteQuery("");
+        setEndpointError(null);
+        return;
+      }
+      if (route.status === "loading") {
+        abortRouteRequest();
+        setRoute({ status: "idle" });
+      }
+      setEndpointError(null);
+      setRouteField(field);
+      setRouteQuery(field === "origin" ? (routeOrigin?.name ?? "") : (selected?.name ?? ""));
+      setSheetOpen(true);
+    },
+    [abortRouteRequest, route.status, routeOrigin, selected],
+  );
+
+  const selectRouteEndpoint = useCallback(
+    (field: RouteEndpoint, building: BuildingSummary) => {
+      const nextOrigin = field === "origin" ? building : routeOrigin;
+      const nextDestination = field === "destination" ? building : selected;
+      if (!nextDestination) return;
+      if (nextOrigin?.code === nextDestination.code) {
+        setEndpointError("Choose two different buildings.");
+        return;
+      }
+
+      setEndpointError(null);
+      setRouteField(null);
+      setRouteQuery("");
+      if (field === "origin") {
+        setRouteOrigin(building);
+      } else if (building.code !== selectedCodeRef.current) {
+        selectedCodeRef.current = building.code;
+        setSelectedCode(building.code);
+        setShareStatus("idle");
+        writeBuildingParam(building);
+      }
+
+      if (nextOrigin) {
+        runRoute(nextOrigin, nextDestination);
+      } else {
+        setRoute({ status: "idle" });
+        setRouteField("origin");
+      }
+    },
+    [routeOrigin, runRoute, selected],
+  );
+
+  const selectMapBuilding = useCallback(
+    (building: BuildingSummary | null) => {
+      if (building && railMode === "directions" && routeField) {
+        selectRouteEndpoint(routeField, building);
+      } else {
+        selectBuilding(building);
+      }
+    },
+    [railMode, routeField, selectBuilding, selectRouteEndpoint],
+  );
+
+  async function toggleFavorite(code: string) {
+    if (favoriteStatus === "loading" || favoriteStatus === "saving") return;
+    if (!authenticated) {
+      setFavoriteStatus("error");
+      return;
+    }
+    const previous = favoriteCodes;
+    const saved = !favoriteSet.has(code);
+    setFavoriteCodes(
+      saved ? [code, ...previous.filter((item) => item !== code)] : previous.filter((item) => item !== code),
+    );
+    setFavoriteStatus("saving");
+    try {
+      const response = await api.setBuildingFavorite(code, saved);
+      setFavoriteCodes(response.codes);
+      setFavoriteStatus("idle");
+    } catch {
+      setFavoriteCodes(previous);
+      setFavoriteStatus("error");
+    }
+  }
+
+  async function copyBuildingLink() {
+    if (!selected) return;
+    const url = formatBuildingUrl(new URL(window.location.href), selected.code).href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareStatus("copied");
+    } catch {
+      setShareStatus("error");
+    }
+  }
+
+  async function shareBuilding() {
+    if (!selected) return;
+    const url = formatBuildingUrl(new URL(window.location.href), selected.code).href;
+    setShareStatus("idle");
+    if (!navigator.share) {
+      await copyBuildingLink();
+      return;
+    }
+    try {
+      await navigator.share({ title: selected.name, url });
+      setShareStatus("shared");
+    } catch {
+      setShareStatus("copy");
+    }
+  }
+
+  function openGoogleMaps() {
+    if (!selected) return;
+    const url = new URL("https://www.google.com/maps/search/");
+    url.searchParams.set("api", "1");
+    url.searchParams.set("query", `${selected.centroid[1]},${selected.centroid[0]}`);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  const rail =
+    catalogStatus === "loading" ? (
+      <BuildingCatalogLoading />
+    ) : catalogStatus === "error" ? (
+      <WorkspacePanel title="Explore">
+        <RetryState
+          title="Building catalog unavailable"
+          message="The map can stay open while you retry building search."
+          onRetry={() => setCatalogNonce((nonce) => nonce + 1)}
+          compact
+          className="min-h-full justify-center"
+        />
+      </WorkspacePanel>
+    ) : (
+      <BuildingRail
+        mode={selected ? railMode : "discover"}
+        query={query}
+        routeQuery={routeQuery}
+        routeOrigin={routeOrigin}
+        routeField={routeField}
+        endpointError={endpointError}
+        catalog={catalog}
+        popular={curated}
+        favorites={favoriteSet}
+        favoriteStatus={favoriteStatus}
+        authenticated={authenticated}
+        selected={selected}
+        details={details}
+        route={route}
+        shareStatus={shareStatus}
+        selectionError={selectionError}
+        onQueryChange={setQuery}
+        onRouteQueryChange={(nextQuery) => {
+          setEndpointError(null);
+          setRouteQuery(nextQuery);
+        }}
+        onRouteFieldChange={editRouteField}
+        onRouteEndpointSelect={selectRouteEndpoint}
+        onSelect={selectBuilding}
+        onBack={() => {
+          if (railMode === "directions") {
+            abortRouteRequest();
+            setRailMode("details");
+            setRoute({ status: "idle" });
+            setRouteOrigin(null);
+            setRouteField(null);
+            setRouteQuery("");
+            setEndpointError(null);
+          } else {
+            selectBuilding(null);
+          }
+        }}
+        onDirections={() => {
+          abortRouteRequest();
+          setRailMode("directions");
+          setSheetOpen(true);
+          setRoute({ status: "idle" });
+          setRouteOrigin(null);
+          setRouteField("origin");
+          setRouteQuery("");
+          setEndpointError(null);
+        }}
+        onRetryRoute={() => {
+          if (route.status === "error") runRoute(route.from, route.to);
+        }}
+        onRetryDetails={() => setDetailsNonce((nonce) => nonce + 1)}
+        onToggleFavorite={(code) => {
+          if (authenticated) void toggleFavorite(code);
+          else {
+            const redirect = `${window.location.pathname}${window.location.search}`;
+            navigation.push(`/login?redirect=${encodeURIComponent(redirect)}`);
+          }
+        }}
+        onShare={shareBuilding}
+        onCopyLink={copyBuildingLink}
+        onOpenGoogleMaps={openGoogleMaps}
+      />
+    );
+
+  return (
+    <div data-map-explorer className="h-full min-h-0">
+      <WorkspacePage
+        composition="split"
+        title="Campus map"
+        description="Find buildings, inspect rooms and services, and plan a campus walk."
+        rail={
+          <MapExploreSheet
+            open={sheetOpen}
+            mode={selected ? railMode : "discover"}
+            selected={selected}
+            route={route}
+            onOpenChange={setSheetOpen}
+          >
+            {rail}
+          </MapExploreSheet>
+        }
+        view={sheetOpen ? "rail" : "main"}
+        onViewChange={(next) => setSheetOpen(next === "rail")}
+        mainLabel="Map"
+        railLabel="Explore"
+      >
+        <WorkspaceCanvas overflow="hidden">
+          <MapSurface
+            hideHighlightCard
+            highlight={mapHighlight}
+            selectedBuilding={selected}
+            onBuildingSelect={selectMapBuilding}
+            showBuildingPopup={false}
+            controlsRef={controls}
+          />
+        </WorkspaceCanvas>
+      </WorkspacePage>
     </div>
+  );
+}
+
+function MapExplorerLoading() {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  return (
+    <div data-map-explorer className="h-full min-h-0">
+      <WorkspacePage
+        composition="split"
+        title="Campus map"
+        description="Find buildings, inspect rooms and services, and plan a campus walk."
+        rail={
+          <MapExploreSheet
+            open={sheetOpen}
+            mode="discover"
+            selected={null}
+            route={{ status: "idle" }}
+            onOpenChange={setSheetOpen}
+          >
+            <BuildingCatalogLoading />
+          </MapExploreSheet>
+        }
+        view={sheetOpen ? "rail" : "main"}
+        onViewChange={(next) => setSheetOpen(next === "rail")}
+        mainLabel="Map"
+        railLabel="Explore"
+      >
+        <WorkspaceCanvas overflow="hidden">
+          <MapSurface hideHighlightCard showBuildingPopup={false} />
+        </WorkspaceCanvas>
+      </WorkspacePage>
+    </div>
+  );
+}
+
+/** Renders the Tools explorer or the AI map-only surface from the current shell host. */
+export function MapArea() {
+  const { mode } = useChatShell();
+  if (mode !== "tools") return <MapSurface />;
+
+  return (
+    <Suspense fallback={<MapExplorerLoading />}>
+      <CampusMapExplorer />
+    </Suspense>
   );
 }

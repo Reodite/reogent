@@ -120,6 +120,38 @@ describe("workspaceView state contract (REQ-1.2, REQ-3.1)", () => {
     expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 110");
   });
 
+  it("keeps automatic sheet opening suppressed after dismissal", () => {
+    render(
+      <ChatShellProvider>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    act(() => shellRef.current?.setUserDismissedPane(true));
+    act(() => shellRef.current?.activateCanvasView(courseCall));
+    expect(shellRef.current?.workspaceView?.paneId).toBe("course-lookup");
+    expect(shellRef.current?.answerSheetOpen).toBe(false);
+  });
+
+  it("opens explicit channels without changing the channel setter identity", () => {
+    render(
+      <ChatShellProvider>
+        <Capture />
+      </ChatShellProvider>,
+    );
+    const activate = shellRef.current?.setActiveChannel;
+    act(() => shellRef.current?.setUserDismissedPane(true));
+    act(() => shellRef.current?.setActiveChannel("calendar", { cursor: "2026-10" }));
+    expect(shellRef.current?.setActiveChannel).toBe(activate);
+    expect(shellRef.current?.answerSheetOpen).toBe(true);
+    expect(shellRef.current?.rightPaneCollapsed).toBe(false);
+    expect(shellRef.current?.userDismissedPane).toBe(false);
+    expect(shellRef.current?.workspaceView?.state.cursor).toBe("2026-10");
+    act(() => shellRef.current?.setAnswerSheetOpen(false));
+    act(() => shellRef.current?.setActiveChannel(null));
+    expect(shellRef.current?.workspaceView).toBeNull();
+    expect(shellRef.current?.answerSheetOpen).toBe(false);
+  });
+
   it("activateCanvasView is a no-op for an unmapped tool", () => {
     shellRef.current = null;
     render(

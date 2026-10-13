@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import { AnswerCanvas } from "@/src/components/shell/answer-canvas";
-import type { CanvasView } from "@/src/components/shell/pane-registry";
+import type { CanvasView } from "@/src/shared/panes";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -62,11 +62,11 @@ function Capture() {
   return null;
 }
 
-function renderCanvas(view: CanvasView | null) {
+function renderCanvas(view: CanvasView | null, titlebar = true) {
   shellRef.current = null;
   return render(
     <ChatShellProvider>
-      <AnswerCanvas view={view} />
+      <AnswerCanvas view={view} titlebar={titlebar} />
       <Capture />
     </ChatShellProvider>,
   );
@@ -83,6 +83,15 @@ describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
     const section = container.querySelector('[data-pane="course-lookup"]');
     expect(section).not.toBeNull();
     expect(section?.querySelector("h2")?.textContent).toBe("Course lookup");
+  });
+
+  it("leaves Tools panes flat for the shell-owned surface", () => {
+    const { container } = renderCanvas({ paneId: "course-lookup", state: { code: "" } }, false);
+    const section = container.querySelector('[data-pane="course-lookup"]');
+
+    expect(section?.className).not.toContain("neu-panel");
+    expect(section?.className).not.toContain("rounded-2xl");
+    expect(section?.className).toContain("overflow-hidden");
   });
 
   it("pane setState merges back into workspaceView state (fixes the noopSetState bug)", () => {
@@ -103,5 +112,8 @@ describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
     const { container } = renderCanvas({ paneId: "map", state: {} });
     expect(container.querySelector('[data-pane="map"]')).not.toBeNull();
     expect(container.querySelector("h2")?.textContent).toBe("Campus map");
+    const content = container.querySelector('[data-testid="map-area"]')?.parentElement;
+    expect(content?.classList.contains("rounded-b-[inherit]")).toBe(true);
+    expect(content?.classList.contains("overflow-hidden")).toBe(true);
   });
 });

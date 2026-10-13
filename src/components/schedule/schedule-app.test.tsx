@@ -1,0 +1,690 @@
+// @vitest-environment happy-dom
+import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CreateGroupModal, ScheduleApp, scheduleEmptyState } from "./schedule-app";
+
+const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
+const getToken = vi.hoisted(() => vi.fn(async () => "token"));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("@/src/components/auth/app-auth", () => ({
+  useAppAuth: () => ({
+    getToken,
+    user: { userId: "u1", username: "ada" },
+  }),
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+  vi.clearAllMocks();
+});
+
+function CreateDialogHarness() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open create
+      </button>
+      {open && <CreateGroupModal onCreate={async () => {}} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+describe("CreateGroupModal", () => {
+  it("traps initial focus and restores the trigger on close", async () => {
+    render(<CreateDialogHarness />);
+    const trigger = screen.getByRole("button", { name: "Open create" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const input = screen.getByLabelText("Group name");
+    await waitFor(() => expect(document.activeElement).toBe(input));
+
+    fireEvent.keyDown(input, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("allows only one create request while submission is pending", async () => {
+    let finish: (() => void) | undefined;
+    const onCreate = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    render(<CreateGroupModal onCreate={onCreate} onClose={vi.fn()} />);
+
+    const input = screen.getByLabelText("Group name");
+    fireEvent.change(input, { target: { value: "Study crew" } });
+    const form = input.closest("form");
+    if (!form) throw new Error("create form not rendered");
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    expect((screen.getByRole("button", { name: "Creating…" }) as HTMLButtonElement).disabled).toBe(true);
+
+    await act(async () => finish?.());
+    expect((screen.getByRole("button", { name: "Create group" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+});
+
+describe("ScheduleApp empty states", () => {
+  const group = { code: "ABC123", name: "Study group", createdBy: "u1", createdAt: "x", members: [] };
+  const base = {
+    group,
+    groupError: "",
+    me: null,
+    nobodyImported: false,
+    allPeopleFiltered: false,
+    tbaOnly: false,
+    onImport: vi.fn(),
+    onCreate: vi.fn(),
+  };
+
+  it("keeps no-group, unimported, filtered, TBA, and empty-term copy distinct", () => {
+    expect(scheduleEmptyState({ ...base, group: null }).title).toBe("Your empty week is ready");
+    expect(scheduleEmptyState({ ...base, nobodyImported: true }).title).toBe("Nobody has imported a schedule");
+    expect(scheduleEmptyState({ ...base, allPeopleFiltered: true }).title).toBe("Everyone is hidden");
+    expect(scheduleEmptyState({ ...base, tbaOnly: true }).title).toBe("Meeting times are still TBA");
+    expect(scheduleEmptyState(base).title).toBe("No classes in this term");
+  });
+});
+
+const summaries = [
+  { code: "AAAAAA", name: "Group A", memberCount: 1, updatedAt: "2026-01-01T00:00:00.000Z" },
+  { code: "BBBBBB", name: "Group B", memberCount: 1, updatedAt: "2026-01-01T00:00:00.000Z" },
+  { code: "CCCCCC", name: "Group C", memberCount: 1, updatedAt: "2026-01-01T00:00:00.000Z" },
+];
+
+const schedule = {
+  importedAt: "2026-01-01T00:00:00.000Z",
+  sections: [
+    {
+      id: "cpsc-110",
+      courseCode: "CPSC 110",
+      title: "Computation, Programs, and Programming",
+      component: "Lecture",
+      instructors: [],
+      termStart: "2026-01-01",
+      termEnd: "2026-12-31",
+      meetings: [{ days: ["Mon"], startMin: 540, endMin: 600, raw: "" }],
+    },
+  ],
+};
+
+function wirePerson(id: string, handle: string, imported = true) {
+  return {
+    id,
+    handle,
+    avatar: { kind: "initials", initials: handle[0]?.toUpperCase() ?? "?", color: "#6ea8fe" },
+    schedule: imported ? schedule : null,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+function group(code: string, name: string, members = [wirePerson("u1", name.replace("Group ", "Person "))]) {
+  return { code, name, createdBy: "u1", createdAt: "x", members };
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+}
+
+function deferredResponse() {
+  let resolve!: (response: Response) => void;
+  const promise = new Promise<Response>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+function stubSharerFetch({
+  me = wirePerson("u1", "Ada"),
+  groups = summaries,
+  loadGroup,
+}: {
+  me?: ReturnType<typeof wirePerson> | null;
+  groups?: typeof summaries;
+  loadGroup: (code: string, init: RequestInit) => Promise<Response>;
+}) {
+  const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/schedule")) return Promise.resolve(json({ person: me }));
+    if (url.endsWith("/groups") && !init?.method) return Promise.resolve(json({ groups }));
+    const match = url.match(/\/groups\/([0-9A-Za-z]{6})$/);
+    if (match?.[1] && (init?.method === "POST" || init?.method === "GET")) return loadGroup(match[1], init);
+    throw new Error(`unexpected request: ${url}`);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+function controlOrder(container: HTMLElement) {
+  return Array.from(container.querySelectorAll("[data-control-section]"))
+    .filter((element) => !element.parentElement?.closest("[data-control-section]"))
+    .map((element) => element.getAttribute("data-control-section"));
+}
+
+describe("ScheduleApp invitation consent", () => {
+  it("opens an unknown link with GET and requests consent without exposing members", async () => {
+    const fetchMock = stubSharerFetch({
+      groups: [],
+      loadGroup: (code, init) =>
+        Promise.resolve(
+          init.method === "GET"
+            ? json({ error: "Not a member of this group" }, 404)
+            : json({ group: group(code, "Private group") }),
+        ),
+    });
+    render(<ScheduleApp groupCode="DDDDDD" />);
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/DDDDDD"))).toBe(true));
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    const dialog = await screen.findByRole("dialog", { name: "Join group DDDDDD?" });
+    expect(dialog.textContent).toContain("current and future uploaded class times and rooms");
+    expect(screen.queryByText("Private group")).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" })));
+  });
+
+  it("joins once after explicit consent and blocks duplicate clicks while pending", async () => {
+    const joined = deferredResponse();
+    const fetchMock = stubSharerFetch({
+      groups: [],
+      loadGroup: (_code, init) =>
+        init.method === "POST" ? joined.promise : Promise.resolve(json({ error: "Not a member" }, 404)),
+    });
+    render(<ScheduleApp groupCode="DDDDDD" />);
+    const consent = await screen.findByRole("button", { name: "Join and share my schedule" });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+
+    act(() => {
+      fireEvent.click(consent);
+      fireEvent.click(consent);
+    });
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1));
+    expect((screen.getByRole("button", { name: "Joining…" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => joined.resolve(json({ group: group("DDDDDD", "Joined group") })));
+    expect(await screen.findByRole("heading", { name: "Joined group" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it.each(["Cancel", "Escape"])("dismisses with %s without joining or reopening the same link", async (action) => {
+    const fetchMock = stubSharerFetch({
+      groups: [],
+      loadGroup: async () => json({ error: "Not a member" }, 404),
+    });
+    const view = render(<ScheduleApp groupCode="DDDDDD" />);
+    const cancel = await screen.findByRole("button", { name: "Cancel" });
+    if (action === "Cancel") fireEvent.click(cancel);
+    else fireEvent.keyDown(cancel, { key: "Escape" });
+    view.rerender(<ScheduleApp groupCode="DDDDDD" />);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(router.replace).toHaveBeenCalledWith("/pulse/schedule");
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it("requires consent after manually entering a group code", async () => {
+    const fetchMock = stubSharerFetch({
+      groups: [],
+      loadGroup: (code, init) =>
+        Promise.resolve(
+          init.method === "GET" ? json({ error: "Not a member" }, 404) : json({ group: group(code, "Manual group") }),
+        ),
+    });
+    render(<ScheduleApp />);
+    const code = await screen.findByRole("textbox", { name: "Join with a code" });
+    fireEvent.change(code, { target: { value: "DDDDDD" } });
+    fireEvent.click(screen.getByRole("button", { name: "Join" }));
+    const consent = await screen.findByRole("button", { name: "Join and share my schedule" });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    fireEvent.click(consent);
+    expect(await screen.findByRole("heading", { name: "Manual group" })).toBeTruthy();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+  });
+
+  it("uses GET for an existing membership, group switches, and focus refreshes", async () => {
+    const fetchMock = stubSharerFetch({
+      loadGroup: async (code) => json({ group: group(code, code === "AAAAAA" ? "Group A" : "Group B") }),
+    });
+    render(<ScheduleApp groupCode="AAAAAA" />);
+    await screen.findByRole("heading", { name: "Group A" });
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), { target: { value: "BBBBBB" } });
+    await screen.findByRole("heading", { name: "Group B" });
+    await act(async () => {});
+    fireEvent.focus(window);
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/BBBBBB"))).toHaveLength(2),
+    );
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("ignores a stale nonmember response after another group opens", async () => {
+    const stale = deferredResponse();
+    const fetchMock = stubSharerFetch({
+      loadGroup: (code) =>
+        code === "DDDDDD" ? stale.promise : Promise.resolve(json({ group: group(code, "Group B") })),
+    });
+    const view = render(<ScheduleApp groupCode="DDDDDD" />);
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/DDDDDD"))).toBe(true));
+    view.rerender(<ScheduleApp groupCode="BBBBBB" />);
+    await screen.findByRole("heading", { name: "Group B" });
+    await act(async () => stale.resolve(json({ error: "Not a member" }, 404)));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it("discards an old invitation when the selected code changes", async () => {
+    const fetchMock = stubSharerFetch({ loadGroup: async () => json({ error: "Not a member" }, 404) });
+    const view = render(<ScheduleApp groupCode="DDDDDD" />);
+    const oldConsent = await screen.findByRole("button", { name: "Join and share my schedule" });
+    view.rerender(<ScheduleApp groupCode="EEEEEE" />);
+    fireEvent.click(oldConsent);
+    await screen.findByRole("dialog", { name: "Join group EEEEEE?" });
+    expect(screen.queryByRole("dialog", { name: "Join group DDDDDD?", hidden: true })).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
+  });
+
+  it.each(["switch", "unmount"])("aborts a consented request on %s and ignores its late response", async (change) => {
+    const joined = deferredResponse();
+    const fetchMock = stubSharerFetch({
+      loadGroup: (code, init) => {
+        if (code === "BBBBBB") return Promise.resolve(json({ group: group(code, "Group B") }));
+        return init.method === "POST" ? joined.promise : Promise.resolve(json({ error: "Not a member" }, 404));
+      },
+    });
+    const view = render(<ScheduleApp groupCode="DDDDDD" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Join and share my schedule" }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1));
+    const joinSignal = fetchMock.mock.calls.find(([, init]) => init?.method === "POST")?.[1]?.signal;
+    expect(joinSignal?.aborted).toBe(false);
+    if (change === "switch") {
+      view.rerender(<ScheduleApp groupCode="BBBBBB" />);
+      await screen.findByRole("heading", { name: "Group B" });
+    } else view.unmount();
+    expect(joinSignal?.aborted).toBe(true);
+    await act(async () => joined.resolve(json({ group: group("DDDDDD", "Stale joined group") })));
+    expect(screen.queryByText("Stale joined group")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+  });
+
+  it("keeps a failed join in the confirmation dialog without retrying automatically", async () => {
+    const fetchMock = stubSharerFetch({ loadGroup: async () => json({ error: "Unknown group" }, 404), groups: [] });
+    render(<ScheduleApp groupCode="DDDDDD" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Join and share my schedule" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Unknown group");
+    expect((screen.getByRole("button", { name: "Join and share my schedule" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+  });
+});
+
+describe("ScheduleApp group loading", () => {
+  it("reserves boot controls and toolbar inside the workspace without an extra notice", async () => {
+    const pending = deferredResponse();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) =>
+        String(input).endsWith("/schedule") ? pending.promise : Promise.resolve(json({ groups: [] })),
+      ),
+    );
+    const view = render(<ScheduleApp />);
+    expect(
+      screen.getByRole("status", { name: "Loading schedule controls" }).querySelector("[data-skeleton]"),
+    ).toBeTruthy();
+    const loadingControls = screen.getByRole("status", { name: "Loading schedule controls" }).parentElement;
+    expect(loadingControls?.classList.contains("px-4")).toBe(true);
+    expect(loadingControls?.classList.contains("px-3")).toBe(false);
+    expect(screen.getByRole("status", { name: "Loading schedule terms" }).querySelector(".sm\\:h-8")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading your weekly schedule" })).toBeTruthy();
+    expect(screen.getByText("9 AM")).toBeTruthy();
+    expect(view.container.querySelectorAll("[data-schedule-block]")).toHaveLength(0);
+    expect(screen.queryByText("Loading schedules…")).toBeNull();
+    expect(screen.queryByText("Your empty week is ready")).toBeNull();
+    await act(async () => pending.resolve(json({ person: null })));
+    expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
+    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
+  });
+
+  it("shows the shared week immediately and defaults mobile to Schedule", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith("/schedule")) return Promise.resolve(json({ person: null }));
+        if (url.endsWith("/groups")) return Promise.resolve(json({ groups: [] }));
+        throw new Error(`unexpected request: ${url}`);
+      }),
+    );
+
+    const view = render(
+      <WorkspaceHostProvider host="unity">
+        <main data-pane="unity">
+          <ScheduleApp />
+        </main>
+      </WorkspaceHostProvider>,
+    );
+
+    expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
+    expect(view.container.querySelector<HTMLElement>("[data-workspace-page]")?.dataset.workspaceHost).toBe("unity");
+    const contentCanvas = view.container.querySelector("[data-workspace-canvas]");
+    expect(contentCanvas?.className).toContain("neu-inset");
+    expect(contentCanvas?.className).toContain("bg-surface-container-low");
+    expect(contentCanvas?.classList.contains("p-0.5")).toBe(true);
+    expect(screen.getAllByText("Mon").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Controls" }).getAttribute("aria-pressed")).toBe("false");
+    const emptyControls = view.container.querySelector('[data-control-section="group-status"]')?.parentElement;
+    expect(emptyControls?.classList.contains("first:border-t-0")).toBe(true);
+  });
+
+  it("keeps an initial load failure distinct from an empty schedule and retries", async () => {
+    let failing = true;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        if (failing) return Promise.reject(new Error("offline"));
+        const url = String(input);
+        if (url.endsWith("/schedule")) return Promise.resolve(json({ person: null }));
+        if (url.endsWith("/groups")) return Promise.resolve(json({ groups: [] }));
+        throw new Error(`unexpected request: ${url}`);
+      }),
+    );
+
+    render(<ScheduleApp />);
+    expect(await screen.findAllByText("Schedules unavailable")).toHaveLength(2);
+    expect(screen.queryByText("Your empty week is ready")).toBeNull();
+
+    failing = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Your empty week is ready")).not.toBeNull();
+  });
+
+  it("clears Group A content as soon as Group B is selected, then shows a keyed failure", async () => {
+    const pendingB = deferredResponse();
+    stubSharerFetch({
+      loadGroup: (code) =>
+        code === "AAAAAA" ? Promise.resolve(json({ group: group("AAAAAA", "Group A") })) : pendingB.promise,
+    });
+
+    render(<ScheduleApp groupCode="AAAAAA" />);
+    expect(await screen.findAllByText("Person A")).not.toHaveLength(0);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), { target: { value: "BBBBBB" } });
+
+    expect(screen.getByRole("heading", { name: "Group B" })).toBeTruthy();
+    expect(screen.getAllByText("Opening Group B…")).not.toHaveLength(0);
+    expect(screen.getByRole("status", { name: "Opening Group B…" }).querySelector("[data-skeleton]")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading Group B weekly schedule" })).toBeTruthy();
+    expect(document.querySelectorAll("[data-schedule-block]")).toHaveLength(0);
+    expect(screen.queryAllByText("Person A")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /Copy share link/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Leave" })).toBeNull();
+
+    await act(async () => pendingB.resolve(json({ error: "Invitation expired" }, 410)));
+    expect(await screen.findByRole("heading", { name: "Group B unavailable" })).toBeTruthy();
+    expect(screen.getByText(/Group BBBBBB could not be opened.*Invitation expired/)).toBeTruthy();
+    expect(screen.queryAllByText("Person A")).toHaveLength(0);
+  });
+
+  it("drops an open block detail immediately when the selected group changes", async () => {
+    const pendingB = deferredResponse();
+    stubSharerFetch({
+      loadGroup: (code) =>
+        code === "AAAAAA" ? Promise.resolve(json({ group: group(code, "Group A") })) : pendingB.promise,
+    });
+    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    fireEvent.click(await screen.findByRole("button", { name: /CPSC 110.*Lecture/ }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+
+    view.rerender(<ScheduleApp groupCode="BBBBBB" />);
+    expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
+    expect(screen.queryAllByText("Person A")).toHaveLength(0);
+    expect(document.body.style.overflow).not.toBe("hidden");
+    await act(async () => pendingB.resolve(json({ group: group("BBBBBB", "Group B") })));
+    expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
+  });
+
+  it("accepts only Group C during a rapid A to B to C switch", async () => {
+    const pendingB = deferredResponse();
+    stubSharerFetch({
+      loadGroup: (code) => {
+        if (code === "AAAAAA") return Promise.resolve(json({ group: group(code, "Group A") }));
+        if (code === "BBBBBB") return pendingB.promise;
+        return Promise.resolve(json({ group: group(code, "Group C") }));
+      },
+    });
+
+    render(<ScheduleApp groupCode="AAAAAA" />);
+    await screen.findAllByText("Person A");
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), { target: { value: "BBBBBB" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), { target: { value: "CCCCCC" } });
+    expect(await screen.findAllByText("Person C")).not.toHaveLength(0);
+
+    await act(async () => pendingB.resolve(json({ group: group("BBBBBB", "Late Group B") })));
+    expect(screen.getByRole("heading", { name: "Group C" })).toBeTruthy();
+    expect(screen.queryByText("Late Group B")).toBeNull();
+    expect(screen.queryAllByText("Person B")).toHaveLength(0);
+  });
+
+  it("does not let a focus refresh replace a newly selected group", async () => {
+    const refreshA = deferredResponse();
+    let requestsForA = 0;
+    const fetchMock = stubSharerFetch({
+      loadGroup: (code) => {
+        if (code === "AAAAAA" && requestsForA++ > 0) return refreshA.promise;
+        return Promise.resolve(json({ group: group(code, code === "AAAAAA" ? "Group A" : "Group B") }));
+      },
+    });
+
+    render(<ScheduleApp groupCode="AAAAAA" />);
+    await screen.findAllByText("Person A");
+    await act(async () => {});
+    fireEvent.focus(window);
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/groups/AAAAAA"))).toHaveLength(2),
+    );
+    expect(document.querySelector("[data-skeleton]")).toBeNull();
+    expect(screen.getAllByText("Person A").length).toBeGreaterThan(0);
+    const refreshCall = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/groups/AAAAAA"))[1];
+    expect(refreshCall[1]?.method).toBe("GET");
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Group" }), { target: { value: "BBBBBB" } });
+    expect(await screen.findAllByText("Person B")).not.toHaveLength(0);
+    await act(async () => refreshA.resolve(json({ group: group("AAAAAA", "Refreshed Group A") })));
+
+    expect(screen.getByRole("heading", { name: "Group B" })).toBeTruthy();
+    expect(screen.queryByText("Refreshed Group A")).toBeNull();
+  });
+});
+
+describe("ScheduleApp controls", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-08T12:00:00Z"));
+  });
+
+  it("keeps Share as the only header action and renders ready controls in order", async () => {
+    stubSharerFetch({ loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A") })) });
+    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    const share = await screen.findByRole("button", { name: "Copy share link AAAAAA" });
+    const actionContainer = share.parentElement;
+
+    expect(actionContainer?.querySelectorAll("button")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "New group" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Leave" })).toBeTruthy();
+    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "now", "import"]);
+    expect(screen.getByRole("region", { name: "Right now" }).textContent).toContain("Person A");
+    expect(view.container.querySelector("[data-control-section] .neu-panel")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Group" }).className).toContain("rounded-lg");
+    expect(view.container.querySelector('[data-control-section="group"]')?.classList.contains("py-4")).toBe(true);
+    expect(screen.getByText("Replace my schedule")).toBeTruthy();
+  });
+
+  it("keeps personal import last when my schedule is incomplete", async () => {
+    const me = wirePerson("u1", "Ada", false);
+    stubSharerFetch({
+      me,
+      loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", [me, wirePerson("u2", "Grace")]) })),
+    });
+    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    await screen.findByRole("button", { name: "Leave" });
+
+    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "now", "import"]);
+    expect(screen.getByText("Import my schedule")).toBeTruthy();
+  });
+
+  it("omits the Now wrapper when only unscheduled people remain enabled", async () => {
+    const me = wirePerson("u1", "Ada", false);
+    stubSharerFetch({
+      me,
+      loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", [me, wirePerson("u2", "Ada")]) })),
+    });
+    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    const scheduledToggle = await screen.findByRole("checkbox", { name: "Show Ada (2) on the calendar" });
+    expect(screen.getByRole("region", { name: "Right now" }).textContent).toContain("Ada (2)");
+
+    fireEvent.click(scheduledToggle);
+
+    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "import"]);
+    expect(screen.queryByRole("region", { name: "Right now" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Fall 2026" }).getAttribute("aria-selected")).toBe("true");
+    expect((screen.getByRole("checkbox", { name: "Show Ada on the calendar" }) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("omits the Now wrapper for a group with no imported schedules", async () => {
+    const me = wirePerson("u1", "Ada", false);
+    stubSharerFetch({ me, loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", [me]) })) });
+    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    await screen.findByRole("button", { name: "Leave" });
+
+    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "import"]);
+    expect(screen.queryByRole("region", { name: "Right now" })).toBeNull();
+  });
+
+  it("uses flat, capped free-time states and all enabled-person derivatives", async () => {
+    stubSharerFetch({ loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A") })) });
+    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    const personToggle = await screen.findByRole("checkbox", { name: "Show Person A on the calendar" });
+    const freeSection = view.container.querySelector('[data-control-section="free-time"]');
+
+    expect(freeSection?.querySelector('[aria-label="Common free-time intervals"]')).toBeTruthy();
+    const results = freeSection?.querySelector<HTMLElement>(".max-h-36.overflow-y-auto");
+    expect(screen.getByRole("region", { name: "Common free-time results" })).toBe(results);
+    expect(results?.getAttribute("aria-label")).toBe("Common free-time results");
+    expect(results?.tabIndex).toBe(0);
+    results?.focus();
+    expect(document.activeElement).toBe(results);
+    expect(freeSection?.className).not.toContain("neu-panel");
+    expect(freeSection?.className).not.toContain("secondary");
+
+    const nowSection = view.container.querySelector('[data-control-section="now"]');
+    expect(nowSection?.textContent).toContain("Person A");
+
+    fireEvent.click(personToggle);
+    expect(screen.getByText("Show at least one person with a schedule to compare free time.")).toBeTruthy();
+    expect(view.container.querySelector('[data-control-section="now"]')).toBeNull();
+    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "import"]);
+    expect(screen.getByRole("tab", { name: "Fall 2026" }).getAttribute("aria-selected")).toBe("true");
+
+    fireEvent.click(personToggle);
+    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "now", "import"]);
+    expect(screen.getByRole("region", { name: "Right now" }).textContent).toContain("Person A");
+  });
+
+  it("makes collapsing free-time results inactive and supports reopening immediately", async () => {
+    stubSharerFetch({ loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A") })) });
+    render(<ScheduleApp groupCode="AAAAAA" />);
+    const toggle = await screen.findByRole("checkbox", { name: "Common free time" });
+    const results = screen.getByRole("region", { name: "Common free-time results" });
+    const intervals = results.textContent;
+
+    fireEvent.click(toggle);
+    expect(screen.queryByRole("region", { name: "Common free-time results" })).toBeNull();
+    if (results.isConnected) {
+      expect(results.closest("[inert][aria-hidden='true']")).toBeTruthy();
+      expect(results.textContent).toBe(intervals);
+    }
+    fireEvent.click(toggle);
+    expect(screen.getByRole("region", { name: "Common free-time results" }).textContent).toBe(intervals);
+    expect(screen.getByRole("region", { name: "Common free-time results" }).closest("[inert]")).toBeNull();
+  });
+
+  it("distinguishes enabled schedules with no common interval", async () => {
+    const busySchedule = {
+      ...schedule,
+      sections: [
+        {
+          ...schedule.sections[0],
+          meetings: [{ days: ["Mon", "Tue", "Wed", "Thu", "Fri"], startMin: 480, endMin: 1200, raw: "" }],
+        },
+      ],
+    };
+    const ada = { ...wirePerson("u1", "Ada"), schedule: busySchedule };
+    stubSharerFetch({
+      me: ada,
+      loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", [ada]) })),
+    });
+
+    render(<ScheduleApp groupCode="AAAAAA" />);
+    expect(await screen.findByText("The enabled schedules have no common interval in this timetable.")).toBeTruthy();
+  });
+});
+
+describe("ScheduleApp block participants", () => {
+  it.each([1, 5])("separates the compact total from the wide avatar remainder for %i people", async (count) => {
+    const members = Array.from({ length: count }, (_, index) => ({
+      ...wirePerson(`u${index + 1}`, `Person ${index + 1}`),
+      schedule: {
+        ...schedule,
+        sections: [
+          {
+            ...schedule.sections[0],
+            meetings: [{ days: ["Mon"], startMin: 540, endMin: 660, raw: "" }],
+          },
+        ],
+      },
+    }));
+    stubSharerFetch({ loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", members) })) });
+    render(<ScheduleApp groupCode="AAAAAA" />);
+    const block = await screen.findByRole("button", { name: /CPSC 110.*Lecture/ });
+    const label = `${count} ${count === 1 ? "person" : "people"}`;
+    const compact = block.querySelector<HTMLElement>(`[title="${label}"]`);
+    expect(compact).toBeTruthy();
+    expect(compact?.getAttribute("role")).toBe("img");
+    expect(compact?.getAttribute("aria-label")).toBe(label);
+    expect(compact?.textContent).toBe(String(count));
+    expect(compact?.children).toHaveLength(0);
+    expect(compact?.classList.contains("block")).toBe(true);
+    expect(compact?.classList.contains("@min-[6rem]/schedule-participants:hidden")).toBe(true);
+
+    const container = compact?.parentElement;
+    expect(container?.classList.contains("@container/schedule-participants")).toBe(true);
+    expect(container?.classList.contains("w-full")).toBe(true);
+    expect(container?.classList.contains("min-w-0")).toBe(true);
+    const wide = compact?.nextElementSibling;
+    expect(wide?.classList.contains("hidden")).toBe(true);
+    expect(wide?.classList.contains("@min-[6rem]/schedule-participants:flex")).toBe(true);
+    const avatars = wide?.querySelectorAll<HTMLElement>("[title]");
+    expect(avatars).toHaveLength(Math.min(count, 4));
+    avatars?.forEach((avatar, index) => {
+      expect(avatar.title).toBe(`Person ${index + 1}`);
+      expect(avatar.style.width).toBe("16px");
+      expect(avatar.style.height).toBe("16px");
+    });
+    expect(wide?.textContent?.includes("+1")).toBe(count === 5);
+    expect(wide?.textContent).not.toContain("+5");
+    expect(block.getAttribute("aria-label")).toContain(`People: ${members.map((person) => person.handle).join(", ")}`);
+  });
+});

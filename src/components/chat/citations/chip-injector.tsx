@@ -1,14 +1,10 @@
-import type { Citation } from "@/src/shared/citations/citation";
+import { citationMarkers, type Citation } from "@/src/shared/citations/citation";
 import { Children, type ReactNode } from "react";
 import { CitationChip } from "./citation-chip";
 
-const MARKER_RE = /\[(\d+)\]/g;
-
-/** Replaces in-range `[N]` markers in the direct string children of a node
- * with `<CitationChip>` elements; out-of-range markers pass through as the
- * literal `[N]`. react-markdown's component overrides call this on their
- * `children` prop, so each listed element kind injects only its own direct
- * string leaves — no nested double-injection (REQ-13.4). */
+/** Replaces single and grouped citation markers in direct string children with chips.
+ * Keeps out-of-range references literal and preserves groups without valid references.
+ * Markdown overrides inject only their own direct string leaves to avoid nested injection. */
 export function injectChips(children: ReactNode, citations: Citation[] | null | undefined): ReactNode {
   if (!Array.isArray(citations) || citations.length === 0 || children == null || children === "") {
     return children;
@@ -17,16 +13,19 @@ export function injectChips(children: ReactNode, citations: Citation[] | null | 
   const injectString = (text: string): ReactNode[] => {
     const out: ReactNode[] = [];
     let last = 0;
-    for (const m of text.matchAll(MARKER_RE)) {
-      const idx = m.index ?? 0;
-      if (idx > last) out.push(text.slice(last, idx));
-      const n = Number(m[1]);
-      if (n >= 1 && n <= citations.length) {
-        out.push(<CitationChip key={`cite-${counter++}`} citation={citations[n - 1]} />);
-      } else {
-        out.push(m[0]);
-      }
-      last = idx + m[0].length;
+    for (const marker of citationMarkers(text)) {
+      if (marker.start > last) out.push(text.slice(last, marker.start));
+      const group = marker.references.map((reference) => {
+        const index = Number(reference);
+        return index >= 1 && index <= citations.length ? (
+          <CitationChip key={`cite-${counter++}`} citation={citations[index - 1]} />
+        ) : (
+          `[${reference}]`
+        );
+      });
+      if (group.some((reference) => typeof reference !== "string")) out.push(...group);
+      else out.push(marker.text);
+      last = marker.start + marker.text.length;
     }
     if (last < text.length) out.push(text.slice(last));
     return out;

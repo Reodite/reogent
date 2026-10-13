@@ -8,11 +8,11 @@
 // map's camera + selected building) survive the shell writing `{ highlight }`
 // for the same pane, and vice versa.
 
-import type { PaneState } from "@/src/components/shell/pane-registry";
+import type { PaneState } from "@/src/shared/panes";
 
 const KEY = "reodite.pane-state";
 
-// ponytail: read+parse per call, no memo — payloads are tiny and a memo would
+// read+parse per call, no memo — payloads are tiny and a memo would
 // leak state across vitest cases sharing the module instance.
 function load(): Record<string, PaneState> {
   if (typeof window === "undefined") return {};

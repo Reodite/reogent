@@ -24,14 +24,7 @@ export interface DegreeRecord {
 }
 
 export type RegistryKind =
-  | "major"
-  | "honours"
-  | "combined_major"
-  | "minor"
-  | "stream"
-  | "certificate"
-  | "diploma"
-  | "degree";
+  "major" | "honours" | "combined_major" | "minor" | "stream" | "certificate" | "diploma" | "degree";
 
 export interface RegistryEntry {
   id: string;

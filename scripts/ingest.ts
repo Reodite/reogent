@@ -5,7 +5,12 @@ import { runIngest } from "../src/server/ingest";
 import { modules } from "../src/server/modules";
 import { getSearch } from "../src/server/search";
 
-runIngest(modules, getSearch(), dataStore())
+async function ingest() {
+  if (process.argv.length > 2) throw new Error("Ingest does not accept arguments");
+  await runIngest(modules, getSearch(), dataStore());
+}
+
+ingest()
   .then(() => console.log("Ingest complete."))
   .catch((e) => {
     console.error("Ingest failed:", e);

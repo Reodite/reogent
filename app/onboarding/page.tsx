@@ -4,6 +4,8 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { PreferenceFields, ProfileFields } from "@/src/components/auth/profile-fields";
 import { Icon } from "@/src/components/icons";
 import { useProfile, useTheme } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
+import { Heading } from "@/src/components/ui/heading";
 import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import type { StudentProfile } from "@/src/shared/profile";
 import { motion, useReducedMotion } from "motion/react";
@@ -84,13 +86,9 @@ function OnboardingContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h1
-              ref={focusHeading}
-              tabIndex={-1}
-              className="text-on-surface text-2xl font-medium tracking-[-0.02em] outline-none"
-            >
+            <Heading as="h1" size="title" ref={focusHeading} tabIndex={-1} className="outline-none">
               {step === 0 ? "Welcome to Reodite" : step === 1 ? "A little about you" : "Make yourself at home"}
-            </h1>
+            </Heading>
             {step === 0 ? (
               <div className="mt-4 flex min-h-56 flex-col gap-4">
                 <p className="text-on-surface text-xl tracking-[-0.02em]">Let&apos;s customize your experience</p>
@@ -123,33 +121,33 @@ function OnboardingContent() {
             </p>
           )}
           <div className="mt-8 flex items-center justify-between gap-4">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="fieldIcon"
               disabled={step === 0 || saving}
               onClick={() => setStep(step - 1)}
-              className="neu-button text-on-surface-variant flex h-12 items-center gap-2 rounded-xl px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label={step === 2 ? "Back to personal details" : "Back to welcome"}
+              title={step === 2 ? "Back to personal details" : "Back to welcome"}
             >
-              <Icon name="left" size={16} /> Back
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="neu-primary-button bg-primary text-on-primary flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
-            >
+              <Icon name="arrowLeft" size={20} />
+            </Button>
+            <Button type="submit" variant="primary" size="large" disabled={saving}>
               {saving ? "Saving…" : step === 2 ? "Finish setup" : "Next"}
               {!saving && <Icon name={step === 2 ? "check" : "right"} size={16} />}
-            </button>
+            </Button>
           </div>
         </form>
         <div className="mt-4 flex justify-center">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="field"
+            shadowOn="background"
             disabled={saving}
             onClick={() => void finish(true)}
-            className="text-muted hover:text-on-surface min-h-11 rounded-lg px-4 text-sm underline underline-offset-4 disabled:opacity-40"
+            className="underline underline-offset-4"
           >
             Skip setup
-          </button>
+          </Button>
         </div>
       </div>
     </main>

@@ -6,27 +6,36 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/src/components/auth/app-auth", () => ({
   useAppAuth: () => ({ user: { username: "max", userId: "1" }, signOut: () => {} }),
 }));
-vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => null }));
+vi.mock("@/src/components/providers", () => ({
+  useTheme: () => ({ mode: "system", setMode: vi.fn() }),
+}));
 vi.mock("@/src/components/shell/session-sidebar", () => ({ VersionBadge: () => null }));
 
 afterEach(cleanup);
 
 describe("UserMenu", () => {
-  it("links to /settings and cycles menu items with arrow keys", () => {
-    const { getByRole, getAllByRole } = render(<UserMenu />);
+  it("composes account actions and appearance as a labeled dialog", () => {
+    const { getByRole, queryByRole } = render(<UserMenu />);
+    const trigger = getByRole("button", { name: "Account menu" });
+    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    fireEvent.click(trigger);
+    const popup = getByRole("dialog", { name: "Account" });
+    expect(document.activeElement).toBe(popup);
+    const appearance = getByRole("radiogroup");
+    expect(popup.contains(appearance)).toBe(true);
+    expect(appearance.parentElement?.classList.contains("flex-wrap")).toBe(true);
+    expect(appearance.parentElement?.classList.contains("gap-y-2")).toBe(true);
+    expect(getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/settings");
+    expect(getByRole("button", { name: "Sign out" })).not.toBeNull();
+    expect(queryByRole("menuitem")).toBeNull();
+  });
+
+  it("keeps appearance arrow keys inside the radio group", () => {
+    const { getByRole } = render(<UserMenu />);
     fireEvent.click(getByRole("button", { name: "Account menu" }));
-
-    expect(getByRole("menuitem", { name: "Settings" }).getAttribute("href")).toBe("/settings");
-
-    const items = getAllByRole("menuitem");
-    expect(items).toHaveLength(2);
-    fireEvent.keyDown(document, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(items[0]);
-    fireEvent.keyDown(document, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(items[1]);
-    fireEvent.keyDown(document, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(items[0]);
-    fireEvent.keyDown(document, { key: "ArrowUp" });
-    expect(document.activeElement).toBe(items[1]);
+    const auto = getByRole("radio", { name: "Auto" });
+    auto.focus();
+    fireEvent.keyDown(auto, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(getByRole("radio", { name: "Dark" }));
   });
 });

@@ -41,6 +41,9 @@ export interface YearRequirement {
   // a group any one code is enough. Example:
   //   "MATH 221 (or 223), 215" -> [["MATH 221", "MATH 223"], ["MATH 215"]]
   groups: string[][];
+  // Complete valid paths through nested alternatives. "CPSC 110 (or 103 and
+  // 107)" becomes [["CPSC 110"], ["CPSC 103", "CPSC 107"]].
+  paths?: string[][];
   // Credit value from the table (may be null if the page omitted it).
   credits: number | null;
 }
@@ -85,6 +88,7 @@ const TOKEN_RE = /([A-Z]{2,4})(_[A-Z])?|\d{3}[A-Z]?/g;
 // Trailing footnote markers: " 1", " 2", " 4,5" at the end of a label. Course
 // numbers are always 3 digits, so a trailing 1-2 digit run is always a marker.
 const FOOTNOTE_RE = /\s+\d{1,2}(\s*,\s*\d{1,2})*$/;
+const COURSE_RANGE_RE = /\bcourses?\s+numbered\s+\d{3}\s+or\s+(higher|above)\b|\b\d{3}[- ]level\b|\bupper[- ]level\b/i;
 
 function isYearHeader(line: string): boolean {
   return YEAR_HEADER_RE.test(line) || YEAR_HEADER_NUM_RE.test(line);
@@ -178,6 +182,39 @@ function requirementGroups(label: string): string[][] {
   return groups;
 }
 
+function requirementPaths(label: string, groups: string[][]): string[][] {
+  const branchLabels = [...label.matchAll(/\([a-e]\)/gi)];
+  if (branchLabels.length >= 2) {
+    const paths = branchLabels.flatMap((branch, index) => {
+      const start = branch.index ?? 0;
+      const end = branchLabels[index + 1]?.index ?? label.length;
+      const codes = uniqueCodes(extractCodeMentions(label.slice(start, end)).map((mention) => mention.code));
+      return codes.length > 0 ? [codes] : [];
+    });
+    if (paths.length > 0) return paths;
+  }
+
+  const nestedAlternative = label.search(/\(\s*or\b/i);
+  if (nestedAlternative >= 0) {
+    const mentions = extractCodeMentions(label);
+    const before = uniqueCodes(
+      mentions.filter((mention) => mention.end <= nestedAlternative).map((mention) => mention.code),
+    );
+    const alternativeText = label.slice(nestedAlternative);
+    const alternative = uniqueCodes(
+      mentions.filter((mention) => mention.start >= nestedAlternative).map((mention) => mention.code),
+    );
+    if (before.length > 0 && alternative.length > 1 && /\band\b/i.test(alternativeText)) {
+      return [before, alternative];
+    }
+  }
+
+  return groups.reduce<string[][]>(
+    (paths, group) => paths.flatMap((path) => group.map((code) => [...path, code])),
+    [[]],
+  );
+}
+
 // A requirement row is a "pick one" choice when it says so explicitly ("one of",
 // "either", "or") OR carries multiple lettered branches "(a) … (b) …". UBC mixes
 // "Either (a) … or (b) …" (has "or") with "Either (a) … (b) …" (no "or"); both are
@@ -196,14 +233,19 @@ const CONTINUATION_RE = /^(or\s+)?\([a-e]\)/i;
 
 function parseRequirement(rawLabel: string): YearRequirement {
   const label = rawLabel.replace(FOOTNOTE_RE, "").trim();
+  if (COURSE_RANGE_RE.test(label)) {
+    return { label, kind: "text", mode: "all", codes: [], groups: [], paths: [], credits: null };
+  }
   const groups = requirementGroups(label);
   const codes = uniqueCodes(groups.flat());
+  const paths = requirementPaths(label, groups);
   return {
     label,
     kind: codes.length > 0 ? "course" : "text",
     mode: isChoice(label) || (groups.length === 1 && groups[0].length > 1) ? "oneof" : "all",
     codes,
     groups,
+    paths,
     credits: null,
   };
 }
@@ -294,16 +336,22 @@ export function hasYearRequirements(parsed: ParsedProgramYears): boolean {
 // any listed code planned; an all-of group has every code planned.
 export function isRequirementMet(item: YearRequirement, plannedCodes: Set<string>): boolean {
   if (item.kind !== "course" || item.codes.length === 0) return false;
+  if (item.paths && item.paths.length > 0) {
+    return item.paths.some((path) => path.every((code) => plannedCodes.has(code)));
+  }
   if (item.groups.length > 0) {
-    return item.groups.every((group) => group.some((c) => plannedCodes.has(c)));
+    return item.groups.every((group) => group.some((code) => plannedCodes.has(code)));
   }
   return item.mode === "oneof"
-    ? item.codes.some((c) => plannedCodes.has(c))
-    : item.codes.every((c) => plannedCodes.has(c));
+    ? item.codes.some((code) => plannedCodes.has(code))
+    : item.codes.every((code) => plannedCodes.has(code));
 }
 
 export function autofillCodesForRequirement(item: YearRequirement): string[] {
   if (item.kind !== "course") return [];
+  if (item.paths && item.paths.length > 0) {
+    return [...item.paths].sort((a, b) => a.length - b.length)[0];
+  }
   if (item.groups.length > 0) {
     return item.groups.map((group) => group[0]).filter(Boolean);
   }

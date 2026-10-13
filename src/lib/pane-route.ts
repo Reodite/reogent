@@ -1,5 +1,5 @@
-import type { PaneId } from "@/src/components/shell/pane-registry";
 import { canonicalize } from "@/src/shared/course-code";
+import type { PaneId } from "@/src/shared/panes";
 
 /** URL slugs exposed under `/tools/<slug>`. Keys are the public path segments,
  *  values are the {@link PaneId} registered in {@link PANE_REGISTRY}. */
@@ -8,6 +8,7 @@ export const TOOL_SLUG_TO_PANE_ID: Record<string, PaneId> = {
   courses: "course-lookup",
   prereq: "prereq-tree",
   planner: "degree-planner",
+  schedule: "schedule",
   calendar: "calendar",
 };
 
@@ -28,6 +29,26 @@ export function parseToolSlug(slug: string | undefined | null): PaneId | null {
  *  has no slug (e.g. registered externally without one). */
 export function paneIdToSlug(id: PaneId): string | null {
   return PANE_ID_TO_TOOL_SLUG[id] ?? null;
+}
+
+export type ToolPathActivation = { paneId: PaneId; state: Record<string, unknown> };
+
+/** Resolves a Tools pathname into the pane state the URL explicitly owns. */
+export function parseToolPath(pathname: string): ToolPathActivation | null {
+  if (!pathname.startsWith("/tools/")) return null;
+  const segments = pathname.slice("/tools/".length).split("/");
+  const paneId = parseToolSlug(segments[0]);
+  if (!paneId || segments.length > 2) return null;
+
+  if (paneId === "course-lookup") {
+    const code = segments[1] ? courseSlugToCode(segments[1]) : "";
+    return code === null ? null : { paneId, state: { code } };
+  }
+  if (paneId === "prereq-tree") {
+    const root = segments[1] ? courseSlugToCode(segments[1]) : "";
+    return root === null ? null : { paneId, state: { root, query: root } };
+  }
+  return { paneId, state: {} };
 }
 
 /** URL segment for a course detail page: "MATH 100" → "MATH100". */

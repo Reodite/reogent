@@ -1,34 +1,39 @@
 import { signToken } from "@/src/server/auth";
-import { rateLimitResponse } from "@/src/server/rate-limit";
+import { getRateLimitIdentity, rateLimitResponse } from "@/src/server/rate-limit";
 import { createUser, getUserByUsername } from "@/src/server/sessions/store";
 import bcrypt from "bcryptjs";
-import { json, requireJson, serverError } from "../../http";
+import { json, readJson, requireJson, serverError } from "../../http";
 
 const REGISTER_LIMIT = { windowMs: 60_000, maxRequests: 5 };
 
 export async function POST(request: Request): Promise<Response> {
   try {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ip = getRateLimitIdentity(request);
     const limited = rateLimitResponse(`register:${ip}`, REGISTER_LIMIT);
     if (limited) return limited;
 
     const ctError = requireJson(request);
     if (ctError) return ctError;
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return json({ error: "Invalid JSON body" }, 400);
-    }
+    const result = await readJson(request);
+    if (result instanceof Response) return result;
+    const { body } = result;
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return json({ error: "Body must be an object" }, 400);
+    }
     const { username, password } = body as Record<string, unknown>;
     if (!username || !password) return json({ error: "Username and password required" }, 400);
     if (typeof username !== "string" || typeof password !== "string")
       return json({ error: "Username and password must be strings" }, 400);
-    if (password.length < 6) return json({ error: "Password must be at least 6 characters" }, 400);
+    if (password.length < 12) return json({ error: "Password must be at least 12 characters" }, 400);
     if (username.length > 64) return json({ error: "Username must be 64 characters or fewer" }, 400);
-    if (password.length > 128) return json({ error: "Password must be 128 characters or fewer" }, 400);
+    if (Buffer.byteLength(password, "utf8") > 72) {
+      return json(
+        { error: "Password must be 72 UTF-8 bytes or fewer; non-ASCII characters can use multiple bytes" },
+        400,
+      );
+    }
     if (!/^[a-zA-Z0-9_-]+$/.test(username))
       return json({ error: "Username may only contain letters, numbers, underscores, and hyphens" }, 400);
 

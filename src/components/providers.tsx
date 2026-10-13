@@ -3,11 +3,12 @@
 // App-wide client providers: theme (light/dark with system default), auth bridge,
 // and the shared ChatApi instance.
 import { AppAuthProvider, useAppAuth } from "@/src/components/auth/app-auth";
+import { Button } from "@/src/components/ui/button";
 import { createChatApi, type ChatApi } from "@/src/lib/api";
 import { THEME_STORAGE_KEY } from "@/src/lib/theme";
 import { parseProfile, type StudentProfile, type ThemeMode } from "@/src/shared/profile";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 // ---- Theme ----
 
@@ -21,6 +22,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({ theme: "light", mode: "system", setMode: () => {} });
+const THEME_COLORS: Record<ResolvedTheme, string> = { light: "#f7f7f5", dark: "#121214" };
 
 export function useTheme(): ThemeContextValue {
   return useContext(ThemeContext);
@@ -49,6 +51,14 @@ function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    const metas = Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'));
+    if (metas.length === 0) {
+      const meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.append(meta);
+      metas.push(meta);
+    }
+    for (const meta of metas) meta.content = THEME_COLORS[theme];
   }, [theme]);
 
   useEffect(() => {
@@ -85,23 +95,21 @@ export function useApi(): ChatApi {
 }
 
 function ApiProvider({ children }: { children: ReactNode }) {
-  const auth = useAppAuth();
-  const authRef = useRef(auth);
-  authRef.current = auth;
+  const { getToken, signOut, isGuest, user } = useAppAuth();
 
   const api = useMemo(() => {
     try {
       return createChatApi({
-        getToken: () => authRef.current.getToken(),
+        getToken,
         onUnauthorized: () => {
-          if (authRef.current.user?.userId !== "guest") authRef.current.signOut();
+          if (!isGuest) signOut();
         },
       });
     } catch (e) {
       console.error("Failed to create API client:", e);
       return null;
     }
-  }, []);
+  }, [getToken, signOut, isGuest]);
 
   if (!api) {
     return (
@@ -113,7 +121,7 @@ function ApiProvider({ children }: { children: ReactNode }) {
 
   return (
     <ApiContext.Provider value={api}>
-      <ProfileProvider key={auth.user?.userId ?? "signed-out"}>{children}</ProfileProvider>
+      <ProfileProvider key={user?.userId ?? "signed-out"}>{children}</ProfileProvider>
     </ApiContext.Provider>
   );
 }
@@ -191,16 +199,12 @@ function ProfileProvider({ children }: { children: ReactNode }) {
         </p>
         {status === "error" && (
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setStatus("loading")}
-              className="neu-button h-11 rounded-xl px-4 text-sm"
-            >
+            <Button size="field" shadowOn="background" onClick={() => setStatus("loading")}>
               Try again
-            </button>
-            <button type="button" onClick={auth.signOut} className="h-11 rounded-xl px-4 text-sm">
+            </Button>
+            <Button variant="ghost" size="field" shadowOn="background" onClick={auth.signOut}>
               Sign out
-            </button>
+            </Button>
           </div>
         )}
       </main>

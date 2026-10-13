@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
+import SettingsPage from "@/app/(shell)/settings/page";
 import OnboardingPage from "@/app/onboarding/page";
-import SettingsPage from "@/app/settings/page";
 import { AppProviders } from "@/src/components/providers";
 import type { StudentProfile } from "@/src/shared/profile";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -60,7 +60,11 @@ function next() {
 describe("first-login onboarding", () => {
   it("keeps entries across Next and Back, and saves all cards before continuing", async () => {
     await start();
-    expect((screen.getByRole("button", { name: "Back" }) as HTMLButtonElement).disabled).toBe(true);
+    const back = screen.getByRole("button", { name: "Back to welcome" }) as HTMLButtonElement;
+    expect(back.disabled).toBe(true);
+    expect(back.classList.contains("size-11")).toBe(true);
+    expect(back.classList.contains("neu-button")).toBe(false);
+    expect(back.querySelector("svg")?.getAttribute("width")).toBe("20");
     expect(screen.getByText("Let's customize your experience")).toBeTruthy();
     next();
     fireEvent.change(screen.getByLabelText("What should we call you?"), { target: { value: "Sam" } });
@@ -71,7 +75,7 @@ describe("first-login onboarding", () => {
     fireEvent.change(screen.getByRole("combobox", { name: /Tuition defaults/ }), {
       target: { value: "international" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to personal details" }));
     expect((screen.getByLabelText("What should we call you?") as HTMLInputElement).value).toBe("Sam");
     expect((screen.getByLabelText("Year of study") as HTMLSelectElement).value).toBe("3");
     expect(document.activeElement).toBe(screen.getByRole("heading", { name: "A little about you" }));
@@ -111,7 +115,7 @@ describe("first-login onboarding", () => {
     fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
     await screen.findByRole("alert");
     expect(state.router.replace).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back to personal details" }));
     expect((screen.getByLabelText("What should we call you?") as HTMLInputElement).value).toBe("Sam");
     next();
     fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
@@ -204,10 +208,10 @@ describe("first-login onboarding", () => {
     );
     const field = await screen.findByLabelText("What should we call you?");
     expect((field as HTMLInputElement).value).toBe("Sam");
-    expect((screen.getByLabelText("Dark") as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText("Dark", { selector: "input" }) as HTMLInputElement).checked).toBe(true);
     fireEvent.change(field, { target: { value: "Alex" } });
-    fireEvent.click(screen.getByLabelText("Light"));
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByLabelText("Light", { selector: "input" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
     await screen.findByText("Saved");
     expect(state.api.saveProfile).toHaveBeenCalledWith({ ...profile, preferred_name: "Alex", theme: "light" });
     expect(document.documentElement.dataset.theme).toBe("light");

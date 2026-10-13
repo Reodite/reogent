@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/src/components/ui/button";
+import { Skeleton, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import type { PanInfo } from "motion/react";
 import { useRef, useState } from "react";
@@ -14,6 +16,25 @@ export interface PulseCardData {
   pending?: boolean;
   error?: string;
 }
+
+/** Reserves question text and the vote or tally row while a Pulse list loads. */
+export function PulseCardsLoading({ label }: { label: string }) {
+  return (
+    <SkeletonGroup label={label} className="flex flex-col gap-3">
+      {[0, 1].map((index) => (
+        <div key={index} className="neu-panel bg-surface rounded-2xl p-4">
+          <SkeletonText lines={2} />
+          <div className="mt-3 flex min-h-11 items-center justify-between gap-3">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        </div>
+      ))}
+    </SkeletonGroup>
+  );
+}
+
+const MotionButton = motion.create(Button);
 
 const COMMIT_OFFSET = 100;
 const COMMIT_VELOCITY = 500;
@@ -61,12 +82,13 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
         {!voted && (
           <motion.article
             key="front"
+            initial={reduce ? false : { opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: reduce ? 0 : 0.18 } }}
             drag={reduce ? false : "x"}
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.9}
             style={reduce ? undefined : { x, rotate }}
-            whileHover={reduce ? undefined : { y: -3, scale: 1.01 }}
-            whileDrag={reduce ? undefined : { scale: 1.03 }}
+            whileDrag={reduce ? undefined : { scale: 1.01 }}
             onDragEnd={handleDragEnd}
             variants={{
               exit: (dir: React.RefObject<boolean>) => {
@@ -77,7 +99,7 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
             }}
             exit="exit"
             transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 28 }}
-            className={`bg-surface-container relative touch-pan-y rounded-2xl p-4 shadow-[0_4px_0_color-mix(in_srgb,var(--surface-container)_85%,black),0_10px_20px_var(--neu-shadow-deep)] select-none ${
+            className={`neu-panel bg-surface relative touch-pan-y rounded-2xl p-4 select-none ${
               reduce ? "" : "cursor-grab active:cursor-grabbing"
             }`}
           >
@@ -101,32 +123,32 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
               </>
             )}
             <p className="text-on-surface text-base">{card.text}</p>
-            <div className="mt-3 flex items-center justify-between px-1">
-              <motion.span
-                role="button"
-                tabIndex={0}
+            <div className="mt-3 flex items-center justify-between">
+              <MotionButton
+                variant="ghost"
+                size="field"
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => castVote(false)}
-                onKeyDown={(e) => e.key === "Enter" && castVote(false)}
                 aria-label={`Disagree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: -8, scale: 0.95 }}
-                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 cursor-pointer items-center px-2 py-3 text-sm transition-colors select-none"
               >
-                disagree
-              </motion.span>
-              <motion.span
-                role="button"
-                tabIndex={0}
+                Disagree
+              </MotionButton>
+              <MotionButton
+                variant="ghost"
+                size="field"
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => castVote(true)}
-                onKeyDown={(e) => e.key === "Enter" && castVote(true)}
                 aria-label={`Agree: ${card.text}`}
                 whileTap={reduce ? undefined : { x: 8, scale: 0.95 }}
-                className="text-muted hover:text-on-surface -mx-2 -my-3 inline-flex min-h-11 cursor-pointer items-center px-2 py-3 text-sm transition-colors select-none"
               >
-                agree
-              </motion.span>
+                Agree
+              </MotionButton>
             </div>
             {card.error && (
-              <p role="alert" className="text-error mt-2 text-xs">
+              <p role="alert" className="ui-notice-enter text-error mt-2 text-xs">
                 {card.error}
               </p>
             )}
@@ -155,7 +177,7 @@ export function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: bool
       initial={reduce ? false : { opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: reduce ? 0 : 0.3, ease: "easeOut" }}
-      className="bg-surface-container-high rounded-2xl p-4 shadow-[inset_0_4px_0_color-mix(in_srgb,var(--surface-container-high)_75%,black),inset_1px_1px_3px_var(--neu-shadow),inset_-1px_-1px_3px_var(--neu-highlight)]"
+      className="neu-inset bg-surface-container rounded-2xl p-4"
     >
       <p className="text-on-surface-variant text-base">{card.text}</p>
       <div role="img" aria-label={label} className="mt-4 flex items-center gap-3">
@@ -165,17 +187,17 @@ export function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: bool
           >
             {known ? `${disagreePct}%` : "—"}
           </span>
-          <span className="text-muted text-[11px]">Disagree</span>
+          <span className="text-muted text-xs">Disagree</span>
         </span>
         <span className="bg-surface-container-high flex h-2 min-w-0 flex-1 overflow-hidden rounded-full">
           {known && total > 0 && (
             <>
               <span
-                className={`h-full ${disagreePct >= agreePct ? "bg-primary" : "bg-primary/25"}`}
+                className={`ui-content-enter h-full ${disagreePct >= agreePct ? "bg-primary" : "bg-primary/25"}`}
                 style={{ width: `${disagreePct}%` }}
               />
               <span
-                className={`h-full ${agreePct > disagreePct ? "bg-primary" : "bg-primary/25"}`}
+                className={`ui-content-enter h-full ${agreePct > disagreePct ? "bg-primary" : "bg-primary/25"}`}
                 style={{ width: `${agreePct}%` }}
               />
             </>
@@ -185,7 +207,7 @@ export function ShadowCard({ card, reduce }: { card: PulseCardData; reduce: bool
           <span className={`text-sm tabular-nums ${card.myAgree === true ? "text-primary font-medium" : "text-muted"}`}>
             {known ? `${agreePct}%` : "—"}
           </span>
-          <span className="text-muted text-[11px]">Agree</span>
+          <span className="text-muted text-xs">Agree</span>
         </span>
       </div>
       <p className="text-muted mt-2 text-center text-xs">

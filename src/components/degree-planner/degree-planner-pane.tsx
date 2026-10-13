@@ -1,61 +1,78 @@
 "use client";
 
 // Degree Planner pane. Four+-column year canvas with per-term course
-// blocks, drag-and-drop reordering, prereq/coreq validation, and a right
-// sidebar holding the program selector + mini-lookup + trash zone.
+// blocks, drag-and-drop reordering, prereq/coreq validation, and a left rail
+// holding requirements and course search.
 //
 // DnD architecture: one DndContext for the whole pane. Three drag sources
 // (sortable course blocks, draggable lookup results, ghost overlay) and
 // two drop targets (term sections, trash bin). onDragEnd switches on the
 // active.id prefix and the over.id to route the move/add/delete.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
-import { Icon, type IconName } from "@/src/components/icons";
+import {
+  DRAG_DROP_ANIMATION,
+  DragOverlayFrame,
+  useDragOverlayPhysics,
+} from "@/src/components/dnd/drag-overlay-physics";
+import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { Button } from "@/src/components/ui/button";
+import { RetryAlert } from "@/src/components/ui/feedback";
+import { FloatingPanel } from "@/src/components/ui/floating-panel";
+import { Heading } from "@/src/components/ui/heading";
+import { Skeleton, SkeletonGroup, SkeletonList, SkeletonText } from "@/src/components/ui/skeleton";
 import {
-  getProgramIndex,
-  getRequirementsFor,
-  getSubjectFaculties,
-  optionMatches,
-  type ProgramRequirements,
-  resolveProgram,
-  ruleMatches,
-} from "@/src/lib/program-requirements";
-import {
-  autofillCodesForRequirement,
-  hasYearRequirements,
-  isRequirementMet,
-  parseProgramYears,
-  requirementKey,
-} from "@/src/lib/program-years";
-import { isSatisfied, missingPrereqs, parsePrereq, type Expr } from "@/src/shared/prereq-ast";
+  WorkspaceCanvas,
+  WorkspacePage,
+  WorkspacePanel,
+  WorkspaceRail,
+  type WorkspaceView,
+} from "@/src/components/ui/workspace";
+import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
+import { getProgramIndex, getRequirementsFor, resolveProgram } from "@/src/lib/program-requirements";
+import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import {
   closestCenter,
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
   pointerWithin,
+  TouchSensor,
   useSensor,
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "motion/react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CourseBlock } from "./course-block";
 import { LookupBlock } from "./lookup-block";
 import { MiniCourseLookup } from "./mini-course-lookup";
 import { PlanStructure } from "./plan-structure";
-import { usePlanner, type PlannerSidebarTab, type Year } from "./planner-store";
-import { ProgramProgress, ProgramSelectors } from "./program-requirements";
+import { SEASON_META, usePlanner, type Year } from "./planner-store";
+import { ProgramProgress, ProgramSelectors, ProgramSelectorsLoading } from "./program-requirements";
 import { TrashBin } from "./trash-bin";
 import { usePlanSync } from "./use-plan-sync";
-import { EMPTY_VALIDATION, type BlockValidation } from "./validation";
+import { describeIssue, EMPTY_VALIDATION, validatePlan, type BlockValidation } from "./validation";
 import { YearColumn } from "./year-column";
 
 const ACTIVE_BLOCK_PREFIX = "block:";
 const ACTIVE_LOOKUP_PREFIX = "lookup:";
+const ACTIVE_REQUIREMENT_PREFIX = "requirement:";
 const TERM_PREFIX = "term:";
+
+function setPlannerDragCursor(dragging: boolean) {
+  document.documentElement.toggleAttribute("data-planner-dragging", dragging);
+}
+
+function resolvePlannerDragSource(event: DragStartEvent): HTMLElement | null {
+  const target = event.activatorEvent.target;
+  return target instanceof Element
+    ? target.closest<HTMLElement>("[data-block-id], [data-lookup-code], [data-requirement-key]")
+    : null;
+}
 
 // Resolve drop targets in priority order:
 //  1. Trash — only when the pointer is literally inside the trash drop
@@ -63,16 +80,19 @@ const TERM_PREFIX = "term:";
 //  2. Sortable blocks — only when the pointer is literally inside a
 //     block (pointerWithin again). This gives precise reorder positions
 //     when the user hovers a destination block, and crucially *fails*
-//     when the cursor is over an empty term, instead of snapping to
-//     "whatever block is geometrically closest" — that previous behaviour
-//     masked every empty term because closestCenter always wins.
+//     when the cursor is over an empty term; without this priority,
+//     closestCenter would resolve the nearest block in another term and
+//     the empty term would never receive the drop.
 //  3. Term containers — closestCenter falls back here so dropping in the
 //     blank area of a term still lands you in that term, even if it's
 //     visually a bit far from any block.
 const blockFirstCollision: CollisionDetection = (args) => {
   const activeId = String(args.active.id);
-  const isBlockOrLookup = activeId.startsWith(ACTIVE_BLOCK_PREFIX) || activeId.startsWith(ACTIVE_LOOKUP_PREFIX);
-  if (isBlockOrLookup) {
+  const isCourseDrag =
+    activeId.startsWith(ACTIVE_BLOCK_PREFIX) ||
+    activeId.startsWith(ACTIVE_LOOKUP_PREFIX) ||
+    activeId.startsWith(ACTIVE_REQUIREMENT_PREFIX);
+  if (isCourseDrag) {
     const trashHit = pointerWithin({
       ...args,
       droppableContainers: args.droppableContainers.filter((c) => String(c.id) === "trash"),
@@ -96,31 +116,13 @@ const blockFirstCollision: CollisionDetection = (args) => {
   });
 };
 
-function requirementCodesInPlan(
-  req: ProgramRequirements | null,
-  plannedCodes: Set<string>,
-  subjectFaculty: Record<string, string>,
-): Set<string> {
-  const out = new Set<string>();
-  if (!req) return out;
-  if (req.kind === "structured") {
-    for (const code of plannedCodes) {
-      const matches = req.categories.some((cat) =>
-        cat.options.some((opt) => optionMatches(opt, code) || (opt.rule && ruleMatches(opt.rule, code, subjectFaculty))),
-      );
-      if (matches) out.add(code);
-    }
-    return out;
-  }
-
-  const parsed = parseProgramYears(req.text);
-  const listedCodes = hasYearRequirements(parsed)
-    ? parsed.years.flatMap((year) => year.items.flatMap((item) => (item.kind === "course" ? item.codes : [])))
-    : (req.referenced_courses ?? []);
-  for (const code of listedCodes) {
-    if (plannedCodes.has(code)) out.add(code);
-  }
-  return out;
+function dropLabel(overId: string, years: Year[]): string | null {
+  if (overId === "trash") return "remove area";
+  const destination = resolveTermDrop(overId, years);
+  if (!destination) return null;
+  const year = years.find((item) => item.id === destination.yearId);
+  const term = year?.terms[destination.termIdx];
+  return year && term ? `${year.label}, ${SEASON_META[term.season].short}` : null;
 }
 
 export function DegreePlannerPane() {
@@ -128,26 +130,24 @@ export function DegreePlannerPane() {
   // Server-backed plan for signed-in accounts (guests stay local-only).
   usePlanSync();
   const years = usePlanner((s) => s.years);
-  const major = usePlanner((s) => s.major);
   const addBlock = usePlanner((s) => s.addBlock);
   const moveBlock = usePlanner((s) => s.moveBlock);
   const removeBlock = usePlanner((s) => s.removeBlock);
   const clearAllBlocks = usePlanner((s) => s.clearAllBlocks);
   const ignoredBlocks = usePlanner((s) => s.ignoredBlocks);
-  const sidebarCollapsed = usePlanner((s) => s.sidebarCollapsed);
-  const sidebarTab = usePlanner((s) => s.sidebarTab);
-  const setSidebarTab = usePlanner((s) => s.setSidebarTab);
-  const toggleSidebar = usePlanner((s) => s.toggleSidebar);
   const undo = usePlanner((s) => s.undo);
   const redo = usePlanner((s) => s.redo);
 
   const [courseIndex, setCourseIndex] = useState<Map<string, CourseIndexEntry> | null>(null);
   const [indexError, setIndexError] = useState(false);
   const [loadNonce, setLoadNonce] = useState(0);
+  const [mobileView, setMobileView] = useState<WorkspaceView>("main");
   const [activeDrag, setActiveDrag] = useState<
     { kind: "block"; blockId: string; code: string } | { kind: "lookup"; code: string } | null
   >(null);
-  const [requirements, setRequirements] = useState<ProgramRequirements | null>(null);
+  const { anchor, move, reducedMotion, rotate, settle, start } = useDragOverlayPhysics({
+    resolveSourceElement: resolvePlannerDragSource,
+  });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: loadNonce re-triggers the fetch from the Retry button.
   useEffect(() => {
@@ -165,24 +165,6 @@ export function DegreePlannerPane() {
       cancelled = true;
     };
   }, [api, loadNonce]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!major) {
-      queueMicrotask(() => {
-        if (!cancelled) setRequirements(null);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
-    getRequirementsFor(major).then((req) => {
-      if (!cancelled) setRequirements(req);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [major]);
 
   // Keyboard shortcuts for the planner: Ctrl/Cmd+Z undoes, Ctrl/Cmd+
   // Shift+Z and Ctrl+Y redo. Skipped while a text field is focused so we
@@ -210,10 +192,11 @@ export function DegreePlannerPane() {
   }, [undo, redo]);
 
   const sensors = useSensors(
-    // 4-px activation distance so a click on a block (e.g. to read the
-    // details popup) doesn't immediately start a drag and consume the event.
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
+
+  useEffect(() => () => setPlannerDragCursor(false), []);
 
   // Per-block validation. Walks years/terms in order, building the
   // cumulative completed-set as we go: prereqs check against strictly-
@@ -221,48 +204,7 @@ export function DegreePlannerPane() {
   // whenever the years tree changes or the course index resolves.
   const ignoredSet = useMemo(() => new Set(ignoredBlocks), [ignoredBlocks]);
 
-  const validations = useMemo<Map<string, BlockValidation>>(() => {
-    const out = new Map<string, BlockValidation>();
-    if (!courseIndex) return out;
-    const cumulative = new Set<string>();
-    for (const year of years) {
-      for (const term of year.terms) {
-        const codesThisTerm = new Set(term.blocks.map((b) => b.code));
-        const completedBefore = new Set(cumulative);
-        const completedSameOrBefore = new Set([...cumulative, ...codesThisTerm]);
-        for (const block of term.blocks) {
-          const entry = courseIndex.get(block.code);
-          if (!entry) {
-            out.set(block.id, {
-              ok: true,
-              missing: [],
-              completedBefore,
-              completedSameOrBefore,
-            });
-            continue;
-          }
-          const prereqAst = parsePrereq(entry.prerequisite);
-          const coreqAst = parsePrereq(entry.corequisite);
-          const missing: string[] = [];
-          if (prereqAst && !isSatisfied(prereqAst, completedBefore)) {
-            missing.push(...missingPrereqs(prereqAst, completedBefore).map((m) => `prereq ${m}`));
-          }
-          if (coreqAst && !isSatisfied(coreqAst, completedSameOrBefore)) {
-            missing.push(...missingPrereqs(coreqAst, completedSameOrBefore).map((m) => `coreq ${m}`));
-          }
-          const ignored = ignoredSet.has(block.id);
-          out.set(block.id, {
-            ok: missing.length === 0 || ignored,
-            missing,
-            completedBefore,
-            completedSameOrBefore,
-          });
-        }
-        for (const code of codesThisTerm) cumulative.add(code);
-      }
-    }
-    return out;
-  }, [years, courseIndex, ignoredSet]);
+  const validations = useMemo(() => validatePlan(years, courseIndex, ignoredSet), [years, courseIndex, ignoredSet]);
 
   const plannedCodes = useMemo(() => {
     const out = new Set<string>();
@@ -273,22 +215,6 @@ export function DegreePlannerPane() {
     }
     return out;
   }, [years]);
-
-  const [subjectFaculty, setSubjectFaculty] = useState<Record<string, string>>({});
-  useEffect(() => {
-    let cancelled = false;
-    getSubjectFaculties().then((map) => {
-      if (!cancelled) setSubjectFaculty(map);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const requirementCodes = useMemo(
-    () => requirementCodesInPlan(requirements, plannedCodes, subjectFaculty),
-    [requirements, plannedCodes, subjectFaculty],
-  );
 
   function findBlockYearTerm(blockId: string): { year: Year; termIdx: number; pos: number } | null {
     for (const year of years) {
@@ -301,6 +227,8 @@ export function DegreePlannerPane() {
   }
 
   function onDragStart(event: DragStartEvent) {
+    setPlannerDragCursor(true);
+    start(event);
     const id = String(event.active.id);
     if (id.startsWith(ACTIVE_BLOCK_PREFIX)) {
       const blockId = id.slice(ACTIVE_BLOCK_PREFIX.length);
@@ -317,38 +245,42 @@ export function DegreePlannerPane() {
     }
     if (id.startsWith(ACTIVE_LOOKUP_PREFIX)) {
       setActiveDrag({ kind: "lookup", code: id.slice(ACTIVE_LOOKUP_PREFIX.length) });
+      return;
+    }
+    if (id.startsWith(ACTIVE_REQUIREMENT_PREFIX)) {
+      const code = event.active.data.current?.code;
+      if (typeof code === "string") setActiveDrag({ kind: "lookup", code });
     }
   }
 
   function onDragEnd(event: DragEndEvent) {
+    setPlannerDragCursor(false);
     setActiveDrag(null);
+    settle();
     const { active, over } = event;
     if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // === Lookup → term: spawn a new block. Dropping a lookup on trash
-    // is a no-op (you can't delete something that never existed). ===
-    if (activeId.startsWith(ACTIVE_LOOKUP_PREFIX)) {
-      const code = activeId.slice(ACTIVE_LOOKUP_PREFIX.length);
-      if (!code) return;
-      if (overId === "trash") return;
-      // Drop target can be either a term container or another block
-      // inside one (closestCenter likes to resolve to the nearest sortable
-      // item). Walk the data to recover (yearId, termIdx).
+    // Search and requirement drags create a block in the resolved term.
+    if (activeId.startsWith(ACTIVE_LOOKUP_PREFIX) || activeId.startsWith(ACTIVE_REQUIREMENT_PREFIX)) {
+      const draggedCode = activeId.startsWith(ACTIVE_LOOKUP_PREFIX)
+        ? activeId.slice(ACTIVE_LOOKUP_PREFIX.length)
+        : active.data.current?.code;
+      if (typeof draggedCode !== "string" || !draggedCode || overId === "trash") return;
       const dest = resolveTermDrop(overId, years);
       if (!dest) return;
-      addBlock(dest.yearId, dest.termIdx, code);
+      addBlock(dest.yearId, dest.termIdx, draggedCode);
       return;
     }
 
-    // === Block → trash: delete. ===
+    // A planned block dropped on trash is removed.
     if (overId === "trash" && activeId.startsWith(ACTIVE_BLOCK_PREFIX)) {
       removeBlock(activeId.slice(ACTIVE_BLOCK_PREFIX.length));
       return;
     }
 
-    // === Block → term (or another block): move/reorder. ===
+    // A planned block dropped on a term or another block is moved.
     if (activeId.startsWith(ACTIVE_BLOCK_PREFIX)) {
       const blockId = activeId.slice(ACTIVE_BLOCK_PREFIX.length);
       const src = findBlockYearTerm(blockId);
@@ -372,26 +304,83 @@ export function DegreePlannerPane() {
 
   if (indexError) {
     return (
-      <div className="grid h-full place-items-center p-6">
-        <p role="alert" className="border-error/30 bg-error-container text-error rounded-lg border px-3 py-2 text-sm">
-          Couldn't load the course index.{" "}
-          <button
-            type="button"
-            className="focus-visible:ring-primary/40 text-primary rounded-sm underline focus-visible:ring-2"
-            onClick={() => setLoadNonce((n) => n + 1)}
-          >
-            Retry
-          </button>
-        </p>
-      </div>
+      <WorkspacePage composition="canvas" title="Degree Planner" description="Plan your UBC degree, term by term.">
+        <WorkspaceCanvas overflow="hidden" padding="md">
+          <div className="grid h-full place-items-center">
+            <RetryAlert onRetry={() => setLoadNonce((nonce) => nonce + 1)}>Couldn't load the course index.</RetryAlert>
+          </div>
+        </WorkspaceCanvas>
+      </WorkspacePage>
     );
   }
   if (!courseIndex) {
     return (
-      <div className="text-muted flex h-full items-center justify-center gap-1.5 p-6 text-sm" aria-live="polite">
-        <span className="border-muted size-3 animate-spin rounded-full border-2 border-t-transparent" />
-        Loading course index…
-      </div>
+      <WorkspacePage
+        composition="split"
+        title="Degree Planner"
+        description="Plan your UBC degree, term by term."
+        view={mobileView}
+        onViewChange={setMobileView}
+        mainLabel="Plan"
+        railLabel="Requirements and courses"
+        toolbar={
+          <div className="flex w-full flex-wrap items-end gap-3">
+            <div className="w-full min-w-0 @min-[55rem]:flex-[1_1_35rem]">
+              <ProgramSelectorsLoading />
+            </div>
+            <Skeleton className="h-11 w-72 rounded-lg sm:h-9" />
+          </div>
+        }
+        rail={
+          <WorkspaceRail>
+            <WorkspacePanel title="Requirements" padding="sm">
+              <SkeletonList label="Loading requirements" padding="none" rows={4} />
+            </WorkspacePanel>
+            <WorkspacePanel
+              title="Find courses"
+              description="Drag a result or use Add"
+              bodyMode="contained"
+              padding="none"
+            >
+              <div className="shrink-0 px-4 py-3">
+                <Skeleton className="h-11 w-full rounded-lg sm:h-9" />
+              </div>
+              <SkeletonList
+                label="Loading courses"
+                padding="none"
+                className="border-border-subtle min-h-0 flex-1 overflow-hidden border-t px-2 py-2"
+              />
+            </WorkspacePanel>
+          </WorkspaceRail>
+        }
+      >
+        <WorkspaceCanvas role="region" aria-label="Degree plan" tabIndex={0} padding="md">
+          <SkeletonGroup
+            label="Loading course index…"
+            className="grid min-h-0 flex-1 gap-4"
+            style={{
+              gridTemplateColumns: `repeat(${years.length}, minmax(18rem, 1fr))`,
+              minWidth: `${years.length * 18 + Math.max(0, years.length - 1)}rem`,
+            }}
+          >
+            {years.map((year) => (
+              <div key={year.id} className="flex min-h-0 flex-col gap-2">
+                <Skeleton className="h-8 w-28" />
+                {year.terms.map((term) => (
+                  <div
+                    key={term.season}
+                    className="neu-inset bg-surface-container-low flex min-h-36 flex-1 flex-col gap-4 rounded-xl p-3"
+                  >
+                    <Skeleton className="h-4 w-24" />
+                    <SkeletonText />
+                  </div>
+                ))}
+                <Skeleton className="h-11 w-full rounded-lg sm:h-9" />
+              </div>
+            ))}
+          </SkeletonGroup>
+        </WorkspaceCanvas>
+      </WorkspacePage>
     );
   }
 
@@ -399,211 +388,143 @@ export function DegreePlannerPane() {
     <DndContext
       sensors={sensors}
       collisionDetection={blockFirstCollision}
+      accessibility={{
+        announcements: {
+          onDragStart: () => "Course picked up.",
+          onDragOver: ({ over }) => {
+            const label = over ? dropLabel(String(over.id), years) : null;
+            return label ? `Course over ${label}.` : "Course outside a drop target.";
+          },
+          onDragEnd: ({ over }) => {
+            const label = over ? dropLabel(String(over.id), years) : null;
+            return label ? `Course dropped on ${label}.` : "Course drag cancelled.";
+          },
+          onDragCancel: () => "Course drag cancelled.",
+        },
+      }}
       onDragStart={onDragStart}
+      onDragMove={move}
       onDragEnd={onDragEnd}
+      onDragCancel={() => {
+        setPlannerDragCursor(false);
+        setActiveDrag(null);
+        settle();
+      }}
     >
-      <div data-pane-root="degree-planner" className="flex h-full min-h-0 flex-col p-4">
-        <div
-          className="grid min-h-0 flex-1 gap-4"
-          style={{
-            gridTemplateColumns: sidebarCollapsed ? "minmax(0,1fr) 2.5rem" : "minmax(0,1fr) 20rem",
-          }}
-        >
-          <div className="flex min-h-0 flex-col gap-3">
-            <header className="flex items-center justify-between gap-3">
-              <h2 className="text-xl font-semibold">Degree Planner</h2>
-            </header>
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              <div
-                className="grid h-full gap-3"
-                style={{ gridTemplateColumns: `repeat(${years.length}, minmax(0, 1fr))` }}
-              >
-                {years.map((year) => (
-                  <YearColumn
-                    key={year.id}
-                    year={year}
-                    courseIndex={courseIndex}
-                    validations={validations}
-                    requirementCodes={requirementCodes}
-                  />
-                ))}
-              </div>
+      <WorkspacePage
+        composition="split"
+        title="Degree Planner"
+        description="Plan your UBC degree, term by term."
+        toolbar={
+          <div
+            data-planner-header-controls
+            className="flex w-full flex-col gap-3 @min-[55rem]:flex-row @min-[55rem]:flex-wrap @min-[55rem]:items-end"
+          >
+            <div className="w-full min-w-0 @min-[55rem]:flex-[1_1_35rem]">
+              <ProgramSelectors />
             </div>
-          </div>
-
-          {sidebarCollapsed ? (
-            <CollapsedSidebar
-              onExpand={(tab) => {
-                setSidebarTab(tab);
-                toggleSidebar();
+            <ActionsSection
+              years={years}
+              validations={validations}
+              courseIndex={courseIndex}
+              onClearAll={() => {
+                const total = years.reduce((count, year) => {
+                  return count + year.terms.reduce((termCount, term) => termCount + term.blocks.length, 0);
+                }, 0);
+                if (total > 0 && window.confirm(`Remove all ${total} course(s) from the plan?`)) clearAllBlocks();
               }}
-              onToggle={toggleSidebar}
             />
-          ) : (
-            <aside className="neu-panel border-border bg-surface-container-low flex min-h-0 flex-col gap-2 rounded-xl border p-4">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={toggleSidebar}
-                  className="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-lg p-1"
-                  aria-label="Collapse sidebar"
-                  title="Collapse sidebar"
-                >
-                  <Icon name="right" size={16} />
-                </button>
-                <div className="flex flex-1 gap-1">
-                  <SidebarTabButton
-                    active={sidebarTab === "preferences"}
-                    onClick={() => setSidebarTab("preferences")}
-                    label="Info"
-                    icon="info"
-                  />
-                  <SidebarTabButton
-                    active={sidebarTab === "progress"}
-                    onClick={() => setSidebarTab("progress")}
-                    label="Progress"
-                    icon="checkbox"
-                  />
-                  <SidebarTabButton
-                    active={sidebarTab === "courses"}
-                    onClick={() => setSidebarTab("courses")}
-                    label="Courses"
-                    icon="book2"
-                  />
-                </div>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-2">
-                {sidebarTab === "preferences" && (
-                  <div className="flex flex-col gap-4">
-                    <PlanStructure />
-                    <ProgramSelectors />
-                  </div>
-                )}
-                {sidebarTab === "progress" && <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />}
-                {sidebarTab === "courses" && <MiniCourseLookup courseIndex={courseIndex} />}
-              </div>
-              {/* Actions live as a footer under the Courses tab, just above
-                  the trash bin. */}
-              {sidebarTab === "courses" && (
-                <ActionsSection
-                  years={years}
-                  validations={validations}
-                  ignoredSet={ignoredSet}
-                  courseIndex={courseIndex}
-                  plannedCodes={plannedCodes}
-                  onClearAll={() => {
-                    const total = years.reduce((n, y) => n + y.terms.reduce((m, t) => m + t.blocks.length, 0), 0);
-                    if (total === 0) return;
-                    if (window.confirm(`Remove all ${total} course(s) from the plan?`)) {
-                      clearAllBlocks();
-                    }
-                  }}
-                />
-              )}
-              {/* Trash sits outside the tab area so it's always a valid
-                  drop target regardless of which page is showing. */}
-              <TrashBin />
-            </aside>
-          )}
-        </div>
-      </div>
-
-      <DragOverlay dropAnimation={null}>
-        {activeDrag?.kind === "block" && (
-          <CourseBlock
-            blockId={activeDrag.blockId}
-            code={activeDrag.code}
-            entry={courseIndex.get(activeDrag.code)}
-            validation={validations.get(activeDrag.blockId) ?? EMPTY_VALIDATION}
-            fulfillsRequirement={requirementCodes.has(activeDrag.code)}
-            ghost
-          />
-        )}
-        {activeDrag?.kind === "lookup" && courseIndex.get(activeDrag.code) && (
-          <div style={{ width: "18rem" }}>
-            <LookupBlock entry={courseIndex.get(activeDrag.code) as CourseIndexEntry} ghost />
           </div>
+        }
+        view={mobileView}
+        onViewChange={setMobileView}
+        mainLabel="Plan"
+        railLabel="Requirements and courses"
+        rail={
+          <WorkspaceRail>
+            <WorkspacePanel title="Requirements" padding="sm">
+              <ProgramProgress courseIndex={courseIndex} plannedCodes={plannedCodes} />
+            </WorkspacePanel>
+            <WorkspacePanel
+              title="Find courses"
+              description="Drag a result or use Add"
+              bodyMode="contained"
+              padding="none"
+            >
+              <MiniCourseLookup
+                courseIndex={courseIndex}
+                plannedCodes={plannedCodes}
+                onPlaced={() => setMobileView("main")}
+              />
+            </WorkspacePanel>
+          </WorkspaceRail>
+        }
+      >
+        <div className="relative h-full min-h-0">
+          <WorkspaceCanvas role="region" aria-label="Degree plan" tabIndex={0} padding="md">
+            <div
+              className="grid min-h-min flex-1 gap-4"
+              style={{
+                gridTemplateColumns: `repeat(${years.length}, minmax(18rem, 1fr))`,
+                minWidth: `${years.length * 18 + Math.max(0, years.length - 1)}rem`,
+              }}
+            >
+              {years.map((year) => (
+                <YearColumn key={year.id} year={year} courseIndex={courseIndex} validations={validations} />
+              ))}
+            </div>
+          </WorkspaceCanvas>
+          {activeDrag ? (
+            <div
+              data-planner-remove-target
+              className="absolute bottom-4 left-1/2 z-20 w-72 max-w-[calc(100%-2rem)] -translate-x-1/2"
+            >
+              <TrashBin />
+            </div>
+          ) : null}
+        </div>
+      </WorkspacePage>
+
+      <DragOverlay dropAnimation={activeDrag?.kind === "lookup" ? null : DRAG_DROP_ANIMATION}>
+        {activeDrag && (
+          <DragOverlayFrame
+            key={activeDrag.kind === "block" ? activeDrag.blockId : activeDrag.code}
+            anchor={anchor}
+            reducedMotion={reducedMotion}
+            rotate={rotate}
+          >
+            {activeDrag.kind === "block" && (
+              <CourseBlock
+                blockId={activeDrag.blockId}
+                code={activeDrag.code}
+                entry={courseIndex.get(activeDrag.code)}
+                validation={validations.get(activeDrag.blockId) ?? EMPTY_VALIDATION}
+                ghost
+              />
+            )}
+            {activeDrag.kind === "lookup" && courseIndex.get(activeDrag.code) && (
+              <LookupBlock entry={courseIndex.get(activeDrag.code) as CourseIndexEntry} ghost />
+            )}
+          </DragOverlayFrame>
         )}
       </DragOverlay>
     </DndContext>
   );
 }
 
-function SidebarTabButton({
-  active,
-  onClick,
-  label,
-  icon,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  icon: IconName;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-1 text-xs transition-colors ${
-        active
-          ? "neu-raised bg-surface text-on-surface"
-          : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-      }`}
-    >
-      <Icon name={icon} size={14} className="text-primary shrink-0" />
-      <span className="whitespace-nowrap">{label}</span>
-    </button>
-  );
-}
-
-// Slim strip shown when the right sidebar is collapsed. Holds the expand
-// arrow, page-icon shortcuts (click to expand + jump to that page), and
-// the trash drop zone so deletion still works without expanding.
-function CollapsedSidebar({
-  onExpand,
-  onToggle,
-}: {
-  onExpand: (tab: PlannerSidebarTab) => void;
-  onToggle: () => void;
-}) {
-  const stripBtn =
-    "text-on-surface-variant hover:bg-surface-container hover:text-on-surface flex w-full justify-center rounded-lg p-1";
-  return (
-    <aside className="neu-panel border-border bg-surface-container-low flex flex-col items-center gap-2 rounded-xl border p-1">
-      <button type="button" onClick={onToggle} className={stripBtn} aria-label="Expand sidebar" title="Expand sidebar">
-        <Icon name="left" size={16} />
-      </button>
-      <button type="button" onClick={() => onExpand("preferences")} className={stripBtn} title="Info">
-        <Icon name="info" size={16} className="text-primary" />
-      </button>
-      <button type="button" onClick={() => onExpand("progress")} className={stripBtn} title="Progress">
-        <Icon name="checkbox" size={16} className="text-primary" />
-      </button>
-      <button type="button" onClick={() => onExpand("courses")} className={stripBtn} title="Courses">
-        <Icon name="book2" size={16} className="text-primary" />
-      </button>
-      <div className="flex-1" />
-      <TrashBin compact />
-    </aside>
-  );
-}
-
 function ActionsSection({
   years,
   validations,
-  ignoredSet,
   courseIndex,
-  plannedCodes,
   onClearAll,
 }: {
   years: Year[];
   validations: Map<string, BlockValidation>;
-  ignoredSet: Set<string>;
   courseIndex: Map<string, CourseIndexEntry>;
-  plannedCodes: Set<string>;
   onClearAll: () => void;
 }) {
   const shell = useChatShellOptional();
+  const reducedMotion = useReducedMotion();
   const major = usePlanner((s) => s.major);
   const addBlocks = usePlanner((s) => s.addBlocks);
   const toggleIgnoreBlock = usePlanner((s) => s.toggleIgnoreBlock);
@@ -613,389 +534,87 @@ function ActionsSection({
   const canUndo = usePlanner((s) => s.past.length > 0);
   const canRedo = usePlanner((s) => s.future.length > 0);
   const [ignoreOpen, setIgnoreOpen] = useState(false);
+  const [structureOpen, setStructureOpen] = useState(false);
+  const structureRef = useRef<HTMLButtonElement>(null);
+  const issuesRef = useRef<HTMLButtonElement>(null);
+  const structureId = useId();
+  const issuesId = useId();
   const [filling, setFilling] = useState(false);
+  const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
 
   const erroredBlocks = useMemo(() => {
-    const out: { id: string; code: string }[] = [];
+    const out: { id: string; code: string; place: string; issues: string[] }[] = [];
     for (const year of years) {
       for (const term of year.terms) {
         for (const block of term.blocks) {
           const v = validations.get(block.id);
-          if (v && v.missing.length > 0) out.push(block);
+          if (v && v.missing.length > 0) {
+            out.push({
+              id: block.id,
+              code: block.code,
+              place: `${year.label} · ${SEASON_META[term.season].short}`,
+              issues: v.missing,
+            });
+          }
         }
       }
     }
     return out;
   }, [years, validations]);
 
-  // Autofill in two passes: (1) place each required course as early as its
-  // prerequisites and corequisites allow, then (2) push courses back, term by
-  // term, until every term is within the computed course load target
-  // (required courses / total terms, rounded up). One-of rows take the first
-  // listed course, all-of rows take every course; rows already fulfilled (a
-  // satisfying course planned, or a manual check), unknown codes, and anything
-  // already in the plan are skipped.
+  const flashTimer = useRef<number | null>(null);
+  const setFlashBlockId = usePlanner((s) => s.setFlashBlockId);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    };
+  }, []);
+
+  function locateBlock(blockId: string) {
+    setIgnoreOpen(false);
+    setFlashBlockId(blockId);
+    document
+      .querySelector(`[data-block-id="${blockId}"]`)
+      ?.scrollIntoView({ behavior: reducedMotion ? "instant" : "smooth", block: "center" });
+    if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlashBlockId(null), 1500);
+  }
+
   async function handleAutofill() {
     if (!major) {
-      window.alert("Select a major / program first.");
+      setAutofillResult({ placements: [], placedCodes: [], choices: [], remaining: ["Select a major first"] });
       return;
     }
     setFilling(true);
     try {
-      const req = await getRequirementsFor(major);
-      const parsed = req?.kind === "prose" ? parseProgramYears(req.text) : null;
-      if (!req || !parsed || !hasYearRequirements(parsed)) {
-        window.alert("No year-by-year requirements found for this program.");
+      const requirements = await getRequirementsFor(major);
+      const parsed = requirements?.kind === "prose" ? parseProgramYears(requirements.text) : null;
+      if (!requirements || !parsed || !hasYearRequirements(parsed)) {
+        setAutofillResult({
+          placements: [],
+          placedCodes: [],
+          choices: [],
+          remaining: ["No year-by-year requirements are available for this program"],
+        });
         return;
       }
-      const checked = new Set(checkedRequirements);
-      // Existing blocks are fixed anchors — autofill never moves what the user
-      // placed by hand; it only schedules the courses it adds.
-      const planned = new Set(plannedCodes);
-
-      // 1) Gather the courses to place — a flat list in requirement order.
-      //    One-of → first listed course; all-of → every course.
-      //    Skip rows already fulfilled / manually checked, unknown codes, and
-      //    anything already in the plan.
-      const toPlace: string[] = [];
-      const willPlace = new Set<string>();
-      const requiredCourseCodes = new Set<string>();
-      const preferredWindow = new Map<string, { start: number; end: number }>();
-      const placeOrder = new Map<string, number>();
-      const yearNameToIndex: Record<string, number> = {
-        "1": 0,
-        first: 0,
-        one: 0,
-        "2": 1,
-        second: 1,
-        two: 1,
-        "3": 2,
-        third: 2,
-        three: 2,
-        "4": 3,
-        fourth: 3,
-        four: 3,
-        "5": 4,
-        fifth: 4,
-        five: 4,
-      };
-      const requirementYearWindow = (label: string, fallback: number): { start: number; end: number } => {
-        const lower = label.toLowerCase();
-        const word = lower.match(
-          /\b(first|second|third|fourth|fifth)\b(?:\s+and\s+\b(first|second|third|fourth|fifth)\b)?/,
-        );
-        if (word) {
-          const first = yearNameToIndex[word[1]];
-          const second = word[2] ? yearNameToIndex[word[2]] : first;
-          return { start: Math.min(first, second), end: Math.max(first, second) };
-        }
-        const numeric = lower.match(/\byear\s+([1-5]|one|two|three|four|five)\b/);
-        if (numeric) {
-          const yearIdx = yearNameToIndex[numeric[1]];
-          return { start: yearIdx, end: yearIdx };
-        }
-        return { start: fallback, end: fallback };
-      };
-      const scheduledCodesForRequirement = (item: {
-        mode: "oneof" | "all";
-        codes: string[];
-        groups: string[][];
-      }): string[] => {
-        if (item.groups.length > 0) {
-          return item.groups.map((group) => group.find((c) => planned.has(c)) ?? group[0]).filter(Boolean);
-        }
-        if (item.mode === "oneof") {
-          const code = item.codes.find((c) => planned.has(c)) ?? item.codes[0];
-          return code ? [code] : [];
-        }
-        return item.codes;
-      };
-      const addAutofillCourse = (code: string, window: { start: number; end: number }): void => {
-        if (!courseIndex.has(code)) return;
-        if (!preferredWindow.has(code)) preferredWindow.set(code, window);
-        if (!placeOrder.has(code)) placeOrder.set(code, toPlace.length);
-        if (planned.has(code) || willPlace.has(code)) return;
-        willPlace.add(code);
-        toPlace.push(code);
-      };
-      for (const [pyearIdx, pyear] of parsed.years.entries()) {
-        const rawWindow = requirementYearWindow(pyear.label, pyearIdx);
-        const window = {
-          start: Math.max(0, Math.min(rawWindow.start, years.length - 1)),
-          end: Math.max(0, Math.min(rawWindow.end, years.length - 1)),
-        };
-        for (const item of pyear.items) {
-          if (item.kind !== "course") continue;
-          const key = requirementKey(req.program_url, pyear.label, item);
-          if (!checked.has(key)) {
-            for (const code of scheduledCodesForRequirement(item)) {
-              if (courseIndex.has(code)) requiredCourseCodes.add(code);
-            }
-          }
-          if (isRequirementMet(item, planned) || checked.has(key)) continue;
-          const chosen = autofillCodesForRequirement(item);
-          for (const code of chosen) {
-            addAutofillCourse(code, window);
-          }
-        }
-      }
-
-      // Every code referenced anywhere in a parsed requirement expression.
-      // Used to expand prerequisite closure and wire up the push-back safety
-      // map.
-      const astCodes = (e: Expr | null): string[] => {
-        if (!e) return [];
-        switch (e.kind) {
-          case "code":
-            return [e.code];
-          case "and":
-          case "or":
-            return e.children.flatMap(astCodes);
-          case "flattened":
-            return astCodes(e.subExpr);
-          case "soft":
-            return astCodes(e.child);
-          default:
-            return [];
-        }
-      };
-      const prereqAstOf = (code: string): Expr | null => {
-        const entry = courseIndex.get(code);
-        return entry ? parsePrereq(entry.prerequisite) : null;
-      };
-      const coreqAstOf = (code: string): Expr | null => {
-        const entry = courseIndex.get(code);
-        return entry ? parsePrereq(entry.corequisite) : null;
-      };
-      const pickPrereqCodes = (e: Expr | null, selected: Set<string>): string[] => {
-        if (!e) return [];
-        switch (e.kind) {
-          case "code":
-            return courseIndex.has(e.code) ? [e.code] : [];
-          case "and":
-            return [
-              ...new Set(
-                e.children.flatMap((c) =>
-                  c.kind === "literal" || c.kind === "soft" ? [] : pickPrereqCodes(c, selected),
-                ),
-              ),
-            ];
-          case "or": {
-            const options = e.children
-              .map((child, idx) => ({ idx, codes: pickPrereqCodes(child, selected) }))
-              .filter((option) => option.codes.length > 0);
-            options.sort(
-              (a, b) =>
-                a.codes.filter((code) => !selected.has(code)).length -
-                  b.codes.filter((code) => !selected.has(code)).length ||
-                a.codes.length - b.codes.length ||
-                a.idx - b.idx,
-            );
-            return options[0]?.codes ?? [];
-          }
-          case "flattened":
-            return pickPrereqCodes(e.subExpr, selected);
-          case "soft":
-          case "literal":
-            return [];
-        }
-      };
-      const prerequisiteWindowFor = (dependentCode: string): { start: number; end: number } => {
-        const dependentWindow = preferredWindow.get(dependentCode);
-        if (!dependentWindow) return { start: 0, end: years.length - 1 };
-        return { start: 0, end: Math.max(0, dependentWindow.start) };
-      };
-      for (let i = 0; i < toPlace.length; i++) {
-        const code = toPlace[i];
-        const selected = new Set([...planned, ...willPlace]);
-        for (const prereq of pickPrereqCodes(prereqAstOf(code), selected)) {
-          if (!courseIndex.has(prereq)) continue;
-          requiredCourseCodes.add(prereq);
-          addAutofillCourse(prereq, prerequisiteWindowFor(code));
-        }
-      }
-      if (toPlace.length === 0) {
-        window.alert("All requirements are already in the plan or fulfilled.");
-        return;
-      }
-
-      // Every code that will live in the plan once we're done. Only courses
-      // actually present can constrain ordering, so prereq/coreq edges below
-      // are filtered to this set.
-      const planSet = new Set([...planned, ...willPlace]);
-
-      // Linear list of (year, term) slots in chronological order, and where
-      // each course currently sits. Existing blocks seed `slot` as anchors.
-      const slotOf: { yearIdx: number; termIdx: number }[] = [];
-      const slot = new Map<string, number>();
-      for (const [y, year] of years.entries()) {
-        for (const [t, term] of year.terms.entries()) {
-          const gi = slotOf.length;
-          slotOf.push({ yearIdx: y, termIdx: t });
-          for (const b of term.blocks) slot.set(b.code, gi);
-        }
-      }
-      const lastSlot = slotOf.length - 1;
-      if (lastSlot < 0) return;
-      const coursesPerTermTarget = Math.max(1, Math.ceil(requiredCourseCodes.size / slotOf.length));
-      const firstSlotInYear = years.map((_, yearIdx) => slotOf.findIndex((s) => s.yearIdx === yearIdx));
-      const preferredStartSlot = (code: string): number => {
-        const window = preferredWindow.get(code);
-        if (!window) return 0;
-        const gi = firstSlotInYear[window.start];
-        return gi >= 0 ? gi : 0;
-      };
-
-      // 2) PLACE NEAR THE REQUIREMENT YEAR. To order a course we walk its
-      //    prereq / coreq AST and ask: by which term does the *plan* satisfy
-      //    it? The course starts no earlier than the year where the requirement
-      //    row starts unless an existing prerequisite/corequisite anchor
-      //    forces it later. An AND needs its latest child; an OR (an "either A,
-      //    B, C") needs only its EARLIEST satisfiable branch — so a big "or"
-      //    never floats a course to term 0 just because two of its options
-      //    happen to both be planned, and never forces it after options it
-      //    doesn't need. Branches the plan can't satisfy (a code not planned)
-      //    and prose conditions ("third-year standing") impose no ordering.
-      //    `reqSlot` returns that term, or null when nothing in the plan
-      //    constrains it. Memoised + cycle-safe; an existing anchor reports
-      //    its fixed slot.
-      const earliestMemo = new Map<string, number>();
-      function reqSlot(e: Expr | null, stack: Set<string>): number | null {
-        if (!e) return null;
-        switch (e.kind) {
-          case "code":
-            return planSet.has(e.code) ? earliest(e.code, stack) : null;
-          case "and": {
-            // Need every evaluable conjunct; satisfied at the latest planned
-            // one. Missing/unplanned conjuncts still show as validation
-            // errors later, but they must not erase ordering constraints from
-            // the planned prerequisites we do know about.
-            let max = -1;
-            for (const c of e.children) {
-              if (c.kind === "literal" || c.kind === "soft") continue;
-              const s = reqSlot(c, stack);
-              if (s !== null) max = Math.max(max, s);
-            }
-            return max < 0 ? null : max;
-          }
-          case "or": {
-            // Any one branch suffices — constrain by the earliest satisfiable.
-            let min = Number.POSITIVE_INFINITY;
-            for (const c of e.children) {
-              const s = reqSlot(c, stack);
-              if (s !== null) min = Math.min(min, s);
-            }
-            return min === Number.POSITIVE_INFINITY ? null : min;
-          }
-          case "flattened":
-            return reqSlot(e.subExpr, stack);
-          case "soft":
-          case "literal":
-            return null;
-        }
-      }
-      function earliest(code: string, stack = new Set<string>()): number {
-        if (slot.has(code) && !willPlace.has(code)) return slot.get(code) as number;
-        const cached = earliestMemo.get(code);
-        if (cached != null) return cached;
-        if (stack.has(code)) return preferredStartSlot(code);
-        stack.add(code);
-        let e = preferredStartSlot(code);
-        const pre = reqSlot(prereqAstOf(code), stack);
-        if (pre !== null) e = Math.max(e, pre + 1); // prereqs finish earlier
-        const co = reqSlot(coreqAstOf(code), stack);
-        if (co !== null) e = Math.max(e, co); // coreqs may share the term
-        stack.delete(code);
-        e = Math.min(e, lastSlot);
-        earliestMemo.set(code, e);
-        return e;
-      }
-      for (const code of toPlace) slot.set(code, earliest(code));
-
-      // Per-term course count, plus a reverse dependency map so the push-back
-      // pass never moves a course onto — or past — something that might need it
-      // first (existing blocks included). We treat any in-plan code a course
-      // references as a potential edge: conservative, so a push is only ever
-      // wrongly blocked (term left a touch heavy), never wrongly allowed.
-      const load: number[] = slotOf.map(() => 0);
-      for (const gi of slot.values()) load[gi]++;
-      const dependents = new Map<string, { code: string; type: "pre" | "co" }[]>();
-      const addDep = (dep: string, code: string, type: "pre" | "co") => {
-        const arr = dependents.get(dep) ?? [];
-        arr.push({ code, type });
-        dependents.set(dep, arr);
-      };
-      for (const code of planSet) {
-        for (const p of astCodes(prereqAstOf(code))) if (planSet.has(p)) addDep(p, code, "pre");
-        for (const q of astCodes(coreqAstOf(code))) if (planSet.has(q)) addDep(q, code, "co");
-      }
-      // Moving `code` into slot `toGi` is safe only while every dependent still
-      // lands later (prereq) or no earlier (coreq).
-      const canPush = (code: string, toGi: number): boolean => {
-        for (const d of dependents.get(code) ?? []) {
-          const dGi = slot.get(d.code);
-          if (dGi == null) continue;
-          if (d.type === "pre" && dGi <= toGi) return false;
-          if (d.type === "co" && dGi < toGi) return false;
-        }
-        return true;
-      };
-      const preferredYearDistance = (code: string, gi: number): number => {
-        const window = preferredWindow.get(code);
-        if (!window) return 0;
-        const yearIdx = slotOf[gi].yearIdx;
-        if (yearIdx < window.start) return window.start - yearIdx;
-        if (yearIdx > window.end) return yearIdx - window.end;
-        return 0;
-      };
-      const worsensPreferredYearDistance = (code: string, fromGi: number, toGi: number): boolean =>
-        preferredYearDistance(code, toGi) > preferredYearDistance(code, fromGi);
-      const pushCost = (code: string, toGi: number): number =>
-        preferredYearDistance(code, toGi) * 1000 + Math.max(0, toGi - preferredStartSlot(code));
-
-      // 3) PUSH BACK TO MEET THE LIMIT. Sweep terms earliest → latest; while a
-      //    term is over the computed load target, push one course we added into
-      //    the next term (never a user-placed block), choosing one that can
-      //    move without breaking an order. Prefer moves that stay in the
-      //    mentioned year/window; when the year is over capacity, allow
-      //    spillover but make each extra year increasingly expensive. Then
-      //    choose the course with the fewest dependents (keep the heavily-
-      //    depended-on courses early). Repeat the sweep because moving a
-      //    dependent course later can open room for its prerequisite on an
-      //    earlier term. The limit is a soft target: if nothing can move, the
-      //    term is left a little heavy rather than dropping a required course.
-      let pushed = true;
-      while (pushed) {
-        pushed = false;
-        for (let gi = 0; gi < lastSlot; gi++) {
-          while (load[gi] > coursesPerTermTarget) {
-            const movable = toPlace.filter((c) => slot.get(c) === gi && canPush(c, gi + 1));
-            if (movable.length === 0) break;
-            const preferredMovable = movable.filter((c) => !worsensPreferredYearDistance(c, gi, gi + 1));
-            const candidates = preferredMovable.length > 0 ? preferredMovable : movable;
-            candidates.sort(
-              (a, b) =>
-                pushCost(a, gi + 1) - pushCost(b, gi + 1) ||
-                (dependents.get(a)?.length ?? 0) - (dependents.get(b)?.length ?? 0) ||
-                (placeOrder.get(b) ?? 0) - (placeOrder.get(a) ?? 0) ||
-                a.localeCompare(b),
-            );
-            const c = candidates[0];
-            slot.set(c, gi + 1);
-            load[gi]--;
-            load[gi + 1]++;
-            pushed = true;
-          }
-        }
-      }
-
-      // Insert as one batch so the whole autofill is a single undo step.
-      addBlocks(
-        toPlace.map((code) => {
-          const { yearIdx, termIdx } = slotOf[slot.get(code) as number];
-          return { yearId: years[yearIdx].id, termIdx, code };
-        }),
-      );
+      const result = buildAutofillPlan({
+        years,
+        courseIndex,
+        parsed,
+        programUrl: requirements.program_url,
+        checkedRequirements,
+      });
+      addBlocks(result.placements);
+      setAutofillResult(result);
+    } catch {
+      setAutofillResult({
+        placements: [],
+        placedCodes: [],
+        choices: [],
+        remaining: ["Autofill could not load this program's requirements"],
+      });
     } finally {
       setFilling(false);
     }
@@ -1032,71 +651,227 @@ function ActionsSection({
     shell?.askAi("Help me plan my degree:", { title: "Degree course table", content: lines.join("\n").trimEnd() });
   }
 
-  const btnClass =
-    "neu-button bg-surface flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-left text-xs text-on-surface-variant hover:text-on-surface transition-colors";
-  // Undo/Redo reuse btnClass but dim + lock when their stack is empty.
-  const disabledBtnClass = `${btnClass} disabled:opacity-40 disabled:pointer-events-none`;
-
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-on-surface text-sm font-semibold">Actions</h3>
-      <div className="grid grid-cols-2 gap-1.5">
-        <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)" className={disabledBtnClass}>
-          <Icon name="undo" size={14} className="text-primary" />
-          <span>Undo</span>
-        </button>
-        <button
-          type="button"
-          onClick={redo}
+    <div className="flex w-full max-w-full min-w-0 flex-nowrap items-center justify-start gap-2 overflow-x-auto pb-1 @min-[55rem]:ml-auto @min-[55rem]:w-auto @min-[55rem]:flex-wrap @min-[55rem]:justify-end @min-[55rem]:overflow-visible @min-[55rem]:pb-0">
+      <div className="neu-inset bg-surface-container-low flex items-center gap-0.5 rounded-lg p-1">
+        <Button
+          variant="ghost"
+          size="compact"
+          className="rounded-sm"
+          onClick={() => {
+            setAutofillResult(null);
+            undo();
+          }}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+        >
+          <Icon name="undo" size={13} />
+          Undo
+        </Button>
+        <Button
+          variant="ghost"
+          size="compact"
+          className="rounded-sm"
+          onClick={() => {
+            setAutofillResult(null);
+            redo();
+          }}
           disabled={!canRedo}
           title="Redo (Ctrl+Shift+Z)"
-          className={disabledBtnClass}
         >
-          <Icon name="redo" size={14} className="text-primary" />
-          <span>Redo</span>
-        </button>
+          <Icon name="redo" size={13} />
+          Redo
+        </Button>
       </div>
-      <div className="grid grid-cols-2 gap-1.5">
-        <button type="button" onClick={onClearAll} className={btnClass}>
-          <Icon name="trash" size={14} className="text-primary" />
-          <span>Clear All</span>
-        </button>
-        <button type="button" onClick={() => setIgnoreOpen((o) => !o)} aria-pressed={ignoreOpen} className={btnClass}>
-          <Icon name="eyeOff" size={14} className="text-primary" />
-          <span>Ignore Error</span>
-        </button>
-        <button type="button" onClick={handleAutofill} disabled={filling} className={`${btnClass} disabled:opacity-50`}>
-          <Icon name="sparkles" size={14} className="text-primary" />
-          <span>{filling ? "Filling…" : "Autofill"}</span>
-        </button>
-        <button type="button" onClick={handleAskAi} className={btnClass}>
-          <Icon name="chat1" size={14} className="text-primary" />
-          <span>Ask AI</span>
-        </button>
+
+      <Button size="toolbar" onClick={handleAutofill} disabled={filling}>
+        <Icon name="sparkles" size={14} />
+        <span>{filling ? "Filling…" : "Autofill"}</span>
+      </Button>
+
+      <div className="relative">
+        <Button
+          ref={structureRef}
+          size="toolbar"
+          onClick={() => setStructureOpen((open) => !open)}
+          aria-haspopup="dialog"
+          aria-controls={structureOpen ? structureId : undefined}
+          aria-expanded={structureOpen}
+        >
+          <Icon name="settings" size={14} />
+          <span>Structure</span>
+          <Icon name="down" size={12} className={`transition-transform ${structureOpen ? "rotate-180" : ""}`} />
+        </Button>
+        <AnimatePresence initial={false}>
+          {structureOpen && (
+            <FloatingPanel
+              id={structureId}
+              anchorRef={structureRef}
+              onDismiss={() => setStructureOpen(false)}
+              align="end"
+              role="dialog"
+              aria-label="Plan structure"
+              className="neu-panel bg-surface w-72 rounded-2xl p-4"
+            >
+              <Heading as="h3" size="subsection" className="mb-3">
+                Plan structure
+              </Heading>
+              <PlanStructure />
+            </FloatingPanel>
+          )}
+        </AnimatePresence>
       </div>
-      {ignoreOpen && (
-        <div className="border-border bg-surface flex flex-col gap-1 rounded-lg border p-2">
-          {erroredBlocks.length === 0 ? (
-            <p className="text-muted text-xs italic">No errors to ignore</p>
-          ) : (
-            erroredBlocks.map((block) => (
-              <label
-                key={block.id}
-                className="hover:bg-surface-container flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs"
-              >
-                <input
-                  type="checkbox"
-                  checked={ignoredSet.has(block.id)}
-                  onChange={() => toggleIgnoreBlock(block.id)}
-                  className="accent-primary"
-                />
-                <span className="text-on-surface font-mono">{block.code}</span>
-              </label>
-            ))
+
+      <div className="relative">
+        <Button
+          ref={issuesRef}
+          size="toolbar"
+          onClick={() => setIgnoreOpen((open) => !open)}
+          aria-haspopup="dialog"
+          aria-controls={ignoreOpen ? issuesId : undefined}
+          aria-expanded={ignoreOpen}
+          className="min-w-[92px]"
+        >
+          <Icon name="eyeOff" size={14} className={erroredBlocks.length > 0 ? "text-error" : undefined} />
+          <span>Issues</span>
+          {erroredBlocks.length > 0 && (
+            <span className="bg-error-container text-on-error-container rounded-full px-1.5 text-xs tabular-nums">
+              {erroredBlocks.length}
+            </span>
+          )}
+        </Button>
+        <AnimatePresence initial={false}>
+          {ignoreOpen && (
+            <FloatingPanel
+              id={issuesId}
+              anchorRef={issuesRef}
+              onDismiss={() => setIgnoreOpen(false)}
+              align="end"
+              role="dialog"
+              aria-label="Placement issues"
+              style={{ maxHeight: 320 }}
+              className="neu-panel bg-surface flex w-80 flex-col gap-1 rounded-2xl p-2"
+            >
+              <p className="text-on-surface px-2 pt-1 text-xs font-medium">
+                {erroredBlocks.length === 0 ? "No placement issues" : `${erroredBlocks.length} placement issue(s)`}
+              </p>
+              {erroredBlocks.length > 0 && (
+                <p className="text-muted px-2 pb-1 text-xs">Select an issue to highlight the course on the board.</p>
+              )}
+              {erroredBlocks.map((block) => (
+                <div
+                  key={block.id}
+                  className="hover:bg-surface-container-low flex items-start gap-1 rounded-lg px-2 py-1.5"
+                >
+                  <button
+                    type="button"
+                    onClick={() => locateBlock(block.id)}
+                    className="min-w-0 flex-1 text-left"
+                    title="Locate on the board"
+                  >
+                    <p className="text-xs">
+                      <span className="text-on-surface font-medium">{block.code}</span>
+                      <span className="text-muted"> · {block.place}</span>
+                    </p>
+                    <p className="text-on-surface-variant mt-1 text-xs leading-snug">
+                      {block.issues.map(describeIssue).join(" ")}
+                    </p>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="denseIcon"
+                    onClick={() => toggleIgnoreBlock(block.id)}
+                    title="Mute this issue"
+                    aria-label={`Mute issue for ${block.code}`}
+                    className="mt-0.5"
+                  >
+                    <Icon name="eyeOff" size={13} />
+                  </Button>
+                </div>
+              ))}
+            </FloatingPanel>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <Button
+        variant="danger"
+        size="toolbar"
+        onClick={() => {
+          setAutofillResult(null);
+          onClearAll();
+        }}
+      >
+        <Icon name="trash" size={14} />
+        <span>Clear</span>
+      </Button>
+      <Button variant="primary" onClick={handleAskAi}>
+        <Icon name="chat1" size={14} />
+        <span>Ask AI</span>
+      </Button>
+      <AnimatePresence initial={false}>
+        {autofillResult && <AutofillSummary result={autofillResult} onClose={() => setAutofillResult(null)} />}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function AutofillSummary({ result, onClose }: { result: AutofillResult; onClose: () => void }) {
+  const present = useIsPresent();
+  const reducedMotion = useReducedMotion();
+  const placed = result.placedCodes.slice(0, 10);
+  const remaining = result.remaining.slice(0, 3);
+  return (
+    <motion.div
+      inert={!present || undefined}
+      aria-hidden={!present || undefined}
+      initial={reducedMotion ? false : { opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: reducedMotion ? 0 : present ? 0.2 : 0.14, ease: [0.16, 1, 0.3, 1] }}
+      role="status"
+      aria-live="polite"
+      className="app-notification-stack neu-panel bg-surface fixed right-4 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl p-3"
+    >
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <Heading as="h3" size="subsection">
+            {result.placedCodes.length > 0
+              ? `Added ${result.placedCodes.length} courses`
+              : result.remaining.length > 0
+                ? "Autofill needs your input"
+                : "Course requirements are covered"}
+          </Heading>
+          {placed.length > 0 && (
+            <p className="text-on-surface-variant mt-1 text-xs">
+              {placed.join(", ")}
+              {result.placedCodes.length > placed.length && ` +${result.placedCodes.length - placed.length} more`}
+            </p>
+          )}
+          {result.choices.length > 0 && (
+            <p className="text-muted mt-1 text-xs">
+              One-of choices: {result.choices.map((choice) => choice.code).join(", ")}
+            </p>
+          )}
+          {remaining.length > 0 && (
+            <p className="text-muted mt-1 text-xs">
+              Add manually: {remaining.join("; ")}
+              {result.remaining.length > remaining.length && ` +${result.remaining.length - remaining.length} more`}
+            </p>
           )}
         </div>
-      )}
-    </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="denseIcon"
+          onClick={onClose}
+          aria-label="Dismiss autofill summary"
+          className="text-muted -mt-1 -mr-1"
+        >
+          <Icon name="close" size={14} />
+        </Button>
+      </div>
+    </motion.div>
   );
 }
 

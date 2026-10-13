@@ -1,5 +1,5 @@
 import { buildPrereqGraph } from "@/src/server/prereq/build-graph";
-import { rateLimitResponse } from "@/src/server/rate-limit";
+import { getRateLimitIdentity, rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
 import { canonicalize } from "@/src/shared/course-code";
 import { json, serverError } from "../http";
@@ -10,7 +10,7 @@ const PREREQ_LIMIT = { windowMs: 60_000, maxRequests: Number(process.env.RATE_LI
 /** GET /api/prereq-tree?root=CPSC+320 — transitive prereq graph for a root course. */
 export async function GET(request: Request): Promise<Response> {
   try {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ip = getRateLimitIdentity(request);
     const limited = rateLimitResponse(`prereq-tree:${ip}`, PREREQ_LIMIT);
     if (limited) return limited;
 

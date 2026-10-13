@@ -40,7 +40,7 @@ const queries = [
   "What are the living costs for students at UBC?",
   "Find me a course about machine learning",
   "What fees do UBC students have to pay?",
-  "Find study spaces in IKB that are bookable right now",
+  "Find study spaces in IKB with seating for six people",
   "What is the grade distribution for CPSC 110?",
 ];
 

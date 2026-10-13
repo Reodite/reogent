@@ -1,8 +1,6 @@
 "use client";
 
-// Portal-rendered course-detail popup. Anchored to a `?` button's bounding
-// rect so it can escape the planner's overflow-clip without being trapped
-// inside year columns or term scroll areas.
+// Course details float outside the planner’s clipping and scroll containers.
 //
 // Highlighting strategy:
 //   The popup shows UBC's *verbatim* prereq/coreq text and paints unmet
@@ -15,18 +13,18 @@
 //   wrote, and right to include a trailing ")" — so what gets painted
 //   matches what UBC bracketed, regardless of whether their phrasing
 //   uses "either", "one of", "any of", labeled (a)/(b) lists, etc.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { Button } from "@/src/components/ui/button";
+import { FloatingPanel } from "@/src/components/ui/floating-panel";
+import { Heading } from "@/src/components/ui/heading";
+import { InlineLink } from "@/src/components/ui/inline-action";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { isSatisfied, type Expr } from "@/src/shared/prereq-ast";
-import Link from "next/link";
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-
-const POPUP_WIDTH = 320;
-const POPUP_GAP = 8;
-const VIEWPORT_PAD = 8;
+import { Fragment, useEffect, useState, type ReactNode, type RefObject } from "react";
+import { describeIssue } from "./validation";
 
 // Descriptions aren't in the course index (it would triple the payload), so
 // the popup pulls them from /api/courses/{code} on first open and caches for
@@ -35,26 +33,30 @@ const descriptionCache = new Map<string, string | null>();
 
 interface CourseInfoPopupProps {
   course: CourseIndexEntry;
-  anchorRect: DOMRect;
+  anchorRef: RefObject<HTMLElement | null>;
+  id?: string;
   prereqAst?: Expr | null;
   coreqAst?: Expr | null;
   completedBefore?: Set<string>;
   completedSameOrBefore?: Set<string>;
-  onClose?: () => void;
+  // Placement issues for this block, as internal tokens from validation.
+  issues?: string[];
+  onClose: () => void;
 }
 
 export function CourseInfoPopup({
   course,
-  anchorRect,
+  anchorRef,
+  id,
   prereqAst,
   coreqAst,
   completedBefore,
   completedSameOrBefore,
+  issues,
   onClose,
 }: CourseInfoPopupProps) {
   const api = useApi();
-  const popupRef = useRef<HTMLDivElement | null>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const navigation = useShellNavigation();
   const [description, setDescription] = useState<string | null>(descriptionCache.get(course.code) ?? null);
 
   useEffect(() => {
@@ -75,62 +77,52 @@ export function CourseInfoPopup({
     };
   }, [api, course.code]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: description growth re-measures the popup height so it stays inside the viewport.
-  useLayoutEffect(() => {
-    if (!popupRef.current) return;
-    const popupHeight = popupRef.current.offsetHeight;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    let left = anchorRect.right + POPUP_GAP;
-    if (left + POPUP_WIDTH > viewportWidth - VIEWPORT_PAD) {
-      left = anchorRect.left - POPUP_WIDTH - POPUP_GAP;
-    }
-    left = Math.max(VIEWPORT_PAD, Math.min(left, viewportWidth - POPUP_WIDTH - VIEWPORT_PAD));
-
-    let top = anchorRect.top;
-    if (top + popupHeight > viewportHeight - VIEWPORT_PAD) {
-      top = viewportHeight - popupHeight - VIEWPORT_PAD;
-    }
-    top = Math.max(VIEWPORT_PAD, top);
-
-    setPos({ top, left });
-  }, [anchorRect, description]);
-
-  useEffect(() => {
-    if (!onClose) return;
-    function handleClick(e: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onClose?.();
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      ref={popupRef}
-      style={{
-        position: "fixed",
-        top: pos?.top ?? -9999,
-        left: pos?.left ?? -9999,
-        width: POPUP_WIDTH,
-        opacity: pos ? 1 : 0,
-        zIndex: 50,
-      }}
-      className="neu-raised bg-surface border-border-subtle flex flex-col gap-2 rounded-lg border p-3 text-sm"
+  return (
+    <FloatingPanel
+      anchorRef={anchorRef}
+      onDismiss={onClose}
+      id={id}
+      role="dialog"
+      aria-label={`${course.code} details`}
+      onPointerDown={(event) => event.stopPropagation()}
+      className="neu-panel bg-surface flex w-80 flex-col gap-2.5 rounded-2xl p-4 text-sm wrap-anywhere [&>*]:shrink-0"
     >
-      <h4 className="text-on-surface font-semibold">
-        <span className="font-mono">{course.code}</span>
-        {course.title && <span className="text-on-surface-variant"> — {course.title}</span>}
-      </h4>
+      <div className="bg-surface sticky top-0 z-10 -mx-4 -mt-4 -mb-2.5 flex items-start gap-2 px-4 pt-4 pb-2.5">
+        <Heading as="h4" size="subsection" className="min-w-0 flex-1">
+          {course.code}
+          {course.title && <span className="text-on-surface-variant"> — {course.title}</span>}
+        </Heading>
+        <Button
+          type="button"
+          variant="ghost"
+          size="denseIcon"
+          onClick={onClose}
+          className="text-muted -mt-1 -mr-1"
+          aria-label="Close course details"
+        >
+          <Icon name="close" size={15} />
+        </Button>
+      </div>
+      {issues && issues.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {issues.map((token) => (
+            <p
+              key={token}
+              className="border-error/30 bg-error-container text-on-error-container rounded-lg border px-2 py-1.5 text-xs leading-snug"
+            >
+              {describeIssue(token)}
+            </p>
+          ))}
+        </div>
+      )}
       {course.credits != null && (
         <p className="text-on-surface-variant text-xs">
           Credits: <span className="text-on-surface">{course.credits}</span>
         </p>
       )}
-      {description && <p className="text-on-surface text-xs leading-relaxed whitespace-pre-wrap">{description}</p>}
+      {description && (
+        <p className="ui-content-enter text-on-surface text-xs leading-relaxed whitespace-pre-wrap">{description}</p>
+      )}
       {course.prerequisite && (
         <p className="text-on-surface-variant text-xs">
           <span className="text-muted">Prerequisites: </span>
@@ -147,15 +139,18 @@ export function CourseInfoPopup({
           </span>
         </p>
       )}
-      <Link
+      <InlineLink
         href={`/tools/courses/${courseCodeToSlug(course.code)}`}
-        className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+        onNavigate={(event) => {
+          event.preventDefault();
+          navigation.push(`/tools/courses/${courseCodeToSlug(course.code)}`);
+        }}
+        className="gap-1 self-start text-xs"
       >
         Open in Course Finder
         <Icon name="externalLink" size={12} />
-      </Link>
-    </div>,
-    document.body,
+      </InlineLink>
+    </FloatingPanel>
   );
 }
 

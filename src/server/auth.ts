@@ -11,7 +11,11 @@ const unauthorized = (error: string) =>
 function getSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET env var is not set");
-  return new TextEncoder().encode(secret);
+  const bytes = new TextEncoder().encode(secret);
+  if (process.env.NODE_ENV === "production" && bytes.byteLength < 32) {
+    throw new Error("JWT_SECRET must contain at least 32 bytes in production");
+  }
+  return bytes;
 }
 
 /** Signs a JWT for the given user. Expires in 7 days. */
@@ -35,12 +39,13 @@ export async function requireUser(request: Request): Promise<AuthedUser | Respon
   if (!token) return unauthorized("Missing bearer token");
 
   try {
-    const { payload } = await jose.jwtVerify(token, getSecret());
-    if (!payload.sub) return unauthorized("Token missing subject claim");
-    return {
-      sub: payload.sub,
-      username: (payload.username as string) ?? "unknown",
-    };
+    const { payload } = await jose.jwtVerify(token, getSecret(), {
+      algorithms: ["HS256"],
+      requiredClaims: ["sub", "iat", "exp"],
+      maxTokenAge: "7d",
+    });
+    if (!payload.sub || typeof payload.username !== "string") return unauthorized("Invalid token identity");
+    return { sub: payload.sub, username: payload.username };
   } catch {
     return unauthorized("Invalid or expired token");
   }

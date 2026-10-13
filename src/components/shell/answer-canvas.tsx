@@ -3,19 +3,27 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
-import { PANE_BY_ID, type CanvasView, type PaneState } from "@/src/components/shell/pane-registry";
-import { useCallback, useRef, type ComponentType } from "react";
+import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
+import { useWorkspaceHost, WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
+import { Button } from "@/src/components/ui/button";
+import { Heading } from "@/src/components/ui/heading";
+import type { CanvasView, PaneState } from "@/src/shared/panes";
+import { useCallback, useRef, useState, type ComponentType } from "react";
 
 /**
  * The AI Mode Answer Canvas: the idle map overview when no widget is active, or
  * the active widget's pane component. `view` is `workspaceView` passed by the
- * shell so the canvas stays pure and testable. `MapArea` reads its highlight and
+ * shell so the canvas stays pure and testable. Tools Mode mounts this without
+ * the titlebar (`titlebar={false}`); panes that portal toolbar content into
+ * the titlebar slot then fall back to their own in-pane chrome. `MapArea` reads its highlight and
  * focus nonce from the shell context (derived from `workspaceView` when the map
  * pane is active), so the idle and active-map paths both render `<MapArea>` and
  * differ only in the surrounding context.
  */
-export function AnswerCanvas({ view }: { view: CanvasView | null }) {
+export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | null; titlebar?: boolean }) {
   const { setRightPaneCollapsed, setAnswerSheetOpen, setUserDismissedPane } = useChatShell();
+  const { navigation } = useWorkspaceHost();
+  const [titlebarOutlet, setTitlebarOutlet] = useState<HTMLElement | null>(null);
   const onClose = () => {
     setRightPaneCollapsed(true);
     setAnswerSheetOpen(false);
@@ -24,26 +32,26 @@ export function AnswerCanvas({ view }: { view: CanvasView | null }) {
   if (view === null || !PANE_BY_ID[view.paneId]) return null;
   const paneId = view.paneId;
   const { label, icon: PaneGlyph } = PANE_BY_ID[view.paneId];
-  const isCanvas = paneId === "map" || paneId === "prereq-tree";
+
   return (
-    <section
-      aria-label="Answer canvas"
-      data-pane={paneId}
-      className="neu-panel flex h-full w-full flex-col overflow-hidden rounded-2xl"
+    <WorkspaceHostProvider
+      host={titlebar ? "answer-canvas" : "tools"}
+      navigation={titlebar ? null : navigation}
+      titlebarOutlet={titlebarOutlet}
     >
-      <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} />
-      {isCanvas ? (
-        <div className="relative min-h-0 flex-1">
-          <div className="canvas-extend-sidebar absolute inset-0">
-            <ActiveCanvasView view={view} />
-          </div>
-        </div>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-auto">
+      <section
+        aria-label={titlebar ? "Answer canvas" : undefined}
+        data-pane={paneId}
+        className={`flex h-full w-full flex-col overflow-hidden ${titlebar ? "neu-panel rounded-2xl" : ""}`}
+      >
+        {titlebar && (
+          <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} onOutlet={setTitlebarOutlet} />
+        )}
+        <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
           <ActiveCanvasView view={view} />
         </div>
-      )}
-    </section>
+      </section>
+    </WorkspaceHostProvider>
   );
 }
 
@@ -51,28 +59,23 @@ function AnswerCanvasTitlebar({
   label,
   Glyph,
   onClose,
+  onOutlet,
 }: {
   label: string;
   Glyph: ComponentType<{ className?: string }>;
   onClose: () => void;
+  onOutlet: (outlet: HTMLDivElement | null) => void;
 }) {
   return (
-    <header className="flex shrink-0 items-center gap-2 px-4 py-3">
+    <header className="flex h-15 shrink-0 items-center gap-2 px-4">
       <span className="bg-surface-container-low text-primary grid size-7 shrink-0 place-items-center rounded-lg">
         <Glyph className="size-4" />
       </span>
-      <h2 className="min-w-0 shrink-0 truncate text-base font-medium tracking-[-0.01em]">{label}</h2>
-      {/* Panes may portal toolbar content (e.g. the prereq tree's course lookup)
-          into this slot so the working area below keeps the full card height. */}
-      <div data-pane-titlebar-slot className="relative z-30 min-w-0 flex-1" />
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={onClose}
-        className="focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-      >
+      <Heading className="min-w-0 shrink-0 truncate">{label}</Heading>
+      <div ref={onOutlet} data-pane-titlebar-slot className="relative z-30 min-w-0 flex-1" />
+      <Button aria-label="Close" onClick={onClose} variant="ghost" size="icon">
         <Icon name="close" size={18} />
-      </button>
+      </Button>
     </header>
   );
 }

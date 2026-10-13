@@ -1,0 +1,964 @@
+"use client";
+
+import { useAppAuth } from "@/src/components/auth/app-auth";
+import { Icon } from "@/src/components/icons";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { Button } from "@/src/components/ui/button";
+import { DialogActions, DialogHeader, DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
+import { Disclosure } from "@/src/components/ui/disclosure";
+import { RetryState } from "@/src/components/ui/feedback";
+import { Checkbox, Field, SelectInput, TextInput } from "@/src/components/ui/form-controls";
+import { Heading } from "@/src/components/ui/heading";
+import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
+import { buildCalendar, expandBlocks } from "@/src/lib/schedule/calendar/buildCalendar";
+import {
+  normalizePerson,
+  sharerFetch,
+  SharerFetchError,
+  type GroupDetail,
+  type GroupSummary,
+  type WirePerson,
+} from "@/src/lib/schedule/client";
+import { commonFreeIntervals } from "@/src/lib/schedule/features/freeTime";
+import { defaultTermKey, deriveTerms, type Term } from "@/src/lib/schedule/features/terms";
+import type { Avatar, DayCode, Person, Schedule, Section } from "@/src/lib/schedule/types";
+import { dayCodeOf, minutesNow, minutesToFullLabel, toISODate } from "@/src/lib/schedule/util/time";
+import { AnimatePresence } from "motion/react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AvatarChip } from "./avatar-chip";
+import { BlockDetail } from "./block-detail";
+import { NowPanel } from "./now-panel";
+import { PeoplePanel } from "./people-panel";
+import { ScheduleGrid, type ScheduleGridEmptyState } from "./schedule-grid";
+import { buildSharerBands, buildSharerGrid } from "./schedule-grid-adapter";
+import { ScheduleControlsSkeleton, ScheduleProfileSkeleton, ScheduleToolbarSkeleton } from "./schedule-loading";
+import { ScheduleWorkspace, type ScheduleWorkspaceView } from "./schedule-workspace";
+import { TermSwitcher } from "./term-switcher";
+import { ToastProvider, useToast } from "./toast";
+import { UploadDropzone } from "./upload-dropzone";
+
+const ProfileModal = lazy(() => import("./profile-modal").then((module) => ({ default: module.ProfileModal })));
+
+interface Props {
+  /** A 6-char group code from `/pulse/schedule/[code]`; nonmembers must confirm before joining. */
+  groupCode?: string;
+}
+
+type GroupViewState =
+  | { status: "empty"; code: null; generation: number }
+  | { status: "loading"; code: string; generation: number }
+  | { status: "invitation"; code: string; generation: number; joining: boolean; message: string }
+  | { status: "ready"; code: string; generation: number; group: GroupDetail }
+  | { status: "error"; code: string; generation: number; message: string };
+
+function useNow(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : "Something went wrong.";
+}
+
+/** Full DB-backed ScheduleSharer surface. */
+export function ScheduleApp(props: Props) {
+  return (
+    <ToastProvider>
+      <ScheduleAppInner {...props} />
+    </ToastProvider>
+  );
+}
+
+function ScheduleAppInner({ groupCode }: Props) {
+  const auth = useAppAuth();
+  const navigation = useShellNavigation();
+  const toast = useToast();
+  const now = useNow();
+
+  const [booting, setBooting] = useState(true);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [bootNonce, setBootNonce] = useState(0);
+  const [me, setMe] = useState<WirePerson | null>(null);
+  const [groups, setGroups] = useState<GroupSummary[]>([]);
+  const initialCode = groupCode ?? null;
+  const selectionRef = useRef({ code: initialCode, generation: initialCode ? 1 : 0 });
+  const refreshToken = useRef(0);
+  const joinRequest = useRef<AbortController | null>(null);
+  const [groupView, setGroupView] = useState<GroupViewState>(() =>
+    initialCode
+      ? { status: "loading", code: initialCode, generation: 1 }
+      : { status: "empty", code: null, generation: 0 },
+  );
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
+  const [termKey, setTermKey] = useState<string | null>(null);
+  const [showFree, setShowFree] = useState(true);
+  const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
+  const [mobileDay, setMobileDay] = useState<DayCode>(() => {
+    const day = dayCodeOf(new Date());
+    return day === "Sat" || day === "Sun" ? "Mon" : day;
+  });
+  const [detail, setDetail] = useState<MergedBlock | null>(null);
+  const [draftSchedule, setDraftSchedule] = useState<Schedule | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const request = useCallback(
+    <T,>(path: string, init?: RequestInit) => sharerFetch<T>(auth.getToken, path, init),
+    [auth.getToken],
+  );
+
+  const refreshGroups = useCallback(async () => {
+    const result = await request<{ groups: GroupSummary[] }>("/groups");
+    setGroups(result.groups);
+    return result.groups;
+  }, [request]);
+
+  const selectGroup = useCallback((code: string | null) => {
+    joinRequest.current?.abort();
+    joinRequest.current = null;
+    const generation = selectionRef.current.generation + 1;
+    selectionRef.current = { code, generation };
+    setGroupView(code ? { status: "loading", code, generation } : { status: "empty", code: null, generation });
+    setTermKey(null);
+    setEnabled({});
+    setDetail(null);
+  }, []);
+
+  const fetchGroup = useCallback(
+    async (code: string) => {
+      try {
+        const result = await request<{ group: GroupDetail }>(`/groups/${code}`, { method: "GET" });
+        return result.group;
+      } catch (error) {
+        if (error instanceof SharerFetchError && error.status === 404) return null;
+        throw error;
+      }
+    },
+    [request],
+  );
+
+  useEffect(() => () => joinRequest.current?.abort(), []);
+
+  useEffect(() => {
+    void bootNonce;
+    let cancelled = false;
+    async function boot() {
+      setBooting(true);
+      setBootError(null);
+      try {
+        const [personResult, groupResult] = await Promise.all([
+          request<{ person: WirePerson | null }>("/schedule"),
+          request<{ groups: GroupSummary[] }>("/groups"),
+        ]);
+        if (cancelled) return;
+        setMe(personResult.person);
+        setGroups(groupResult.groups);
+        if (!selectionRef.current.code) selectGroup(groupResult.groups[0]?.code ?? null);
+      } catch (error) {
+        if (!cancelled) setBootError(messageOf(error));
+      } finally {
+        if (!cancelled) setBooting(false);
+      }
+    }
+    void boot();
+    return () => {
+      cancelled = true;
+    };
+  }, [bootNonce, request, selectGroup]);
+
+  useEffect(() => {
+    if (groupCode && groupCode !== selectionRef.current.code) selectGroup(groupCode);
+  }, [groupCode, selectGroup]);
+
+  useEffect(() => {
+    if (groupView.status !== "loading") return;
+    const { code, generation } = groupView;
+    let cancelled = false;
+    Promise.all([fetchGroup(code), refreshGroups()])
+      .then(([nextGroup]) => {
+        if (cancelled) return;
+        const selected = selectionRef.current;
+        if (selected.code !== code || selected.generation !== generation) return;
+        setGroupView(
+          nextGroup
+            ? { status: "ready", code, generation, group: nextGroup }
+            : { status: "invitation", code, generation, joining: false, message: "" },
+        );
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const selected = selectionRef.current;
+        if (selected.code !== code || selected.generation !== generation) return;
+        setGroupView({ status: "error", code, generation, message: messageOf(error) });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchGroup, groupView, refreshGroups]);
+
+  useEffect(() => {
+    if (groupView.status !== "ready") return;
+    const { code, generation } = groupView;
+    let cancelled = false;
+    const refreshVisibleGroup = async () => {
+      if (document.visibilityState === "hidden") return;
+      const token = ++refreshToken.current;
+      try {
+        const nextGroup = await fetchGroup(code);
+        if (!nextGroup || cancelled || token !== refreshToken.current) return;
+        const selected = selectionRef.current;
+        if (selected.code !== code || selected.generation !== generation) return;
+        setGroupView((current) =>
+          current.status === "ready" && current.code === code && current.generation === generation
+            ? { ...current, group: nextGroup }
+            : current,
+        );
+      } catch {
+        // Refresh failures leave the current, usable group in place.
+      }
+    };
+    const timer = window.setInterval(() => void refreshVisibleGroup(), 30_000);
+    window.addEventListener("focus", refreshVisibleGroup);
+    return () => {
+      cancelled = true;
+      refreshToken.current += 1;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshVisibleGroup);
+    };
+  }, [fetchGroup, groupView]);
+
+  const activeCode = groupView.code;
+  const group = groupView.status === "ready" ? groupView.group : null;
+  const groupError = groupView.status === "error" ? groupView.message : "";
+
+  const people = useMemo(
+    () => group?.members.map((person) => normalizePerson(person, enabled[person.id] ?? true)) ?? [],
+    [group, enabled],
+  );
+  const enabledPeople = useMemo(() => people.filter((person) => person.enabled), [people]);
+  const enabledPeopleWithSchedules = useMemo(() => enabledPeople.filter((person) => person.schedule), [enabledPeople]);
+  const terms = useMemo(() => deriveTerms(people), [people]);
+  const selectedTermKey =
+    termKey && terms.some((term) => term.key === termKey) ? termKey : defaultTermKey(terms, toISODate(now));
+  const term = terms.find((candidate) => candidate.key === selectedTermKey) ?? null;
+  const calendar = useMemo(() => buildCalendar(enabledPeople, term), [enabledPeople, term]);
+  const mergedBlocks = useMemo(() => [...calendar.blocksByDay.values()].flat(), [calendar.blocksByDay]);
+  const grid = useMemo(() => buildSharerGrid(mergedBlocks), [mergedBlocks]);
+  const freeBands = useMemo(() => {
+    if (!showFree) return [];
+    return enabledPeopleWithSchedules.length > 0
+      ? commonFreeIntervals(expandBlocks(enabledPeopleWithSchedules, term), calendar.days)
+      : [];
+  }, [showFree, enabledPeopleWithSchedules, term, calendar.days]);
+  const gridBands = useMemo(() => buildSharerBands(freeBands), [freeBands]);
+  const termIsLive = !!term && toISODate(now) >= term.start && toISODate(now) <= term.end;
+
+  function switchGroup(code: string) {
+    selectGroup(code);
+    navigation.push(`/pulse/schedule/${code}`);
+  }
+
+  function cancelInvitation() {
+    if (joinRequest.current) return;
+    const next = groups.find((candidate) => candidate.code !== activeCode)?.code ?? null;
+    selectGroup(next);
+    navigation.replace(next ? `/pulse/schedule/${next}` : "/pulse/schedule");
+  }
+
+  async function joinInvitedGroup() {
+    if (groupView.status !== "invitation" || joinRequest.current) return;
+    const { code, generation } = groupView;
+    const selected = selectionRef.current;
+    if (selected.code !== code || selected.generation !== generation) return;
+    const controller = new AbortController();
+    joinRequest.current = controller;
+    setGroupView({ ...groupView, joining: true, message: "" });
+    try {
+      const { group: joinedGroup } = await request<{ group: GroupDetail }>(`/groups/${code}`, {
+        method: "POST",
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]),
+      });
+      if (controller.signal.aborted) return;
+      setGroupView({ status: "ready", code, generation, group: joinedGroup });
+      try {
+        await refreshGroups();
+      } catch (error) {
+        if (!controller.signal.aborted) toast(messageOf(error), "error");
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        setGroupView({ status: "invitation", code, generation, joining: false, message: messageOf(error) });
+      }
+    } finally {
+      if (joinRequest.current === controller) joinRequest.current = null;
+    }
+  }
+
+  async function saveSchedule(handle: string, avatar: Avatar) {
+    if (!draftSchedule) return;
+    try {
+      const result = await request<{ person: WirePerson }>("/schedule", {
+        method: "PUT",
+        body: JSON.stringify({ handle, avatar, schedule: draftSchedule }),
+      });
+      setMe(result.person);
+      setDraftSchedule(null);
+      setGroupView((current) => {
+        if (current.status !== "ready" || current.code !== activeCode) return current;
+        const members = current.group.members.map((member) =>
+          member.id === result.person.id ? result.person : member,
+        );
+        return { ...current, group: { ...current.group, members } };
+      });
+      toast(`Saved ${handle}'s schedule · ${draftSchedule.sections.length} sections`);
+    } catch (error) {
+      toast(messageOf(error), "error");
+    }
+  }
+
+  async function createGroup(name: string) {
+    try {
+      const result = await request<{ group: GroupDetail }>("/groups", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      setShowCreate(false);
+      await refreshGroups();
+      switchGroup(result.group.code);
+      toast(`Created “${result.group.name}”`);
+    } catch (error) {
+      toast(messageOf(error), "error");
+    }
+  }
+
+  async function leaveActiveGroup() {
+    if (!activeCode || !group) return;
+    if (!window.confirm(`Leave “${group.name}”? The shared schedule stays available to everyone else.`)) return;
+    try {
+      await request(`/groups/${activeCode}`, { method: "DELETE" });
+      const nextGroups = await refreshGroups();
+      const next = nextGroups.find((candidate) => candidate.code !== activeCode);
+      selectGroup(next?.code ?? null);
+      if (next) navigation.replace(`/pulse/schedule/${next.code}`);
+      else navigation.replace("/pulse/schedule");
+      toast(`Left “${group.name}”`);
+    } catch (error) {
+      toast(messageOf(error), "error");
+    }
+  }
+
+  async function copyShareLink() {
+    if (groupView.status !== "ready") return;
+    const { code: activeCode } = groupView;
+    const url = `${window.location.origin}/pulse/schedule/${activeCode}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast(`Short link copied · ${activeCode}`);
+    } catch {
+      toast("Could not access the clipboard.", "error");
+    }
+  }
+
+  if (booting) return <ScheduleLoading />;
+
+  if (bootError) {
+    const retryBoot = () => {
+      if (selectionRef.current.code) selectGroup(selectionRef.current.code);
+      setBootNonce((nonce) => nonce + 1);
+    };
+    return (
+      <ScheduleWorkspace
+        title="Shared schedule"
+        description="Your groups and saved Workday schedule could not be loaded."
+        controlsLabel="Controls"
+        controls={
+          <RetryState
+            title="Schedules unavailable"
+            message={bootError}
+            onRetry={retryBoot}
+            align="start"
+            compact
+            className="p-4"
+          />
+        }
+        mobileView={mobileView}
+        onMobileViewChange={setMobileView}
+      >
+        <ScheduleGrid
+          model={grid.model}
+          activeDay={mobileDay}
+          onActiveDayChange={setMobileDay}
+          onBlockActivate={() => {}}
+          empty={{
+            title: "Schedules unavailable",
+            description: "Open Controls to retry loading your schedule and groups.",
+            actionLabel: "Open controls",
+            onAction: () => setMobileView("controls"),
+          }}
+          ariaLabel="Unavailable weekly schedule"
+        />
+      </ScheduleWorkspace>
+    );
+  }
+
+  const selectedSummary = groups.find((summary) => summary.code === activeCode);
+  const groupLabel = group?.name ?? selectedSummary?.name ?? (activeCode ? `Group ${activeCode}` : "Shared schedule");
+  const mePerson = me ? normalizePerson(me) : null;
+  const meHasSchedule = !!me?.schedule;
+  const nobodyImported = !!group && people.every((person) => !person.schedule);
+  const allPeopleFiltered = !!group && people.length > 0 && people.every((person) => !person.enabled);
+  const selectedSections = enabledPeopleWithSchedules
+    .flatMap((person) => person.schedule?.sections ?? [])
+    .filter((section) => sectionOverlapsTerm(section, term));
+  const tbaOnly = selectedSections.length > 0 && selectedSections.every((section) => section.meetings.length === 0);
+  const empty =
+    groupView.status === "loading"
+      ? undefined
+      : groupView.status === "invitation"
+        ? {
+            title: "Review this invitation",
+            description: "Join only if you want to share your schedule with this group.",
+          }
+        : groupView.status === "error"
+          ? {
+              title: `${groupLabel} is unavailable`,
+              description: `Group ${groupView.code} could not be opened. Check the code or choose another group in Controls.`,
+              actionLabel: "Open controls",
+              onAction: () => setMobileView("controls"),
+            }
+          : scheduleEmptyState({
+              group,
+              groupError,
+              me: mePerson,
+              nobodyImported,
+              allPeopleFiltered,
+              tbaOnly,
+              onImport: () => setMobileView("controls"),
+              onCreate: () => setShowCreate(true),
+            });
+  const nowLine = termIsLive
+    ? {
+        day: dayCodeOf(now),
+        minute: minutesNow(now),
+        label: `Current time: ${now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+      }
+    : undefined;
+
+  const actions =
+    groupView.status === "ready" ? (
+      <Button
+        variant="primary"
+        size="prominent"
+        aria-label={`Copy share link ${groupView.code}`}
+        onClick={copyShareLink}
+      >
+        <Icon name="externalLink" size={16} />
+        Share <span className="text-xs opacity-80">{groupView.code}</span>
+      </Button>
+    ) : undefined;
+
+  const groupSelector =
+    groups.length > 0 ? (
+      <section data-control-section="group" aria-labelledby="schedule-groups-heading" className="py-4">
+        <Field label={<span id="schedule-groups-heading">Group</span>} htmlFor="schedule-group">
+          <SelectInput
+            id="schedule-group"
+            value={activeCode ?? ""}
+            onChange={(event) => switchGroup(event.target.value)}
+          >
+            {activeCode && !groups.some((item) => item.code === activeCode) ? (
+              <option value={activeCode}>{groupLabel}</option>
+            ) : null}
+            {groups.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.name} · {item.memberCount}
+              </option>
+            ))}
+          </SelectInput>
+        </Field>
+      </section>
+    ) : null;
+
+  const importControl = (
+    <section data-control-section="import" aria-label="My schedule" className="border-border-subtle border-t py-4">
+      <Heading as="h3" size="subsection" className="mb-2">
+        My schedule
+      </Heading>
+      <UploadDropzone
+        label={meHasSchedule ? "Replace my schedule" : "Import my schedule"}
+        onParsed={(schedule) => setDraftSchedule(schedule)}
+      />
+    </section>
+  );
+
+  const controls = (
+    <div className="flex h-full min-h-0 [scrollbar-gutter:stable] flex-col overflow-y-auto px-4">
+      {groupSelector}
+      {group ? (
+        <>
+          <section
+            data-control-section="management"
+            aria-label="Group management"
+            className="border-border-subtle grid grid-cols-2 gap-2 border-t py-4"
+          >
+            <Button size="prominent" onClick={() => setShowCreate(true)}>
+              <Icon name="add" size={16} />
+              New group
+            </Button>
+            <Button variant="danger" size="prominent" onClick={leaveActiveGroup}>
+              <Icon name="exit" size={16} />
+              Leave
+            </Button>
+          </section>
+          <div data-control-section="people" className="border-border-subtle border-t py-4">
+            <PeoplePanel
+              people={people}
+              meId={me?.id ?? auth.user?.userId ?? null}
+              onToggle={(id, value) => setEnabled((previous) => ({ ...previous, [id]: value }))}
+              onEnableAll={() => setEnabled({})}
+            />
+          </div>
+          <section
+            data-control-section="free-time"
+            aria-label="Common free time"
+            className="border-border-subtle border-t py-4"
+          >
+            <label
+              htmlFor="schedule-common-free-time"
+              className="text-on-surface flex min-h-11 items-center justify-between gap-3 text-sm font-medium"
+            >
+              <span>Common free time</span>
+              <Checkbox
+                id="schedule-common-free-time"
+                checked={showFree}
+                onChange={(event) => setShowFree(event.target.checked)}
+              />
+            </label>
+            <Disclosure open={showFree}>
+              <section
+                aria-label="Common free-time results"
+                // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users need a focus target to scroll these results.
+                tabIndex={0}
+                className="bg-surface-container-low mt-2 max-h-36 overflow-y-auto rounded-lg px-2.5 py-2"
+              >
+                {enabledPeopleWithSchedules.length === 0 ? (
+                  <p className="text-muted text-xs leading-5">
+                    Show at least one person with a schedule to compare free time.
+                  </p>
+                ) : freeBands.length === 0 ? (
+                  <p className="text-on-surface-variant text-xs leading-5">
+                    The enabled schedules have no common interval in this timetable.
+                  </p>
+                ) : (
+                  <ul
+                    aria-label="Common free-time intervals"
+                    className="text-on-surface-variant flex flex-col gap-1 text-xs"
+                  >
+                    {freeBands.map((band) => (
+                      <li key={`${band.day}-${band.startMin}`} className="flex justify-between gap-2">
+                        <span>{band.day}</span>
+                        <span className="tabular-nums">
+                          {minutesToFullLabel(band.startMin)}–{minutesToFullLabel(band.endMin)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </Disclosure>
+          </section>
+          {termIsLive && enabledPeopleWithSchedules.length > 0 ? (
+            <div data-control-section="now" className="border-border-subtle border-t py-4">
+              <NowPanel people={enabledPeople} now={now} />
+            </div>
+          ) : null}
+          {importControl}
+        </>
+      ) : groupView.status === "loading" ? (
+        <div data-control-section="group-status" aria-busy="true">
+          <ScheduleControlsSkeleton label={`Opening ${groupLabel}…`} />
+        </div>
+      ) : (
+        <NoGroupControls
+          me={mePerson}
+          error={groupError}
+          groupLabel={groupView.status === "error" ? groupLabel : undefined}
+          groupCode={groupView.status === "error" ? groupView.code : undefined}
+          onUpload={(schedule) => setDraftSchedule(schedule)}
+          onCreate={() => setShowCreate(true)}
+          onJoin={switchGroup}
+        />
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <ScheduleWorkspace
+        title={groupLabel}
+        description={
+          group
+            ? "Compare everyone’s week, find common free time, and open a class for details."
+            : groupView.status === "loading"
+              ? `Loading group ${groupView.code} without hiding the weekly timetable.`
+              : groupView.status === "error"
+                ? `Group ${groupView.code} is unavailable. Choose another group or check the shared code.`
+                : "Import your Workday schedule, then create or join a group to compare weeks."
+        }
+        actions={actions}
+        toolbar={
+          groupView.status === "loading" ? (
+            <ScheduleToolbarSkeleton />
+          ) : (
+            <TermSwitcher terms={terms} selected={selectedTermKey} onSelect={setTermKey} />
+          )
+        }
+        controlsLabel="Controls"
+        controls={controls}
+        mobileView={mobileView}
+        onMobileViewChange={setMobileView}
+      >
+        <ScheduleGrid
+          model={grid.model}
+          activeDay={mobileDay}
+          onActiveDayChange={setMobileDay}
+          onBlockActivate={(id) => {
+            const block = grid.blocksById.get(id);
+            if (block) setDetail(block);
+          }}
+          bands={gridBands}
+          now={nowLine}
+          empty={empty}
+          loading={groupView.status === "loading" ? `Loading ${groupLabel} weekly schedule` : undefined}
+          renderBlockFooter={(block) => {
+            const peopleForBlock = grid.blocksById.get(block.id)?.people ?? [];
+            const participantLabel = `${peopleForBlock.length} ${peopleForBlock.length === 1 ? "person" : "people"}`;
+            return (
+              <span className="@container/schedule-participants w-full min-w-0">
+                <span
+                  role="img"
+                  aria-label={participantLabel}
+                  title={participantLabel}
+                  className="text-on-surface-variant block text-right text-xs tabular-nums @min-[6rem]/schedule-participants:hidden"
+                >
+                  {peopleForBlock.length}
+                </span>
+                <span className="hidden items-center justify-end @min-[6rem]/schedule-participants:flex">
+                  {peopleForBlock.slice(0, 4).map((person) => (
+                    <AvatarChip key={person.id} avatar={person.avatar} size={16} title={person.handle} />
+                  ))}
+                  {peopleForBlock.length > 4 ? (
+                    <span className="text-on-surface-variant ml-0.5 shrink-0 text-xs">
+                      +{peopleForBlock.length - 4}
+                    </span>
+                  ) : null}
+                </span>
+              </span>
+            );
+          }}
+          ariaLabel={group ? `${group.name} weekly schedule` : `${groupLabel} weekly schedule preview`}
+        />
+      </ScheduleWorkspace>
+      <AnimatePresence initial={false}>
+        {draftSchedule && (
+          <Suspense
+            key="profile"
+            fallback={
+              <ScheduleProfileSkeleton
+                title={me ? "Replace your schedule" : "Who is this schedule for?"}
+                avatarKind={me ? normalizePerson(me).avatar.kind : undefined}
+                onCancel={() => setDraftSchedule(null)}
+              />
+            }
+          >
+            <ProfileModal
+              schedule={draftSchedule}
+              currentHandle={me?.handle}
+              currentAvatar={me ? normalizePerson(me).avatar : undefined}
+              title={me ? "Replace your schedule" : "Who is this schedule for?"}
+              saveLabel={me ? "Replace schedule" : "Save my schedule"}
+              onSave={saveSchedule}
+              onCancel={() => setDraftSchedule(null)}
+            />
+          </Suspense>
+        )}
+        {showCreate && (
+          <CreateGroupModal key="create-group" onCreate={createGroup} onClose={() => setShowCreate(false)} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence key={groupView.generation} initial={false}>
+        {groupView.status === "invitation" && (
+          <DialogRoot
+            key="invitation"
+            onDismiss={cancelInvitation}
+            dismissDisabled={groupView.joining}
+            backdropLabel="Cancel schedule invitation"
+            returnFocusFallback={() =>
+              document.getElementById("schedule-group") ?? document.getElementById("schedule-code")
+            }
+          >
+            <DialogPanel aria-label={`Join group ${groupView.code}?`} aria-busy={groupView.joining} size="md">
+              <DialogHeader
+                title={`Join group ${groupView.code}?`}
+                description="Group members can see your current and future uploaded class times and rooms until you leave the group. Join only if you trust everyone with this link."
+              />
+              {groupView.message && (
+                <p role="alert" className="text-error mt-4 text-sm">
+                  {groupView.message}
+                </p>
+              )}
+              <DialogActions layout="stack">
+                <Button
+                  data-dialog-initial-focus
+                  size="prominent"
+                  disabled={groupView.joining}
+                  onClick={cancelInvitation}
+                >
+                  Cancel
+                </Button>
+                <Button variant="primary" size="prominent" disabled={groupView.joining} onClick={joinInvitedGroup}>
+                  {groupView.joining ? "Joining…" : "Join and share my schedule"}
+                </Button>
+              </DialogActions>
+            </DialogPanel>
+          </DialogRoot>
+        )}
+        {detail && <BlockDetail key="block-detail" block={detail} onClose={() => setDetail(null)} />}
+      </AnimatePresence>
+    </>
+  );
+}
+
+function ScheduleLoading() {
+  const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
+  const model = useMemo(() => buildSharerGrid([]).model, []);
+
+  return (
+    <ScheduleWorkspace
+      title="Shared schedule"
+      description="Loading your groups and saved Workday schedule."
+      toolbar={<ScheduleToolbarSkeleton />}
+      controlsLabel="Controls"
+      controls={
+        <div className="h-full [scrollbar-gutter:stable] overflow-y-auto px-4">
+          <ScheduleControlsSkeleton label="Loading schedule controls" includeGroup />
+        </div>
+      }
+      mobileView={mobileView}
+      onMobileViewChange={setMobileView}
+    >
+      <ScheduleGrid
+        model={model}
+        activeDay="Mon"
+        onActiveDayChange={() => {}}
+        onBlockActivate={() => {}}
+        loading="Loading your weekly schedule"
+      />
+    </ScheduleWorkspace>
+  );
+}
+
+function NoGroupControls({
+  me,
+  error,
+  groupLabel,
+  groupCode,
+  onUpload,
+  onCreate,
+  onJoin,
+}: {
+  me: Person | null;
+  error: string;
+  groupLabel?: string;
+  groupCode?: string;
+  onUpload: (schedule: Schedule) => void;
+  onCreate: () => void;
+  onJoin: (code: string) => void;
+}) {
+  const [code, setCode] = useState("");
+  return (
+    <div className="border-border-subtle flex flex-col gap-4 border-t py-4 first:border-t-0">
+      <section data-control-section="group-status">
+        <Heading as="h2" size="subsection">
+          {error ? `${groupLabel ?? "Group"} unavailable` : me ? "Start a group" : "Import from Workday"}
+        </Heading>
+        <p className="text-muted mt-1 text-xs leading-relaxed">
+          {error
+            ? `Group ${groupCode ?? "code"} could not be opened. ${error}`
+            : me
+              ? "Create a group for your schedule, or join one with its six-character code."
+              : "Your Excel export is parsed in this browser before it is saved to Reodite."}
+        </p>
+      </section>
+
+      {!me ? (
+        <UploadDropzone onParsed={onUpload} />
+      ) : (
+        <Button variant="primary" size="field" onClick={onCreate} className="w-full">
+          Create a shared schedule
+        </Button>
+      )}
+
+      <form
+        className="border-border-subtle flex flex-col gap-2 border-t pt-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (/^[0-9A-Za-z]{6}$/.test(code)) onJoin(code);
+        }}
+      >
+        <Field label="Join with a code" htmlFor="schedule-code">
+          <div className="flex gap-2">
+            <TextInput
+              id="schedule-code"
+              value={code}
+              maxLength={6}
+              placeholder="ABC123"
+              aria-describedby="schedule-code-help"
+              onChange={(event) => setCode(event.target.value.replace(/[^0-9A-Za-z]/g, ""))}
+              className="min-w-0 flex-1 text-center uppercase"
+            />
+            <Button type="submit" size="field" disabled={!/^[0-9A-Za-z]{6}$/.test(code)}>
+              Join
+            </Button>
+          </div>
+          <p id="schedule-code-help" className="text-muted text-xs">
+            Enter the six-character code from a shared link.
+          </p>
+        </Field>
+      </form>
+    </div>
+  );
+}
+
+function sectionOverlapsTerm(section: Section, term: Term | null): boolean {
+  if (!term || !section.termStart || !section.termEnd) return true;
+  return section.termStart <= term.end && section.termEnd >= term.start;
+}
+
+/** Describes why the shared grid is empty and the next available action. */
+export function scheduleEmptyState({
+  group,
+  groupError,
+  me,
+  nobodyImported,
+  allPeopleFiltered,
+  tbaOnly,
+  onImport,
+  onCreate,
+}: {
+  group: GroupDetail | null;
+  groupError: string;
+  me: Person | null;
+  nobodyImported: boolean;
+  allPeopleFiltered: boolean;
+  tbaOnly: boolean;
+  onImport: () => void;
+  onCreate: () => void;
+}): ScheduleGridEmptyState {
+  if (!group) {
+    if (groupError) {
+      return {
+        title: "This group could not be opened",
+        description: "Check the shared code or join a different group from Controls.",
+        actionLabel: "Open controls",
+        onAction: onImport,
+      };
+    }
+    if (!me) {
+      return {
+        title: "Your empty week is ready",
+        description: "Import your Workday schedule from Controls to put your classes on this grid.",
+        actionLabel: "Import schedule",
+        onAction: onImport,
+      };
+    }
+    return {
+      title: "No group selected",
+      description: "Create a group or join one with a shared code. Your saved schedule stays unchanged.",
+      actionLabel: "Create group",
+      onAction: onCreate,
+    };
+  }
+  if (nobodyImported) {
+    return {
+      title: "Nobody has imported a schedule",
+      description: "Group members are here, but no one has added a Workday schedule yet.",
+      actionLabel: "Import schedule",
+      onAction: onImport,
+    };
+  }
+  if (allPeopleFiltered) {
+    return {
+      title: "Everyone is hidden",
+      description: "Turn someone back on in Controls to show their classes.",
+      actionLabel: "Open people controls",
+      onAction: onImport,
+    };
+  }
+  if (tbaOnly) {
+    return {
+      title: "Meeting times are still TBA",
+      description: "This term has sections, but Workday does not list a day or time for them yet.",
+    };
+  }
+  return {
+    title: "No classes in this term",
+    description: "The selected people have no scheduled meetings in this term. Try another term above.",
+  };
+}
+
+export function CreateGroupModal({
+  onCreate,
+  onClose,
+}: {
+  onCreate: (name: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  return (
+    <DialogRoot onDismiss={onClose} dismissDisabled={creating} backdropLabel="Cancel new shared schedule">
+      <DialogPanel
+        as="form"
+        aria-label="Create shared schedule"
+        aria-busy={creating}
+        size="sm"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (!name.trim() || creating) return;
+          setCreating(true);
+          try {
+            await onCreate(name.trim());
+          } finally {
+            setCreating(false);
+          }
+        }}
+      >
+        <DialogHeader title="Create a shared schedule" description="Name it for the group chat, club, or study crew." />
+        <Field label="Group name" htmlFor="schedule-group-name" className="mt-4">
+          <TextInput
+            id="schedule-group-name"
+            data-dialog-initial-focus
+            value={name}
+            disabled={creating}
+            maxLength={80}
+            placeholder="CPSC study crew"
+            onChange={(event) => setName(event.target.value)}
+          />
+        </Field>
+        <DialogActions>
+          <Button size="prominent" disabled={creating} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" size="prominent" disabled={!name.trim() || creating}>
+            {creating ? "Creating…" : "Create group"}
+          </Button>
+        </DialogActions>
+      </DialogPanel>
+    </DialogRoot>
+  );
+}

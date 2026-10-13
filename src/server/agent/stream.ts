@@ -46,6 +46,9 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   let fullText = "";
   const pendingCitations: CitationSeed[] = [];
   let toolNudges = 0;
+  let documentReadNudged = false;
+  let requireDocumentTool = false;
+  const openedDocuments = new Set<string>();
   // Identical repeat calls within one question return the cached successful
   // result instead of re-executing — guards against models that re-issue the
   // same lookup across turns.
@@ -55,10 +58,10 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
   const lastUserMsg = (messages[messages.length - 1]?.content ?? "").trim().toLowerCase();
   const isGreeting = lastUserMsg.length < 3 || /^(hi|hello|hey|greetings|sup|yo)\b/.test(lastUserMsg);
 
-  for (let i = 0; ; i++) {
+  for (let i = 0; i < ITERATION_LIMIT; i++) {
     if (i > 0) yield { type: "turn_start" as const };
 
-    if (i === ITERATION_LIMIT) {
+    if (i === ITERATION_LIMIT - 1) {
       convo.push({
         role: "user",
         content: [
@@ -86,7 +89,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
       messages: convo,
       system: systemPrompt(new Date(), allocateCitations(pendingCitations), deps.profile ?? null),
       toolSpecs: budgetExceeded ? [] : toolSpecs,
-      forceToolUse: i === 0 && !isGreeting,
+      forceToolUse: !budgetExceeded && ((i === 0 && !isGreeting) || requireDocumentTool),
     })) {
       if (event.type === "thinking") {
         yield { type: "thinking", delta: event.delta };
@@ -111,6 +114,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
         stopReason = event.reason;
       }
     }
+    requireDocumentTool = false;
     if (iterText.trim()) blocks.push({ text: iterText });
 
     fullText = blocks
@@ -140,6 +144,35 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
         });
         continue;
       }
+      const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
+      const unread = finalCitations.filter(
+        (citation) =>
+          citation.detail?.original_id &&
+          !openedDocuments.has(citation.detail.original_id) &&
+          (citation.used || openedDocuments.size === 0),
+      );
+      if (unread.length && toolSpecs.some((tool) => tool.name === "get_document")) {
+        yield { type: "text_clear" };
+        if (documentReadNudged || toolCalls.length >= TOOL_CALL_BUDGET || i === ITERATION_LIMIT - 1) {
+          yield {
+            type: "error",
+            message: "Could not verify the full source documents. Please ask a narrower question.",
+          };
+          return;
+        }
+        documentReadNudged = true;
+        requireDocumentTool = true;
+        convo.push({
+          role: "user",
+          content: [
+            {
+              text: `Before answering, call get_document to read the relevant documents below. Read each document you cite; snippets can omit conditions. Use article_id equal to original_id. If a result is irrelevant, omit its claims and citation. Describe missing details only within the sources you actually read.\n${JSON.stringify(unread.map((citation) => ({ original_id: citation.detail?.original_id, title: citation.label, source_url: citation.source_url, cited_in_draft: citation.used })))}`,
+            },
+          ],
+        });
+        fullText = "";
+        continue;
+      }
       let follow_ups: string[] | undefined;
       if (GENERATE_FOLLOW_UPS) {
         try {
@@ -149,7 +182,7 @@ export async function* streamAgent(messages: ChatMessage[], deps: StreamAgentDep
 - Calculate walking distances between buildings
 - Find buildings on campus
 - Find places (food, services) near buildings
-- Search study spaces and free rooms
+- Search study-space descriptions and published library hours
 - Look up grade distributions
 - Search events, parking, admission requirements, key dates
 
@@ -195,9 +228,13 @@ Rules:
           // Best-effort
         }
       }
-      const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
       yield { type: "citations", citations: finalCitations };
       yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations, follow_ups };
+      return;
+    }
+
+    if (toolCalls.length + toolUses.length > TOOL_CALL_BUDGET) {
+      yield { type: "error", message: "Response limit reached. Please ask a narrower question." };
       return;
     }
 
@@ -221,29 +258,59 @@ Rules:
       const { toolUseId, name, input } = toolUses[i];
       const result = execResults[i];
       toolCalls.push({ name, input, result });
+      if (
+        name === "get_document" &&
+        result &&
+        typeof result === "object" &&
+        "original_id" in result &&
+        typeof result.original_id === "string" &&
+        "content_markdown" in result &&
+        typeof result.content_markdown === "string" &&
+        result.content_markdown.trim()
+      )
+        openedDocuments.add(result.original_id);
       yield { type: "tool_end", name, result };
+      const content = [{ json: result }];
       const extractor = CITATION_EXTRACTORS[name];
       if (extractor) {
-        pendingCitations.push(...extractor(result, input));
-        yield { type: "citations", citations: allocateCitations(pendingCitations) };
+        const seeds = extractor(result, input);
+        pendingCitations.push(...seeds);
+        const citations = allocateCitations(pendingCitations);
+        yield { type: "citations", citations };
+        const sourceCitations = citations
+          .filter((citation) =>
+            seeds.some(
+              (seed) => seed.label === citation.label && (seed.source_url ?? "") === (citation.source_url ?? ""),
+            ),
+          )
+          .map((citation) => ({
+            citation: `[${citation.index}]`,
+            label: citation.label,
+            source_url: citation.source_url,
+          }));
+        if (sourceCitations.length) content.push({ json: { source_citations: sourceCitations } });
       }
       results.push({
         toolResult: {
           toolUseId,
           name,
-          content: [{ json: result }],
+          content,
           ...(isToolError(result) ? { status: "error" as const } : {}),
         },
       });
     }
 
     if (widgetSucceeded) {
-      // show_widget rendered the card; any same-turn text is the answer.
-      // End the turn immediately — no extra nudge round-trip.
       const finalCitations = stampUsed(allocateCitations(pendingCitations), fullText);
-      yield { type: "citations", citations: finalCitations };
-      yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations };
-      return;
+      const hasUnreadSource = finalCitations.some(
+        (citation) =>
+          citation.used && citation.detail?.original_id && !openedDocuments.has(citation.detail.original_id),
+      );
+      if (!hasUnreadSource) {
+        yield { type: "citations", citations: finalCitations };
+        yield { type: "done", message: fullText, tool_calls: toolCalls, citations: finalCitations };
+        return;
+      }
     }
 
     // Tool results must always land in history — Gemini rejects a
@@ -265,4 +332,5 @@ Rules:
       fullText = "";
     }
   }
+  yield { type: "error", message: "Response limit reached. Please ask a narrower question." };
 }

@@ -176,6 +176,168 @@ describe("extractors — Property 19, Source-url honesty", () => {
     );
   });
 
+  it.each(["javascript:alert(1)", "data:text/html,example", "file:///tmp/example", "https://user:secret@example.test"])(
+    "omits unsafe source links: %s",
+    (url) => {
+      const seeds = extract("search_ubc_pages")({ pages: [{ title: "Example", url }] }, {});
+      expect(seeds[0].source_url).toBeUndefined();
+    },
+  );
+
+  it("retains public resource retrieval and publisher timestamps", () => {
+    const seeds = extract("search_student_resources")(
+      {
+        resources: [
+          {
+            title: "Example resource",
+            category: "student-support",
+            source_url: "https://example.test/resource",
+            retrieved_at: "2026-09-01T12:00:00Z",
+            source_modified_at: "2026-08-01T12:00:00Z",
+          },
+        ],
+      },
+      {},
+    );
+    expect(seeds).toEqual([
+      expect.objectContaining({
+        label: "Example resource",
+        tool: "search_student_resources",
+        source_url: "https://example.test/resource",
+        detail: expect.objectContaining({
+          category: "student-support",
+          retrieved_at: "2026-09-01T12:00:00Z",
+          source_modified_at: "2026-08-01T12:00:00Z",
+        }),
+      }),
+    ]);
+  });
+
+  it("keeps document search and full reads on the same assigned citation", () => {
+    const document = {
+      original_id: "prose:workday:registration",
+      title: "Registration guide",
+      category: "documents",
+      subcategory: "workday",
+      source_id: "workday",
+      source_url: "https://workday.students.ubc.ca/registration?view=student",
+      retrieved_at: "2026-09-01T12:00:00Z",
+      source_modified_at: "2026-08-01T12:00:00Z",
+      content_sha256: "a".repeat(64),
+    };
+    const searchSeeds = extract("search_ubc_pages")(
+      { pages: [{ ...document, url: "https://example.test/alias", snippets: ["Match"] }] },
+      {},
+    );
+    const readSeeds = extract("get_document")(
+      { ...document, content_markdown: "# Registration\n1. Confirm your selection." },
+      {},
+    );
+    expect(searchSeeds[0].source_url).toBe(document.source_url);
+    expect(readSeeds[0]).toEqual({ ...searchSeeds[0], tool: "get_document" });
+    const citations = allocateCitations([
+      { label: "Prior source", kind: "page", tool: "search_ubc_pages", source_url: "https://example.test/prior" },
+      ...searchSeeds,
+      ...readSeeds,
+    ]);
+    expect(citations).toHaveLength(2);
+    expect(citations[1]).toMatchObject({
+      index: 2,
+      label: document.title,
+      source_url: document.source_url,
+      detail: {
+        original_id: document.original_id,
+        category: "documents",
+        subcategory: "workday",
+        source_id: "workday",
+        retrieved_at: document.retrieved_at,
+        source_modified_at: document.source_modified_at,
+        content_sha256: document.content_sha256,
+      },
+    });
+  });
+
+  it("retains host categories and dates without merging query-selected document views", () => {
+    const document = {
+      original_id: `documents:official-web:${"b".repeat(24)}`,
+      title: "Support guide",
+      category: "documents",
+      subcategory: "support",
+      document_category: "support",
+      hostname: "it.ubc.ca",
+      source_id: "it.ubc.ca",
+      source_url: "https://it.ubc.ca/guide?view=student",
+      retrieved_at: "2026-09-01T12:00:00Z",
+      source_modified_at: "2024-01-01T00:00:00Z",
+    };
+    const seeds = [
+      ...extract("get_document")(document, {}),
+      ...extract("get_document")({ ...document, source_url: "https://it.ubc.ca/guide?view=staff" }, {}),
+    ];
+    expect(allocateCitations(seeds)).toHaveLength(2);
+    expect(seeds[0].detail).toMatchObject({
+      hostname: "it.ubc.ca",
+      document_category: "support",
+      subcategory: "support",
+      source_modified_at: document.source_modified_at,
+      retrieved_at: document.retrieved_at,
+    });
+    expect(extract("get_document")({ error: "Document not found" }, {})).toEqual([]);
+    expect(extract("get_document")(undefined, {})).toEqual([]);
+  });
+
+  it("keeps housing source conditions with each fee citation", () => {
+    const seeds = extract("get_costs")(
+      {
+        kind: "housing",
+        fee_tables: [
+          {
+            title: "Example fees",
+            source_url: "https://example.test/fees",
+            source_context_required: true,
+            retrieved_at: "2026-09-01T12:00:00Z",
+            source_modified_at: "2026-08-01T12:00:00Z",
+          },
+        ],
+      },
+      {},
+    );
+    expect(seeds[0]).toMatchObject({
+      label: "Example fees",
+      source_url: "https://example.test/fees",
+      tool: "get_costs",
+      detail: { retrieved_at: "2026-09-01T12:00:00Z", source_context_required: true },
+    });
+    expect(extract("get_costs")({ kind: "living", living_costs: [] }, {})).toEqual([]);
+  });
+
+  it("attributes library schedules to their dated source snapshot", () => {
+    const seeds = extract("get_library_hours")(
+      {
+        date: "2026-09-05",
+        branches: [
+          {
+            title: "Example library",
+            source_url: "https://example.test/library",
+            retrieved_at: "2026-08-01T12:00:00Z",
+            scheduled: {
+              date: "2026-09-05",
+              source_url: "https://example.test/hours",
+              retrieved_at: "2026-09-01T12:00:00Z",
+            },
+          },
+        ],
+      },
+      {},
+    );
+    expect(seeds[0]).toMatchObject({
+      label: "Example library",
+      source_url: "https://example.test/hours",
+      tool: "get_library_hours",
+      detail: { date: "2026-09-05", retrieved_at: "2026-09-01T12:00:00Z" },
+    });
+  });
+
   it("course extractors omit source_url entirely (no URL field on records)", () => {
     const doc: CourseDoc = {
       code: "CPSC_V 110",
@@ -203,6 +365,38 @@ describe("extractors — Property 19, Source-url honesty", () => {
 });
 
 describe("stampUsed — Property 20, Used-only-after-stamp", () => {
+  it.each(["[1,2]", "[1, 2]", "[ 1 , 2 ]", "[2, 1, 2]"])(
+    "marks sources referenced by grouped citations: %s",
+    (marker) => {
+      const citations: Citation[] = [1, 2, 3].map((index) => ({
+        index,
+        label: `Source ${index}`,
+        kind: "page",
+        tool: "get_library_hours",
+        used: false,
+      }));
+      const stamped = stampUsed(citations, `The schedule is unknown ${marker}.`);
+      expect(stamped.map((citation) => citation.used)).toEqual([true, true, false]);
+      expect(citations.every((citation) => !citation.used)).toBe(true);
+      expect(stamped[2]).toBe(citations[2]);
+    },
+  );
+
+  it("ignores invalid grouped references while retaining valid source indices", () => {
+    const citations: Citation[] = [1, 2].map((index) => ({
+      index,
+      label: `Source ${index}`,
+      kind: "page",
+      tool: "get_library_hours",
+      used: false,
+    }));
+    expect(stampUsed(citations, "Read [1, 0, 99, 9007199254740993].").map((citation) => citation.used)).toEqual([
+      true,
+      false,
+    ]);
+    expect(stampUsed(citations, "[1, x] [1-2] [1, 2")).toBe(citations);
+  });
+
   it("live (pre-stamp) citations carry used false; stamping sets used only for indices present in text", () => {
     fc.assert(
       fc.property(fc.array(arbSeed, { maxLength: 8 }), arbTextWithMarkers, (seeds, text) => {

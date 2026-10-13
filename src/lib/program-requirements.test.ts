@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateCategory, optionMatches, type RequirementCategory, ruleMatches } from "./program-requirements";
+import { evaluateCategory, optionMatches, ruleMatches, type RequirementCategory } from "./program-requirements";
 
 const SUBJ = {
   ENGL: "Faculty of Arts",

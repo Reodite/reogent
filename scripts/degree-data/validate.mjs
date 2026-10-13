@@ -26,7 +26,10 @@ if (mode === "registry") {
   }
 } else if (mode === "overlay") {
   for (const [id, req] of Object.entries(data)) {
-    if (req.total_credits != null && (typeof req.total_credits !== "number" || req.total_credits < 1 || req.total_credits > 300))
+    if (
+      req.total_credits != null &&
+      (typeof req.total_credits !== "number" || req.total_credits < 1 || req.total_credits > 300)
+    )
       errors.push(`${id}: implausible total_credits ${req.total_credits}`);
     let catSum = 0;
     for (const cat of req.categories ?? []) {
@@ -37,7 +40,8 @@ if (mode === "registry") {
         if (opt.code && !validCodes.has(opt.code)) errors.push(`${id} / ${cat.name}: unknown course ${opt.code}`);
         if (opt.subject_pattern) {
           const subj = opt.subject_pattern.split(" ")[0];
-          if (!validSubjects.has(subj)) errors.push(`${id} / ${cat.name}: unknown subject in pattern ${opt.subject_pattern}`);
+          if (!validSubjects.has(subj))
+            errors.push(`${id} / ${cat.name}: unknown subject in pattern ${opt.subject_pattern}`);
         }
         if (!opt.code && !opt.subject_pattern && !opt.rule)
           errors.push(`${id} / ${cat.name}: option with no code/subject_pattern/rule`);

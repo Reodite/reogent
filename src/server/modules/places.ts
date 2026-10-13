@@ -46,7 +46,7 @@ export function transformPoi(f: Feature): { id: string; doc: PoiDoc } | null {
  *  factor and speed as the routing fallback (src/server/routing.ts). Ranking
  *  stays on haversine deliberately; only walking_distance/api-route use the
  *  path network. */
-// ponytail: haversine over ≤500 docs sorted in JS, no geo_point mapping; move to geo queries if datasets grow
+// Haversine over a small, bounded doc set sorted in JS; no geo_point mapping. Move to geo queries if datasets grow.
 export function nearestFirst<T extends { lat: number; lon: number }>(
   items: T[],
   from: BuildingDoc,

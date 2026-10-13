@@ -3,45 +3,21 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
 import { VersionBadge } from "@/src/components/shell/session-sidebar";
+import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import { FloatingPanel } from "@/src/components/ui/floating-panel";
+import { AnimatePresence } from "motion/react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
-export function UserMenu() {
+/** Opens viewport-bounded account actions and appearance controls from the sidebar. */
+export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const auth = useAppAuth();
+  const navigation = useShellNavigation();
   const [open, setOpen] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-      // Arrow keys cycle through menu items; from the trigger, Down lands on
-      // the first item and Up on the last.
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        const items = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-        if (items.length === 0) return;
-        const index = items.indexOf(document.activeElement as HTMLElement);
-        const step = event.key === "ArrowDown" ? 1 : -1;
-        items[(index + step + items.length) % items.length].focus();
-      }
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  const menuId = useId();
 
   const username = auth.user?.username || "User";
   const initial = username.trim().charAt(0).toUpperCase() || "U";
@@ -57,85 +33,94 @@ export function UserMenu() {
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <>
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
+        aria-controls={open ? menuId : undefined}
         aria-expanded={open}
         aria-label="Account menu"
-        className="neu-button bg-surface text-primary flex size-11 items-center justify-center rounded-xl text-sm font-medium sm:size-9"
-      >
-        <span className="bg-primary-container text-on-primary-container flex size-6 items-center justify-center rounded-lg">
-          {initial}
-        </span>
-      </button>
-
-      {/* Scrim overlay */}
-      <button
-        type="button"
-        tabIndex={-1}
-        aria-hidden="true"
-        onClick={() => setOpen(false)}
-        className={`fixed inset-0 z-40 transition-opacity duration-200 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
-      />
-
-      <div
-        inert={!open}
-        aria-hidden={!open}
-        role="menu"
-        aria-label="Account"
-        className={`profile-menu-surface glass-neu absolute top-12 right-0 z-50 w-64 max-w-[calc(100vw-2rem)] origin-top-right rounded-2xl p-3 ${
-          open
-            ? "blur-0 visible translate-y-0 scale-100 opacity-100"
-            : "pointer-events-none invisible -translate-y-1.5 scale-[0.97] opacity-0 blur-[2px]"
+        className={`focus-visible:ring-primary/40 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex h-11 items-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9 ${
+          collapsed ? "w-11 justify-center sm:w-9" : "w-full gap-2.5 px-3"
         }`}
       >
-        <div className="px-3 py-2">
-          <p className="text-muted text-xs font-medium">Signed in as</p>
-          <p className="text-body-sm text-on-surface mt-0.5 truncate" title={auth.user?.username ?? undefined}>
-            {username}
-          </p>
-        </div>
+        <span className="bg-primary-container text-on-primary-container flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-medium">
+          {initial}
+        </span>
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">{username}</span>
+            <span className={`inline-flex shrink-0 transition-transform duration-150 ${open ? "" : "rotate-180"}`}>
+              <Icon name="down" size={14} />
+            </span>
+          </>
+        )}
+      </button>
 
-        <div className="bg-border-subtle my-1 h-px" />
+      <AnimatePresence initial={false}>
+        {open && (
+          <FloatingPanel
+            id={menuId}
+            anchorRef={triggerRef}
+            onDismiss={() => setOpen(false)}
+            matchAnchorWidth={!collapsed}
+            role="dialog"
+            aria-label="Account"
+            className="glass-neu w-64 rounded-2xl p-2"
+          >
+            <div className="px-3 py-2">
+              <p className="text-muted text-xs font-medium">Signed in as</p>
+              <p className="text-body-sm text-on-surface mt-1 truncate" title={auth.user?.username ?? undefined}>
+                {username}
+              </p>
+            </div>
 
-        <div className="flex items-center justify-between px-3 py-2 sm:hidden">
-          <span className="text-on-surface-variant text-xs font-medium">Theme</span>
-          <ThemeToggle />
-        </div>
+            <div className="bg-border-subtle my-1 h-px" />
 
-        <div className="bg-border-subtle my-1 h-px sm:hidden" />
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2">
+              <span className="text-on-surface-variant text-xs font-medium">Appearance</span>
+              <ThemeToggle />
+            </div>
 
-        <Link
-          href="/settings"
-          role="menuitem"
-          onClick={() => setOpen(false)}
-          className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
-        >
-          <Icon name="settings" size={16} className="text-on-surface-variant" />
-          Settings
-        </Link>
+            <div className="bg-border-subtle my-1 h-px" />
 
-        <button
-          type="button"
-          role="menuitem"
-          onClick={handleSignOut}
-          className="text-on-surface hover:bg-error/10 hover:text-error flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150"
-        >
-          <Icon name="exit" size={16} className="text-on-surface-variant" />
-          Sign out
-        </button>
-        {signOutError && <p className="text-error mt-1 px-3 text-xs">Sign out failed. Try again.</p>}
+            <Link
+              href="/settings"
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.();
+              }}
+              onNavigate={(event) => {
+                event.preventDefault();
+                navigation.push("/settings");
+              }}
+              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
+            >
+              <Icon name="settings" size={16} className="text-on-surface-variant" />
+              Settings
+            </Link>
 
-        <div className="bg-border-subtle my-1 h-px" />
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="text-on-surface hover:bg-error/10 hover:text-error flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
+            >
+              <Icon name="exit" size={16} className="text-on-surface-variant" />
+              Sign out
+            </button>
+            {signOutError && <p className="text-error mt-1 px-3 text-xs">Sign out failed. Try again.</p>}
 
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-muted text-xs font-medium">Version</span>
-          <VersionBadge />
-        </div>
-      </div>
-    </div>
+            <div className="bg-border-subtle my-1 h-px" />
+
+            <div className="flex items-center justify-between px-3 py-2">
+              <span className="text-muted text-xs font-medium">Version</span>
+              <VersionBadge />
+            </div>
+          </FloatingPanel>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

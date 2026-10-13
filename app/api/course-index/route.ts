@@ -1,17 +1,7 @@
-import { rateLimitResponse } from "@/src/server/rate-limit";
+import { getRateLimitIdentity, rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { serverError } from "../http";
-
-/** One course in the client-side index the Prereq Tree builds its graph from.
- *  `code` is canonical "CPSC 110" (no `_V` suffix) so it matches the codes the
- *  prereq-AST parser emits. */
-export type CourseIndexEntry = {
-  code: string;
-  title: string;
-  credits: number | null;
-  prerequisite: string | null;
-  corequisite: string | null;
-};
 
 const COURSE_INDEX_LIMIT = { windowMs: 60_000, maxRequests: Number(process.env.RATE_LIMIT_PREREQ) || 10 };
 const PAGE = 5000;
@@ -50,7 +40,7 @@ async function loadIndex(): Promise<CourseIndexEntry[]> {
  *  The Prereq Tree pane loads this once and builds graphs + type-ahead suggestions client-side. */
 export async function GET(request: Request): Promise<Response> {
   try {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ip = getRateLimitIdentity(request);
     const limited = rateLimitResponse(`course-index:${ip}`, COURSE_INDEX_LIMIT);
     if (limited) return limited;
     const courses = await loadIndex();

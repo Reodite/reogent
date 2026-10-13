@@ -1,5 +1,8 @@
 node_modules
 .next
 .git
-.env
+.env*
 *.log
+data
+ubc-unified-data
+.cache

@@ -1,13 +1,11 @@
 "use client";
 
-// Mini course search for the planner sidebar. Single input — accepts the
-// same code/subject/filter syntax as the Course Finder (via parseQuery) but
-// also falls through to substring matching on title so "linear algebra"
-// surfaces MATH 152 etc. Results are LookupBlocks that drag straight into
-// year-column terms.
-import type { CourseIndexEntry } from "@/app/api/course-index/route";
+// Course search for the planner rail. It accepts Course Finder syntax and
+// title substrings, then exposes unplanned courses as draggable results.
+import { SearchInput } from "@/src/components/ui/form-controls";
 import { searchCourses } from "@/src/lib/planner-search";
-import { useEffect, useMemo, useRef } from "react";
+import type { CourseIndexEntry } from "@/src/shared/course-index";
+import { useMemo } from "react";
 import { LookupBlock } from "./lookup-block";
 import { usePlanner } from "./planner-store";
 
@@ -15,36 +13,43 @@ const RESULT_LIMIT = 20;
 
 interface MiniCourseLookupProps {
   courseIndex: Map<string, CourseIndexEntry>;
+  plannedCodes: ReadonlySet<string>;
+  onPlaced?: () => void;
 }
 
-export function MiniCourseLookup({ courseIndex }: MiniCourseLookupProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  // Lives in the persisted planner store so tab swaps keep the search.
+export function MiniCourseLookup({ courseIndex, plannedCodes, onPlaced }: MiniCourseLookupProps) {
+  // The persisted query survives planner remounts.
   const query = usePlanner((s) => s.lookupQuery);
   const setQuery = usePlanner((s) => s.setLookupQuery);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
   const results = useMemo(() => {
     if (!query.trim()) return [] as CourseIndexEntry[];
-    return searchCourses(courseIndex, query, RESULT_LIMIT);
-  }, [query, courseIndex]);
+    return searchCourses(courseIndex, query, RESULT_LIMIT, plannedCodes);
+  }, [query, courseIndex, plannedCodes]);
 
   return (
-    <div className="flex min-h-0 flex-col gap-2">
-      <h3 className="text-on-surface text-sm font-semibold">Find courses</h3>
-      <input
-        ref={inputRef}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Code or title (e.g. CPSC 110, linear algebra)"
-        className="neu-inset bg-surface-container-low text-on-surface focus-visible:ring-primary/40 w-full rounded-lg px-2 py-1.5 text-sm focus-visible:ring-2"
-      />
-      <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-        {query.trim() && results.length === 0 && <p className="text-muted text-xs italic">No matches.</p>}
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
+      <div className="min-w-0 shrink-0 px-4 py-3">
+        <SearchInput
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onClear={() => setQuery("")}
+          placeholder="Search by code or title (e.g. CPSC 110)"
+          aria-label="Search courses"
+          density="rail"
+        />
+      </div>
+      <div className="border-border-subtle flex min-h-0 min-w-0 flex-1 [scrollbar-gutter:stable] flex-col gap-1 overflow-y-auto border-t px-2 py-2">
+        {!query.trim() && (
+          <p className="text-muted px-2 py-6 text-center text-xs">Search above, then drag a course or use Add.</p>
+        )}
+        {query.trim() && results.length === 0 && (
+          <p className="text-muted px-2 py-6 text-center text-xs">
+            No unplanned courses match &ldquo;{query.trim()}&rdquo;.
+          </p>
+        )}
         {results.map((entry) => (
-          <LookupBlock key={entry.code} entry={entry} />
+          <LookupBlock key={entry.code} entry={entry} onPlaced={onPlaced} />
         ))}
       </div>
     </div>

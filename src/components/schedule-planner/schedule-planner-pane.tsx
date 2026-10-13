@@ -1,0 +1,549 @@
+"use client";
+
+import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-search/course-search";
+import { Icon } from "@/src/components/icons";
+import { useApi } from "@/src/components/providers";
+import { ScheduleGrid, type ScheduleGridDragConfig } from "@/src/components/schedule/schedule-grid";
+import { ScheduleToolbarSkeleton } from "@/src/components/schedule/schedule-loading";
+import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/schedule/schedule-workspace";
+import { TermSwitcher } from "@/src/components/schedule/term-switcher";
+import { ToastProvider } from "@/src/components/schedule/toast";
+import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
+import { Button } from "@/src/components/ui/button";
+import { Heading } from "@/src/components/ui/heading";
+import { InfoChip } from "@/src/components/ui/info-chip";
+import type { CourseDoc } from "@/src/lib/api-types";
+import { sectionGroup } from "@/src/lib/schedule";
+import { selectAutomaticSections } from "@/src/lib/schedule-planner";
+import { resolvePlannerImport, type PlannerImportReview } from "@/src/lib/schedule-planner-import";
+import { buildScheduleGrid } from "@/src/lib/schedule/grid";
+import type { DayCode, Schedule } from "@/src/lib/schedule/types";
+import { AnimatePresence } from "motion/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PlannerCourseModule, PlannerCoursesSkeleton, type PlannerCourseFocusRequest } from "./planner-course-module";
+import {
+  plannerConflictLabels,
+  plannerDragOptions,
+  plannerGridItems,
+  plannerScheduledSections,
+} from "./planner-grid-adapter";
+import { PlannerImportDialog } from "./planner-import-dialog";
+import {
+  entryId,
+  normalizeScheduleCode,
+  useSchedule,
+  type ScheduleImportMode,
+  type ScheduleImportSelection,
+} from "./schedule-store";
+import { useScheduleSync } from "./use-schedule-sync";
+
+function termLabel(term: string): string {
+  const winter = term.match(/^(\d{4}-\d{2}) Winter Term ([12])$/);
+  if (winter) return `${winter[1]} · Term ${winter[2]}`;
+  return term;
+}
+
+function sortTerms(terms: Iterable<string>): string[] {
+  return [...new Set(terms)].filter(Boolean).sort((a, b) => {
+    const ay = a.slice(0, 7);
+    const by = b.slice(0, 7);
+    return ay === by ? a.localeCompare(b) : by.localeCompare(ay);
+  });
+}
+
+/** Planner schedule surface with shared timetable rendering and local editing controls. */
+export function SchedulePlannerPane() {
+  return (
+    <ToastProvider>
+      <SchedulePlannerPaneInner />
+    </ToastProvider>
+  );
+}
+
+function SchedulePlannerPaneInner() {
+  const hydrating = useScheduleSync();
+  const api = useApi();
+  const entries = useSchedule((state) => state.entries);
+  const activeTerm = useSchedule((state) => state.activeTerm);
+  const setActiveTerm = useSchedule((state) => state.setActiveTerm);
+  const addEntry = useSchedule((state) => state.addEntry);
+  const addCourseSections = useSchedule((state) => state.addCourseSections);
+  const importSections = useSchedule((state) => state.importSections);
+  const removeEntry = useSchedule((state) => state.removeEntry);
+  const removeCourse = useSchedule((state) => state.removeCourse);
+  const stale = useSchedule((state) => state.stale);
+  const setStale = useSchedule((state) => state.setStale);
+  const [query, setQuery] = useState("");
+  const [docs, setDocs] = useState<Map<string, CourseDoc>>(new Map());
+  const [catalogError, setCatalogError] = useState(false);
+  const [failedCatalogCodes, setFailedCatalogCodes] = useState<Set<string>>(new Set());
+  const [mobileView, setMobileView] = useState<ScheduleWorkspaceView>("schedule");
+  const [activeDay, setActiveDay] = useState<DayCode>("Mon");
+  const [importReview, setImportReview] = useState<PlannerImportReview | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [commitPendingCode, setCommitPendingCode] = useState<string | null>(null);
+  const [commitError, setCommitError] = useState<string | null>(null);
+  const [failedCommitCode, setFailedCommitCode] = useState<string | null>(null);
+  const [unavailableCodes, setUnavailableCodes] = useState<Set<string>>(new Set());
+  const [focusRequest, setFocusRequest] = useState<(PlannerCourseFocusRequest & { code: string }) | null>(null);
+  const [focusSearchOnControls, setFocusSearchOnControls] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const commitToken = useRef(0);
+  const focusToken = useRef(0);
+  const mounted = useRef(true);
+  const queryRef = useRef(query);
+  const invalidatedQueryRef = useRef(query);
+  queryRef.current = query;
+
+  const resolveSingle = useCallback((code: string) => api.getCourse(code), [api]);
+  const { list, status, error, rejected, record, lookup } = useCourseAutocomplete(query, { resolveSingle });
+  const plannerList = useMemo(
+    () =>
+      list
+        ? {
+            ...list,
+            candidates: list.candidates.map((candidate) => ({
+              ...candidate,
+              code: normalizeScheduleCode(candidate.code),
+            })),
+          }
+        : null,
+    [list],
+  );
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      commitToken.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (invalidatedQueryRef.current === query) return;
+    invalidatedQueryRef.current = query;
+    commitToken.current += 1;
+    setCommitPendingCode(null);
+    setCommitError(null);
+    setFailedCommitCode(null);
+  }, [query]);
+
+  useEffect(() => {
+    if (mobileView !== "controls" || !focusSearchOnControls) return;
+    searchInputRef.current?.focus();
+    setFocusSearchOnControls(false);
+  }, [focusSearchOnControls, mobileView]);
+
+  async function prepareImport(schedule: Schedule) {
+    setImportLoading(true);
+    try {
+      setImportReview(await resolvePlannerImport(schedule, api.getCourse));
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  function applyImport(selections: ScheduleImportSelection[], mode: ScheduleImportMode) {
+    importSections(selections, mode);
+    setDocs((current) => {
+      const next = new Map(current);
+      for (const { doc } of selections) next.set(normalizeScheduleCode(doc.code), doc);
+      return next;
+    });
+    setImportReview(null);
+    setMobileView("schedule");
+  }
+
+  const storedCodeKey = useMemo(
+    () => [...new Set(entries.map((entry) => normalizeScheduleCode(entry.code)))].sort().join("\u0000"),
+    [entries],
+  );
+
+  useEffect(() => {
+    if (!storedCodeKey) return;
+    const codes = storedCodeKey.split("\u0000").filter((code) => !docs.has(code) && !failedCatalogCodes.has(code));
+    if (codes.length === 0) return;
+    let cancelled = false;
+    Promise.allSettled(codes.map((code) => api.getCourse(code))).then((results) => {
+      if (cancelled) return;
+      setDocs((current) => {
+        const next = new Map(current);
+        results.forEach((result, index) => {
+          if (result.status === "fulfilled") next.set(codes[index], result.value);
+        });
+        return next;
+      });
+      const failed = codes.filter((_, index) => results[index].status === "rejected");
+      setFailedCatalogCodes((current) => new Set([...current, ...failed]));
+      setCatalogError(failed.length > 0);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, docs, failedCatalogCodes, storedCodeKey]);
+
+  const allTerms = useMemo(() => {
+    const terms = entries.map((entry) => entry.term);
+    const pickedCourseCodes = new Set(entries.map((entry) => normalizeScheduleCode(entry.code)));
+    for (const code of pickedCourseCodes) terms.push(...(docs.get(code)?.terms ?? []));
+    return sortTerms(terms);
+  }, [docs, entries]);
+
+  useEffect(() => {
+    if (allTerms.length === 0) return;
+    if (!activeTerm || !allTerms.includes(activeTerm)) setActiveTerm(allTerms[0]);
+  }, [activeTerm, allTerms, setActiveTerm]);
+
+  const visibleEntries = useMemo(() => entries.filter((entry) => entry.term === activeTerm), [activeTerm, entries]);
+  const gridItems = useMemo(() => plannerGridItems(visibleEntries), [visibleEntries]);
+  const gridModel = useMemo(() => buildScheduleGrid(gridItems), [gridItems]);
+  const pickedCodes = new Set(visibleEntries.map((entry) => normalizeScheduleCode(entry.code)));
+  const conflictingIds = new Set(gridItems.filter((item) => item.conflict).map((item) => item.id));
+  const conflictLabels = useMemo(() => plannerConflictLabels(visibleEntries), [visibleEntries]);
+  const conflictCount = conflictingIds.size;
+
+  const requestCourseFocus = useCallback((code: string, group?: string) => {
+    focusToken.current += 1;
+    setFocusRequest({ code, group, token: focusToken.current });
+  }, []);
+
+  const clearCourseFocus = useCallback(() => setFocusRequest(null), []);
+
+  const commitCandidate = useCallback(
+    async (candidateCode: string) => {
+      const code = normalizeScheduleCode(candidateCode);
+      const expectedQuery = queryRef.current;
+      const token = ++commitToken.current;
+      setCommitPendingCode(code);
+      setCommitError(null);
+      setFailedCommitCode(null);
+
+      let doc: CourseDoc;
+      try {
+        doc = record && normalizeScheduleCode(record.code) === code ? record : await api.getCourse(code);
+      } catch {
+        if (!mounted.current || token !== commitToken.current || queryRef.current !== expectedQuery) return;
+        setCommitPendingCode(null);
+        setCommitError(`Could not add ${code}. Try again.`);
+        setFailedCommitCode(code);
+        return;
+      }
+      if (!mounted.current || token !== commitToken.current || queryRef.current !== expectedQuery) return;
+
+      const activeDuplicate = entries.some(
+        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === activeTerm,
+      );
+      setDocs((current) => new Map(current).set(code, doc));
+      if (activeDuplicate) {
+        setCommitPendingCode(null);
+        setQuery("");
+        requestCourseFocus(code);
+        return;
+      }
+
+      const offeredTerms = sortTerms(doc.sections.flatMap((section) => (section.term ? [section.term] : [])));
+      const targetTerm = offeredTerms.includes(activeTerm) ? activeTerm : offeredTerms[0];
+      if (!targetTerm) {
+        setUnavailableCodes((current) => new Set(current).add(code));
+        setCommitPendingCode(null);
+        return;
+      }
+
+      const duplicate = entries.some(
+        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === targetTerm,
+      );
+      if (duplicate) {
+        if (targetTerm !== activeTerm) setActiveTerm(targetTerm);
+        setCommitPendingCode(null);
+        setQuery("");
+        requestCourseFocus(code);
+        return;
+      }
+
+      const selection = selectAutomaticSections(
+        doc,
+        targetTerm,
+        plannerScheduledSections(entries.filter((entry) => entry.term === targetTerm)),
+      );
+      if (selection.sections.length === 0) {
+        setUnavailableCodes((current) => new Set(current).add(code));
+        setCommitPendingCode(null);
+        return;
+      }
+
+      if (targetTerm === activeTerm) addCourseSections(doc, selection.sections);
+      else addCourseSections(doc, selection.sections, { activateTerm: true });
+      setCommitPendingCode(null);
+      setQuery("");
+      requestCourseFocus(code);
+    },
+    [activeTerm, addCourseSections, api, entries, record, requestCourseFocus, setActiveTerm],
+  );
+
+  const getCandidatePresentation = useCallback(
+    (candidate: Candidate) => {
+      const code = normalizeScheduleCode(candidate.code);
+      const exactRecord = record && normalizeScheduleCode(record.code) === code ? record : null;
+      const offeredTerms = sortTerms(
+        exactRecord
+          ? exactRecord.sections.flatMap((section) => (section.term ? [section.term] : []))
+          : (candidate.terms ?? []),
+      );
+      const targetTerm = offeredTerms.includes(activeTerm) ? activeTerm : offeredTerms[0];
+      const activeDuplicate = entries.some(
+        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === activeTerm,
+      );
+      if (activeDuplicate) {
+        return {
+          annotation: commitPendingCode === code ? "Added — focus course · Focusing…" : "Added — focus course",
+          pending: commitPendingCode === code,
+        };
+      }
+      if (!targetTerm || unavailableCodes.has(code)) {
+        return { annotation: "No offered sections", disabled: true };
+      }
+      const duplicate = entries.some(
+        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === targetTerm,
+      );
+      const annotation = duplicate
+        ? `Added — switch to ${targetTerm}`
+        : targetTerm === activeTerm
+          ? `Add to ${targetTerm}`
+          : `Add and switch to ${targetTerm}`;
+      return {
+        annotation: commitPendingCode === code ? `${annotation} · ${duplicate ? "Switching…" : "Adding…"}` : annotation,
+        pending: commitPendingCode === code,
+      };
+    },
+    [activeTerm, commitPendingCode, entries, record, unavailableCodes],
+  );
+
+  const dragConfig = useMemo<ScheduleGridDragConfig>(
+    () => ({
+      getOptions: (blockId) => plannerDragOptions(visibleEntries, docs, blockId),
+      onDrop: (blockId, optionId) => {
+        const current = visibleEntries.find((entry) => entryId(entry) === blockId);
+        if (!current) return;
+        const doc = docs.get(normalizeScheduleCode(current.code));
+        const section = doc?.sections.find(
+          (candidate) =>
+            candidate.term === current.term &&
+            entryId({ code: current.code, section: candidate.section, term: current.term }) === optionId,
+        );
+        if (doc && section) addEntry(doc, section);
+      },
+    }),
+    [addEntry, docs, visibleEntries],
+  );
+
+  const notice =
+    stale || catalogError ? (
+      <div className="ui-notice-enter border-tertiary/20 bg-tertiary-container/40 text-on-tertiary-container flex shrink-0 items-start gap-2 rounded-lg border px-3 py-2 text-xs">
+        <Icon name="alert" className="mt-0.5 size-4 shrink-0" />
+        <span className="flex-1">
+          {catalogError
+            ? "Some course details could not be refreshed. Cached times remain visible."
+            : "The catalog changed since your last visit. Review highlighted course details before registering."}
+        </span>
+        <Button
+          variant="ghost"
+          size="denseIcon"
+          onClick={() => {
+            setStale(false);
+            setCatalogError(false);
+          }}
+          aria-label="Dismiss notice"
+        >
+          <Icon name="close" className="size-3.5" />
+        </Button>
+      </div>
+    ) : undefined;
+
+  const initialLoading = hydrating && entries.length === 0;
+  const termToolbar = initialLoading ? (
+    <ScheduleToolbarSkeleton />
+  ) : (
+    <div className="flex min-w-max items-center justify-between gap-4">
+      {allTerms.length === 0 ? (
+        <span className="text-muted px-2 py-1.5 text-xs">Terms appear after you add a course.</span>
+      ) : (
+        <TermSwitcher
+          terms={allTerms.map((term) => ({ key: term, label: termLabel(term) }))}
+          selected={activeTerm}
+          onSelect={setActiveTerm}
+        />
+      )}
+      {conflictCount > 0 ? (
+        <InfoChip
+          tone="error"
+          role="status"
+          aria-label={`${conflictCount} conflicting ${conflictCount === 1 ? "section" : "sections"}`}
+          className="shrink-0"
+        >
+          <Icon name="alert" className="size-3.5" />
+          {conflictCount} conflicting {conflictCount === 1 ? "section" : "sections"}
+        </InfoChip>
+      ) : null}
+    </div>
+  );
+
+  const controls = (
+    <div data-planner-controls className="flex h-full min-h-min flex-col overflow-visible">
+      <section data-planner-search className="relative z-20 shrink-0 p-4 pb-3">
+        <Heading as="h2" size="subsection" className="mb-2">
+          Find a course
+        </Heading>
+        <CourseSearchField
+          value={query}
+          onChange={setQuery}
+          onSelect={(code) => void commitCandidate(code)}
+          onRetry={() => {
+            if (failedCommitCode) void commitCandidate(failedCommitCode);
+            else void lookup(query);
+          }}
+          status={status}
+          list={plannerList}
+          error={commitError ?? error}
+          rejected={rejected}
+          placeholder="CPSC 110, MATH 200, linear algebra"
+          ariaLabel="Find a course to schedule"
+          presentation="overlay"
+          density="rail"
+          record={record}
+          getCandidatePresentation={getCandidatePresentation}
+          inputRef={searchInputRef}
+          monospaceCodes={false}
+        />
+        <p className="text-muted mt-2 min-h-8 text-xs leading-4">
+          {!query.trim() && status === "idle"
+            ? "Search by course code, subject, or title, then choose a result."
+            : "\u00a0"}
+        </p>
+      </section>
+
+      <section
+        data-planner-course-list
+        aria-labelledby="planner-course-list-title"
+        className="border-border-subtle min-h-48 flex-1 [scrollbar-gutter:stable] overflow-y-auto border-t px-4 py-3 [contain:size]"
+      >
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <Heading as="h2" size="subsection" id="planner-course-list-title">
+            Courses in this term
+          </Heading>
+          {visibleEntries.length > 0 ? (
+            <span className="text-muted text-xs">{visibleEntries.length} sections</span>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-2">
+          {[...pickedCodes].sort().map((code) => {
+            const doc = docs.get(code);
+            const selected = visibleEntries.filter((entry) => normalizeScheduleCode(entry.code) === code);
+            return (
+              <div key={code} className="ui-content-enter">
+                <PlannerCourseModule
+                  code={code}
+                  title={doc?.title ?? selected[0]?.snapshot.title ?? code}
+                  catalogError={failedCatalogCodes.has(code)}
+                  onRetry={() =>
+                    setFailedCatalogCodes((current) => {
+                      const next = new Set(current);
+                      next.delete(code);
+                      return next;
+                    })
+                  }
+                  doc={doc}
+                  term={activeTerm}
+                  entries={selected}
+                  conflictingIds={conflictingIds}
+                  conflictLabels={conflictLabels}
+                  focusRequest={focusRequest?.code === code ? focusRequest : undefined}
+                  onSelectSection={(current, next) => {
+                    if (next && doc) addEntry(doc, next);
+                    else if (current) removeEntry(current.code, current.section, current.term);
+                  }}
+                  onRemove={() => removeCourse(code, activeTerm)}
+                  onFocusHandled={clearCourseFocus}
+                />
+              </div>
+            );
+          })}
+          {initialLoading ? (
+            <PlannerCoursesSkeleton />
+          ) : pickedCodes.size === 0 ? (
+            <p className="text-muted text-sm leading-relaxed">
+              Add a course from search to configure its lecture, lab, and tutorial here.
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      <section data-planner-import className="border-border-subtle shrink-0 border-t p-4">
+        <Heading as="h2" size="subsection">
+          Workday import
+        </Heading>
+        <p className="text-muted mt-1 mb-2 text-xs leading-relaxed">Add or replace registered sections from Excel.</p>
+        {importLoading ? (
+          <div
+            role="status"
+            className="border-border text-muted flex min-h-20 items-center justify-center rounded-lg border border-dashed px-4 py-3 text-center text-sm"
+          >
+            Matching Workday sections to the catalog…
+          </div>
+        ) : (
+          <UploadDropzone onParsed={(schedule) => void prepareImport(schedule)} />
+        )}
+      </section>
+    </div>
+  );
+
+  return (
+    <>
+      <ScheduleWorkspace
+        title="Course schedule"
+        description="Build a conflict-aware week, one course component at a time."
+        toolbar={termToolbar}
+        notice={notice}
+        controlsLabel="Courses"
+        controls={controls}
+        mobileView={mobileView}
+        onMobileViewChange={setMobileView}
+      >
+        <ScheduleGrid
+          model={gridModel}
+          activeDay={activeDay}
+          onActiveDayChange={setActiveDay}
+          onBlockActivate={(id) => {
+            const item = gridItems.find((candidate) => candidate.id === id);
+            if (!item) return;
+            setMobileView("controls");
+            requestCourseFocus(item.code, sectionGroup(item.section ?? ""));
+          }}
+          ariaLabel="Weekly course schedule"
+          blockContentAlignment="center"
+          drag={dragConfig}
+          loading={initialLoading ? "Loading your weekly course schedule" : undefined}
+          empty={{
+            title: "Build your first timetable",
+            description: "Search for a course, then choose its lecture, lab, or tutorial.",
+            actionLabel: "Browse courses",
+            onAction: () => {
+              setMobileView("controls");
+              setFocusSearchOnControls(true);
+            },
+          }}
+        />
+      </ScheduleWorkspace>
+
+      <AnimatePresence initial={false}>
+        {importReview ? (
+          <PlannerImportDialog
+            key="import-review"
+            review={importReview}
+            onApply={applyImport}
+            onClose={() => setImportReview(null)}
+          />
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}

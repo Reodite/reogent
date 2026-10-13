@@ -39,73 +39,81 @@ export function GradeDistributionChart({
   }));
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex gap-2">
-        <div aria-hidden="true" className="relative w-9 shrink-0" style={{ height: PLOT_HEIGHT }}>
-          {yTicks.map((t) => (
-            <span
-              key={t.id}
-              className="text-muted absolute right-0 -translate-y-1/2 text-xs leading-none"
-              style={{ top: t.top }}
-            >
-              {t.v}
-            </span>
-          ))}
-        </div>
-        <div className="border-surface-container min-w-0 flex-1 border-b border-l pl-1">
-          <div className="relative" style={{ height: PLOT_HEIGHT }}>
-            {/* Gridlines render first so the z-10 bar layer stacks above them. */}
-            <div
-              data-chart-grid
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 flex flex-col justify-between"
-            >
-              {yTicks.slice(1).map((t) => (
-                <div key={`grid-${t.id}`} className="border-surface-container h-px w-full border-t" />
-              ))}
+    <div className="flex min-w-0 flex-col gap-3">
+      <section
+        data-grade-chart-scroll
+        aria-label="Grade distribution chart"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users scroll the chart to reach every grade bucket.
+        tabIndex={0}
+        className="min-w-0 overflow-x-auto"
+      >
+        <div className="flex min-w-64 gap-2 pt-2">
+          <div aria-hidden="true" className="relative w-9 shrink-0" style={{ height: PLOT_HEIGHT }}>
+            {yTicks.map((t) => (
+              <span
+                key={t.id}
+                className="text-muted absolute right-0 -translate-y-1/2 text-xs leading-none"
+                style={{ top: t.top }}
+              >
+                {t.v}
+              </span>
+            ))}
+          </div>
+          <div className="border-surface-container min-w-0 flex-1 border-b border-l pr-3 pl-1">
+            <div className="relative" style={{ height: PLOT_HEIGHT }}>
+              {/* Gridlines render first so the z-10 bar layer stacks above them. */}
+              <div
+                data-chart-grid
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 flex flex-col justify-between"
+              >
+                {yTicks.slice(1).map((t) => (
+                  <div key={`grid-${t.id}`} className="border-surface-container h-px w-full border-t" />
+                ))}
+              </div>
+              <div data-chart-bars className="relative z-10 flex h-full items-end gap-1.5">
+                {BUCKET_KEYS.map((k) => {
+                  const count = buckets[k] ?? 0;
+                  const h = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  const isHi = highlightBucket === k;
+                  return (
+                    <div
+                      key={k}
+                      className="group relative flex h-full min-w-0 flex-1 items-end"
+                      title={`${k}: ${count} students`}
+                      role="img"
+                      aria-label={`${k}: ${count} students`}
+                    >
+                      <div
+                        className={`ui-chart-enter w-full rounded-t-sm transition-colors ${
+                          isHi ? "bg-primary" : "bg-primary/25 group-hover:bg-primary/40"
+                        }`}
+                        style={{ height: `${h}%`, minHeight: count > 0 ? 4 : 0 }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div data-chart-bars className="relative z-10 flex h-full items-end gap-1.5">
+            <div className="mt-1.5 flex h-12 gap-1.5">
               {BUCKET_KEYS.map((k) => {
-                const count = buckets[k] ?? 0;
-                const h = maxCount > 0 ? (count / maxCount) * 100 : 0;
                 const isHi = highlightBucket === k;
                 return (
-                  <div
-                    key={k}
-                    className="group relative flex h-full min-w-0 flex-1 items-end"
-                    title={`${k}: ${count} students`}
-                    role="img"
-                    aria-label={`${k}: ${count} students`}
-                  >
-                    <div
-                      className={`w-full rounded-t-sm transition-colors ${
-                        isHi ? "bg-primary" : "bg-primary/25 group-hover:bg-primary/40"
+                  <span key={k} className="relative min-w-0 flex-1">
+                    <span
+                      className={`absolute top-1 right-1/2 inline-block origin-top-right -rotate-45 text-xs leading-none whitespace-nowrap ${
+                        isHi ? "text-primary font-medium" : "text-muted"
                       }`}
-                      style={{ height: `${h}%`, minHeight: count > 0 ? 4 : 0 }}
-                    />
-                  </div>
+                    >
+                      {k}
+                    </span>
+                  </span>
                 );
               })}
             </div>
           </div>
-          <div className="mt-1.5 flex h-10 gap-1.5">
-            {BUCKET_KEYS.map((k) => {
-              const isHi = highlightBucket === k;
-              return (
-                <span key={k} className="relative min-w-0 flex-1">
-                  <span
-                    className={`absolute top-1 left-1/2 inline-block origin-top-left rotate-45 text-xs leading-none whitespace-nowrap ${
-                      isHi ? "text-primary font-medium" : "text-muted"
-                    }`}
-                  >
-                    {k}
-                  </span>
-                </span>
-              );
-            })}
-          </div>
         </div>
-      </div>
+      </section>
       <p className="text-muted text-center text-xs">Grade distribution — {total.toLocaleString()} students</p>
     </div>
   );
