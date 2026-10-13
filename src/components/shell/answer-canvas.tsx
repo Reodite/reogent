@@ -2,23 +2,22 @@
 
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
-import { MapArea } from "@/src/components/map/map-panel";
 import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
+import { WorkspaceRouteLoading } from "@/src/components/shell/shell-loading";
 import { useWorkspaceHost, WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { Button } from "@/src/components/ui/button";
+import { ErrorBoundary } from "@/src/components/ui/error-boundary";
+import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
-import type { CanvasView, PaneState } from "@/src/shared/panes";
-import { useCallback, useRef, useState, type ComponentType } from "react";
+import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
+import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
+import type { CanvasView, PaneId, PaneState } from "@/src/shared/panes";
+import { Suspense, useCallback, useRef, useState, type ComponentType } from "react";
 
 /**
- * The AI Mode Answer Canvas: the idle map overview when no widget is active, or
- * the active widget's pane component. `view` is `workspaceView` passed by the
- * shell so the canvas stays pure and testable. Tools Mode mounts this without
- * the titlebar (`titlebar={false}`); panes that portal toolbar content into
- * the titlebar slot then fall back to their own in-pane chrome. `MapArea` reads its highlight and
- * focus nonce from the shell context (derived from `workspaceView` when the map
- * pane is active), so the idle and active-map paths both render `<MapArea>` and
- * differ only in the surrounding context.
+ * Renders the selected tool and its loading or recovery state. Tools mode omits
+ * the titlebar so panes use their own chrome. The map reads highlights and focus
+ * from shell context; other panes receive their persisted state as props.
  */
 export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | null; titlebar?: boolean }) {
   const { setRightPaneCollapsed, setAnswerSheetOpen, setUserDismissedPane } = useChatShell();
@@ -84,13 +83,8 @@ function ActiveCanvasView({ view }: { view: CanvasView }) {
   const { setWorkspaceView } = useChatShell();
   const entry = PANE_BY_ID[view.paneId];
 
-  // Real setState: merges the pane's partial state back into `workspaceView`,
-  // so course-lookup submit and calendar month-nav persist the canvas view
-  // instead of hitting a no-op (the bug fixed here from `pane-host.tsx`).
-  // `view.state` is tracked in a ref so setState identity stays stable across
-  // workspaceView updates — otherwise panes that write back from inside their
-  // own fetch effects (prereq tree, course lookup) re-fire the effect on every
-  // callback identity change and never settle.
+  // Merge into current state without changing callback identity and restarting
+  // pane fetch effects when they write state back to the shell.
   const stateRef = useRef(view.state);
   stateRef.current = view.state;
   const setState = useCallback(
@@ -104,13 +98,48 @@ function ActiveCanvasView({ view }: { view: CanvasView }) {
   // AnswerCanvas already guards this case before mounting the view.
   if (!entry) return null;
 
-  if (view.paneId === "map") {
-    return <MapArea />;
-  }
-
   return (
-    <div className="h-full">
-      <entry.Component state={view.state} setState={setState} />
-    </div>
+    <ErrorBoundary key={view.paneId} fallback={<PaneFallback paneId={view.paneId} failed />}>
+      <Suspense fallback={<PaneFallback paneId={view.paneId} />}>
+        <div className="h-full">
+          <entry.Component state={view.state} setState={setState} />
+        </div>
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+
+function PaneFallback({ paneId, failed = false }: { paneId: PaneId; failed?: boolean }) {
+  const { host } = useWorkspaceHost();
+  const embedded = host === "answer-canvas";
+  const { label } = PANE_BY_ID[paneId];
+  if (!failed) {
+    return embedded ? (
+      <SkeletonGroup label={`Loading ${label}`} className="h-full p-4">
+        <Skeleton className="h-full w-full rounded-xl" />
+      </SkeletonGroup>
+    ) : (
+      <WorkspaceRouteLoading
+        label={`Loading ${label}`}
+        composition={["map", "degree-planner", "schedule", "calendar"].includes(paneId) ? "split" : "single"}
+        controls={["degree-planner", "schedule", "calendar"].includes(paneId)}
+      />
+    );
+  }
+  const recovery = (
+    <RetryState
+      title={`${label} unavailable`}
+      message="Reload the page to try loading this tool again."
+      retryLabel="Reload page"
+      onRetry={() => window.location.reload()}
+      className="min-h-full justify-center p-4"
+    />
+  );
+  return embedded ? (
+    recovery
+  ) : (
+    <WorkspacePage title={label} composition="canvas">
+      <WorkspaceCanvas>{recovery}</WorkspaceCanvas>
+    </WorkspacePage>
   );
 }

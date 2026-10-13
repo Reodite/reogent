@@ -1,17 +1,24 @@
 // @vitest-environment happy-dom
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import { AnswerCanvas } from "@/src/components/shell/answer-canvas";
+import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import type { CanvasView } from "@/src/shared/panes";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: "signedOut" }) }));
-vi.mock("@/src/components/map/map-panel", () => ({
-  MapArea: () => <div data-testid="map-area" />,
-}));
+const mapReady = vi.hoisted(() => Promise.withResolvers<void>());
+vi.mock("@/src/components/map/map-panel", async () => {
+  await mapReady.promise;
+  return { MapArea: () => <div data-testid="map-area" /> };
+});
 vi.mock("@/src/components/prereq-tree/prereq-tree-pane", () => ({ PrereqTreePane: () => null }));
-vi.mock("@/src/components/calendar/calendar-pane", () => ({ CalendarPane: () => null }));
+vi.mock("@/src/components/calendar/calendar-pane", () => ({
+  CalendarPane: () => {
+    throw new Error("Tool failed to load");
+  },
+}));
 vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({
   CourseLookupPane: ({ setState }: { state: { code: string }; setState: (s: Partial<{ code: string }>) => void }) => (
     <button type="button" data-testid="course-setstate" onClick={() => setState({ code: "CPSC 110" })}>
@@ -50,6 +57,7 @@ beforeAll(() => {
 afterEach(() => {
   mem.clear();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
   cleanup();
 });
 afterAll(() => {
@@ -62,13 +70,15 @@ function Capture() {
   return null;
 }
 
-function renderCanvas(view: CanvasView | null) {
+function renderCanvas(view: CanvasView | null, titlebar = true) {
   shellRef.current = null;
   return render(
-    <ChatShellProvider>
-      <AnswerCanvas view={view} />
-      <Capture />
-    </ChatShellProvider>,
+    <WorkspaceHostProvider host="tools" navigation={<button type="button">Open sidebar</button>}>
+      <ChatShellProvider>
+        <AnswerCanvas view={view} titlebar={titlebar} />
+        <Capture />
+      </ChatShellProvider>
+    </WorkspaceHostProvider>,
   );
 }
 
@@ -78,18 +88,15 @@ describe("AnswerCanvas", () => {
     expect(container.querySelector("[data-pane]")).toBeNull();
   });
 
-  it("an active non-map pane renders its header and component", () => {
-    const { container } = renderCanvas({ paneId: "course-lookup", state: { code: "" } });
-    const section = container.querySelector('[data-pane="course-lookup"]');
-    expect(section).not.toBeNull();
-    expect(section?.querySelector("h2")?.textContent).toBe("Course lookup");
+  it("an active non-map pane renders its header and component", async () => {
+    const view = renderCanvas({ paneId: "course-lookup", state: { code: "" } });
+    expect(view.getByRole("heading", { name: "Course lookup" })).toBeDefined();
+    await view.findByTestId("course-setstate");
   });
 
-  it("pane setState merges back into workspaceView state (fixes the noopSetState bug)", () => {
-    const { getByTestId } = renderCanvas({ paneId: "course-lookup", state: { code: "" } });
-    act(() => {
-      fireEvent.click(getByTestId("course-setstate"));
-    });
+  it("pane setState merges back into workspaceView state", async () => {
+    const { findByTestId } = renderCanvas({ paneId: "course-lookup", state: { code: "" } });
+    fireEvent.click(await findByTestId("course-setstate"));
     expect(shellRef.current?.workspaceView?.paneId).toBe("course-lookup");
     expect(shellRef.current?.workspaceView?.state).toEqual({ code: "CPSC 110" });
   });
@@ -99,9 +106,23 @@ describe("AnswerCanvas", () => {
     expect(container.querySelector("[data-pane]")).toBeNull();
   });
 
-  it("an active map view renders the map pane header", () => {
-    const { container } = renderCanvas({ paneId: "map", state: {} });
-    expect(container.querySelector('[data-pane="map"]')).not.toBeNull();
-    expect(container.querySelector("h2")?.textContent).toBe("Campus map");
+  it("keeps the map header and close action available while loading", async () => {
+    const view = renderCanvas({ paneId: "map", state: {} });
+    expect(view.getByRole("heading", { name: "Campus map" })).toBeDefined();
+    expect(view.getByRole("button", { name: "Close" })).toBeDefined();
+    expect(view.getByRole("status", { name: "Loading Campus map" })).toBeDefined();
+    await act(async () => mapReady.resolve());
+    await view.findByTestId("map-area");
+    expect(view.queryByRole("status")).toBeNull();
+  });
+
+  it.each([true, false])("keeps navigation and reload available after pane failure (titlebar=%s)", async (titlebar) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const reload = vi.spyOn(window.location, "reload").mockImplementation(() => {});
+    const view = renderCanvas({ paneId: "calendar", state: {} }, titlebar);
+    expect((await view.findByRole("alert")).textContent).toContain("Calendar unavailable");
+    expect(view.getByRole("button", { name: titlebar ? "Close" : "Open sidebar" })).toBeDefined();
+    fireEvent.click(view.getByRole("button", { name: "Reload page" }));
+    expect(reload).toHaveBeenCalledOnce();
   });
 });

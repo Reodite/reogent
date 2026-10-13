@@ -209,15 +209,15 @@ describe("AppShell navigation", () => {
     expect(container.querySelector('[data-answer-sheet="closed"]')).not.toBeNull();
   });
 
-  it("renders pathname-owned tool content without a post-paint activator", () => {
+  it("loads the tool selected by its direct URL", async () => {
     pathname.value = "/tools/map";
     const view = renderShell(true);
-    expect(view.getByTestId("map-area")).not.toBeNull();
+    await view.findByTestId("map-area");
 
     pathname.value = "/tools/calendar";
     view.rerender(<ShellFixture />);
+    await view.findByTestId("calendar-pane");
     expect(view.queryByTestId("map-area")).toBeNull();
-    expect(view.getByTestId("calendar-pane")).not.toBeNull();
   });
 
   it("preserves the active ChatPanel when native history mints its session URL", () => {
@@ -231,14 +231,14 @@ describe("AppShell navigation", () => {
     expect(view.getByTestId("chat-children")).toBe(chat);
   });
 
-  it("replaces old chat with the intended tool before pathname commit", () => {
+  it("replaces old chat with the intended tool before pathname commit", async () => {
     pathname.value = "/chat";
-    const { container, getByTestId, queryByTestId } = render(<NavigatingShellFixture />);
+    const { container, findByTestId, queryByTestId } = render(<NavigatingShellFixture />);
 
     act(() => fireEvent.click(modeLink(container, "Tools")));
 
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
-    expect(getByTestId("map-area")).not.toBeNull();
+    await findByTestId("map-area");
     expect(queryByTestId("chat-children")).toBeNull();
     expect(container.querySelector("[data-shell-navigation-pending='/tools/map']")).not.toBeNull();
   });

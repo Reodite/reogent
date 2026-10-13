@@ -2,7 +2,7 @@
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import { FullBleedTool } from "@/src/components/shell/full-bleed-tool";
 import type { CanvasView } from "@/src/shared/panes";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
@@ -74,30 +74,28 @@ function renderTool(view: CanvasView | null) {
   );
 }
 
-describe("7.2 — FullBleedTool (REQ-4.3, REQ-4.4)", () => {
+describe("FullBleedTool", () => {
   it("renders nothing when view is null", () => {
     const { container } = renderTool(null);
     expect(container.querySelector("[data-pane]")).toBeNull();
   });
 
-  it("selecting another tool replaces the current one", () => {
-    const { container, rerender } = renderTool({ paneId: "course-lookup", state: { code: "" } });
-    expect(container.querySelector('[data-pane="course-lookup"]')).not.toBeNull();
+  it("selecting another tool replaces the current one", async () => {
+    const { queryByTestId, findByTestId, rerender } = renderTool({ paneId: "course-lookup", state: { code: "" } });
+    await findByTestId("course-setstate");
     rerender(
       <ChatShellProvider>
         <FullBleedTool view={{ paneId: "calendar", state: { cursor: "2026-08", kinds: ["academic"] } }} />
         <Capture />
       </ChatShellProvider>,
     );
-    expect(container.querySelector('[data-pane="course-lookup"]')).toBeNull();
-    expect(container.querySelector('[data-pane="calendar"]')).not.toBeNull();
+    await findByTestId("calendar-pane");
+    expect(queryByTestId("course-setstate")).toBeNull();
   });
 
-  it("setState round-trips into workspaceView state", () => {
-    const { getByTestId } = renderTool({ paneId: "course-lookup", state: { code: "" } });
-    act(() => {
-      fireEvent.click(getByTestId("course-setstate"));
-    });
+  it("setState round-trips into workspaceView state", async () => {
+    const { findByTestId } = renderTool({ paneId: "course-lookup", state: { code: "" } });
+    fireEvent.click(await findByTestId("course-setstate"));
     expect(shellRef.current?.workspaceView?.paneId).toBe("course-lookup");
     expect(shellRef.current?.workspaceView?.state).toEqual({ code: "CPSC 110" });
   });
