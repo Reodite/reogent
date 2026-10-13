@@ -60,6 +60,23 @@ describe("GET /api/course-index", () => {
     );
   });
 
+  it("shares one cold load and serialization across concurrent requests", async () => {
+    const page = Promise.withResolvers<{ results: { code: string; title: string }[]; total: number }>();
+    getDocuments.mockReturnValue(page.promise);
+    const stringify = vi.spyOn(JSON, "stringify");
+    const { GET } = await import("./route");
+    const requests = Array.from({ length: 10 }, () => GET(request()));
+    page.resolve({ results: [{ code: "CPSC_V 110", title: "Computation" }], total: 1 });
+    const responses = await Promise.all(requests);
+    const bodies = await Promise.all(responses.map((response) => response.json()));
+    const expected = {
+      courses: [{ code: "CPSC 110", title: "Computation", credits: null, prerequisite: null, corequisite: null }],
+    };
+    for (const body of bodies) expect(body).toEqual(expected);
+    expect(getDocuments).toHaveBeenCalledOnce();
+    expect(stringify.mock.calls.filter(([value]) => value?.courses)).toHaveLength(1);
+  });
+
   it("returns a rate-limit response without querying search", async () => {
     const limited = new Response("limited", { status: 429 });
     rateLimitResponse.mockReturnValue(limited);

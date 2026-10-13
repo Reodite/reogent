@@ -6,10 +6,9 @@ import { serverError } from "../http";
 const COURSE_INDEX_LIMIT = { windowMs: 60_000, maxRequests: Number(process.env.RATE_LIMIT_PREREQ) || 10 };
 const PAGE = 5000;
 
-let cache: CourseIndexEntry[] | null = null;
+let cache: Promise<string> | undefined;
 
-async function loadIndex(): Promise<CourseIndexEntry[]> {
-  if (cache) return cache;
+async function loadIndex(): Promise<string> {
   const index = getSearch().index("courses");
   const out: CourseIndexEntry[] = [];
   for (let offset = 0; ; offset += PAGE) {
@@ -32,8 +31,7 @@ async function loadIndex(): Promise<CourseIndexEntry[]> {
     if (offset + res.results.length >= res.total) break;
   }
   out.sort((a, b) => a.code.localeCompare(b.code));
-  cache = out;
-  return out;
+  return JSON.stringify({ courses: out });
 }
 
 /** GET /api/course-index — every course's code/title/prereq/coreq strings, sorted by code.
@@ -43,8 +41,11 @@ export async function GET(request: Request): Promise<Response> {
     const ip = getRateLimitIdentity(request);
     const limited = rateLimitResponse(`course-index:${ip}`, COURSE_INDEX_LIMIT);
     if (limited) return limited;
-    const courses = await loadIndex();
-    return new Response(JSON.stringify({ courses }), {
+    cache ??= loadIndex().catch((error) => {
+      cache = undefined;
+      throw error;
+    });
+    return new Response(await cache, {
       headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" },
     });
   } catch (e) {
