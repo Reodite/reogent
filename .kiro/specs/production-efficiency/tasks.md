@@ -10,12 +10,12 @@ Apply focused TypeScript changes to existing owners. Reuse tests and tools; add 
   - [x] 1.1 Consolidate documentation, remove stale paths, and prune visual, implementation-shape, duplicate, and meaningless test assertions.
     - Keep active specs short and preserve operational/security guidance.
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 8.1, 8.2_
-- [ ] 2. Fix dataset reuse
+- [x] 2. Fix dataset reuse
   - [x] 2.1 Correct pending-load handling in `routing.ts`, `modules/buildings.ts`, and the course-index route; reuse server catalog serialization.
     - Keep one cold/expired load, retry after rejection, existing fallback, and completion-based TTL.
     - Retain a focused failing-before/passing-after concurrency check.
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
-  - [ ] 2.2 Reuse the browser catalog inside the existing API instance with token checks, one-hour expiry, and failure eviction.
+  - [x] 2.2 Reuse the browser catalog inside the existing API instance with token checks, one-hour expiry, and failure eviction.
     - Reuse existing API/pane tests; cover concurrent reuse, retry, and token rejection.
     - _Requirements: 4.2, 4.3, 4.4_
 - [ ] 3. Fix stream resource ownership

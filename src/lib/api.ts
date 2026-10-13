@@ -124,12 +124,20 @@ async function parseError(response: Response): Promise<ApiError> {
 }
 
 function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOptions): ChatApi {
-  async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  let courseIndex: ReturnType<ChatApi["getCourseIndex"]> | undefined;
+  let courseIndexLoadedAt: number | undefined;
+
+  async function requireToken(): Promise<string> {
     const token = await getToken();
     if (!token) {
       onUnauthorized?.();
       throw new ApiError(401, "Not signed in");
     }
+    return token;
+  }
+
+  async function request<T>(path: string, init?: RequestInit, validatedToken?: string): Promise<T> {
+    const token = validatedToken ?? (await requireToken());
     const response = await fetch(`${baseUrl}${path}`, {
       ...init,
       signal: init?.signal ?? AbortSignal.timeout(30_000),
@@ -176,11 +184,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     },
     signal?: AbortSignal,
   ): Promise<ChatResponse> {
-    const token = await getToken();
-    if (!token) {
-      onUnauthorized?.();
-      throw new ApiError(401, "Not signed in");
-    }
+    const token = await requireToken();
     const response = await fetch(`${baseUrl}/chat`, {
       method: "POST",
       headers: {
@@ -302,7 +306,23 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       if (params.faculty) sp.set("faculty", params.faculty);
       return request<{ courses: CourseDoc[]; subject_total?: number; session?: string }>(`/courses?${sp.toString()}`);
     },
-    getCourseIndex: () => request<{ courses: CourseIndexEntry[] }>("/course-index"),
+    getCourseIndex: async () => {
+      const token = await requireToken();
+      if (courseIndexLoadedAt !== undefined && Date.now() - courseIndexLoadedAt >= 60 * 60 * 1000) {
+        courseIndex = undefined;
+        courseIndexLoadedAt = undefined;
+      }
+      courseIndex ??= request<{ courses: CourseIndexEntry[] }>("/course-index", undefined, token)
+        .then((catalog) => {
+          courseIndexLoadedAt = Date.now();
+          return catalog;
+        })
+        .catch((error) => {
+          courseIndex = undefined;
+          throw error;
+        });
+      return courseIndex;
+    },
     getPulseFeed: () => request<PulseFeed>("/pulse"),
     votePulse: (questionId, agree) =>
       request<PulseVoteResult>("/pulse/vote", {

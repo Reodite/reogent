@@ -3,6 +3,60 @@ import { createChatApi } from "./api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe("course catalog reuse", () => {
+  it("shares pending loads, expires an hour after completion, and stays local to one API instance", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-01-01"));
+    const ttl = 60 * 60 * 1000;
+    const catalog = { courses: [{ code: "CPSC 110", title: "Computation" }] };
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const options = { getToken: async () => "jwt" };
+    const api = createChatApi(options);
+    for (let cycle = 1; cycle <= 2; cycle++) {
+      const gate = Promise.withResolvers<void>();
+      fetchMock.mockImplementation(async () => {
+        await gate.promise;
+        return Response.json(catalog);
+      });
+      const requests = Array.from({ length: 10 }, () => api.getCourseIndex());
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      vi.setSystemTime(Date.now() + ttl + 1);
+      requests.push(api.getCourseIndex());
+      gate.resolve();
+      for (const result of await Promise.all(requests)) expect(result).toEqual(catalog);
+      vi.setSystemTime(Date.now() + ttl - 1);
+      expect(await api.getCourseIndex()).toEqual(catalog);
+      expect(fetchMock).toHaveBeenCalledTimes(cycle);
+      vi.setSystemTime(Date.now() + 1);
+    }
+    await createChatApi(options).getCourseIndex();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("evicts failed loads and checks the token before returning cached data", async () => {
+    const catalog = { courses: [] };
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockImplementation(async () => Response.json(catalog));
+    vi.stubGlobal("fetch", fetchMock);
+    const getToken = vi.fn<() => Promise<string | null>>().mockResolvedValue("jwt");
+    const onUnauthorized = vi.fn();
+    const api = createChatApi({ getToken, onUnauthorized });
+    await expect(api.getCourseIndex()).rejects.toThrow("offline");
+    expect(await api.getCourseIndex()).toEqual(catalog);
+    getToken.mockResolvedValueOnce(null);
+    await expect(api.getCourseIndex()).rejects.toMatchObject({ status: 401 });
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    getToken.mockRejectedValueOnce(new Error("Token unavailable"));
+    await expect(api.getCourseIndex()).rejects.toThrow("Token unavailable");
+    expect(await api.getCourseIndex()).toEqual(catalog);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("public map API client", () => {
