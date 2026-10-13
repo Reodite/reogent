@@ -61,6 +61,7 @@ typography:
     fontSize: "1rem"
     fontWeight: 500
     lineHeight: 1.5
+    letterSpacing: "-0.01em"
   title:
     fontFamily: "Aspekta, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.25rem"
@@ -107,42 +108,49 @@ components:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     rounded: "{rounded.lg}"
-    padding: "8px 16px"
+    padding: "0 16px"
     height: "36px"
   button-primary-large:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
     rounded: "{rounded.xl}"
-    padding: "12px 32px"
+    padding: "0 32px"
     height: "48px"
   button-secondary:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface}"
     rounded: "{rounded.lg}"
-    padding: "8px 16px"
+    padding: "0 16px"
     height: "36px"
   button-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.on-surface-variant}"
     rounded: "{rounded.lg}"
-    padding: "8px 12px"
+    padding: "0 16px"
+    height: "36px"
+  button-back:
+    backgroundColor: "transparent"
+    textColor: "{colors.on-surface-variant}"
+    rounded: "{rounded.lg}"
+    padding: "0"
+    height: "44px"
+    width: "44px"
   card:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface}"
-    rounded: "{rounded.xl}"
+    rounded: "{rounded.2xl}"
     padding: "16px"
   input:
     backgroundColor: "{colors.surface-container-low}"
     textColor: "{colors.on-surface}"
     rounded: "{rounded.lg}"
-    padding: "8px 12px"
+    padding: "0 12px"
     height: "44px"
   chip:
     backgroundColor: "transparent"
     textColor: "{colors.primary}"
     rounded: "{rounded.full}"
     padding: "12px 16px"
-    minHeight: "44px"
   nav-item:
     backgroundColor: "transparent"
     textColor: "{colors.on-surface-variant}"
@@ -446,6 +454,18 @@ Keep the loaded frame mounted: page padding, panel headers, search controls, tab
 
 Use skeletons only until content arrives. Retain usable data during refresh, show `LoadingStatus` in a fixed header or footer, and distinguish failure from a successful empty result. Saving, sending, importing, route calculation, and authentication redirects keep progress labels because the pending result has no known content layout. Skeletons expose no interactive placeholder controls; loading dialogs retain a real Cancel action and keyboard dismissal. Scrollable calendars and timetables remain keyboard-accessible while loading.
 
+### Performance and resource lifecycle
+
+Apply these guardrails when optimizing interfaces. They define the behavior to preserve and the evidence to collect; they do not establish that a planned optimization has shipped.
+
+**The Measured-Performance Rule.** Compare production builds with the same route, viewport, network conditions, and workload. Measure initial JavaScript transfer and evaluation, first-use latency, and retained resources after repeated navigation. Include the selected tool's loading cost before claiming a faster experience. Keep backend resource budgets in the technical design rather than adding CPU or memory values to visual tokens.
+
+**The Deferred-Tool Rule.** Keep shell navigation, pane labels, and defaults available without loading inactive tool implementations. Defer heavy tools at stable component boundaries. Preserve direct URLs, selected-pane state, and the existing client/server boundary. Reuse geometry-matched loading frames and recovery states; keep real navigation outside inert placeholders and avoid moving focus when code arrives.
+
+**The Owned-Resource Rule.** Give requests, stream readers, timers, subscriptions, animation frames, and map resources one lifecycle owner. Cancel superseded work and release resources when that owner disposes. Preserve intentionally mounted canvases, camera state, forms, and scroll positions across compact view changes; hiding a view alone does not authorize discarding its state. Keep loading, stopped, failed, and completed responses distinguishable, with working Stop and Retry controls.
+
+Reuse pending public-data requests within a bounded cache lifetime. Preserve authentication checks, freshness, and retry after failure. Keep private account data within its existing ownership boundary. Retain animation-frame batching for streamed text, reduced-motion behavior, and established map-library loading. Add memoization, preloading, or virtualization only after measuring the relevant cost; preserve keyboard access and complete content.
+
 ### Shared typography and composition
 
 Group titles or names with their supporting text at a 4px gap. Use 8–16px before related controls or result groups and 16–24px between distinct sections. Give each gap one owner; avoid combining a parent's gap with a child's padding or margin for the same separation. Omit empty metadata groups. Keep the shared form field's 6px label/control gap and the separate marketing and full-page recovery scales.
@@ -585,7 +605,7 @@ Use `ModeToggle` for both sidebar and bottom presentations. Phone mode links sta
 - **Assistant avatar**: `bg-primary-container text-on-primary-container size-7 rounded-lg text-[0.6875rem] font-medium`. Placed beside the label row, not inside the bubble.
 - **Thinking disclosure**: Keep native summaries at least 44px high on phones and 32px on wider screens. Give the bounded text paragraph keyboard access and inset focus paint; preserve its node across disclosure toggles and streaming updates.
 - **Tool call blocks**: `bg-surface-container-low rounded-lg`. Summary: `px-3 py-2 text-xs font-medium` with icon, text, and chevron/spinner. Collapsible `<details>` element. Result content: `text-muted max-h-40 overflow-auto text-xs` in pre tag.
-- **Tool badges** (inline, post-message): `rounded-lg px-2 py-1 font-mono text-xs`. Success: `bg-secondary-container/15 text-on-surface-variant`. Error: `bg-error-container/40 text-on-surface-variant`.
+- **Tool badges** (inline, post-message): Use Commit Mono and full pill corners. Mapped results use the shared outline pill button with `aria-pressed`, a 32px desktop/44px phone minimum, and the active primary ring. Unmapped results remain noninteractive spans with a primary-tinted border and background; failures use the error palette. Keep labels truncated within the available width and include the failure description for assistive technology.
 - **Clickable tool widgets** (answer widgets in chat): hover shows `bg-surface-container-high` plus a `ring-primary/40 ring-1` affordance, so the card reads as clickable without moving. Active (the chip that opened the current pane) keeps `bg-accent-subtle ring-primary ring-2`.
 - **Canvas handoffs**: Use the shared channel activation for explicit course and event actions, clearing dismissal and showing the phone sheet. Reopen a dismissed sheet on mapped card or badge activation; keep automatic tool activation behind the dismissal guard. Set both root and query when opening prerequisites for a selected course.
 - **Suggestion pills** (empty state): `border border-primary text-primary rounded-full text-xs px-4 py-3 min-h-[44px] font-medium`. Hover: `bg-accent-subtle`. Focus: `ring-primary/40 ring-2 ring-offset-2`. Staggered entrance via `animationDelay`. Bound each pill to the available inline width and allow the complete label to wrap.
@@ -728,14 +748,16 @@ Under `prefers-reduced-motion: reduce`, use 0.01ms CSS animations with one itera
 - **Do** use opacity modifiers on color tokens for tinted backgrounds and state indicators.
 - **Do** enforce the 32px minimum touch target through `size-8` or equivalent hit-area dimensions. Preserve larger documented targets, including 44px back controls.
 - **Do** use `env(safe-area-inset-bottom)` for bottom-pinned elements on iOS.
+- **Do** measure initial loading, selected-tool first use, and resource cleanup against the same production workload before claiming a performance improvement.
+- **Do** preserve usable navigation, matched loading geometry, Stop and Retry behavior, and account ownership when deferring code or reusing requests.
 
 ### Don't:
 
 - **Don't** mix Tier 1 (`shadow-*` Tailwind utilities) and Tier 2 (`.neu-*` classes) on the same element. One shadow system per element.
 - **Don't** add `border` to `.neu-panel` or `.neu-raised` elements. Exception: `.neu-button` uses designed 1px border-subtle. `.glass-neu` uses 1px border-subtle as part of its glass definition.
-- **Don't** use pure black in new shadows in light mode. Warm gray (`rgba(91-174,...)`) for composed recipes. Exception: `.glass-neu` drop shadow and `.neu-primary-button:active` inset use `rgba(0,0,0,...)` at very low opacity (6-10%) where the visual difference from warm gray is imperceptible.
+- **Don't** use pure black in new composed shadows in light mode. Use the contextual dark and light surface pairs. Preserve the `.glass-neu` overlay's existing 6%-opacity black drop shadow; primary-button presses use the shared contextual inset recipe.
 - **Don't** apply `backdrop-filter` outside `.glass-neu`. Glass is for overlay surfaces (dropdowns, mobile drawers), never decorative.
-- **Don't** animate shadow values directly in new code (expensive repaints). The chat composer focus-within transition and the landing header's conditional shadow are existing exceptions where the transition is on a single element with no alternative.
+- **Don't** add shadow animation to new surfaces without measuring repaint cost. Preserve the existing shared button, composer focus, and landing-header shadow transitions; use opacity or transform for new motion that does not need a layout change.
 - **Don't** apply neumorphic depth to text content. Depth frames containers. Content stays flat inside.
 - **Don't** use font-weight 700 or above. Maximum is 600 (markdown strong, table headers, list markers).
 - **Don't** use primary indigo for background fills, decorative accents, or large surfaces. It means "interactive" or "active state."
@@ -743,3 +765,4 @@ Under `prefers-reduced-motion: reduce`, use 0.01ms CSS animations with one itera
 - **Don't** use blur reveals in the app shell. Those belong to the landing page only. CSS `--neu-ease` handles micro-interactions and gesture-driven slides.
 - **Don't** wrap a phone's main view in a rounded card or restore shell gutters below 640px. Keep content and control padding inside the full-width page.
 - **Don't** create new shadow recipes without documenting them. Use `--neu-surface-shadow` or `--neu-inset-shadow` from Tier 2, the five elevation utilities from Tier 1, or the sanctioned `.chat-message-well` recipe.
+- **Don't** discard mounted workspace state, weaken accessibility, truncate content, or bypass freshness checks to improve a performance measurement.

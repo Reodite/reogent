@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-08T10:29:50Z",
+  "generatedAt": "2026-10-13T04:14:06.889Z",
   "title": "Design System: Reodite",
   "extensions": {
     "colorMeta": {
@@ -78,15 +78,15 @@
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Page titles, panel headers, greeting text. One per visible viewport."
+        "purpose": "Workspace and authentication page titles, recovery titles, and chat greetings. Uses the shared 20px/25px Title role."
       },
       "heading": {
         "displayName": "Heading",
-        "purpose": "Card titles, session names, route info primary values, building names."
+        "purpose": "Section and dialog titles, chat session headings, and Answer Canvas titles. Uses the shared 16px/24px Section role with -0.01em tracking."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Chat messages, descriptions, button labels. 14px base for information-dense UI."
+        "purpose": "Default UI text and control labels at 14px/20px. Conversation prose keeps its documented relaxed line height; phone text-entry controls use 16px."
       },
       "body-sm": {
         "displayName": "Body Small",
@@ -98,7 +98,11 @@
       },
       "mono": {
         "displayName": "Mono",
-        "purpose": "Course codes, times, building codes, inline code, tool parameters, dollar amounts."
+        "purpose": "Structured identifiers in tool renderers and message formatting. Degree Planner and Schedule workspaces use Aspekta throughout, including course identifiers."
+      },
+      "avatar": {
+        "displayName": "Avatar Monogram",
+        "purpose": "Single-character initials at 11px inside 28px avatar containers."
       }
     },
     "shadows": [
@@ -125,7 +129,7 @@
       {
         "name": "elevation-glow",
         "value": "0 2px 8px rgba(74,78,122,0.1)",
-        "purpose": "Primary action button glow."
+        "purpose": "Standalone glow utility; primary buttons use the shared contextual surface shadow."
       },
       {
         "name": "neu-surface-shadow",
@@ -177,7 +181,7 @@
       {
         "name": "message-in",
         "value": "200ms ease-out, opacity 0→1 + translateY(6px→0)",
-        "purpose": "Chat message entrance animation."
+        "purpose": "CSS arrival for suggestion pills and error banners. Chat message containers use the message-spring contract."
       },
       {
         "name": "thinking-border-orbit",
@@ -208,13 +212,35 @@
         "name": "spring-hero",
         "value": "type: spring, stiffness: 80-120, damping: 18-20",
         "purpose": "Landing page hero and CTA entrances. Spring physics, not CSS."
+      },
+      {
+        "name": "message-spring",
+        "value": "type: spring, stiffness: 400, damping: 25; opacity 0 to 1 and translateY(6px to 0)",
+        "purpose": "Chat message entrance; reduced-motion users receive an immediate update."
+      },
+      {
+        "name": "thinking-orb",
+        "value": "1.15s linear infinite rotation",
+        "purpose": "Composer thinking orb; reduced motion leaves it static."
       }
     ],
     "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "workspace", "value": "55rem" },
-      { "name": "lg", "value": "1024px" },
-      { "name": "xl", "value": "1280px" }
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "workspace",
+        "value": "55rem"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
     ]
   },
   "components": [
@@ -222,33 +248,40 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Main CTA with whisper glow and physical press feedback.",
-      "html": "<button class=\"ds-btn-primary\">New Conversation</button>",
-      "css": ".ds-btn-primary { background: #4a4e7a; color: #fff; padding: 8px 16px; height: 36px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; border: none; border-radius: 16px; cursor: pointer; box-shadow: 0 3px 8px rgba(74,78,122,0.1), -2px -2px 6px rgba(255,255,255,0.2); transition: filter 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:hover { box-shadow: 0 4px 10px rgba(74,78,122,0.12), -2px -2px 7px rgba(255,255,255,0.2); filter: brightness(1.03); transform: translateY(-1px); } .ds-btn-primary:active { box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -1px -1px 4px rgba(255,255,255,0.08); transform: translateY(1px) scale(0.985); } .ds-btn-primary:focus-visible { outline: 2px solid color-mix(in srgb, #4a4e7a 50%, transparent); outline-offset: 2px; }"
+      "description": "Primary action with an 8px control radius, contextual surface depth, and scale-only press feedback. Standard targets grow from 36px to 44px on phones.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\">New conversation</button>",
+      "css": ".ds-btn-primary { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border: none; border-radius: 8px; background: var(--primary, #4a4e7a); color: var(--on-primary, #ffffff); font: 500 14px/20px Aspekta, ui-sans-serif, system-ui, sans-serif; cursor: pointer; box-shadow: 3px 3px 8px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 6px var(--neu-highlight, rgba(255,255,255,0.2)); transition: color 150ms ease-out, background-color 150ms ease-out, filter 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary:not(:disabled):hover { box-shadow: 4px 4px 10px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 7px var(--neu-highlight, rgba(255,255,255,0.2)); filter: brightness(1.03); } .ds-btn-primary:not(:disabled):active { box-shadow: inset 1px 1px 3px var(--neu-shadow, rgba(105,112,116,0.045)), inset -1px -1px 3px var(--neu-highlight, rgba(255,255,255,0.2)); transform: scale(0.985); } .ds-btn-primary:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; } @media (width < 640px) { .ds-btn-primary { height: 44px; } } @media (prefers-reduced-motion: reduce) { .ds-btn-primary { transition: none; } }"
     },
     {
       "name": "Primary Button Large",
       "kind": "button",
       "refersTo": "button-primary-large",
-      "description": "Large CTA for landing page and auth forms. 48px height.",
-      "html": "<button class=\"ds-btn-primary-lg\">Get Started</button>",
-      "css": ".ds-btn-primary-lg { background: #4a4e7a; color: #fff; padding: 12px 32px; height: 48px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 1rem; font-weight: 500; border: none; border-radius: 16px; cursor: pointer; box-shadow: 0 3px 8px rgba(74,78,122,0.1), -2px -2px 6px rgba(255,255,255,0.2); transition: filter 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary-lg:hover { filter: brightness(1.03); transform: translateY(-1px); } .ds-btn-primary-lg:active { box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -1px -1px 4px rgba(255,255,255,0.08); transform: translateY(1px) scale(0.985); }"
+      "description": "Landing and authentication action with a 48px target and the distinct 12px large-action radius.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary-lg\">Get started</button>",
+      "css": ".ds-btn-primary-lg { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 48px; padding: 0 32px; border: none; border-radius: 12px; background: var(--primary, #4a4e7a); color: var(--on-primary, #ffffff); font: 500 16px/24px Aspekta, ui-sans-serif, system-ui, sans-serif; cursor: pointer; box-shadow: 3px 3px 8px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 6px var(--neu-highlight, rgba(255,255,255,0.2)); transition: color 150ms ease-out, background-color 150ms ease-out, filter 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary-lg:not(:disabled):hover { box-shadow: 4px 4px 10px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 7px var(--neu-highlight, rgba(255,255,255,0.2)); filter: brightness(1.03); } .ds-btn-primary-lg:not(:disabled):active { box-shadow: inset 1px 1px 3px var(--neu-shadow, rgba(105,112,116,0.045)), inset -1px -1px 3px var(--neu-highlight, rgba(255,255,255,0.2)); transform: scale(0.985); } .ds-btn-primary-lg:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 2px; } .ds-btn-primary-lg:disabled { opacity: 0.45; cursor: not-allowed; } @media (prefers-reduced-motion: reduce) { .ds-btn-primary-lg { transition: none; } }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Raised surface button for secondary actions.",
-      "html": "<button class=\"ds-btn-secondary\">Retry</button>",
-      "css": ".ds-btn-secondary { background: #fafafa; color: #18191b; padding: 8px 16px; height: 36px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; border: 1px solid #efefeb; border-radius: 16px; cursor: pointer; box-shadow: 3px 3px 8px rgba(105,112,116,0.045), -2px -2px 6px rgba(255,255,255,0.2); transition: color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-secondary:hover { box-shadow: 4px 4px 10px rgba(105,112,116,0.045), -2px -2px 7px rgba(255,255,255,0.2); transform: translateY(-1px); } .ds-btn-secondary:active { box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2); transform: translateY(1px) scale(0.98); } .ds-btn-secondary:focus-visible { outline: 2px solid color-mix(in srgb, #4a4e7a 50%, transparent); outline-offset: 2px; }"
+      "description": "Secondary action with an 8px radius, subtle border, and the shared contextual raised/inset states.",
+      "html": "<button type=\"button\" class=\"ds-btn-secondary\">Retry</button>",
+      "css": ".ds-btn-secondary { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border: 1px solid var(--border-subtle, #e8e8ea); border-radius: 8px; background: var(--surface, #fafafa); color: var(--on-surface, #18191b); font: 500 14px/20px Aspekta, ui-sans-serif, system-ui, sans-serif; cursor: pointer; box-shadow: 3px 3px 8px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 6px var(--neu-highlight, rgba(255,255,255,0.2)); transition: color 150ms ease-out, background-color 150ms ease-out, filter 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-btn-secondary:not(:disabled):hover { box-shadow: 4px 4px 10px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 7px var(--neu-highlight, rgba(255,255,255,0.2)); } .ds-btn-secondary:not(:disabled):active, .ds-btn-secondary[aria-pressed=\"true\"] { box-shadow: inset 1px 1px 3px var(--neu-shadow, rgba(105,112,116,0.045)), inset -1px -1px 3px var(--neu-highlight, rgba(255,255,255,0.2)); transform: scale(0.98); } .ds-btn-secondary:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 2px; } .ds-btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; } @media (width < 640px) { .ds-btn-secondary { height: 44px; } } @media (prefers-reduced-motion: reduce) { .ds-btn-secondary { transition: none; } }"
+    },
+    {
+      "name": "Ghost Back Button",
+      "kind": "button",
+      "refersTo": "button-back",
+      "description": "Destination-named back action with a 44px square target, 20px arrow, 8px radius, and no resting border or shadow.",
+      "html": "<button type=\"button\" class=\"ds-back\" aria-label=\"Back to course lookup\" title=\"Back to course lookup\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19 12H5m7-7-7 7 7 7\"/></svg></button>",
+      "css": ".ds-back { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: none; border-radius: 8px; background: transparent; box-shadow: none; color: var(--on-surface-variant, #3e4348); cursor: pointer; transition: color 150ms ease-out, background-color 150ms ease-out; } .ds-back:not(:disabled):hover { background: var(--surface-container-high, #e6e6e8); color: var(--on-surface, #18191b); } .ds-back:not(:disabled):active { background: var(--surface-container, #ededef); } .ds-back:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 2px; } .ds-back:disabled { opacity: 0.45; cursor: not-allowed; } @media (prefers-reduced-motion: reduce) { .ds-back { transition: none; } }"
     },
     {
       "name": "Chat Composer",
       "kind": "input",
-      "refersTo": "input",
       "description": "Recessed composer with a 44px single-line field and concentric action corners. Phone and wider-screen actions retain their own target sizes.",
       "html": "<div class=\"ds-composer\"><textarea rows=\"1\" aria-label=\"Message the assistant\" placeholder=\"Ask about courses, tuition, or campus...\"></textarea><button class=\"ds-send\" aria-label=\"Send\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 19V5M5 12l7-7 7 7\"/></svg></button></div>",
-      "css": ".ds-composer { position: relative; display: flex; align-items: center; background: #f3f3f5; border-radius: 16px; padding: 6px 10px 6px 6px; box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2); transition: box-shadow 150ms ease-out; } .ds-composer:focus-within { outline: 2px solid rgba(74,78,122,0.28); outline-offset: -2px; } .ds-composer textarea { box-sizing: border-box; background: transparent; border: none; outline: none; flex: 1; min-width: 0; padding: 12px; font: 400 14px/20px Aspekta, ui-sans-serif, system-ui, sans-serif; color: #18191b; resize: none; height: 44px; min-height: 44px; max-height: 96px; } .ds-composer textarea::placeholder { color: #5a6066; } .ds-send { box-sizing: border-box; width: 36px; height: 36px; border-radius: 6px; background: #4a4e7a; color: #fff; border: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; box-shadow: 0 3px 8px rgba(74,78,122,0.1), -2px -2px 6px rgba(255,255,255,0.2); transition: transform 150ms ease-out; } .ds-send:hover { transform: translateY(-1px); } .ds-send:active { transform: translateY(1px) scale(0.985); } @media (width < 640px) { .ds-composer { padding-right: 6px; } .ds-composer textarea { padding-block: 10px; font-size: 16px; line-height: 24px; } .ds-send { width: 44px; height: 44px; border-radius: 10px; } }"
+      "css": ".ds-composer { position: relative; display: flex; align-items: center; background: var(--surface-container-low, #f3f3f5); border-radius: 16px; padding: 6px 10px 6px 6px; box-shadow: inset 1px 1px 3px var(--neu-shadow, rgba(105,112,116,0.045)), inset -1px -1px 3px var(--neu-highlight, rgba(255,255,255,0.2)); transition: box-shadow 150ms ease-out; } .ds-composer:focus-within { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 28%, transparent); outline-offset: -2px; } .ds-composer textarea { box-sizing: border-box; background: transparent; border: none; outline: none; flex: 1; min-width: 0; padding: 12px; font: 400 14px/20px Aspekta, ui-sans-serif, system-ui, sans-serif; color: var(--on-surface, #18191b); resize: none; height: 44px; min-height: 44px; max-height: 96px; } .ds-composer textarea::placeholder { color: var(--muted, #5a6066); } .ds-send { width: 36px; height: 36px; padding: 0; border-radius: 6px; background: var(--primary, #4a4e7a); color: var(--on-primary, #ffffff); border: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; box-shadow: 3px 3px 8px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 6px var(--neu-highlight, rgba(255,255,255,0.2)); transition: filter 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out; } .ds-send:not(:disabled):hover { box-shadow: 4px 4px 10px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 7px var(--neu-highlight, rgba(255,255,255,0.2)); filter: brightness(1.03); } .ds-send:not(:disabled):active { box-shadow: inset 1px 1px 3px var(--neu-shadow, rgba(105,112,116,0.045)), inset -1px -1px 3px var(--neu-highlight, rgba(255,255,255,0.2)); transform: scale(0.985); } .ds-send:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 2px; } .ds-send:disabled { opacity: 0.45; cursor: not-allowed; } @media (width < 640px) { .ds-composer { padding-right: 6px; } .ds-composer textarea { padding-block: 10px; font-size: 16px; line-height: 24px; } .ds-send { width: 44px; height: 44px; border-radius: 10px; } } @media (prefers-reduced-motion: reduce) { .ds-composer, .ds-send { transition: none; } }"
     },
     {
       "name": "Mobile Mode Navigation",
@@ -256,7 +289,7 @@
       "refersTo": "mobile-mode-tab",
       "description": "Flat phone navigation with three contiguous 60px-high hit regions, 8px-inset interaction feedback, visible labels, and bottom safe-area padding.",
       "html": "<nav class=\"ds-mode-nav\" aria-label=\"Reodite areas\"><a class=\"ds-mode-tab\" href=\"/chat\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" aria-hidden=\"true\"><path fill=\"none\" stroke=\"currentColor\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9.949 5.365L11 3l1.051 2.365a12 12 0 0 0 5.083 5.585L19 12l-1.866 1.05a12 12 0 0 0-5.083 5.585L11 21l-1.051-2.365a12 12 0 0 0-5.083-5.585L3 12l1.866-1.05A12 12 0 0 0 9.95 5.365Z\"/><path fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" d=\"M19 3.745c.335.467.73.889 1.175 1.255c-.444.366-.84.787-1.175 1.254A6.7 6.7 0 0 0 17.824 5c.445-.366.84-.787 1.176-1.255Z\"/></svg><span>AI</span></a><a class=\"ds-mode-tab\" href=\"/tools/map\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" aria-hidden=\"true\"><path fill=\"none\" stroke=\"currentColor\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M9 8.667L5 6v10.465a1 1 0 0 0 .445.832L11 21v-4.667M9 8.667l1.555 1.036a1 1 0 0 1 .445.832v5.798M9 8.667V4l4 2.667m-2 9.666L15 19v-4.667m-2-7.666l1.555 1.036a1 1 0 0 1 .445.832v5.798m-2-7.666V2l5.555 3.703a1 1 0 0 1 .445.832V17l-4-2.667\"/></svg><span>Tools</span></a><a class=\"ds-mode-tab\" href=\"/pulse\"><svg viewBox=\"0 0 24 24\" width=\"22\" height=\"22\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M20 18a1 1 0 1 0 2 0zm-5 1a1 1 0 1 0 2 0zM2 19a1 1 0 1 0 2 0zm15-5v1h2v-2h-2zm4 2h-1v2h2v-2zm-1-7h-1a1 1 0 0 1-1 1v2a3 3 0 0 0 3-3zm-2 2v-1a1 1 0 0 1-1-1h-2a3 3 0 0 0 3 3zm-2-2h1a1 1 0 0 1 1-1V6a3 3 0 0 0-3 3zm2-2v1a1 1 0 0 1 1 1h2a3 3 0 0 0-3-3zM6 14v1h7v-2H6zm10 3h-1v2h2v-2zM3 19h1v-2H2v2zM13 7.5h-1A2.5 2.5 0 0 1 9.5 10v2A4.5 4.5 0 0 0 14 7.5zM9.5 11v-1A2.5 2.5 0 0 1 7 7.5H5A4.5 4.5 0 0 0 9.5 12zM6 7.5h1A2.5 2.5 0 0 1 9.5 5V3A4.5 4.5 0 0 0 5 7.5zM9.5 4v1A2.5 2.5 0 0 1 12 7.5h2A4.5 4.5 0 0 0 9.5 3zM13 14v1a2 2 0 0 1 2 2h2a4 4 0 0 0-4-4zm-7 0v-1a4 4 0 0 0-4 4h2a2 2 0 0 1 2-2zm13 0v1a1 1 0 0 1 1 1h2a3 3 0 0 0-3-3z\"/></svg><span>Unity</span></a></nav>",
-      "css": ".ds-mode-nav { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--surface, #fafafa); border-top: 1px solid var(--border-subtle, #e8e8ea); } .ds-mode-tab { position: relative; isolation: isolate; display: flex; height: 60px; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; color: var(--muted, #5a6066); font: 500 12px/16px Aspekta, ui-sans-serif, system-ui, sans-serif; text-decoration: none; outline: none; transition: color 150ms ease-out; } .ds-mode-tab::before { content: ''; position: absolute; inset: 8px; z-index: -1; pointer-events: none; border-radius: inherit; transition: background-color 150ms ease-out; } .ds-mode-tab[aria-current] { color: var(--primary, #4a4e7a); } .ds-mode-tab[aria-current]::after { content: ''; position: absolute; top: 4px; left: calc(50% - 12px); width: 24px; height: 2px; border-radius: 9999px; background: var(--primary, #4a4e7a); pointer-events: none; } @media (hover: hover) { .ds-mode-tab:hover::before { background: var(--surface-container-high, #e6e6e8); } } .ds-mode-tab:active::before { background: var(--surface-container-high, #e6e6e8); } .ds-mode-tab:focus-visible::before { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); } @media (prefers-reduced-motion: reduce) { .ds-mode-tab, .ds-mode-tab::before { transition: none; } }"
+      "css": ".ds-mode-nav { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: var(--surface, #fafafa); border-top: 1px solid var(--border-subtle, #e8e8ea); } .ds-mode-tab { position: relative; isolation: isolate; display: flex; height: 60px; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; color: var(--muted, #5a6066); font: 500 12px/16px Aspekta, ui-sans-serif, system-ui, sans-serif; text-decoration: none; outline: none; transition: color 150ms ease-out; } .ds-mode-tab::before { content: ''; position: absolute; inset: 8px; z-index: -1; pointer-events: none; border-radius: inherit; transition: background-color 150ms ease-out; } .ds-mode-tab[aria-current] { color: var(--primary, #4a4e7a); } .ds-mode-tab[aria-current]::after { content: ''; position: absolute; top: 4px; left: calc(50% - 12px); width: 24px; height: 2px; border-radius: 9999px; background: var(--primary, #4a4e7a); pointer-events: none; } @media (hover: hover) { .ds-mode-tab:hover::before { background: var(--surface-container-high, #e6e6e8); } } .ds-mode-tab:active::before { background: var(--surface-container-high, #e6e6e8); } .ds-mode-tab:focus-visible::before { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: -2px; } @media (prefers-reduced-motion: reduce) { .ds-mode-tab, .ds-mode-tab::before { transition: none; } }"
     },
     {
       "name": "Nav Item",
@@ -264,23 +297,22 @@
       "refersTo": "nav-item-active",
       "description": "Selected session row with one compact action disclosure and reserved title space.",
       "html": "<div class=\"ds-session-row\"><button type=\"button\" class=\"ds-nav ds-nav-active\" aria-current=\"page\"><span class=\"ds-nav-text\">Course planning for Fall</span></button><button type=\"button\" class=\"ds-session-more\" aria-label=\"Actions for Course planning for Fall\" aria-haspopup=\"menu\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" d=\"M12.5 12a.5.5 0 1 1-1 0a.5.5 0 0 1 1 0Zm6 0a.5.5 0 1 1-1 0a.5.5 0 0 1 1 0Zm-12 0a.5.5 0 1 1-1 0a.5.5 0 0 1 1 0Z\"/></svg></button></div>",
-      "css": ".ds-session-row { position: relative; } .ds-nav { box-sizing: border-box; display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 40px 8px 12px; height: 36px; border: none; border-radius: 8px; background: transparent; font: 500 14px/20px Aspekta, ui-sans-serif, system-ui, sans-serif; color: var(--on-surface-variant, #3e4348); text-align: left; cursor: pointer; } .ds-nav-active { background: var(--surface-container, #ededee); color: var(--on-surface, #18191b); } .ds-nav-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-session-more { box-sizing: border-box; position: absolute; top: 2px; right: 2px; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: none; border-radius: 8px; background: transparent; color: var(--on-surface-variant, #3e4348); cursor: pointer; } .ds-session-more:hover { background: var(--surface-container-high, #e6e6e8); } .ds-nav:focus-visible, .ds-session-more:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 1px; } @media (width < 640px) { .ds-nav { height: 48px; padding-right: 52px; } .ds-session-more { width: 44px; height: 44px; } }"
+      "css": ".ds-session-row { position: relative; } .ds-nav { box-sizing: border-box; display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 40px 8px 12px; height: 36px; border: none; border-radius: 8px; background: transparent; font: 500 14px/20px Aspekta, ui-sans-serif, system-ui, sans-serif; color: var(--on-surface-variant, #3e4348); text-align: left; cursor: pointer; transition: color 150ms ease-out, background-color 150ms ease-out; } .ds-nav-active { background: var(--surface-container, #ededef); color: var(--on-surface, #18191b); box-shadow: inset 1px 1px 3px var(--neu-shadow, rgba(105,112,116,0.045)), inset -1px -1px 3px var(--neu-highlight, rgba(255,255,255,0.2)); } .ds-nav:not(.ds-nav-active):hover { background: var(--surface-container-high, #e6e6e8); color: var(--on-surface, #18191b); } .ds-nav-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-session-more { position: absolute; top: 2px; right: 2px; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: none; border-radius: 8px; background: transparent; color: var(--on-surface-variant, #3e4348); cursor: pointer; } .ds-session-more:hover, .ds-session-more:active { background: var(--surface-container-high, #e6e6e8); } .ds-nav:focus-visible, .ds-session-more:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 1px; } @media (width < 640px) { .ds-nav { height: 48px; padding-right: 52px; font-size: 16px; line-height: 24px; box-shadow: none; } .ds-session-more { width: 44px; height: 44px; } } @media (prefers-reduced-motion: reduce) { .ds-nav { transition: none; } }"
     },
     {
       "name": "Tool Badge",
       "kind": "chip",
-      "refersTo": "chip",
-      "description": "Compact mono-set inline indicator for tool calls.",
-      "html": "<span class=\"ds-badge\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.35-4.35\"/></svg>search_courses</span>",
-      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 8px; background: rgba(176,239,194,0.15); border-radius: 8px; font-family: 'Commit Mono', ui-monospace, monospace; font-size: 0.75rem; color: #3e4348; }"
+      "description": "Mapped tool-result action with full pill corners, a pressed-state indicator, and 32px desktop/44px phone minimum targets. Unmapped badges remain noninteractive.",
+      "html": "<button type=\"button\" class=\"ds-badge\" aria-pressed=\"false\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.35-4.35\"/></svg><span>Searched courses</span></button>",
+      "css": ".ds-badge { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px; max-width: 100%; min-height: 32px; padding: 6px 12px; overflow: hidden; background: transparent; border: 1px solid var(--primary, #4a4e7a); border-radius: 9999px; font: 500 12px/16px 'Commit Mono', ui-monospace, monospace; color: var(--primary, #4a4e7a); cursor: pointer; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-badge svg { flex-shrink: 0; } .ds-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-badge:not(:disabled):hover { background: var(--accent-subtle, #edeef5); } .ds-badge:not(:disabled):active { transform: scale(0.95); } .ds-badge[aria-pressed=\"true\"] { background: var(--accent-subtle, #edeef5); box-shadow: 0 0 0 2px var(--primary, #4a4e7a); } .ds-badge:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 2px; } .ds-badge:disabled { opacity: 0.45; cursor: not-allowed; } @media (width < 640px) { .ds-badge { min-height: 44px; } } @media (prefers-reduced-motion: reduce) { .ds-badge { transition: none; } }"
     },
     {
       "name": "Quick Action Pill",
       "kind": "chip",
       "refersTo": "chip",
-      "description": "Suggested action chip with primary border. 44px touch target.",
-      "html": "<button class=\"ds-pill\">What are the prerequisites?</button>",
-      "css": ".ds-pill { background: transparent; border: 1px solid #4a4e7a; border-radius: 9999px; padding: 12px 16px; min-height: 44px; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; color: #4a4e7a; cursor: pointer; text-align: left; transition: background-color 150ms ease-out; } .ds-pill:hover { background: #edeef5; } .ds-pill:focus-visible { box-shadow: 0 0 0 2px rgba(74,78,122,0.4); outline: none; }"
+      "description": "Wrapping suggested action with primary border and a 44px minimum target.",
+      "html": "<button type=\"button\" class=\"ds-pill\">What are the prerequisites?</button>",
+      "css": ".ds-pill { box-sizing: border-box; max-width: 100%; background: transparent; border: 1px solid var(--primary, #4a4e7a); border-radius: 9999px; padding: 12px 16px; min-height: 44px; font: 500 12px/16px Aspekta, ui-sans-serif, system-ui, sans-serif; color: var(--primary, #4a4e7a); cursor: pointer; text-align: left; white-space: normal; overflow-wrap: anywhere; transition: background-color 150ms ease-out, transform 150ms ease-out; } .ds-pill:not(:disabled):hover { background: var(--accent-subtle, #edeef5); } .ds-pill:not(:disabled):active { transform: scale(0.95); } .ds-pill:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 2px; } .ds-pill:disabled { opacity: 0.45; cursor: not-allowed; } @media (prefers-reduced-motion: reduce) { .ds-pill { transition: none; } }"
     },
     {
       "name": "Panel Card",
@@ -288,23 +320,22 @@
       "refersTo": "card",
       "description": "Contained neumorphic card. Mobile main views use a flat, edge-to-edge page instead.",
       "html": "<div class=\"ds-panel\"><h3 class=\"ds-panel-title\">CPSC 310</h3><p class=\"ds-panel-meta\">Introduction to Software Engineering</p><p class=\"ds-panel-detail\">Credits: 4 · Prerequisites: CPSC 210</p></div>",
-      "css": ".ds-panel { background: #fafafa; border-radius: 16px; padding: 16px; box-shadow: 3px 3px 8px rgba(105,112,116,0.045), -2px -2px 6px rgba(255,255,255,0.2); } .ds-panel-title { font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 1rem; font-weight: 500; color: #18191b; margin: 0 0 4px; } .ds-panel-meta { font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: #3e4348; margin: 0 0 8px; line-height: 1.5; } .ds-panel-detail { font-family: 'Commit Mono', ui-monospace, monospace; font-size: 0.8125rem; color: #5a6066; margin: 0; }"
+      "css": ".ds-panel { background: var(--surface, #fafafa); border-radius: 16px; padding: 16px; box-shadow: 3px 3px 8px var(--neu-shadow, rgba(105,112,116,0.045)), -2px -2px 6px var(--neu-highlight, rgba(255,255,255,0.2)); } .ds-panel-title { font: 500 16px/24px Aspekta, ui-sans-serif, system-ui, sans-serif; letter-spacing: -0.01em; color: var(--on-surface, #18191b); margin: 0 0 4px; } .ds-panel-meta { font: 400 14px/20px Aspekta, ui-sans-serif, system-ui, sans-serif; color: var(--on-surface-variant, #3e4348); margin: 0 0 8px; } .ds-panel-detail { font: 400 13px/1.5 'Commit Mono', ui-monospace, monospace; color: var(--muted, #5a6066); margin: 0; }"
     },
     {
       "name": "User Message",
       "kind": "custom",
-      "refersTo": "button-secondary",
       "description": "Right-aligned user bubble with asymmetric radius. Flat, no shadow.",
       "html": "<div class=\"ds-user-msg\">What are the prerequisites for CPSC 310?</div>",
-      "css": ".ds-user-msg { background: #edeef5; border-radius: 16px 16px 5px 16px; padding: 12px 16px; max-width: 85%; margin-left: auto; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: #18191b; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }"
+      "css": ".ds-user-msg { background: var(--accent-subtle, #edeef5); border-radius: 16px 16px 5px 16px; padding: 12px 16px; max-width: 85%; margin-left: auto; font: 400 14px/1.625 Aspekta, ui-sans-serif, system-ui, sans-serif; color: var(--on-surface, #18191b); white-space: pre-wrap; overflow-wrap: anywhere; }"
     },
     {
       "name": "Auth Input",
       "kind": "input",
       "refersTo": "input",
-      "description": "Recessed form input with ring-based focus and error states.",
-      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Username\" />",
-      "css": ".ds-input { background: #f3f3f5; color: #18191b; border: none; border-radius: 12px; height: 44px; padding: 8px 12px; width: 100%; font-family: Aspekta, ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2); } .ds-input::placeholder { color: #5a6066; } .ds-input:focus-visible { outline: none; box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2), 0 0 0 2px rgba(74,78,122,0.4); } .ds-input[aria-invalid=\"true\"] { box-shadow: inset 1px 1px 3px rgba(105,112,116,0.045), inset -1px -1px 3px rgba(255,255,255,0.2), 0 0 0 2px rgba(156,64,64,0.3); }"
+      "description": "Labeled recessed field with an 8px radius, 44px height, visible focus/error states, and 16px phone text.",
+      "html": "<label class=\"ds-input-label\" for=\"ds-username\">Username</label><input id=\"ds-username\" class=\"ds-input\" type=\"text\" autocomplete=\"username\" placeholder=\"Username\" />",
+      "css": ".ds-input-label { display: block; margin-bottom: 6px; font: 500 12px/16px Aspekta, ui-sans-serif, system-ui, sans-serif; color: var(--on-surface-variant, #3e4348); } .ds-input { box-sizing: border-box; background: var(--surface-container-low, #f3f3f5); color: var(--on-surface, #18191b); border: none; border-radius: 8px; height: 44px; padding: 0 12px; width: 100%; font: 400 14px/20px Aspekta, ui-sans-serif, system-ui, sans-serif; box-shadow: inset 1px 1px 3px var(--neu-shadow, rgba(105,112,116,0.045)), inset -1px -1px 3px var(--neu-highlight, rgba(255,255,255,0.2)); } .ds-input::placeholder { color: var(--muted, #5a6066); } .ds-input:hover:not(:disabled) { cursor: text; } .ds-input:focus-visible { outline: 2px solid color-mix(in srgb, var(--primary, #4a4e7a) 40%, transparent); outline-offset: 1px; } .ds-input[aria-invalid=\"true\"] { box-shadow: inset 1px 1px 3px var(--neu-shadow, rgba(105,112,116,0.045)), inset -1px -1px 3px var(--neu-highlight, rgba(255,255,255,0.2)), 0 0 0 2px color-mix(in srgb, var(--error, #9c4040) 30%, transparent); } .ds-input:disabled { opacity: 0.55; cursor: not-allowed; } @media (width < 640px) { .ds-input { font-size: 16px; line-height: 24px; } }"
     }
   ],
   "narrative": {
@@ -312,105 +343,118 @@
     "overview": "Use restrained depth for controls, contained cards, and overlays. Keep mobile pages flat and edge-to-edge so students can use the available screen for their task. Raised actions, recessed inputs, and flat content share one neutral material. Use the smallest shadow that communicates a boundary.\n\nUse small offsets (2-3px), soft blur (4-8px), and low opacity (4-6%) for composed shadows. Keep the light source at the upper left and use the same recipes across related controls.\n\nChoose spacing, type, and radii from the documented scales. Keep app transitions brief and tied to interaction. Reserve larger type, spring entrances, and blur reveals for the landing page.",
     "keyCharacteristics": [
       "Restrained depth for controls and contained surfaces; flat mobile pages",
-      "Minimal shadows: 2-3px offsets, 4-8px blur, 4-6% opacity",
+      "Minimal shadows with tiny offsets and near-transparent opacity",
       "Single-material coherence across all elements",
       "Precision and consistency as the aesthetic itself",
-      "Muted indigo accent, used sparingly, always meaning interactive",
-      "Content-forward: neumorphic frame never competes with chat or map data",
+      "Muted indigo accent, used sparingly, always meaning \"interactive\"",
+      "Content-forward: the neumorphic frame never competes with chat or map data",
       "Landing page permitted to be expressive; in-app is disciplined"
     ],
     "rules": [
       {
-        "name": "Concentric contours",
-        "body": "For close matching corners, subtract the measured border-box inset from the outer radius. Expanded navigation uses 16/8/8, compact navigation and theme groups 12/4/8, segments 8/4/4, timetable layers 12/2/10 then 10/2/8, and single-line composer actions 16/6/10 on phones or 16/10/6 on wider screens (outer/inset/inner). Independent cards, fields, avatars and interior rows keep their own geometry.",
-        "section": "shapes"
-      },
-      {
-        "name": "Optical anchors",
-        "body": "Center workspace leading controls on a 28px title anchor without shrinking targets. Align plain panel content and discovery searches to the header's 16px inset. Keep dense list exceptions explicit. Phone menu effects use 8px edge and title clearance. Bottom-tab feedback paints 8px inside contiguous 60px-high hit regions; the marker sits 4px below the content top. Prerequisite view labels use equal grid columns and no wrapping, with an 8px controls/result gap and no empty feedback spacer. Theme groups stay intrinsic-width and non-shrinking at 144px phone or 108px wider-screen; narrow account rows wrap with an 8px row gap. Verify original-scale images alongside measured bounds, not class names alone.",
-        "section": "layout"
-      },
-      {
         "name": "The Muted-for-AA Rule",
-        "body": "All subdued text uses --muted (#5a6066). Never --outline or --outline-variant for text — they fail WCAG AA on light surfaces.",
+        "body": "All subdued text (placeholders, timestamps, metadata, captions) uses `--muted` (`#5a6066`). Never use `--outline` or `--outline-variant` for text. They fail WCAG AA contrast on light surfaces.",
         "section": "colors"
       },
       {
         "name": "The Indigo Scarcity Rule",
-        "body": "The primary indigo appears only on interactive elements and active states. Never for decorative purposes, background fills, or large surfaces. Its presence always means actionable or current.",
+        "body": "Primary indigo appears on interactive elements and active states. Never on decorative surfaces, background fills, or large areas. Its presence means \"actionable\" or \"current state.\"",
         "section": "colors"
       },
       {
         "name": "The Opacity Layering Rule",
-        "body": "Use fractional opacity modifiers (/15, /40, /60) to create tinted surfaces that remain translucent. Solid token colors for text and borders; opacity modifiers for background tints and state indicators.",
+        "body": "Use fractional opacity modifiers (`/15`, `/40`, `/60`) to create tinted surfaces that remain translucent to the layer beneath. Solid token colors for text and borders; opacity modifiers for background tints and state indicators.",
         "section": "colors"
       },
       {
         "name": "The Weight-Not-Bold Rule",
-        "body": "Emphasis uses weight 500–550. Bold (700+) never appears. Maximum weight is 600 for markdown strong, table headers, and list markers.",
+        "body": "Emphasis uses weight 500-550. Weight 700+ never appears. Maximum is 600, reserved for markdown strong, table headers, and list markers.",
         "section": "typography"
       },
       {
         "name": "The Mono-for-Data Rule",
-        "body": "Structured identifiers (course codes, times, building codes, distances, amounts) render in Commit Mono. Data has a different texture than prose.",
+        "body": "Tool renderers and message formatting use Commit Mono for structured identifiers: course codes, times, building codes, distances, and dollar amounts. Degree Planner and Schedule workspaces use Aspekta throughout, including course identifiers and metadata.",
         "section": "typography"
       },
       {
         "name": "The 14px-Base Rule",
-        "body": "Body text is 0.875rem (14px). This is an information-dense tool, not a reading experience. Tighter base allows more content visible without scrolling.",
+        "body": "Use 14px/20px for UI body text. Keep relaxed leading in conversation prose and longer descriptions. Phone text-entry controls use 16px to avoid focus zoom, and phone drawer labels use 16px/24px. Bottom mode labels retain the 12px Caption role.",
         "section": "typography"
       },
       {
         "name": "The Landing Exception Rule",
-        "body": "The landing page uses text-4xl through text-6xl, custom line-heights (1.05), tighter tracking (-0.035em), and spring physics. These values are exclusive to the marketing surface.",
+        "body": "The landing page uses text-4xl through text-6xl, custom line-heights (1.05), and tighter tracking (-0.035em). These values are exclusive to the marketing surface and never appear in the app shell.",
         "section": "typography"
       },
       {
         "name": "The Dual-Tier Rule",
-        "body": "Tier 1 (Tailwind shadow-* utilities) for one-off depth. Tier 2 (.neu-* classes) for composed surfaces. Never mix on the same element.",
+        "body": "Tier 1 (Tailwind shadow utilities) for one-off depth on small elements. Tier 2 (`.neu-*` classes) for composed surfaces. Never mix on the same element.",
         "section": "elevation"
       },
       {
         "name": "The Light-Source Rule",
-        "body": "Light source is always upper-left. Every shadow falls bottom-right, every highlight top-left. Consistent across both tiers.",
+        "body": "Light source is upper-left. Shadows fall bottom-right, highlights sit top-left. Consistent across both tiers.",
         "section": "elevation"
       },
       {
         "name": "The Whisper-Dimension Rule",
-        "body": "Use minimal resting depth on controls, contained cards, desktop panels, and overlays. Mobile page frames and primary workspace regions stay flat. Hover and active states expand or invert the control shadow to --neu-inset-shadow.",
+        "body": "Use minimal resting depth on controls, contained cards, desktop panels, and overlays. Mobile page frames and primary workspace regions stay flat. Hover and active states expand or invert the control shadow to `--neu-inset-shadow`.",
         "section": "elevation"
+      },
+      {
+        "name": "The Measured-Performance Rule",
+        "body": "Compare production builds with the same route, viewport, network conditions, and workload. Measure initial JavaScript transfer and evaluation, first-use latency, and retained resources after repeated navigation. Include the selected tool's loading cost before claiming a faster experience. Keep backend resource budgets in the technical design rather than adding CPU or memory values to visual tokens.",
+        "section": "components"
+      },
+      {
+        "name": "The Deferred-Tool Rule",
+        "body": "Keep shell navigation, pane labels, and defaults available without loading inactive tool implementations. Defer heavy tools at stable component boundaries. Preserve direct URLs, selected-pane state, and the existing client/server boundary. Reuse geometry-matched loading frames and recovery states; keep real navigation outside inert placeholders and avoid moving focus when code arrives.",
+        "section": "components"
+      },
+      {
+        "name": "The Owned-Resource Rule",
+        "body": "Give requests, stream readers, timers, subscriptions, animation frames, and map resources one lifecycle owner. Cancel superseded work and release resources when that owner disposes. Preserve intentionally mounted canvases, camera state, forms, and scroll positions across compact view changes; hiding a view alone does not authorize discarding its state. Keep loading, stopped, failed, and completed responses distinguishable, with working Stop and Retry controls.",
+        "section": "components"
+      },
+      {
+        "name": "Concentric contours and optical anchors",
+        "body": "For close parallel corners, use `inner radius = outer radius − inset`. Measure the inset between border-box edges, including real borders and padding. Compare the corresponding corner centers in both axes. Shadows and focus rings do not change that distance. Independent cards, avatars, fields, interior rows, and offset panels do not inherit a concentricity requirement.\n\n| Matched contour                                   | Outer radius | Inset | Inner radius |\n| ------------------------------------------------- | ------------ | ----- | ------------ |\n| Expanded navigation well and edge row             | 16px         | 8px   | 8px          |\n| Collapsed navigation well                         | 12px         | 4px   | 8px          |\n| Workspace, prerequisite, term, and theme segments | 8px          | 4px   | 4px          |\n| Timetable canvas and grid frame                   | 16px         | 2px   | 14px         |\n| Timetable frame and scroll field                  | 14px         | 2px   | 12px         |\n| Timetable day strip and selected day              | 12px         | 4px   | 8px          |\n| Single-line composer and action, phone            | 16px         | 6px   | 10px         |\n| Single-line composer and action, wider screen     | 16px         | 10px  | 6px          |\n\nKeep a 28px title anchor in `WorkspacePage`. Center leading controls on that anchor while preserving their full hit targets and the description below the title. Use the panel header's 16px horizontal inset for plain rail content, discovery searches, and control groups. Default panel bodies use 16px padding; dense lists keep their explicit 8px variant and contained bodies own their internal spacing. Loading search frames match the loaded field's position and responsive height.\n\nValidate computed geometry alongside original-scale screenshots and enlarged details. Resolve contradictory image estimates with measured bounds; do not nudge shared icons from a class-name or screenshot guess.",
+        "section": "shapes"
+      },
+      {
+        "name": "Accessibility patterns",
+        "body": "- **Touch targets (Impeccable override)**: Use a 32x32px minimum active hit area. This user-approved rule overrides Impeccable's default 44px minimum. Keep larger component dimensions where documented; back buttons retain their existing 44px square targets. Preserve spacing between adjacent targets and visible keyboard focus.\n- **Focus indicators**: `focus-visible:ring-primary/40 ring-2 ring-offset-1` on inputs, `ring-offset-2` on pills. `.neu-button`/`.neu-primary-button` use a 2px outline at 40% primary opacity with 2px offset (CSS-defined). Never hidden behind mouse-only styles.\n- **Safe-area insets**: Reserve top and side insets in the phone shell and the bottom inset in its mode bar. Keep 12px of composer bottom padding above that bar. Workspace bodies and the embedded Explore sheet add no second bottom inset. Independent drawers, dialogs, and Answer Canvas sheets retain their own safe-area padding. Use the reported visual viewport at normal scale for the shell and its fixed overlays; verify keyboard and notch behavior on physical devices.\n- **Screen reader**: `sr-only` for status announcements, `aria-label` on icon-only buttons, `role=\"img\"` on labeled icons.\n- **Keyboard**: Tab through messages, Enter to send, Escape to dismiss overlays. `role=\"radiogroup\"` on theme toggle.",
+        "section": "components"
       }
     ],
     "dos": [
-      "Do apply .neu-panel / .neu-raised / .neu-inset for composed surfaces — they carry the unified shadow recipe.",
-      "Do use --muted (#5a6066) for all subdued text. Never --outline or --outline-variant for text.",
-      "Do use --neu-ease (cubic-bezier 0.16, 1, 0.3, 1) for all in-app layout animations at 150-350ms.",
-      "Do respect reduced motion for both entry and exit, including native details and synchronous modal removal. Keep state changes immediate and legible.",
-      "Do use [data-theme=\"dark\"] for theme switching — never prefers-color-scheme media query.",
+      "Do apply `.neu-panel` / `.neu-raised` / `.neu-inset` for composed surfaces. They carry the unified shadow recipe.",
+      "Do use `--muted` (`#5a6066`) for all subdued text (placeholders, timestamps, metadata). Never `--outline` or `--outline-variant` for text.",
+      "Do use spring physics for isolated draggable surfaces and `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions such as drawers, sheets, and menus. Keep navigation fades to 180ms and mobile panel travel to 250–300ms.",
+      "Do respect `prefers-reduced-motion`. All animations collapse to 0.01ms, reveals show at once, the thinking orb freezes.",
+      "Do use `[data-theme=\"dark\"]` for theme switching. Never `prefers-color-scheme` media query. The user controls the theme, not the OS.",
       "Do keep mobile pages and their primary workspace regions flat and edge-to-edge. Use resting depth on controls, contained cards, desktop panels, and overlays.",
-      "Do derive close inset corner radii from measured edges and preserve independent card geometry.",
-      "Do distinguish the 48px collapsed rail from its 60px reserved offset, center its controls, contain keyboard focus paint, and match its boot geometry.",
-      "Do use one compact session-action menu, retain touch/no-hover access, preserve drafts and errors, and commit local mutations after server success.",
-      "Do use asymmetric bubble radii to indicate message direction.",
-      "Do use opacity modifiers on color tokens for tinted backgrounds.",
-      "Do enforce 44px action targets, 48px drawer rows, and 60px bottom mode targets on phones.",
-      "Do render phone menu controls inside route headers and keep shell navigation available during loading.",
-      "Do use env(safe-area-inset-bottom) for bottom-pinned elements."
+      "Do use asymmetric bubble radii (flat corner on the tail side) to indicate message direction.",
+      "Do use opacity modifiers on color tokens for tinted backgrounds and state indicators.",
+      "Do enforce the 32px minimum touch target through `size-8` or equivalent hit-area dimensions. Preserve larger documented targets, including 44px back controls.",
+      "Do use `env(safe-area-inset-bottom)` for bottom-pinned elements on iOS.",
+      "Do measure initial loading, selected-tool first use, and resource cleanup against the same production workload before claiming a performance improvement.",
+      "Do preserve usable navigation, matched loading geometry, Stop and Retry behavior, and account ownership when deferring code or reusing requests."
     ],
     "donts": [
-      "Don't mix Tier 1 (shadow-* utilities) and Tier 2 (.neu-* classes) on the same element.",
-      "Don't add border to .neu-panel or .neu-raised elements. Exception: .neu-button has 1px border-subtle.",
-      "Don't use pure black in any shadow — warm gray in light mode, deep neutral in dark mode only.",
-      "Don't apply backdrop-filter outside .glass-neu. Glass is for overlays, never decorative.",
-      "Don't animate shadow values directly — animate transform and switch classes via state.",
-      "Don't apply neumorphic depth to text content — depth frames containers, content stays flat.",
-      "Don't use font-weight 700+ anywhere. Maximum is 600.",
-      "Don't use primary indigo for backgrounds, decoration, or large surfaces. It means interactive only.",
-      "Don't add decorative page-load choreography or animate browser-driven viewport sizing. Preserve existing task-driven springs and camera behavior.",
-      "Don't retain obsolete routes, groups, search results, or drop targets for an exit animation.",
+      "Don't mix Tier 1 (`shadow-*` Tailwind utilities) and Tier 2 (`.neu-*` classes) on the same element. One shadow system per element.",
+      "Don't add `border` to `.neu-panel` or `.neu-raised` elements. Exception: `.neu-button` uses designed 1px border-subtle. `.glass-neu` uses 1px border-subtle as part of its glass definition.",
+      "Don't use pure black in new composed shadows in light mode. Use the contextual dark and light surface pairs. Preserve the `.glass-neu` overlay's existing 6%-opacity black drop shadow; primary-button presses use the shared contextual inset recipe.",
+      "Don't apply `backdrop-filter` outside `.glass-neu`. Glass is for overlay surfaces (dropdowns, mobile drawers), never decorative.",
+      "Don't add shadow animation to new surfaces without measuring repaint cost. Preserve the existing shared button, composer focus, and landing-header shadow transitions; use opacity or transform for new motion that does not need a layout change.",
+      "Don't apply neumorphic depth to text content. Depth frames containers. Content stays flat inside.",
+      "Don't use font-weight 700 or above. Maximum is 600 (markdown strong, table headers, list markers).",
+      "Don't use primary indigo for background fills, decorative accents, or large surfaces. It means \"interactive\" or \"active state.\"",
+      "Don't retain outgoing route trees or animate layout properties during navigation. Replace stale content with the destination or its matched loading surface, then animate opacity.",
+      "Don't use blur reveals in the app shell. Those belong to the landing page only. CSS `--neu-ease` handles micro-interactions and gesture-driven slides.",
       "Don't wrap a phone's main view in a rounded card or restore shell gutters below 640px. Keep content and control padding inside the full-width page.",
-      "Don't add duplicate mode controls or bottom safe-area padding above the phone mode bar.",
-      "Don't create new shadow recipes. Use --neu-surface-shadow or --neu-inset-shadow, or the five Tier 1 utilities."
+      "Don't create new shadow recipes without documenting them. Use `--neu-surface-shadow` or `--neu-inset-shadow` from Tier 2, the five elevation utilities from Tier 1, or the sanctioned `.chat-message-well` recipe.",
+      "Don't discard mounted workspace state, weaken accessibility, truncate content, or bypass freshness checks to improve a performance measurement."
     ]
   }
 }
