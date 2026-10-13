@@ -1,221 +1,123 @@
 # Reodite
 
-Conversational AI for UBC students. Ask about courses, tuition, walking routes, parking, events, or study spaces. A streaming agent answers from indexed campus data and draws walking routes on an interactive map.
+Campus assistant for UBC students: ask questions against indexed university data or use the map, course, prerequisite, planning, calendar, and sharing tools directly.
 
-Built with Next.js 16 (App Router), React 19, and TypeScript.
-
-## Stack
-
-| Layer    | Choice                                                |
-| -------- | ----------------------------------------------------- |
-| Frontend | Next.js 16, React 19, Tailwind CSS 4                  |
-| Map      | MapLibre GL + deck.gl                                 |
-| Auth     | Username/password, JWT (HS256, 7-day expiry)          |
-| AI       | Anthropic, OpenAI-compatible, or Google, via adapters |
-| Database | Postgres (users, sessions, messages, Pulse votes)     |
-| Search   | Meilisearch (campus datasets)                         |
-| Testing  | Vitest, fast-check (property tests)                   |
-| Lint     | Biome, Prettier                                       |
-
-## Responsive UI
-
-Below 640px, Chat, Tools, Unity, and Settings use flat, edge-to-edge pages above persistent AI/Tools/Unity bottom tabs. Mode links restore each area's last routed screen. Route headers contain a flat menu button; the current mode's destinations open in an edge-attached drawer with touch-sized rows. Header content and command groups keep 16px side insets; the mobile menu's interaction surface extends to 8px edge clearance. Bottom-tab feedback sits 8px inside each full-size hit region, and phone text fields use 16px text. At wider sizes, the shell keeps its 12px gutters, raised panels, and sidebar mode controls.
-
-Shared layout lives in `src/components/ui/workspace.tsx`, `src/components/chat/chat-frame.tsx`, and `app/globals.css`. `WorkspaceHostProvider` supplies header navigation to loaded, pending, and recovery frames. Keep navigation outside pending-only inert regions. `src/components/shell/mode-toggle.tsx` owns both mode presentations, and `use-mobile-viewport.ts` sizes the phone shell and overlays to the reported visible area without constraining pinch zoom. The bottom bar owns the page's bottom safe area. The 55rem workspace container threshold still controls rail/canvas switching.
-
-Shared optical contracts live in `src/components/ui/workspace.tsx`: a 28px title anchor, 16px plain panel insets, and a 2px `frame` canvas surround for timetables. Keep theme groups intrinsic-width. Follow the measured concentric-contour recipes in `DESIGN.md`; independent cards and controls keep their own geometry.
-
-Shared motion lives in `src/components/ui/use-overlay-presence.ts`, `src/components/ui/disclosure.tsx`, and the CSS arrival utilities. Keep `AnimatePresence` outside conditional overlay components, and let the shared primitives release focus and disable exiting controls. Data replacement stays immediate; avoid retaining obsolete search, group, or route content for a fade. Reduced-motion paths cover both entrances and exits.
-
-Development indicators stay disabled so framework chrome does not cover the mobile tabs; Next.js still surfaces compile and runtime errors.
-
-See `DESIGN.md`, `PRODUCT.md`, and `.impeccable/surfaces/` for design contracts. Run `npm test` for shared UI and layout regressions, then check rendered phone and desktop views for overflow and focus placement.
-
-## Agent and tools
-
-The agent runs a streaming tool-calling loop. Each user message can trigger up to 8 model turns. The model calls tools, receives results, and continues until it can respond. The client receives NDJSON events (`thinking`, `text`, `tool_start`, `tool_end`, `done`).
-
-The module registry defines data access and presentation tools:
-
-| Module          | Tools                                           | Data source                                                        |
-| --------------- | ----------------------------------------------- | ------------------------------------------------------------------ |
-| courses         | `find_courses`, `get_course`                    | Course catalog and section schedules                               |
-| tuition, costs  | `get_costs`                                     | Tuition, cost estimates, student fees and housing fee observations |
-| buildings       | `walking_distance`, `find_building`             | Building coordinates and pedestrian routes                         |
-| admissions      | `find_programs`, `get_admission_requirements`   | Undergraduate programs and requirements                            |
-| calendar        | `get_key_dates`                                 | Academic calendar dates                                            |
-| places, parking | `find_places`                                   | Campus POIs and parking facts                                      |
-| spaces          | `find_study_spaces`                             | Study-area and classroom descriptions                              |
-| events          | `find_events`                                   | Campus events                                                      |
-| pages           | `search_ubc_pages`                              | Relevance-ranked search across all indexed prose and legacy pages  |
-| documents       | `get_document`                                  | Complete Markdown articles with original source provenance         |
-| undergraduate   | `search_student_resources`, `get_library_hours` | Housing, libraries, support and policy source/fact records         |
-| grades          | Through `get_course` and grade widgets          | Grade distributions                                                |
-| people          | `find_person`                                   | Faculty/staff directory profiles                                   |
-| food            | `find_food`                                     | Food outlets                                                       |
-| prereq-tree     | `get_prereq_tree`                               | Course prerequisite graph                                          |
-| widgets         | `show_widget`                                   | Presentation of previously retrieved entities                      |
-
-Walking routes use Dijkstra shortest-path on a pedestrian network derived from GeoJSON.
-
-## Project structure
-
-```
-app/                          Route handlers + pages
-├── api/                      /api/* endpoints
-│   ├── chat/route.ts         POST streaming agent response
-│   ├── sessions/route.ts     GET sessions
-│   ├── sessions/[id]/route.ts GET/DELETE/PATCH one session
-│   ├── route/route.ts        GET walking-route polyline
-│   ├── building/[code]/route.ts GET building details
-│   ├── geo/[name]/route.ts   GET GeoJSON layers
-│   ├── auth/login|register   POST sign-in / sign-up
-│   └── preview/route.ts      GET og:image resolution for card links
-└── chat/                     App-shell chat workspace
-
-src/
-├── components/               UI (auth, chat, map, shell, landing)
-├── lib/                      Client utils (API client, formatting, geo)
-└── server/
-    ├── agent/                Streaming tool-calling loop
-    ├── modules/              Dataset adapters and tool definitions
-    ├── llm/                  LLM adapters (openai, anthropic, google)
-    ├── sessions/             Postgres session store
-    ├── db/                   Postgres schema + migration
-    ├── data.ts               Filesystem store for raw datasets
-    └── search.ts             Shared Meilisearch client
-
-scripts/
-└── ingest.ts                 Index datasets into Meilisearch
-```
-
-### Module ownership
-
-- `src/shared/` owns cross-layer contracts, including course-index and pane state types. Routes and UI registries consume these contracts.
-- `src/lib/` owns client calculations and helpers. Planner calculations use `planner-model.ts`; the feature-local `planner-store.ts` owns Zustand, persistence, migration, and undo/redo.
-- `src/components/ui/` owns shared visual primitives. Feature components compose them and retain feature-specific behavior.
-- Biome rejects `@/` imports from client helpers into routes or components, from shared modules into application layers, and from components into route entrypoints.
-
-## Data
-
-`ubc-unified-data` is a git submodule holding scraped UBC datasets: courses, tuition, building and walking GeoJSON, study spaces, events, and grade distributions (`data/grades/`, collected from [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data) by the submodule's `grades` collector).
-
-The undergraduate tables contain factual labels, source links, housing fee observations and dated library hours. They do not contain full page bodies. Housing `amount_cents` values retain their exact integer or null value; consult the linked conditions before using a rate. Library `booking_lid` strings belong to a separate namespace from `hours_id`. Hours describe a schedule in `America/Vancouver`, including `closes_next_day`; an absent date remains unknown. See [UNDERGRADUATE-SOURCES.md](ubc-unified-data/UNDERGRADUATE-SOURCES.md) for table contracts.
-
-Room booking availability is outside the dataset and tool scope. Study-space descriptions and scheduled library hours do not establish live vacancy.
-
-Datasets and crawl caches stay outside application images and standalone output. Mount `DATA_PATH` for filesystem-backed tools and ingestion.
-
-### Prose knowledge base
-
-Default ingestion reads both published prose contracts under `DATA_PATH`:
-
-- `prose/_catalog.json` declares source-based article tables, including Workday, advising, housing and student services.
-- `official-hosts.json` declares Markdown roots across support, academics, opportunities, research, news and stories. A host can span several category directories.
-
-Run `npm run validate:documents` before ingestion to check the complete catalog and host inventory offline. Missing files, count mismatches, invalid identities or content hashes stop publication. The loader preserves source URLs, nullable dates, extraction warnings and source-record references. See [PROSE.md](ubc-unified-data/PROSE.md) and [HOST-DOCUMENTS.md](ubc-unified-data/HOST-DOCUMENTS.md) for the producer contracts. Coverage means the published collections, not all UBC websites.
-
-The agent uses `search_ubc_pages` to search the `documents` and legacy `pages` indexes in one relevance-ranked Meilisearch request. The default covers all indexed topics and hosts, with no audience or date cutoff. Optional filters narrow the scope; `next_offset` requests another result page. If a hostname search finds no keyword matches, the tool returns a labeled inventory of that host's documents. Continue browsing with the returned empty `query` and `next_offset`. Search returns metadata and query-centered excerpts. The agent then calls `get_document` with the complete `original_id` before describing procedures or eligibility rules. Before finalizing a document-based answer, the agent checks that it has read the cited documents. It retracts an unverified draft and requests full reads once. If the next answer still relies on unread documents, it returns an error. Full retrieval uses Meilisearch and needs no corpus files at runtime. Dedicated tools still handle structured courses, costs, hours and other facts.
-
-Ingestion creates bounded, overlapping search sections so long articles remain searchable beyond Meilisearch's per-field word-position limit. Full retrieval preserves the original Markdown and its content hash. Treat historical announcements according to their source dates and retrieved text as untrusted material.
-
-After changing the submodule pin or search schema, validate and run `npm run ingest` against the intended Meilisearch service before serving this agent version. Use a Meilisearch release compatible with the installed SDK; integration checks use v1.54.2 from the project's `v1` image. Older servers can reject the snapshot-swap request even when search works. A missing document index is an error, rather than a fallback to a smaller corpus. Configure `MEILI_URL` and `MEILI_MASTER_KEY` for the same service; ingestion does not repair authentication failures.
-
-### Snapshot replacement
-
-`documents`, `student_resources`, `housing_fees` and `library_hours` replace their complete snapshots. Ingestion loads and validates a temporary index, waits for its tasks, then swaps it into place. This removes dated records absent from the next library-hours snapshot. A pre-swap failure leaves the previous index active; cleanup errors report failure without rolling back an already published snapshot. Other indexes retain upsert behavior.
-
-Run one ingestion process per destination and allow storage for both generations during replacement. Ingestion requires a writable `DATA_PATH` for derived artifacts; the application can use a read-only data mount. Source `retrieved_at` timestamps remain distinct from index-build times and publisher modification dates.
+Next.js 16 App Router, React 19, TypeScript, Postgres, Meilisearch, MapLibre GL, and deck.gl. The agent supports OpenAI-compatible, Anthropic, and Google APIs.
 
 ## Setup
 
-Requirements: Node.js 24, Docker.
+Use Node.js 24 and Docker.
 
 ```bash
 npm install
 git submodule update --init
 cp .env.example .env
-# Configure the secrets in .env before starting services.
+# Configure credentials before starting services.
 docker compose up -d postgres meilisearch
 npm run validate:documents
 npm run ingest
 npm run dev
 ```
 
-Generate a separate value with `openssl rand -hex 32` for `POSTGRES_PASSWORD`, `MEILI_MASTER_KEY`, and `JWT_SECRET`. Set the Postgres password in `DATABASE_URL` too. Docker Compose refuses missing database or search credentials and binds their host ports to loopback. The development container also binds to loopback; keep development servers off public networks.
+The development server uses `http://localhost:3000`. Database schema initialization runs at server startup. Run watchers in your terminal.
 
-The server opens at http://localhost:3000 and applies the Postgres schema on startup. The sample environment points host processes at `localhost`; Docker Compose overrides those service URLs with container hostnames. Put production traffic behind an HTTPS reverse proxy; configure TLS, HSTS, request/concurrency limits, and firewall rules there. Changing `POSTGRES_PASSWORD` in `.env` does not rotate an existing database user's password. Rotate it in Postgres and update dependent configuration together.
+Generate separate secrets for Postgres, Meilisearch, and JWT signing, for example with `openssl rand -hex 32`. Set the same Postgres credential in `DATABASE_URL`. Compose refuses missing database/search secrets and binds their host ports to loopback. Changing `.env` does not rotate an existing Postgres user's password. Follow [SECURITY.md](SECURITY.md) before exposing the app.
 
-`npm run ingest` loads the root `.env` when present and preserves variables you set in the shell or Docker. Set `MEILI_MASTER_KEY` to the key used by the Meilisearch service. Ingestion attempts the remaining indexes after a failure and exits nonzero if any index fails.
+### Configuration
 
-### Environment variables
+| Variable                                   | Purpose                                                                    |
+| ------------------------------------------ | -------------------------------------------------------------------------- |
+| `LLM_API_TYPE`                             | `openai` (default), `anthropic`, or `google`                               |
+| `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` | Provider endpoint, model, and credential                                   |
+| `DATABASE_URL`, `POSTGRES_PASSWORD`        | Application database URL and Compose database credential                   |
+| `MEILI_URL`, `MEILI_MASTER_KEY`            | Search endpoint and credential                                             |
+| `MEILI_ENV`                                | Search environment; Compose defaults to production                         |
+| `JWT_SECRET`                               | JWT signing secret; production requires at least 32 bytes                  |
+| `AUTH_ENABLED`                             | `false` permits the development bypass outside production                  |
+| `DATA_PATH`                                | Dataset root; host setup uses `./ubc-unified-data/data`                    |
+| `PORT`                                     | Compose app/development host port                                          |
+| `TRUSTED_CLIENT_IP_HEADER`                 | Optional proxy-overwritten single-IP header; see the security requirements |
 
-| Variable                   | Description                                                      |
-| -------------------------- | ---------------------------------------------------------------- |
-| `LLM_API_TYPE`             | `openai`, `anthropic`, or `google` (default openai)              |
-| `LLM_BASE_URL`             | Base URL for OpenAI-compatible endpoints                         |
-| `LLM_MODEL`                | Model identifier                                                 |
-| `LLM_API_KEY`              | Provider API key                                                 |
-| `DATABASE_URL`             | Postgres URL (`localhost:5432` on host)                          |
-| `POSTGRES_PASSWORD`        | Postgres password (docker compose)                               |
-| `MEILI_URL`                | Meilisearch URL (`localhost:7700` on host)                       |
-| `MEILI_MASTER_KEY`         | Meilisearch master key                                           |
-| `MEILI_ENV`                | Meilisearch environment (docker compose)                         |
-| `AUTH_ENABLED`             | Set `false` in non-production to bypass auth                     |
-| `JWT_SECRET`               | Random HMAC signing secret; at least 32 bytes in production      |
-| `DATA_PATH`                | Raw data root (`./ubc-unified-data/data` on host)                |
-| `PORT`                     | Dev-server port (docker compose)                                 |
-| `TRUSTED_CLIENT_IP_HEADER` | Optional proxy-overwritten single-IP header, such as `x-real-ip` |
+Host processes use loopback service URLs; Compose replaces them with container hostnames. `npm run ingest` loads an optional root `.env` and preserves inherited environment variables.
 
-Request throttling ignores forwarding headers by default and uses a shared anonymous bucket. For per-client limits, set `TRUSTED_CLIENT_IP_HEADER` only when your reverse proxy overwrites that header with one validated client IP and blocks direct application access. Do not pass through client-supplied values or comma-separated forwarding chains. The in-process limiter resets on restart and does not coordinate replicas; enforce distributed abuse and concurrency limits at the edge.
+## Commands
 
-New passwords require at least 12 characters and at most 72 UTF-8 bytes. Existing bcrypt hashes cannot recover any password suffix beyond 72 bytes; rotate affected legacy credentials. Login retains compatibility with existing passwords.
+| Command                                            | Purpose                                                       |
+| -------------------------------------------------- | ------------------------------------------------------------- |
+| `npm run dev`                                      | Development server                                            |
+| `npm run build` / `npm start`                      | Production build / server                                     |
+| `npm test`                                         | Vitest, one run                                               |
+| `npm run lint`                                     | Biome                                                         |
+| `npx tsc --noEmit --incremental false`             | TypeScript checks                                             |
+| `npm run format` / `npm run format:check`          | Prettier                                                      |
+| `npm run colors:generate` / `npm run colors:check` | Generate or verify theme color pairs                          |
+| `npm run validate:documents`                       | Offline validation of published prose and host documents      |
+| `npm run ingest`                                   | Index data into the configured Meilisearch destination        |
+| `npm run pulse:publish -- <seed.json>`             | Publish a Pulse round; [operator guide](data/pulse/README.md) |
 
-## Security
+## Code ownership
 
-Read [SECURITY.md](SECURITY.md) before deployment for the audit findings, verification limits, and required infrastructure controls. Keep private browser data on a trusted browser profile. The planner preserves ambiguous legacy data under `reodite-planner.unowned-backup` for manual recovery and does not upload it into the next signed-in account.
+| Path                                     | Responsibility                                     |
+| ---------------------------------------- | -------------------------------------------------- |
+| `app/`                                   | Pages, layouts, and HTTP route handlers            |
+| `src/components/`                        | Feature UI and shared visual primitives            |
+| `src/lib/`                               | Browser API client, parsers, and calculations      |
+| `src/shared/`                            | Cross-layer contracts and data models              |
+| `src/server/agent/`                      | Streaming tool-calling loop                        |
+| `src/server/llm/`                        | Provider adapters                                  |
+| `src/server/modules/`                    | Dataset transforms and tool definitions            |
+| `src/server/db/`, `src/server/sessions/` | Schema initialization and conversation persistence |
+| `scripts/`                               | Ingestion, validation, and maintenance commands    |
 
-## Scripts
+`src/components/ui/` owns shared controls and workspace frames. Feature stores own persistence and undo/redo; reusable calculations belong in `src/lib/`. Biome prevents client helpers from importing routes/components, shared modules from depending on application layers, and components from importing route entrypoints.
 
-| Command                      | Action                                                         |
-| ---------------------------- | -------------------------------------------------------------- |
-| `npm run dev`                | Start dev server                                               |
-| `npm run build`              | Production build                                               |
-| `npm run lint`               | Biome lint                                                     |
-| `npm test`                   | Vitest (unit tests)                                            |
-| `npm run format`             | Prettier format                                                |
-| `npm run ingest`             | Index campus datasets into Meilisearch                         |
-| `npm run validate:documents` | Validate all published prose and host documents offline        |
-| `npm run pulse:publish`      | Publish a Pulse question round ([guide](data/pulse/README.md)) |
+The chat endpoint streams NDJSON. The [agent event union](src/server/agent/stream.ts) and [client reader](src/lib/api.ts) define its events, including source updates, retracted drafts, completion, and errors. The [module registry](src/server/modules/index.ts) defines available tools. Consult `app/api/` for route contracts instead of maintaining a second endpoint inventory here.
 
-## API endpoints
+## Data and ingestion
 
-| Method | Path                   | Purpose                                    |
-| ------ | ---------------------- | ------------------------------------------ |
-| POST   | `/api/chat`            | Stream agent response (NDJSON)             |
-| GET    | `/api/sessions`        | List user sessions                         |
-| GET    | `/api/sessions/:id`    | Session messages                           |
-| PATCH  | `/api/sessions/:id`    | Rename a session                           |
-| DELETE | `/api/sessions/:id`    | Delete a session                           |
-| GET    | `/api/route?from=&to=` | Walking-route polyline                     |
-| GET    | `/api/building/:code`  | Building details (rooms, POIs, entrances)  |
-| GET    | `/api/geo/:name`       | GeoJSON layer                              |
-| GET    | `/api/pulse`           | Active Pulse round with the caller's votes |
-| POST   | `/api/pulse/vote`      | Record an agree/disagree vote              |
-| GET    | `/api/pulse/history`   | Locked Pulse rounds with final tallies     |
-| POST   | `/api/auth/login`      | Sign in, returns JWT                       |
-| POST   | `/api/auth/register`   | Create account, returns JWT                |
-| GET    | `/api/preview?url=`    | Resolve og:image for card links            |
+Raw datasets live in the `ubc-unified-data` git submodule. They include catalog/section data, fees, programs, geospatial data, services, events, and historical grades. The `grades` collector uses [UBC PAIR grade data](https://github.com/DonneyF/ubc-pair-grade-data).
 
-## Example query
+Datasets and crawl caches stay outside application images and standalone output. Mount `DATA_PATH` read-only for the application; ingestion requires a writable data root for derived artifacts. After changing the submodule pin or index schema, validate and ingest into the intended search service before serving the new agent version.
 
-```
-How long is the walk from the Buchanan building to ICICS,
-and what Computer Science courses have no prerequisites?
-```
+### Published prose
 
-This triggers `walking_distance` and `find_courses` in a single agent turn.
+Ingestion reads both publication formats:
 
-## License
+- `prose/_catalog.json`: source-based article tables; [producer contract](ubc-unified-data/PROSE.md).
+- `official-hosts.json`: Markdown roots that can span several category directories per host; [producer contract](ubc-unified-data/HOST-DOCUMENTS.md).
+
+`npm run validate:documents` checks the complete published inventory offline. Missing files, count mismatches, invalid identities, or hash mismatches stop publication. Preserve original URLs, nullable dates, extraction warnings, and source-record references. Coverage means the published collections, not all UBC websites.
+
+`search_ubc_pages` uses one relevance-ranked request across the `documents` and legacy `pages` indexes. Default search has no audience, topic, or date cutoff. Optional filters narrow scope; `next_offset` continues pagination. A hostname query without keyword matches can return a labeled host inventory; continue that inventory with the returned empty `query` and offset.
+
+Search returns metadata and excerpts. The agent must read relevant full articles with `get_document` and the complete `original_id` before presenting procedures or eligibility. It retracts an unverified draft for one full-read attempt, then returns an error if verification still fails. Full retrieval uses Meilisearch and needs no corpus mount. Bounded overlapping search sections keep long articles searchable while retrieval preserves the complete Markdown and hash.
+
+Use a Meilisearch release compatible with the installed SDK; integration checks use v1.54.2 from the project's `v1` image. Older versions can reject snapshot swaps even if search works. Missing indexes and authentication failures are errors, not permission to serve a smaller corpus.
+
+### Structured facts
+
+Undergraduate tables hold factual labels, links, housing-fee observations, and dated library hours rather than full page bodies. Keep `amount_cents` as its exact integer or null value. `booking_lid` and `hours_id` identify separate systems. Library schedules use `America/Vancouver` wall time and `closes_next_day`; missing dates mean unknown hours, not closure. See [the producer's source contracts](ubc-unified-data/UNDERGRADUATE-SOURCES.md).
+
+Degree-planner files combine raw, derived, and curated data. Follow [the maintenance guide](scripts/degree-data/README.md) before regenerating them. Study-space descriptions, parking facts, and library schedules do not establish live availability.
+
+### Snapshot publication
+
+`documents`, `student_resources`, `housing_fees`, and `library_hours` replace complete snapshots. Ingestion loads a temporary index, waits for validation/tasks, derives required artifacts, and swaps the replacement into the live name. A pre-swap failure preserves the previous snapshot. Post-swap cleanup failure reports an error without undoing publication. Other indexes retain upsert behavior.
+
+Run one ingestion process per destination and allow disk space for both generations. Ingestion attempts remaining indexes after failure and exits nonzero if any index fails. Source retrieval/modification dates remain distinct from index-build freshness.
+
+## Production
+
+The Dockerfile builds a standalone Node application and runs it as a non-root user. Compose mounts datasets without write access for the app. Build before deployment rather than competing with the live database/search engine for resources.
+
+Place the app behind an HTTPS reverse proxy with unbuffered chat streaming, request and connection limits, and the controls in [SECURITY.md](SECURITY.md). Apply the same settings to the search endpoint used by ingestion and the app. Read-only app credentials and ingestion/admin credentials have different privileges.
+
+## Documentation
+
+- [PRODUCT.md](PRODUCT.md): audiences, supported workflows, and limitations.
+- [DESIGN.md](DESIGN.md): tokens and shared UI contracts; surface briefs own feature details.
+- [SECURITY.md](SECURITY.md): deployment controls, security limitations, and account-data recovery.
+- [AGENTS.md](AGENTS.md): contributor rules and verification/commit conventions.
+- [Production-efficiency plan](.kiro/specs/production-efficiency/tasks.md): active optimization work, not shipped behavior.
 
 Built for UBC CIC Hackathon 2026.

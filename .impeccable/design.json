@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-13T04:14:06.889Z",
+  "generatedAt": "2026-10-13T05:00:47.844Z",
   "title": "Design System: Reodite",
   "extensions": {
     "colorMeta": {
@@ -340,121 +340,48 @@
   ],
   "narrative": {
     "northStar": "The Whisper Instrument",
-    "overview": "Use restrained depth for controls, contained cards, and overlays. Keep mobile pages flat and edge-to-edge so students can use the available screen for their task. Raised actions, recessed inputs, and flat content share one neutral material. Use the smallest shadow that communicates a boundary.\n\nUse small offsets (2-3px), soft blur (4-8px), and low opacity (4-6%) for composed shadows. Keep the light source at the upper left and use the same recipes across related controls.\n\nChoose spacing, type, and radii from the documented scales. Keep app transitions brief and tied to interaction. Reserve larger type, spring entrances, and blur reveals for the landing page.",
+    "overview": "Use neutral surfaces, restrained neumorphic depth, and muted indigo for actions and active states. Mobile pages stay flat and edge-to-edge. Keep larger type, blur reveals, and expressive entrances on the landing page.",
     "keyCharacteristics": [
-      "Restrained depth for controls and contained surfaces; flat mobile pages",
-      "Minimal shadows with tiny offsets and near-transparent opacity",
-      "Single-material coherence across all elements",
-      "Precision and consistency as the aesthetic itself",
-      "Muted indigo accent, used sparingly, always meaning \"interactive\"",
-      "Content-forward: the neumorphic frame never competes with chat or map data",
-      "Landing page permitted to be expressive; in-app is disciplined"
+      "Raised controls, recessed fields, and flat content.",
+      "Shared spacing, typography, and corner geometry.",
+      "Visible loading, failure, selection, and keyboard-focus states."
     ],
     "rules": [
       {
-        "name": "The Muted-for-AA Rule",
-        "body": "All subdued text (placeholders, timestamps, metadata, captions) uses `--muted` (`#5a6066`). Never use `--outline` or `--outline-variant` for text. They fail WCAG AA contrast on light surfaces.",
-        "section": "colors"
-      },
-      {
-        "name": "The Indigo Scarcity Rule",
-        "body": "Primary indigo appears on interactive elements and active states. Never on decorative surfaces, background fills, or large areas. Its presence means \"actionable\" or \"current state.\"",
-        "section": "colors"
-      },
-      {
-        "name": "The Opacity Layering Rule",
-        "body": "Use fractional opacity modifiers (`/15`, `/40`, `/60`) to create tinted surfaces that remain translucent to the layer beneath. Solid token colors for text and borders; opacity modifiers for background tints and state indicators.",
-        "section": "colors"
-      },
-      {
-        "name": "The Weight-Not-Bold Rule",
-        "body": "Emphasis uses weight 500-550. Weight 700+ never appears. Maximum is 600, reserved for markdown strong, table headers, and list markers.",
-        "section": "typography"
-      },
-      {
-        "name": "The Mono-for-Data Rule",
-        "body": "Tool renderers and message formatting use Commit Mono for structured identifiers: course codes, times, building codes, distances, and dollar amounts. Degree Planner and Schedule workspaces use Aspekta throughout, including course identifiers and metadata.",
-        "section": "typography"
-      },
-      {
-        "name": "The 14px-Base Rule",
-        "body": "Use 14px/20px for UI body text. Keep relaxed leading in conversation prose and longer descriptions. Phone text-entry controls use 16px to avoid focus zoom, and phone drawer labels use 16px/24px. Bottom mode labels retain the 12px Caption role.",
-        "section": "typography"
-      },
-      {
-        "name": "The Landing Exception Rule",
-        "body": "The landing page uses text-4xl through text-6xl, custom line-heights (1.05), and tighter tracking (-0.035em). These values are exclusive to the marketing surface and never appear in the app shell.",
-        "section": "typography"
-      },
-      {
-        "name": "The Dual-Tier Rule",
-        "body": "Tier 1 (Tailwind shadow utilities) for one-off depth on small elements. Tier 2 (`.neu-*` classes) for composed surfaces. Never mix on the same element.",
-        "section": "elevation"
-      },
-      {
-        "name": "The Light-Source Rule",
-        "body": "Light source is upper-left. Shadows fall bottom-right, highlights sit top-left. Consistent across both tiers.",
-        "section": "elevation"
-      },
-      {
-        "name": "The Whisper-Dimension Rule",
-        "body": "Use minimal resting depth on controls, contained cards, desktop panels, and overlays. Mobile page frames and primary workspace regions stay flat. Hover and active states expand or invert the control shadow to `--neu-inset-shadow`.",
-        "section": "elevation"
-      },
-      {
-        "name": "The Measured-Performance Rule",
-        "body": "Compare production builds with the same route, viewport, network conditions, and workload. Measure initial JavaScript transfer and evaluation, first-use latency, and retained resources after repeated navigation. Include the selected tool's loading cost before claiming a faster experience. Keep backend resource budgets in the technical design rather than adding CPU or memory values to visual tokens.",
-        "section": "components"
-      },
-      {
-        "name": "The Deferred-Tool Rule",
-        "body": "Keep shell navigation, pane labels, and defaults available without loading inactive tool implementations. Defer heavy tools at stable component boundaries. Preserve direct URLs, selected-pane state, and the existing client/server boundary. Reuse geometry-matched loading frames and recovery states; keep real navigation outside inert placeholders and avoid moving focus when code arrives.",
-        "section": "components"
-      },
-      {
-        "name": "The Owned-Resource Rule",
-        "body": "Give requests, stream readers, timers, subscriptions, animation frames, and map resources one lifecycle owner. Cancel superseded work and release resources when that owner disposes. Preserve intentionally mounted canvases, camera state, forms, and scroll positions across compact view changes; hiding a view alone does not authorize discarding its state. Keep loading, stopped, failed, and completed responses distinguishable, with working Stop and Retry controls.",
-        "section": "components"
-      },
-      {
         "name": "Concentric contours and optical anchors",
-        "body": "For close parallel corners, use `inner radius = outer radius − inset`. Measure the inset between border-box edges, including real borders and padding. Compare the corresponding corner centers in both axes. Shadows and focus rings do not change that distance. Independent cards, avatars, fields, interior rows, and offset panels do not inherit a concentricity requirement.\n\n| Matched contour                                   | Outer radius | Inset | Inner radius |\n| ------------------------------------------------- | ------------ | ----- | ------------ |\n| Expanded navigation well and edge row             | 16px         | 8px   | 8px          |\n| Collapsed navigation well                         | 12px         | 4px   | 8px          |\n| Workspace, prerequisite, term, and theme segments | 8px          | 4px   | 4px          |\n| Timetable canvas and grid frame                   | 16px         | 2px   | 14px         |\n| Timetable frame and scroll field                  | 14px         | 2px   | 12px         |\n| Timetable day strip and selected day              | 12px         | 4px   | 8px          |\n| Single-line composer and action, phone            | 16px         | 6px   | 10px         |\n| Single-line composer and action, wider screen     | 16px         | 10px  | 6px          |\n\nKeep a 28px title anchor in `WorkspacePage`. Center leading controls on that anchor while preserving their full hit targets and the description below the title. Use the panel header's 16px horizontal inset for plain rail content, discovery searches, and control groups. Default panel bodies use 16px padding; dense lists keep their explicit 8px variant and contained bodies own their internal spacing. Loading search frames match the loaded field's position and responsive height.\n\nValidate computed geometry alongside original-scale screenshots and enlarged details. Resolve contradictory image estimates with measured bounds; do not nudge shared icons from a class-name or screenshot guess.",
+        "body": "For close parallel corners, subtract the border-box inset from the outer radius. Include borders and padding, but not shadows or focus rings.\n\n| Contour                                           | Outer / inset / inner |\n| ------------------------------------------------- | --------------------- |\n| Expanded navigation well and row                  | 16 / 8 / 8px          |\n| Collapsed navigation well and row                 | 12 / 4 / 8px          |\n| Workspace, prerequisite, term, and theme segments | 8 / 4 / 4px           |\n| Timetable canvas and frame                        | 16 / 2 / 14px         |\n| Timetable frame and scroll field                  | 14 / 2 / 12px         |\n| Timetable day strip and selection                 | 12 / 4 / 8px          |\n| Single-line composer and action, phone            | 16 / 6 / 10px         |\n| Single-line composer and action, wider screen     | 16 / 10 / 6px         |\n\nCenter leading controls on the 28px workspace title anchor without shrinking their targets. Plain rail content and discovery searches share the header's 16px inset; dense list bodies retain their explicit 8px variant. Match loading-field positions and responsive heights. Check computed bounds alongside original-scale screenshots before adjusting alignment.",
         "section": "shapes"
       },
       {
-        "name": "Accessibility patterns",
-        "body": "- **Touch targets (Impeccable override)**: Use a 32x32px minimum active hit area. This user-approved rule overrides Impeccable's default 44px minimum. Keep larger component dimensions where documented; back buttons retain their existing 44px square targets. Preserve spacing between adjacent targets and visible keyboard focus.\n- **Focus indicators**: `focus-visible:ring-primary/40 ring-2 ring-offset-1` on inputs, `ring-offset-2` on pills. `.neu-button`/`.neu-primary-button` use a 2px outline at 40% primary opacity with 2px offset (CSS-defined). Never hidden behind mouse-only styles.\n- **Safe-area insets**: Reserve top and side insets in the phone shell and the bottom inset in its mode bar. Keep 12px of composer bottom padding above that bar. Workspace bodies and the embedded Explore sheet add no second bottom inset. Independent drawers, dialogs, and Answer Canvas sheets retain their own safe-area padding. Use the reported visual viewport at normal scale for the shell and its fixed overlays; verify keyboard and notch behavior on physical devices.\n- **Screen reader**: `sr-only` for status announcements, `aria-label` on icon-only buttons, `role=\"img\"` on labeled icons.\n- **Keyboard**: Tab through messages, Enter to send, Escape to dismiss overlays. `role=\"radiogroup\"` on theme toggle.",
+        "name": "Actions and fields",
+        "body": "Ordinary controls have 8px corners. Shared buttons retain 36px desktop/44px phone targets; compact controls retain 32px desktop, field companions 44px, and large actions 48px with 12px corners. Primary and secondary buttons use contextual raised/inset states; press feedback scales without translating the control. Ghost actions have no resting shadow or border. Disabled buttons use native disabled behavior and suppress hover/press feedback.\n\nBack actions retain a 44px square ghost target, 20px arrow, destination-specific accessible name/title, and visible focus. Keep route-level back controls above scrollers and panel-level controls in their headers.\n\nThe single-line composer has a 44px field inside a 56px well. Phone text uses 16px/24px with 10px block padding; wider screens use 14px/20px with 12px padding. Send/Stop targets are 44px on phones and 36px on wider screens, with the concentric corners above. Multiline input grows to 96px; preserve the 18px outer/16px inner thinking ring.\n\nSuggestion pills wrap within the available width and keep a 44px minimum. Mapped tool badges use outline pill buttons with `aria-pressed`, 32px desktop/44px phone minima, and the active primary ring. Unmapped badges remain static; preserve primary/error tints and accessible failure text.",
+        "section": "components"
+      },
+      {
+        "name": "Performance",
+        "body": "Measure the same production route, viewport, workload, and network conditions before claiming improvement. Include initial transfer/evaluation, selected-tool first use, and resource retention after repeated navigation.\n\nKeep navigation and pane metadata available without loading inactive implementations. Use stable lazy boundaries with matched loading/recovery frames and preserve direct URLs, state callbacks, and supported prerendering. Reuse public requests within explicit freshness and account boundaries; failures must permit retry.\n\nGive readers, timers, requests, subscriptions, animation frames, and map resources one owner. Cancel superseded work and clean up when the owner disposes. Hiding an intentionally mounted canvas does not authorize discarding its form, camera, or scroll state. Preserve text-delta batching, reduced motion, Stop, and Retry. Add preloading, memoization, or virtualization only for a measured cost, without dropping content or keyboard access.",
+        "section": "components"
+      },
+      {
+        "name": "Accessibility",
+        "body": "- Minimum active hit area: 32px; retain the larger component sizes above. Keep back buttons 44px with 20px arrows.\n- Preserve visible keyboard focus. Use inset paint on edge-to-edge scrollers and 4px vertical scroll clearance in workspaces. Do not clip focus inside disclosure masks.\n- Keep modal traversal and return focus limited to visible, enabled elements, including native summaries; exclude inert and aria-hidden content. Restore a visible fallback if deletion or responsive layout removes the trigger.\n- Preserve nested drawer/account Escape and Tab behavior, shared body-scroll ownership, and out-of-order modal closure. Background updates must not steal focus.\n- Keep labels, error associations, loading announcements, and source links accessible. Verify physical-device and assistive-technology behavior separately from browser emulation.",
         "section": "components"
       }
     ],
     "dos": [
-      "Do apply `.neu-panel` / `.neu-raised` / `.neu-inset` for composed surfaces. They carry the unified shadow recipe.",
-      "Do use `--muted` (`#5a6066`) for all subdued text (placeholders, timestamps, metadata). Never `--outline` or `--outline-variant` for text.",
-      "Do use spring physics for isolated draggable surfaces and `--neu-ease` (cubic-bezier 0.16, 1, 0.3, 1) for CSS-only transitions such as drawers, sheets, and menus. Keep navigation fades to 180ms and mobile panel travel to 250–300ms.",
-      "Do respect `prefers-reduced-motion`. All animations collapse to 0.01ms, reveals show at once, the thinking orb freezes.",
-      "Do use `[data-theme=\"dark\"]` for theme switching. Never `prefers-color-scheme` media query. The user controls the theme, not the OS.",
-      "Do keep mobile pages and their primary workspace regions flat and edge-to-edge. Use resting depth on controls, contained cards, desktop panels, and overlays.",
-      "Do use asymmetric bubble radii (flat corner on the tail side) to indicate message direction.",
-      "Do use opacity modifiers on color tokens for tinted backgrounds and state indicators.",
-      "Do enforce the 32px minimum touch target through `size-8` or equivalent hit-area dimensions. Preserve larger documented targets, including 44px back controls.",
-      "Do use `env(safe-area-inset-bottom)` for bottom-pinned elements on iOS.",
-      "Do measure initial loading, selected-tool first use, and resource cleanup against the same production workload before claiming a performance improvement.",
-      "Do preserve usable navigation, matched loading geometry, Stop and Retry behavior, and account ownership when deferring code or reusing requests."
+      "Do reuse shared components, material recipes, and the applicable surface brief.",
+      "Do preserve the 32px minimum, larger documented targets, 44px back controls, and visible keyboard focus.",
+      "Do keep mobile main views flat and preserve independent card/overlay roles.",
+      "Do match loading geometry, distinguish empty/error states, and retain user-owned state.",
+      "Do measure loading and resource cleanup before claiming a performance improvement.",
+      "Do update design metadata with changes to its source guidance."
     ],
     "donts": [
-      "Don't mix Tier 1 (`shadow-*` Tailwind utilities) and Tier 2 (`.neu-*` classes) on the same element. One shadow system per element.",
-      "Don't add `border` to `.neu-panel` or `.neu-raised` elements. Exception: `.neu-button` uses designed 1px border-subtle. `.glass-neu` uses 1px border-subtle as part of its glass definition.",
-      "Don't use pure black in new composed shadows in light mode. Use the contextual dark and light surface pairs. Preserve the `.glass-neu` overlay's existing 6%-opacity black drop shadow; primary-button presses use the shared contextual inset recipe.",
-      "Don't apply `backdrop-filter` outside `.glass-neu`. Glass is for overlay surfaces (dropdowns, mobile drawers), never decorative.",
-      "Don't add shadow animation to new surfaces without measuring repaint cost. Preserve the existing shared button, composer focus, and landing-header shadow transitions; use opacity or transform for new motion that does not need a layout change.",
-      "Don't apply neumorphic depth to text content. Depth frames containers. Content stays flat inside.",
-      "Don't use font-weight 700 or above. Maximum is 600 (markdown strong, table headers, list markers).",
-      "Don't use primary indigo for background fills, decorative accents, or large surfaces. It means \"interactive\" or \"active state.\"",
-      "Don't retain outgoing route trees or animate layout properties during navigation. Replace stale content with the destination or its matched loading surface, then animate opacity.",
-      "Don't use blur reveals in the app shell. Those belong to the landing page only. CSS `--neu-ease` handles micro-interactions and gesture-driven slides.",
-      "Don't wrap a phone's main view in a rounded card or restore shell gutters below 640px. Keep content and control padding inside the full-width page.",
-      "Don't create new shadow recipes without documenting them. Use `--neu-surface-shadow` or `--neu-inset-shadow` from Tier 2, the five elevation utilities from Tier 1, or the sanctioned `.chat-message-well` recipe.",
-      "Don't discard mounted workspace state, weaken accessibility, truncate content, or bypass freshness checks to improve a performance measurement."
+      "Don't duplicate component styling, token values, or surface instructions in another document.",
+      "Don't use outline colors for text, large decorative primary fills, or weights above 600.",
+      "Don't mix utility and composed shadows on one element or add decorative glass to page content.",
+      "Don't move buttons on hover, retain obsolete content for an animation, or animate viewport resizing.",
+      "Don't discard mounted workspace state, weaken accessibility, truncate content, or bypass freshness checks for a performance result."
     ]
   }
 }

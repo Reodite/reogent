@@ -1,77 +1,38 @@
 # Pulse rounds
 
-Pulse is the swipe-voting feed at `/pulse`. Signed-in students vote agree (swipe right) or disagree (swipe left) on statement cards. One vote per user per question, first vote wins, and tallies stay hidden until the voter has answered. Questions ship in rounds: publishing a new round locks the current one and freezes its results permanently. Locked rounds stay visible under "Previous rounds" below the feed, tallies included, whether or not the viewer voted. The goal is subjective campus data that scraping, UBC APIs, and Reddit cannot provide.
+Signed-in students vote agree or disagree on statements at `/pulse`. The first vote wins; tallies appear after voting. Publishing a round locks the previous round. History shows the ten most recent locked rounds with final tallies.
 
-## Publish a round
+## Publish
 
-1. Add a seed file in this directory, e.g. `round-2.json`:
+Create a seed such as `data/pulse/round-4.json`:
 
 ```json
 {
-  "title": "Round 2 (October)",
-  "questions": ["The AMS Nest is the best place to study on campus", "Another statement voted agree or disagree"]
+  "title": "Round 4",
+  "questions": [
+    "The AMS Nest is the best place to study on campus",
+    "An 8am lecture is worth taking for the right professor"
+  ]
 }
 ```
 
-Validation runs before the database is touched:
+Questions must form a nonempty array of nonempty strings, each at most 280 characters, without case-insensitive duplicates. The title is optional. Validation runs before database writes.
 
-- `questions`: non-empty array of non-empty strings, each at most 280 characters, no case-insensitive duplicates.
-- `title`: optional string. It shows in the feed header and identifies the round after it locks.
-
-2. Run the script against the target database:
+Run from a repository checkout with Node 24 and dependencies installed, not the standalone app container:
 
 ```bash
 DATABASE_URL=postgres://reodite:<POSTGRES_PASSWORD>@localhost:5432/reodite \
-  npm run pulse:publish -- data/pulse/round-2.json
+  npm run pulse:publish -- data/pulse/round-4.json
 ```
 
-Expected output:
+Confirm the database destination first. Publishing locks the active round and inserts the new round/questions in one transaction; failure rolls back. Voters see the result on their next feed load without an app restart. New votes on a locked round return 409; repeating an existing vote returns that stored vote.
 
-```
-Locked round 3. Published round 4 ("Round 2 (October)") with 12 questions.
-```
+Commit the seed before publishing. New files under ignored `data/` need an explicit path, for example `git add -f data/pulse/round-4.json`. Git records the questions; the database records votes. There is no undo command. Publish a corrected round if needed; the mistaken round remains locked.
 
-Publishing is one transaction: it locks the active round (scores freeze, further votes on it return 409) and inserts the new questions. A failed run rolls back and leaves the current round active. Voters see the new cards on their next feed load. No app restart needed.
+## Question wording
 
-## Production notes
+Use one concrete claim per card. Avoid combined claims such as “cheap and quiet,” since a disagreement cannot identify which part failed. Keep subjective judgments distinct from official campus facts.
 
-- Run the script from a repo checkout on the prod host (Node 24, `npm ci` once), not inside the app container. The production image is a standalone build without the script's tooling. Docker compose maps Postgres to host port 5432, so `localhost:5432` with the `POSTGRES_PASSWORD` from `.env` reaches the prod database.
-- Commit each seed file here before publishing. Locked tallies live in the database; git keeps the history of what was asked.
-- There is no undo. If a bad round ships, publish a corrected round; the mistaken one stays locked with whatever votes it collected.
+## Storage
 
-## Writing questions
-
-Every card is a single statement answered agree or disagree, so phrase each one as a claim someone can push back on. Flavors that work:
-
-| Flavor           | Example                                                  |
-| ---------------- | -------------------------------------------------------- |
-| Best-of opinion  | "The AMS Nest is the best place to study on campus"      |
-| Worth-it trade-off | "An 8am lecture is worth taking for the right professor" |
-| Trend over time  | "The bus loop lines are worse this year than last year"  |
-| Value judgment   | "Tuition is fair value for the education UBC provides"   |
-| Head-to-head     | "Koerner Library beats Irving K. Barber for exam season" |
-
-Keep statements concrete and one-sided. "X is good" splits cleanly; "X is better than Y for Z" collects sharper data. Avoid double-barreled claims ("cheap and quiet") because a disagree vote cannot say which half failed.
-
-## Where the data lives
-
-Schema in `src/server/db/migrate.ts`; server logic in `src/server/pulse/store.ts`.
-
-| Table             | Contents                                                        |
-| ----------------- | --------------------------------------------------------------- |
-| `pulse_rounds`    | `status` (`active`/`locked`), `title`, publish and lock times   |
-| `pulse_questions` | Statement text, owning round, seed order                        |
-| `pulse_votes`     | One row per user per question: `agree` boolean plus a timestamp |
-
-Results for a locked round:
-
-```sql
-SELECT q.text,
-       COUNT(v.*) FILTER (WHERE v.agree) AS agree,
-       COUNT(v.*) FILTER (WHERE NOT v.agree) AS disagree
-FROM pulse_questions q
-LEFT JOIN pulse_votes v ON v.question_id = q.id
-WHERE q.round_id = $1
-GROUP BY q.id, q.text, q.position
-ORDER BY q.position;
-```
+`src/server/db/migrate.ts` defines `pulse_rounds`, `pulse_questions`, and `pulse_votes`. `src/server/pulse/store.ts` owns publication, first-write-wins voting, and tally visibility. Use question position to retain seed order in reports.

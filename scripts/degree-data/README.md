@@ -1,44 +1,31 @@
-# Degree-planner data pipeline
+# Degree-planner data
 
-`public/data/*` is derived from **ubc-unified-data** (vendored at
-`./ubc-unified-data`), which is the single source of raw truth. Three layers:
+The planner reads checked-in files under `public/data/`. Preserve the distinction between collected facts, deterministic derivations, and interpretations of source prose.
 
-## 1. Raw (ubc-unified-data collectors)
+## Sources and outputs
 
-- `data/academic-calendar/vancouver/` — calendar pages, programs, courses,
-  subjects, faculties. Produced by the `calendar` collector.
-- `cogs_module_courses.json` — the COGS module-course list from
-  cogsys.ubc.ca (off-calendar, revised annually). Produced by
-  `src/collectors/cogsmodules.ts`; the site sits behind a bot challenge, so a
-  failed fetch is recorded in `_unavailable.json` rather than failing the run.
+| Layer                 | Files                                                                     | Maintenance                                                                                     |
+| --------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Collected             | `ubc-unified-data/data/academic-calendar/vancouver/`                      | Refresh through the submodule's collectors                                                      |
+| Derived               | `public/data/subject_faculties.json`                                      | `derive-subject-faculties.mjs`                                                                  |
+| Source-backed overlay | COGS module categories in `public/data/program_requirements.json`         | `cogs-modules-overlay.mjs`; retain only active, catalog-valid courses and per-stream exclusions |
+| Curated               | `program_registry.json`, `degree_rules.json`, `program_requirements.json` | Review against linked calendar/policy prose and preserve provenance notes                       |
 
-Two scraper fixes live upstream in `src/calendarpages.ts` (sync to
-Reodite/ubc-unified-data): "X Degree Program"-titled roots (Dental Hygiene)
-and cross-alias-tree program resolution (Urban Forestry). Until a scrape
-re-runs with them, `public/data/degree_programs.json` carries those two
-records hand-recovered from `pages.json`.
+The COGS overlay reads `cogs_module_courses.json` from the calendar data directory. Collection can fail behind the source site's bot challenge; inspect the producer's unavailable records rather than treating missing data as an empty course list.
 
-## 2. Derived — deterministic (these scripts)
+## Refresh and validate
 
-- `derive-subject-faculties.mjs` → `public/data/subject_faculties.json`
-- `cogs-modules-overlay.mjs` → refreshes the five COGS module categories in
-  `public/data/program_requirements.json` (active + catalog-valid courses only)
-- `validate.mjs` → sanity gate for `program_registry.json` and
-  `program_requirements.json`
+Run from the repository root after updating source data:
 
-Run after each scrape refresh, then validate.
+```bash
+node scripts/degree-data/derive-subject-faculties.mjs
+node scripts/degree-data/cogs-modules-overlay.mjs
+node scripts/degree-data/validate.mjs registry public/data/program_registry.json
+node scripts/degree-data/validate.mjs overlay public/data/program_requirements.json
+```
 
-## 3. Curated — judgment over prose (agent pipeline, 2026-08-31)
+The first two commands rewrite derived/overlay files. Review the diff before committing. The validator checks structure and catalog references; it does not establish that a curated interpretation matches degree policy. Review known exceptions in `data/review_queue.json` and investigate new findings rather than accepting them as inherited exceptions.
 
-- `program_registry.json` — 398 selectable programs, classified from calendar
-  records (opus classifiers + reconciler; deterministic fixes applied).
-- `degree_rules.json` — faculty-wide rules per degree container (BA/BFA/BSc/
-  BASc/BCom/BKin), encoded from policy pages.
-- `program_requirements.json` — structured requirements per program
-  (opus extract → sonnet adversarial verify → opus repair, per calendar page).
+These scripts do not regenerate the curated degree registry, faculty rules, or full requirement interpretations from scratch. The extraction workflow is not checked in. Preserve source URLs and notes when editing those files, and verify the result against the published policy.
 
-These are interpretations of prose, not scrape facts — they carry provenance
-in their notes and their known issues in `data/review_queue.json`. To
-regenerate, re-run the extraction workflows (see the
-`degree-planner-data-limits` project memory) against a fresh scrape, then
-`validate.mjs`.
+`public/data/degree_programs.json` includes hand-recovered Dental Hygiene and Urban Forestry records. Preserve them until refreshed source data supplies verified replacements; do not overwrite them solely because a collector omitted those program roots.
