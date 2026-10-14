@@ -36,13 +36,17 @@ When `AUTH_ENABLED=false` (development), all requests bypass auth with a default
 
 Each signed-in user can save a preferred name, program, year, and domestic/international tuition default. The server stores these in `user_profiles.data` (JSONB) and includes the personal details in the agent's system prompt.
 
-Guests use Tools and keep access to Settings and Account. Hide AI, Tools, and Unity mode controls in guest sessions, including the phone bottom bar.
+Guests use Tools and keep access to Settings, Account, and About. Hide AI, Tools, and Unity mode controls in guest sessions, including the phone bottom bar.
 
 ### Account details
 
 Open Account from the sidebar popup to see your username, preferred name, student profile, creation date, tokens spent, and Pulse questions answered. Account contains Sign out and an Edit profile button for updating student defaults in place. Settings contains appearance controls.
 
 The authenticated `/api/account` endpoint returns the caller's details. Each account accumulates provider-reported tokens across chat turns and conversation titles, independent of conversation deletion. Show the tracking start date; earlier and unreported usage are unavailable. Pulse counts include stored answers in active and locked rounds. Guests see a sign-in prompt without private data requests. Guest Settings shows Appearance only; omit the Student profile section and personalization fields.
+
+### About
+
+Open About from the account popup's General section, alongside Settings and Account. Show "UBC's website and advising sucks." below the title, followed by Max and Chakorn's profiles and the existing Buy us a coffee link. Keep About outside Unity and preserve the current mode and its saved destination. Redirect `/pulse/creators` to `/about`; Unity's mode button ignores the retired destination.
 
 ### First-login onboarding
 

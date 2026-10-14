@@ -1,7 +1,5 @@
-"use client";
-
-import { CreatorsPage } from "@/src/components/unity/creators-page";
+import { permanentRedirect } from "next/navigation";
 
 export default function CreatorsRoute() {
-  return <CreatorsPage />;
+  permanentRedirect("/about");
 }

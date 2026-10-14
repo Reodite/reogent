@@ -439,7 +439,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector("[data-tool-list]")).not.toBeNull();
   });
 
-  it.each(["settings", "account"])("renders %s without exposing the prior tool as current", (utilityPage) => {
+  it.each(["settings", "account", "about"])("renders %s without exposing the prior tool as current", (utilityPage) => {
     const view = renderShell(true);
     fireEvent.click(modeLink(view.container, "Tools"));
     fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement);

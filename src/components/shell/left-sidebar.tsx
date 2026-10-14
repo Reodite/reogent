@@ -15,7 +15,6 @@ const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
   { path: "/pulse/announcements", label: "Announcements", icon: "announcement" },
   { path: "/pulse", label: "Pulse", icon: "group" },
   { path: "/pulse/schedule", label: "Schedule", icon: "calendar" },
-  { path: "/pulse/creators", label: "Creators", icon: "teacup" },
 ];
 
 function UnitySidebar({ collapsed = false, onSelect }: { collapsed?: boolean; onSelect?: () => void }) {

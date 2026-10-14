@@ -10,6 +10,9 @@ vi.mock("@/src/components/providers", () => ({
   useTheme: () => ({ mode: "light", setMode: vi.fn() }),
 }));
 vi.mock("@/src/components/shell/session-sidebar", () => ({ VersionBadge: () => null }));
+vi.mock("@/src/components/icons", () => ({
+  Icon: ({ name }: { name: string }) => <svg data-icon={name} aria-hidden="true" />,
+}));
 
 afterEach(cleanup);
 
@@ -27,18 +30,27 @@ describe("UserMenu", () => {
     expect(popup.firstElementChild?.contains(appearance)).toBe(true);
     expect(appearance.parentElement?.classList.contains("flex-wrap")).toBe(true);
     expect(appearance.parentElement?.classList.contains("gap-y-2")).toBe(true);
-    expect(getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/settings");
-    expect(getByRole("link", { name: "Account" }).getAttribute("href")).toBe("/account");
+    const pages = within(popup).getByRole("navigation", { name: "General" });
+    expect(
+      within(pages)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Settings", "Account", "About"]);
+    expect(within(pages).getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/settings");
+    expect(within(pages).getByRole("link", { name: "Account" }).getAttribute("href")).toBe("/account");
+    const about = within(pages).getByRole("link", { name: "About" });
+    expect(about.getAttribute("href")).toBe("/about");
+    expect(about.querySelector("svg")?.getAttribute("data-icon")).toBe("info");
     expect(queryByRole("button", { name: "Sign out" })).toBeNull();
     expect(queryByText("Signed in as")).toBeNull();
     expect(queryByRole("menuitem")).toBeNull();
   });
 
-  it("closes the popup and its sidebar drawer when Account opens", () => {
+  it.each(["Settings", "Account", "About"])("closes the popup and its sidebar drawer when %s opens", (page) => {
     const onNavigate = vi.fn();
     const { getByRole, queryByRole } = render(<UserMenu onNavigate={onNavigate} />);
     fireEvent.click(getByRole("button", { name: "Account menu" }));
-    fireEvent.click(getByRole("link", { name: "Account" }));
+    fireEvent.click(getByRole("link", { name: page }));
     expect(onNavigate).toHaveBeenCalledOnce();
     expect(queryByRole("dialog", { name: "Account" })).toBeNull();
     expect(getByRole("button", { name: "Account menu" }).getAttribute("aria-expanded")).toBe("false");

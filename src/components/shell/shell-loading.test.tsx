@@ -103,7 +103,7 @@ describe("shell loading surfaces", () => {
     expect(tabs?.className).not.toMatch(/gap-1|px-2/);
   });
 
-  it.each(["/settings", "/account"])("reserves single-card utility geometry for %s", (pathname) => {
+  it.each(["/settings", "/account", "/about"])("reserves single-card utility geometry for %s", (pathname) => {
     const { container } = render(<ShellBootLoading pathname={pathname} />);
     expect(container.querySelector("[data-shell-boot-loading]")?.getAttribute("data-shell-boot-mode")).toBe("utility");
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-host")).toBe(

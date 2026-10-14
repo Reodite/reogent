@@ -10,7 +10,13 @@ import { AnimatePresence } from "motion/react";
 import Link from "next/link";
 import { useId, useRef, useState } from "react";
 
-/** Opens viewport-bounded account actions and appearance controls from the sidebar. */
+const MENU_LINKS = [
+  { href: "/settings", label: "Settings", icon: "settings" },
+  { href: "/account", label: "Account", icon: "user" },
+  { href: "/about", label: "About", icon: "info" },
+] as const;
+
+/** Opens viewport-bounded app navigation and appearance controls from the sidebar. */
 export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolean; onNavigate?: () => void }) {
   const auth = useAppAuth();
   const navigation = useShellNavigation();
@@ -66,37 +72,27 @@ export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolea
 
             <div className="bg-border-subtle my-1 h-px" />
 
-            <Link
-              href="/settings"
-              onClick={() => {
-                setOpen(false);
-                onNavigate?.();
-              }}
-              onNavigate={(event) => {
-                event.preventDefault();
-                navigation.push("/settings");
-              }}
-              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
-            >
-              <Icon name="settings" size={16} className="text-on-surface-variant" />
-              Settings
-            </Link>
-
-            <Link
-              href="/account"
-              onClick={() => {
-                setOpen(false);
-                onNavigate?.();
-              }}
-              onNavigate={(event) => {
-                event.preventDefault();
-                navigation.push("/account");
-              }}
-              className="text-on-surface hover:bg-surface-container-high hover:text-primary flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 sm:h-9"
-            >
-              <Icon name="user" size={16} className="text-on-surface-variant" />
-              Account
-            </Link>
+            <nav aria-label="General">
+              <p className="text-on-surface-variant px-3 py-2 text-xs font-medium">General</p>
+              {MENU_LINKS.map(({ href, label, icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => {
+                    setOpen(false);
+                    onNavigate?.();
+                  }}
+                  onNavigate={(event) => {
+                    event.preventDefault();
+                    navigation.push(href);
+                  }}
+                  className="focus-visible:ring-primary/40 text-on-surface hover:bg-surface-container-high hover:text-primary flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:h-9"
+                >
+                  <Icon name={icon} size={16} className="text-on-surface-variant" />
+                  {label}
+                </Link>
+              ))}
+            </nav>
 
             <div className="bg-border-subtle my-1 h-px" />
 

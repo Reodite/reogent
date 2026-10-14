@@ -10,7 +10,7 @@ import {
   LAST_UNITY_PATH_KEY,
   SHELL_MODE_STORAGE_KEY,
 } from "@/src/lib/shell-mode";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -194,13 +194,16 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
   });
 
   it.each([
-    ["AI", "/chat", LAST_CHAT_PATH_KEY],
-    ["AI", "/chat/session-123", LAST_CHAT_PATH_KEY],
-    ["Tools", "/tools", LAST_TOOLS_PATH_KEY],
-    ["Tools", "/tools/prereq/CPSC320", LAST_TOOLS_PATH_KEY],
-    ["Unity", "/pulse", LAST_UNITY_PATH_KEY],
-    ["Unity", "/pulse/schedule/ABC123", LAST_UNITY_PATH_KEY],
-  ])("remembers the actual %s route %s and resumes it from Settings", (label, path, key) => {
+    ["AI", "/chat", LAST_CHAT_PATH_KEY, "/settings"],
+    ["AI", "/chat/session-123", LAST_CHAT_PATH_KEY, "/settings"],
+    ["Tools", "/tools", LAST_TOOLS_PATH_KEY, "/settings"],
+    ["Tools", "/tools/prereq/CPSC320", LAST_TOOLS_PATH_KEY, "/settings"],
+    ["Unity", "/pulse", LAST_UNITY_PATH_KEY, "/settings"],
+    ["Unity", "/pulse/schedule/ABC123", LAST_UNITY_PATH_KEY, "/settings"],
+    ["AI", "/chat/session-123", LAST_CHAT_PATH_KEY, "/about"],
+    ["Tools", "/tools/prereq/CPSC320", LAST_TOOLS_PATH_KEY, "/about"],
+    ["Unity", "/pulse/schedule/ABC123", LAST_UNITY_PATH_KEY, "/about"],
+  ])("remembers the actual %s route %s in %s and resumes it from %s", (label, path, key, utilityPath) => {
     pathname.value = path;
     window.history.replaceState(null, "", path);
     const content = (
@@ -213,8 +216,8 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     fireEvent.click(view.getByRole("link", { name: label }));
     expect(routerPush).not.toHaveBeenCalled();
 
-    pathname.value = "/settings";
-    window.history.replaceState(null, "", "/settings");
+    pathname.value = utilityPath;
+    window.history.replaceState(null, "", utilityPath);
     view.rerender(
       <ChatShellProvider>
         <ModeToggle presentation="bottom" />
@@ -229,6 +232,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     ["AI", LAST_CHAT_PATH_KEY, "/chatty", "/chat"],
     ["Tools", LAST_TOOLS_PATH_KEY, "/toolshed", "/tools/map"],
     ["Unity", LAST_UNITY_PATH_KEY, "/settings", "/pulse"],
+    ["Unity", LAST_UNITY_PATH_KEY, "/pulse/creators", "/pulse"],
     ["Tools", LAST_TOOLS_PATH_KEY, "/tools/../settings", "/tools/map"],
   ])("uses the %s fallback for invalid stored path %s=%s", (label, key, stored, fallback) => {
     pathname.value = "/settings";
@@ -367,7 +371,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(view.container.querySelector("[data-tool-list]")).not.toBeNull();
   });
 
-  it.each(["/tools/map", "/account", "/settings"])(
+  it.each(["/tools/map", "/account", "/settings", "/about"])(
     "keeps the guest sidebar tools-only at %s despite a saved Unity mode",
     (path) => {
       auth.isGuest = true;
@@ -437,7 +441,14 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <LeftSidebar onClose={onClose} />
       </ChatShellProvider>,
     );
-    act(() => fireEvent.click(view.getByRole("button", { name: "Creators" })));
+    const community = view.getByRole("navigation", { name: "Community" });
+    expect(
+      within(community)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Announcements", "Pulse", "Schedule"]);
+    act(() => fireEvent.click(view.getByRole("button", { name: "Schedule" })));
+    expect(routerPush).toHaveBeenLastCalledWith("/pulse/schedule");
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 

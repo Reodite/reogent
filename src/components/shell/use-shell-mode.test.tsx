@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe("useShellMode", () => {
-  it.each(["/settings", "/account"])("keeps the current mode while %s is active", (utilityPath) => {
+  it.each(["/settings", "/account", "/about"])("keeps the current mode while %s is active", (utilityPath) => {
     const { result, rerender } = renderHook(() => useShellMode("tools"));
     expect(result.current[0]).toBe("tools");
 
@@ -53,7 +53,7 @@ describe("useShellMode", () => {
     expect(result.current[0]).toBe("unity");
   });
 
-  it.each(["/settings", "/account"])("hydrates the stored mode on a direct %s load", async (utilityPath) => {
+  it.each(["/settings", "/account", "/about"])("hydrates the stored mode on a direct %s load", async (utilityPath) => {
     pathname.value = utilityPath;
     memory.set(SHELL_MODE_STORAGE_KEY, "unity");
 
@@ -63,7 +63,7 @@ describe("useShellMode", () => {
     expect(document.documentElement.dataset.shellMode).toBe("unity");
   });
 
-  it.each(["/settings", "/account"])("keeps the explicit guest mode on %s", (utilityPath) => {
+  it.each(["/settings", "/account", "/about"])("keeps the explicit guest mode on %s", (utilityPath) => {
     pathname.value = utilityPath;
     memory.set(SHELL_MODE_STORAGE_KEY, "unity");
 

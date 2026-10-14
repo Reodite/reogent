@@ -31,6 +31,7 @@ function rememberCurrentPath(committedPathname?: string) {
 }
 
 function pathnameMatchesMode(pathname: string, mode: ShellMode): boolean {
+  if (pathname === "/pulse/creators") return false;
   const base = mode === "tools" ? "/tools" : mode === "unity" ? "/pulse" : "/chat";
   return pathname === base || pathname.startsWith(`${base}/`);
 }

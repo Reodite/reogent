@@ -276,7 +276,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
             {navigation.pending ? (
               <WorkspaceRouteLoading
-                label={utilityPage === "account" ? "Loading Account" : "Loading Settings"}
+                label={`Loading ${utilityPage.charAt(0).toUpperCase()}${utilityPage.slice(1)}`}
                 composition="single"
               />
             ) : (
