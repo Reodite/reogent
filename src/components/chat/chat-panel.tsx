@@ -26,6 +26,7 @@ import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
 import { SkeletonGroup } from "@/src/components/ui/skeleton";
 import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
+import { siteAudio } from "@/src/lib/audio";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -398,6 +399,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
 
       const controller = new AbortController();
       abortRef.current = controller;
+      const agentAudio = siteAudio.startAgent(controller.signal);
 
       // Add a placeholder assistant message for streaming text
       const streamId = nextId();
@@ -419,6 +421,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           {
             onThinking(delta) {
               if (!alive.current) return;
+              agentAudio("thinking");
               // Append to the last thinking block only if it's immediately preceding (no tool calls in between)
               const last = activity[activity.length - 1];
               if (last?.type === "thinking") {
@@ -430,11 +433,13 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             },
             onToolStart(name, input) {
               if (!alive.current) return;
+              agentAudio("working");
               activity.push({ type: "tool_call", content: name, input, result: undefined });
               updateMessage({ activity: [...activity] });
             },
             onToolEnd(name, result) {
               if (!alive.current) return;
+              agentAudio("thinking");
               for (let i = activity.length - 1; i >= 0; i--) {
                 if (
                   activity[i].type === "tool_call" &&
@@ -449,11 +454,13 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             },
             onTextClear() {
               if (!alive.current) return;
+              agentAudio("thinking");
               streamedText = "";
               updateMessage({ content: "" });
             },
             onDelta(delta) {
               if (!alive.current) return;
+              agentAudio("responding");
               streamedText += delta;
               // Batch text deltas: flush to state once per animation frame
               if (!deltaFlushRef.current) {
@@ -509,6 +516,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           }
           announce("New response from assistant");
           refreshSessions();
+          agentAudio("complete");
         })
         .catch((error: unknown) => {
           if (discardingRef.current) {
@@ -541,8 +549,10 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
               : "Couldn't get a response. Please try again.";
           setSendError(message);
           announce(`Error: ${message}`);
+          agentAudio("failure");
         })
         .finally(() => {
+          agentAudio("idle");
           if (alive.current) {
             setSending(false);
             abortRef.current = null;

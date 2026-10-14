@@ -1,5 +1,6 @@
 "use client";
 
+import { AudioVolumeControl } from "@/src/components/audio/audio-controls";
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { ProfileFields } from "@/src/components/auth/profile-fields";
 import { Icon } from "@/src/components/icons";
@@ -104,14 +105,17 @@ function OnboardingContent() {
                   <p className="text-muted mb-6 text-sm">
                     {step === 1
                       ? "Share what you'd like. You can leave any field blank."
-                      : "Choose your appearance. You can change it in Settings anytime."}
+                      : "Choose your appearance and sound. You can change them in Settings anytime."}
                   </p>
                   {step === 1 ? (
                     <ProfileFields profile={draft} onChange={setDraft} />
                   ) : (
-                    <div className="flex flex-col gap-2">
-                      <span className="text-on-surface text-sm font-medium">Appearance</span>
-                      <ThemeToggle showLabels />
+                    <div className="flex flex-col gap-6">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-on-surface text-sm font-medium">Appearance</span>
+                        <ThemeToggle showLabels />
+                      </div>
+                      <AudioVolumeControl />
                     </div>
                   )}
                 </fieldset>

@@ -3,6 +3,7 @@ import AccountPage from "@/app/(shell)/account/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { AppProviders } from "@/src/components/providers";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import { AUDIO_STORAGE_KEY, siteAudio } from "@/src/lib/audio";
 import type { StudentProfile } from "@/src/shared/profile";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -45,7 +46,10 @@ beforeEach(() => {
     .fn()
     .mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() });
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 async function start() {
   render(
@@ -145,6 +149,26 @@ describe("first-login onboarding", () => {
     });
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("campus.theme")).toBe("dark");
+  });
+
+  it("previews and retains the device volume across Preferences, Back, and finishing setup", async () => {
+    const preview = vi.spyOn(siteAudio, "previewVolume").mockImplementation(() => {});
+    await start();
+    next();
+    next();
+    const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
+    expect(slider.step).toBe("10");
+    expect(slider.value).toBe("0");
+    expect(document.querySelectorAll("[data-volume-stop]")).toHaveLength(11);
+    fireEvent.change(slider, { target: { value: "30" } });
+    expect(preview).toHaveBeenCalledExactlyOnceWith(0, 30);
+    fireEvent.click(screen.getByRole("button", { name: "Back to personal details" }));
+    next();
+    expect((screen.getByRole("slider") as HTMLInputElement).value).toBe("30");
+    expect(preview).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
+    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/tools/calendar"));
+    expect(JSON.parse(localStorage.getItem(AUDIO_STORAGE_KEY)!).volume).toBe(30);
   });
 
   it("retains entries after a failed save and allows retry", async () => {

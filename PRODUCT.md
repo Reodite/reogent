@@ -40,9 +40,9 @@ Guests use Tools and keep access to Settings, Account, and About. Hide AI, Tools
 
 ### Account details
 
-Open Account from the sidebar popup to see your username, preferred name, student profile, creation date, tokens spent, and Pulse questions answered. Account contains Sign out and an Edit profile button for updating student defaults in place. Settings contains appearance controls.
+Open Account from the sidebar popup to see your username, preferred name, student profile, creation date, tokens spent, and Pulse questions answered. Account contains Sign out and an Edit profile button for updating student defaults in place. Settings contains appearance and sound controls.
 
-The authenticated `/api/account` endpoint returns the caller's details. Each account accumulates provider-reported tokens across chat turns and conversation titles, independent of conversation deletion. Show the tracking start date; earlier and unreported usage are unavailable. Pulse counts include stored answers in active and locked rounds. Guests see a sign-in prompt without private data requests. Guest Settings shows Appearance only; omit the Student profile section and personalization fields.
+The authenticated `/api/account` endpoint returns the caller's details. Each account accumulates provider-reported tokens across chat turns and conversation titles, independent of conversation deletion. Show the tracking start date; earlier and unreported usage are unavailable. Pulse counts include stored answers in active and locked rounds. Guests see a sign-in prompt without private data requests. Guest Settings shows Appearance and Sound; omit the Student profile section and personalization fields.
 
 ### About
 
@@ -56,13 +56,23 @@ Setup shows one card at a time:
 
 1. A centered “Welcome to Reodite” title and “Let's customize your experience” subheading.
 2. About you: preferred name, year of study (an integer from 1 to 10), program, and tuition defaults (ask when needed, domestic, international).
-3. Preferences: a single Light/Dark appearance pill with sun and moon icons.
+3. Preferences: a single Light/Dark appearance pill with sun and moon icons, followed by the shared volume slider with 10% steps and audible previews.
 
 Next and Back retain entries while switching cards. Fields are optional. Finish setup saves the details and completion flag together before continuing to the original destination. Skip setup preserves saved personal details, saves the current appearance, and marks setup complete. Failed saves keep the form and entries available for retry. Reloading before completion restarts setup with the last saved profile.
 
-**Synchronization requirement:** onboarding and Account use the same field components, validation, and database record. Onboarding reads `/api/profile`; Account reads the same profile through `/api/account`. Both save through `/api/profile`. `user_profiles.data` holds `preferred_name`, `program`, `year`, `student_type`, `theme`, and `onboarding_completed`. Account saves must preserve the completion flag. Add new preferences to the shared schema and both surfaces. These optional JSONB fields require no database migration.
+**Synchronization requirement:** onboarding and Account use the same field components, validation, and database record. Onboarding reads `/api/profile`; Account reads the same profile through `/api/account`. Both save through `/api/profile`. `user_profiles.data` holds `preferred_name`, `program`, `year`, `student_type`, `theme`, and `onboarding_completed`. Account saves must preserve the completion flag. Add new account-level preferences to the shared schema and both surfaces. These optional JSONB fields require no database migration.
 
 Appearance changes apply immediately through the shared theme toggle, with a ripple transition unless reduced motion is enabled. The device setting supplies the initial Light or Dark choice; the local cache retains it without following later device changes. Finish setup and Save profile persist the current appearance to the account. Signing in on another device loads that account preference. Profile reads omit unsupported appearance values so existing accounts can use the initial device choice. Profile load failures offer retry without overwriting saved values.
+
+### Sound feedback
+
+Sound starts at 0% volume. Adjust it in onboarding's Preferences step or Settings. The native slider snaps to 10% increments, shows eleven tick marks, and previews each crossed mark at that mark's volume. Selecting the current mark previews it again. Zero mutes sound, including previews. The mute button returns the slider to zero without changing category choices.
+
+Settings provides independent Navigation, Interface actions, Bot noises, Agent complete, and Agent failed controls. Preview buttons respect the master volume and let you hear disabled categories without enabling them. Use soft electronic chirps for navigation, taps for actions, quiet pulses for thinking and tool work, a rising completion chime, and a descending failure tone. Rate-limit repeated interactions and leave typing silent.
+
+Bot noises follow the live chat stream and pause during response text. Play one completion or failure cue per exchange. Stop, reset, unmount, and replacement exchanges cancel without a terminal cue; opening saved conversations stays silent. Pause audio in hidden tabs and discard missed notifications.
+
+Store sound preferences under `reodite.audio` in this browser and synchronize open tabs. Volume changes save as you adjust them, including during onboarding or when you skip setup. Sound preferences remain device-local for guests and signed-in users; exclude them from the account profile. Start browser audio after a gesture. Unavailable audio leaves the interface usable, and unavailable storage retains preferences in memory.
 
 ### Session Model
 

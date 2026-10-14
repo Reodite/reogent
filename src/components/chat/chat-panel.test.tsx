@@ -2,6 +2,7 @@
 import { ChatPanel } from "@/src/components/chat/chat-panel";
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import type { ChatMessage, ToolCall } from "@/src/lib/api-types";
+import { siteAudio } from "@/src/lib/audio";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -87,6 +88,8 @@ interface ChatResult {
   tool_calls: ToolCall[];
 }
 interface ChatCallbacks {
+  onThinking?: (delta: string) => void;
+  onDelta?: (delta: string) => void;
   onToolStart?: (name: string, input: Record<string, unknown>) => void;
   onToolEnd?: (name: string, result: unknown) => void;
 }
@@ -133,6 +136,7 @@ afterEach(() => {
   api.getSession.mockReset();
   api.getSession.mockResolvedValue([]);
   cleanup();
+  vi.restoreAllMocks();
   shellRef.current = null;
 });
 afterAll(() => {
@@ -374,6 +378,68 @@ describe("ChatPanel reset lifecycle", () => {
     expect(view.queryByRole("log", { name: "Conversation" })).toBeNull();
     expect(api.chat).toHaveBeenCalledTimes(2);
     expect(api.chat.mock.calls[0][0]).not.toBe(api.chat.mock.calls[1][0]);
+  });
+});
+
+describe("ChatPanel sound lifecycle", () => {
+  it("tracks live thinking and tools, quiets text streaming, and notifies once on completion", async () => {
+    const play = vi.spyOn(siteAudio, "play").mockImplementation(() => {});
+    const response = Promise.withResolvers<ChatResult>();
+    api.chat.mockReturnValue(response.promise);
+    renderPanel();
+    expect(play).not.toHaveBeenCalled();
+    await send("Look up a course");
+    expect(play).toHaveBeenLastCalledWith("thinking");
+    const callbacks = api.chat.mock.calls[0][2] as ChatCallbacks;
+    act(() => callbacks.onToolStart?.("internal_query", {}));
+    expect(play).toHaveBeenLastCalledWith("working");
+    act(() => callbacks.onToolEnd?.("internal_query", {}));
+    expect(play).toHaveBeenLastCalledWith("thinking");
+    act(() => callbacks.onDelta?.("An answer"));
+    await act(async () => response.resolve({ message: "An answer", tool_calls: [] }));
+    expect(play.mock.calls.filter(([cue]) => cue === "complete")).toHaveLength(1);
+    expect(play).not.toHaveBeenCalledWith("failure");
+  });
+
+  it("notifies on a failed request and on a successful retry", async () => {
+    const play = vi.spyOn(siteAudio, "play").mockImplementation(() => {});
+    api.chat.mockRejectedValueOnce(new Error("offline"));
+    const view = renderPanel();
+    await send("Look up a course");
+    expect(play.mock.calls.filter(([cue]) => cue === "failure")).toHaveLength(1);
+    api.chat.mockResolvedValueOnce({ message: "Retried answer", tool_calls: [] });
+    fireEvent.click(view.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(play).toHaveBeenCalledWith("complete"));
+    expect(play.mock.calls.filter(([cue]) => cue === "complete")).toHaveLength(1);
+  });
+
+  it.each(["stop", "reset", "unmount"])("cancels audio without a terminal notification on %s", async (action) => {
+    const play = vi.spyOn(siteAudio, "play").mockImplementation(() => {});
+    let signal!: AbortSignal;
+    api.chat.mockImplementation((_id, _messages, _callbacks, abortSignal: AbortSignal) => {
+      signal = abortSignal;
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(new DOMException("Stopped", "AbortError")), { once: true });
+      });
+    });
+    const view = renderPanel();
+    await send("Look up a course");
+    await act(async () => {
+      if (action === "stop") fireEvent.click(view.getByRole("button", { name: "Stop generating" }));
+      if (action === "reset") shellRef.current?.startNewChat();
+      if (action === "unmount") view.unmount();
+    });
+    expect(signal.aborted).toBe(true);
+    expect(play).not.toHaveBeenCalledWith("complete");
+    expect(play).not.toHaveBeenCalledWith("failure");
+  });
+
+  it("loads saved replies without replaying notifications", async () => {
+    const play = vi.spyOn(siteAudio, "play").mockImplementation(() => {});
+    api.getSession.mockResolvedValue([{ role: "assistant", content: "Saved reply" }]);
+    const view = renderPanel("saved-audio");
+    await view.findByText("Saved reply");
+    expect(play).not.toHaveBeenCalled();
   });
 });
 

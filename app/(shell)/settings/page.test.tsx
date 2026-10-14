@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { AudioProvider } from "@/src/components/audio/audio-provider";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,9 +35,11 @@ describe("Settings", () => {
     expect(Object.keys(await import("./page"))).toEqual(["default"]);
   });
 
-  it("shows only appearance for guests without loading personalization", () => {
+  it("shows appearance and sound for guests without loading personalization", () => {
     auth.isGuest = true;
-    const { container } = render(<SettingsPage />);
+    const { container } = render(<SettingsPage />, { wrapper: AudioProvider });
+    expect(screen.getByRole("region", { name: "Sound" })).not.toBeNull();
+    expect(screen.getByRole("slider", { name: "Volume" })).not.toBeNull();
 
     expect(screen.getByRole("region", { name: "Appearance" })).not.toBeNull();
     expect(screen.getByTestId("theme-toggle")).not.toBeNull();
@@ -51,8 +54,10 @@ describe("Settings", () => {
     expect(api.saveProfile).not.toHaveBeenCalled();
   });
 
-  it("keeps only appearance in a single card for signed-in users", () => {
-    const { container } = render(<SettingsPage />);
+  it("keeps appearance and sound in a single card for signed-in users", () => {
+    const { container } = render(<SettingsPage />, { wrapper: AudioProvider });
+    expect(screen.getByRole("region", { name: "Sound" })).not.toBeNull();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(5);
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("single");
     expect(container.querySelectorAll("[data-workspace-canvas]")).toHaveLength(1);
     expect(container.querySelector("[data-workspace-region='rail']")).toBeNull();

@@ -1,7 +1,7 @@
 "use client";
 
-// App-wide client providers: theme (light/dark with system default), auth bridge,
-// and the shared ChatApi instance.
+// App-wide theme, audio, authentication, and shared ChatApi providers.
+import { AudioProvider } from "@/src/components/audio/audio-provider";
 import { AppAuthProvider, useAppAuth } from "@/src/components/auth/app-auth";
 import { Button } from "@/src/components/ui/button";
 import { createChatApi, type ChatApi } from "@/src/lib/api";
@@ -200,9 +200,11 @@ function ProfileProvider({ children }: { children: ReactNode }) {
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
-      <AppAuthProvider>
-        <ApiProvider>{children}</ApiProvider>
-      </AppAuthProvider>
+      <AudioProvider>
+        <AppAuthProvider>
+          <ApiProvider>{children}</ApiProvider>
+        </AppAuthProvider>
+      </AudioProvider>
     </ThemeProvider>
   );
 }
