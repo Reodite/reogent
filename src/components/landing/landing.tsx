@@ -2,7 +2,7 @@
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
-import { ProductMock } from "@/src/components/landing/product-mock";
+import { FeatureShowcase } from "@/src/components/landing/feature-showcase";
 import { TopoTexture } from "@/src/components/landing/topo-texture";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { ButtonLink } from "@/src/components/ui/button";
@@ -67,25 +67,8 @@ export function Landing() {
   const skipAnim = !!prefersReducedMotion;
   const [scrolled, setScrolled] = useState(false);
 
-  // Scroll-driven refs
-  const productSectionRef = useRef<HTMLElement>(null);
   const ctaSectionRef = useRef<HTMLElement>(null);
-  const featuresRef = useRef<HTMLDivElement>(null);
-  const productMockRef = useRef<HTMLDivElement>(null);
-
-  const featuresInView = useInView(featuresRef, { once: true, amount: 0.3 });
-  const mockInView = useInView(productMockRef, { once: true, amount: 0.15 });
   const ctaInView = useInView(ctaSectionRef, { once: true, amount: 0.4 });
-
-  // Scroll progress for product mock panel depth
-  const { scrollYProgress: productProgress } = useScroll({
-    target: productSectionRef,
-    offset: ["start end", "end start"],
-  });
-
-  // Z-depth separation on panels
-  const chatZ = useTransform(productProgress, [0.1, 0.5], [0, 20]);
-  const mapZ = useTransform(productProgress, [0.1, 0.5], [0, -10]);
 
   // Parallax for final CTA
   const { scrollYProgress: ctaProgress } = useScroll({
@@ -236,76 +219,7 @@ export function Landing() {
           </div>
         </section>
 
-        {/* Product proof — scroll-driven route + inView messages */}
-        <section className="px-4 py-16 sm:px-6 sm:py-24" ref={productSectionRef}>
-          <div className="mx-auto max-w-5xl">
-            <div className="mx-auto mb-10 max-w-lg text-center sm:mb-12">
-              <SectionHeading>You ask. It finds. The map shows.</SectionHeading>
-              <p className="text-on-surface-variant mt-3 text-sm leading-relaxed sm:text-base">
-                The agent calls real UBC data tools. If the answer involves a place, you see the route.
-              </p>
-            </div>
-            <div ref={productMockRef}>
-              <ProductMock
-                inView={mockInView || skipAnim}
-                chatZ={skipAnim ? undefined : chatZ}
-                mapZ={skipAnim ? undefined : mapZ}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Features — staggered entrance */}
-        <section className="px-4 py-24 sm:px-6 sm:py-32">
-          <div ref={featuresRef} className="mx-auto max-w-3xl">
-            <SectionHeading
-              className="text-center"
-              initial={skipAnim ? false : { opacity: 0, y: 16 }}
-              animate={featuresInView || skipAnim ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            >
-              Backed by real data. Drawn on a real map.
-            </SectionHeading>
-
-            <div className="mt-16 grid gap-12 sm:grid-cols-3 sm:gap-8">
-              {(
-                [
-                  {
-                    icon: "search" as const,
-                    title: "Grounded answers",
-                    desc: "Traces back to official UBC sources. Course catalogs, fee schedules, academic calendars.",
-                  },
-                  {
-                    icon: "route" as const,
-                    title: "Campus-aware",
-                    desc: "Ask how to get somewhere and see the walking route drawn on the map. The real path, computed.",
-                  },
-                  {
-                    icon: "chat1" as const,
-                    title: "One conversation",
-                    desc: "No portals, no five-tab searches. Type your question like you would text a friend.",
-                  },
-                ] as const
-              ).map((feature, i) => (
-                <motion.div
-                  key={feature.title}
-                  className="text-center sm:text-left"
-                  initial={skipAnim ? false : featureItemVariant.hidden}
-                  animate={featuresInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
-                  transition={{
-                    duration: 0.5,
-                    delay: 0.1 + i * 0.1,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                >
-                  <Icon name={feature.icon} size={24} className="text-primary mx-auto sm:mx-0" />
-                  <p className="text-on-surface mt-3 text-sm font-medium">{feature.title}</p>
-                  <p className="text-on-surface-variant mt-1 text-sm leading-relaxed">{feature.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <FeatureShowcase />
 
         {/* Final CTA — parallax + staggered entrance */}
         <motion.section

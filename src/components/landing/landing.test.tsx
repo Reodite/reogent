@@ -16,7 +16,6 @@ vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => auth }));
 vi.mock("@/src/components/providers", () => ({
   useTheme: () => ({ mode: "dark", setMode }),
 }));
-vi.mock("@/src/components/landing/product-mock", () => ({ ProductMock: () => null }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("next/link", () => ({ default: (props: ComponentProps<"a">) => <a {...props} /> }));
 vi.mock("motion/react", async (importOriginal) => {
@@ -84,6 +83,27 @@ describe("Landing navigation", () => {
 
     expect(auth.continueAsGuest).toHaveBeenCalledOnce();
     expect(router.push).toHaveBeenCalledWith("/app");
+  });
+});
+
+describe("Landing feature showcase", () => {
+  it("shows agent capabilities, all six tools, and the three Unity pages in that order", () => {
+    render(<Landing />);
+    const carousels = Array.from(document.querySelectorAll('[aria-roledescription="carousel"]'));
+
+    expect(
+      carousels.map((carousel) => within(carousel as HTMLElement).getByRole("heading", { level: 2 }).textContent),
+    ).toEqual(["Agent capabilities", "Tools", "Unity"]);
+    const expectedCards = [
+      ["Grounded answers", "Multi-step research", "Answers on the map"],
+      ["Campus map", "Course lookup", "Prereq tree", "Degree planner", "Course schedule", "Calendar"],
+      ["Announcements", "Pulse", "Schedule sharing"],
+    ];
+    for (const [index, carousel] of carousels.entries()) {
+      const cards = within(carousel as HTMLElement).getAllByRole("heading", { level: 3 });
+      expect(cards.map((card) => card.textContent)).toEqual(expectedCards[index]);
+      expect(carousel.querySelectorAll('[aria-roledescription="slide"]')).toHaveLength(expectedCards[index].length);
+    }
   });
 });
 

@@ -303,6 +303,10 @@ The landing page uses a larger, more expressive type scale:
 
 Keep the landing header sticky in document flow. Allow its navigation and action groups to wrap without shrinking the brand, logo, or controls. Give the hero 32px vertical padding and a minimum equal to the dynamic viewport minus the one-row header; wrapped headers and short-screen content may extend the document. Show the header mask only after scrolling. Keep the unfocused skip link outside pointer targeting, with native keyboard activation and anchor clearance below the sticky mask.
 
+Between the hero and closing action, stack Agent capabilities, Tools, and Unity carousels. Place each title and description above its card strip. Use 16px card corners, a 320px-tall product preview, and a footer with the feature name and one short sentence. Label illustrative previews Example; keep mock controls noninteractive and avoid loading live workspaces or requesting their data. Center cards up to 36rem wide, with neighboring previews visible when space permits.
+
+Place 44px previous and next buttons beside each strip at wider widths. Below 640px, move them below the cards, flanking the progress dots. Give dots 32px targets and distinguish the current dot by width and color. Support native touch and trackpad scrolling, clickable dots, and Arrow, Home, and End keys in the focusable strip. Announce the current card, disable arrows at either end, and retain the selected card across resizes. Keep carousels under visitor control without autoplay.
+
 ## Layout
 
 Flexbox keeps the sidebar and outer workspace stable while destinations replace the content stage.
@@ -706,9 +710,9 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 
 - **Spring physics**: `type: "spring"` with `stiffness: 80-120, damping: 18-20` for hero elements and hero CTAs. Final CTA section uses timed easing (`[0.16, 1, 0.3, 1]` at 500ms) instead of spring for a calmer re-entrance.
 - **Blur reveals**: `filter: "blur(12px)"` → `"blur(0px)"` on hero text entrance.
-- **Scroll-driven parallax**: `useScroll` + `useTransform` for z-depth separation on product mock (chat panel vs map panel shift at different rates). Final CTA section has a subtle vertical parallax (40px → -15px).
+- **Scroll-driven parallax**: `useScroll` + `useTransform` give the final CTA section a vertical parallax (40px → -15px).
 - **Scroll reveals**: `.reveal[data-inview]` triggers `rise-in` (420ms `--neu-ease`, translateY 24px→0).
-- **Product mock perspective**: `perspective: 1200px` with motion z-values on child panels. No rotateX tilt — the depth comes from z-separation alone.
+- **Feature carousels**: Use native horizontal scroll snapping with smooth button navigation. Reduced motion changes cards without travel. Previews stay visible without entrance animation.
 - **Topo drift**: Background texture animates at 30s ease-in-out infinite, translating and rotating subtly.
 - **Conditional header**: `neu-panel` class applied on scroll, adding shadow dynamically.
 - **Header gradient overlay**: `oklch`-based multi-stop gradient from solid `--background` to transparent over 48px (h-48), masking the fixed header's scroll bleed. Uses `color-mix(in oklch, ...)` for smooth perceptual transitions.
