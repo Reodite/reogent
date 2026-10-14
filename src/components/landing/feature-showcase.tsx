@@ -3,8 +3,17 @@
 import { Icon } from "@/src/components/icons";
 import { ProductMock, type ProductPreview } from "@/src/components/landing/product-mock";
 import { Button } from "@/src/components/ui/button";
-import { useReducedMotion } from "motion/react";
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+  wrap,
+  type AnimationPlaybackControls,
+  type MotionValue,
+} from "motion/react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 type FeatureSlide = {
   id: ProductPreview;
@@ -49,53 +58,103 @@ const SHOWCASES: { title: string; description: string; slides: FeatureSlide[] }[
   },
 ];
 
-function scrollToSlide(viewport: HTMLElement, index: number, behavior: ScrollBehavior) {
-  const slide = viewport.children[index] as HTMLElement | undefined;
-  if (!slide) return;
-  viewport.scrollTo({
-    left: slide.offsetLeft - (viewport.clientWidth - slide.offsetWidth) / 2,
-    behavior,
+function FeatureCard({
+  id,
+  slide,
+  index,
+  count,
+  position,
+}: {
+  id: string;
+  slide: FeatureSlide;
+  index: number;
+  count: number;
+  position: MotionValue<number>;
+}) {
+  const offset = useTransform(position, (value) => wrap(-count / 2, count / 2, index - value));
+  const transform = useTransform(offset, (value) => {
+    const distance = Math.min(Math.abs(value), 2);
+    return `translateX(${value * 64}%) translateZ(${-distance * 200}px) rotateY(${-value * 12}deg) scale(${1 - distance * 0.12})`;
   });
+  // Hide cards before they wrap behind the stage, including the three-card carousels.
+  const opacity = useTransform(offset, [-1.5, -1, 0, 1, 1.5], [0, 0.45, 1, 0.45, 0]);
+
+  return (
+    <motion.article
+      id={`${id}-${slide.id}`}
+      aria-roledescription="slide"
+      aria-label={`${index + 1} of ${count}: ${slide.title}`}
+      className="neu-panel neu-shadow-on-background pointer-events-none col-start-1 row-start-1 flex w-[calc(100%-2rem)] max-w-xl min-w-0 flex-col justify-self-center overflow-hidden rounded-2xl"
+      style={{ transform, opacity }}
+    >
+      <div aria-hidden="true" className="bg-surface-container-low h-80 overflow-hidden">
+        <ProductMock feature={slide.id} />
+      </div>
+      <footer className="flex flex-1 flex-col gap-1 px-4 py-5 sm:px-6">
+        <h3 className="text-on-surface text-base font-medium">{slide.title}</h3>
+        <p className="text-on-surface-variant text-sm leading-relaxed">{slide.description}</p>
+      </footer>
+    </motion.article>
+  );
 }
 
 function FeatureCarousel({ title, description, slides }: (typeof SHOWCASES)[number]) {
   const id = useId();
   const viewportRef = useRef<HTMLElement>(null);
-  const currentIndex = useRef(0);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const animation = useRef<AnimationPlaybackControls | null>(null);
+  const panStart = useRef({ position: 0, width: 1 });
+  // Keep travel continuous across either end; only the selected index wraps.
+  const [cursor, setCursor] = useState(0);
+  const activeIndex = wrap(0, slides.length, cursor);
+  const position = useMotionValue(0);
   const reducedMotion = useReducedMotion();
+  const settle = useCallback(
+    (target: number) => {
+      animation.current?.stop();
+      animation.current = animate(position, target, {
+        duration: reducedMotion ? 0 : 0.45,
+        ease: [0.16, 1, 0.3, 1],
+      });
+    },
+    [position, reducedMotion],
+  );
+
+  useEffect(() => {
+    settle(cursor);
+    return () => animation.current?.stop();
+  }, [cursor, settle]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const observer = new ResizeObserver(() => scrollToSlide(viewport, currentIndex.current, "instant"));
-    observer.observe(viewport);
-    return () => observer.disconnect();
+    let distance = 0;
+    let lastEvent = 0;
+    let committed = false;
+    const onWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      const now = performance.now();
+      if (now - lastEvent > 180) {
+        distance = 0;
+        committed = false;
+      }
+      lastEvent = now;
+      if (committed) return;
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientWidth : 1;
+      distance += event.deltaX * unit;
+      if (Math.abs(distance) < 48) return;
+      committed = true;
+      const direction = Math.sign(distance);
+      setCursor((current) => current + direction);
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", onWheel);
   }, []);
 
   function goTo(index: number) {
-    const viewport = viewportRef.current;
-    if (viewport) {
-      scrollToSlide(viewport, Math.max(0, Math.min(index, slides.length - 1)), reducedMotion ? "instant" : "smooth");
-    }
-  }
-
-  function syncPosition() {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-    const center = viewport.scrollLeft + viewport.clientWidth / 2;
-    let closest = 0;
-    let distance = Infinity;
-    for (const [index, child] of Array.from(viewport.children).entries()) {
-      const slide = child as HTMLElement;
-      const nextDistance = Math.abs(slide.offsetLeft + slide.offsetWidth / 2 - center);
-      if (nextDistance < distance) {
-        distance = nextDistance;
-        closest = index;
-      }
-    }
-    currentIndex.current = closest;
-    setActiveIndex(closest);
+    setCursor(
+      (current) => current + wrap(-slides.length / 2, slides.length / 2, index - wrap(0, slides.length, current)),
+    );
   }
 
   return (
@@ -108,78 +167,60 @@ function FeatureCarousel({ title, description, slides }: (typeof SHOWCASES)[numb
           {description}
         </p>
       </div>
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-1 gap-y-3 sm:gap-x-4">
+      <motion.section
+        ref={viewportRef}
+        id={`${id}-slides`}
+        aria-label={`Browse ${title}`}
+        aria-describedby={`${id}-instructions`}
+        tabIndex={0}
+        className="relative grid min-w-0 cursor-grab overflow-clip rounded-2xl py-3 outline-offset-[-2px] select-none active:cursor-grabbing"
+        style={{ perspective: "1200px", transformStyle: "preserve-3d", touchAction: "pan-y pinch-zoom" }}
+        onPanStart={() => {
+          animation.current?.stop();
+          panStart.current = {
+            position: position.get(),
+            width: Math.max(1, (viewportRef.current?.querySelector("article")?.offsetWidth ?? 1) * 0.64),
+          };
+        }}
+        onPan={(_, info) => {
+          if (reducedMotion || Math.abs(info.offset.x) <= Math.abs(info.offset.y)) return;
+          position.set(panStart.current.position - Math.max(-1, Math.min(1, info.offset.x / panStart.current.width)));
+        }}
+        onPanEnd={(event, info) => {
+          const delta =
+            Math.abs(info.offset.x) > 48 ? info.offset.x : Math.abs(info.velocity.x) > 500 ? info.velocity.x : 0;
+          if (event.type !== "pointercancel" && Math.abs(info.offset.x) > Math.abs(info.offset.y) && delta) {
+            setCursor((current) => current - Math.sign(delta));
+          } else {
+            settle(cursor);
+          }
+        }}
+        onKeyDown={(event) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          if (event.key === "Home" || event.key === "End") {
+            goTo(event.key === "Home" ? 0 : slides.length - 1);
+          } else {
+            setCursor((current) => current + (event.key === "ArrowRight" ? 1 : -1));
+          }
+        }}
+      >
+        {slides.map((slide, index) => (
+          <FeatureCard key={slide.id} id={id} slide={slide} index={index} count={slides.length} position={position} />
+        ))}
+      </motion.section>
+      <div className="mt-3 flex items-center justify-center gap-1 sm:gap-3">
         <Button
           variant="secondary"
           size="fieldIcon"
           shadowOn="background"
-          className="col-start-1 row-start-2 sm:row-start-1"
           aria-label={`Previous ${title} card`}
           aria-controls={`${id}-slides`}
-          disabled={activeIndex === 0}
-          onClick={() => goTo(activeIndex - 1)}
+          onClick={() => setCursor((current) => current - 1)}
         >
           <Icon name="left" size={20} />
         </Button>
-        <section
-          ref={viewportRef}
-          id={`${id}-slides`}
-          aria-label={`Browse ${title}`}
-          aria-describedby={`${id}-instructions`}
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users navigate the scrollable card strip.
-          tabIndex={0}
-          className="relative col-span-3 col-start-1 row-start-1 flex min-w-0 snap-x snap-mandatory [scrollbar-width:none] gap-4 overflow-x-auto overscroll-x-contain rounded-2xl py-3 outline-offset-[-2px] sm:col-span-1 sm:col-start-2 sm:gap-6 [&::-webkit-scrollbar]:hidden"
-          style={{ paddingInline: "max(0.25rem, calc((100% - 36rem) / 2))" }}
-          onScroll={syncPosition}
-          onKeyDown={(event) => {
-            const destinations: Record<string, number> = {
-              ArrowLeft: activeIndex - 1,
-              ArrowRight: activeIndex + 1,
-              Home: 0,
-              End: slides.length - 1,
-            };
-            if (!Object.hasOwn(destinations, event.key)) return;
-            event.preventDefault();
-            goTo(destinations[event.key]);
-          }}
-        >
-          {slides.map((slide, index) => (
-            <article
-              key={slide.id}
-              id={`${id}-${slide.id}`}
-              aria-roledescription="slide"
-              aria-label={`${index + 1} of ${slides.length}: ${slide.title}`}
-              className="neu-panel neu-shadow-on-background flex w-full shrink-0 snap-center snap-always flex-col overflow-hidden rounded-2xl"
-            >
-              <div
-                aria-hidden="true"
-                className="bg-surface-container-low pointer-events-none h-80 overflow-hidden select-none"
-              >
-                <ProductMock feature={slide.id} />
-              </div>
-              <footer className="flex flex-1 flex-col gap-1 px-4 py-5 sm:px-6">
-                <h3 className="text-on-surface text-base font-medium">{slide.title}</h3>
-                <p className="text-on-surface-variant text-sm leading-relaxed">{slide.description}</p>
-              </footer>
-            </article>
-          ))}
-        </section>
-        <Button
-          variant="secondary"
-          size="fieldIcon"
-          shadowOn="background"
-          className="col-start-3 row-start-2 sm:row-start-1"
-          aria-label={`Next ${title} card`}
-          aria-controls={`${id}-slides`}
-          disabled={activeIndex === slides.length - 1}
-          onClick={() => goTo(activeIndex + 1)}
-        >
-          <Icon name="right" size={20} />
-        </Button>
-        <fieldset
-          className="col-start-2 row-start-2 flex min-w-0 flex-wrap justify-center"
-          aria-label={`${title} progress`}
-        >
+        <fieldset className="flex min-w-0 flex-wrap justify-center" aria-label={`${title} progress`}>
           {slides.map((slide, index) => (
             <button
               key={slide.id}
@@ -198,9 +239,19 @@ function FeatureCarousel({ title, description, slides }: (typeof SHOWCASES)[numb
             </button>
           ))}
         </fieldset>
+        <Button
+          variant="secondary"
+          size="fieldIcon"
+          shadowOn="background"
+          aria-label={`Next ${title} card`}
+          aria-controls={`${id}-slides`}
+          onClick={() => setCursor((current) => current + 1)}
+        >
+          <Icon name="right" size={20} />
+        </Button>
       </div>
       <p id={`${id}-instructions`} className="sr-only">
-        Use the left and right arrow keys to browse. Home shows the first card; End shows the last.
+        Use the left and right arrow keys to browse. Navigation loops. Home shows the first card; End shows the last.
       </p>
       <p role="status" aria-atomic="true" className="sr-only">
         {activeIndex + 1} of {slides.length}: {slides[activeIndex].title}

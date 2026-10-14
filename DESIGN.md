@@ -303,9 +303,9 @@ The landing page uses a larger, more expressive type scale:
 
 Keep the landing header sticky in document flow. Allow its navigation and action groups to wrap without shrinking the brand, logo, or controls. Give the hero 32px vertical padding and a minimum equal to the dynamic viewport minus the one-row header; wrapped headers and short-screen content may extend the document. Show the header mask only after scrolling. Keep the unfocused skip link outside pointer targeting, with native keyboard activation and anchor clearance below the sticky mask.
 
-Between the hero and closing action, stack Agent capabilities, Tools, and Unity carousels. Place each title and description above its card strip. Use 16px card corners, a 320px-tall product preview, and a footer with the feature name and one short sentence. Label illustrative previews Example; keep mock controls noninteractive and avoid loading live workspaces or requesting their data. Center cards up to 36rem wide, with neighboring previews visible when space permits.
+Between the hero and closing action, stack Agent capabilities, Tools, and Unity carousels. Place each title and description above its cards. Use 16px card corners, a 320px-tall product preview, and a footer with the feature name and one short sentence. Label illustrative previews Example; keep mock controls noninteractive and avoid loading live workspaces or requesting their data. Center the selected card up to 36rem wide. Tilt, shrink, and fade neighboring cards into the background with 3D perspective. Clip the stage without a scrollbar.
 
-Place 44px previous and next buttons beside each strip at wider widths. Below 640px, move them below the cards, flanking the progress dots. Give dots 32px targets and distinguish the current dot by width and color. Support native touch and trackpad scrolling, clickable dots, and Arrow, Home, and End keys in the focusable strip. Announce the current card, disable arrows at either end, and retain the selected card across resizes. Keep carousels under visitor control without autoplay.
+Place 44px previous and next buttons below the cards, flanking the progress dots at all widths. Give dots 32px targets and distinguish the current dot by width and color. Support horizontal swipes and trackpad gestures, clickable dots, and Arrow, Home, and End keys in the focusable stage. Preserve vertical page scrolling and pinch zoom. Announce the current card, loop navigation in both directions, and retain the selected card across resizes. Keep carousels under visitor control without autoplay.
 
 ## Layout
 
@@ -712,7 +712,7 @@ The landing page uses an expressive motion vocabulary distinct from the app:
 - **Blur reveals**: `filter: "blur(12px)"` → `"blur(0px)"` on hero text entrance.
 - **Scroll-driven parallax**: `useScroll` + `useTransform` give the final CTA section a vertical parallax (40px → -15px).
 - **Scroll reveals**: `.reveal[data-inview]` triggers `rise-in` (420ms `--neu-ease`, translateY 24px→0).
-- **Feature carousels**: Use native horizontal scroll snapping with smooth button navigation. Reduced motion changes cards without travel. Previews stay visible without entrance animation.
+- **Feature carousels**: Animate card depth, scale, tilt, and opacity over 450ms with `[0.16, 1, 0.3, 1]` easing. Keep travel continuous when navigation wraps; fade distant cards out before repositioning them behind the stage. Follow horizontal drags and settle on release. Reduced motion changes cards without travel or drag-following animation. Previews stay visible without entrance animation.
 - **Topo drift**: Background texture animates at 30s ease-in-out infinite, translating and rotating subtly.
 - **Conditional header**: `neu-panel` class applied on scroll, adding shadow dynamically.
 - **Header gradient overlay**: `oklch`-based multi-stop gradient from solid `--background` to transparent over 48px (h-48), masking the fixed header's scroll bleed. Uses `color-mix(in oklch, ...)` for smooth perceptual transitions.
