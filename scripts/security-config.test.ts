@@ -26,8 +26,8 @@ describe("deployment security defaults", () => {
 
   it("binds database and search ports to loopback and requires credentials", () => {
     const compose = read("docker-compose.yml");
-    expect(compose).toContain('"127.0.0.1:5432:5432"');
-    expect(compose).toContain('"127.0.0.1:7700:7700"');
+    expect(compose).toMatch(/"127\.0\.0\.1:[^"\n]+:5432"/);
+    expect(compose).toMatch(/"127\.0\.0\.1:[^"\n]+:7700"/);
     expect(compose).not.toMatch(/POSTGRES_PASSWORD:-|MEILI_MASTER_KEY:-/);
     expect(compose).toContain("${POSTGRES_PASSWORD:?");
     expect(compose).toContain("${MEILI_MASTER_KEY:?");

@@ -35,10 +35,12 @@ Generate separate secrets for Postgres, Meilisearch, and JWT signing, for exampl
 | `JWT_SECRET`                               | JWT signing secret; production requires at least 32 bytes                  |
 | `AUTH_ENABLED`                             | `false` permits the development bypass outside production                  |
 | `DATA_PATH`                                | Dataset root; host setup uses `./ubc-unified-data/data`                    |
-| `PORT`                                     | Compose app/development host port                                          |
+| `PORT`                                     | Compose app/development host port (default `3000`)                         |
+| `POSTGRES_PORT`                            | Compose Postgres host port (default `5432`)                                |
+| `MEILI_PORT`                               | Compose Meilisearch host port (default `7700`)                             |
 | `TRUSTED_CLIENT_IP_HEADER`                 | Optional proxy-overwritten single-IP header; see the security requirements |
 
-Host processes use loopback service URLs; Compose replaces them with container hostnames. `npm run ingest` loads an optional root `.env` and preserves inherited environment variables.
+Host processes use loopback service URLs. If you change `POSTGRES_PORT` or `MEILI_PORT`, update the port in `DATABASE_URL` or `MEILI_URL` for host-run commands. Compose uses container hostnames and fixed internal ports (`5432` and `7700`). `npm run ingest` loads an optional root `.env` and preserves inherited environment variables.
 
 ### Request resources
 
