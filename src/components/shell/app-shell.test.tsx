@@ -11,7 +11,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 
 // Heavy sub-trees are stubbed so the assertions target AppShell's composition
 // (regions + #main-content + sheet/drawer), not the pane internals.
-const auth = vi.hoisted(() => ({ status: "signedIn" }));
+const auth = vi.hoisted(() => ({ status: "signedIn", isGuest: false }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => auth }));
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
 vi.mock("@/src/components/map/map-panel", () => ({
@@ -23,7 +23,13 @@ vi.mock("@/src/components/map/map-panel", () => ({
     </WorkspacePage>
   ),
 }));
-vi.mock("@/src/components/prereq-tree/prereq-tree-pane", () => ({ PrereqTreePane: () => null }));
+vi.mock("@/src/components/prereq-tree/prereq-tree-pane", () => ({
+  PrereqTreePane: () => (
+    <WorkspacePage composition="canvas" title="Prereq tree">
+      <div data-testid="prereq-pane" />
+    </WorkspacePage>
+  ),
+}));
 vi.mock("@/src/components/calendar/calendar-pane", () => ({
   CalendarPane: () => (
     <WorkspacePage composition="canvas" title="Calendar">
@@ -73,7 +79,7 @@ vi.mock("@/src/components/shell/session-sidebar", () => ({
 vi.mock("@/src/components/theme-toggle", () => ({ ThemeToggle: () => null }));
 vi.mock("@/src/components/shell/user-menu", () => ({ UserMenu: () => null }));
 vi.mock("@/src/components/ui/live-region", () => ({ LiveRegion: () => null }));
-const pathname = vi.hoisted(() => ({ value: "/" }));
+const pathname = vi.hoisted(() => ({ value: "/app" }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: () => {}, push: () => {} }),
   usePathname: () => pathname.value,
@@ -142,11 +148,12 @@ beforeAll(() => {
 });
 
 afterEach(() => {
-  pathname.value = "/";
+  pathname.value = "/app";
   mem.clear();
   vi.clearAllMocks();
   cleanup();
   auth.status = "signedIn";
+  auth.isGuest = false;
   mediaQueries.clear();
   viewportWidth = 390;
   document.body.style.overflow = "";
@@ -212,7 +219,7 @@ it("gates private content during SSR, initialization and signout", () => {
 
 describe("AppShell navigation", () => {
   it("preserves sidebar trigger focus when a lazy tool finishes loading", async () => {
-    pathname.value = "/tools/planner";
+    pathname.value = "/app/tools/planner";
     const view = renderShell(false);
     const trigger = view.getByRole("button", { name: "Open sidebar" });
     trigger.focus();
@@ -232,29 +239,29 @@ describe("AppShell navigation", () => {
   });
 
   it("loads the tool selected by its direct URL", async () => {
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     const view = renderShell(true);
     await view.findByTestId("map-area");
 
-    pathname.value = "/tools/calendar";
+    pathname.value = "/app/tools/calendar";
     view.rerender(<ShellFixture />);
     await view.findByTestId("calendar-pane");
     expect(view.queryByTestId("map-area")).toBeNull();
   });
 
   it("preserves the active ChatPanel when native history mints its session URL", () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const view = renderShell(true);
     const chat = view.getByTestId("chat-children");
 
-    pathname.value = "/chat/f1100000-0000-4000-8000-000000000001";
+    pathname.value = "/app/chat/f1100000-0000-4000-8000-000000000001";
     view.rerender(<ShellFixture />);
 
     expect(view.getByTestId("chat-children")).toBe(chat);
   });
 
   it("replaces old chat with the intended tool before pathname commit", async () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const { container, findByTestId, queryByTestId } = render(<NavigatingShellFixture />);
 
     act(() => fireEvent.click(modeLink(container, "Tools")));
@@ -262,11 +269,11 @@ describe("AppShell navigation", () => {
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
     await findByTestId("map-area");
     expect(queryByTestId("chat-children")).toBeNull();
-    expect(container.querySelector("[data-shell-navigation-pending='/tools/map']")).not.toBeNull();
+    expect(container.querySelector("[data-shell-navigation-pending='/app/tools/map']")).not.toBeNull();
   });
 
   it("uses destination-shaped loading instead of Pulse when entering AI", () => {
-    pathname.value = "/pulse";
+    pathname.value = "/app/pulse";
     const { container, queryByTestId } = render(<NavigatingShellFixture />);
 
     act(() => fireEvent.click(modeLink(container, "AI")));
@@ -277,11 +284,31 @@ describe("AppShell navigation", () => {
     expect(queryByTestId("chat-children")).toBeNull();
   });
 
-  it("Tools mode renders no right pane collapse button", () => {
-    const { container } = renderShell(true);
-    fireEvent.click(modeLink(container, "Tools"));
+  it("Tools mode renders no right pane collapse button", async () => {
+    pathname.value = "/app/tools/map";
+    const { container, findByTestId } = renderShell(true);
+    await findByTestId("map-area");
     expect(container.querySelector('[aria-label="Close answer canvas"]')).toBeNull();
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
+  });
+
+  it.each([false, true])("keeps guest tools and drawer access without a mode bar at wide=%s", async (wide) => {
+    auth.isGuest = true;
+    pathname.value = "/app/tools/map";
+    const view = renderShell(wide);
+    await view.findByTestId("map-area");
+    expect(view.container.querySelector("[data-mode-toggle]")).toBeNull();
+    expect(view.container.querySelector("[data-mobile-navigation]")).toBeNull();
+    expect(view.container.querySelector("aside")?.getAttribute("aria-label")).toBe("Tools");
+    if (!wide) {
+      const menu = view.getByRole("button", { name: "Open sidebar" });
+      fireEvent.click(menu);
+      const drawer = view.getByRole("dialog", { name: "Tools" });
+      expect(drawer.querySelector("[data-tool-list]")).not.toBeNull();
+      expect(drawer.querySelector("[data-mode-navigation]")).toBeNull();
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(document.activeElement).toBe(menu);
+    }
   });
 
   it("gates bottom navigation behind overlays and restores it on Settings", () => {
@@ -297,17 +324,17 @@ describe("AppShell navigation", () => {
     expect(bottom?.hasAttribute("inert")).toBe(false);
     act(() => capturedShell.current?.setAnswerSheetOpen(true));
     expect(bottom?.hasAttribute("inert")).toBe(true);
-    pathname.value = "/settings";
+    pathname.value = "/app/settings";
     rerender(<ShellFixture />);
     expect(container.querySelector("[data-answer-sheet]")).toBeNull();
     expect(bottom?.hasAttribute("inert")).toBe(false);
   });
 
   it("keeps navigation available when returning from Settings with a retained answer sheet", () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const view = render(<NavigatingShellFixture />);
     act(() => capturedShell.current?.setAnswerSheetOpen(true));
-    pathname.value = "/settings";
+    pathname.value = "/app/settings";
     view.rerender(<NavigatingShellFixture />);
     fireEvent.click(modeLink(view.container, "AI"));
     expect(view.container.querySelector("[data-navigation-pending]")).not.toBeNull();
@@ -316,10 +343,11 @@ describe("AppShell navigation", () => {
     expect(view.container.querySelector("[data-mobile-navigation]")?.hasAttribute("inert")).toBe(false);
   });
 
-  it("keeps pending destination navigation available outside inert task controls", () => {
-    pathname.value = "/chat";
-    const { container, getByRole } = render(<NavigatingShellFixture />);
+  it("keeps pending destination navigation available outside inert task controls", async () => {
+    pathname.value = "/app";
+    const { container, getByRole, findByTestId } = render(<NavigatingShellFixture />);
     fireEvent.click(modeLink(container, "Tools"));
+    await findByTestId("map-area");
     const menu = getByRole("button", { name: "Open sidebar" });
     expect(menu.closest("[inert]")).toBeNull();
     expect(getByRole("button", { name: "Map task action" }).closest("[inert]")).not.toBeNull();
@@ -335,31 +363,37 @@ describe("AppShell navigation", () => {
     expect(container.querySelector('[aria-label="Open answer canvas"]')).toBeNull();
   });
 
-  it("renders Settings as a utility workspace without exposing the prior tool as current", () => {
-    const view = renderShell(true);
-    fireEvent.click(modeLink(view.container, "Tools"));
-    fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement);
+  it.each(["settings", "account", "about"])(
+    "renders %s without exposing the prior tool as current",
+    async (utilityPage) => {
+      pathname.value = "/app/tools/prereq/CPSC320";
+      const view = renderShell(true);
+      await view.findByTestId("prereq-pane");
+      expect(view.container.querySelector('[data-tool-id="prereq-tree"]')?.getAttribute("aria-current")).toBe("page");
 
-    pathname.value = "/settings";
-    view.rerender(<ShellFixture />);
+      pathname.value = `/app/${utilityPage}`;
+      view.rerender(<ShellFixture />);
 
-    expect(view.container.querySelectorAll("main")).toHaveLength(1);
-    expect(view.container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("settings");
-    expect(view.container.querySelector("#main-content")?.getAttribute("data-shell-mode")).toBe("tools");
-    expect(view.container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
-    expect(view.container.querySelector('[data-tool-id="prereq-tree"]')?.getAttribute("aria-current")).toBeNull();
-    expect(view.container.querySelector("[data-answer-sheet]")).toBeNull();
-  });
+      expect(view.container.querySelectorAll("main")).toHaveLength(1);
+      expect(view.container.querySelector("#main-content")?.getAttribute("data-pane")).toBe(utilityPage);
+      expect(view.container.querySelector("#main-content")?.getAttribute("data-shell-mode")).toBe("tools");
+      expect(view.container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
+      expect(view.container.querySelector('[data-tool-id="prereq-tree"]')?.getAttribute("aria-current")).toBeNull();
+      expect(view.container.querySelector("[data-answer-sheet]")).toBeNull();
+    },
+  );
 
-  it("opens the compact Tools drawer without replacing the active tool", () => {
-    const { container } = renderShell(false);
-    fireEvent.click(modeLink(container, "Tools"));
+  it("opens the compact Tools drawer without replacing the active tool", async () => {
+    pathname.value = "/app/tools/map";
+    const { container, findByTestId, getByTestId } = renderShell(false);
+    const map = await findByTestId("map-area");
     const opener = container.querySelector('[aria-label="Open sidebar"]') as HTMLElement;
     fireEvent.click(opener);
     const drawer = container.querySelector('[role="dialog"][aria-label="Tools"]');
     expect(drawer).not.toBeNull();
     expect(drawer?.querySelector("[data-tool-list]")).not.toBeNull();
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
+    expect(getByTestId("map-area")).toBe(map);
   });
 });
 
@@ -410,9 +444,9 @@ describe("drawer focus and inert state", () => {
 
 describe("sidebar responsive cleanup", () => {
   it.each([
-    ["AI", "/chat", 1024],
-    ["Unity", "/pulse", 1024],
-    ["Tools", "/tools/map", 1280],
+    ["AI", "/app", 1024],
+    ["Unity", "/app/pulse", 1024],
+    ["Tools", "/app/tools/map", 1280],
   ])("closes %s at its desktop breakpoint and restores desktop focus", (_mode, path, breakpoint) => {
     pathname.value = path;
     document.body.style.overflow = "auto";
@@ -441,8 +475,8 @@ describe("sidebar responsive cleanup", () => {
     expect(document.body.style.overflow).toBe("auto");
   });
 
-  it.each(["/chat", "/pulse"])("closes an open Tools drawer when the mode changes to %s on desktop", (path) => {
-    pathname.value = "/tools/map";
+  it.each(["/app", "/app/pulse"])("closes an open Tools drawer when the mode changes to %s on desktop", (path) => {
+    pathname.value = "/app/tools/map";
     viewportWidth = 1100;
     const view = render(<ShellFixture />);
     fireEvent.click(view.getByRole("button", { name: "Open sidebar" }));
@@ -458,10 +492,10 @@ describe("sidebar responsive cleanup", () => {
   });
 
   it("updates the listener when an open compact drawer changes mode and cleans up on unmount", () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const view = renderShell(false);
     fireEvent.click(view.getByRole("button", { name: "Open sidebar" }));
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(<ShellFixture />);
 
     expect(mediaQueries.get("(min-width: 1024px)")?.listeners.size).toBe(0);

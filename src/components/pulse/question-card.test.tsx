@@ -1,15 +1,30 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { AudioProvider } from "@/src/components/audio/audio-provider";
+import { siteAudio } from "@/src/lib/audio";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import type { HTMLMotionProps } from "motion/react";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PulseQuestionCard, voteFromDrag } from "./question-card";
 
 // motion reads the reduced-motion media query once at module init, so the hook
 // is mocked instead of window.matchMedia (which happy-dom lacks anyway).
 let reduceMotion = false;
-vi.mock("motion/react", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("motion/react")>()),
-  useReducedMotion: () => reduceMotion,
-}));
+let dragEnd: HTMLMotionProps<"article">["onDragEnd"];
+vi.mock("motion/react", async (importOriginal) => {
+  const original = await importOriginal<typeof import("motion/react")>();
+  const { createElement } = await import("react");
+  const Article = (props: HTMLMotionProps<"article">) => {
+    dragEnd = props.onDragEnd;
+    return createElement(original.motion.article, props);
+  };
+  return {
+    ...original,
+    motion: new Proxy(original.motion, {
+      get: (target, key, receiver) => (key === "article" ? Article : Reflect.get(target, key, receiver)),
+    }),
+    useReducedMotion: () => reduceMotion,
+  };
+});
 
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
@@ -24,7 +39,14 @@ beforeAll(() => {
   });
 });
 
-afterEach(cleanup);
+beforeEach(() => {
+  dragEnd = undefined;
+  vi.spyOn(siteAudio, "play").mockImplementation(() => {});
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("voteFromDrag", () => {
   it("commits on offset past the threshold, by direction", () => {
@@ -50,9 +72,11 @@ describe("PulseQuestionCard — unvoted", () => {
     const onVote = vi.fn();
     const pointerStart = vi.fn();
     const { getByText, getByRole } = render(
-      <div onPointerDown={pointerStart}>
-        <PulseQuestionCard card={card} onVote={onVote} />
-      </div>,
+      <AudioProvider>
+        <div onPointerDown={pointerStart}>
+          <PulseQuestionCard card={card} onVote={onVote} />
+        </div>
+      </AudioProvider>,
     );
     expect(getByText(card.text)).toBeTruthy();
 
@@ -68,6 +92,34 @@ describe("PulseQuestionCard — unvoted", () => {
     expect(onVote).toHaveBeenLastCalledWith(true);
     fireEvent.click(disagree);
     expect(onVote).toHaveBeenLastCalledWith(false);
+    expect(vi.mocked(siteAudio.play).mock.calls).toEqual([["swipeRight"], ["swipeLeft"]]);
+  });
+
+  it.each([
+    ["pointerup", 170, 0, true],
+    ["pointerup", -170, 0, false],
+    ["pointerup", 20, 800, true],
+    ["pointerup", 35, 200, null],
+    ["pointercancel", 170, 800, null],
+  ] as const)("matches vote feedback to a %s at offset %s and velocity %s", (type, x, velocity, vote) => {
+    const onVote = vi.fn();
+    render(<PulseQuestionCard card={card} onVote={onVote} />);
+    expect(dragEnd).toBeTypeOf("function");
+    act(() =>
+      dragEnd!(new PointerEvent(type), {
+        point: { x, y: 0 },
+        delta: { x, y: 0 },
+        offset: { x, y: 0 },
+        velocity: { x: velocity, y: 0 },
+      }),
+    );
+    if (vote === null) {
+      expect(onVote).not.toHaveBeenCalled();
+      expect(siteAudio.play).not.toHaveBeenCalled();
+    } else {
+      expect(onVote).toHaveBeenCalledExactlyOnceWith(vote);
+      expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith(vote ? "swipeRight" : "swipeLeft");
+    }
   });
 
   it("shows the card's vote error", () => {
@@ -100,6 +152,7 @@ describe("PulseQuestionCard — voted", () => {
     expect(getByRole("img").getAttribute("aria-label")).toBe("25% disagree, 75% agree, 4 votes");
     expect(getByText("75%")).toBeTruthy();
     expect(getByText("25%")).toBeTruthy();
+    expect(siteAudio.play).not.toHaveBeenCalled();
   });
 
   it("shows placeholders while the vote is pending", () => {
@@ -123,5 +176,6 @@ it("restores vote controls and removes tallies when an optimistic vote rolls bac
   expect(queryByRole("img")).toBeNull();
   fireEvent.click(getByRole("button", { name: "Agree: Q" }));
   expect(onVote).toHaveBeenCalledWith(true);
+  expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("swipeRight");
   reduceMotion = false;
 });

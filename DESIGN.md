@@ -239,10 +239,12 @@ Landing headings use the 36/48/60px responsive scale, 1.05 leading, and -0.035em
 - From 640px, retain 12px shell gutters and raised workspace panels. AI/Unity use the persistent sidebar from 1024px; Tools waits until 1280px. Below those thresholds, use the drawer.
 - `WorkspacePage` owns 24px wide/16px compact spacing, 16px region gaps, the optional 20rem rail, and the 55rem rail/canvas threshold. Keep the heading/navigation fixed while short viewports scroll the toolbar and content below. Preserve the 20rem content floor and feature-specific minima.
 - Keep one owner for each gap and scroll region. Use 4px between a title and support text, 8–16px within a group, and 16–24px between sections. Fields retain a 6px label/control gap. Omit empty metadata and feedback regions.
-- Use the shell's reported visual viewport at normal scale; preserve native pinch zoom. The shell owns top/side safe areas and the bottom mode bar owns the bottom safe area. Independent overlays keep their own safe padding; the composer retains 12px above the bar without adding another bottom safe area.
+- Use the shell's reported visual viewport at normal scale; preserve native pinch zoom. The shell owns top/side safe areas and the signed-in bottom mode bar owns the bottom safe area. Guests have no mode bar, so the shell owns their bottom inset. Independent overlays keep their own safe padding; the composer retains 12px above the bar without adding another bottom safe area.
 - Match loading and loaded frames. Keep usable navigation outside pending-only inert regions, including when an implementation chunk is still loading.
 
 The shell brief owns sidebar widths, pane floors, mode restoration, drawer geometry, focus return, and Answer Sheet behavior. Preserve those contracts rather than introducing a second mobile component tree.
+
+Keep the landing page at `/` and the logo linked there. Chat starts at `/app`; Tools and Unity live under `/app/tools` and `/app/pulse`. Utility routes `/app/settings`, `/app/account`, and `/app/about` retain the prior mode and cached destination without marking an unrelated tool current. Guests retain Tools navigation and the account menu without mode controls. Keep native links, modified-click behavior, and browser Back restoration.
 
 ## Elevation & Depth
 
@@ -280,16 +282,16 @@ Keep user bubbles at `16px 16px 5px 16px` and assistant bubbles at `16px 16px 16
 
 For close parallel corners, subtract the border-box inset from the outer radius. Include borders and padding, but not shadows or focus rings.
 
-| Contour                                           | Outer / inset / inner |
-| ------------------------------------------------- | --------------------- |
-| Expanded navigation well and row                  | 16 / 8 / 8px          |
-| Collapsed navigation well and row                 | 12 / 4 / 8px          |
-| Workspace, prerequisite, term, and theme segments | 8 / 4 / 4px           |
-| Timetable canvas and frame                        | 16 / 2 / 14px         |
-| Timetable frame and scroll field                  | 14 / 2 / 12px         |
-| Timetable day strip and selection                 | 12 / 4 / 8px          |
-| Single-line composer and action, phone            | 16 / 6 / 10px         |
-| Single-line composer and action, wider screen     | 16 / 10 / 6px         |
+| Contour                                       | Outer / inset / inner |
+| --------------------------------------------- | --------------------- |
+| Expanded navigation well and row              | 16 / 8 / 8px          |
+| Collapsed navigation well and row             | 12 / 4 / 8px          |
+| Workspace, prerequisite, and term segments    | 8 / 4 / 4px           |
+| Timetable canvas and frame                    | 16 / 2 / 14px         |
+| Timetable frame and scroll field              | 14 / 2 / 12px         |
+| Timetable day strip and selection             | 12 / 4 / 8px          |
+| Single-line composer and action, phone        | 16 / 6 / 10px         |
+| Single-line composer and action, wider screen | 16 / 10 / 6px         |
 
 Center leading controls on the 28px workspace title anchor without shrinking their targets. Plain rail content and discovery searches share the header's 16px inset; dense list bodies retain their explicit 8px variant. Match loading-field positions and responsive heights. Check computed bounds alongside original-scale screenshots before adjusting alignment.
 
@@ -314,6 +316,16 @@ Back actions retain a 44px square ghost target, 20px arrow, destination-specific
 The single-line composer has a 44px field inside a 56px well. Phone text uses 16px/24px with 10px block padding; wider screens use 14px/20px with 12px padding. Send/Stop targets are 44px on phones and 36px on wider screens, with the concentric corners above. Multiline input grows to 96px; preserve the 18px outer/16px inner thinking ring.
 
 Suggestion pills wrap within the available width and keep a 44px minimum. Mapped tool badges use outline pill buttons with `aria-pressed`, 32px desktop/44px phone minima, and the active primary ring. Unmapped badges remain static; preserve primary/error tints and accessible failure text.
+
+### Appearance and sound
+
+Use one intrinsic-width Light/Dark pill with sun/moon icons, two equal tracks, a 2px gap, and 4px padding. Compact radios retain 44px phone/32px wider-screen circles, giving the group 98px/74px widths. Onboarding uses labeled 44px-high segments. Let the account popup's Appearance row wrap rather than shrink the radios. Preserve arrow-key selection and roving focus. Apply the theme immediately with the 400ms ripple; reduced-motion users and browsers without view transitions switch immediately.
+
+Reuse `AudioVolumeControl` in onboarding and Settings. Keep the native range at 0–100% in 10% steps, eleven marks, and visible 0%, 50%, and 100% labels. Use a 44px-high input, 24px circular thumb, and 4px track, with primary selected fill and neutral unselected marks. Retain the Volume label, visible focus, and accessible current percentage without another visual readout. Preview crossed marks and repeat the current mark on selection; keep 0% silent.
+
+Settings places the slider after Appearance and a thin divider, followed by Navigation and Bot noises. Keep Sound as the region's accessible name without a visible subheading, descriptions, or separate mute/preview controls. Use flat 44px rows, 14px clickable labels, and native checkboxes with switch semantics. Switches retain a 44×36px input target, 44×24px pill track, 20px thumb, primary active state, and visible keyboard focus.
+
+Use one action cue per activation, including keyboard input. Page changes use the percussive navigation cue; local Back uses a lower impact. Pair expansion/collapse with rising/falling sweeps and toggles with opposing latch sounds. Keep dedicated drag, drop, selection, deletion, map, and agent cues without a generic click underneath. Hover, focus, typing, and cancelled gestures stay silent. Audio supplements visible feedback; [PRODUCT.md](PRODUCT.md#sound-feedback) owns persistence and exchange lifecycle rules.
 
 ### Loading, failures, and state
 
@@ -361,13 +373,13 @@ Give readers, timers, requests, subscriptions, animation frames, and map resourc
 
 **Calendar:** Keep the 20rem Upcoming rail, month toolbar, and legend. Upcoming opens first in compact view. The seven-column month retains a 36rem width and 6rem compact/8rem wide week minima. Compact day cells use 44px agenda actions. Preserve cursor/filter cache keys, explicit refresh/retry, stale-response rejection, and distinct empty/error states.
 
-**Course lookup:** Keep search, session, sort, and inline filters above one results canvas. Exact codes use structured lookup; filter changes update results directly. Preserve pagination and stale/error states. Detail routes keep header-level Back and Session controls. Results retain a 16rem minimum; grade charts use a named horizontal scroller with a 16rem inner axis/plot row, fixed 112px plot, and count footer outside that minimum.
+**Course lookup:** Keep search, session, sort, and inline filters above one results canvas. Exact codes use structured lookup; filter changes update results directly. Preserve pagination and stale/error states for signed-in and guest browsing. Detail routes at `/app/tools/courses/:code` keep header-level Back and Session controls. Results retain a 16rem minimum; grade charts use a named horizontal scroller with a 16rem inner axis/plot row, fixed 112px plot, and count footer outside that minimum.
 
-**Prerequisites:** Keep search, Show, and Outline/Map controls above a stable canvas. Use equal-width, unwrapped view labels with 44px targets. Below 40rem, open Outline; otherwise open Map with the existing zoom floor. Clearing search returns to guidance; an empty prerequisite set remains a complete result. Preserve rooted URLs, Back navigation, choice state, body-portaled suggestions, and Outline fallback on graph failure. Embedded search stays below the titlebar with 16px side insets and an 8px result gap. Graph wrappers/edges stay outside the tab order; explicit controls own focus.
+**Prerequisites:** Keep search, Show, and Outline/Map controls above a stable canvas. Use equal-width, unwrapped view labels with 44px targets. Below 40rem, open Outline; otherwise open Map with the existing zoom floor. Clearing search returns to guidance; an empty prerequisite set remains a complete result. Preserve rooted `/app/tools/prereq/:code` URLs, Back navigation, choice state, body-portaled suggestions, and Outline fallback on graph failure. Embedded search stays below the titlebar with 16px side insets and an 8px result gap. Graph wrappers/edges stay outside the tab order; explicit controls own focus.
 
 **Degree planner:** Keep equal 320px Requirements/Find Courses rail regions and the scrollable year board. Terms retain a 16rem minimum, 9rem course viewport, and 18rem year-column minimum. Summer expansion uses the existing 300ms region animation; reduced motion updates immediately. Course chips keep two rows, 8px horizontal/4px vertical padding, labeled actions, native destination selectors, and unchanged undo/drag semantics. Hide the source row during drag, reuse its geometry for an inert ghost, and remove it after a successful drop. Use Aspekta throughout. Requirement controls keep 36px checkbox geometry, textual completion distinctions, 50% automatic-check opacity, sticky year headings, and unwrapped credit totals. Compact additions return to Plan.
 
-**Schedules:** Follow the schedule brief for planner/sharer behavior, grid geometry, imports, notifications, and responsive state. Preserve read-only sharer details and explicit planner selection; use Aspekta throughout.
+**Schedules:** Follow the schedule brief for `/app/tools/schedule` and `/app/pulse/schedule` behavior, grid geometry, imports, notifications, and responsive state. Preserve read-only sharer details and explicit planner selection; use Aspekta throughout.
 
 **Map:** Tools uses a 20rem Explore rail; AI uses the full-bleed Answer Canvas map and transient building popup. Compact Explore uses the existing nonmodal sheet with a 64px handle, 120px top clearance, and a route-summary peek. Keep attribution clearance tied to that sheet height. Discovery uses Saved/curated rows; building detail headers stay fixed over one scroller. Reset scroll on a new building, not same-building updates. Preserve source-specific freshness, source links, official image fallback, and the distinction between descriptions and live availability.
 
@@ -375,7 +387,15 @@ Directions use two editable fields in one scrolling region; selecting a result c
 
 **Chat and Markdown:** Reuse `ChatFrame`, `ChatComposerFrame`, and `AssistantIdentity`. Keep the named keyboard-scrollable message region, 60px header, and fixed composer. Preserve GFM and source attribution. Sources stay outside prose spacing, with an 8px top gap, 6px rows, and 256px bound. Task-list checkboxes remain read-only and inline with their text. Follow the existing prose stylesheet rather than inventing another Markdown theme.
 
-**Settings, Pulse, and account controls:** Settings retains the previous mode/workspace state and restores it on Back. Do not unlock profile editing before a successful load; saving preserves field values and disables the fieldset. Pulse retains native Agree/Disagree controls alongside swipe. Keep account appearance radios, nested dismissal, and sign-out feedback. Theme controls remain intrinsic-width at 144px phone/108px wider-screen and wrap with their label rather than shrinking.
+**Onboarding:** `/onboarding` presents Welcome, About you, and Preferences one card at a time, with a named progress list and focus on the current heading. Reuse `ProfileFields`, `ThemeToggle`, and `AudioVolumeControl`. Keep Next/Back drafts, Skip, retry feedback, and optional fields. Disable save actions during submission and remove spatial transitions under reduced motion.
+
+**Account and Settings:** Use one shared workspace and inset canvas with a centered, readable column. Account separates identity, Student profile, and Activity with thin rules and stacks definition-list fields on phones. Open Edit profile in place after loading; Cancel discards the draft. Saving retains values and disables fields and Cancel. Preserve completion state and retry failures; restore focus to Edit profile after success without taking it from another control. Keep Sign out available during loading/recovery and show guests a sign-in prompt without fetching private details. Settings contains Appearance and Sound, with profile editing on Account. Match loading and loaded insets.
+
+**About and account popup:** About uses The creators subtitle, two raised 16px-radius cards with square initial placeholders, linked-name footers with 8px insets, and the coffee link below. The nonmodal account popup starts with Appearance, then General links to Settings, Account, and About, followed by Version. Keep About outside Unity, nested Escape/Tab dismissal, and Sign out on Account.
+
+**Announcements:** Place the feed first in Unity navigation. Use dated full-card links to `/app/pulse/announcements/:slug`, a readable article column, and a named Back to Announcements control. Keep wide Markdown tables and code keyboard-scrollable, preserve visible focus, and omit raw HTML.
+
+**Pulse:** Retain native 44px Agree/Disagree controls alongside swipe. Follow horizontal pointer movement and use the directional 220ms swish only after a committed vote. Return incomplete drags without sound; cancelled gestures remain silent. Preserve vertical touch scrolling and reduced-motion voting without spatial travel.
 
 ## Do's and Don'ts
 

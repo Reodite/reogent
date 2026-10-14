@@ -8,6 +8,7 @@ import {
 import { Button } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import { SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
+import { siteAudio } from "@/src/lib/audio";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import {
   buildScheduleGrid,
@@ -314,7 +315,10 @@ export function ScheduleGrid({
     const optionId = event.over?.data.current?.optionId;
     setActiveBlockId(null);
     settle();
-    if (drag && blockId && typeof optionId === "string") drag.onDrop(blockId, optionId);
+    if (drag && blockId && typeof optionId === "string") {
+      drag.onDrop(blockId, optionId);
+      siteAudio.play("drop");
+    }
   }
 
   function cancelDrag() {

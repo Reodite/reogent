@@ -2,16 +2,16 @@
 
 import { Icon, type IconName } from "@/src/components/icons";
 import { useTheme, type ThemeMode } from "@/src/components/providers";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type KeyboardEvent, type MouseEvent } from "react";
+import { flushSync } from "react-dom";
 
 const OPTIONS: Array<{ mode: ThemeMode; label: string; icon: IconName }> = [
   { mode: "light", label: "Light", icon: "sun" },
-  { mode: "system", label: "Auto", icon: "computer" },
   { mode: "dark", label: "Dark", icon: "moon" },
 ];
+let activeTransition: { finished: Promise<void> } | undefined;
 
-/** Apply theme with a ripple view-transition from click origin, or instant fallback. */
-function applyWithRipple(e: React.MouseEvent, apply: () => void) {
+function applyWithRipple(event: MouseEvent<HTMLButtonElement>, apply: () => void) {
   const doc = document as Document & {
     startViewTransition?: (cb: () => void) => { finished: Promise<void> };
   };
@@ -20,39 +20,47 @@ function applyWithRipple(e: React.MouseEvent, apply: () => void) {
     return;
   }
   const root = document.documentElement;
-  root.style.setProperty("--ripple-x", `${e.clientX}px`);
-  root.style.setProperty("--ripple-y", `${e.clientY}px`);
-  // Suppress per-element transitions so only the clip-path ripple animates
+  const bounds = event.currentTarget.getBoundingClientRect();
+  const x = event.detail ? event.clientX : bounds.left + bounds.width / 2;
+  const y = event.detail ? event.clientY : bounds.top + bounds.height / 2;
+  root.style.setProperty("--ripple-x", `${x}px`);
+  root.style.setProperty("--ripple-y", `${y}px`);
+  // Suppress per-element transitions while the root ripple animates.
   root.classList.add("vt-active");
-  const transition = doc.startViewTransition(apply);
-  transition.finished.catch(() => {}).finally(() => root.classList.remove("vt-active"));
+  const transition = doc.startViewTransition(() => flushSync(apply));
+  activeTransition = transition;
+  void transition.finished
+    .catch(() => {})
+    .finally(() => {
+      if (activeTransition !== transition) return;
+      root.classList.remove("vt-active");
+      activeTransition = undefined;
+    });
 }
 
-/**
- * Compact icon-only segmented theme toggle with ARIA radiogroup semantics,
- * roving tabindex, and a ripple view-transition on click.
- */
-export function ThemeToggle({ className = "" }: { className?: string }) {
+/** Switches appearance in one pill with roving radio focus and a reduced-motion-aware ripple. */
+export function ThemeToggle({ className = "", showLabels = false }: { className?: string; showLabels?: boolean }) {
   const { mode, setMode } = useTheme();
   const groupRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      const idx = OPTIONS.findIndex((o) => o.mode === mode);
-      let next = idx;
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-        next = (idx + 1) % OPTIONS.length;
-      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        next = (idx - 1 + OPTIONS.length) % OPTIONS.length;
+    (event: KeyboardEvent) => {
+      const index = OPTIONS.findIndex((option) => option.mode === mode);
+      let next = index;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+        next = (index + 1) % OPTIONS.length;
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+        next = (index - 1 + OPTIONS.length) % OPTIONS.length;
       } else {
         return;
       }
-      e.preventDefault();
-      setMode(OPTIONS[next].mode);
-      const buttons = groupRef.current?.querySelectorAll<HTMLButtonElement>('[role="radio"]');
-      buttons?.[next]?.focus();
+      event.preventDefault();
+      event.stopPropagation();
+      const button = groupRef.current?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next];
+      button?.focus();
+      button?.click();
     },
-    [mode, setMode],
+    [mode],
   );
 
   return (
@@ -61,7 +69,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       role="radiogroup"
       aria-label="Appearance"
       onKeyDown={handleKeyDown}
-      className={`neu-inset grid w-max shrink-0 grid-cols-3 gap-0.5 rounded-lg p-1 ${className}`}
+      className={`neu-inset grid w-max shrink-0 grid-cols-2 gap-0.5 rounded-full p-1 ${className}`}
     >
       {OPTIONS.map((option) => {
         const selected = mode === option.mode;
@@ -73,13 +81,17 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
             role="radio"
             aria-checked={selected}
             aria-label={option.label}
+            title={option.label}
             tabIndex={selected ? 0 : -1}
-            onClick={(e) => applyWithRipple(e, () => setMode(option.mode))}
-            className={`focus-visible:ring-primary/40 flex size-11 items-center justify-center rounded-sm text-xs font-medium transition-[color,background-color,box-shadow,transform] duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 sm:size-8 ${
-              selected ? "neu-raised bg-surface text-primary" : "text-on-surface-variant hover:text-on-surface"
-            }`}
+            onClick={(event) => {
+              if (!selected) applyWithRipple(event, () => setMode(option.mode));
+            }}
+            className={`focus-visible:ring-primary/40 flex items-center justify-center gap-2 rounded-full font-medium transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1 ${
+              showLabels ? "h-11 min-w-24 px-4 text-sm" : "size-11 sm:size-8"
+            } ${selected ? "neu-raised bg-surface text-primary" : "text-on-surface-variant hover:text-on-surface"}`}
           >
-            <Icon name={option.icon} size={15} />
+            <Icon name={option.icon} size={16} />
+            {showLabels ? option.label : null}
           </button>
         );
       })}

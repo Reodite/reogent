@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
-export type WorkspaceHost = "chat" | "tools" | "unity" | "answer-canvas" | "settings";
+export type WorkspaceHost = "chat" | "tools" | "unity" | "answer-canvas" | "settings" | "account" | "about";
 
 interface WorkspaceHostValue {
   host: WorkspaceHost;

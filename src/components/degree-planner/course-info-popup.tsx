@@ -140,10 +140,10 @@ export function CourseInfoPopup({
         </p>
       )}
       <InlineLink
-        href={`/tools/courses/${courseCodeToSlug(course.code)}`}
+        href={`/app/tools/courses/${courseCodeToSlug(course.code)}`}
         onNavigate={(event) => {
           event.preventDefault();
-          navigation.push(`/tools/courses/${courseCodeToSlug(course.code)}`);
+          navigation.push(`/app/tools/courses/${courseCodeToSlug(course.code)}`);
         }}
         className="gap-1 self-start text-xs"
       >

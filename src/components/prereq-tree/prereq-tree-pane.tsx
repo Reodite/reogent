@@ -536,7 +536,7 @@ export function PrereqTreePane({
       setActiveCode(code);
       setMissingCode(null);
       onChangeRoot?.(code);
-      if (toolsMode) navigate(`/tools/prereq/${courseCodeToSlug(code)}`);
+      if (toolsMode) navigate(`/app/tools/prereq/${courseCodeToSlug(code)}`);
     },
     [navigate, onChangeRoot, toolsMode],
   );
@@ -557,14 +557,14 @@ export function PrereqTreePane({
       setActiveCode(null);
       setMissingCode(null);
       onChangeRoot?.("");
-      if (toolsMode) navigate("/tools/prereq");
+      if (toolsMode) navigate("/app/tools/prereq");
     },
     [activeCode, missingCode, navigate, onChangeRoot, toolsMode],
   );
 
   const openInFinder = useCallback(
     (code: string) => {
-      if (toolsMode) navigate(`/tools/courses/${courseCodeToSlug(code)}`);
+      if (toolsMode) navigate(`/app/tools/courses/${courseCodeToSlug(code)}`);
       else shell?.setActiveChannel("course-lookup", { code });
     },
     [navigate, shell, toolsMode],

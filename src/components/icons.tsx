@@ -31,6 +31,7 @@ const ICON_MAP = {
   fullscreen: "fullscreen-2-line",
   route: "route-line",
   exit: "exit-line",
+  user: "user-4-line",
   settings: "settings-3-line",
   wifiOff: "wifi-off-line",
   moon: "moon-line",
@@ -45,6 +46,7 @@ const ICON_MAP = {
   pencil: "pencil-line",
   externalLink: "external-link-line",
   group: "group-line",
+  announcement: "announcement-line",
   teacup: "teacup-line",
   lock: "lock-line",
   zoomIn: "zoom-in-line",
@@ -87,6 +89,7 @@ export function Icon({
   return (
     <svg
       viewBox="0 0 24 24"
+      data-icon={name}
       width={size}
       height={size}
       className={className}

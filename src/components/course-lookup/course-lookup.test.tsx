@@ -502,7 +502,7 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     render(<CourseLookupPane state={{ code: "" }} setState={vi.fn()} />);
     const codeButton = await screen.findByRole("button", { name: "MATH 100" });
     fireEvent.click(codeButton);
-    expect(routerPush).toHaveBeenCalledWith("/tools/courses/MATH100");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/courses/MATH100");
   });
 
   it("tools mode with a code in state shows only the detail (no table) and fetches that course", async () => {
@@ -513,7 +513,7 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     await waitFor(() => expect(document.querySelector("[data-action='open-prereq-tree']")).not.toBeNull());
     expect(screen.getAllByText("CPSC 110").length).toBeGreaterThan(0);
     fireEvent.click(document.querySelector("[data-action='open-prereq-tree']") as HTMLElement);
-    expect(routerPush).toHaveBeenCalledWith("/tools/prereq/CPSC110");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/prereq/CPSC110");
   });
 
   it("back button returns to the list URL", async () => {
@@ -522,7 +522,7 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     render(<CourseLookupPane state={{ code: "MATH 100" }} setState={vi.fn()} />);
     const back = await screen.findByRole("button", { name: "Back to results" });
     fireEvent.click(back);
-    expect(routerPush).toHaveBeenCalledWith("/tools/courses");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/courses");
   });
 
   it("replaces a settled network failure skeleton with recovery", async () => {
@@ -544,7 +544,7 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
 
     expect(await screen.findByText("Course not found")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Back to results" }));
-    expect(routerPush).toHaveBeenCalledWith("/tools/courses");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/courses");
   });
 });
 

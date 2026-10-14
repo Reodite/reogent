@@ -108,7 +108,7 @@ export function createOpenAIAdapter(): LlmAdapter {
     }
 
     const stopReason = choice.finish_reason === "tool_calls" ? "tool_use" : "end_turn";
-    return { stopReason, message: { role: "assistant" as const, content } };
+    return { stopReason, message: { role: "assistant" as const, content }, totalTokens: res.usage?.total_tokens };
   };
 
   async function* converseStream(
@@ -126,10 +126,13 @@ export function createOpenAIAdapter(): LlmAdapter {
         // memory. Later turns revert to auto (called by loop.ts after a nudge).
         ...(req.forceToolUse && tools ? { tool_choice: "required" as const } : {}),
         stream: true,
+        stream_options: { include_usage: true },
       },
       { signal: req.signal },
     );
 
+    let totalTokens: number | undefined;
+    let completionReason: "tool_use" | "end_turn" | undefined;
     const toolCalls = new Map<number, { id: string; name: string; args: string }>();
     // Reclassifies inline <think>…</think> in content as thinking; buffers
     // partial tags across chunk boundaries so a split tag never leaks.
@@ -137,6 +140,8 @@ export function createOpenAIAdapter(): LlmAdapter {
 
     for await (const chunk of stream) {
       req.signal?.throwIfAborted();
+      totalTokens = chunk.usage?.total_tokens ?? totalTokens;
+      if (completionReason) continue;
       const delta = chunk.choices[0]?.delta;
       if (!delta) continue;
 
@@ -179,14 +184,14 @@ export function createOpenAIAdapter(): LlmAdapter {
         }
         toolCalls.clear();
 
-        req.signal?.throwIfAborted();
-        const reason = finishReason === "tool_calls" ? "tool_use" : "end_turn";
-        yield { type: "stop", reason };
-        return;
+        completionReason = finishReason === "tool_calls" ? "tool_use" : "end_turn";
       }
     }
     // The SDK can swallow a transport abort and end iteration without an error.
     req.signal?.throwIfAborted();
+    if (totalTokens !== undefined) yield { type: "usage", totalTokens };
+    req.signal?.throwIfAborted();
+    if (completionReason) yield { type: "stop", reason: completionReason };
   }
 
   return { converse, converseStream };

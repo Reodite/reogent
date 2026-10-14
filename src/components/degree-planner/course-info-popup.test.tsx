@@ -86,7 +86,7 @@ describe("CourseInfoPopup", () => {
     expect(document.activeElement).toBe(panel);
 
     const finder = screen.getByRole("link", { name: "Open in Course Finder" });
-    expect(finder.getAttribute("href")).toBe("/tools/courses/CPSC310");
+    expect(finder.getAttribute("href")).toBe("/app/tools/courses/CPSC310");
     finder.focus();
     expect(document.activeElement).toBe(finder);
     fireEvent.keyDown(finder, { key: "Escape" });

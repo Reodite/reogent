@@ -2,8 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let generateSessionTitle: typeof import("./title").generateSessionTitle;
 
-const mocks = vi.hoisted(() => ({ converse: vi.fn(), updateSessionTitle: vi.fn() }));
+const mocks = vi.hoisted(() => ({ converse: vi.fn(), recordTokenUsage: vi.fn(), updateSessionTitle: vi.fn() }));
 vi.mock("../llm", () => ({ converse: mocks.converse }));
+vi.mock("../account", () => ({ recordTokenUsage: mocks.recordTokenUsage }));
 vi.mock("../sessions/store", () => ({ updateSessionTitle: mocks.updateSessionTitle }));
 
 beforeEach(async () => {
@@ -62,6 +63,22 @@ describe("generated session titles", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("keeps capacity through usage recording without writing a title after its deadline", async () => {
+    const accounting = Promise.withResolvers<void>();
+    mocks.recordTokenUsage.mockReturnValueOnce(accounting.promise);
+    generateSessionTitle("u1", "late", "question", "answer");
+    await vi.waitFor(() => expect(mocks.recordTokenUsage).toHaveBeenCalledOnce());
+    await vi.advanceTimersByTimeAsync(1000);
+    generateSessionTitle("u1", "busy", "question", "answer");
+    expect(mocks.converse).toHaveBeenCalledOnce();
+    accounting.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(mocks.updateSessionTitle).not.toHaveBeenCalled();
+    generateSessionTitle("u1", "next", "question", "answer");
+    await vi.waitFor(() => expect(mocks.updateSessionTitle).toHaveBeenCalledWith("u1", "next", "Course planning"));
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it.each(["provider", "write"])("releases capacity after a %s failure without retrying a write", async (failure) => {
     if (failure === "provider") mocks.converse.mockRejectedValueOnce(new Error("Provider failed"));
     else mocks.updateSessionTitle.mockRejectedValueOnce(new Error("Write failed"));
@@ -87,5 +104,17 @@ describe("generated session titles", () => {
     await vi.waitFor(() => {
       expect(mocks.updateSessionTitle).toHaveBeenCalledExactlyOnceWith("u1", "sid", "Course planning");
     });
+  });
+
+  it("records title generation usage for the account before saving the title", async () => {
+    mocks.converse.mockResolvedValue({ message: { content: [{ text: "Course planning" }] }, totalTokens: 42 });
+    generateSessionTitle("u1", "s1", "Plan my courses", "Your plan");
+    await vi.waitFor(() =>
+      expect(mocks.updateSessionTitle).toHaveBeenCalledExactlyOnceWith("u1", "s1", "Course planning"),
+    );
+    expect(mocks.recordTokenUsage).toHaveBeenCalledExactlyOnceWith("u1", 42);
+    expect(mocks.recordTokenUsage.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.updateSessionTitle.mock.invocationCallOrder[0],
+    );
   });
 });

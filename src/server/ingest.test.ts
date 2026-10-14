@@ -103,7 +103,7 @@ describe("ingest command environment", () => {
       };
       try {
         mkdirSync(join(directory, "scripts"));
-        symlinkSync(new URL("../../node_modules", import.meta.url), join(directory, "node_modules"), "dir");
+        symlinkSync(new URL("../../node_modules", import.meta.url), join(directory, "node_modules"), "junction");
         writeFileSync(
           join(directory, "scripts/ingest.ts"),
           "const values: Record<string, string | undefined> = { MEILI_URL: process.env.MEILI_URL, MEILI_MASTER_KEY: process.env.MEILI_MASTER_KEY, DATA_PATH: process.env.DATA_PATH }; process.stdout.write(JSON.stringify(values));",

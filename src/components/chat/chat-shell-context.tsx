@@ -1,6 +1,6 @@
 "use client";
 
-// Shared state for the /chat shell: the canvas view the Answer Canvas (AI Mode)
+// Shared state for the /app shell: the canvas view the Answer Canvas (AI Mode)
 // or Full-Bleed Tool (Tools Mode) renders, the map highlight and focus contract,
 // the AI/Tools mode toggle, the below-wide Answer Sheet, and the session list.
 //
@@ -323,10 +323,10 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
       setAskAiRequest({ text, attachment, nonce: askAiNonceRef.current });
       // Mode derives from the URL, so switching to AI means navigating to the
       // chat route — restore the last-visited chat like the mode toggle does.
-      let target = "/chat";
+      let target = "/app";
       try {
         const last = sessionStorage.getItem(LAST_CHAT_PATH_KEY);
-        if (last?.startsWith("/chat")) target = last;
+        if (last && (last === "/app" || last.startsWith("/app/chat/"))) target = last;
       } catch {
         /* sessionStorage unavailable */
       }

@@ -270,6 +270,60 @@ select option {
   color: var(--on-surface);
 }
 
+/* Native range behavior keeps the volume thumb on its ten-percent detents. */
+.audio-volume-slider {
+  display: block;
+  width: 100%;
+  height: 44px;
+  appearance: none;
+  background: transparent;
+  border-radius: 8px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.audio-volume-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--primary) var(--audio-volume), var(--outline-variant) var(--audio-volume));
+}
+
+.audio-volume-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--outline-variant);
+}
+
+.audio-volume-slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.audio-volume-slider::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+  margin-top: -10px;
+  appearance: none;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.audio-volume-slider::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.audio-volume-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* Prevent long unbroken strings from overflowing containers globally */
 body {
   overflow-wrap: anywhere;
@@ -535,16 +589,6 @@ details[open] > *:not(summary) {
     /* biome-ignore lint/complexity/noImportantStyles: see above */
     scroll-behavior: auto !important;
   }
-}
-
-/* ---- Auth guards ---- */
-
-html[data-auth-pending] .landing-root {
-  display: none;
-}
-
-html:not([data-auth-pending]) .auth-splash {
-  display: none;
 }
 
 @keyframes ripple-in {
@@ -952,13 +996,13 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 
 [data-shell-boot-mode="tools"] .shell-boot-chat,
 [data-shell-boot-mode="unity"] .shell-boot-chat,
-[data-shell-boot-mode="settings"] .shell-boot-chat {
+[data-shell-boot-mode="utility"] .shell-boot-chat {
   display: none;
 }
 
 [data-shell-boot-mode="tools"] .shell-boot-workspace,
 [data-shell-boot-mode="unity"] .shell-boot-workspace,
-[data-shell-boot-mode="settings"] .shell-boot-workspace {
+[data-shell-boot-mode="utility"] .shell-boot-workspace {
   display: block;
 }
 
@@ -973,6 +1017,10 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 
 .workspace-page[data-workspace-composition="split"] .workspace-page-body {
   grid-template-columns: 20rem minmax(0, 1fr);
+}
+
+.workspace-page:is([data-workspace-host="settings"], [data-workspace-host="account"]) [data-workspace-canvas] {
+  padding-top: 2rem;
 }
 
 .workspace-page-toggle {
@@ -1342,19 +1390,19 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 @media (min-width: 1024px) {
   [data-shell-boot-mode="ai"] .shell-boot-menu,
   [data-shell-boot-mode="unity"] .shell-boot-menu,
-  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-menu {
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="utility"] .shell-boot-menu {
     display: none;
   }
 
   [data-shell-boot-mode="ai"] .shell-boot-sidebar,
   [data-shell-boot-mode="unity"] .shell-boot-sidebar,
-  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-sidebar {
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="utility"] .shell-boot-sidebar {
     display: block;
   }
 
   [data-shell-boot-mode="ai"] .shell-boot-main,
   [data-shell-boot-mode="unity"] .shell-boot-main,
-  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="settings"] .shell-boot-main {
+  html:not([data-shell-mode="tools"]) [data-shell-boot-mode="utility"] .shell-boot-main {
     padding-left: var(--sidebar-offset, 0px);
   }
 
@@ -1370,17 +1418,17 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 
 @media (min-width: 1280px) {
   [data-shell-boot-mode="tools"] .shell-boot-menu,
-  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-menu {
+  html[data-shell-mode="tools"] [data-shell-boot-mode="utility"] .shell-boot-menu {
     display: none;
   }
 
   [data-shell-boot-mode="tools"] .shell-boot-sidebar,
-  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-sidebar {
+  html[data-shell-mode="tools"] [data-shell-boot-mode="utility"] .shell-boot-sidebar {
     display: block;
   }
 
   [data-shell-boot-mode="tools"] .shell-boot-main,
-  html[data-shell-mode="tools"] [data-shell-boot-mode="settings"] .shell-boot-main,
+  html[data-shell-mode="tools"] [data-shell-boot-mode="utility"] .shell-boot-main,
   .tool-sidebar-content-offset {
     padding-left: var(--sidebar-offset, 0px);
   }

@@ -1,0 +1,27 @@
+import { describe, expect, it } from "vitest";
+import { safeAuthRedirect } from "./auth-redirect";
+
+describe("safeAuthRedirect", () => {
+  it("preserves a local destination, query, and fragment", () => {
+    expect(safeAuthRedirect("/app/tools/courses?q=math#results")).toBe("/app/tools/courses?q=math#results");
+  });
+
+  it.each([
+    null,
+    "https://example.com",
+    "//example.com",
+    "/\\example.com",
+    "/\n/example.com",
+    "/\r/example.com",
+    "/\t/example.com",
+    "/\u0000/example.com",
+    "/settings\u007f",
+    "/login",
+    "/signup?redirect=/chat",
+    "/onboarding",
+    "/onboarding/",
+    "javascript:alert(1)",
+  ])("rejects external or looping destinations: %s", (value) => {
+    expect(safeAuthRedirect(value)).toBe("/app");
+  });
+});

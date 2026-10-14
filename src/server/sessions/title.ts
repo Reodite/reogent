@@ -1,3 +1,4 @@
+import { recordTokenUsage } from "../account";
 import { converse } from "../llm";
 import { createCapacityLimit, MAX_TIMER_MS, positiveIntegerEnv } from "../resource-limits";
 import { updateSessionTitle } from "../sessions/store";
@@ -35,6 +36,8 @@ export function generateSessionTitle(
         toolSpecs: [],
         signal: owner.signal,
       });
+      owner.signal.throwIfAborted();
+      await recordTokenUsage(userId, result.totalTokens);
       owner.signal.throwIfAborted();
       const raw = (result.message.content ?? [])
         .map((b) => b.text)

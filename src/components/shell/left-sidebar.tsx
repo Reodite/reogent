@@ -1,5 +1,6 @@
 "use client";
 
+import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon, type IconName } from "@/src/components/icons";
 import { ModeToggle } from "@/src/components/shell/mode-toggle";
@@ -11,9 +12,9 @@ import { UserMenu } from "@/src/components/shell/user-menu";
 import { Button } from "@/src/components/ui/button";
 
 const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
-  { path: "/pulse", label: "Pulse", icon: "group" },
-  { path: "/pulse/schedule", label: "Schedule", icon: "calendar" },
-  { path: "/pulse/creators", label: "Creators", icon: "teacup" },
+  { path: "/app/pulse/announcements", label: "Announcements", icon: "announcement" },
+  { path: "/app/pulse", label: "Pulse", icon: "group" },
+  { path: "/app/pulse/schedule", label: "Schedule", icon: "calendar" },
 ];
 
 function UnitySidebar({ collapsed = false, onSelect }: { collapsed?: boolean; onSelect?: () => void }) {
@@ -23,7 +24,7 @@ function UnitySidebar({ collapsed = false, onSelect }: { collapsed?: boolean; on
   return (
     <SidebarListNav label="Community" collapsed={collapsed}>
       {UNITY_ITEMS.map((item) => {
-        const active = pathname === item.path || (item.path !== "/pulse" && pathname.startsWith(`${item.path}/`));
+        const active = pathname === item.path || (item.path !== "/app/pulse" && pathname.startsWith(`${item.path}/`));
         return (
           <SidebarListItem key={item.path}>
             <SidebarItemButton
@@ -60,6 +61,7 @@ function CollapseExpandButton({
     <Button
       id="desktop-session-collapse"
       onClick={toggle}
+      aria-expanded={!collapsed}
       aria-label={collapsed ? "Expand sidebar" : `Collapse ${label.toLowerCase()}`}
       title={collapsed ? "Expand sidebar" : `Collapse ${label.toLowerCase()}`}
       variant="ghost"
@@ -86,7 +88,9 @@ export function LeftSidebar({
   onExpand?: () => void;
   onClose?: () => void;
 }) {
-  const { mode } = useChatShell();
+  const { mode: shellMode } = useChatShell();
+  const { isGuest } = useAppAuth();
+  const mode = isGuest ? "tools" : shellMode;
   const footer = (
     <div className={`flex flex-col gap-2 ${collapsed ? "items-center" : ""}`}>
       <ModeToggle collapsed={collapsed} onNavigate={onClose} />

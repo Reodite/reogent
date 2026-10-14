@@ -16,7 +16,7 @@ vi.mock("@/src/components/providers", () => ({ useApi: () => api }));
 vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: "signedIn" }) }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: () => {}, replace: () => {} }),
-  usePathname: () => "/chat",
+  usePathname: () => "/app",
   useParams: () => ({}),
 }));
 vi.mock("@/src/components/prereq-tree/prereq-tree-pane", () => ({ PrereqTreePane: () => null }));

@@ -3,6 +3,11 @@ import { act, cleanup, render } from "@testing-library/react";
 import { Storage } from "happy-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/app/tools/degree-planner",
+  useRouter: () => ({ replace: vi.fn() }),
+}));
+
 const browserStorage = new Storage();
 let store: typeof import("./planner-store");
 let scheduleStore: typeof import("../schedule-planner/schedule-store");
@@ -132,6 +137,7 @@ beforeEach(() => {
         const { username } = JSON.parse(init?.body as string);
         return Response.json({ userId: username, username, token: token(username) });
       }
+      if (path === "/api/profile") return Response.json({ profile: { onboarding_completed: true } });
       if (path === "/api/plan" && init?.method === "PUT") {
         writes.push({ token: authorization, plan: JSON.parse(init.body as string) });
         return new Response(null, { status: 204 });
@@ -198,14 +204,16 @@ describe("schedule account privacy with real auth and storage", () => {
     getSchedule = () => response.promise;
     if (transition === "cross-tab") {
       storedLogin("schedule-A");
-      render(<App showPlan={false} showSchedule />);
+      await act(async () => {
+        render(<App showPlan={false} showSchedule />);
+      });
     }
     act(() => seedSchedule("schedule-A"));
-    act(() => {
+    await act(async () => {
       storedLogin("schedule-B");
       storageEvent();
+      if (transition === "reload") render(<App showPlan={false} showSchedule />);
     });
-    if (transition === "reload") render(<App showPlan={false} showSchedule />);
     const bRenders = scheduleRenders.filter((entry) => entry.userId === "schedule-B");
     expect(bRenders.length).toBeGreaterThan(0);
     expect(JSON.stringify(bRenders)).not.toContain("PRIVATE");
@@ -223,6 +231,7 @@ describe("schedule account privacy with real auth and storage", () => {
   it("clears private schedules on signout while closed and before guest rendering", async () => {
     storedLogin("schedule-logout-A");
     const view = render(<App showPlan={false} />);
+    await act(async () => {});
     act(() => seedSchedule("schedule-logout-A"));
     act(() => auth.signOut());
     expect(scheduleStore.useSchedule.getState()).toMatchObject({ ownerId: null, entries: [], selectedComponents: [] });
@@ -236,6 +245,7 @@ describe("schedule account privacy with real auth and storage", () => {
   it("clears schedule ownership in memory when storage writes fail", async () => {
     storedLogin("schedule-memory-A");
     render(<App showPlan={false} />);
+    await act(async () => {});
     act(() => seedSchedule("schedule-memory-A"));
     const unavailable = () => {
       throw new Error("Storage unavailable");
@@ -276,7 +286,9 @@ describe("planner account privacy with real auth and storage", () => {
     storedLogin("owner-B");
     const response = deferred<Response>();
     getPlan = () => response.promise;
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     expect(renders.filter((entry) => entry.userId === "owner-B").length).toBeGreaterThan(0);
     expect(
       renders.filter((entry) => entry.userId === "owner-B").every((entry) => !entry.plan.includes("PRIVATE")),

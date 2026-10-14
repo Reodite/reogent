@@ -41,7 +41,7 @@ export type ConverseFn = (req: {
   system: string;
   toolSpecs: ToolSpec[];
   signal?: AbortSignal;
-}) => Promise<{ stopReason: string; message: ConverseMessage }>;
+}) => Promise<{ stopReason: string; message: ConverseMessage; totalTokens?: number }>;
 
 // Dataset module system
 

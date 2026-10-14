@@ -1,4 +1,5 @@
 import { uuid } from "@/src/lib/uuid";
+import { recordTokenUsage } from "@/src/server/account";
 import { streamAgent } from "@/src/server/agent/stream";
 import { requireUser } from "@/src/server/auth";
 import type { ActivityBlock } from "@/src/server/core/types";
@@ -53,6 +54,7 @@ export async function POST(request: Request): Promise<Response> {
     let iterator: ReturnType<typeof streamAgent> | undefined;
     let profileLoad: ReturnType<typeof getProfile> | undefined;
     let saving: Promise<void> | undefined;
+    let accounting: Promise<void> | undefined;
     let finishing: Promise<void> | undefined;
     let deadline: ReturnType<typeof setTimeout> | undefined;
     let closed = false;
@@ -89,6 +91,11 @@ export async function POST(request: Request): Promise<Response> {
           await iterator?.return?.(undefined);
         } catch {
           // Preserve the primary failure if iterator cleanup fails.
+        }
+        try {
+          await accounting;
+        } catch {
+          // Keep capacity until usage recording settles without masking stream errors.
         }
         try {
           await saving;
@@ -133,7 +140,14 @@ export async function POST(request: Request): Promise<Response> {
       async pull(value) {
         try {
           owner.signal.throwIfAborted();
-          const next = await agent.next();
+          let next = await agent.next();
+          while (!next.done && next.value.type === "usage") {
+            owner.signal.throwIfAborted();
+            accounting = recordTokenUsage(user.sub, next.value.totalTokens);
+            await accounting;
+            owner.signal.throwIfAborted();
+            next = await agent.next();
+          }
           owner.signal.throwIfAborted();
           if (next.done) throw new Error("Agent stream ended without completion");
           const event = next.value;

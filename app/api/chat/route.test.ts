@@ -8,8 +8,10 @@ const mocks = vi.hoisted(() => ({
   generateSessionTitle: vi.fn(),
   streamAgent: vi.fn(),
   getProfile: vi.fn(),
+  recordTokenUsage: vi.fn(),
 }));
 vi.mock("@/src/server/auth", () => ({ requireUser: async () => ({ sub: "u1" }) }));
+vi.mock("@/src/server/account", () => ({ recordTokenUsage: mocks.recordTokenUsage }));
 vi.mock("@/src/server/rate-limit", () => ({ rateLimitResponse: () => null }));
 vi.mock("@/src/server/sessions/store", () => ({
   canWriteSession: mocks.canWriteSession,
@@ -168,6 +170,32 @@ describe("chat admission and stream ownership", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("retains capacity until usage recording settles after cancellation", async () => {
+    const accounting = Promise.withResolvers<void>();
+    mocks.recordTokenUsage.mockReturnValueOnce(accounting.promise);
+    mocks.streamAgent.mockImplementationOnce(async function* () {
+      yield { type: "usage", totalTokens: 100 };
+      yield { type: "done", message: "answer", tool_calls: [], citations };
+    });
+    const abort = new AbortController();
+    const response = await POST(request(undefined, abort.signal));
+    const reader = response.body!.getReader();
+    const reading = reader.read();
+    await vi.waitFor(() => expect(mocks.recordTokenUsage).toHaveBeenCalledOnce());
+    abort.abort();
+    expect((await reading).done).toBe(true);
+    expect((await POST(request())).status).toBe(503);
+    const cancelled = reader.cancel();
+    accounting.resolve();
+    await cancelled;
+    expect(mocks.appendExchange).not.toHaveBeenCalled();
+    expect(mocks.generateSessionTitle).not.toHaveBeenCalled();
+    const next = await POST(request());
+    expect(next.status).toBe(200);
+    await next.body!.cancel();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("rejects premature agent EOF and releases the slot without saving a partial answer", async () => {
     mocks.streamAgent.mockImplementation(async function* () {
       yield { type: "text", delta: "partial" };
@@ -238,6 +266,23 @@ describe("chat session ownership", () => {
     expect(mocks.canWriteSession).not.toHaveBeenCalled();
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
     expect(mocks.appendExchange.mock.calls[0][1]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it.each([false, true])("records each turn's usage even if a later turn fails: %s", async (fail) => {
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "usage", totalTokens: 100 };
+      yield { type: "usage", totalTokens: 250 };
+      if (fail) throw new Error("Provider failed");
+      yield { type: "done", message: "answer", tool_calls: [], citations };
+    });
+    const response = await POST(request());
+    const body = await response.text();
+    expect(mocks.recordTokenUsage.mock.calls).toEqual([
+      ["u1", 100],
+      ["u1", 250],
+    ]);
+    expect(body).not.toContain('"type":"usage"');
+    expect(mocks.appendExchange).toHaveBeenCalledTimes(fail ? 0 : 1);
   });
 
   it("does not expose provider credentials or internal errors", async () => {

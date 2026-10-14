@@ -147,7 +147,11 @@ export function createGoogleAdapter(): LlmAdapter {
     }
 
     const stopReason = hasToolUse ? "tool_use" : "end_turn";
-    return { stopReason, message: { role: "assistant" as const, content } };
+    return {
+      stopReason,
+      message: { role: "assistant" as const, content },
+      totalTokens: response.usageMetadata?.totalTokenCount,
+    };
   };
 
   async function* converseStream(
@@ -180,6 +184,7 @@ export function createGoogleAdapter(): LlmAdapter {
       iterator = stream[Symbol.asyncIterator]();
       let hasToolUse = false;
       let hasFinishReason = false;
+      let totalTokens: number | undefined;
 
       while (true) {
         signal.throwIfAborted();
@@ -202,6 +207,7 @@ export function createGoogleAdapter(): LlmAdapter {
         }
         signal.throwIfAborted();
         if (next.done) break;
+        totalTokens = next.value.usageMetadata?.totalTokenCount ?? totalTokens;
         const candidate = next.value.candidates?.[0];
         if (candidate?.finishReason && candidate.finishReason !== "FINISH_REASON_UNSPECIFIED") hasFinishReason = true;
         for (const part of candidate?.content?.parts ?? []) {
@@ -224,6 +230,8 @@ export function createGoogleAdapter(): LlmAdapter {
 
       signal.throwIfAborted();
       if (!hasFinishReason) throw new Error("Google stream ended before completion");
+      if (totalTokens !== undefined) yield { type: "usage", totalTokens };
+      signal.throwIfAborted();
       yield { type: "stop", reason: hasToolUse ? "tool_use" : "end_turn" };
     } finally {
       owned.abort();

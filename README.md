@@ -4,6 +4,8 @@ Campus assistant for UBC students: ask questions against indexed university data
 
 Next.js 16 App Router, React 19, TypeScript, Postgres, Meilisearch, MapLibre GL, and deck.gl. The agent supports OpenAI-compatible, Anthropic, and Google APIs.
 
+`/` remains the public landing page for signed-in users and guests; the Reodite logo returns there. Start chat at `/app` or open a saved conversation at `/app/chat/:id`. Tools and Unity live under `/app/tools` and `/app/pulse`; Settings, Account, and About use `/app/settings`, `/app/account`, and `/app/about`. Existing workspace links redirect to their `/app` equivalents. Guests use Tools, including course browsing, and the utility pages. Signed-in accounts complete or skip `/onboarding` once before entering the app. See [PRODUCT.md](PRODUCT.md) for profile, usage, and sound behavior.
+
 ## Setup
 
 Use Node.js 24 and Docker.
@@ -40,7 +42,7 @@ Generate separate secrets for Postgres, Meilisearch, and JWT signing, for exampl
 | `MEILI_PORT`                               | Compose Meilisearch host port (default `7700`)                             |
 | `TRUSTED_CLIENT_IP_HEADER`                 | Optional proxy-overwritten single-IP header; see the security requirements |
 
-Host processes use loopback service URLs. If you change `POSTGRES_PORT` or `MEILI_PORT`, update the port in `DATABASE_URL` or `MEILI_URL` for host-run commands. Compose uses container hostnames and fixed internal ports (`5432` and `7700`). `npm run ingest` loads an optional root `.env` and preserves inherited environment variables.
+`POSTGRES_PORT` and `MEILI_PORT` change only host mappings, bound to `127.0.0.1`. Host processes use loopback service URLs; match the ports in `DATABASE_URL` and `MEILI_URL` to those mappings for host-run commands. Compose uses container hostnames and fixed internal ports (`postgres:5432` and `meilisearch:7700`). The development container also binds to loopback; keep development servers off public networks. `npm run ingest` loads an optional root `.env` and preserves inherited environment variables.
 
 ### Request resources
 
@@ -132,6 +134,14 @@ Both limits must be positive safe integers, with the batch target at or below th
 `documents`, `student_resources`, `housing_fees`, and `library_hours` replace complete snapshots. Ingestion loads a temporary index, waits for validation/tasks, derives required artifacts, and swaps the replacement into the live name. A pre-swap failure preserves the previous snapshot. Post-swap cleanup failure reports an error without undoing publication. Other indexes retain upsert behavior.
 
 Run one ingestion process per destination and allow disk space for both generations. Ingestion attempts remaining indexes after failure and exits nonzero if any index fails. Source retrieval/modification dates remain distinct from index-build freshness.
+
+## Announcements
+
+Unity lists Announcements first. `/app/pulse/announcements` shows newest-first cards linking to `/app/pulse/announcements/:slug`.
+
+Copy [the example](content/announcements/welcome-to-announcements.md) into a new `content/announcements/<slug>.md`. Use a lowercase, hyphenated filename and keep it after publication so shared links remain valid. Put JSON metadata between `---` lines, followed by a non-empty Markdown body. Require non-empty `title`, `date`, `summary`, and `author` strings; `date` must be a real `YYYY-MM-DD` date. Use `##` for body sections because the page supplies the main title. GFM tables, links, images, lists, and fenced code work; raw HTML does not render.
+
+Sort order is date descending, then filename ascending. Invalid files fail with their filename. Dates control ordering, not scheduled publication: keep drafts and private information outside this folder. Preview the feed and detail page, run `npm test` and `npm run build`, then deploy. Announcements ship with the app and need no database migration or ingestion.
 
 ## Production
 

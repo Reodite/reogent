@@ -6,6 +6,7 @@ import { useMobileViewport } from "@/src/components/shell/use-mobile-viewport";
 import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { Skeleton, SkeletonText } from "@/src/components/ui/skeleton";
 import { WorkspaceCanvas, WorkspacePage, WorkspacePanel, WorkspaceRail } from "@/src/components/ui/workspace";
+import { utilityPageForPath } from "@/src/lib/shell-mode";
 
 const COMPOSER_SKELETON = (
   <ChatComposerFrame caption={<Skeleton className="mx-auto h-4 w-56" />}>
@@ -144,28 +145,28 @@ export function AnswerCanvasLoading() {
 }
 
 /** Matches shell geometry during local-auth hydration instead of painting a blank page. */
-export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) {
+export function ShellBootLoading({ pathname = "/app" }: { pathname?: string }) {
   const viewportRef = useMobileViewport();
-  const mode = pathname.startsWith("/tools")
+  const utilityPage = utilityPageForPath(pathname);
+  const mode = pathname.startsWith("/app/tools")
     ? "tools"
-    : pathname.startsWith("/pulse")
+    : pathname.startsWith("/app/pulse")
       ? "unity"
-      : pathname === "/settings"
-        ? "settings"
+      : utilityPage
+        ? "utility"
         : "ai";
 
   const splitWorkspace =
-    mode === "settings" ||
-    pathname === "/tools/map" ||
-    pathname === "/tools/calendar" ||
-    pathname === "/tools/planner" ||
-    pathname.startsWith("/tools/schedule") ||
-    pathname.startsWith("/pulse/schedule");
+    pathname === "/app/tools/map" ||
+    pathname === "/app/tools/calendar" ||
+    pathname === "/app/tools/planner" ||
+    pathname.startsWith("/app/tools/schedule") ||
+    pathname.startsWith("/app/pulse/schedule");
   const workspaceControls =
-    pathname === "/tools/calendar" ||
-    pathname === "/tools/planner" ||
-    pathname.startsWith("/tools/schedule") ||
-    pathname.startsWith("/pulse/schedule");
+    pathname === "/app/tools/calendar" ||
+    pathname === "/app/tools/planner" ||
+    pathname.startsWith("/app/tools/schedule") ||
+    pathname.startsWith("/app/pulse/schedule");
 
   const sidebarToggle = (
     <span
@@ -216,12 +217,12 @@ export function ShellBootLoading({ pathname = "/chat" }: { pathname?: string }) 
           </aside>
           <main className="shell-boot-main flex min-h-0 min-w-0 flex-1">
             <WorkspaceHostProvider
-              host={mode === "ai" ? "chat" : mode === "unity" ? "unity" : mode === "settings" ? "settings" : "tools"}
+              host={mode === "ai" ? "chat" : mode === "unity" ? "unity" : (utilityPage ?? "tools")}
               navigation={sidebarToggle}
             >
               <div className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
                 <div className="shell-boot-chat h-full min-h-0 w-full">
-                  {pathname === "/chat" ? <NewChatLoading /> : <ChatPanelLoading />}
+                  {pathname === "/app" ? <NewChatLoading /> : <ChatPanelLoading />}
                 </div>
                 <div className="shell-boot-workspace hidden h-full min-h-0 w-full">
                   <WorkspaceRouteLoading

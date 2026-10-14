@@ -15,7 +15,7 @@ const api = vi.hoisted(() => ({
 }));
 const auth = vi.hoisted(() => ({ isGuest: false }));
 const routerPush = vi.hoisted(() => vi.fn());
-const navigation = vi.hoisted(() => ({ pathname: "/tools/map", params: new URLSearchParams(), suspended: false }));
+const navigation = vi.hoisted(() => ({ pathname: "/app/tools/map", params: new URLSearchParams(), suspended: false }));
 const pendingNavigation = new Promise(() => {});
 const mapState = vi.hoisted(() => ({
   onStatus: undefined as ((status: "loading" | "ready" | "error") => void) | undefined,
@@ -193,8 +193,10 @@ const buildingGeo = {
 };
 
 beforeEach(() => {
-  window.history.replaceState(null, "", "/tools/map");
-  navigation.pathname = "/tools/map";
+  localStorage.clear();
+  sessionStorage.clear();
+  window.history.replaceState(null, "", "/app/tools/map");
+  navigation.pathname = "/app/tools/map";
   navigation.params = new URLSearchParams();
   navigation.suspended = false;
   mapState.onStatus = undefined;
@@ -223,7 +225,7 @@ afterEach(() => {
 });
 
 function renderMap(mode: "tools" | "ai" = "tools") {
-  navigation.pathname = mode === "tools" ? "/tools/map" : "/chat";
+  navigation.pathname = mode === "tools" ? "/app/tools/map" : "/app";
   return render(
     <ChatShellProvider initialMode={mode}>
       <MapArea />
@@ -318,7 +320,7 @@ describe("MapArea", () => {
   });
 
   it("keeps the floating route summary in AI only", async () => {
-    navigation.pathname = "/chat";
+    navigation.pathname = "/app";
     render(
       <ChatShellProvider initialMode="ai">
         <AiRouteMap />
@@ -350,7 +352,7 @@ describe("MapArea", () => {
     fireEvent.click(screen.getByRole("button", { name: "Select IBLC on map" }));
     fireEvent.click(await screen.findByRole("button", { name: "Sign in to save" }));
 
-    expect(routerPush).toHaveBeenCalledWith(`/login?redirect=${encodeURIComponent("/tools/map?building=IBLC")}`);
+    expect(routerPush).toHaveBeenCalledWith(`/login?redirect=${encodeURIComponent("/app/tools/map?building=IBLC")}`);
     expect(api.listSessions).not.toHaveBeenCalled();
   });
 
@@ -407,7 +409,7 @@ describe("MapArea", () => {
       sourceStatus: { building: source, addresses: source, rooms: source, pois: source },
     });
     navigation.params = new URLSearchParams({ building: code });
-    window.history.replaceState(null, "", `/tools/map?${navigation.params}`);
+    window.history.replaceState(null, "", `/app/tools/map?${navigation.params}`);
     const historyLength = window.history.length;
     renderMap();
 

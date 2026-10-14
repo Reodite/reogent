@@ -54,6 +54,16 @@ function toAnthropicTools(specs: ToolSpec[]): AnthropicTool[] {
   }));
 }
 
+function totalTokens(usage: Anthropic.Usage | undefined): number | undefined {
+  if (!usage) return undefined;
+  return (
+    usage.input_tokens +
+    usage.output_tokens +
+    (usage.cache_creation_input_tokens ?? 0) +
+    (usage.cache_read_input_tokens ?? 0)
+  );
+}
+
 export function createAnthropicAdapter(): LlmAdapter {
   let client: Anthropic | undefined;
 
@@ -97,7 +107,7 @@ export function createAnthropicAdapter(): LlmAdapter {
     }
 
     const stopReason = res.stop_reason === "tool_use" ? "tool_use" : "end_turn";
-    return { stopReason, message: { role: "assistant" as const, content } };
+    return { stopReason, message: { role: "assistant" as const, content }, totalTokens: totalTokens(res.usage) };
   };
 
   async function* converseStream(
@@ -154,6 +164,9 @@ export function createAnthropicAdapter(): LlmAdapter {
         }
       } else if (event.type === "message_stop") {
         const msg = await stream.finalMessage();
+        req.signal?.throwIfAborted();
+        const tokens = totalTokens(msg.usage);
+        if (tokens !== undefined) yield { type: "usage", totalTokens: tokens };
         req.signal?.throwIfAborted();
         const reason = msg.stop_reason === "tool_use" ? "tool_use" : "end_turn";
         yield { type: "stop", reason };

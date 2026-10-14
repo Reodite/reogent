@@ -37,25 +37,22 @@ describe("course catalog reuse", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it("evicts failed loads and checks the token before returning cached data", async () => {
+  it("evicts failed public loads and reuses the catalog without consulting authentication", async () => {
     const catalog = { courses: [] };
     const fetchMock = vi
       .fn()
       .mockRejectedValueOnce(new Error("offline"))
       .mockImplementation(async () => Response.json(catalog));
     vi.stubGlobal("fetch", fetchMock);
-    const getToken = vi.fn<() => Promise<string | null>>().mockResolvedValue("jwt");
+    const getToken = vi.fn<() => Promise<string | null>>().mockRejectedValue(new Error("Token unavailable"));
     const onUnauthorized = vi.fn();
     const api = createChatApi({ getToken, onUnauthorized });
     await expect(api.getCourseIndex()).rejects.toThrow("offline");
     expect(await api.getCourseIndex()).toEqual(catalog);
-    getToken.mockResolvedValueOnce(null);
-    await expect(api.getCourseIndex()).rejects.toMatchObject({ status: 401 });
-    expect(onUnauthorized).toHaveBeenCalledOnce();
-    getToken.mockRejectedValueOnce(new Error("Token unavailable"));
-    await expect(api.getCourseIndex()).rejects.toThrow("Token unavailable");
     expect(await api.getCourseIndex()).toEqual(catalog);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(getToken).not.toHaveBeenCalled();
+    expect(onUnauthorized).not.toHaveBeenCalled();
   });
 });
 

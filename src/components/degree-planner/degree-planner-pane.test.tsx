@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { createPlannerYear } from "@/src/lib/planner-model";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { usePlanner, type Year } from "./planner-store";
@@ -13,6 +14,11 @@ vi.hoisted(() => {
 const api = vi.hoisted(() => ({ getCourseIndex: vi.fn() }));
 vi.mock("@/src/components/providers", () => ({ useApi: () => api }));
 vi.mock("./use-plan-sync", () => ({ usePlanSync: () => {} }));
+const programs = vi.hoisted(() => ({ getRequirementsFor: vi.fn() }));
+vi.mock("@/src/lib/program-requirements", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/src/lib/program-requirements")>()),
+  getRequirementsFor: programs.getRequirementsFor,
+}));
 
 const { DegreePlannerPane } = await import("./degree-planner-pane");
 
@@ -20,6 +26,7 @@ afterEach(() => {
   cleanup();
   usePlanner.setState(usePlanner.getInitialState());
   vi.clearAllMocks();
+  programs.getRequirementsFor.mockReset();
 });
 
 afterAll(() => vi.unstubAllGlobals());
@@ -90,4 +97,56 @@ describe("DegreePlannerPane", () => {
     expect(await screen.findByRole("alert")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Retry" })).not.toBeNull();
   });
+});
+
+describe("planner autofill", () => {
+  it("fills a curated program through the button and undoes the batch in one step", async () => {
+    const year = createPlannerYear(0);
+    usePlanner.setState({ years: [year], major: "curated-major", past: [], future: [] });
+    api.getCourseIndex.mockResolvedValue({
+      courses: [
+        { code: "CPSC 110", title: "Computation", credits: 4, prerequisite: null, corequisite: null },
+        { code: "CPSC 210", title: "Software Construction", credits: 4, prerequisite: "CPSC 110", corequisite: null },
+      ],
+    });
+    programs.getRequirementsFor.mockResolvedValue({
+      kind: "structured",
+      program_url: "/program",
+      categories: [
+        { name: "Required courses", credits_required: 8, options: [{ code: "CPSC 110" }, { code: "CPSC 210" }] },
+      ],
+    });
+    render(<DegreePlannerPane />);
+    fireEvent.click(await screen.findByRole("button", { name: "Autofill" }));
+
+    await screen.findByText("Added 2 courses");
+    expect(programs.getRequirementsFor).toHaveBeenCalledWith("curated-major");
+    expect(usePlanner.getState().years[0].terms.map((term) => term.blocks.map((block) => block.code))).toEqual([
+      ["CPSC 110"],
+      ["CPSC 210"],
+    ]);
+    expect(usePlanner.getState().past).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Autofill" }));
+    await screen.findByText("Course requirements are covered");
+    expect(usePlanner.getState().past).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(usePlanner.getState().years).toEqual([year]);
+  });
+
+  it.each([null, { kind: "structured", program_url: "/program", categories: [] }])(
+    "reports unavailable requirements without changing the plan: %j",
+    async (requirements) => {
+      const year = createPlannerYear(0);
+      usePlanner.setState({ years: [year], major: "empty-major", past: [], future: [] });
+      api.getCourseIndex.mockResolvedValue({ courses: [] });
+      programs.getRequirementsFor.mockResolvedValue(requirements);
+      render(<DegreePlannerPane />);
+      fireEvent.click(await screen.findByRole("button", { name: "Autofill" }));
+
+      await screen.findByText(/No course requirements are available for this program/);
+      expect(usePlanner.getState().years).toEqual([year]);
+      expect(usePlanner.getState().past).toHaveLength(0);
+    },
+  );
 });

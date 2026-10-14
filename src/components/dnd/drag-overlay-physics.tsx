@@ -1,5 +1,6 @@
 "use client";
 
+import { siteAudio } from "@/src/lib/audio";
 import type { DragMoveEvent, DragStartEvent } from "@dnd-kit/core";
 import { motion, useReducedMotion, useSpring, type MotionValue } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -64,6 +65,7 @@ export function useDragOverlayPhysics({ resolveSourceElement }: DragOverlayPhysi
   }
 
   function start(event: DragStartEvent) {
+    siteAudio.play("drag");
     sample.current = { x: 0, t: performance.now() };
     settle();
     const activator = event.activatorEvent;

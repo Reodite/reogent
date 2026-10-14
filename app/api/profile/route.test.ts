@@ -65,10 +65,39 @@ describe("PUT /api/profile", () => {
     expect(saveProfile).toHaveBeenCalledWith("u1", {});
   });
 
-  it("400 on unknown keys, bad year, bad student type, or invalid JSON", async () => {
+  it("stores onboarding details, preferences, and completion together", async () => {
+    const profile = { ...PROFILE, preferred_name: "  Sam  ", theme: "dark", onboarding_completed: true };
+    expect((await put(JSON.stringify(profile))).status).toBe(204);
+    expect(saveProfile).toHaveBeenCalledWith("u1", { ...profile, preferred_name: "Sam" });
+    expect((await put(JSON.stringify({ preferred_name: "  ", theme: "light" }))).status).toBe(204);
+    expect(saveProfile).toHaveBeenLastCalledWith("u1", { theme: "light" });
+  });
+
+  it.each([
+    { preferred_name: 123 },
+    { preferred_name: "x".repeat(65) },
+    { theme: "sepia" },
+    { theme: "system" },
+    { onboarding_completed: "true" },
+  ])("rejects invalid onboarding fields: %j", async (profile) => {
+    expect((await put(JSON.stringify(profile))).status).toBe(400);
+    expect(saveProfile).not.toHaveBeenCalled();
+  });
+
+  it.each([1, 8, 9, 10])("accepts year %s", async (year) => {
+    expect((await put(JSON.stringify({ year }))).status).toBe(204);
+    expect(saveProfile).toHaveBeenCalledWith("u1", { year });
+  });
+
+  it.each([0, -1, 11, 2.5, "3", null])("rejects invalid year %j", async (year) => {
+    const response = await put(JSON.stringify({ year }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "year must be an integer from 1 to 10" });
+    expect(saveProfile).not.toHaveBeenCalled();
+  });
+
+  it("400 on unknown keys, bad student type, or invalid JSON", async () => {
     expect((await put(JSON.stringify({ nope: 1 }))).status).toBe(400);
-    expect((await put(JSON.stringify({ year: 9 }))).status).toBe(400);
-    expect((await put(JSON.stringify({ year: 2.5 }))).status).toBe(400);
     expect((await put(JSON.stringify({ student_type: "alien" }))).status).toBe(400);
     expect((await put(JSON.stringify([1]))).status).toBe(400);
     expect((await put("not json")).status).toBe(400);

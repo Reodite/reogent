@@ -17,6 +17,14 @@ const nextConfig: NextConfig = {
   },
   devIndicators: false,
   poweredByHeader: false,
+  redirects: async () => [
+    { source: "/chat", destination: "/app", permanent: true },
+    {
+      source: "/:area(chat|tools|pulse|settings|account|about)/:path*",
+      destination: "/app/:area/:path*",
+      permanent: true,
+    },
+  ],
   headers: async () => [
     {
       source: "/:path*",

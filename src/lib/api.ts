@@ -16,7 +16,7 @@ import {
   type SessionSummary,
 } from "@/src/lib/api-types";
 import type { CourseIndexEntry } from "@/src/shared/course-index";
-import type { StudentProfile } from "@/src/shared/profile";
+import type { AccountDetails, StudentProfile } from "@/src/shared/profile";
 import type { FeatureCollection } from "geojson";
 
 export interface ChatApi {
@@ -53,12 +53,12 @@ export interface ChatApi {
   getBuildingFavorites(): Promise<{ codes: string[] }>;
   /** PUT /api/building-favorites — applies one idempotent saved state. */
   setBuildingFavorite(code: string, saved: boolean): Promise<{ codes: string[] }>;
-  /** GET /api/courses/{code}?session= — exact course record; 404 on miss. Defaults to latest winter. */
+  /** GET /api/courses/{code}?session=: public course record; 404 on miss. Defaults to latest winter. */
   getCourse(
     code: string,
     session?: string,
   ): Promise<CourseDoc & { session?: string; average?: number; reported?: number; buckets?: Record<string, number> }>;
-  /** GET /api/courses — prefix/subject/level-operator/partial-number search, plus session sort. */
+  /** GET /api/courses: public prefix/subject/level-operator/partial-number search, plus session sort. */
   searchCourses(params: {
     q?: string;
     subject?: string;
@@ -78,7 +78,7 @@ export interface ChatApi {
     subject_total?: number;
     session?: string;
   }>;
-  /** GET /api/course-index — every course's code/title/prereq/coreq strings; the Prereq Tree builds graphs client-side from this. */
+  /** GET /api/course-index: public code/title/prereq/coreq catalog for client-side prerequisite graphs. */
   getCourseIndex(): Promise<{ courses: CourseIndexEntry[] }>;
   /** GET /api/pulse — active round feed; tallies included only for questions the caller voted on. */
   getPulseFeed(): Promise<PulseFeed>;
@@ -94,6 +94,8 @@ export interface ChatApi {
   saveSchedule(schedule: unknown): Promise<void>;
   /** PUT /api/plan — replaces the caller's saved degree plan. */
   savePlan(plan: unknown): Promise<void>;
+  /** Fetches the caller's account details and recorded activity. */
+  getAccount(): Promise<AccountDetails>;
   /** GET /api/profile — the caller's student profile, or null. */
   getProfile(): Promise<{ profile: StudentProfile | null }>;
   /** PUT /api/profile — replaces the caller's student profile. */
@@ -299,7 +301,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       const sp = new URLSearchParams();
       if (session) sp.set("session", session);
       const qs = sp.toString();
-      return request<CourseDoc>(`/courses/${encodeURIComponent(code)}${qs ? `?${qs}` : ""}`);
+      return publicRequest<CourseDoc>(`/courses/${encodeURIComponent(code)}${qs ? `?${qs}` : ""}`);
     },
     searchCourses: (params) => {
       const sp = new URLSearchParams();
@@ -311,15 +313,16 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       if (params.session) sp.set("session", params.session);
       if (params.sort) sp.set("sort", params.sort);
       if (params.faculty) sp.set("faculty", params.faculty);
-      return request<{ courses: CourseDoc[]; subject_total?: number; session?: string }>(`/courses?${sp.toString()}`);
+      return publicRequest<{ courses: CourseDoc[]; subject_total?: number; session?: string }>(
+        `/courses?${sp.toString()}`,
+      );
     },
     getCourseIndex: async () => {
-      const token = await requireToken();
       if (courseIndexLoadedAt !== undefined && Date.now() - courseIndexLoadedAt >= 60 * 60 * 1000) {
         courseIndex = undefined;
         courseIndexLoadedAt = undefined;
       }
-      courseIndex ??= request<{ courses: CourseIndexEntry[] }>("/course-index", undefined, token)
+      courseIndex ??= publicRequest<{ courses: CourseIndexEntry[] }>("/course-index")
         .then((catalog) => {
           courseIndexLoadedAt = Date.now();
           return catalog;
@@ -341,6 +344,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     savePlan: (plan) => request<void>("/plan", { method: "PUT", body: JSON.stringify(plan) }),
     getSchedule: () => request<{ schedule: unknown | null }>("/schedule"),
     saveSchedule: (schedule) => request<void>("/schedule", { method: "PUT", body: JSON.stringify(schedule) }),
+    getAccount: () => request<AccountDetails>("/account"),
     getProfile: () => request<{ profile: StudentProfile | null }>("/profile"),
     saveProfile: (profile) => request<void>("/profile", { method: "PUT", body: JSON.stringify(profile) }),
   };

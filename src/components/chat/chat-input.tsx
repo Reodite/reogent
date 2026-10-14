@@ -124,6 +124,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
         {onStop ? (
           <Button
             onClick={onStop}
+            data-sound="toggleOff"
             aria-label="Stop generating"
             size="icon"
             shadowOn="surface-container-low"
@@ -140,6 +141,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(function Ch
             size="icon"
             shadowOn="surface-container-low"
             disabled={!canSend}
+            data-sound="off"
             aria-label="Send message"
             className="relative z-10 max-sm:rounded-[0.625rem] sm:rounded-md"
           >

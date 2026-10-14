@@ -25,7 +25,7 @@ export function ToolList({ collapsed = false, onSelect }: { collapsed?: boolean;
               disabled={!slug}
               onClick={() => {
                 if (!slug) return;
-                navigation.push(`/tools/${slug}`);
+                navigation.push(`/app/tools/${slug}`);
                 onSelect?.();
               }}
             />

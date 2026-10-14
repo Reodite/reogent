@@ -1,12 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-process.env.JWT_SECRET = "test-secret";
-
-const verify = vi.fn();
-vi.mock("jose", () => ({
-  jwtVerify: (...args: unknown[]) => verify(...args),
-  SignJWT: vi.fn(),
-}));
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const search = vi.fn();
 const getDocument = vi.fn();
@@ -15,9 +7,9 @@ vi.mock("@/src/server/search", () => ({ getSearch: () => ({ index: () => ({ sear
 const { GET } = await import("./route");
 const { GET: getCourseDetail } = await import("./[code]/route");
 
-const req = (query: string, auth: boolean | string = true) =>
+const req = (query: string, token?: string) =>
   new Request(`http://localhost/api/courses${query}`, {
-    headers: auth === false ? {} : { authorization: `Bearer ${auth === true ? "token" : auth}` },
+    headers: token ? { authorization: `Bearer ${token}` } : {},
   });
 
 function fakeCourse(code: string, subject: string, number: string) {
@@ -25,7 +17,7 @@ function fakeCourse(code: string, subject: string, number: string) {
 }
 
 beforeEach(() => {
-  verify.mockReset().mockResolvedValue({ payload: { sub: "u1", username: "testuser" } });
+  vi.stubEnv("AUTH_ENABLED", "true");
   search.mockReset();
   getDocument.mockReset();
 });
@@ -45,10 +37,25 @@ describe("GET /api/courses/[code]", () => {
   });
 });
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe("GET /api/courses", () => {
-  it("401 without a bearer token", async () => {
-    const res = await GET(req("?subject=CPSC", false));
-    expect(res.status).toBe(401);
+  it.each([
+    { name: "anonymous", token: undefined },
+    { name: "guest", token: "guest" },
+  ])("serves the catalog to $name visitors", async ({ token }) => {
+    const course = { ...fakeCourse("CPSC 110", "CPSC_V", "110"), average: 75, reported: 100 };
+    search.mockResolvedValue({ hits: [course], estimatedTotalHits: 1 });
+
+    const res = await GET(req("?session=2025W&sort=students_desc", token));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ courses: [course], subject_total: 1, session: "2025W" });
+    expect(search).toHaveBeenCalledWith("", {
+      filter: "session = '2025W'",
+      sort: ["reported:desc"],
+      limit: 1000,
+    });
   });
 
   it("400 when `number` is supplied without `subject`", async () => {

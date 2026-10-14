@@ -25,6 +25,7 @@ import { lockBodyScroll } from "@/src/components/ui/body-scroll-lock";
 import { Button } from "@/src/components/ui/button";
 import { tabStops } from "@/src/components/ui/floating-panel";
 import { LiveRegion } from "@/src/components/ui/live-region";
+import { utilityPageForPath } from "@/src/lib/shell-mode";
 import { useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
@@ -168,6 +169,7 @@ function SidebarDrawer({ id }: { id: string }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { isGuest } = useAppAuth();
   const {
     sidebarOpen,
     setSidebarOpen,
@@ -182,7 +184,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const canvasInline = useIsCanvasInline();
   const navigation = useShellNavigation();
   const pathname = navigation.displayPathname;
-  const settingsRoute = pathname === "/settings";
+  const utilityPage = utilityPageForPath(pathname);
   const routeIdentity = `${mode}:${pathname}`;
   const initialRouteIdentityRef = useRef(routeIdentity);
   const [hasNavigated, setHasNavigated] = useState(false);
@@ -214,7 +216,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [canvasInline, answerSheetOpen, setAnswerSheetOpen]);
 
   const enteringAi = navigation.pending && mode === "ai" && shellModeForPath(navigation.committedPathname) !== "ai";
-  const sheetOpen = mode === "ai" && !settingsRoute && !canvasInline && !enteringAi && answerSheetOpen;
+  const sheetOpen = mode === "ai" && !utilityPage && !canvasInline && !enteringAi && answerSheetOpen;
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -272,7 +274,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Icon name="menu" size={22} />
     </Button>
   );
-  const routeContent = settingsRoute ? (
+  const routeContent = utilityPage ? (
     <ShellRouteContent
       identity={routeIdentity}
       pending={navigation.pending}
@@ -281,15 +283,22 @@ export function AppShell({ children }: { children: ReactNode }) {
     >
       <main
         id="main-content"
-        data-pane="settings"
+        data-pane={utilityPage}
         data-shell-mode={mode}
         className={`flex min-h-0 min-w-0 flex-1 ${
           mode === "tools" ? "tool-sidebar-content-offset" : "sidebar-content-offset"
         }`}
       >
-        <WorkspaceHostProvider host="settings" navigation={sidebarToggle}>
+        <WorkspaceHostProvider host={utilityPage} navigation={sidebarToggle}>
           <div data-workspace-surface className="workspace-surface flex min-h-0 min-w-0 flex-1 overflow-hidden">
-            {navigation.pending ? <WorkspaceRouteLoading label="Loading Settings" composition="split" /> : children}
+            {navigation.pending ? (
+              <WorkspaceRouteLoading
+                label={`Loading ${utilityPage.charAt(0).toUpperCase()}${utilityPage.slice(1)}`}
+                composition="single"
+              />
+            ) : (
+              children
+            )}
           </div>
         </WorkspaceHostProvider>
       </main>
@@ -309,7 +318,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           inert={sheetOpen || undefined}
         >
           <WorkspaceHostProvider host="chat" navigation={sidebarToggle}>
-            {navigation.pending ? pathname === "/chat" ? <NewChatLoading /> : <ChatPanelLoading /> : children}
+            {navigation.pending ? pathname === "/app" ? <NewChatLoading /> : <ChatPanelLoading /> : children}
           </WorkspaceHostProvider>
         </main>
       </ShellRouteContent>
@@ -347,8 +356,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : navigation.pending ? (
               <WorkspaceRouteLoading
                 label="Loading Unity"
-                composition={pathname.startsWith("/pulse/schedule") ? "split" : "single"}
-                controls={pathname.startsWith("/pulse/schedule")}
+                composition={pathname.startsWith("/app/pulse/schedule") ? "split" : "single"}
+                controls={pathname.startsWith("/app/pulse/schedule")}
               />
             ) : (
               children
@@ -361,7 +370,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <RequireAuth>
-      <div ref={viewportRef} className="app-shell-canvas app-shell-frame flex h-dvh flex-col overflow-hidden">
+      <div
+        ref={viewportRef}
+        className={`app-shell-canvas app-shell-frame flex h-dvh flex-col overflow-hidden ${isGuest ? "max-sm:pb-[env(safe-area-inset-bottom)]" : ""}`}
+      >
         <nav aria-label="Skip links" inert={sidebarOpen || sheetOpen || undefined} className="shrink-0">
           <a
             href="#main-content"
@@ -406,9 +418,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <div data-mobile-navigation inert={sidebarOpen || sheetOpen || undefined} className="shrink-0 sm:hidden">
-          <ModeToggle presentation="bottom" />
-        </div>
+        {!isGuest && (
+          <div data-mobile-navigation inert={sidebarOpen || sheetOpen || undefined} className="shrink-0 sm:hidden">
+            <ModeToggle presentation="bottom" />
+          </div>
+        )}
         <LiveRegion />
       </div>
     </RequireAuth>

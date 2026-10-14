@@ -28,6 +28,7 @@ import {
   WorkspaceRail,
   type WorkspaceView,
 } from "@/src/components/ui/workspace";
+import { siteAudio } from "@/src/lib/audio";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
 import { getProgramIndex, getRequirementsFor, resolveProgram } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
@@ -271,12 +272,14 @@ export function DegreePlannerPane() {
       const dest = resolveTermDrop(overId, years);
       if (!dest) return;
       addBlock(dest.yearId, dest.termIdx, draggedCode);
+      siteAudio.play("drop");
       return;
     }
 
     // A planned block dropped on trash is removed.
     if (overId === "trash" && activeId.startsWith(ACTIVE_BLOCK_PREFIX)) {
       removeBlock(activeId.slice(ACTIVE_BLOCK_PREFIX.length));
+      siteAudio.play("remove");
       return;
     }
 
@@ -299,6 +302,7 @@ export function DegreePlannerPane() {
         insertPos = dest.pos + 1;
       }
       moveBlock(blockId, dest.yearId, dest.termIdx, insertPos);
+      siteAudio.play("drop");
     }
   }
 
@@ -589,13 +593,17 @@ function ActionsSection({
     setFilling(true);
     try {
       const requirements = await getRequirementsFor(major);
-      const parsed = requirements?.kind === "prose" ? parseProgramYears(requirements.text) : null;
-      if (!requirements || !parsed || !hasYearRequirements(parsed)) {
+      const parsed = requirements?.kind === "prose" ? parseProgramYears(requirements.text) : requirements;
+      if (
+        !requirements ||
+        !parsed ||
+        ("categories" in parsed ? parsed.categories.length === 0 : !hasYearRequirements(parsed))
+      ) {
         setAutofillResult({
           placements: [],
           placedCodes: [],
           choices: [],
-          remaining: ["No year-by-year requirements are available for this program"],
+          remaining: ["No course requirements are available for this program"],
         });
         return;
       }
@@ -850,7 +858,7 @@ function AutofillSummary({ result, onClose }: { result: AutofillResult; onClose:
           )}
           {result.choices.length > 0 && (
             <p className="text-muted mt-1 text-xs">
-              One-of choices: {result.choices.map((choice) => choice.code).join(", ")}
+              Selected options: {result.choices.map((choice) => choice.code).join(", ")}
             </p>
           )}
           {remaining.length > 0 && (

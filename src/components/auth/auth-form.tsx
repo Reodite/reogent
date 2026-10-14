@@ -5,6 +5,7 @@ import { Button } from "@/src/components/ui/button";
 import { Field, TextInput } from "@/src/components/ui/form-controls";
 import { InlineLink } from "@/src/components/ui/inline-action";
 import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
+import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -40,19 +41,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
-  const redirect = searchParams.get("redirect") || "/chat";
-  let safeRedirect = "/chat";
-  if (
-    redirect.startsWith("/") &&
-    !redirect.startsWith("//") &&
-    !Array.from(redirect).some((char) => char === "\\" || char.charCodeAt(0) <= 31 || char.charCodeAt(0) === 127)
-  ) {
-    // A fixed base validates relative URLs without accessing the browser during prerendering.
-    const origin = "https://reodite.invalid";
-    try {
-      if (new URL(redirect, origin).origin === origin) safeRedirect = redirect;
-    } catch {}
-  }
+  const safeRedirect = safeAuthRedirect(searchParams.get("redirect"));
   const oppositeHref =
     mode === "login"
       ? `/signup?redirect=${encodeURIComponent(safeRedirect)}`

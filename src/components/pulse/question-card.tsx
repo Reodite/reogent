@@ -2,6 +2,7 @@
 
 import { Button } from "@/src/components/ui/button";
 import { Skeleton, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
+import { siteAudio } from "@/src/lib/audio";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import type { PanInfo } from "motion/react";
 import { useRef, useState } from "react";
@@ -68,10 +69,12 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
 
   const castVote = (agree: boolean) => {
     exitDir.current = agree;
+    siteAudio.play(agree ? "swipeRight" : "swipeLeft");
     onVote(agree);
   };
 
-  const handleDragEnd = (_: unknown, info: PanInfo) => {
+  const handleDragEnd = (event: Event, info: PanInfo) => {
+    if (event.type === "pointercancel") return;
     const vote = voteFromDrag(info.offset.x, info.velocity.x);
     if (vote !== null) castVote(vote);
   };
@@ -82,11 +85,13 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
         {!voted && (
           <motion.article
             key="front"
-            initial={reduce ? false : { opacity: 0 }}
+            initial={reduce ? false : { opacity: 0, x: 0 }}
             animate={{ opacity: 1, transition: { duration: reduce ? 0 : 0.18 } }}
             drag={reduce ? false : "x"}
             dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.9}
+            dragElastic={1}
+            dragMomentum={false}
+            dragTransition={{ bounceStiffness: 400, bounceDamping: 40 }}
             style={reduce ? undefined : { x, rotate }}
             whileDrag={reduce ? undefined : { scale: 1.01 }}
             onDragEnd={handleDragEnd}
@@ -94,7 +99,12 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
               exit: (dir: React.RefObject<boolean>) => {
                 if (reduce) return { opacity: 0 };
                 const right = dir?.current !== false;
-                return { x: right ? 600 : -600, opacity: 0, rotate: right ? 15 : -15 };
+                return {
+                  x: right ? 600 : -600,
+                  opacity: 0,
+                  rotate: right ? 15 : -15,
+                  transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+                };
               },
             }}
             exit="exit"
@@ -130,8 +140,9 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
                 type="button"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => castVote(false)}
+                data-sound="off"
                 aria-label={`Disagree: ${card.text}`}
-                whileTap={reduce ? undefined : { x: -8, scale: 0.95 }}
+                whileTap={reduce ? undefined : { scale: 0.95 }}
               >
                 Disagree
               </MotionButton>
@@ -141,8 +152,9 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
                 type="button"
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={() => castVote(true)}
+                data-sound="off"
                 aria-label={`Agree: ${card.text}`}
-                whileTap={reduce ? undefined : { x: 8, scale: 0.95 }}
+                whileTap={reduce ? undefined : { scale: 0.95 }}
               >
                 Agree
               </MotionButton>
