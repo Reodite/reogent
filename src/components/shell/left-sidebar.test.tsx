@@ -19,7 +19,7 @@ const auth = vi.hoisted(() => ({ isGuest: false }));
 vi.mock("@/src/components/auth/app-auth", () => ({
   useAppAuth: () => ({ status: "signedIn", isGuest: auth.isGuest }),
 }));
-const pathname = vi.hoisted(() => ({ value: "/chat" }));
+const pathname = vi.hoisted(() => ({ value: "/app" }));
 const routerPush = vi.hoisted(() => vi.fn());
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: () => {}, push: routerPush }),
@@ -73,7 +73,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
-  pathname.value = "/chat";
+  pathname.value = "/app";
   window.history.replaceState(null, "", "/");
   auth.isGuest = false;
   mem.clear();
@@ -101,7 +101,7 @@ function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
 }
 
 describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
-  it.each(["/chat", "/tools/map", "/pulse"])(
+  it.each(["/app", "/app/tools/map", "/app/pulse"])(
     "centers the collapsed account without shrinking expanded modes at %s",
     async (path) => {
       pathname.value = path;
@@ -141,7 +141,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
   });
 
   it("renders bottom navigation as three labeled, flat links with the routed area current", () => {
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     const view = render(
       <ChatShellProvider>
         <ModeToggle presentation="bottom" collapsed />
@@ -181,7 +181,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     ["bottom", false],
   ] as const)("omits guest mode navigation for %s with collapsed=%s", (presentation, collapsed) => {
     auth.isGuest = true;
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     const view = render(
       <ChatShellProvider>
         <ModeToggle presentation={presentation} collapsed={collapsed} />
@@ -194,15 +194,15 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
   });
 
   it.each([
-    ["AI", "/chat", LAST_CHAT_PATH_KEY, "/settings"],
-    ["AI", "/chat/session-123", LAST_CHAT_PATH_KEY, "/settings"],
-    ["Tools", "/tools", LAST_TOOLS_PATH_KEY, "/settings"],
-    ["Tools", "/tools/prereq/CPSC320", LAST_TOOLS_PATH_KEY, "/settings"],
-    ["Unity", "/pulse", LAST_UNITY_PATH_KEY, "/settings"],
-    ["Unity", "/pulse/schedule/ABC123", LAST_UNITY_PATH_KEY, "/settings"],
-    ["AI", "/chat/session-123", LAST_CHAT_PATH_KEY, "/about"],
-    ["Tools", "/tools/prereq/CPSC320", LAST_TOOLS_PATH_KEY, "/about"],
-    ["Unity", "/pulse/schedule/ABC123", LAST_UNITY_PATH_KEY, "/about"],
+    ["AI", "/app", LAST_CHAT_PATH_KEY, "/app/settings"],
+    ["AI", "/app/chat/session-123", LAST_CHAT_PATH_KEY, "/app/settings"],
+    ["Tools", "/app/tools", LAST_TOOLS_PATH_KEY, "/app/settings"],
+    ["Tools", "/app/tools/prereq/CPSC320", LAST_TOOLS_PATH_KEY, "/app/settings"],
+    ["Unity", "/app/pulse", LAST_UNITY_PATH_KEY, "/app/settings"],
+    ["Unity", "/app/pulse/schedule/ABC123", LAST_UNITY_PATH_KEY, "/app/settings"],
+    ["AI", "/app/chat/session-123", LAST_CHAT_PATH_KEY, "/app/about"],
+    ["Tools", "/app/tools/prereq/CPSC320", LAST_TOOLS_PATH_KEY, "/app/about"],
+    ["Unity", "/app/pulse/schedule/ABC123", LAST_UNITY_PATH_KEY, "/app/about"],
   ])("remembers the actual %s route %s in %s and resumes it from %s", (label, path, key, utilityPath) => {
     pathname.value = path;
     window.history.replaceState(null, "", path);
@@ -229,14 +229,15 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
   });
 
   it.each([
-    ["AI", LAST_CHAT_PATH_KEY, "/chatty", "/chat"],
-    ["Tools", LAST_TOOLS_PATH_KEY, "/toolshed", "/tools/map"],
-    ["Unity", LAST_UNITY_PATH_KEY, "/settings", "/pulse"],
-    ["Unity", LAST_UNITY_PATH_KEY, "/pulse/creators", "/pulse"],
-    ["Tools", LAST_TOOLS_PATH_KEY, "/tools/../settings", "/tools/map"],
+    ["AI", LAST_CHAT_PATH_KEY, "/app/chatty", "/app"],
+    ["AI", LAST_CHAT_PATH_KEY, "/app/tools/map", "/app"],
+    ["Tools", LAST_TOOLS_PATH_KEY, "/app/toolshed", "/app/tools/map"],
+    ["Unity", LAST_UNITY_PATH_KEY, "/app/settings", "/app/pulse"],
+    ["Unity", LAST_UNITY_PATH_KEY, "/app/pulse/creators", "/app/pulse"],
+    ["Tools", LAST_TOOLS_PATH_KEY, "/app/tools/../settings", "/app/tools/map"],
   ])("uses the %s fallback for invalid stored path %s=%s", (label, key, stored, fallback) => {
-    pathname.value = "/settings";
-    window.history.replaceState(null, "", "/settings");
+    pathname.value = "/app/settings";
+    window.history.replaceState(null, "", "/app/settings");
     sessionStorage.setItem(key, stored);
     const view = render(
       <ChatShellProvider>
@@ -248,9 +249,9 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
   });
 
   it("shares restoration with the sidebar while keeping native modified-click hrefs", () => {
-    pathname.value = "/settings";
-    window.history.replaceState(null, "", "/settings");
-    sessionStorage.setItem(LAST_TOOLS_PATH_KEY, "/tools/courses/CPSC110");
+    pathname.value = "/app/settings";
+    window.history.replaceState(null, "", "/app/settings");
+    sessionStorage.setItem(LAST_TOOLS_PATH_KEY, "/app/tools/courses/CPSC110");
     const view = render(
       <ChatShellProvider>
         <ModeToggle />
@@ -258,18 +259,18 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     );
     expect(view.getByRole("navigation").getAttribute("data-mode-navigation")).toBe("sidebar");
     const tools = view.getByRole("link", { name: "Tools" });
-    expect(tools.getAttribute("href")).toBe("/tools/map");
+    expect(tools.getAttribute("href")).toBe("/app/tools/map");
     // Block Happy DOM's native navigation while checking modifier handling.
     tools.addEventListener("click", (event) => event.preventDefault(), { once: true });
     fireEvent.click(tools, { ctrlKey: true });
     expect(routerPush).not.toHaveBeenCalled();
     fireEvent.click(tools);
-    expect(routerPush).toHaveBeenCalledWith("/tools/courses/CPSC110");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/courses/CPSC110");
   });
 
   it("remembers actual paths rather than pending mode destinations", () => {
-    window.history.replaceState(null, "", "/chat/actual-session");
-    pathname.value = "/chat/actual-session";
+    window.history.replaceState(null, "", "/app/chat/actual-session");
+    pathname.value = "/app/chat/actual-session";
     const view = render(
       <ShellNavigationProvider>
         <ChatShellProvider>
@@ -280,7 +281,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     fireEvent.click(view.getByRole("link", { name: "Tools" }));
     expect(view.getByRole("link", { name: "Tools" }).getAttribute("aria-current")).toBe("page");
     fireEvent.click(view.getByRole("link", { name: "Unity" }));
-    expect(sessionStorage.getItem(LAST_CHAT_PATH_KEY)).toBe("/chat/actual-session");
+    expect(sessionStorage.getItem(LAST_CHAT_PATH_KEY)).toBe("/app/chat/actual-session");
     expect(sessionStorage.getItem(LAST_TOOLS_PATH_KEY)).toBeNull();
     expect(sessionStorage.getItem(LAST_UNITY_PATH_KEY)).toBeNull();
   });
@@ -293,12 +294,12 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
       </ChatShellProvider>,
     );
     const toolsLink = modeLink(view.container, "Tools");
-    expect(toolsLink.getAttribute("href")).toBe("/tools/map");
+    expect(toolsLink.getAttribute("href")).toBe("/app/tools/map");
     act(() => fireEvent.click(toolsLink));
-    expect(routerPush).toHaveBeenCalledWith("/tools/map");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/map");
     expect(localStorage.getItem(SHELL_MODE_STORAGE_KEY)).toBe("tools");
 
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(
       <ChatShellProvider>
         <ModeToggle />
@@ -328,7 +329,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
       </ChatShellProvider>,
     );
     fireEvent.click(modeLink(view.container, "Tools"));
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(
       <ChatShellProvider>
         <ModeToggle />
@@ -337,7 +338,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     );
     expect(shellRef.current?.mode).toBe("tools");
 
-    pathname.value = "/settings";
+    pathname.value = "/app/settings";
     view.rerender(
       <ChatShellProvider>
         <ModeToggle />
@@ -360,7 +361,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(view.container.querySelector('[data-testid="session-list"]')).not.toBeNull();
     expect(view.container.querySelector("[data-tool-list]")).toBeNull();
 
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(
       <ChatShellProvider>
         <LeftSidebar />
@@ -371,7 +372,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(view.container.querySelector("[data-tool-list]")).not.toBeNull();
   });
 
-  it.each(["/tools/map", "/account", "/settings", "/about"])(
+  it.each(["/app/tools/map", "/app/account", "/app/settings", "/app/about"])(
     "keeps the guest sidebar tools-only at %s despite a saved Unity mode",
     (path) => {
       auth.isGuest = true;
@@ -398,7 +399,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
       expect(view.container.querySelector("[data-mode-toggle]")).toBeNull();
       expect(view.getByRole("button", { name: "Account menu" })).not.toBeNull();
       fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement);
-      expect(routerPush).toHaveBeenCalledWith("/tools/prereq");
+      expect(routerPush).toHaveBeenCalledWith("/app/tools/prereq");
       expect(onClose).toHaveBeenCalledOnce();
     },
   );
@@ -411,7 +412,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <Capture />
       </ChatShellProvider>,
     );
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(
       <ChatShellProvider>
         <LeftSidebar onClose={onClose} />
@@ -420,7 +421,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     );
     routerPush.mockClear();
     act(() => fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement));
-    expect(routerPush).toHaveBeenCalledWith("/tools/prereq");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/prereq");
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -435,7 +436,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     act(() => fireEvent.click(modeLink(view.container, "Tools")));
     expect(onClose).toHaveBeenCalledOnce();
 
-    pathname.value = "/pulse";
+    pathname.value = "/app/pulse";
     view.rerender(
       <ChatShellProvider initialMode="unity">
         <LeftSidebar onClose={onClose} />
@@ -448,12 +449,12 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         .map((button) => button.textContent),
     ).toEqual(["Announcements", "Pulse", "Schedule"]);
     act(() => fireEvent.click(view.getByRole("button", { name: "Schedule" })));
-    expect(routerPush).toHaveBeenLastCalledWith("/pulse/schedule");
+    expect(routerPush).toHaveBeenLastCalledWith("/app/pulse/schedule");
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
   it("marks the pathname tool current without depending on workspace state", () => {
-    pathname.value = "/tools/prereq/CPSC320";
+    pathname.value = "/app/tools/prereq/CPSC320";
     const { container } = render(
       <ChatShellProvider initialMode="tools">
         <LeftSidebar />
@@ -471,7 +472,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
       </ChatShellProvider>,
     );
     expect(modeLink(view.container, "AI").getAttribute("aria-current")).toBe("page");
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(
       <ChatShellProvider>
         <LeftSidebar />
@@ -480,7 +481,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
     expect(modeLink(view.container, "Tools").getAttribute("aria-current")).toBe("page");
   });
 
-  it.each(["/pulse/announcements", "/pulse/announcements/welcome"])(
+  it.each(["/app/pulse/announcements", "/app/pulse/announcements/welcome"])(
     "puts Announcements first and marks it current at %s",
     (path) => {
       pathname.value = path;
@@ -496,13 +497,13 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
       expect(announcement.getAttribute("aria-current")).toBe("page");
       expect(view.getByRole("button", { name: "Pulse" }).getAttribute("aria-current")).toBeNull();
       fireEvent.click(announcement);
-      expect(routerPush).toHaveBeenCalledWith("/pulse/announcements");
+      expect(routerPush).toHaveBeenCalledWith("/app/pulse/announcements");
       expect(onClose).toHaveBeenCalledOnce();
     },
   );
 
   it("marks shared schedule links as part of Schedule", () => {
-    pathname.value = "/pulse/schedule/ABC123";
+    pathname.value = "/app/pulse/schedule/ABC123";
     localStorage.setItem(SHELL_MODE_STORAGE_KEY, "unity");
 
     const { getByRole } = render(

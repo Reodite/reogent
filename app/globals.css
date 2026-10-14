@@ -591,16 +591,6 @@ details[open] > *:not(summary) {
   }
 }
 
-/* ---- Auth guards ---- */
-
-html[data-auth-pending] .landing-root {
-  display: none;
-}
-
-html:not([data-auth-pending]) .auth-splash {
-  display: none;
-}
-
 @keyframes ripple-in {
   from {
     clip-path: circle(0px at var(--ripple-x, 50%) var(--ripple-y, 50%));

@@ -30,6 +30,8 @@ The agent calls tools with verifiable data sources. It does not answer factual U
 
 ### Authentication
 
+Visitors can open the landing page at `/` without leaving their signed-in or guest session. The Reodite logo returns there from the app. Signed-in visitors choose Open app to return to `/app`; guests enter Tools. Keep workspace routes under `/app` and retain redirects from existing links.
+
 Users sign in with username and password. The system issues a JWT (HS256, 7-day expiry) stored in localStorage. All API calls require a Bearer token. No OAuth, no Google sign-in, no Cognito. Self-contained auth.
 
 When `AUTH_ENABLED=false` (development), all requests bypass auth with a default user.
@@ -46,7 +48,7 @@ The authenticated `/api/account` endpoint returns the caller's details. Each acc
 
 ### About
 
-Open About from the account popup's General section, alongside Settings and Account. Show "The creators" below the title, followed by Max and Chakorn's profile cards and the existing Buy us a coffee link. Keep initial placeholders in the cards' picture areas. Link Max's footer name to `https://libo.dev/ai` and Chakorn's to `https://chakornk.dev`. Keep About outside Unity and preserve the current mode and its saved destination. Redirect `/pulse/creators` to `/about`; Unity's mode button ignores the retired destination.
+Open About from the account popup's General section, alongside Settings and Account. Show "The creators" below the title, followed by Max and Chakorn's profile cards and the existing Buy us a coffee link. Keep initial placeholders in the cards' picture areas. Link Max's footer name to `https://libo.dev/ai` and Chakorn's to `https://chakornk.dev`. Keep About outside Unity and preserve the current mode and its saved destination. Redirect `/app/pulse/creators` to `/app/about`; Unity's mode button ignores the retired destination.
 
 ### First-login onboarding
 
@@ -84,7 +86,7 @@ Store sound preferences under `reodite.audio` in this browser and synchronize op
 - Sessions persist in PostgreSQL across visits. A student can close the browser and resume later.
 - Session title: LLM-generated from the opening exchange (max 60 characters)
 - Sessions are listed in the sidebar, grouped by recency: Today, Yesterday, This Week, This Month, Older
-- Starting a new conversation mints a fresh UUID and navigates to `/chat/:id`
+- Starting a new conversation mints a fresh UUID and navigates to `/app/chat/:id`
 - Sessions are created server-side on first message (upsert)
 
 ### Message Model

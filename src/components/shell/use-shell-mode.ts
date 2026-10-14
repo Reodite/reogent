@@ -8,9 +8,9 @@ export type ShellModePaths = { committedPathname: string; displayPathname: strin
 
 /** Returns the routed shell area, leaving utility paths to the remembered mode. */
 export function shellModeForPath(pathname: string): ShellMode | null {
-  if (pathname.startsWith("/tools")) return "tools";
-  if (pathname.startsWith("/pulse")) return "unity";
-  if (pathname.startsWith("/chat")) return "ai";
+  if (pathname === "/app/tools" || pathname.startsWith("/app/tools/")) return "tools";
+  if (pathname === "/app/pulse" || pathname.startsWith("/app/pulse/")) return "unity";
+  if (pathname === "/app" || pathname.startsWith("/app/chat/")) return "ai";
   return null;
 }
 

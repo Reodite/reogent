@@ -11,9 +11,9 @@ import Link from "next/link";
 import { useId, useRef, useState } from "react";
 
 const MENU_LINKS = [
-  { href: "/settings", label: "Settings", icon: "settings" },
-  { href: "/account", label: "Account", icon: "user" },
-  { href: "/about", label: "About", icon: "info" },
+  { href: "/app/settings", label: "Settings", icon: "settings" },
+  { href: "/app/account", label: "Account", icon: "user" },
+  { href: "/app/about", label: "About", icon: "info" },
 ] as const;
 
 /** Opens viewport-bounded app navigation and appearance controls from the sidebar. */

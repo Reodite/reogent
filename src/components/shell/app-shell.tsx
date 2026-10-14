@@ -301,7 +301,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           inert={sheetOpen || undefined}
         >
           <WorkspaceHostProvider host="chat" navigation={sidebarToggle}>
-            {navigation.pending ? pathname === "/chat" ? <NewChatLoading /> : <ChatPanelLoading /> : children}
+            {navigation.pending ? pathname === "/app" ? <NewChatLoading /> : <ChatPanelLoading /> : children}
           </WorkspaceHostProvider>
         </main>
       </ShellRouteContent>
@@ -339,8 +339,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             ) : navigation.pending ? (
               <WorkspaceRouteLoading
                 label="Loading Unity"
-                composition={pathname.startsWith("/pulse/schedule") ? "split" : "single"}
-                controls={pathname.startsWith("/pulse/schedule")}
+                composition={pathname.startsWith("/app/pulse/schedule") ? "split" : "single"}
+                controls={pathname.startsWith("/app/pulse/schedule")}
               />
             ) : (
               children

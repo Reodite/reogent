@@ -226,7 +226,7 @@ describe("ScheduleApp invitation consent", () => {
     else fireEvent.keyDown(cancel, { key: "Escape" });
     view.rerender(<ScheduleApp groupCode="DDDDDD" />);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(router.replace).toHaveBeenCalledWith("/pulse/schedule");
+    expect(router.replace).toHaveBeenCalledWith("/app/pulse/schedule");
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(0);
   });
 

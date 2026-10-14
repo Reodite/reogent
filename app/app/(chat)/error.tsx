@@ -15,7 +15,7 @@ export default function ChatError({ error, reset }: { error: Error & { digest?: 
         message={sanitizePublicErrorMessage(error.message)}
         onRetry={reset}
         secondaryAction={
-          <ButtonLink href="/chat" size="prominent">
+          <ButtonLink href="/app" size="prominent">
             New conversation
           </ButtonLink>
         }

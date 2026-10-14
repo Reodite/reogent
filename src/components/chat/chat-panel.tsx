@@ -573,7 +573,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
         mintedLocally.current = true;
         setSessionId(activeSessionId);
         // Update URL without triggering a navigation/remount
-        window.history.replaceState(null, "", `/chat/${activeSessionId}`);
+        window.history.replaceState(null, "", `/app/chat/${activeSessionId}`);
       }
       // The agent sees one string: the prompt with the attachment's text
       // appended. The UI splits it back apart for display (see message.tsx).
@@ -660,7 +660,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           message="Try again, or start with a fresh chat."
           onRetry={() => setHistoryNonce((nonce) => nonce + 1)}
           secondaryAction={
-            <Button variant="primary" data-sound="navigation" onClick={() => navigation.push("/chat")}>
+            <Button variant="primary" data-sound="navigation" onClick={() => navigation.push("/app")}>
               Start new chat
             </Button>
           }

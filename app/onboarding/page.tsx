@@ -32,7 +32,7 @@ function OnboardingContent() {
 
   useEffect(() => {
     if (auth.status === "signedOut") router.replace(`/login?redirect=${encodeURIComponent(destination)}`);
-    else if (auth.isGuest) router.replace("/tools");
+    else if (auth.isGuest) router.replace("/app/tools/map");
     else if (profile?.onboarding_completed) router.replace(destination);
   }, [auth.status, auth.isGuest, profile?.onboarding_completed, destination, router]);
 

@@ -1,6 +1,6 @@
 // Schedule-sharer persistence. A person's schedule is one opaque JSONB blob
 // per user (sharer_schedules); groups are named, joinable collections with a
-// 6-char base62 code that acts as the share link (`/pulse/schedule/<code>`).
+// 6-char base62 code that acts as the share link (`/app/pulse/schedule/<code>`).
 import { randomInt } from "node:crypto";
 import { getPool } from "../db";
 

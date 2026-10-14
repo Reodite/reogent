@@ -137,12 +137,12 @@ export function CourseLookupPane({
   const propCode = typeof state.code === "string" ? state.code.trim() : "";
   const toolsDetail = toolsMode && propCode !== "";
   const openFromList = useCallback(
-    (courseCode: string) => navigate(`/tools/courses/${courseCodeToSlug(courseCode)}`),
+    (courseCode: string) => navigate(`/app/tools/courses/${courseCodeToSlug(courseCode)}`),
     [navigate],
   );
   const openPrereqs = useCallback(
     (courseCode: string) => {
-      if (toolsMode) navigate(`/tools/prereq/${courseCodeToSlug(courseCode)}`);
+      if (toolsMode) navigate(`/app/tools/prereq/${courseCodeToSlug(courseCode)}`);
       else setActiveChannel("prereq-tree", { root: courseCode, query: courseCode, selections: {} });
     },
     [navigate, setActiveChannel, toolsMode],
@@ -164,7 +164,7 @@ export function CourseLookupPane({
             className="sm:size-11"
             onClick={() => {
               setCode("");
-              navigate("/tools/courses");
+              navigate("/app/tools/courses");
             }}
             aria-label="Back to results"
             title="Back to results"

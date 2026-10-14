@@ -80,7 +80,7 @@ vi.mock("@/src/components/map/map-panel", () => ({
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: () => {}, replace: () => {} }),
-  usePathname: () => "/chat",
+  usePathname: () => "/app",
   useParams: () => ({}),
 }));
 

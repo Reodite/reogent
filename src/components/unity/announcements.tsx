@@ -29,7 +29,7 @@ export function AnnouncementsFeed({ announcements }: { announcements: Announceme
             {announcements.map((announcement) => (
               <li key={announcement.slug}>
                 <Link
-                  href={`/pulse/announcements/${announcement.slug}`}
+                  href={`/app/pulse/announcements/${announcement.slug}`}
                   aria-labelledby={`announcement-${announcement.slug}`}
                   className="neu-raised neu-shadow-on-surface-container-low bg-surface hover:bg-surface-container-high focus-visible:ring-primary/40 block rounded-xl p-4 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 sm:p-6"
                 >
@@ -69,7 +69,7 @@ export function AnnouncementDetails({ announcement }: { announcement: Announceme
       title={announcement.title}
       description={<AnnouncementByline {...announcement} />}
       leading={
-        <ButtonLink href="/pulse/announcements" variant="ghost" size="fieldIcon" aria-label="Back to Announcements">
+        <ButtonLink href="/app/pulse/announcements" variant="ghost" size="fieldIcon" aria-label="Back to Announcements">
           <Icon name="arrowLeft" size={20} />
         </ButtonLink>
       }

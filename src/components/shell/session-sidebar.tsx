@@ -397,8 +397,8 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
     startNewChat,
   } = useChatShell();
   // Pathname, not params: a locally-minted session exists only in the URL
-  // (the router stays on /chat), so params would miss the highlight.
-  const activeId = /^\/chat\/([^/]+)/.exec(pathname)?.[1];
+  // (the router stays on /app), so params would miss the highlight.
+  const activeId = /^\/app\/chat\/([^/]+)/.exec(pathname)?.[1];
   const groupPrefix = useId();
   const deleteTitleId = useId();
   const deleteDescriptionId = useId();
@@ -431,7 +431,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
       removeSessionLocally(id);
       if (mountedRef.current) {
         setDeleteTarget(null);
-        if (activeIdRef.current === id) navigation.push("/chat");
+        if (activeIdRef.current === id) navigation.push("/app");
       }
     } catch {
       if (mountedRef.current) setDeleteError("Couldn't delete this conversation. Try again.");
@@ -443,7 +443,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
 
   function openSession(id: string) {
     setSidebarOpen(false);
-    navigation.push(`/chat/${id}`);
+    navigation.push(`/app/chat/${id}`);
   }
 
   function newConversation() {
@@ -451,7 +451,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
     newConversationRef.current?.blur();
     setSidebarOpen(false);
     startNewChat();
-    navigation.push("/chat");
+    navigation.push("/app");
   }
 
   return (

@@ -223,7 +223,7 @@ describe("Account", () => {
     auth.isGuest = true;
     render(<AccountPage />);
     expect(screen.getByRole("heading", { name: "Guest session" })).not.toBeNull();
-    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/login?redirect=%2Faccount");
+    expect(screen.getByRole("link", { name: "Sign in" }).getAttribute("href")).toBe("/login?redirect=%2Fapp%2Faccount");
     expect(api.getAccount).not.toHaveBeenCalled();
     expect(screen.queryByRole("region", { name: "Student profile" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Activity" })).toBeNull();

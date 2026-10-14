@@ -128,7 +128,7 @@ describe.each([
 
   it.each([false, true])("redirects fresh authentication to settings once (guest=%s)", async (isGuest) => {
     if (isGuest) storeUser(true);
-    setRedirect("/settings");
+    setRedirect("/app/settings");
     let respond!: (response: Response) => void;
     fetchMock.mockReturnValue(
       new Promise<Response>((resolve) => {
@@ -147,20 +147,20 @@ describe.each([
     expect(navigation.router.replace).not.toHaveBeenCalled();
     respond(Response.json({ token: studentToken, username: "student", userId: "student-id" }));
 
-    await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith("/settings"));
-    expect(navigation.router.replace.mock.calls).toEqual([["/settings"]]);
+    await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith("/app/settings"));
+    expect(navigation.router.replace.mock.calls).toEqual([["/app/settings"]]);
     expect(navigation.router.push).not.toHaveBeenCalled();
     expect(screen.queryByRole("textbox")).toBeNull();
     expect(screen.getByRole("status", { name: loading })).not.toBeNull();
   });
 
-  it.each([undefined, "/settings", "/settings?tab=profile#name"])(
+  it.each([undefined, "/app/settings", "/app/settings?tab=profile#name"])(
     "redirects an existing account to %s",
     async (redirect) => {
       if (redirect) setRedirect(redirect);
       storeUser();
       renderPage();
-      await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith(redirect ?? "/chat"));
+      await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith(redirect ?? "/app"));
       expect(navigation.router.replace).toHaveBeenCalledTimes(1);
       expect(navigation.router.push).not.toHaveBeenCalled();
       expect(screen.queryByRole("textbox")).toBeNull();
@@ -171,18 +171,18 @@ describe.each([
 
   it("keeps forms available to guests and preserves the destination in cross-links", () => {
     storeUser(true);
-    setRedirect("/settings?tab=profile#name");
+    setRedirect("/app/settings?tab=profile#name");
     renderPage();
     expect(screen.getByRole("textbox", { name: "Username" })).not.toBeNull();
     expect(screen.getByRole("link", { name: link }).getAttribute("href")).toBe(
-      `/${opposite}?redirect=${encodeURIComponent("/settings?tab=profile#name")}`,
+      `/${opposite}?redirect=${encodeURIComponent("/app/settings?tab=profile#name")}`,
     );
     expect(navigation.router.replace).not.toHaveBeenCalled();
     expect(navigation.router.push).not.toHaveBeenCalled();
   });
 
   it("shows failed authentication without navigating and restores focus", async () => {
-    setRedirect("/settings");
+    setRedirect("/app/settings");
     fetchMock.mockResolvedValue(Response.json({ error: "Check your username and password." }, { status: 401 }));
     renderPage();
     submitForm(action);
@@ -209,13 +209,13 @@ describe.each([
     "/login",
     "/signup?redirect=/settings",
     "/onboarding?redirect=/tools",
-  ])("uses /chat for missing or untrusted redirect %j", async (redirect) => {
+  ])("uses /app for missing or untrusted redirect %j", async (redirect) => {
     if (redirect !== undefined) setRedirect(redirect);
     fetchMock.mockResolvedValue(Response.json({ token: studentToken, username: "student", userId: "student-id" }));
     renderPage();
-    expect(screen.getByRole("link", { name: link }).getAttribute("href")).toBe(`/${opposite}?redirect=%2Fchat`);
+    expect(screen.getByRole("link", { name: link }).getAttribute("href")).toBe(`/${opposite}?redirect=%2Fapp`);
     submitForm(action);
-    await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith("/chat"));
+    await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith("/app"));
     expect(navigation.router.replace).toHaveBeenCalledTimes(1);
     expect(navigation.router.push).not.toHaveBeenCalled();
   });

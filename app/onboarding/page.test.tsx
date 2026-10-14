@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import AccountPage from "@/app/(shell)/account/page";
+import AccountPage from "@/app/app/account/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { AppProviders } from "@/src/components/providers";
 import { ThemeToggle } from "@/src/components/theme-toggle";
@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   pathname: "/onboarding",
-  search: "redirect=%2Ftools%2Fcalendar",
+  search: "redirect=%2Fapp%2Ftools%2Fcalendar",
   auth: { status: "signedIn", isGuest: false, user: { userId: "u1", username: "sam" }, signOut: vi.fn() },
   router: { replace: vi.fn(), push: vi.fn() },
   api: { getAccount: vi.fn(), getProfile: vi.fn(), saveProfile: vi.fn() },
@@ -37,7 +37,7 @@ beforeEach(() => {
   localStorage.clear();
   document.documentElement.dataset.theme = "light";
   state.pathname = "/onboarding";
-  state.search = "redirect=%2Ftools%2Fcalendar";
+  state.search = "redirect=%2Fapp%2Ftools%2Fcalendar";
   state.auth = { status: "signedIn", isGuest: false, user: { userId: "u1", username: "sam" }, signOut: vi.fn() };
   state.api.getAccount.mockReset();
   state.api.getProfile.mockReset().mockResolvedValue({ profile: null });
@@ -138,7 +138,7 @@ describe("first-login onboarding", () => {
     expect(state.router.replace).not.toHaveBeenCalled();
     expect((screen.getByRole("button", { name: "Saving…" }) as HTMLButtonElement).disabled).toBe(true);
     resolveSave();
-    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/tools/calendar"));
+    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/app/tools/calendar"));
     expect(state.api.saveProfile).toHaveBeenCalledWith({
       preferred_name: "Sam",
       year: 3,
@@ -167,7 +167,7 @@ describe("first-login onboarding", () => {
     expect((screen.getByRole("slider") as HTMLInputElement).value).toBe("30");
     expect(preview).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
-    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/tools/calendar"));
+    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/app/tools/calendar"));
     expect(JSON.parse(localStorage.getItem(AUDIO_STORAGE_KEY)!).volume).toBe(30);
   });
 
@@ -184,7 +184,7 @@ describe("first-login onboarding", () => {
     expect((screen.getByLabelText("What should we call you?") as HTMLInputElement).value).toBe("Sam");
     next();
     fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
-    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/tools/calendar"));
+    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/app/tools/calendar"));
   });
 
   it("skips setup while preserving an existing profile", async () => {
@@ -208,20 +208,22 @@ describe("first-login onboarding", () => {
         <OnboardingPage />
       </AppProviders>,
     );
-    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/tools/calendar"));
+    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/app/tools/calendar"));
     expect(screen.queryByText("Let's customize your experience")).toBeNull();
     expect(state.api.saveProfile).not.toHaveBeenCalled();
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
   it("gates direct app visits until setup completes", async () => {
-    state.pathname = "/tools/calendar";
+    state.pathname = "/app/tools/calendar";
     render(
       <AppProviders>
         <p>Private app</p>
       </AppProviders>,
     );
-    await waitFor(() => expect(state.router.replace).toHaveBeenCalledWith("/onboarding?redirect=%2Ftools%2Fcalendar"));
+    await waitFor(() =>
+      expect(state.router.replace).toHaveBeenCalledWith("/onboarding?redirect=%2Fapp%2Ftools%2Fcalendar"),
+    );
     expect(screen.queryByText("Private app")).toBeNull();
   });
 
@@ -249,7 +251,7 @@ describe("first-login onboarding", () => {
     );
     await waitFor(() =>
       expect(state.router.replace).toHaveBeenCalledWith(
-        kind === "guest" ? "/tools" : "/login?redirect=%2Ftools%2Fcalendar",
+        kind === "guest" ? "/app/tools/map" : "/login?redirect=%2Fapp%2Ftools%2Fcalendar",
       ),
     );
     expect(state.api.getProfile).not.toHaveBeenCalled();
@@ -264,7 +266,7 @@ describe("first-login onboarding", () => {
       student_type: "domestic",
       onboarding_completed: true,
     };
-    state.pathname = "/account";
+    state.pathname = "/app/account";
     state.api.getProfile.mockResolvedValue({ profile });
     state.api.getAccount.mockResolvedValue({
       username: "sam",
@@ -297,7 +299,7 @@ describe("first-login onboarding", () => {
   });
 
   it("keeps a newer appearance choice and focus when an earlier Account save finishes", async () => {
-    state.pathname = "/account";
+    state.pathname = "/app/account";
     const profile = { theme: "light", onboarding_completed: true };
     state.api.getProfile.mockResolvedValue({ profile });
     state.api.getAccount.mockResolvedValue({

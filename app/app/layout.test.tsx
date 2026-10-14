@@ -5,7 +5,7 @@ import ShellLayout from "./layout";
 
 const state = vi.hoisted(() => ({
   auth: { status: "signedIn" as "initializing" | "signedIn" | "signedOut", isGuest: false },
-  pathname: "/chat",
+  pathname: "/app",
   replace: vi.fn(),
 }));
 
@@ -30,7 +30,8 @@ vi.mock("next/navigation", () => ({
 afterEach(() => {
   cleanup();
   state.auth = { status: "signedIn", isGuest: false };
-  state.pathname = "/chat";
+  state.pathname = "/app";
+  window.history.replaceState(null, "", "/");
   state.replace.mockReset();
 });
 
@@ -39,18 +40,46 @@ describe("ShellLayout route guards", () => {
     state.auth = { status: "initializing", isGuest: false };
     const { container, queryByTestId } = render(<ShellLayout>chat</ShellLayout>);
 
-    expect(container.querySelector("[data-loading-path='/chat']")).not.toBeNull();
+    expect(container.querySelector("[data-loading-path='/app']")).not.toBeNull();
     expect(queryByTestId("shell")).toBeNull();
   });
 
-  it("shows the Tools loader while redirecting a guest-only route", () => {
-    state.auth = { status: "signedIn", isGuest: true };
-    const { container, queryByTestId } = render(<ShellLayout>chat</ShellLayout>);
+  it.each(["/app", "/app/chat/session-123", "/app/pulse", "/app/pulse/schedule/ABC123"])(
+    "sends guests from %s to app tools",
+    (pathname) => {
+      state.auth = { status: "signedIn", isGuest: true };
+      state.pathname = pathname;
+      const { container, queryByTestId } = render(<ShellLayout>chat</ShellLayout>);
 
-    expect(container.querySelector("[data-loading-path='/tools/map']")).not.toBeNull();
+      expect(container.querySelector("[data-loading-path='/app/tools/map']")).not.toBeNull();
+      expect(queryByTestId("shell")).toBeNull();
+      expect(state.replace).toHaveBeenCalledWith("/app/tools/map");
+    },
+  );
+
+  it.each(["/app", "/app/pulse/schedule/ABC123"])("retains %s through sign in", (pathname) => {
+    state.auth = { status: "signedOut", isGuest: false };
+    state.pathname = pathname;
+    window.history.replaceState(null, "", `${pathname}?view=week#schedule`);
+    const { queryByTestId } = render(<ShellLayout>private workspace</ShellLayout>);
+
     expect(queryByTestId("shell")).toBeNull();
-    expect(state.replace).toHaveBeenCalledWith("/tools/map");
+    expect(state.replace).toHaveBeenCalledWith(
+      `/login?redirect=${encodeURIComponent(`${pathname}?view=week#schedule`)}`,
+    );
   });
+
+  it.each(["/app/tools/map", "/app/account", "/app/settings", "/app/about"])(
+    "keeps guest-accessible %s in the shell",
+    (pathname) => {
+      state.auth = { status: "signedIn", isGuest: true };
+      state.pathname = pathname;
+      const { getByTestId } = render(<ShellLayout>guest workspace</ShellLayout>);
+
+      expect(getByTestId("shell").textContent).toBe("guest workspace");
+      expect(state.replace).not.toHaveBeenCalled();
+    },
+  );
 
   it("renders the signed-in destination without a loading interstitial", () => {
     const { getByTestId } = render(<ShellLayout>chat</ShellLayout>);

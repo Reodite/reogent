@@ -19,6 +19,6 @@ Each post has a direct link, so you can bookmark an update or share it with some
 
 The rest of Unity is still here:
 
-- [Pulse](/pulse) for student questions and voting.
-- [Schedule](/pulse/schedule) for sharing schedules.
-- [Creators](/pulse/creators) to meet the people building Reodite.
+- [Pulse](/app/pulse) for student questions and voting.
+- [Schedule](/app/pulse/schedule) for sharing schedules.
+- [Creators](/app/about) to meet the people building Reodite.

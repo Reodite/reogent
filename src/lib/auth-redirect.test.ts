@@ -3,7 +3,7 @@ import { safeAuthRedirect } from "./auth-redirect";
 
 describe("safeAuthRedirect", () => {
   it("preserves a local destination, query, and fragment", () => {
-    expect(safeAuthRedirect("/tools/courses?q=math#results")).toBe("/tools/courses?q=math#results");
+    expect(safeAuthRedirect("/app/tools/courses?q=math#results")).toBe("/app/tools/courses?q=math#results");
   });
 
   it.each([
@@ -22,6 +22,6 @@ describe("safeAuthRedirect", () => {
     "/onboarding/",
     "javascript:alert(1)",
   ])("rejects external or looping destinations: %s", (value) => {
-    expect(safeAuthRedirect(value)).toBe("/chat");
+    expect(safeAuthRedirect(value)).toBe("/app");
   });
 });

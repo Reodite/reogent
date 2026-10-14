@@ -35,13 +35,13 @@ vi.mock("@/src/components/auth/app-auth", () => ({
   useAppAuth: () => ({ status: "signedIn", isGuest: false, user: { userId: "user-1", username: "student" } }),
 }));
 const navigation = vi.hoisted(() => ({
-  committedPathname: "/chat",
-  displayPathname: "/chat",
+  committedPathname: "/app",
+  displayPathname: "/app",
   pending: false,
   push: vi.fn(),
 }));
 vi.mock("@/src/components/shell/shell-navigation", () => ({ useShellNavigation: () => navigation }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/chat" }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/app" }));
 
 beforeEach(() => {
   api.listSessions
@@ -51,8 +51,8 @@ beforeEach(() => {
     ]);
   api.renameSession.mockReset().mockResolvedValue(undefined);
   api.deleteSession.mockReset().mockResolvedValue(undefined);
-  navigation.committedPathname = "/chat";
-  navigation.displayPathname = "/chat";
+  navigation.committedPathname = "/app";
+  navigation.displayPathname = "/app";
   navigation.push.mockReset();
 });
 
@@ -111,22 +111,22 @@ function deferred() {
 
 describe("SessionSidebar actions", () => {
   it("releases the new-conversation trigger for route autofocus", async () => {
-    navigation.displayPathname = "/chat/session-1";
+    navigation.displayPathname = "/app/chat/session-1";
     render(sidebar());
     await screen.findByRole("button", { name: "A conversation with a long title" });
     const trigger = screen.getByRole("button", { name: "New conversation" });
     trigger.focus();
     fireEvent.click(trigger);
-    expect(navigation.push).toHaveBeenCalledWith("/chat");
+    expect(navigation.push).toHaveBeenCalledWith("/app");
     expect(document.activeElement).toBe(document.body);
   });
 
-  it.each(["/chat", "/settings"])("navigates to a new conversation from %s", async (pathname) => {
+  it.each(["/app", "/app/settings"])("navigates to a new conversation from %s", async (pathname) => {
     navigation.displayPathname = pathname;
     render(sidebar());
     await screen.findByRole("button", { name: "A conversation with a long title" });
     fireEvent.click(screen.getByRole("button", { name: "New conversation" }));
-    expect(navigation.push).toHaveBeenCalledWith("/chat");
+    expect(navigation.push).toHaveBeenCalledWith("/app");
   });
 
   it("keeps loaded session rows during refresh and refresh failure", async () => {
@@ -359,7 +359,7 @@ describe("SessionSidebar actions", () => {
   });
 
   it("keeps deletion pending until confirmation succeeds and redirects the active conversation", async () => {
-    navigation.displayPathname = "/chat/session-1";
+    navigation.displayPathname = "/app/chat/session-1";
     const deletion = deferred();
     api.deleteSession.mockReturnValueOnce(deletion.promise);
     render(sidebar());
@@ -374,18 +374,18 @@ describe("SessionSidebar actions", () => {
     expect(screen.getByRole("button", { name: "A conversation with a long title", hidden: true })).not.toBeNull();
     expect(api.deleteSession).toHaveBeenCalledTimes(1);
     await act(async () => deletion.resolve());
-    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/chat"));
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith("/app"));
     expect(screen.queryByRole("button", { name: "A conversation with a long title", hidden: true })).toBeNull();
   });
 
   it("does not redirect a different conversation visited during deletion", async () => {
-    navigation.displayPathname = "/chat/session-1";
+    navigation.displayPathname = "/app/chat/session-1";
     const deletion = deferred();
     api.deleteSession.mockReturnValueOnce(deletion.promise);
     const view = render(sidebar());
     const { dialog } = await deleteDialog();
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
-    navigation.displayPathname = "/chat/another-session";
+    navigation.displayPathname = "/app/chat/another-session";
     view.rerender(sidebar());
     await act(async () => deletion.resolve());
     await waitFor(() =>
@@ -419,7 +419,7 @@ describe("SessionSidebar actions", () => {
   });
 
   it("does not navigate after the sidebar unmounts during deletion", async () => {
-    navigation.displayPathname = "/chat/session-1";
+    navigation.displayPathname = "/app/chat/session-1";
     const deletion = deferred();
     api.deleteSession.mockReturnValueOnce(deletion.promise);
     const view = render(sidebar());

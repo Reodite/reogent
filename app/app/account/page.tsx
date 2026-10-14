@@ -231,7 +231,7 @@ export default function AccountPage() {
                 Guest session
               </Heading>
               <p className="text-on-surface-variant text-sm">Sign in to save your profile and track your activity.</p>
-              <ButtonLink href="/login?redirect=%2Faccount" variant="primary" size="field">
+              <ButtonLink href="/login?redirect=%2Fapp%2Faccount" variant="primary" size="field">
                 Sign in
               </ButtonLink>
             </div>

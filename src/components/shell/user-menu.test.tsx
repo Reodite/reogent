@@ -41,10 +41,10 @@ describe("UserMenu", () => {
         .getAllByRole("link")
         .map((link) => link.textContent),
     ).toEqual(["Settings", "Account", "About"]);
-    expect(within(pages).getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/settings");
-    expect(within(pages).getByRole("link", { name: "Account" }).getAttribute("href")).toBe("/account");
+    expect(within(pages).getByRole("link", { name: "Settings" }).getAttribute("href")).toBe("/app/settings");
+    expect(within(pages).getByRole("link", { name: "Account" }).getAttribute("href")).toBe("/app/account");
     const about = within(pages).getByRole("link", { name: "About" });
-    expect(about.getAttribute("href")).toBe("/about");
+    expect(about.getAttribute("href")).toBe("/app/about");
     expect(about.querySelector("svg")?.getAttribute("data-icon")).toBe("info");
     expect(queryByRole("button", { name: "Sign out" })).toBeNull();
     expect(queryByText("Signed in as")).toBeNull();

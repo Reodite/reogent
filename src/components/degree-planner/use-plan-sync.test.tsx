@@ -4,7 +4,7 @@ import { Storage } from "happy-dom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/tools/degree-planner",
+  usePathname: () => "/app/tools/degree-planner",
   useRouter: () => ({ replace: vi.fn() }),
 }));
 

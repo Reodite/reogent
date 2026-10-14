@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShellNavigationProvider, useShellNavigation } from "./shell-navigation";
 
-const pathname = vi.hoisted(() => ({ value: "/chat" }));
+const pathname = vi.hoisted(() => ({ value: "/app" }));
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
@@ -16,13 +16,13 @@ function Capture() {
   return (
     <>
       <output data-testid="navigation" data-display={navigation.displayPathname} data-pending={navigation.pending} />
-      <button type="button" onClick={() => navigation.push("/tools/map")}>
+      <button type="button" onClick={() => navigation.push("/app/tools/map")}>
         Open map
       </button>
-      <button type="button" onClick={() => navigation.push("/pulse")}>
+      <button type="button" onClick={() => navigation.push("/app/pulse")}>
         Open Pulse
       </button>
-      <button type="button" onClick={() => navigation.push("/chat")}>
+      <button type="button" onClick={() => navigation.push("/app")}>
         Return to chat
       </button>
     </>
@@ -31,7 +31,7 @@ function Capture() {
 
 afterEach(() => {
   cleanup();
-  pathname.value = "/chat";
+  pathname.value = "/app";
   router.push.mockReset();
   router.replace.mockReset();
   vi.useRealTimers();
@@ -47,9 +47,9 @@ describe("ShellNavigationProvider", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open map" }));
 
-    expect(screen.getByTestId("navigation").dataset.display).toBe("/tools/map");
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/app/tools/map");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("true");
-    expect(router.push).toHaveBeenCalledWith("/tools/map");
+    expect(router.push).toHaveBeenCalledWith("/app/tools/map");
   });
 
   it("keeps the latest rapid intent when an earlier route commits", () => {
@@ -61,22 +61,22 @@ describe("ShellNavigationProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open map" }));
     fireEvent.click(screen.getByRole("button", { name: "Open Pulse" }));
 
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(
       <ShellNavigationProvider>
         <Capture />
       </ShellNavigationProvider>,
     );
-    expect(screen.getByTestId("navigation").dataset.display).toBe("/pulse");
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/app/pulse");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("true");
 
-    pathname.value = "/pulse";
+    pathname.value = "/app/pulse";
     view.rerender(
       <ShellNavigationProvider>
         <Capture />
       </ShellNavigationProvider>,
     );
-    expect(screen.getByTestId("navigation").dataset.display).toBe("/pulse");
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/app/pulse");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
   });
 
@@ -89,7 +89,7 @@ describe("ShellNavigationProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open map" }));
     fireEvent.click(screen.getByRole("button", { name: "Return to chat" }));
 
-    expect(screen.getByTestId("navigation").dataset.display).toBe("/chat");
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/app");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
   });
 
@@ -102,7 +102,7 @@ describe("ShellNavigationProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open map" }));
     act(() => window.dispatchEvent(new PopStateEvent("popstate")));
 
-    expect(screen.getByTestId("navigation").dataset.display).toBe("/chat");
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/app");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
   });
 
@@ -113,22 +113,22 @@ describe("ShellNavigationProvider", () => {
       </ShellNavigationProvider>,
     );
 
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(
       <ShellNavigationProvider>
         <Capture />
       </ShellNavigationProvider>,
     );
-    expect(screen.getByTestId("navigation").dataset.display).toBe("/tools/map");
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/app/tools/map");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
 
-    pathname.value = "/chat";
+    pathname.value = "/app";
     view.rerender(
       <ShellNavigationProvider>
         <Capture />
       </ShellNavigationProvider>,
     );
-    expect(screen.getByTestId("navigation").dataset.display).toBe("/chat");
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/app");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
   });
 
@@ -143,14 +143,14 @@ describe("ShellNavigationProvider", () => {
 
     act(() => vi.advanceTimersByTime(10_000));
 
-    expect(screen.getByTestId("navigation").dataset.display).toBe("/chat");
+    expect(screen.getByTestId("navigation").dataset.display).toBe("/app");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
   });
 
   it("falls back to the router outside the provider", () => {
     render(<Capture />);
     fireEvent.click(screen.getByRole("button", { name: "Open map" }));
-    expect(router.push).toHaveBeenCalledWith("/tools/map");
+    expect(router.push).toHaveBeenCalledWith("/app/tools/map");
     expect(screen.getByTestId("navigation").dataset.pending).toBe("false");
   });
 });

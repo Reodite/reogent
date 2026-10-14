@@ -7,7 +7,7 @@ export default function AnnouncementNotFound() {
       <WorkspaceCanvas padding="md">
         <div className="mx-auto w-full max-w-prose py-8 text-center">
           <p className="text-muted mb-4 text-sm">This announcement may have moved or is no longer available.</p>
-          <ButtonLink href="/pulse/announcements">View announcements</ButtonLink>
+          <ButtonLink href="/app/pulse/announcements">View announcements</ButtonLink>
         </div>
       </WorkspaceCanvas>
     </WorkspacePage>

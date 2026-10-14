@@ -12,9 +12,9 @@ import { UserMenu } from "@/src/components/shell/user-menu";
 import { Button } from "@/src/components/ui/button";
 
 const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
-  { path: "/pulse/announcements", label: "Announcements", icon: "announcement" },
-  { path: "/pulse", label: "Pulse", icon: "group" },
-  { path: "/pulse/schedule", label: "Schedule", icon: "calendar" },
+  { path: "/app/pulse/announcements", label: "Announcements", icon: "announcement" },
+  { path: "/app/pulse", label: "Pulse", icon: "group" },
+  { path: "/app/pulse/schedule", label: "Schedule", icon: "calendar" },
 ];
 
 function UnitySidebar({ collapsed = false, onSelect }: { collapsed?: boolean; onSelect?: () => void }) {
@@ -24,7 +24,7 @@ function UnitySidebar({ collapsed = false, onSelect }: { collapsed?: boolean; on
   return (
     <SidebarListNav label="Community" collapsed={collapsed}>
       {UNITY_ITEMS.map((item) => {
-        const active = pathname === item.path || (item.path !== "/pulse" && pathname.startsWith(`${item.path}/`));
+        const active = pathname === item.path || (item.path !== "/app/pulse" && pathname.startsWith(`${item.path}/`));
         return (
           <SidebarListItem key={item.path}>
             <SidebarItemButton

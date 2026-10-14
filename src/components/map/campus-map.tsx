@@ -32,7 +32,7 @@ import type { ErrorEvent as MapLibreErrorEvent } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // MapLibre spawns its Web Worker via `new Worker(WORKER_URL)`. The default
-// worker URL resolves to the page route (/chat/{id}) in Turbopack builds, so
+// worker URL resolves to the page route (/app/chat/{id}) in Turbopack builds, so
 // the spawn fails with a text/html MIME error and no basemap tiles render.
 // Synced to public/ by scripts/sync-maplibre-worker.mjs (predev/prebuild) and
 // loaded from a stable origin-relative path. The worker file's inner import

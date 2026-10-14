@@ -40,7 +40,7 @@ import { UploadDropzone } from "./upload-dropzone";
 const ProfileModal = lazy(() => import("./profile-modal").then((module) => ({ default: module.ProfileModal })));
 
 interface Props {
-  /** A 6-char group code from `/pulse/schedule/[code]`; nonmembers must confirm before joining. */
+  /** A 6-char group code from `/app/pulse/schedule/[code]`; nonmembers must confirm before joining. */
   groupCode?: string;
 }
 
@@ -258,14 +258,14 @@ function ScheduleAppInner({ groupCode }: Props) {
 
   function switchGroup(code: string) {
     selectGroup(code);
-    navigation.push(`/pulse/schedule/${code}`);
+    navigation.push(`/app/pulse/schedule/${code}`);
   }
 
   function cancelInvitation() {
     if (joinRequest.current) return;
     const next = groups.find((candidate) => candidate.code !== activeCode)?.code ?? null;
     selectGroup(next);
-    navigation.replace(next ? `/pulse/schedule/${next}` : "/pulse/schedule");
+    navigation.replace(next ? `/app/pulse/schedule/${next}` : "/app/pulse/schedule");
   }
 
   async function joinInvitedGroup() {
@@ -342,8 +342,8 @@ function ScheduleAppInner({ groupCode }: Props) {
       const nextGroups = await refreshGroups();
       const next = nextGroups.find((candidate) => candidate.code !== activeCode);
       selectGroup(next?.code ?? null);
-      if (next) navigation.replace(`/pulse/schedule/${next.code}`);
-      else navigation.replace("/pulse/schedule");
+      if (next) navigation.replace(`/app/pulse/schedule/${next.code}`);
+      else navigation.replace("/app/pulse/schedule");
       toast(`Left “${group.name}”`);
     } catch (error) {
       toast(messageOf(error), "error");
@@ -353,7 +353,7 @@ function ScheduleAppInner({ groupCode }: Props) {
   async function copyShareLink() {
     if (groupView.status !== "ready") return;
     const { code: activeCode } = groupView;
-    const url = `${window.location.origin}/pulse/schedule/${activeCode}`;
+    const url = `${window.location.origin}/app/pulse/schedule/${activeCode}`;
     try {
       await navigator.clipboard.writeText(url);
       toast(`Short link copied · ${activeCode}`);

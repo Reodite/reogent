@@ -10,7 +10,7 @@ import AnnouncementsPage from "./page";
 const data = vi.hoisted(() => ({ getAnnouncements: vi.fn(), getAnnouncement: vi.fn() }));
 vi.mock("@/src/server/announcements", () => data);
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/pulse/announcements",
+  usePathname: () => "/app/pulse/announcements",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   notFound: () => {
     throw new Error("NEXT_HTTP_ERROR_FALLBACK;404");
@@ -25,7 +25,7 @@ const announcement: Announcement = {
   author: "Reodite team",
   content: [
     "## Full details",
-    "Read **the full update** and [visit Pulse](/pulse).",
+    "Read **the full update** and [visit Pulse](/app/pulse).",
     "- A useful change",
     "| Change | Status |\n| --- | --- |\n| Announcements | Available |",
     "```text\nA code example\n```",
@@ -64,7 +64,7 @@ describe("announcement routes", () => {
       within(feed)
         .getAllByRole("link")
         .map((link) => link.getAttribute("href")),
-    ).toEqual(["/pulse/announcements/campus-update", "/pulse/announcements/older-update"]);
+    ).toEqual(["/app/pulse/announcements/campus-update", "/app/pulse/announcements/older-update"]);
     const card = within(feed).getByRole("link", { name: announcement.title });
     expect(card.textContent).toContain(announcement.summary);
     expect(card.querySelector("time")?.getAttribute("datetime")).toBe(announcement.date);
@@ -88,13 +88,13 @@ describe("announcement routes", () => {
     expect(reader.tabIndex).toBe(0);
     expect(within(reader).getByRole("heading", { name: "Full details" })).toBeTruthy();
     expect(view.container.querySelector("strong")?.textContent).toBe("the full update");
-    expect(within(reader).getByRole("link", { name: "visit Pulse" }).getAttribute("href")).toBe("/pulse");
+    expect(within(reader).getByRole("link", { name: "visit Pulse" }).getAttribute("href")).toBe("/app/pulse");
     expect(within(reader).getByRole("table")).toBeTruthy();
     expect(within(reader).getByRole("region", { name: "Announcement table" }).tabIndex).toBe(0);
     expect(within(reader).getByRole("region", { name: "Code example" }).tabIndex).toBe(0);
     expect(view.container.querySelector("script, iframe, a[href^='javascript:']")).toBeNull();
     const back = view.getByRole("link", { name: "Back to Announcements" });
-    expect(back.getAttribute("href")).toBe("/pulse/announcements");
+    expect(back.getAttribute("href")).toBe("/app/pulse/announcements");
     expect(back.classList.contains("size-11")).toBe(true);
     expect(back.classList.contains("neu-button")).toBe(false);
     expect(back.querySelector("svg")?.getAttribute("width")).toBe("20");
@@ -114,6 +114,8 @@ describe("announcement routes", () => {
     await expect(generateMetadata(params("missing"))).rejects.toThrow("NEXT_HTTP_ERROR_FALLBACK;404");
     const view = render(<AnnouncementNotFound />);
     expect(view.getByRole("heading", { name: "Announcement not found" })).toBeTruthy();
-    expect(view.getByRole("link", { name: "View announcements" }).getAttribute("href")).toBe("/pulse/announcements");
+    expect(view.getByRole("link", { name: "View announcements" }).getAttribute("href")).toBe(
+      "/app/pulse/announcements",
+    );
   });
 });

@@ -7,6 +7,7 @@ import { ChatShellProvider } from "@/src/components/chat/chat-shell-context";
 import { AppShell } from "@/src/components/shell/app-shell";
 import { ShellBootLoading } from "@/src/components/shell/shell-loading";
 import { ShellNavigationProvider } from "@/src/components/shell/shell-navigation";
+import { shellModeForPath } from "@/src/components/shell/use-shell-mode";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -15,22 +16,23 @@ export default function ShellLayout({ children }: React.PropsWithChildren) {
   const { isGuest, status } = useAppAuth();
   const router = useRouter();
 
-  const guestRedirecting = isGuest && (pathname?.startsWith("/chat") || pathname?.startsWith("/pulse"));
+  const routedMode = shellModeForPath(pathname);
+  const guestRedirecting = isGuest && (routedMode === "ai" || routedMode === "unity");
 
   useEffect(() => {
     if (status === "signedOut") {
-      router.replace("/login");
+      const destination = `${pathname}${window.location.search}${window.location.hash}`;
+      router.replace(`/login?redirect=${encodeURIComponent(destination)}`);
       return;
     }
-    if (guestRedirecting) router.replace("/tools/map");
-  }, [guestRedirecting, router, status]);
+    if (guestRedirecting) router.replace("/app/tools/map");
+  }, [guestRedirecting, pathname, router, status]);
 
   if (status !== "signedIn" || guestRedirecting) {
-    return <ShellBootLoading pathname={guestRedirecting ? "/tools/map" : pathname} />;
+    return <ShellBootLoading pathname={guestRedirecting ? "/app/tools/map" : pathname} />;
   }
 
-  const initialMode =
-    pathname?.startsWith("/tools") || isGuest ? "tools" : pathname?.startsWith("/pulse") ? "unity" : "ai";
+  const initialMode = isGuest ? "tools" : (routedMode ?? "ai");
   return (
     <ShellNavigationProvider>
       <ChatShellProvider initialMode={initialMode}>

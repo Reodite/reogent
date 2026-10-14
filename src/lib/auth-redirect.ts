@@ -5,7 +5,7 @@ export function safeAuthRedirect(value: string | null): string {
     value.startsWith("//") ||
     Array.from(value).some((char) => char === "\\" || char.charCodeAt(0) <= 31 || char.charCodeAt(0) === 127)
   ) {
-    return "/chat";
+    return "/app";
   }
   const origin = "https://reodite.invalid";
   try {
@@ -14,5 +14,5 @@ export function safeAuthRedirect(value: string | null): string {
       return `${url.pathname}${url.search}${url.hash}`;
     }
   } catch {}
-  return "/chat";
+  return "/app";
 }

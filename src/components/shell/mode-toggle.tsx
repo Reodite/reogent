@@ -31,8 +31,9 @@ function rememberCurrentPath(committedPathname?: string) {
 }
 
 function pathnameMatchesMode(pathname: string, mode: ShellMode): boolean {
-  if (pathname === "/pulse/creators") return false;
-  const base = mode === "tools" ? "/tools" : mode === "unity" ? "/pulse" : "/chat";
+  if (pathname === "/app/pulse/creators") return false;
+  if (mode === "ai" && pathname === "/app") return true;
+  const base = mode === "tools" ? "/app/tools" : mode === "unity" ? "/app/pulse" : "/app/chat";
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
@@ -58,10 +59,10 @@ export function ModeToggle({
   if (isGuest) return null;
 
   function hrefFor(next: ShellMode): string {
-    if (next === "ai") return "/chat";
-    if (next === "unity") return "/pulse";
+    if (next === "ai") return "/app";
+    if (next === "unity") return "/app/pulse";
     const slug = (workspaceView && paneIdToSlug(workspaceView.paneId)) ?? "map";
-    return `/tools/${slug}`;
+    return `/app/tools/${slug}`;
   }
 
   function navigate(event: MouseEvent<HTMLAnchorElement>, next: ShellMode) {

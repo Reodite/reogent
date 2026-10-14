@@ -394,7 +394,7 @@ describe("PrereqTreePane", () => {
       fireEvent.click(root.querySelector("summary")!);
       expect(root.open).toBe(true);
       fireEvent.click(within(root).getAllByRole("button", { name: "Open course details" })[0]);
-      if (host === "tools") expect(routerPush).toHaveBeenCalledWith("/tools/courses/CPSC210");
+      if (host === "tools") expect(routerPush).toHaveBeenCalledWith("/app/tools/courses/CPSC210");
       else expect(shellActions.setActiveChannel).toHaveBeenCalledWith("course-lookup", { code: "CPSC 210" });
       expect(errorLog).toHaveBeenCalled();
     } finally {
@@ -447,7 +447,7 @@ describe("PrereqTreePane", () => {
     expect(document.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("canvas");
     expect(document.querySelector("[data-workspace-region='rail']")).toBeNull();
     expect(document.querySelector("[data-workspace-view-toggle]")).toBeNull();
-    expect(routerPush).toHaveBeenCalledWith("/tools/prereq/CPSC210");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/prereq/CPSC210");
     expect(screen.getByTestId("rf-canvas")).toBeTruthy();
     expect(
       screen.getByRole("status", { name: "Preparing prerequisite map", hidden: true }).querySelector("[data-skeleton]"),
@@ -481,7 +481,7 @@ describe("PrereqTreePane", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(container.querySelector("[data-prereq-feedback]")?.childElementCount).toBe(0);
     expect(onChangeRoot).toHaveBeenLastCalledWith("");
-    expect(routerPush).toHaveBeenLastCalledWith("/tools/prereq");
+    expect(routerPush).toHaveBeenLastCalledWith("/app/tools/prereq");
   });
 
   it("renders the empty state when a found course has no prereqs or coreqs (REQ-10.3)", async () => {
@@ -501,7 +501,7 @@ describe("PrereqTreePane", () => {
     const schedule = screen.getByText("Add to Schedule").closest("button");
     expect(schedule?.disabled).toBe(true);
     fireEvent.click(screen.getByText("Open in Course Finder"));
-    expect(routerPush).toHaveBeenCalledWith("/tools/courses/CPSC110");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/courses/CPSC110");
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   });
 
@@ -522,7 +522,7 @@ describe("PrereqTreePane", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
 
-    expect(routerPush).toHaveBeenCalledWith("/tools/prereq");
+    expect(routerPush).toHaveBeenCalledWith("/app/tools/prereq");
     expect((screen.getByLabelText("Root course code") as HTMLInputElement).value).toBe("");
     expect(screen.getAllByText(/Search for a course above/).length).toBeGreaterThan(0);
   });

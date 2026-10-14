@@ -4,6 +4,8 @@ Conversational AI for UBC students. Ask about courses, tuition, walking routes, 
 
 Built with Next.js 16 (App Router), React 19, and TypeScript.
 
+`/` is the public landing page, including for signed-in users. Open `/app` for a new conversation; workspace routes live under `/app`, including `/app/tools` and `/app/pulse`. The Reodite logo returns to `/`. Existing workspace URLs redirect to their `/app` equivalents.
+
 ## Stack
 
 | Layer    | Choice                                                |
@@ -190,14 +192,14 @@ Read [SECURITY.md](SECURITY.md) before deployment for the audit findings, verifi
 
 ## Announcements
 
-Unity lists **Announcements** first in its navigation. `/pulse/announcements` shows newest-first cards; each card links to `/pulse/announcements/<filename-without-extension>`.
+Unity lists **Announcements** first in its navigation. `/app/pulse/announcements` shows newest-first cards; each card links to `/app/pulse/announcements/<filename-without-extension>`.
 
 To publish an entry:
 
 1. Copy `content/announcements/welcome-to-announcements.md` to a new `.md` file in the same folder. Use a lowercase, hyphenated filename such as `schedule-update.md`. Keep that filename after publishing so shared links remain valid.
 2. Edit the JSON metadata between the `---` lines. `title`, `date`, `summary`, and `author` are required, non-empty strings. Use a real `YYYY-MM-DD` date. The feed sorts by date descending, then filename for entries on the same date.
 3. Write the full post below the metadata in Markdown. Start sections at `##`; the page supplies the main title. Links, lists, images, tables, and fenced code blocks work. Raw HTML does not render.
-4. Preview `/pulse/announcements` in the dev server. Run `npm test` and `npm run build`, then commit and deploy to publish.
+4. Preview `/app/pulse/announcements` in the dev server. Run `npm test` and `npm run build`, then commit and deploy to publish.
 
 For example:
 

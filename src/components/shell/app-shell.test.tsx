@@ -227,29 +227,29 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   });
 
   it("renders pathname-owned tool content without a post-paint activator", () => {
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     const view = renderShell(true);
     expect(view.getByTestId("map-area")).not.toBeNull();
 
-    pathname.value = "/tools/calendar";
+    pathname.value = "/app/tools/calendar";
     view.rerender(<ShellFixture />);
     expect(view.queryByTestId("map-area")).toBeNull();
     expect(view.getByTestId("calendar-pane")).not.toBeNull();
   });
 
   it("preserves the active ChatPanel when native history mints its session URL", () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const view = renderShell(true);
     const chat = view.getByTestId("chat-children");
 
-    pathname.value = "/chat/f1100000-0000-4000-8000-000000000001";
+    pathname.value = "/app/chat/f1100000-0000-4000-8000-000000000001";
     view.rerender(<ShellFixture />);
 
     expect(view.getByTestId("chat-children")).toBe(chat);
   });
 
   it("replaces old chat with the intended tool before pathname commit", () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const { container, getByTestId, queryByTestId } = render(<NavigatingShellFixture />);
 
     act(() => fireEvent.click(modeLink(container, "Tools")));
@@ -257,12 +257,12 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
     expect(getByTestId("map-area")).not.toBeNull();
     expect(queryByTestId("chat-children")).toBeNull();
-    expect(container.querySelector("[data-shell-navigation-pending='/tools/map']")).not.toBeNull();
+    expect(container.querySelector("[data-shell-navigation-pending='/app/tools/map']")).not.toBeNull();
     expect(container.querySelector("[data-shell-route-content]")?.getAttribute("data-route-transition")).toBe("true");
   });
 
   it("uses destination-shaped loading instead of Pulse when entering AI", () => {
-    pathname.value = "/pulse";
+    pathname.value = "/app/pulse";
     const { container, queryByTestId } = render(<NavigatingShellFixture />);
 
     act(() => fireEvent.click(modeLink(container, "AI")));
@@ -321,7 +321,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
 
   it.each([false, true])("keeps guest tools and drawer access without a mode bar at wide=%s", (wide) => {
     auth.isGuest = true;
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     const view = renderShell(wide);
     expect(view.getByTestId("map-area")).not.toBeNull();
     expect(view.container.querySelector("[data-mode-toggle]")).toBeNull();
@@ -356,7 +356,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(bottom?.hasAttribute("inert")).toBe(false);
     act(() => capturedShell.current?.setAnswerSheetOpen(true));
     expect(bottom?.hasAttribute("inert")).toBe(true);
-    pathname.value = "/settings";
+    pathname.value = "/app/settings";
     rerender(<ShellFixture />);
     expect(container.querySelector("[data-answer-sheet]")).toBeNull();
     expect(bottom?.hasAttribute("inert")).toBe(false);
@@ -394,10 +394,10 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   });
 
   it("keeps navigation available when returning from Settings with a retained answer sheet", () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const view = render(<NavigatingShellFixture />);
     act(() => capturedShell.current?.setAnswerSheetOpen(true));
-    pathname.value = "/settings";
+    pathname.value = "/app/settings";
     view.rerender(<NavigatingShellFixture />);
     fireEvent.click(modeLink(view.container, "AI"));
     expect(view.container.querySelector("[data-navigation-pending]")).not.toBeNull();
@@ -407,7 +407,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   });
 
   it("keeps pending destination navigation available outside inert task controls", () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const { container, getByRole } = render(<NavigatingShellFixture />);
     fireEvent.click(modeLink(container, "Tools"));
     const menu = getByRole("button", { name: "Open sidebar" });
@@ -444,7 +444,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     fireEvent.click(modeLink(view.container, "Tools"));
     fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement);
 
-    pathname.value = `/${utilityPage}`;
+    pathname.value = `/app/${utilityPage}`;
     view.rerender(<ShellFixture />);
 
     expect(view.container.querySelectorAll("main")).toHaveLength(1);
@@ -525,9 +525,9 @@ describe("13.3 — focus move/return + inert (REQ-2.5, REQ-8.1, REQ-8.3)", () =>
 
 describe("sidebar responsive cleanup", () => {
   it.each([
-    ["AI", "/chat", 1024],
-    ["Unity", "/pulse", 1024],
-    ["Tools", "/tools/map", 1280],
+    ["AI", "/app", 1024],
+    ["Unity", "/app/pulse", 1024],
+    ["Tools", "/app/tools/map", 1280],
   ])("closes %s at its desktop breakpoint and restores desktop focus", (_mode, path, breakpoint) => {
     pathname.value = path;
     document.body.style.overflow = "auto";
@@ -560,8 +560,8 @@ describe("sidebar responsive cleanup", () => {
     expect(document.body.style.overflow).toBe("auto");
   });
 
-  it.each(["/chat", "/pulse"])("closes an open Tools drawer when the mode changes to %s on desktop", (path) => {
-    pathname.value = "/tools/map";
+  it.each(["/app", "/app/pulse"])("closes an open Tools drawer when the mode changes to %s on desktop", (path) => {
+    pathname.value = "/app/tools/map";
     viewportWidth = 1100;
     const view = render(<ShellFixture />);
     fireEvent.click(view.getByRole("button", { name: "Open sidebar" }));
@@ -577,10 +577,10 @@ describe("sidebar responsive cleanup", () => {
   });
 
   it("updates the listener when an open compact drawer changes mode and cleans up on unmount", () => {
-    pathname.value = "/chat";
+    pathname.value = "/app";
     const view = renderShell(false);
     fireEvent.click(view.getByRole("button", { name: "Open sidebar" }));
-    pathname.value = "/tools/map";
+    pathname.value = "/app/tools/map";
     view.rerender(<ShellFixture />);
 
     expect(mediaQueries.get("(min-width: 1024px)")?.listeners.size).toBe(0);

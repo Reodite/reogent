@@ -6,7 +6,6 @@ import { ProductMock } from "@/src/components/landing/product-mock";
 import { TopoTexture } from "@/src/components/landing/topo-texture";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { ButtonLink } from "@/src/components/ui/button";
-import { LoadingStatus } from "@/src/components/ui/feedback";
 import { InlineAction } from "@/src/components/ui/inline-action";
 import { motion, useInView, useReducedMotion, useScroll, useTransform, type HTMLMotionProps } from "motion/react";
 import Link from "next/link";
@@ -35,40 +34,18 @@ const featureItemVariant = {
   visible: { opacity: 1, y: 0 },
 };
 
-// --- Entry point: handles auth state, renders content only when signed out ---
-
-export function Landing() {
-  const { status, isGuest } = useAppAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (status === "signedIn") router.replace(isGuest ? "/tools" : "/chat");
-  }, [status, isGuest, router]);
-
-  useEffect(() => {
-    if (status === "signedOut") delete document.documentElement.dataset.authPending;
-  }, [status]);
-
-  if (status === "initializing" || status === "signedIn") {
-    return (
-      <div className="auth-splash bg-background fixed inset-0 z-50 flex items-center justify-center">
-        <div className="neu-panel bg-surface flex items-center gap-3 rounded-2xl px-6 py-4">
-          <span className="bg-primary-container text-on-primary-container shadow-inset flex size-9 items-center justify-center rounded-xl">
-            <Icon name="school" size={18} />
-          </span>
-          <LoadingStatus>Opening Reodite…</LoadingStatus>
-        </div>
-      </div>
-    );
-  }
-
-  return <LandingContent />;
-}
-
 function GuestLink({ className }: { className?: string }) {
-  const { continueAsGuest } = useAppAuth();
+  const { status, continueAsGuest } = useAppAuth();
+  const router = useRouter();
   return (
-    <InlineAction className={className} onClick={() => continueAsGuest()}>
+    <InlineAction
+      className={className}
+      disabled={status === "initializing"}
+      onClick={() => {
+        continueAsGuest();
+        router.push("/app");
+      }}
+    >
       Continue as guest
     </InlineAction>
   );
@@ -83,7 +60,9 @@ function SectionHeading({ className, ...props }: HTMLMotionProps<"h2">) {
   );
 }
 
-function LandingContent() {
+export function Landing() {
+  const { status } = useAppAuth();
+  const signedIn = status === "signedIn";
   const prefersReducedMotion = useReducedMotion();
   const skipAnim = !!prefersReducedMotion;
   const [scrolled, setScrolled] = useState(false);
@@ -161,8 +140,8 @@ function LandingContent() {
             </Link>
             <div className="ml-auto flex max-w-full flex-wrap items-center gap-2">
               <ThemeToggle />
-              <ButtonLink href="/login" shadowOn={scrolled ? "surface" : "background"}>
-                Sign in
+              <ButtonLink href={signedIn ? "/app" : "/login"} shadowOn={scrolled ? "surface" : "background"}>
+                {signedIn ? "Open app" : "Sign in"}
               </ButtonLink>
             </div>
           </motion.nav>
@@ -227,28 +206,32 @@ function LandingContent() {
                   animate={heroCTAVariant.visible}
                   transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.32 }}
                 >
-                  <ButtonLink href="/signup" variant="primary" size="large" shadowOn="background">
-                    Get started
+                  <ButtonLink href={signedIn ? "/app" : "/signup"} variant="primary" size="large" shadowOn="background">
+                    {signedIn ? "Open app" : "Get started"}
                   </ButtonLink>
                 </motion.div>
+                {!signedIn && (
+                  <motion.div
+                    initial={skipAnim ? false : heroCTAVariant.hidden}
+                    animate={heroCTAVariant.visible}
+                    transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.36 }}
+                  >
+                    <ButtonLink href="/login" size="large" shadowOn="background">
+                      Sign in
+                    </ButtonLink>
+                  </motion.div>
+                )}
+              </motion.div>
+              {!signedIn && (
                 <motion.div
-                  initial={skipAnim ? false : heroCTAVariant.hidden}
-                  animate={heroCTAVariant.visible}
-                  transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.36 }}
+                  initial={skipAnim ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-3"
                 >
-                  <ButtonLink href="/login" size="large" shadowOn="background">
-                    Sign in
-                  </ButtonLink>
+                  <GuestLink className="text-muted hover:text-on-surface text-sm underline underline-offset-4 transition-colors" />
                 </motion.div>
-              </motion.div>
-              <motion.div
-                initial={skipAnim ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-3"
-              >
-                <GuestLink className="text-muted hover:text-on-surface text-sm underline underline-offset-4 transition-colors" />
-              </motion.div>
+              )}
             </div>
           </div>
         </section>
@@ -351,21 +334,25 @@ function LandingContent() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <ButtonLink href="/signup" variant="primary" size="large" shadowOn="background">
-              Get started free
+            <ButtonLink href={signedIn ? "/app" : "/signup"} variant="primary" size="large" shadowOn="background">
+              {signedIn ? "Open app" : "Get started free"}
             </ButtonLink>
-            <ButtonLink href="/login" size="large" shadowOn="background">
-              Sign in
-            </ButtonLink>
+            {!signedIn && (
+              <ButtonLink href="/login" size="large" shadowOn="background">
+                Sign in
+              </ButtonLink>
+            )}
           </motion.div>
-          <motion.div
-            initial={skipAnim ? false : featureItemVariant.hidden}
-            animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
-            transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-3"
-          >
-            <GuestLink className="text-muted hover:text-on-surface text-sm underline underline-offset-4 transition-colors" />
-          </motion.div>
+          {!signedIn && (
+            <motion.div
+              initial={skipAnim ? false : featureItemVariant.hidden}
+              animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
+              transition={{ duration: 0.5, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-3"
+            >
+              <GuestLink className="text-muted hover:text-on-surface text-sm underline underline-offset-4 transition-colors" />
+            </motion.div>
+          )}
         </motion.section>
       </main>
 
