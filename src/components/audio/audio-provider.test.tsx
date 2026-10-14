@@ -199,7 +199,7 @@ describe("sitewide tactile feedback", () => {
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "summer" } });
     expect(siteAudio.play).toHaveBeenLastCalledWith("select");
     act(() => window.dispatchEvent(new PopStateEvent("popstate")));
-    expect(siteAudio.play).toHaveBeenLastCalledWith("back");
+    expect(siteAudio.play).toHaveBeenLastCalledWith("navigation");
   });
 
   it("uses shared icons and explicit annotations for back, dismissal, zoom, and deletion", () => {
@@ -241,7 +241,7 @@ describe("sitewide tactile feedback", () => {
     }
   });
 
-  it("pairs mouse contact and activation, with quiet hover and keyboard focus", () => {
+  it("keeps hover, focus, and uncommitted presses silent and plays only the action", () => {
     render(
       <AudioProvider>
         <Button>
@@ -252,18 +252,117 @@ describe("sitewide tactile feedback", () => {
     const button = screen.getByRole("button");
     const child = screen.getByText("Action");
     fireEvent.pointerOver(button, { pointerType: "mouse" });
-    expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("hover");
     fireEvent.pointerOver(child, { pointerType: "mouse", relatedTarget: button });
-    expect(siteAudio.play).toHaveBeenCalledTimes(1);
     fireEvent.pointerDown(button, { pointerType: "mouse", button: 0 });
-    expect(siteAudio.play).toHaveBeenLastCalledWith("press");
-    fireEvent.click(button);
-    expect(siteAudio.play).toHaveBeenLastCalledWith("interaction");
+    fireEvent.pointerCancel(button);
     fireEvent.keyDown(button, { key: "Tab" });
     fireEvent.focusIn(button);
-    expect(siteAudio.play).toHaveBeenLastCalledWith("hover");
     fireEvent.keyDown(button, { key: "Enter" });
-    expect(siteAudio.play).toHaveBeenLastCalledWith("press");
+    fireEvent.keyDown(button, { key: " " });
+    expect(siteAudio.play).not.toHaveBeenCalled();
+    expect(siteAudio.unlock).toHaveBeenCalled();
+    fireEvent.click(button);
+    expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("interaction");
+  });
+
+  it("uses disclosure and toggle state before decorative icons", () => {
+    const { rerender } = render(
+      <AudioProvider>
+        <Button aria-expanded={false}>
+          <Icon name="close" />
+          Panel
+        </Button>
+        <Button aria-pressed={false}>
+          <Icon name="zoomIn" />
+          Toggle
+        </Button>
+      </AudioProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Panel" }));
+    expect(siteAudio.play).toHaveBeenLastCalledWith("open");
+    fireEvent.click(screen.getByRole("button", { name: "Toggle" }));
+    expect(siteAudio.play).toHaveBeenLastCalledWith("toggleOn");
+    rerender(
+      <AudioProvider>
+        <Button aria-expanded>
+          <Icon name="close" />
+          Panel
+        </Button>
+        <Button aria-pressed>
+          <Icon name="zoomIn" />
+          Toggle
+        </Button>
+      </AudioProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Panel" }));
+    expect(siteAudio.play).toHaveBeenLastCalledWith("close");
+    fireEvent.click(screen.getByRole("button", { name: "Toggle" }));
+    expect(siteAudio.play).toHaveBeenLastCalledWith("toggleOff");
+    expect(siteAudio.play).toHaveBeenCalledTimes(4);
+  });
+
+  it("gives page links their navigation cue regardless of their icon", () => {
+    render(
+      <AudioProvider>
+        <a href="/settings" onClick={(event) => event.preventDefault()}>
+          <Icon name="arrowLeft" />
+          Settings
+        </a>
+        <a href="/settings" target="_blank" rel="noopener" onClick={(event) => event.preventDefault()}>
+          <Icon name="arrowLeft" />
+          New tab
+        </a>
+        <a href="/settings" download onClick={(event) => event.preventDefault()}>
+          <Icon name="arrowLeft" />
+          Download
+        </a>
+        <a href={window.location.href} onClick={(event) => event.preventDefault()}>
+          <Icon name="arrowLeft" />
+          Current page
+        </a>
+      </AudioProvider>,
+    );
+    for (const name of ["New tab", "Download", "Current page"]) fireEvent.click(screen.getByRole("link", { name }));
+    expect(siteAudio.play).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("link", { name: "Settings" }));
+    expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("navigation");
+  });
+
+  it("plays custom keyboard actions once, including controls that synthesize a click", async () => {
+    render(
+      <AudioProvider>
+        {/* biome-ignore lint/a11y/useSemanticElements: Exercises non-native keyboard activation used by canvas widgets. */}
+        <div role="button" tabIndex={0} aria-expanded={false} onKeyDown={(event) => event.preventDefault()}>
+          Open widget
+        </div>
+        {/* biome-ignore lint/a11y/useSemanticElements: Exercises custom controls that dispatch their own click. */}
+        <div
+          role="button"
+          tabIndex={0}
+          data-sound="navigation"
+          onKeyDown={(event) => {
+            event.preventDefault();
+            event.currentTarget.click();
+          }}
+        >
+          Navigate
+        </div>
+        {/* biome-ignore lint/a11y/useSemanticElements: Verifies that unhandled custom-control keys stay silent. */}
+        <div role="button" tabIndex={0}>
+          Unhandled key
+        </div>
+      </AudioProvider>,
+    );
+    fireEvent.keyDown(screen.getByRole("button", { name: "Open widget" }), { key: "Enter" });
+    await act(async () => {});
+    expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("open");
+    fireEvent.keyDown(screen.getByRole("button", { name: "Navigate" }), { key: " " });
+    await act(async () => {});
+    expect(vi.mocked(siteAudio.play).mock.calls).toEqual([["open"], ["navigation"]]);
+    fireEvent.keyDown(screen.getByRole("button", { name: "Unhandled key" }), { key: "Enter" });
+    fireEvent.keyDown(screen.getByRole("button", { name: "Open widget" }), { key: "Enter", repeat: true });
+    await act(async () => {});
+    expect(siteAudio.play).toHaveBeenCalledTimes(2);
   });
 
   it("does not make touch-hover or touch-scroll contact noises", () => {

@@ -55,32 +55,34 @@ function soundControl(target: EventTarget | null): Element | null {
 }
 
 function clickCue(control: Element): SoundCue | null {
+  if (
+    control instanceof HTMLAnchorElement &&
+    (control.hasAttribute("download") ||
+      (control.target && control.target !== "_self") ||
+      control.href === window.location.href ||
+      !/^https?:$/.test(control.protocol))
+  )
+    return null;
   const explicit = control.getAttribute("data-sound");
   if (isSoundCue(explicit)) return explicit;
-  const icon = control.querySelector("[data-icon]")?.getAttribute("data-icon") ?? "";
-  if (Object.hasOwn(ICON_CUES, icon)) return ICON_CUES[icon];
-  if (control instanceof HTMLAnchorElement) {
-    if (control.download || (control.target && control.target !== "_self") || control.href === window.location.href)
-      return null;
-    return /^https?:$/.test(control.protocol) ? "navigation" : null;
-  }
+  if (control instanceof HTMLAnchorElement || control.hasAttribute("data-sidebar-item")) return "navigation";
   if (control instanceof HTMLInputElement) return null;
   if (control.tagName === "SUMMARY") return control.closest("details")?.open ? "close" : "open";
   if (control instanceof HTMLSelectElement) return "open";
-  if (control.hasAttribute("data-sidebar-item")) return "navigation";
-  if (control.matches('[role="tab"], [role="radio"], [role="option"]')) return "select";
   if (control.hasAttribute("aria-expanded")) return control.getAttribute("aria-expanded") === "true" ? "close" : "open";
-  if (control.hasAttribute("aria-haspopup")) return "open";
+  if (control.hasAttribute("aria-haspopup") && control.getAttribute("aria-haspopup") !== "false") return "open";
+  if (control.matches('[role="tab"], [role="radio"], [role="option"]')) return "select";
   const checked = control.getAttribute("aria-checked") ?? control.getAttribute("aria-pressed");
   if (checked !== null) return checked === "true" ? "toggleOff" : "toggleOn";
-  return "interaction";
+  const icon = control.querySelector("[data-icon]")?.getAttribute("data-icon") ?? "";
+  return Object.hasOwn(ICON_CUES, icon) ? ICON_CUES[icon] : "interaction";
 }
 
 function modified(event: MouseEvent | KeyboardEvent) {
   return event.metaKey || event.ctrlKey || event.altKey || event.shiftKey;
 }
 
-/** Installs gesture-gated tactile feedback for public pages, the shell, and portaled controls. */
+/** Plays action-specific feedback across public pages, the shell, and portaled controls. */
 export function AudioProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState({ ...DEFAULT_AUDIO_PREFERENCES });
   const current = useRef(preferences);
@@ -104,48 +106,32 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     } catch {
       apply({ ...DEFAULT_AUDIO_PREFERENCES }, false);
     }
-    let keyboardFocus = false;
     const sync = (event: StorageEvent) => {
       if (event.key === AUDIO_STORAGE_KEY || event.key === null) apply(parseAudioPreferences(event.newValue), false);
     };
     const unlock = () => void siteAudio.unlock();
-    const pointer = (event: PointerEvent) => {
-      keyboardFocus = false;
-      unlock();
-      const control = soundControl(event.target);
-      if (event.button === 0 && event.pointerType !== "touch" && !modified(event) && control && clickCue(control)) {
-        siteAudio.play("press");
-      }
-    };
+    let lastClick: MouseEvent | null = null;
     const key = (event: KeyboardEvent) => {
       unlock();
-      if (event.key === "Tab") keyboardFocus = true;
+      if (event.repeat) return;
       if (event.key === "Escape") {
         queueMicrotask(() => {
           if (event.defaultPrevented) siteAudio.play("close");
         });
+        return;
       }
+      if (modified(event) || (event.key !== "Enter" && event.key !== " ")) return;
       const control = soundControl(event.target);
-      if (
-        !event.repeat &&
-        !modified(event) &&
-        (event.key === "Enter" || event.key === " ") &&
-        control &&
-        clickCue(control)
-      ) {
-        siteAudio.play("press");
-      }
-    };
-    const hover = (event: PointerEvent) => {
-      if (event.pointerType === "touch" || event.buttons || modified(event)) return;
-      const control = soundControl(event.target);
-      if (control && !(event.relatedTarget instanceof Node && control.contains(event.relatedTarget)))
-        siteAudio.play("hover");
-    };
-    const focus = (event: FocusEvent) => {
-      if (keyboardFocus && soundControl(event.target)) siteAudio.play("hover");
+      if (!control || control.matches("button, a[href], input, select, summary")) return;
+      const cue = clickCue(control);
+      const previousClick = lastClick;
+      queueMicrotask(() => {
+        // Custom keyboard handlers may perform the action directly or dispatch their own click.
+        if (event.defaultPrevented && lastClick === previousClick && cue) siteAudio.play(cue);
+      });
     };
     const click = (event: MouseEvent) => {
+      lastClick = event;
       if (event.button !== 0 || modified(event)) return;
       const control = soundControl(event.target);
       const cue = control && clickCue(control);
@@ -183,14 +169,12 @@ export function AudioProvider({ children }: { children: ReactNode }) {
           siteAudio.play("drop");
       });
     };
-    const history = () => siteAudio.play("back");
+    const history = () => siteAudio.play("navigation");
     const visibility = () => {
       if (document.hidden) siteAudio.pause();
       else unlock();
     };
-    document.addEventListener("pointerdown", pointer, { capture: true, passive: true });
-    document.addEventListener("pointerover", hover, { capture: true, passive: true });
-    document.addEventListener("focusin", focus);
+    document.addEventListener("pointerdown", unlock, { capture: true, passive: true });
     document.addEventListener("keydown", key, true);
     document.addEventListener("click", click, true);
     document.addEventListener("change", change);
@@ -200,9 +184,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     window.addEventListener("popstate", history);
     window.addEventListener("storage", sync);
     return () => {
-      document.removeEventListener("pointerdown", pointer, true);
-      document.removeEventListener("pointerover", hover, true);
-      document.removeEventListener("focusin", focus);
+      document.removeEventListener("pointerdown", unlock, true);
       document.removeEventListener("keydown", key, true);
       document.removeEventListener("click", click, true);
       document.removeEventListener("change", change);

@@ -78,6 +78,7 @@ export function UserMenu({ collapsed = false, onNavigate }: { collapsed?: boolea
                 <Link
                   key={href}
                   href={href}
+                  data-sound="navigation"
                   onClick={() => {
                     setOpen(false);
                     onNavigate?.();

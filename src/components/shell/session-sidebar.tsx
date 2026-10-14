@@ -463,6 +463,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
               <Button
                 id="desktop-session-collapse"
                 onClick={onCollapse}
+                aria-expanded
                 aria-label="Collapse session history"
                 title="Collapse sessions"
                 variant="ghost"
@@ -481,7 +482,13 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
       />
 
       <div className="pb-3">
-        <Button ref={newConversationRef} variant="primary" onClick={newConversation} className="w-full">
+        <Button
+          ref={newConversationRef}
+          variant="primary"
+          data-sound="navigation"
+          onClick={newConversation}
+          className="w-full"
+        >
           <Icon name="add" size={18} />
           New conversation
         </Button>

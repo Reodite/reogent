@@ -660,7 +660,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           message="Try again, or start with a fresh chat."
           onRetry={() => setHistoryNonce((nonce) => nonce + 1)}
           secondaryAction={
-            <Button variant="primary" onClick={() => navigation.push("/chat")}>
+            <Button variant="primary" data-sound="navigation" onClick={() => navigation.push("/chat")}>
               Start new chat
             </Button>
           }
@@ -696,6 +696,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                     size="pill"
                     wrap
                     onClick={() => send(suggestion)}
+                    data-sound="off"
                     disabled={sending}
                     style={{ animationDelay: `${index * 60}ms` }}
                     className="animate-message-in max-w-full min-w-0 text-center"
@@ -754,7 +755,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                 {sendError}
               </p>
               <div className="flex shrink-0 gap-2">
-                <Button onClick={retry} disabled={sending} aria-describedby="send-error-msg">
+                <Button onClick={retry} data-sound="off" disabled={sending} aria-describedby="send-error-msg">
                   <Icon name="refresh2" size={14} />
                   Retry
                 </Button>

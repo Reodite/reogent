@@ -39,6 +39,8 @@ interface Tone {
   delay?: number;
   duration: number;
   gain: number;
+  attack?: number;
+  pan?: number;
   wave?: OscillatorType | "noise";
   fm?: number;
 }
@@ -49,6 +51,14 @@ function impact(frequency: number, duration = 0.055, gain = 0.12): Tone[] {
     { frequency, end: frequency * 0.45, duration, gain },
     { frequency: frequency * 7, duration: 0.012, gain: gain * 0.65, wave: "noise" },
     { frequency: frequency * 2.4, end: frequency, duration: duration * 0.4, gain: gain * 0.12, wave: "triangle" },
+  ];
+}
+
+// A soft attack joins filtered air and a low tone into a continuous movement.
+function sweep(frequency: number, end: number, duration: number, pan = 0): Tone[] {
+  return [
+    { frequency, end, duration, gain: 0.07, attack: duration * 0.28, pan, wave: "noise" },
+    { frequency: frequency / 4, end: end / 4, duration: duration * 0.8, gain: 0.028, attack: duration * 0.2, pan },
   ];
 }
 
@@ -66,7 +76,7 @@ function robot(notes: number[], spacing = 0.052, gain = 0.065): Tone[] {
 }
 
 const BOT_PALETTE = {
-  send: robot([420, 840, 630], 0.052),
+  send: sweep(800, 3200, 0.18),
   thinking: robot([390, 780, 520, 650], 0.045, 0.045),
   working: robot([740, 1110, 555, 925, 660, 990], 0.035, 0.047),
   toolComplete: robot([660, 990, 1320], 0.042, 0.052),
@@ -80,19 +90,16 @@ const BOT_PALETTE = {
 };
 
 const PALETTE = {
-  hover: [
-    { frequency: 2800, duration: 0.008, gain: 0.023, wave: "noise" },
-    { frequency: 540, end: 400, duration: 0.018, gain: 0.023 },
-  ],
-  press: impact(180, 0.03, 0.075),
   interaction: impact(310, 0.046, 0.115),
   navigation: [...impact(350, 0.06, 0.12), { frequency: 740, end: 990, delay: 0.016, duration: 0.035, gain: 0.023 }],
   back: impact(210, 0.065, 0.13),
   select: impact(510, 0.038, 0.105),
-  toggleOn: impact(440, 0.055, 0.14),
-  toggleOff: impact(260, 0.043, 0.13),
-  open: [...impact(280, 0.065, 0.12), { frequency: 600, end: 1900, duration: 0.055, gain: 0.035, wave: "noise" }],
-  close: [...impact(205, 0.045, 0.11), { frequency: 1400, end: 450, duration: 0.035, gain: 0.035, wave: "noise" }],
+  toggleOn: [...impact(330, 0.025, 0.1), { frequency: 660, end: 580, delay: 0.025, duration: 0.035, gain: 0.08 }],
+  toggleOff: [...impact(660, 0.025, 0.1), { frequency: 330, end: 290, delay: 0.025, duration: 0.035, gain: 0.08 }],
+  open: sweep(600, 1200, 0.14),
+  close: sweep(1200, 600, 0.14),
+  swipeLeft: sweep(1800, 420, 0.22, -0.65),
+  swipeRight: sweep(420, 1800, 0.22, 0.65),
   remove: impact(140, 0.085, 0.145),
   drag: impact(460, 0.035, 0.09),
   drop: impact(190, 0.075, 0.16),
@@ -193,7 +200,7 @@ export class SoundEngine {
         return;
       const now = performance.now();
       const repeating = cue === "thinking" || cue === "working";
-      const cooldown = repeating ? 400 : cue === "hover" ? 100 : 45;
+      const cooldown = repeating ? 400 : 45;
       if (now - (this.lastPlayed.get(cue) ?? -Infinity) < cooldown) return;
       this.lastPlayed.set(cue, now);
       if (category === "bot") this.stopCategory("bot");
@@ -317,7 +324,7 @@ export class SoundEngine {
       let source: OscillatorNode | AudioBufferSourceNode;
       if (tone.wave === "noise") {
         if (!this.noise) {
-          this.noise = context.createBuffer(1, Math.ceil(context.sampleRate * 0.12), context.sampleRate);
+          this.noise = context.createBuffer(1, Math.ceil(context.sampleRate * 0.3), context.sampleRate);
           const samples = this.noise.getChannelData(0);
           for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
         }
@@ -347,10 +354,19 @@ export class SoundEngine {
       filter.frequency.setValueAtTime(tone.wave === "noise" ? frequency : tone.fm ? 2800 : 4000, start);
       if (tone.wave === "noise" && tone.end) filter.frequency.exponentialRampToValueAtTime(tone.end * pitch, end);
       source.connect(filter);
-      filter.connect(envelope);
+      if (tone.pan) {
+        const panner = context.createStereoPanner();
+        nodes.push(panner);
+        panner.pan.setValueAtTime(0, start);
+        panner.pan.linearRampToValueAtTime(tone.pan, end);
+        filter.connect(panner);
+        panner.connect(envelope);
+      } else {
+        filter.connect(envelope);
+      }
       envelope.connect(this.output);
       envelope.gain.setValueAtTime(0, start);
-      envelope.gain.linearRampToValueAtTime(tone.gain * (volume / 100) ** 1.5, start + 0.0015);
+      envelope.gain.linearRampToValueAtTime(tone.gain * (volume / 100) ** 1.5, start + (tone.attack ?? 0.0015));
       envelope.gain.exponentialRampToValueAtTime(0.0001, end);
       envelope.gain.linearRampToValueAtTime(0, end + 0.006);
       const voice = { sources, nodes, envelope, category };

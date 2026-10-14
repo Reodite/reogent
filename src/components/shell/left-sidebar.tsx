@@ -61,6 +61,7 @@ function CollapseExpandButton({
     <Button
       id="desktop-session-collapse"
       onClick={toggle}
+      aria-expanded={!collapsed}
       aria-label={collapsed ? "Expand sidebar" : `Collapse ${label.toLowerCase()}`}
       title={collapsed ? "Expand sidebar" : `Collapse ${label.toLowerCase()}`}
       variant="ghost"

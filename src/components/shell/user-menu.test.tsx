@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
+import { AudioProvider } from "@/src/components/audio/audio-provider";
 import { UserMenu } from "@/src/components/shell/user-menu";
+import { siteAudio } from "@/src/lib/audio";
 import { cleanup, fireEvent, render, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -14,7 +16,10 @@ vi.mock("@/src/components/icons", () => ({
   Icon: ({ name }: { name: string }) => <svg data-icon={name} aria-hidden="true" />,
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("UserMenu", () => {
   it("composes account actions and appearance as a labeled dialog", () => {
@@ -48,9 +53,22 @@ describe("UserMenu", () => {
 
   it.each(["Settings", "Account", "About"])("closes the popup and its sidebar drawer when %s opens", (page) => {
     const onNavigate = vi.fn();
-    const { getByRole, queryByRole } = render(<UserMenu onNavigate={onNavigate} />);
+    const play = vi.spyOn(siteAudio, "play").mockImplementation(() => {});
+    const { getByRole, queryByRole } = render(
+      <AudioProvider>
+        <UserMenu onNavigate={onNavigate} />
+      </AudioProvider>,
+    );
     fireEvent.click(getByRole("button", { name: "Account menu" }));
-    fireEvent.click(getByRole("link", { name: page }));
+    expect(play).toHaveBeenCalledExactlyOnceWith("open");
+    play.mockClear();
+    const link = getByRole("link", { name: page });
+    expect(link.getAttribute("data-sound")).toBe("navigation");
+    fireEvent.pointerOver(link, { pointerType: "mouse" });
+    fireEvent.focusIn(link);
+    expect(play).not.toHaveBeenCalled();
+    fireEvent.click(link);
+    expect(play).toHaveBeenCalledExactlyOnceWith("navigation");
     expect(onNavigate).toHaveBeenCalledOnce();
     expect(queryByRole("dialog", { name: "Account" })).toBeNull();
     expect(getByRole("button", { name: "Account menu" }).getAttribute("aria-expanded")).toBe("false");

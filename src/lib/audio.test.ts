@@ -37,6 +37,7 @@ class FakeAudioContext {
   oscillators: ReturnType<FakeAudioContext["createOscillator"]>[] = [];
   envelopes: ReturnType<FakeAudioContext["createGain"]>[] = [];
   filters: ReturnType<FakeAudioContext["createBiquadFilter"]>[] = [];
+  panners: ReturnType<FakeAudioContext["createStereoPanner"]>[] = [];
   output = {
     ...audioNode(),
     threshold: audioParam(),
@@ -76,6 +77,11 @@ class FakeAudioContext {
     this.filters.push(node);
     return node;
   }
+  createStereoPanner() {
+    const node = { ...audioNode(), pan: audioParam() };
+    this.panners.push(node);
+    return node;
+  }
   resume = vi.fn(async () => {
     this.state = "running";
   });
@@ -88,9 +94,9 @@ class FakeAudioContext {
 }
 
 const interfaceCues: SoundCue[] = [
-  "hover",
-  "press",
   "interaction",
+  "swipeLeft",
+  "swipeRight",
   "navigation",
   "back",
   "select",
@@ -175,7 +181,7 @@ describe("audio preferences", () => {
 
   it("accepts only known sound annotations", () => {
     for (const cue of [...interfaceCues, ...botCues]) expect(isSoundCue(cue)).toBe(true);
-    for (const cue of [null, "off", "constructor", "unknown"]) expect(isSoundCue(cue)).toBe(false);
+    for (const cue of [null, "off", "hover", "press", "constructor", "unknown"]) expect(isSoundCue(cue)).toBe(false);
   });
 });
 
@@ -252,12 +258,67 @@ describe("tactile and robotic synthesis", () => {
       expect(node.disconnect).toHaveBeenCalledOnce();
   });
 
-  it("rate-limits repeats without swallowing the release after a press or a terminal cue", async () => {
+  it("uses the same smooth sweep in opposite directions for expansion and collapse", async () => {
     await engine.unlock();
-    engine.play("press");
-    engine.play("press");
-    expect(contexts[0].sources).toHaveLength(3);
+    engine.play("open");
+    engine.play("close");
+    const context = contexts[0];
+    const sweeps = context.filters.filter((filter) => filter.type === "bandpass");
+    expect(sweeps).toHaveLength(2);
+    const opened = sweeps[0].frequency;
+    const closed = sweeps[1].frequency;
+    expect(opened.setValueAtTime.mock.calls[0][0]).toBe(closed.exponentialRampToValueAtTime.mock.calls[0][0]);
+    expect(opened.exponentialRampToValueAtTime.mock.calls[0][0]).toBe(closed.setValueAtTime.mock.calls[0][0]);
+    expect(opened.exponentialRampToValueAtTime.mock.calls[0][0]).toBeGreaterThan(
+      opened.setValueAtTime.mock.calls[0][0],
+    );
+    for (const envelope of context.envelopes)
+      expect(envelope.gain.linearRampToValueAtTime.mock.calls[0][1]).toBeGreaterThan(1.02);
+  });
+
+  it.each([
+    ["swipeLeft", -0.65],
+    ["swipeRight", 0.65],
+  ] as const)("gives %s a soft attack, full noise tail, and directional pan", async (cue, pan) => {
+    await engine.unlock();
+    engine.play(cue);
+    const context = contexts[0];
+    expect(context.sources).toHaveLength(2);
+    expect(context.panners).toHaveLength(2);
+    for (const panner of context.panners) {
+      expect(panner.pan.setValueAtTime).toHaveBeenCalledWith(0, 1.003);
+      expect(panner.pan.linearRampToValueAtTime.mock.calls[0][0]).toBe(pan);
+    }
+    for (const envelope of context.envelopes)
+      expect(envelope.gain.linearRampToValueAtTime.mock.calls[0][1]).toBeGreaterThan(1.03);
+    const bufferLength = context.createBuffer.mock.calls[0][1];
+    expect(bufferLength / context.sampleRate).toBeGreaterThanOrEqual(0.22);
+    for (const source of context.sources) source.onended?.();
+    for (const panner of context.panners) expect(panner.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the percussive navigation cue and distinguishes a rising outgoing send sweep", async () => {
+    await engine.unlock();
+    engine.play("navigation");
+    const context = contexts[0];
+    expect(context.sources).toHaveLength(4);
+    expect(context.oscillators.map((node) => node.frequency.setValueAtTime.mock.calls[0][0])).toEqual([350, 840, 740]);
+    expect(context.oscillators[2].frequency.exponentialRampToValueAtTime.mock.calls[0][0]).toBe(990);
+    expect(context.oscillators[2].frequency.exponentialRampToValueAtTime.mock.calls[0][1]).toBeCloseTo(1.054);
+    const filterCount = context.filters.length;
+    engine.play("send");
+    const send = context.filters.slice(filterCount).find((filter) => filter.type === "bandpass")!;
+    expect(send.frequency.exponentialRampToValueAtTime.mock.calls[0][0]).toBeGreaterThan(
+      send.frequency.setValueAtTime.mock.calls[0][0],
+    );
+  });
+
+  it("rate-limits repeated actions without swallowing different actions or terminal cues", async () => {
+    await engine.unlock();
     engine.play("interaction");
+    engine.play("interaction");
+    expect(contexts[0].sources).toHaveLength(3);
+    engine.play("select");
     expect(contexts[0].sources).toHaveLength(6);
     engine.play("complete");
     expect(contexts[0].sources).toHaveLength(15);

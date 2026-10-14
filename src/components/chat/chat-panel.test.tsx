@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { AudioProvider } from "@/src/components/audio/audio-provider";
 import { ChatPanel } from "@/src/components/chat/chat-panel";
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import type { ChatMessage, ToolCall } from "@/src/lib/api-types";
@@ -152,10 +153,12 @@ function Capture() {
 
 function renderPanel(sessionId: string | null = null) {
   return render(
-    <ChatShellProvider>
-      <ChatPanel sessionId={sessionId} />
-      <Capture />
-    </ChatShellProvider>,
+    <AudioProvider>
+      <ChatShellProvider>
+        <ChatPanel sessionId={sessionId} />
+        <Capture />
+      </ChatShellProvider>
+    </AudioProvider>,
   );
 }
 
@@ -347,10 +350,12 @@ describe("ChatPanel reset lifecycle", () => {
       { role: "assistant", content: "Saved response" },
     ]);
     view.rerender(
-      <ChatShellProvider>
-        <ChatPanel key="restored" sessionId="saved-after-new" />
-        <Capture />
-      </ChatShellProvider>,
+      <AudioProvider>
+        <ChatShellProvider>
+          <ChatPanel key="restored" sessionId="saved-after-new" />
+          <Capture />
+        </ChatShellProvider>
+      </AudioProvider>,
     );
     await waitFor(() => expect(api.getSession).toHaveBeenCalledWith("saved-after-new"));
     expect((await view.findByRole("log", { name: "Conversation" })).textContent).toContain("Saved question");
@@ -382,6 +387,22 @@ describe("ChatPanel reset lifecycle", () => {
 });
 
 describe("ChatPanel sound lifecycle", () => {
+  it.each(["button", "keyboard", "suggestion"])("plays only the send cue for an accepted %s submission", (method) => {
+    const play = vi.spyOn(siteAudio, "play").mockImplementation(() => {});
+    api.chat.mockReturnValue(new Promise(() => {}));
+    const view = renderPanel();
+    const composer = view.getByRole("textbox", { name: "Message the assistant" });
+    fireEvent.keyDown(composer, { key: "Enter" });
+    expect(play).not.toHaveBeenCalled();
+    fireEvent.change(composer, { target: { value: "Find a study space" } });
+    if (method === "keyboard") fireEvent.keyDown(composer, { key: "Enter" });
+    else if (method === "suggestion")
+      fireEvent.click(view.getByRole("navigation", { name: "Suggested questions" }).querySelector("button")!);
+    else fireEvent.click(view.getByRole("button", { name: "Send message" }));
+    expect(api.chat).toHaveBeenCalledOnce();
+    expect(play).toHaveBeenCalledExactlyOnceWith("send");
+  });
+
   it("tracks live thinking and tools, quiets text streaming, and notifies once on completion", async () => {
     const play = vi.spyOn(siteAudio, "play").mockImplementation(() => {});
     const response = Promise.withResolvers<ChatResult>();
@@ -416,6 +437,8 @@ describe("ChatPanel sound lifecycle", () => {
     fireEvent.click(view.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(play).toHaveBeenCalledWith("complete"));
     expect(play.mock.calls.filter(([cue]) => cue === "complete")).toHaveLength(1);
+    expect(play.mock.calls.filter(([cue]) => cue === "send")).toHaveLength(2);
+    expect(play).not.toHaveBeenCalledWith("interaction");
   });
 
   it.each(["stop", "reset", "unmount"])("cancels audio without a terminal notification on %s", async (action) => {

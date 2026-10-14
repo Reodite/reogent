@@ -76,6 +76,7 @@ function ToolBadge({
         variant="outline"
         size="pill"
         aria-pressed={active}
+        data-sound="open"
         data-widget={call.name}
         data-active={active || undefined}
         onClick={onToggle}
@@ -139,6 +140,7 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
       <div className="mt-2 flex flex-wrap gap-2">
         <Button
           data-action="open-course-details"
+          data-sound="open"
           data-code={course.code}
           variant="outline"
           size="pill"
@@ -152,6 +154,7 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
         {course.prerequisite ? (
           <Button
             data-action="open-prereq-tree"
+            data-sound="open"
             data-code={course.code}
             variant="outline"
             size="pill"
@@ -790,6 +793,7 @@ export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: st
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
       aria-pressed={interactive ? active : undefined}
+      data-sound={interactive ? "open" : undefined}
       data-widget={call.name}
       data-active={active || undefined}
       onClick={interactive ? toggle : undefined}
