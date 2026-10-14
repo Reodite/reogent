@@ -1,16 +1,12 @@
-import { requireUser } from "@/src/server/auth";
 import { defaultSession, isSession } from "@/src/server/course-records";
 import { findByCode, presentCourse } from "@/src/server/modules/courses";
 import { getSearch } from "@/src/server/search";
 import { isOkanagan } from "@/src/shared/course-code";
 import { json, serverError } from "../../http";
 
-/** GET /api/courses/{code}?session= — exact lookup. Defaults to latest winter; session scopes the grade/distribution fields. */
+/** Returns a public course record, defaulting to latest winter; session scopes grade and distribution fields. */
 export async function GET(request: Request, { params }: { params: Promise<{ code: string }> }): Promise<Response> {
   try {
-    const user = await requireUser(request);
-    if (user instanceof Response) return user;
-
     const { code } = await params;
     const decoded = decodeURIComponent(code).trim();
     if (isOkanagan(decoded)) {

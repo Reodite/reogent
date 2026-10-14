@@ -1,4 +1,3 @@
-import { requireUser } from "@/src/server/auth";
 import { defaultSession, isSession } from "@/src/server/course-records";
 import { presentCourse, type CourseDoc } from "@/src/server/modules/courses";
 import { getSearch } from "@/src/server/search";
@@ -12,11 +11,9 @@ const upSubject = (s: string) => {
 
 const LEVEL_OPS: Record<string, LevelOp> = { eq: "=", plus: "+", minus: "-" };
 
+/** Returns public course search results and session-scoped catalog records. */
 export async function GET(request: Request): Promise<Response> {
   try {
-    const user = await requireUser(request);
-    if (user instanceof Response) return user;
-
     const url = new URL(request.url);
     const q = (url.searchParams.get("q") ?? "").trim();
     const subject = (url.searchParams.get("subject") ?? "").trim();
