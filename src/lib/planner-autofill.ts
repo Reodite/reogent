@@ -1,6 +1,7 @@
 import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { parsePrereq, type Expr } from "@/src/shared/prereq-ast";
 import { TERM_CREDIT_TARGET, type Year } from "./planner-model";
+import { evaluateCategory, type StructuredRequirements } from "./program-requirements";
 import { isRequirementMet, requirementKey, type ParsedProgramYears, type YearRequirement } from "./program-years";
 
 export interface AutofillPlacement {
@@ -24,7 +25,7 @@ export interface AutofillResult {
 interface AutofillInput {
   years: Year[];
   courseIndex: Map<string, CourseIndexEntry>;
-  parsed: ParsedProgramYears;
+  parsed: ParsedProgramYears | StructuredRequirements;
   programUrl: string;
   checkedRequirements: string[];
 }
@@ -37,7 +38,7 @@ interface Slot {
   credits: number;
 }
 
-/** Builds one prerequisite-safe, capacity-aware autofill batch. */
+/** Builds one prerequisite-safe, capacity-aware batch from year tables or curated categories. */
 export function buildAutofillPlan({
   years,
   courseIndex,
@@ -55,30 +56,74 @@ export function buildAutofillPlan({
   const choices: AutofillChoice[] = [];
   const remaining: string[] = [];
 
-  parsed.years.forEach((programYear, fallbackYear) => {
-    const yearIndex = yearIndexFromLabel(programYear.label, fallbackYear);
-    for (const item of programYear.items) {
-      const key = requirementKey(programUrl, programYear.label, item);
-      if (checked.has(key) || isRequirementMet(item, selected)) continue;
-      if (item.kind === "text") {
-        remaining.push(item.label);
-        continue;
+  if ("categories" in parsed) {
+    const planned = Array.from(selected, (code) => ({ code, credits: courseIndex.get(code)?.credits ?? 0 }));
+    for (const category of parsed.categories) {
+      // Fill named options; open-ended rules still need the student's selection.
+      const named = {
+        ...category,
+        options: category.options.filter((option) => option.code || option.rule?.kind === "course_list"),
+      };
+      const codes = new Set(
+        named.options.flatMap((option) => (option.code ? [option.code] : (option.rule?.courses ?? []))),
+      );
+      const candidates = Array.from(codes)
+        .flatMap((code) => {
+          const entry = courseIndex.get(code);
+          return entry ? [{ code, credits: entry.credits ?? 0 }] : [];
+        })
+        .filter((course) => evaluateCategory(named, [course], {}).earned > 0);
+      const picks: string[] = [];
+      let earned = evaluateCategory(named, planned, {}).earned;
+      for (const course of candidates) {
+        if (earned >= category.credits_required) break;
+        if (selected.has(course.code)) continue;
+        const nextEarned = evaluateCategory(named, [...planned, course], {}).earned;
+        if (nextEarned <= earned) continue;
+        earned = nextEarned;
+        planned.push(course);
+        selected.add(course.code);
+        requiredCodes.push(course.code);
+        picks.push(course.code);
+        setEarlierYear(preferredYear, course.code, yearIndexFromLabel(category.name, 0));
       }
-      const picks = requirementPicks(item, selected, courseIndex);
-      if (picks.length === 0) {
-        remaining.push(item.label);
-        continue;
+      if (candidates.some((course) => !selected.has(course.code))) {
+        choices.push(...picks.map((code) => ({ requirement: category.name, code })));
       }
-      for (const pick of picks) {
-        if (pick.alternatives > 1) choices.push({ requirement: item.label, code: pick.code });
-        if (!selected.has(pick.code)) {
-          selected.add(pick.code);
-          requiredCodes.push(pick.code);
-        }
-        setEarlierYear(preferredYear, pick.code, yearIndex);
+      if (
+        earned < category.credits_required ||
+        named.options.length === 0 ||
+        named.options.length !== category.options.length
+      ) {
+        remaining.push(category.name);
       }
     }
-  });
+  } else {
+    parsed.years.forEach((programYear, fallbackYear) => {
+      const yearIndex = yearIndexFromLabel(programYear.label, fallbackYear);
+      for (const item of programYear.items) {
+        const key = requirementKey(programUrl, programYear.label, item);
+        if (checked.has(key) || isRequirementMet(item, selected)) continue;
+        if (item.kind === "text") {
+          remaining.push(item.label);
+          continue;
+        }
+        const picks = requirementPicks(item, selected, courseIndex);
+        if (picks.length === 0) {
+          remaining.push(item.label);
+          continue;
+        }
+        for (const pick of picks) {
+          if (pick.alternatives > 1) choices.push({ requirement: item.label, code: pick.code });
+          if (!selected.has(pick.code)) {
+            selected.add(pick.code);
+            requiredCodes.push(pick.code);
+          }
+          setEarlierYear(preferredYear, pick.code, yearIndex);
+        }
+      }
+    });
+  }
 
   const prerequisites = new Map<string, Set<string>>();
   const corequisites = new Map<string, Set<string>>();

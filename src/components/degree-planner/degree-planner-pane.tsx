@@ -593,13 +593,17 @@ function ActionsSection({
     setFilling(true);
     try {
       const requirements = await getRequirementsFor(major);
-      const parsed = requirements?.kind === "prose" ? parseProgramYears(requirements.text) : null;
-      if (!requirements || !parsed || !hasYearRequirements(parsed)) {
+      const parsed = requirements?.kind === "prose" ? parseProgramYears(requirements.text) : requirements;
+      if (
+        !requirements ||
+        !parsed ||
+        ("categories" in parsed ? parsed.categories.length === 0 : !hasYearRequirements(parsed))
+      ) {
         setAutofillResult({
           placements: [],
           placedCodes: [],
           choices: [],
-          remaining: ["No year-by-year requirements are available for this program"],
+          remaining: ["No course requirements are available for this program"],
         });
         return;
       }
@@ -854,7 +858,7 @@ function AutofillSummary({ result, onClose }: { result: AutofillResult; onClose:
           )}
           {result.choices.length > 0 && (
             <p className="text-muted mt-1 text-xs">
-              One-of choices: {result.choices.map((choice) => choice.code).join(", ")}
+              Selected options: {result.choices.map((choice) => choice.code).join(", ")}
             </p>
           )}
           {remaining.length > 0 && (

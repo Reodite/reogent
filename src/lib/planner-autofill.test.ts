@@ -1,7 +1,9 @@
+import { readFileSync } from "node:fs";
 import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { describe, expect, it } from "vitest";
 import { buildAutofillPlan } from "./planner-autofill";
 import { createPlannerYear } from "./planner-model";
+import type { RequirementCategory, StructuredRequirements } from "./program-requirements";
 import { parseProgramYears, type ParsedProgramYears, type YearRequirement } from "./program-years";
 
 function course(code: string, prerequisite: string | null = null): CourseIndexEntry {
@@ -147,5 +149,180 @@ describe("buildAutofillPlan", () => {
 
     expect(result.placements[0]).toMatchObject({ yearId: years[1].id, termIdx: 1 });
     expect(result.remaining).toEqual(["Science electives"]);
+  });
+});
+
+function structured(categories: RequirementCategory[]): StructuredRequirements {
+  return { kind: "structured", program_url: "/program", categories };
+}
+
+describe("curated program autofill", () => {
+  it("fills only the missing category credits and reports choices", () => {
+    const year = createPlannerYear(0);
+    year.terms[0].blocks.push({ id: "existing-stat", code: "STAT 200" });
+    const index = new Map(["STAT 200", "STAT 251", "STAT 302"].map((code) => [code, course(code)]));
+    const result = buildAutofillPlan({
+      years: [year],
+      courseIndex: index,
+      parsed: structured([
+        {
+          name: "Statistics",
+          credits_required: 6,
+          options: [{ code: "STAT 200" }, { code: "STAT 251" }, { code: "STAT 302" }],
+        },
+      ]),
+      programUrl: "/program",
+      checkedRequirements: [],
+    });
+
+    expect(result.placedCodes).toEqual(["STAT 251"]);
+    expect(result.choices).toEqual([{ requirement: "Statistics", code: "STAT 251" }]);
+    expect(result.remaining).toEqual([]);
+    expect(year.terms[0].blocks).toEqual([{ id: "existing-stat", code: "STAT 200" }]);
+  });
+
+  it("uses curated credit values and skips zero-credit options", () => {
+    const codes = ["CPSC 103", "CPSC 110", "CPSC 107"];
+    const result = buildAutofillPlan({
+      years: [createPlannerYear(0)],
+      courseIndex: new Map(codes.map((code) => [code, course(code)])),
+      parsed: structured([
+        {
+          name: "Computation",
+          credits_required: 6,
+          options: [
+            { code: "CPSC 103", credit_value: 0 },
+            { code: "CPSC 110", credit_value: 4 },
+            { code: "CPSC 107", credit_value: 2 },
+          ],
+        },
+      ]),
+      programUrl: "/program",
+      checkedRequirements: [],
+    });
+
+    expect(result.placedCodes).toEqual(["CPSC 110", "CPSC 107"]);
+    expect(result.remaining).toEqual([]);
+  });
+
+  it("selects from finite course-list rules and respects credit caps", () => {
+    const codes = ["ENGL 100", "ENGL 110", "MUSC 100", "MUSC 101"];
+    const result = buildAutofillPlan({
+      years: [createPlannerYear(0)],
+      courseIndex: new Map(codes.map((code) => [code, course(code)])),
+      parsed: structured([
+        {
+          name: "Writing",
+          credits_required: 3,
+          options: [{ rule: { kind: "course_list", courses: ["ENGL 100", "ENGL 110"] } }],
+        },
+        {
+          name: "Music electives",
+          credits_required: 6,
+          options: [
+            {
+              rule: {
+                kind: "course_list",
+                courses: ["MUSC 100", "MUSC 101"],
+                caps: [{ credits: 3, subjects: ["MUSC"] }],
+              },
+            },
+          ],
+        },
+      ]),
+      programUrl: "/program",
+      checkedRequirements: [],
+    });
+
+    expect(result.placedCodes).toEqual(["ENGL 100", "MUSC 100"]);
+    expect(result.remaining).toEqual(["Music electives"]);
+  });
+
+  it("leaves open-ended and advisory categories for review", () => {
+    const codes = ["ECED 405", "ECED 406", "CPSC 310"];
+    const result = buildAutofillPlan({
+      years: Array.from({ length: 4 }, (_, index) => createPlannerYear(index)),
+      courseIndex: new Map(codes.map((code) => [code, course(code)])),
+      parsed: structured([
+        {
+          name: "Required courses",
+          credits_required: 15,
+          options: [
+            { code: "ECED 405", credit_value: 3 },
+            { subject_pattern: "ECED 4", credit_value: 12 },
+          ],
+        },
+        {
+          name: "Upper-level electives",
+          credits_required: 6,
+          options: [{ rule: { kind: "level_credit", min_level: 300 } }],
+        },
+        { name: "Adviser approval", credits_required: 0, options: [] },
+      ]),
+      programUrl: "/program",
+      checkedRequirements: [],
+    });
+
+    expect(result.placedCodes).toEqual(["ECED 405"]);
+    expect(result.remaining).toEqual(["Required courses", "Upper-level electives", "Adviser approval"]);
+  });
+
+  it("keeps unavailable courses unresolved while placing known options", () => {
+    const result = buildAutofillPlan({
+      years: [createPlannerYear(0)],
+      courseIndex: new Map([["CPSC 110", course("CPSC 110")]]),
+      parsed: structured([
+        { name: "Required courses", credits_required: 6, options: [{ code: "CPSC 110" }, { code: "CPSC 999" }] },
+      ]),
+      programUrl: "/program",
+      checkedRequirements: [],
+    });
+
+    expect(result.placedCodes).toEqual(["CPSC 110"]);
+    expect(result.remaining).toEqual(["Required courses"]);
+  });
+
+  it("uses category year labels and places prerequisites first without treating category order as years", () => {
+    const years = Array.from({ length: 4 }, (_, index) => createPlannerYear(index));
+    const result = buildAutofillPlan({
+      years,
+      courseIndex: new Map([
+        ["MATH 100", course("MATH 100")],
+        ["CPSC 110", course("CPSC 110")],
+        ["CPSC 210", course("CPSC 210", "CPSC 110")],
+      ]),
+      parsed: structured([
+        { name: "Calculus", credits_required: 3, options: [{ code: "MATH 100" }] },
+        { name: "Second-year systems", credits_required: 3, options: [{ code: "CPSC 210" }] },
+      ]),
+      programUrl: "/program",
+      checkedRequirements: [],
+    });
+
+    expect(result.placements).toEqual([
+      { yearId: years[0].id, termIdx: 0, code: "MATH 100" },
+      { yearId: years[0].id, termIdx: 0, code: "CPSC 110" },
+      { yearId: years[1].id, termIdx: 0, code: "CPSC 210" },
+    ]);
+  });
+
+  it("fills named courses from the shipped Computer Science requirements", () => {
+    const data = JSON.parse(
+      readFileSync(new URL("../../public/data/program_requirements.json", import.meta.url), "utf8"),
+    );
+    const requirements = { ...data["sci-computer-science-major"], kind: "structured" } as StructuredRequirements;
+    const codes = ["CPSC 110", "CPSC 103", "CPSC 107", "CPSC 121", "MATH 100", "MATH 101", "CPSC 210"];
+    const result = buildAutofillPlan({
+      years: Array.from({ length: 4 }, (_, index) => createPlannerYear(index)),
+      courseIndex: new Map(codes.map((code) => [code, { ...course(code), credits: code.startsWith("CPSC") ? 4 : 3 }])),
+      parsed: requirements,
+      programUrl: requirements.program_url,
+      checkedRequirements: [],
+    });
+
+    expect(result.placedCodes).toEqual(["CPSC 110", "CPSC 121", "MATH 100", "MATH 101", "CPSC 210"]);
+    expect(result.placedCodes).not.toContain("CPSC 103");
+    expect(result.placedCodes).not.toContain("CPSC 107");
+    expect(result.remaining).toContain("CPSC courses numbered 400 or higher");
   });
 });
