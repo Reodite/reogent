@@ -40,7 +40,7 @@ Guests use Tools and keep access to Settings and Account. Hide AI, Tools, and Un
 
 ### Account details
 
-Open Account from the sidebar popup to see your username, preferred name, student profile, creation date, tokens spent, and Pulse questions answered. Account contains Sign out and an Edit profile link to Settings. Settings retains student defaults and appearance controls.
+Open Account from the sidebar popup to see your username, preferred name, student profile, creation date, tokens spent, and Pulse questions answered. Account contains Sign out and an Edit profile button for updating student defaults in place. Settings contains appearance controls.
 
 The authenticated `/api/account` endpoint returns the caller's details. Each account accumulates provider-reported tokens across chat turns and conversation titles, independent of conversation deletion. Show the tracking start date; earlier and unreported usage are unavailable. Pulse counts include stored answers in active and locked rounds. Guests see a sign-in prompt without private data requests. Guest Settings shows Appearance only; omit the Student profile section and personalization fields.
 
@@ -56,7 +56,7 @@ Setup shows one card at a time:
 
 Next and Back retain entries while switching cards. Fields are optional. Finish setup saves the details and completion flag together before continuing to the original destination. Skip setup preserves saved personal details, saves the current appearance, and marks setup complete. Failed saves keep the form and entries available for retry. Reloading before completion restarts setup with the last saved profile.
 
-**Synchronization requirement:** onboarding and the site's Settings / Preferences page must use the same field components, validation, API, and database record. Both read and write `/api/profile`; `user_profiles.data` holds `preferred_name`, `program`, `year`, `student_type`, `theme`, and `onboarding_completed`. Settings saves must preserve the completion flag. New preferences must be added to the shared schema and both surfaces together, rather than stored only in an onboarding-specific copy. No database migration is needed for these optional JSONB fields.
+**Synchronization requirement:** onboarding and Account use the same field components, validation, and database record. Onboarding reads `/api/profile`; Account reads the same profile through `/api/account`. Both save through `/api/profile`. `user_profiles.data` holds `preferred_name`, `program`, `year`, `student_type`, `theme`, and `onboarding_completed`. Account saves must preserve the completion flag. Add new preferences to the shared schema and both surfaces. These optional JSONB fields require no database migration.
 
 Appearance changes apply immediately through the shared theme toggle, with a ripple transition unless reduced motion is enabled. The device setting supplies the initial Light or Dark choice; the local cache retains it without following later device changes. Finish setup and Save profile persist the current appearance to the account. Signing in on another device loads that account preference. Profile reads omit unsupported appearance values so existing accounts can use the initial device choice. Profile load failures offer retry without overwriting saved values.
 
@@ -245,7 +245,7 @@ The interface has warmth and character. Copy is human, varied, and specific to U
 
 3. **Session continuity**: Conversation history persists across browser sessions. Students can close the tab, return tomorrow, and continue. The sidebar shows all past sessions grouped by recency.
 
-4. **Minimal friction**: First-time users get three short, skippable setup cards. Returning users continue straight to the app. Personal details stay optional and editable in Settings.
+4. **Minimal friction**: First-time users get three short, skippable setup cards. Returning users continue straight to the app. Personal details stay optional and editable in Account.
 
 5. **Single-material coherence**: Use one neutral material across the interface. Keep mobile main views flat and full-width; reserve depth for controls, contained content, and overlays.
 

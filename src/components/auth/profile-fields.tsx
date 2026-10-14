@@ -11,7 +11,7 @@ interface ProfileFieldsProps {
   shadowOn?: NeumorphicSurfaceToken;
 }
 
-/** Personal details shared by onboarding and Settings. */
+/** Renders shared personal-detail fields for onboarding and Account. */
 export function ProfileFields({ profile, onChange, shadowOn = "surface" }: ProfileFieldsProps) {
   const id = useId();
   return (

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ getProfile: vi.fn(), saveProfile: vi.fn() }));
@@ -51,20 +51,7 @@ describe("Settings", () => {
     expect(api.saveProfile).not.toHaveBeenCalled();
   });
 
-  it("reserves the profile form footprint while loading", () => {
-    api.getProfile.mockReturnValue(new Promise(() => {}));
-    render(<SettingsPage />);
-
-    const loading = screen.getByRole("status", { name: "Loading student profile" });
-    expect(loading).not.toBeNull();
-    expect(document.querySelectorAll("[data-skeleton]").length).toBeGreaterThan(0);
-    const action = loading.querySelector("[data-profile-loading-action]");
-    expect(action?.className).toContain("h-11");
-    expect(action?.className).toContain("sm:h-10");
-  });
-
-  it("groups appearance and student profile as sections in a single card", async () => {
-    api.getProfile.mockResolvedValue({ profile: {} });
+  it("keeps only appearance in a single card for signed-in users", () => {
     const { container } = render(<SettingsPage />);
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("single");
     expect(container.querySelectorAll("[data-workspace-canvas]")).toHaveLength(1);
@@ -77,71 +64,13 @@ describe("Settings", () => {
     expect(container.querySelectorAll("main")).toHaveLength(0);
     const canvas = container.querySelector("[data-workspace-canvas]");
     expect(canvas?.contains(screen.getByRole("region", { name: "Appearance" }))).toBe(true);
-    expect(canvas?.contains(screen.getByRole("region", { name: "Student profile" }))).toBe(true);
     expect(canvas?.contains(screen.getByTestId("theme-toggle"))).toBe(true);
-    await screen.findByLabelText("What are you studying?");
-    for (const label of ["What should we call you?", "What are you studying?", "Year of study", "Tuition defaults"]) {
-      expect(screen.getByLabelText(label).classList.contains("neu-shadow-on-surface-container-low")).toBe(true);
-    }
-  });
-
-  it("withholds editable fields after load failure and unlocks them only after Retry", async () => {
-    api.getProfile.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({
-      profile: { program: "Computer Science", year: 3, student_type: "domestic" },
-    });
-    render(<SettingsPage />);
-
-    expect(await screen.findByText("Profile unavailable")).not.toBeNull();
-    expect(screen.getByTestId("theme-toggle")).not.toBeNull();
+    expect(screen.queryByRole("region", { name: "Student profile" })).toBeNull();
     expect(screen.queryByLabelText("What are you studying?")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save profile" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-
-    const program = await screen.findByLabelText("What are you studying?");
-    expect((program as HTMLInputElement).value).toBe("Computer Science");
-    expect(screen.getByRole("button", { name: "Save profile" })).not.toBeNull();
-  });
-
-  it.each([
-    ["What should we call you?", "Ada"],
-    ["What are you studying?", "Statistics"],
-    ["Year of study", "3"],
-    ["Tuition defaults", "international"],
-  ])("clears saved feedback when %s changes", async (label, value) => {
-    api.getProfile.mockResolvedValue({ profile: { program: "Mathematics", year: 2, student_type: "domestic" } });
-    api.saveProfile.mockResolvedValue(undefined);
-    render(<SettingsPage />);
-    await screen.findByLabelText("What are you studying?");
-    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
-    await screen.findByText("Saved");
-
-    fireEvent.change(screen.getByLabelText(label), { target: { value } });
-    expect(screen.queryByText("Saved")).toBeNull();
-    expect(api.saveProfile).toHaveBeenCalledTimes(1);
-  });
-
-  it("disables the entire fieldset while saving without clearing values", async () => {
-    let finish: (() => void) | undefined;
-    api.getProfile.mockResolvedValue({ profile: { program: "Mathematics" } });
-    api.saveProfile.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-    );
-    render(<SettingsPage />);
-    const program = await screen.findByLabelText("What are you studying?");
-    fireEvent.change(program, { target: { value: "Statistics" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
-
-    const fieldset = program.closest("fieldset");
-    await waitFor(() => expect(fieldset?.disabled).toBe(true));
-    expect((program as HTMLInputElement).value).toBe("Statistics");
-    expect(screen.getByLabelText("What are you studying?")).toBe(program);
-    expect(program.closest("form")?.className).toContain("ui-content-enter");
-    finish?.();
-    await waitFor(() => expect(screen.getByText("Saved")).not.toBeNull());
-    expect(screen.getByLabelText("What are you studying?")).toBe(program);
-    expect(screen.getByText("Saved").className).toContain("ui-notice-enter");
+    expect(screen.queryByRole("status", { name: "Loading student profile" })).toBeNull();
+    expect(screen.queryByText(/student defaults/i)).toBeNull();
+    expect(api.getProfile).not.toHaveBeenCalled();
+    expect(api.saveProfile).not.toHaveBeenCalled();
   });
 });

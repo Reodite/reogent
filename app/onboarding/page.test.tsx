@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
-import SettingsPage from "@/app/(shell)/settings/page";
+import AccountPage from "@/app/(shell)/account/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { AppProviders } from "@/src/components/providers";
+import { ThemeToggle } from "@/src/components/theme-toggle";
 import type { StudentProfile } from "@/src/shared/profile";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -12,7 +13,7 @@ const state = vi.hoisted(() => ({
   search: "redirect=%2Ftools%2Fcalendar",
   auth: { status: "signedIn", isGuest: false, user: { userId: "u1", username: "sam" }, signOut: vi.fn() },
   router: { replace: vi.fn(), push: vi.fn() },
-  api: { getProfile: vi.fn(), saveProfile: vi.fn() },
+  api: { getAccount: vi.fn(), getProfile: vi.fn(), saveProfile: vi.fn() },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -37,6 +38,7 @@ beforeEach(() => {
   state.pathname = "/onboarding";
   state.search = "redirect=%2Ftools%2Fcalendar";
   state.auth = { status: "signedIn", isGuest: false, user: { userId: "u1", username: "sam" }, signOut: vi.fn() };
+  state.api.getAccount.mockReset();
   state.api.getProfile.mockReset().mockResolvedValue({ profile: null });
   state.api.saveProfile.mockReset().mockResolvedValue(undefined);
   window.matchMedia = vi
@@ -229,7 +231,7 @@ describe("first-login onboarding", () => {
     expect(state.api.getProfile).not.toHaveBeenCalled();
   });
 
-  it("loads onboarding values in Settings and preserves completion when editing", async () => {
+  it("loads onboarding values in Account and preserves completion when editing", async () => {
     const profile: StudentProfile = {
       preferred_name: "Sam",
       program: "Arts",
@@ -238,14 +240,24 @@ describe("first-login onboarding", () => {
       student_type: "domestic",
       onboarding_completed: true,
     };
-    state.pathname = "/settings";
+    state.pathname = "/account";
     state.api.getProfile.mockResolvedValue({ profile });
+    state.api.getAccount.mockResolvedValue({
+      username: "sam",
+      createdAt: null,
+      profile,
+      tokensSpent: 0,
+      tokenTrackingStartedAt: "2026-10-01T12:00:00.000Z",
+      pulseQuestionsAnswered: 0,
+    });
     render(
       <AppProviders>
-        <SettingsPage />
+        <ThemeToggle />
+        <AccountPage />
       </AppProviders>,
     );
-    const field = await screen.findByLabelText("What should we call you?");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit profile" }));
+    const field = screen.getByLabelText("What should we call you?");
     expect((field as HTMLInputElement).value).toBe("Sam");
     expect(screen.getAllByRole("radiogroup", { name: "Appearance" })).toHaveLength(1);
     expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("true");
@@ -260,9 +272,18 @@ describe("first-login onboarding", () => {
     expect(screen.queryByText("Saved")).toBeNull();
   });
 
-  it("keeps a newer appearance choice when an earlier Settings save finishes", async () => {
-    state.pathname = "/settings";
-    state.api.getProfile.mockResolvedValue({ profile: { theme: "light", onboarding_completed: true } });
+  it("keeps a newer appearance choice and focus when an earlier Account save finishes", async () => {
+    state.pathname = "/account";
+    const profile = { theme: "light", onboarding_completed: true };
+    state.api.getProfile.mockResolvedValue({ profile });
+    state.api.getAccount.mockResolvedValue({
+      username: "sam",
+      createdAt: null,
+      profile,
+      tokensSpent: 0,
+      tokenTrackingStartedAt: "2026-10-01T12:00:00.000Z",
+      pulseQuestionsAnswered: 0,
+    });
     let finishSave!: () => void;
     state.api.saveProfile.mockImplementationOnce(
       () =>
@@ -272,17 +293,22 @@ describe("first-login onboarding", () => {
     );
     render(
       <AppProviders>
-        <SettingsPage />
+        <ThemeToggle />
+        <AccountPage />
       </AppProviders>,
     );
-    await screen.findByLabelText("Year of study");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit profile" }));
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
-    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    const dark = screen.getByRole("radio", { name: "Dark" });
+    dark.focus();
+    fireEvent.click(dark);
     await act(async () => finishSave());
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("campus.theme")).toBe("dark");
+    expect(document.activeElement).toBe(dark);
     expect(state.api.saveProfile).toHaveBeenCalledWith({ theme: "light", onboarding_completed: true });
     expect(screen.queryByText("Saved")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit profile" }));
     fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
     await screen.findByText("Saved");
     expect(state.api.saveProfile).toHaveBeenLastCalledWith({ theme: "dark", onboarding_completed: true });

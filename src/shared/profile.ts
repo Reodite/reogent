@@ -5,7 +5,7 @@ export type StudentType = "domestic" | "international";
 /** Explicit appearance preference, initialized from the device when unset. */
 export type ThemeMode = "light" | "dark";
 
-/** Account details and preferences shared by onboarding, Settings, and the database. */
+/** Student details and preferences for onboarding, Account, and database storage. */
 export interface StudentProfile {
   preferred_name?: string;
   program?: string;

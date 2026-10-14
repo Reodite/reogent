@@ -117,7 +117,7 @@ interface ProfileContextValue {
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
-/** Shares the signed-in account's saved profile across onboarding and Settings. */
+/** Shares the signed-in account's saved profile across onboarding and Account. */
 export function useProfile(): ProfileContextValue {
   const context = useContext(ProfileContext);
   if (!context) throw new Error("useProfile must be used within <AppProviders>");

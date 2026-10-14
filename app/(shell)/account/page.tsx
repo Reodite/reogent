@@ -1,16 +1,16 @@
 "use client";
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
+import { ProfileFields } from "@/src/components/auth/profile-fields";
 import { Icon } from "@/src/components/icons";
-import { useApi } from "@/src/components/providers";
-import { useShellNavigation } from "@/src/components/shell/shell-navigation";
+import { useApi, useProfile, useTheme } from "@/src/components/providers";
 import { Button, ButtonLink } from "@/src/components/ui/button";
 import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
 import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
 import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
-import type { AccountDetails } from "@/src/shared/profile";
-import { useEffect, useState } from "react";
+import { parseProfile, type AccountDetails, type StudentProfile } from "@/src/shared/profile";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 const dateFormat = new Intl.DateTimeFormat("en-CA", { dateStyle: "long" });
 const numberFormat = new Intl.NumberFormat("en-CA");
@@ -18,21 +18,56 @@ const numberFormat = new Intl.NumberFormat("en-CA");
 type AccountState = { status: "loading" | "error" } | { status: "loaded"; details: AccountDetails };
 
 function AccountContent({ account }: { account: AccountDetails }) {
-  const navigation = useShellNavigation();
-  const name = account.profile?.preferred_name || account.username;
-  const profile = [
-    ["Preferred name", account.profile?.preferred_name || "Not set"],
-    ["Program", account.profile?.program || "Not set"],
-    ["Year of study", account.profile?.year?.toString() || "Not set"],
+  const { saveProfile } = useProfile();
+  const { mode } = useTheme();
+  const [profile, setProfile] = useState(account.profile);
+  const [draft, setDraft] = useState<StudentProfile | null>(null);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [savedMode, setSavedMode] = useState(mode);
+  const formRef = useRef<HTMLFormElement>(null);
+  const editRef = useRef<HTMLButtonElement>(null);
+  const editing = draft !== null;
+  const saving = status === "saving";
+  const saved = status === "saved" && savedMode === mode;
+  const name = profile?.preferred_name || account.username;
+  const fields = [
+    ["Preferred name", profile?.preferred_name || "Not set"],
+    ["Program", profile?.program || "Not set"],
+    ["Year of study", profile?.year?.toString() || "Not set"],
     [
       "Tuition defaults",
-      account.profile?.student_type === "domestic"
+      profile?.student_type === "domestic"
         ? "Domestic student"
-        : account.profile?.student_type === "international"
+        : profile?.student_type === "international"
           ? "International student"
           : "Ask me when needed",
     ],
   ];
+
+  useEffect(() => {
+    if (editing) formRef.current?.querySelector("input")?.focus();
+  }, [editing]);
+
+  useEffect(() => {
+    if (status === "saved" && document.activeElement === document.body) editRef.current?.focus();
+  }, [status]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draft || saving) return;
+    setStatus("saving");
+    try {
+      const parsed = parseProfile({ ...draft, theme: mode });
+      if (!parsed.ok) throw new Error(parsed.error);
+      await saveProfile(parsed.value);
+      setSavedMode(mode);
+      setProfile(parsed.value);
+      setDraft(null);
+      setStatus("saved");
+    } catch {
+      setStatus("error");
+    }
+  }
 
   return (
     <>
@@ -65,27 +100,65 @@ function AccountContent({ account }: { account: AccountDetails }) {
           <Heading as="h2" size="section" id="account-profile-title">
             Student profile
           </Heading>
-          <ButtonLink
-            href="/settings"
+          <Button
+            ref={editRef}
             variant="ghost"
             size="compact"
-            onNavigate={(event) => {
-              event.preventDefault();
-              navigation.push("/settings");
+            disabled={saving}
+            aria-expanded={editing}
+            aria-controls={editing ? "account-profile-form" : undefined}
+            onClick={() => {
+              setDraft(editing ? null : (profile ?? {}));
+              setStatus("idle");
             }}
           >
-            <Icon name="pencil" size={14} />
-            Edit profile
-          </ButtonLink>
+            {!editing && <Icon name="pencil" size={14} />}
+            {editing ? "Cancel" : "Edit profile"}
+          </Button>
         </header>
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {profile.map(([label, value]) => (
-            <div key={label} className="min-w-0 space-y-1">
-              <dt className="text-muted text-xs">{label}</dt>
-              <dd className="text-on-surface text-sm wrap-anywhere">{value}</dd>
-            </div>
-          ))}
-        </dl>
+        {draft ? (
+          <form
+            ref={formRef}
+            id="account-profile-form"
+            onSubmit={handleSubmit}
+            aria-busy={saving}
+            className="ui-content-enter flex flex-col gap-3"
+          >
+            <fieldset disabled={saving} className="flex flex-col gap-3 disabled:opacity-70">
+              <ProfileFields
+                profile={draft}
+                onChange={(next) => {
+                  setDraft(next);
+                  setStatus("idle");
+                }}
+                shadowOn="surface-container-low"
+              />
+              <Button type="submit" variant="primary" size="prominent" className="self-start">
+                <Icon name="check" size={16} />
+                {saving ? "Saving…" : "Save profile"}
+              </Button>
+            </fieldset>
+            <p className="text-muted text-xs">
+              The assistant uses these defaults for tuition, cost, and program questions.
+            </p>
+          </form>
+        ) : (
+          <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {fields.map(([label, value]) => (
+              <div key={label} className="min-w-0 space-y-1">
+                <dt className="text-muted text-xs">{label}</dt>
+                <dd className="text-on-surface text-sm wrap-anywhere">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <p role="status" className={`text-xs ${status === "error" ? "text-error" : "text-muted"}`}>
+          {saved || status === "error" ? (
+            <span key={status} className="ui-notice-enter mt-3 block">
+              {saved ? "Saved" : "Couldn't save. Try again."}
+            </span>
+          ) : null}
+        </p>
       </section>
       <section aria-labelledby="account-activity-title" className="border-border-subtle border-t pt-6">
         <Heading as="h2" size="section" id="account-activity-title" className="mb-4">
