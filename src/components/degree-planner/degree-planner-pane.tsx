@@ -28,6 +28,7 @@ import {
   WorkspaceRail,
   type WorkspaceView,
 } from "@/src/components/ui/workspace";
+import { siteAudio } from "@/src/lib/audio";
 import { buildAutofillPlan, type AutofillResult } from "@/src/lib/planner-autofill";
 import { getProgramIndex, getRequirementsFor, resolveProgram } from "@/src/lib/program-requirements";
 import { hasYearRequirements, parseProgramYears } from "@/src/lib/program-years";
@@ -271,12 +272,14 @@ export function DegreePlannerPane() {
       const dest = resolveTermDrop(overId, years);
       if (!dest) return;
       addBlock(dest.yearId, dest.termIdx, draggedCode);
+      siteAudio.play("drop");
       return;
     }
 
     // A planned block dropped on trash is removed.
     if (overId === "trash" && activeId.startsWith(ACTIVE_BLOCK_PREFIX)) {
       removeBlock(activeId.slice(ACTIVE_BLOCK_PREFIX.length));
+      siteAudio.play("remove");
       return;
     }
 
@@ -299,6 +302,7 @@ export function DegreePlannerPane() {
         insertPos = dest.pos + 1;
       }
       moveBlock(blockId, dest.yearId, dest.termIdx, insertPos);
+      siteAudio.play("drop");
     }
   }
 

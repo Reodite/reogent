@@ -28,6 +28,7 @@ exports[`DropdownDisjunctionNode (REQ-9.1) > matches the closed dropdown snapsho
       <svg
         aria-hidden="true"
         class="text-on-surface-variant shrink-0 transition-transform duration-150 "
+        data-icon="down"
         height="14"
         viewBox="0 0 24 24"
         width="14"

@@ -2,6 +2,7 @@
 
 import { Button } from "@/src/components/ui/button";
 import { Skeleton, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
+import { siteAudio } from "@/src/lib/audio";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import type { PanInfo } from "motion/react";
 import { useRef, useState } from "react";
@@ -73,7 +74,10 @@ export function PulseQuestionCard({ card, onVote }: { card: PulseCardData; onVot
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const vote = voteFromDrag(info.offset.x, info.velocity.x);
-    if (vote !== null) castVote(vote);
+    if (vote !== null) {
+      castVote(vote);
+      siteAudio.play("select");
+    }
   };
 
   return (

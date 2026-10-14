@@ -57,7 +57,7 @@ describe("Settings", () => {
   it("keeps appearance and sound in a single card for signed-in users", () => {
     const { container } = render(<SettingsPage />, { wrapper: AudioProvider });
     expect(screen.getByRole("region", { name: "Sound" })).not.toBeNull();
-    expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+    expect(screen.getAllByRole("switch")).toHaveLength(2);
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("single");
     expect(container.querySelectorAll("[data-workspace-canvas]")).toHaveLength(1);
     expect(container.querySelector("[data-workspace-region='rail']")).toBeNull();

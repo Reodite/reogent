@@ -69,9 +69,6 @@ const ICON_MAP = {
   bookmarkFill: "bookmark-fill",
   door: "door-line",
   camera: "camera-line",
-  volume: "volume-line",
-  volumeOff: "volume-off-line",
-  play: "play-fill",
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;
@@ -95,6 +92,7 @@ export function Icon({
   return (
     <svg
       viewBox="0 0 24 24"
+      data-icon={name}
       width={size}
       height={size}
       className={className}

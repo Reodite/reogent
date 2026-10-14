@@ -25,7 +25,7 @@ import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
 import { SkeletonGroup } from "@/src/components/ui/skeleton";
-import { ApiError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
+import { ApiError, isToolError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
 import { siteAudio } from "@/src/lib/audio";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
@@ -439,7 +439,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             },
             onToolEnd(name, result) {
               if (!alive.current) return;
-              agentAudio("thinking");
+              agentAudio(isToolError(result) ? "toolFailure" : "toolComplete");
               for (let i = activity.length - 1; i >= 0; i--) {
                 if (
                   activity[i].type === "tool_call" &&

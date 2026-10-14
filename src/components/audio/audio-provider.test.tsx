@@ -1,4 +1,6 @@
 // @vitest-environment happy-dom
+import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { AUDIO_STORAGE_KEY, DEFAULT_AUDIO_PREFERENCES, siteAudio } from "@/src/lib/audio";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { StrictMode } from "react";
@@ -8,7 +10,6 @@ import { AudioProvider } from "./audio-provider";
 
 beforeEach(() => {
   localStorage.clear();
-  vi.stubGlobal("AudioContext", class {});
   vi.spyOn(siteAudio, "configure").mockImplementation(() => {});
   vi.spyOn(siteAudio, "unlock").mockResolvedValue();
   vi.spyOn(siteAudio, "play").mockImplementation(() => {});
@@ -21,7 +22,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-
 function settings() {
   return render(
     <AudioProvider>
@@ -33,24 +33,30 @@ function stored() {
   return JSON.parse(localStorage.getItem(AUDIO_STORAGE_KEY)!);
 }
 
-describe("audio controls and persistence", () => {
-  it("starts muted with eleven visible detents and native ten-percent keyboard steps", () => {
+describe("simplified sound controls", () => {
+  it("shows only the volume scale and two labeled switches", () => {
     const { container } = settings();
     const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
     expect(slider.value).toBe("0");
-    expect(slider.min).toBe("0");
-    expect(slider.max).toBe("100");
     expect(slider.step).toBe("10");
     expect(slider.getAttribute("aria-valuetext")).toBe("Muted, 0 percent");
     expect(container.querySelectorAll("[data-volume-stop]")).toHaveLength(11);
-    expect((screen.getByRole("button", { name: "Preview navigation" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByRole("switch")).toHaveLength(2);
+    expect(screen.getByRole("switch", { name: "Navigation" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Bot noises" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Sound" })).toBeNull();
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(container.querySelectorAll("p")).toHaveLength(0);
+    fireEvent.change(slider, { target: { value: "30" } });
+    expect(slider.getAttribute("aria-valuetext")).toBe("30 percent");
+    expect(screen.queryByText("30%")).toBeNull();
     expect(siteAudio.play).not.toHaveBeenCalled();
-    expect(siteAudio.unlock).not.toHaveBeenCalled();
   });
 
-  it("previews crossed values, avoids duplicate release clicks, and previews a same-mark landing", () => {
+  it("previews crossed values once and repeats a same-mark landing", () => {
     settings();
-    const slider = screen.getByRole("slider", { name: "Volume" });
+    const slider = screen.getByRole("slider");
     fireEvent.pointerDown(slider);
     fireEvent.change(slider, { target: { value: "40" } });
     fireEvent.pointerUp(slider);
@@ -60,35 +66,43 @@ describe("audio controls and persistence", () => {
     fireEvent.pointerUp(slider);
     expect(siteAudio.previewVolume).toHaveBeenLastCalledWith(40, 40);
     expect(siteAudio.previewVolume).toHaveBeenCalledTimes(2);
-    expect(siteAudio.play).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Mute all sounds" }));
+    fireEvent.change(slider, { target: { value: "0" } });
     expect(stored().volume).toBe(0);
     expect(siteAudio.previewVolume).toHaveBeenLastCalledWith(40, 0);
+    expect(siteAudio.play).not.toHaveBeenCalled();
   });
 
-  it("persists each category independently and previews a disabled category without enabling it", () => {
+  it("stores only the two categories and acknowledges changes once", () => {
     settings();
-    fireEvent.change(screen.getByRole("slider"), { target: { value: "30" } });
-    for (const name of ["Navigation", "Interface actions", "Bot noises", "Agent complete", "Agent failed"]) {
-      const checkbox = screen.getByRole("checkbox", { name }) as HTMLInputElement;
-      expect(checkbox.checked).toBe(true);
-      fireEvent.click(checkbox);
-      expect(checkbox.checked).toBe(false);
-    }
-    expect(stored()).toEqual({
-      volume: 30,
-      navigation: false,
-      interaction: false,
-      bot: false,
-      complete: false,
-      failure: false,
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Preview agent complete" }));
-    expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("complete", true);
-    expect(stored().complete).toBe(false);
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "40" } });
+    const navigation = screen.getByRole("switch", { name: "Navigation" }) as HTMLInputElement;
+    const bot = screen.getByRole("switch", { name: "Bot noises" }) as HTMLInputElement;
+    fireEvent.click(navigation);
+    fireEvent.click(bot);
+    expect(navigation.checked).toBe(false);
+    expect(bot.checked).toBe(false);
+    expect(stored()).toEqual({ volume: 40, navigation: false, bot: false });
+    expect(siteAudio.play).toHaveBeenCalledTimes(2);
+    expect(siteAudio.play).toHaveBeenLastCalledWith("toggleOff");
+    fireEvent.click(navigation);
+    expect(siteAudio.configure).toHaveBeenLastCalledWith({ volume: 40, navigation: true, bot: false });
+    expect(siteAudio.play).toHaveBeenLastCalledWith("toggleOn");
   });
 
-  it("shares onboarding preferences with Settings and restores them without playing on mount", () => {
+  it("merges legacy preferences without re-enabling opted-out sounds", () => {
+    localStorage.setItem(
+      AUDIO_STORAGE_KEY,
+      JSON.stringify({ volume: 60, navigation: true, interaction: false, bot: true, complete: false, failure: true }),
+    );
+    settings();
+    expect((screen.getByRole("switch", { name: "Navigation" }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("switch", { name: "Bot noises" }) as HTMLInputElement).checked).toBe(false);
+    expect(siteAudio.play).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("switch", { name: "Bot noises" }));
+    expect(stored()).toEqual({ volume: 60, navigation: false, bot: true });
+  });
+
+  it("shares onboarding volume with Settings without replaying sound on mount", () => {
     const onboarding = render(
       <AudioProvider>
         <AudioVolumeControl />
@@ -104,7 +118,7 @@ describe("audio controls and persistence", () => {
     expect(siteAudio.play).not.toHaveBeenCalled();
   });
 
-  it("applies storage changes and clearing from another tab without audio", () => {
+  it("applies cross-tab preferences and storage clearing without sound", () => {
     settings();
     act(() =>
       window.dispatchEvent(
@@ -115,15 +129,15 @@ describe("audio controls and persistence", () => {
       ),
     );
     expect((screen.getByRole("slider") as HTMLInputElement).value).toBe("70");
-    expect((screen.getByRole("checkbox", { name: "Bot noises" }) as HTMLInputElement).checked).toBe(false);
-    expect(siteAudio.configure).toHaveBeenLastCalledWith({ ...DEFAULT_AUDIO_PREFERENCES, volume: 70, bot: false });
+    expect((screen.getByRole("switch", { name: "Bot noises" }) as HTMLInputElement).checked).toBe(false);
     act(() => window.dispatchEvent(new StorageEvent("storage", { key: null, newValue: null })));
     expect((screen.getByRole("slider") as HTMLInputElement).value).toBe("0");
     expect(siteAudio.previewVolume).not.toHaveBeenCalled();
   });
 
-  it("keeps controls usable with corrupt or unwritable storage", () => {
+  it("keeps settings usable without browser audio or writable storage", () => {
     localStorage.setItem(AUDIO_STORAGE_KEY, "broken");
+    vi.stubGlobal("AudioContext", undefined);
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("quota");
     });
@@ -132,19 +146,10 @@ describe("audio controls and persistence", () => {
     expect((screen.getByRole("slider") as HTMLInputElement).value).toBe("50");
     expect(siteAudio.configure).toHaveBeenLastCalledWith({ ...DEFAULT_AUDIO_PREFERENCES, volume: 50 });
   });
-
-  it("explains unavailable audio without disabling preference changes", () => {
-    vi.stubGlobal("AudioContext", undefined);
-    settings();
-    expect(screen.getByText(/This browser can’t play sound effects/)).toBeTruthy();
-    fireEvent.change(screen.getByRole("slider"), { target: { value: "40" } });
-    expect((screen.getByRole("button", { name: "Preview bot noises" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(stored().volume).toBe(40);
-  });
 });
 
-describe("sitewide sound events", () => {
-  it("covers native actions, navigation, tabs, panels, selections, and browser history", () => {
+describe("sitewide tactile feedback", () => {
+  it("distinguishes navigation, tabs, opening, closing, native selection, and history", () => {
     render(
       <AudioProvider>
         <button type="button">Action</button>
@@ -155,7 +160,10 @@ describe("sitewide sound events", () => {
           Tab
         </button>
         <button type="button" aria-expanded="false">
-          Panel
+          Open panel
+        </button>
+        <button type="button" aria-expanded="true">
+          Close panel
         </button>
         <a href="/settings" onClick={(event) => event.preventDefault()}>
           Settings link
@@ -173,22 +181,132 @@ describe("sitewide sound events", () => {
         </label>
       </AudioProvider>,
     );
-    for (const name of ["Tool", "Tab", "Panel", "Settings link"]) {
+    for (const [name, cue] of [
+      ["Tool", "navigation"],
+      ["Tab", "select"],
+      ["Open panel", "open"],
+      ["Close panel", "close"],
+      ["Settings link", "navigation"],
+      ["Action", "interaction"],
+    ]) {
       fireEvent.click(screen.getByText(name));
-      expect(siteAudio.play).toHaveBeenLastCalledWith("navigation");
+      expect(siteAudio.play).toHaveBeenLastCalledWith(cue);
     }
-    fireEvent.click(screen.getByRole("button", { name: "Action" }));
-    expect(siteAudio.play).toHaveBeenLastCalledWith("interaction");
     fireEvent.click(screen.getByRole("checkbox"));
-    expect(siteAudio.play).toHaveBeenLastCalledWith("interaction");
+    expect(siteAudio.play).toHaveBeenLastCalledWith("toggleOn");
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(siteAudio.play).toHaveBeenLastCalledWith("toggleOff");
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "summer" } });
-    expect(siteAudio.play).toHaveBeenLastCalledWith("interaction");
+    expect(siteAudio.play).toHaveBeenLastCalledWith("select");
     act(() => window.dispatchEvent(new PopStateEvent("popstate")));
-    expect(siteAudio.play).toHaveBeenLastCalledWith("navigation");
-    expect(siteAudio.play).toHaveBeenCalledTimes(8);
+    expect(siteAudio.play).toHaveBeenLastCalledWith("back");
   });
 
-  it("ignores disabled, inert, opted-out, selected, modified, and typing interactions", () => {
+  it("uses shared icons and explicit annotations for back, dismissal, zoom, and deletion", () => {
+    render(
+      <AudioProvider>
+        <Button aria-label="Back">
+          <Icon name="arrowLeft" />
+        </Button>
+        <Button aria-label="Dismiss">
+          <Icon name="close" />
+        </Button>
+        <Button aria-label="Zoom in">
+          <Icon name="zoomIn" />
+        </Button>
+        <Button aria-label="Zoom out">
+          <Icon name="zoomOut" />
+        </Button>
+        <Button variant="danger">Delete</Button>
+        <Button data-sound="drop">Place</Button>
+        <Button data-sound="constructor">Unknown</Button>
+        <Button>
+          <svg data-icon="constructor" aria-hidden="true" />
+          Unmapped icon
+        </Button>
+      </AudioProvider>,
+    );
+    for (const [name, cue] of [
+      ["Back", "back"],
+      ["Dismiss", "close"],
+      ["Zoom in", "zoomIn"],
+      ["Zoom out", "zoomOut"],
+      ["Delete", "remove"],
+      ["Place", "drop"],
+      ["Unknown", "interaction"],
+      ["Unmapped icon", "interaction"],
+    ]) {
+      fireEvent.click(screen.getByRole("button", { name }));
+      expect(siteAudio.play).toHaveBeenLastCalledWith(cue);
+    }
+  });
+
+  it("pairs mouse contact and activation, with quiet hover and keyboard focus", () => {
+    render(
+      <AudioProvider>
+        <Button>
+          <span>Action</span>
+        </Button>
+      </AudioProvider>,
+    );
+    const button = screen.getByRole("button");
+    const child = screen.getByText("Action");
+    fireEvent.pointerOver(button, { pointerType: "mouse" });
+    expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("hover");
+    fireEvent.pointerOver(child, { pointerType: "mouse", relatedTarget: button });
+    expect(siteAudio.play).toHaveBeenCalledTimes(1);
+    fireEvent.pointerDown(button, { pointerType: "mouse", button: 0 });
+    expect(siteAudio.play).toHaveBeenLastCalledWith("press");
+    fireEvent.click(button);
+    expect(siteAudio.play).toHaveBeenLastCalledWith("interaction");
+    fireEvent.keyDown(button, { key: "Tab" });
+    fireEvent.focusIn(button);
+    expect(siteAudio.play).toHaveBeenLastCalledWith("hover");
+    fireEvent.keyDown(button, { key: "Enter" });
+    expect(siteAudio.play).toHaveBeenLastCalledWith("press");
+  });
+
+  it("does not make touch-hover or touch-scroll contact noises", () => {
+    render(
+      <AudioProvider>
+        <Button>Action</Button>
+      </AudioProvider>,
+    );
+    const button = screen.getByRole("button");
+    fireEvent.pointerOver(button, { pointerType: "touch" });
+    fireEvent.pointerDown(button, { pointerType: "touch", button: 0 });
+    expect(siteAudio.play).not.toHaveBeenCalled();
+    fireEvent.click(button);
+    expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("interaction");
+  });
+
+  it("acknowledges consumed Escape and accepted native drops", async () => {
+    render(
+      <AudioProvider>
+        <button
+          type="button"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") event.preventDefault();
+          }}
+        >
+          Popup
+        </button>
+        <button type="button" draggable onDrop={(event) => event.preventDefault()}>
+          Drop zone
+        </button>
+      </AudioProvider>,
+    );
+    fireEvent.keyDown(screen.getByRole("button", { name: "Popup" }), { key: "Escape" });
+    await act(async () => {});
+    expect(siteAudio.play).toHaveBeenLastCalledWith("close");
+    fireEvent.dragStart(screen.getByText("Drop zone"));
+    expect(siteAudio.play).toHaveBeenLastCalledWith("drag");
+    fireEvent.drop(screen.getByText("Drop zone"));
+    await act(async () => {});
+    expect(siteAudio.play).toHaveBeenLastCalledWith("drop");
+  });
+
+  it("ignores disabled, inert, silent, selected, modified, and typing interactions", () => {
     render(
       <AudioProvider>
         <button type="button" disabled>
@@ -218,9 +336,8 @@ describe("sitewide sound events", () => {
         <input aria-label="Message" />
       </AudioProvider>,
     );
-    for (const name of ["Disabled", "Disabled field", "Inert", "Silent", "Current tab", "Current page", "New tab"]) {
+    for (const name of ["Disabled", "Disabled field", "Inert", "Silent", "Current tab", "Current page", "New tab"])
       fireEvent.click(screen.getByText(name));
-    }
     fireEvent.click(screen.getByText("Modified link"), { ctrlKey: true });
     const textbox = screen.getByRole("textbox");
     fireEvent.click(textbox);
@@ -229,21 +346,7 @@ describe("sitewide sound events", () => {
     expect(siteAudio.play).not.toHaveBeenCalled();
   });
 
-  it("unlocks for keyboard activation and plays only its click once", () => {
-    render(
-      <AudioProvider>
-        <button type="button">Action</button>
-      </AudioProvider>,
-    );
-    const button = screen.getByRole("button");
-    fireEvent.keyDown(button, { key: "Enter" });
-    expect(siteAudio.unlock).toHaveBeenCalled();
-    expect(siteAudio.play).not.toHaveBeenCalled();
-    fireEvent.click(button, { detail: 0 });
-    expect(siteAudio.play).toHaveBeenCalledExactlyOnceWith("interaction");
-  });
-
-  it("pauses hidden tabs and removes listeners during unmount and Strict Mode replay", () => {
+  it("pauses hidden tabs and removes listeners across unmount and Strict Mode replay", () => {
     const view = render(
       <StrictMode>
         <AudioProvider>

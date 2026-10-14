@@ -86,6 +86,7 @@ export function Button({
   return (
     <button
       type={type}
+      data-sound={variant === "danger" ? "remove" : undefined}
       className={buttonClasses({ variant, size, shadowOn, wrap, className, link: false })}
       {...props}
     />

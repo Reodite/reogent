@@ -624,9 +624,11 @@ Apply appearance immediately with `startViewTransition` and a synchronous React 
 
 ### Sound Controls
 
-Reuse `AudioVolumeControl` in onboarding and Settings. Keep the native range at 0–100% in 10% steps, with eleven visible marks and labels at 0%, 50%, and 100%. Use a 44px-high input, a 24px circular thumb, and a 4px track. Fill the selected range and passed marks with primary; retain neutral unselected marks, visible keyboard focus, and the Volume label. Show the current percentage or Muted beside a ghost mute action. Preview each crossed mark at its own volume; selecting the current mark repeats it. Keep 0% silent.
+Reuse `AudioVolumeControl` in onboarding and Settings. Keep the native range at 0–100% in 10% steps, with eleven visible marks and labels at 0%, 50%, and 100%. Use a 44px-high input, a 24px circular thumb, and a 4px track. Fill the selected range and passed marks with primary; retain neutral unselected marks, visible keyboard focus, and the Volume label. Expose the current percentage to assistive technology without duplicating it visually. Preview each crossed mark at its own volume; selecting the current mark repeats it. Keep 0% silent.
 
-Place Sound below Appearance with a thin divider. Use flat category rows with a 14px name, 12px description, ghost preview button, and the shared native checkbox. Keep Navigation, Interface actions, Bot noises, Agent complete, and Agent failed independent. Disable preview buttons at zero volume or without browser audio support; retain usable preferences. State browser-local persistence and hidden-tab silence below the rows. Sound supplements the visible controls and agent status.
+Place the volume slider below Appearance with a thin divider, followed by Navigation and Bot noises. Keep Sound as the region's accessible name without a visible subheading. Use flat 44px-high rows with 14px labels and native checkbox inputs with switch semantics. Give each switch a 44×36px input target, a 44×24px pill track, a 20px thumb, primary active color, and visible keyboard focus. Keep labels clickable. Omit descriptions, preview buttons, mute actions, and persistence copy.
+
+Use short resonant impacts with filtered-noise contacts for interface feedback. Distinguish hover, press, release, selection, toggling, opening, closing, dragging, dropping, and map controls. Give agent phases articulated, frequency-modulated electronic syllables. Keep hover and ongoing thought quieter than committed actions and terminal outcomes. Audio supplements visible controls and status; typing stays silent.
 
 ### Signature: Thinking Orb
 

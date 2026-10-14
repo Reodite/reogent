@@ -1,61 +1,22 @@
 "use client";
 
 import { useAudio } from "@/src/components/audio/audio-provider";
-import { Icon } from "@/src/components/icons";
-import { Button } from "@/src/components/ui/button";
-import { Checkbox } from "@/src/components/ui/form-controls";
-import { Heading } from "@/src/components/ui/heading";
-import type { SoundCategory, SoundCue } from "@/src/lib/audio";
 import { useId, useRef, type CSSProperties } from "react";
 
 const VOLUME_MARKS = Array.from({ length: 11 }, (_, index) => index * 10);
-const CATEGORIES: { key: SoundCategory; label: string; description: string; cue: SoundCue }[] = [
-  { key: "navigation", label: "Navigation", description: "Pages, tabs, and opening panels.", cue: "navigation" },
-  {
-    key: "interaction",
-    label: "Interface actions",
-    description: "Soft taps for buttons and selections.",
-    cue: "interaction",
-  },
-  {
-    key: "bot",
-    label: "Bot noises",
-    description: "Quiet pulses while the agent thinks or uses tools.",
-    cue: "thinking",
-  },
-  { key: "complete", label: "Agent complete", description: "A rising chime when a reply is ready.", cue: "complete" },
-  { key: "failure", label: "Agent failed", description: "A lower tone when a request fails.", cue: "failure" },
-];
 
 /** Shares the stepped, audible volume control between onboarding and Settings. */
 export function AudioVolumeControl() {
-  const { preferences, supported, setVolume, previewVolume } = useAudio();
+  const { preferences, setVolume, previewVolume } = useAudio();
   const id = useId();
   const changedDuringDrag = useRef(false);
   const volume = preferences.volume;
 
   return (
     <div data-sound="off" className="min-w-0">
-      <div className="flex items-center justify-between gap-3">
-        <label htmlFor={id} className="text-on-surface text-sm font-medium">
-          Volume
-        </label>
-        <div className="flex items-center gap-2">
-          <span aria-hidden="true" className="text-muted text-xs tabular-nums">
-            {volume === 0 ? "Muted" : `${volume}%`}
-          </span>
-          <Button
-            variant="ghost"
-            size="denseIcon"
-            aria-label="Mute all sounds"
-            title="Mute all sounds"
-            disabled={volume === 0}
-            onClick={() => setVolume(0)}
-          >
-            <Icon name={volume === 0 ? "volumeOff" : "volume"} size={18} />
-          </Button>
-        </div>
-      </div>
+      <label htmlFor={id} className="text-on-surface text-sm font-medium">
+        Volume
+      </label>
       <input
         id={id}
         type="range"
@@ -64,7 +25,6 @@ export function AudioVolumeControl() {
         step={10}
         value={volume}
         aria-valuetext={volume === 0 ? "Muted, 0 percent" : `${volume} percent`}
-        aria-describedby={`${id}-hint`}
         className="audio-volume-slider"
         style={{ "--audio-volume": `${volume}%` } as CSSProperties}
         onPointerDown={() => {
@@ -92,68 +52,48 @@ export function AudioVolumeControl() {
         <span>50%</span>
         <span>100%</span>
       </div>
-      <p id={`${id}-hint`} className="text-muted mt-3 text-xs leading-relaxed">
-        {supported
-          ? "Each 10% step plays a preview. Set to 0% for silence."
-          : "This browser can’t play sound effects. You can still save your preferences."}
-      </p>
     </div>
   );
 }
 
-/** Presents independent sound categories with explicit, volume-controlled previews. */
+/** Groups interface feedback and agent sounds behind two native switches. */
 export function AudioSettings() {
-  const { preferences, supported, setCategory, preview } = useAudio();
+  const { preferences, setCategory } = useAudio();
   const id = useId();
   return (
-    <section
-      aria-labelledby={`${id}-title`}
-      data-sound="off"
-      className="border-border-subtle flex flex-col gap-4 border-t pt-6"
-    >
-      <div className="space-y-1">
-        <Heading as="h2" size="section" id={`${id}-title`}>
-          Sound
-        </Heading>
-        <p className="text-muted text-xs">Soft electronic cues for your actions and the agent’s progress.</p>
-      </div>
+    <section aria-label="Sound" data-sound="off" className="border-border-subtle flex flex-col gap-4 border-t pt-6">
       <AudioVolumeControl />
-      <fieldset className="border-border-subtle min-w-0 border-t">
-        <legend className="sr-only">Sound categories</legend>
-        {CATEGORIES.map(({ key, label, description, cue }) => (
-          <div key={key} className="flex items-center gap-2 py-3">
-            <label htmlFor={`${id}-${key}`} className="min-w-0 flex-1 cursor-pointer space-y-1">
-              <span id={`${id}-${key}-label`} className="text-on-surface block text-sm font-medium">
-                {label}
+      <div>
+        {(
+          [
+            ["navigation", "Navigation"],
+            ["bot", "Bot noises"],
+          ] as const
+        ).map(([key, label]) => (
+          <label key={key} className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
+            <span id={`${id}-${key}`} className="text-on-surface text-sm font-medium">
+              {label}
+            </span>
+            <span className="relative flex h-9 w-11 shrink-0 items-center">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-checked={preferences[key]}
+                aria-labelledby={`${id}-${key}`}
+                className="peer absolute inset-0 z-10 cursor-pointer opacity-0"
+                checked={preferences[key]}
+                onChange={(event) => setCategory(key, event.target.checked)}
+              />
+              <span
+                aria-hidden="true"
+                className="bg-surface-container-high peer-checked:bg-primary peer-focus-visible:outline-primary peer-checked:[&>span]:bg-on-primary flex h-6 w-11 items-center rounded-full p-0.5 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-disabled:opacity-50 peer-checked:[&>span]:translate-x-5"
+              >
+                <span className="bg-on-surface-variant size-5 rounded-full transition-transform duration-150" />
               </span>
-              <span id={`${id}-${key}-hint`} className="text-muted block text-xs leading-relaxed">
-                {description}
-              </span>
-            </label>
-            <Button
-              variant="ghost"
-              size="denseIcon"
-              aria-label={`Preview ${label.toLowerCase()}`}
-              title={preferences.volume === 0 ? "Raise the volume to preview" : `Preview ${label.toLowerCase()}`}
-              disabled={preferences.volume === 0 || !supported}
-              onClick={() => preview(cue)}
-            >
-              <Icon name="play" size={16} />
-            </Button>
-            <Checkbox
-              id={`${id}-${key}`}
-              aria-labelledby={`${id}-${key}-label`}
-              aria-describedby={`${id}-${key}-hint`}
-              checked={preferences[key]}
-              onChange={(event) => setCategory(key, event.target.checked)}
-            />
-          </div>
+            </span>
+          </label>
         ))}
-      </fieldset>
-      <p className="text-muted text-xs leading-relaxed">
-        Saved in this browser. Sounds pause when you leave this tab. Preview buttons let you try a category without
-        turning it on.
-      </p>
+      </div>
     </section>
   );
 }

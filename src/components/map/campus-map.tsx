@@ -19,6 +19,7 @@ import { tooltipPosition } from "@/src/components/map/tooltip-position";
 import { useApi, useTheme, type ResolvedTheme } from "@/src/components/providers";
 import { Button } from "@/src/components/ui/button";
 import type { BuildingSummary, EntranceFeatureCollection } from "@/src/lib/api-types";
+import { siteAudio } from "@/src/lib/audio";
 import { buildingFromFeature } from "@/src/lib/building-catalog";
 import { buildEntranceMarkers, visibleEntranceMarkers } from "@/src/lib/entrance-geometry";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
@@ -933,6 +934,7 @@ export function CampusMap({
             const building = feature ? buildingFromFeature(feature) : null;
             setPicked(null);
             selectBuilding(building);
+            siteAudio.play(building ? "mapSelect" : "close");
           },
           updateTriggers: {
             getFillColor: [theme, ...highlightedCodes],
