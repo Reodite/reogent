@@ -46,7 +46,7 @@ The authenticated `/api/account` endpoint returns the caller's details. Each acc
 
 ### About
 
-Open About from the account popup's General section, alongside Settings and Account. Show "UBC's website and advising sucks." below the title, followed by Max and Chakorn's profiles and the existing Buy us a coffee link. Keep About outside Unity and preserve the current mode and its saved destination. Redirect `/pulse/creators` to `/about`; Unity's mode button ignores the retired destination.
+Open About from the account popup's General section, alongside Settings and Account. Show "The creators" below the title, followed by Max and Chakorn's profile cards and the existing Buy us a coffee link. Keep initial placeholders in the cards' picture areas. Link Max's footer name to `https://libo.dev/ai` and Chakorn's to `https://chakornk.dev`. Keep About outside Unity and preserve the current mode and its saved destination. Redirect `/pulse/creators` to `/about`; Unity's mode button ignores the retired destination.
 
 ### First-login onboarding
 
