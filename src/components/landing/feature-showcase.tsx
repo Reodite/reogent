@@ -76,8 +76,9 @@ function FeatureCard({
     const distance = Math.min(Math.abs(value), 2);
     return `translateX(${value * 64}%) translateZ(${-distance * 200}px) rotateY(${-value * 12}deg) scale(${1 - distance * 0.12})`;
   });
-  // Hide cards before they wrap behind the stage, including the three-card carousels.
-  const opacity = useTransform(offset, [-1.5, -1, 0, 1, 1.5], [0, 0.45, 1, 0.45, 0]);
+  const zIndex = useTransform(offset, (value) => count - Math.round(Math.abs(value)));
+  // Keep the foreground opaque and hide distant cards before they wrap, including three-card carousels.
+  const opacity = useTransform(offset, [-1.5, -1, -0.5, 0.5, 1, 1.5], [0, 0.45, 1, 1, 0.45, 0]);
 
   return (
     <motion.article
@@ -85,7 +86,7 @@ function FeatureCard({
       aria-roledescription="slide"
       aria-label={`${index + 1} of ${count}: ${slide.title}`}
       className="neu-panel neu-shadow-on-background pointer-events-none col-start-1 row-start-1 flex w-[calc(100%-2rem)] max-w-xl min-w-0 flex-col justify-self-center overflow-hidden rounded-2xl"
-      style={{ transform, opacity }}
+      style={{ transform, opacity, zIndex }}
     >
       <div aria-hidden="true" className="bg-surface-container-low h-80 overflow-hidden">
         <ProductMock feature={slide.id} />
@@ -174,7 +175,7 @@ function FeatureCarousel({ title, description, slides }: (typeof SHOWCASES)[numb
         aria-describedby={`${id}-instructions`}
         tabIndex={0}
         className="relative grid min-w-0 cursor-grab overflow-clip rounded-2xl py-3 outline-offset-[-2px] select-none active:cursor-grabbing"
-        style={{ perspective: "1200px", transformStyle: "preserve-3d", touchAction: "pan-y pinch-zoom" }}
+        style={{ perspective: "1200px", touchAction: "pan-y pinch-zoom" }}
         onPanStart={() => {
           animation.current?.stop();
           panStart.current = {

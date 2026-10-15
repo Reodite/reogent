@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { TOOL_SLUG_TO_PANE_ID } from "@/src/lib/pane-route";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { animate, frame } from "motion/react";
+import { animate, frame, type MotionValue } from "motion/react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FeatureShowcase } from "./feature-showcase";
@@ -132,7 +132,7 @@ describe("Feature carousels", () => {
       expect(viewport.classList.contains("overflow-clip")).toBe(true);
       expect(viewport.classList.contains("overflow-x-auto")).toBe(false);
       expect(viewport.style.perspective).toBe("1200px");
-      expect(viewport.style.transformStyle).toBe("preserve-3d");
+      expect(viewport.style.transformStyle).toBe("");
     }
   });
 
@@ -158,6 +158,38 @@ describe("Feature carousels", () => {
     expect(tools.slides[0].style.opacity).toBe("0.45");
     expect(tools.slides[4].style.opacity).toBe("0.45");
   });
+
+  it.each(["Agent capabilities", "Tools", "Unity"])(
+    "keeps the foreground %s card opaque and above its neighbors through travel and wrapping",
+    async (title) => {
+      render(<FeatureShowcase />);
+      const { slides, next } = carousel(title);
+      fireEvent.click(next);
+      const position = vi.mocked(animate).mock.lastCall![0] as MotionValue<number>;
+      await nextFrame();
+
+      for (const [progress, foreground] of [
+        [0.48, 0],
+        [0.52, 1],
+        [-0.48, 0],
+        [-0.52, slides.length - 1],
+        [slides.length - 0.52, slides.length - 1],
+        [slides.length - 0.48, 0],
+        [0, 0],
+        [1, 1],
+        [slides.length - 1, slides.length - 1],
+        [slides.length, 0],
+      ]) {
+        act(() => position.set(progress));
+        await nextFrame();
+        const front = slides[foreground];
+        expect(front.style.opacity).toBe("1");
+        for (const card of slides) {
+          if (card !== front) expect(Number(card.style.zIndex)).toBeLessThan(Number(front.style.zIndex));
+        }
+      }
+    },
+  );
 
   it("keeps each carousel independent when navigating with progress dots", () => {
     render(<FeatureShowcase />);
