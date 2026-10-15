@@ -123,13 +123,14 @@ describe("Feature carousels", () => {
     expect(next.disabled).toBe(false);
   });
 
-  it("puts the previous and next arrows around the progress dots below a scrollbar-free stage", () => {
+  it("puts arrows around the progress dots below a non-scrolling stage without clipping card edges", () => {
     render(<FeatureShowcase />);
     for (const title of ["Agent capabilities", "Tools", "Unity"]) {
       const { previous, next, progress, viewport } = carousel(title);
       expect(Array.from(progress.parentElement!.children)).toEqual([previous, progress, next]);
       expect(viewport.nextElementSibling).toBe(progress.parentElement);
-      expect(viewport.classList.contains("overflow-clip")).toBe(true);
+      expect(viewport.classList.contains("overflow-visible")).toBe(true);
+      expect(viewport.classList.contains("overflow-clip")).toBe(false);
       expect(viewport.classList.contains("overflow-x-auto")).toBe(false);
       expect(viewport.style.perspective).toBe("1200px");
       expect(viewport.style.transformStyle).toBe("");

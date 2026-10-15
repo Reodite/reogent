@@ -174,7 +174,7 @@ function FeatureCarousel({ title, description, slides }: (typeof SHOWCASES)[numb
         aria-label={`Browse ${title}`}
         aria-describedby={`${id}-instructions`}
         tabIndex={0}
-        className="relative grid min-w-0 cursor-grab overflow-clip rounded-2xl py-3 outline-offset-[-2px] select-none active:cursor-grabbing"
+        className="relative grid min-w-0 cursor-grab overflow-visible rounded-2xl py-3 outline-offset-[-2px] select-none active:cursor-grabbing"
         style={{ perspective: "1200px", touchAction: "pan-y pinch-zoom" }}
         onPanStart={() => {
           animation.current?.stop();
