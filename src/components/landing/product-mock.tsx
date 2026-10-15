@@ -1,7 +1,10 @@
 import { AssistantIdentity } from "@/src/components/chat/assistant-identity";
 import { Icon, type IconName } from "@/src/components/icons";
 import { ToolResultCard } from "@/src/components/ui/tool-result-card";
+import { describeToolCall } from "@/src/lib/format";
+import { SEASON_META } from "@/src/lib/planner-model";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
+import { buildMonthGrid, formatMonthHeading, parseISODate, toISODate } from "@/src/shared/calendar/date-math";
 import type { PaneId } from "@/src/shared/panes";
 import Image from "next/image";
 import type { ReactNode } from "react";
@@ -52,7 +55,7 @@ function MapPreview({ conversation = false }: { conversation?: boolean }) {
         />
         <div className="absolute inset-x-4 top-4">
           {conversation ? (
-            <Prompt>How far is ICCS from the Nest?</Prompt>
+            <Prompt>How do I walk from ICCS to the Nest?</Prompt>
           ) : (
             <div className="neu-panel flex max-w-72 items-center gap-3 rounded-xl p-3">
               <Icon name="route" size={20} className="text-muted shrink-0" />
@@ -72,8 +75,8 @@ function MapPreview({ conversation = false }: { conversation?: boolean }) {
         <div className="neu-panel absolute bottom-4 left-4 flex items-center gap-3 rounded-xl px-4 py-3">
           <Icon name="walk" size={20} className="text-on-surface-variant" />
           <div>
-            <p className="text-sm font-medium">ICCS to AMS Nest</p>
-            <p className="text-muted mt-1 font-mono text-xs">9 min walk · 680 m</p>
+            <p className="text-sm font-medium">Walking route</p>
+            <p className="text-muted mt-1 text-xs">ICCS to AMS Nest</p>
           </div>
         </div>
       </div>
@@ -107,7 +110,7 @@ const CLASSES = [
 
 function Timetable({ shared = false }: { shared?: boolean }) {
   return (
-    <div className="grid h-48 grid-cols-[1.5rem_repeat(5,minmax(0,1fr))] grid-rows-[1.5rem_repeat(4,minmax(0,1fr))] text-xs">
+    <div className="grid min-h-0 flex-1 grid-cols-[1.5rem_repeat(5,minmax(0,1fr))] grid-rows-[1.5rem_repeat(4,minmax(0,1fr))] text-xs">
       {WEEKDAYS.map((day, index) => (
         <span key={day} className="text-muted text-center" style={{ gridColumn: index + 2, gridRow: 1 }}>
           {day}
@@ -148,10 +151,10 @@ function Timetable({ shared = false }: { shared?: boolean }) {
       })}
       {shared && (
         <div
-          className="bg-accent-subtle text-primary relative m-0.5 flex items-center justify-center rounded-sm font-medium"
-          style={{ gridColumn: "2 / 7", gridRow: 5 }}
+          className="bg-accent-subtle/70 text-primary relative m-0.5 flex items-center justify-center rounded-sm font-medium"
+          style={{ gridColumn: 3, gridRow: 5 }}
         >
-          Everyone is free
+          Free
         </div>
       )}
     </div>
@@ -192,65 +195,75 @@ function PrereqPreview() {
   return (
     <PreviewFrame title="Prereq tree" icon="tree">
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-4">
-        <span className="neu-raised bg-surface rounded-lg px-5 py-2.5 font-mono text-sm">CPSC 221</span>
-        <span className="border-outline-variant h-5 border-l" />
-        <div className="grid w-full max-w-xs grid-cols-2 gap-6">
-          {["CPSC 210", "CPSC 121"].map((code, index) => (
-            <div key={code} className="flex flex-col items-center">
-              <div
-                className={`border-outline-variant h-4 w-[calc(100%+1.5rem)] border-t ${index === 0 ? "translate-x-1/2 border-l" : "-translate-x-1/2 border-r"}`}
-              />
-              <span className="neu-raised bg-surface rounded-lg px-3 py-2.5 font-mono text-xs">{code}</span>
-              {index === 0 && (
-                <>
-                  <span className="border-outline-variant h-5 border-l" />
-                  <span className="neu-raised bg-surface rounded-lg px-3 py-2.5 font-mono text-xs">CPSC 110</span>
-                </>
-              )}
-            </div>
-          ))}
+        <div className="neu-raised bg-surface rounded-lg px-5 py-3 text-center">
+          <p className="font-mono text-sm">CPSC 210</p>
+          <p className="text-muted mt-1 text-xs">Software Construction</p>
         </div>
-        <p className="text-muted mt-5 text-xs">Follow prerequisites back to your first course.</p>
+        <span className="border-outline-variant h-6 border-l" />
+        <div className="neu-raised bg-surface rounded-lg p-3">
+          <p className="text-muted mb-2 text-xs uppercase">one of</p>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="font-mono">CPSC 107</span>
+            <span className="text-muted">or</span>
+            <span className="font-mono">CPSC 110</span>
+          </div>
+        </div>
+        <p className="text-muted mt-5 text-center text-xs">Direct prerequisites for CPSC 210.</p>
       </div>
     </PreviewFrame>
   );
 }
 
 function CalendarPreview() {
-  const weekdays = [...WEEKDAYS, "Sat", "Sun"];
+  const month = parseISODate("2026-09-01");
+  const weekdays = ["Sun", ...WEEKDAYS, "Sat"];
+  const academicDates = ["2026-09-08", "2026-09-21", "2026-09-28"];
   return (
     <PreviewFrame title="Calendar" icon="calendar">
-      <div className="flex flex-1 flex-col gap-3 p-4 sm:px-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 sm:px-6">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">September</span>
+          <span className="text-sm font-medium">{formatMonthHeading(month)}</span>
           <span className="text-muted flex gap-3">
             <Icon name="left" size={14} />
             <Icon name="right" size={14} />
           </span>
         </div>
-        <div className="grid flex-1 grid-cols-7 gap-1 text-center text-xs">
+        <div className="grid min-h-0 flex-1 grid-cols-7 gap-1 text-center text-xs">
           {weekdays.map((day) => (
             <span key={day} className="text-muted">
               {day[0]}
             </span>
           ))}
-          {Array.from({ length: 35 }, (_, offset) => offset - 1).map((day) => {
-            const event = [8, 9, 18, 23].includes(day);
-            return (
-              <span
-                key={day}
-                className={`flex min-h-6 flex-col items-center justify-center gap-1 rounded-sm ${event ? "bg-surface text-on-surface" : "text-muted"}`}
-              >
-                {day > 0 && day <= 30 ? day : ""}
-                {event && <span className="bg-event-academic size-1 rounded-full" />}
-              </span>
-            );
-          })}
+          {buildMonthGrid(month)
+            .flat()
+            .map((date) => {
+              if (!date) return null;
+              const iso = toISODate(date);
+              const event = academicDates.includes(iso);
+              return (
+                <span
+                  key={iso}
+                  data-calendar-day={iso}
+                  className={`flex min-h-6 flex-col items-center justify-center gap-1 rounded-sm ${date.getUTCMonth() === month.getUTCMonth() ? "bg-surface text-on-surface" : "text-muted"}`}
+                >
+                  {date.getUTCDate()}
+                  {event && <span className="bg-primary size-1 rounded-full" />}
+                </span>
+              );
+            })}
         </div>
-        <p className="text-muted flex items-center justify-center gap-2 text-xs">
-          <span className="bg-event-academic size-1.5 rounded-full" />
-          Academic dates & campus events
-        </p>
+        <div className="text-muted flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+          {[
+            ["Academic", "bg-primary"],
+            ["Holiday", "bg-tertiary"],
+            ["Campus event", "bg-secondary"],
+          ].map(([label, color]) => (
+            <span key={label} className="flex items-center gap-1.5">
+              <span className={`${color} size-1.5 rounded-full`} />
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
     </PreviewFrame>
   );
@@ -282,19 +295,18 @@ export function ProductMock({ feature }: { feature: ProductPreview }) {
     case "research":
       return (
         <PreviewFrame title="Conversation" icon="chat1">
-          <div className="chat-message-well flex flex-1 flex-col gap-4 p-4 sm:px-6">
+          <div className="chat-message-well flex flex-1 flex-col gap-2 p-4 sm:gap-4 sm:px-6">
             <Prompt>What should I budget for first year?</Prompt>
-            <div className="flex flex-col gap-2">
-              {[
-                ["Tuition rates", "get_tuition"],
-                ["Student fees", "search_student_fees"],
-                ["Living costs", "get_living_costs"],
-              ].map(([label, tool]) => (
-                <div key={tool} className="flex items-center gap-2 text-xs">
-                  <Icon name="check" size={14} className="text-secondary shrink-0" />
-                  <span>{label}</span>
-                  <span className="text-muted ml-auto hidden font-mono sm:inline">{tool}</span>
-                </div>
+            <div className="flex flex-col gap-1 sm:gap-2">
+              {["tuition", "fees", "living"].map((kind) => (
+                <span
+                  key={kind}
+                  data-widget="get_costs"
+                  className="border-primary/20 bg-primary/10 text-primary inline-flex w-fit max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs"
+                >
+                  <Icon name="search" size={14} className="shrink-0" />
+                  <span>{describeToolCall("get_costs", { kind })}</span>
+                </span>
               ))}
             </div>
             <div>
@@ -316,30 +328,36 @@ export function ProductMock({ feature }: { feature: ProductPreview }) {
       return (
         <PreviewFrame title="Degree planner" icon="mortarboard">
           <div className="flex flex-1 flex-col gap-4 p-4 sm:px-6">
-            <p className="text-on-surface-variant text-xs">BSc · Computer Science</p>
+            <p className="text-on-surface-variant text-xs">Selected courses · Year 1</p>
             <div className="grid grid-cols-2 gap-3">
-              {[
-                ["Year 1", "CPSC 110", "CPSC 121", "MATH 100"],
-                ["Year 2", "CPSC 210", "CPSC 221", "MATH 200"],
-              ].map(([year, ...courses]) => (
-                <div key={year} className="flex flex-col gap-2">
-                  <p className="mb-1 text-sm font-medium">{year}</p>
+              {(
+                [
+                  ["w1", ["CPSC 110", "MATH 100"]],
+                  ["w2", ["CPSC 121", "CPSC 210"]],
+                ] as const
+              ).map(([season, courses]) => (
+                <div key={season} className="flex flex-col gap-2">
+                  <div>
+                    <p className="text-sm font-medium">{SEASON_META[season].short}</p>
+                    <p className="text-muted mt-1 text-xs">{SEASON_META[season].months}</p>
+                  </div>
                   {courses.map((code) => (
                     <CourseTile key={code} code={code} />
                   ))}
                 </div>
               ))}
             </div>
-            <p className="text-muted mt-auto text-xs">Your courses, organized across your degree.</p>
+            <p className="text-muted mt-auto text-xs">Arrange courses by term. Check prerequisite issues.</p>
           </div>
         </PreviewFrame>
       );
     case "schedule":
       return (
         <PreviewFrame title="Course schedule" icon="calendarWeek">
-          <div className="flex flex-1 flex-col gap-4 p-4 sm:px-6">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 sm:px-6">
             <p className="text-on-surface-variant text-xs">Winter session · Term 1</p>
             <Timetable />
+            <p className="text-muted text-xs">Illustrative class times</p>
           </div>
         </PreviewFrame>
       );
@@ -388,19 +406,23 @@ export function ProductMock({ feature }: { feature: ProductPreview }) {
       );
     case "sharing":
       return (
-        <PreviewFrame title="Schedule" icon="calendarWeek">
-          <div className="flex flex-1 flex-col gap-4 p-4 sm:px-6">
-            <div className="flex items-center gap-4">
-              {["You", "Sam", "Alex"].map((name) => (
-                <span key={name} className="flex items-center gap-1.5 text-xs">
-                  <span className="bg-surface text-on-surface-variant flex size-6 items-center justify-center rounded-full">
-                    {name[0]}
+        <PreviewFrame title="Shared schedule" icon="calendarWeek">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 sm:px-6">
+            <div>
+              <p className="text-sm font-medium">Study group</p>
+              <div className="mt-2 flex items-center gap-4">
+                {["You", "Sam", "Alex"].map((name) => (
+                  <span key={name} className="flex items-center gap-1.5 text-xs">
+                    <span className="bg-surface text-on-surface-variant flex size-6 items-center justify-center rounded-full">
+                      {name[0]}
+                    </span>
+                    {name}
                   </span>
-                  {name}
-                </span>
-              ))}
+                ))}
+              </div>
             </div>
             <Timetable shared />
+            <p className="text-muted text-xs">Common free time · Tue, 12–1 PM</p>
           </div>
         </PreviewFrame>
       );

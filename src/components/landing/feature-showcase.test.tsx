@@ -1,5 +1,9 @@
 // @vitest-environment happy-dom
+import { describeToolCall } from "@/src/lib/format";
 import { TOOL_SLUG_TO_PANE_ID } from "@/src/lib/pane-route";
+import { SEASON_META } from "@/src/lib/planner-model";
+import { modules } from "@/src/server/modules";
+import { buildMonthGrid, parseISODate, toISODate } from "@/src/shared/calendar/date-math";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { animate, frame, type MotionValue } from "motion/react";
 import { renderToString } from "react-dom/server";
@@ -97,6 +101,89 @@ describe("Feature carousels", () => {
       expect(within(footer as HTMLElement).getByRole("heading", { level: 3 }).textContent).toBeTruthy();
       expect(footer.querySelector("p")?.textContent).toBeTruthy();
     }
+  });
+
+  it("uses registered cost tools and the conversation's activity labels", () => {
+    render(<FeatureShowcase />);
+    const research = carousel("Agent capabilities").slides[1];
+    const activities = Array.from(research.querySelectorAll("[data-widget]"));
+    const registered = modules.flatMap((module) => module.tools ?? []).map((tool) => tool.spec.name);
+
+    expect(activities).toHaveLength(3);
+    for (const activity of activities) {
+      expect(registered).toContain(activity.getAttribute("data-widget"));
+      expect(activity.getAttribute("data-widget")).toBe("get_costs");
+    }
+    expect(activities.map((activity) => activity.textContent)).toEqual(
+      ["tuition", "fees", "living"].map((kind) => describeToolCall("get_costs", { kind })),
+    );
+  });
+
+  it("shows CPSC 210's alternative prerequisites instead of an incomplete required chain", () => {
+    render(<FeatureShowcase />);
+    const prereqs = within(carousel("Tools").slides[2]);
+
+    for (const label of ["CPSC 210", "one of", "CPSC 107", "CPSC 110"]) {
+      expect(prereqs.getByText(label)).toBeTruthy();
+    }
+    expect(prereqs.queryByText("CPSC 221")).toBeNull();
+  });
+
+  it("organizes the degree example by the planner's winter terms", () => {
+    render(<FeatureShowcase />);
+    const planner = within(carousel("Tools").slides[3]);
+
+    for (const season of ["w1", "w2"] as const) {
+      expect(planner.getByText(SEASON_META[season].short)).toBeTruthy();
+      expect(planner.getByText(SEASON_META[season].months)).toBeTruthy();
+    }
+    expect(planner.getByText("Selected courses · Year 1")).toBeTruthy();
+  });
+
+  it("uses the real calendar's Sunday-first grid and includes its three event kinds", () => {
+    render(<FeatureShowcase />);
+    const calendar = carousel("Tools").slides[5];
+    expect(within(calendar).getByText("September 2026")).toBeTruthy();
+    for (const kind of ["Academic", "Holiday", "Campus event"]) {
+      expect(within(calendar).getByText(kind)).toBeTruthy();
+    }
+    const days = Array.from(calendar.querySelectorAll("[data-calendar-day]"));
+    expect(days.map((day) => day.getAttribute("data-calendar-day"))).toEqual(
+      buildMonthGrid(parseISODate("2026-09-01"))
+        .flat()
+        .flatMap((day) => (day ? [toISODate(day)] : [])),
+    );
+    expect(
+      Array.from(days[0].parentElement!.children)
+        .slice(0, 7)
+        .map((day) => day.textContent),
+    ).toEqual(["S", "M", "T", "W", "T", "F", "S"]);
+    expect(days[0].textContent).toBe("30");
+    expect(days[2].getAttribute("data-calendar-day")).toBe("2026-09-01");
+    expect(
+      days.filter((day) => day.querySelector(".bg-primary")).map((day) => day.getAttribute("data-calendar-day")),
+    ).toEqual(["2026-09-08", "2026-09-21", "2026-09-28"]);
+  });
+
+  it("distinguishes Workday group sharing from the course timetable builder", () => {
+    render(<FeatureShowcase />);
+    const sharing = carousel("Unity").slides[2];
+    expect(within(sharing).getByText("Shared schedule")).toBeTruthy();
+    expect(within(sharing).getByText("Study group")).toBeTruthy();
+    expect(within(sharing).getByText(/Workday/)).toBeTruthy();
+    expect(within(sharing).getByText("Common free time · Tue, 12–1 PM")).toBeTruthy();
+    const free = within(sharing).getByText("Free");
+    expect(free.style.gridColumn).toBe("3");
+    expect(free.style.gridRow).toBe("5");
+    expect(within(carousel("Tools").slides[4]).getByText("Illustrative class times")).toBeTruthy();
+  });
+
+  it.each(["Agent capabilities", "Tools"])("avoids invented route measurements in %s", (title) => {
+    render(<FeatureShowcase />);
+    const card = carousel(title).slides[title === "Tools" ? 0 : 2];
+    expect(within(card).getByText("Walking route")).toBeTruthy();
+    expect(within(card).getByText("ICCS to AMS Nest")).toBeTruthy();
+    expect(card.textContent).not.toMatch(/\d+\s*(min|m)\b/);
   });
 
   it.each(["Agent capabilities", "Tools", "Unity"])("loops %s arrows in both directions", (title) => {

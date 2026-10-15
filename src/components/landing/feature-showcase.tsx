@@ -41,10 +41,10 @@ const SHOWCASES: { title: string; description: string; slides: FeatureSlide[] }[
     slides: [
       { id: "map", title: "Campus map", description: "Explore buildings and find your walking route." },
       { id: "course-lookup", title: "Course lookup", description: "Compare courses, sections and past grades." },
-      { id: "prereq-tree", title: "Prereq tree", description: "See which courses lead to the one you want." },
-      { id: "degree-planner", title: "Degree planner", description: "Build your degree plan, year by year." },
+      { id: "prereq-tree", title: "Prereq tree", description: "Explore prerequisites and alternative course paths." },
+      { id: "degree-planner", title: "Degree planner", description: "Plan courses by term and check prerequisites." },
       { id: "schedule", title: "Course schedule", description: "Build a timetable and catch course conflicts." },
-      { id: "calendar", title: "Calendar", description: "Keep track of campus events and key dates." },
+      { id: "calendar", title: "Calendar", description: "Browse academic dates, holidays and campus events." },
     ],
   },
   {
@@ -53,7 +53,11 @@ const SHOWCASES: { title: string; description: string; slides: FeatureSlide[] }[
     slides: [
       { id: "announcements", title: "Announcements", description: "Catch up on updates from the Reodite team." },
       { id: "pulse", title: "Pulse", description: "Share your take and see how campus votes." },
-      { id: "sharing", title: "Schedule sharing", description: "Share schedules and find time together." },
+      {
+        id: "sharing",
+        title: "Schedule sharing",
+        description: "Import your Workday schedule and compare with your group.",
+      },
     ],
   },
 ];
