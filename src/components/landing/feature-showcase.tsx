@@ -24,10 +24,10 @@ type FeatureSlide = {
 const SHOWCASES: { title: string; description: string; slides: FeatureSlide[] }[] = [
   {
     title: "Agent capabilities",
-    description: "Ask in your own words, with answers grounded in UBC data.",
+    description: "Ask Reodite in your own words. It looks things up before it answers.",
     slides: [
-      { id: "grounded", title: "Grounded answers", description: "Get answers with UBC sources you can check." },
-      { id: "research", title: "Multi-step research", description: "Bring several campus sources into one answer." },
+      { id: "grounded", title: "Grounded answers", description: "See the UBC pages behind each answer." },
+      { id: "research", title: "Multi-step research", description: "Reodite pulls a few sources together for you." },
       {
         id: "spatial",
         title: "Answers on the map",
@@ -37,7 +37,7 @@ const SHOWCASES: { title: string; description: string; slides: FeatureSlide[] }[
   },
   {
     title: "Tools",
-    description: "Plan your studies and find your way around campus.",
+    description: "Look things up yourself, plan your studies and find your way.",
     slides: [
       { id: "map", title: "Campus map", description: "Explore buildings and find your walking route." },
       { id: "course-lookup", title: "Course lookup", description: "Compare courses, sections and past grades." },
@@ -49,7 +49,7 @@ const SHOWCASES: { title: string; description: string; slides: FeatureSlide[] }[
   },
   {
     title: "Unity",
-    description: "Keep up with Reodite and connect with other students.",
+    description: "Keep up with the team and meet other students.",
     slides: [
       { id: "announcements", title: "Announcements", description: "Catch up on updates from the Reodite team." },
       { id: "pulse", title: "Pulse", description: "Share your take and see how campus votes." },

@@ -157,7 +157,7 @@ export function Landing() {
                   animate={heroLineVariant.visible}
                   transition={{ duration: 0.6, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  Ask UBC anything.
+                  Ask Reodite anything.
                 </motion.span>
                 <br />
                 <motion.span
@@ -166,7 +166,7 @@ export function Landing() {
                   animate={heroLineVariant.visible}
                   transition={{ duration: 0.6, delay: 0.13, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  Get a real answer.
+                  About life at UBC.
                 </motion.span>
               </h1>
               <motion.p
@@ -175,8 +175,8 @@ export function Landing() {
                 animate={heroSublineVariant.visible}
                 transition={{ duration: 0.5, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
-                Courses, tuition, walking routes, deadlines. Reodite searches indexed campus data and responds with
-                facts you can trust.
+                Ask about courses, tuition or deadlines. Plan your degree and find your way around campus. Then see what
+                other students are saying.
               </motion.p>
               <motion.div
                 className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:mt-10"
@@ -232,7 +232,7 @@ export function Landing() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           >
-            Stop guessing. Start asking.
+            What do you want to know?
           </SectionHeading>
           <motion.p
             className="text-on-surface-variant mx-auto mt-4 max-w-xs text-base leading-relaxed"
@@ -240,7 +240,7 @@ export function Landing() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            Courses, buildings, deadlines. One conversation away.
+            Ask a question, plan your term, or check in with campus.
           </motion.p>
           <motion.div
             className="mt-8 flex flex-wrap items-center justify-center gap-3"

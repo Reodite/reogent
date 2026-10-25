@@ -50,7 +50,7 @@ describe("Landing navigation", () => {
     Object.assign(auth, { status, isGuest });
     render(<Landing />);
 
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Ask UBC anything.");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Ask Reodite anything.");
     expect(router.replace).not.toHaveBeenCalled();
     expect(router.push).not.toHaveBeenCalled();
   });

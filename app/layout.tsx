@@ -23,7 +23,7 @@ const commitMono = localFont({
 export const metadata: Metadata = {
   title: "Reodite — AI for your campus",
   description:
-    "Courses, prerequisites, tuition, and walking routes — answered instantly from real UBC data, with routes drawn on a live campus map.",
+    "Ask Reodite about courses, tuition and walking routes, plan your studies, and connect with other UBC students.",
 };
 
 export const viewport: Viewport = {

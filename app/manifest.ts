@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Reodite — AI for your campus",
     short_name: "Reodite",
-    description: "Courses, prerequisites, tuition, and walking routes from real UBC data.",
+    description: "Ask about courses, plan your studies, and connect with other UBC students.",
     id: "/",
     start_url: "/app",
     display: "standalone",
