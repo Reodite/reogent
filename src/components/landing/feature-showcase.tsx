@@ -37,7 +37,7 @@ const SHOWCASES: { title: string; description: string; slides: FeatureSlide[] }[
   },
   {
     title: "Tools",
-    description: "Look things up yourself, plan your studies and find your way.",
+    description: "Open the planners yourself when you want the details.",
     slides: [
       { id: "map", title: "Campus map", description: "Explore buildings and find your walking route." },
       { id: "course-lookup", title: "Course lookup", description: "Compare courses, sections and past grades." },

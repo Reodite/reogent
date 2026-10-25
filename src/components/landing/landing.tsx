@@ -157,7 +157,7 @@ export function Landing() {
                   animate={heroLineVariant.visible}
                   transition={{ duration: 0.6, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  Ask Reodite anything.
+                  Make your way through UBC
                 </motion.span>
                 <br />
                 <motion.span
@@ -166,7 +166,7 @@ export function Landing() {
                   animate={heroLineVariant.visible}
                   transition={{ duration: 0.6, delay: 0.13, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  About life at UBC.
+                  with Reodite and your classmates.
                 </motion.span>
               </h1>
               <motion.p
@@ -175,8 +175,8 @@ export function Landing() {
                 animate={heroSublineVariant.visible}
                 transition={{ duration: 0.5, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
-                Ask about courses, tuition or deadlines. Plan your degree and find your way around campus. Then see what
-                other students are saying.
+                Reodite answers your questions and draws them on the campus map. When you want to dig in yourself, the
+                course and degree planners sit one tap away. Compare timetables with friends and see what campus thinks.
               </motion.p>
               <motion.div
                 className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:mt-10"
@@ -240,7 +240,7 @@ export function Landing() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            Ask a question, plan your term, or check in with campus.
+            Start with a question. Reodite will point you to the right tool.
           </motion.p>
           <motion.div
             className="mt-8 flex flex-wrap items-center justify-center gap-3"
