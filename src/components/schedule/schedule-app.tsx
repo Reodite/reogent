@@ -27,6 +27,7 @@ import { AnimatePresence } from "motion/react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AvatarChip } from "./avatar-chip";
 import { BlockDetail } from "./block-detail";
+import { MyScheduleTools } from "./my-schedule-tools";
 import { NowPanel } from "./now-panel";
 import { PeoplePanel } from "./people-panel";
 import { ScheduleGrid, type ScheduleGridEmptyState } from "./schedule-grid";
@@ -491,6 +492,12 @@ function ScheduleAppInner({ groupCode }: Props) {
         label={meHasSchedule ? "Replace my schedule" : "Import my schedule"}
         onParsed={(schedule) => setDraftSchedule(schedule)}
       />
+      {mePerson?.schedule ? (
+        <MyScheduleTools
+          schedule={mePerson.schedule}
+          sections={mePerson.schedule.sections.filter((section) => sectionOverlapsTerm(section, term))}
+        />
+      ) : null}
     </section>
   );
 
@@ -801,6 +808,7 @@ function NoGroupControls({
           Create a shared schedule
         </Button>
       )}
+      {me?.schedule ? <MyScheduleTools schedule={me.schedule} sections={me.schedule.sections} /> : null}
 
       <form
         className="border-border-subtle flex flex-col gap-2 border-t pt-4"
