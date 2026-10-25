@@ -133,18 +133,18 @@ The app has three zones, left to right:
 | courses    | `search_courses`, `get_course`                                 | Course list with filters, full course record with prereqs   |
 | tuition    | `get_tuition`                                                  | Per-credit rates by program, student type, cohort year      |
 | places     | `find_places`                                                  | Points of interest with locations                           |
-| spaces     | `find_study_spaces`                                            | Study-area and classroom descriptions                       |
+| spaces     | `find_study_spaces`                                            | Study-area descriptions, live library room availability     |
 | admissions | `search_programs`, `get_admission_requirements`                | Program search, admission criteria                          |
 | costs      | `get_cost_estimate`, `get_living_costs`, `search_student_fees` | Cost breakdowns, living cost estimates                      |
 | calendar   | `get_key_dates`                                                | Academic calendar dates                                     |
-| events     | `search_events`                                                | Campus events search                                        |
+| events     | `find_events`                                                  | Live campus events search                                   |
 | parking    | `find_parking`                                                 | Parking lot availability                                    |
 | pages      | `search_ubc_pages`                                             | UBC website content search                                  |
 | grades     | `get_grades`, `search_grades`                                  | Grade distributions by course/instructor                    |
 | people     | `find_person`                                                  | Faculty/staff directory entries, office building location   |
 | food       | `find_food`                                                    | UBC Food Services outlets, meal-plan acceptance             |
 
-The Calendar tool pane shows key dates, holidays, and campus events (the same `events` index `search_events` queries) for the visible month and the two after it, one entry per day an event runs. A header legend distinguishes academic dates, holidays, and campus events.
+The Calendar tool pane shows key dates, holidays, and campus events (read live from events.ubc.ca, as `find_events` does) for the visible month and the two after it, one entry per day an event runs. An events.ubc.ca outage leaves key dates and holidays visible. A header legend distinguishes academic dates, holidays, and campus events.
 
 ### Map Capabilities
 
@@ -164,7 +164,7 @@ The Calendar tool pane shows key dates, holidays, and campus events (the same `e
 - **Sequential tool execution**: Tool results must complete before the next LLM turn.
 - **8-iteration limit**: Agent loop stops after 8 tool-calling turns. A nudge message forces a final text response at iteration 8.
 - **Data freshness**: Data is as current as the last ingest script run. Not real-time.
-- **Room availability**: Reodite does not collect bookings or occupancy. Study-space descriptions and library schedules do not establish vacancy.
+- **Room availability**: `find_study_spaces` reads UBC Library room bookings live from LibCal, about two weeks ahead. Occupancy of informal study spaces and classrooms is unavailable, and library schedules do not establish their vacancy.
 - **No file upload**: Text-only input.
 - **Single map context**: One set of highlights/routes active at a time. A new tool call replaces the previous one.
 

@@ -47,8 +47,8 @@ The module registry defines data access and presentation tools:
 | admissions      | `find_programs`, `get_admission_requirements`   | Undergraduate programs and requirements                            |
 | calendar        | `get_key_dates`                                 | Academic calendar dates                                            |
 | places, parking | `find_places`                                   | Campus POIs and parking facts                                      |
-| spaces          | `find_study_spaces`                             | Study-area and classroom descriptions                              |
-| events          | `find_events`                                   | Campus events                                                      |
+| spaces          | `find_study_spaces`                             | Study-area descriptions, live library room availability            |
+| events          | `find_events`                                   | Campus events, read live                                           |
 | pages           | `search_ubc_pages`                              | Relevance-ranked search across all indexed prose and legacy pages  |
 | documents       | `get_document`                                  | Complete Markdown articles with original source provenance         |
 | undergraduate   | `search_student_resources`, `get_library_hours` | Housing, libraries, support and policy source/fact records         |
@@ -104,7 +104,7 @@ scripts/
 
 The undergraduate tables contain factual labels, source links, housing fee observations and dated library hours. They do not contain full page bodies. Housing `amount_cents` values retain their exact integer or null value; consult the linked conditions before using a rate. Library `booking_lid` strings belong to a separate namespace from `hours_id`. Hours describe a schedule in `America/Vancouver`, including `closes_next_day`; an absent date remains unknown. See [UNDERGRADUATE-SOURCES.md](ubc-unified-data/UNDERGRADUATE-SOURCES.md) for table contracts.
 
-Room booking availability is outside the dataset and tool scope. Study-space descriptions and scheduled library hours do not establish live vacancy.
+Campus events (events.ubc.ca) and library room availability (LibCal) come from live JSON APIs at request time, cached in memory for a few minutes; ingest does not index them. Room names and capacities still come from the submodule's `room-bookings/rooms.json`. Study-space descriptions and scheduled library hours do not establish live vacancy.
 
 Datasets and crawl caches stay outside application images and standalone output. Mount `DATA_PATH` for filesystem-backed tools and ingestion.
 
