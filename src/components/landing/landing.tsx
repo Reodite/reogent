@@ -157,7 +157,7 @@ export function Landing() {
                   animate={heroLineVariant.visible}
                   transition={{ duration: 0.6, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  Make your way through UBC
+                  Academic assistance
                 </motion.span>
                 <br />
                 <motion.span
@@ -166,7 +166,7 @@ export function Landing() {
                   animate={heroLineVariant.visible}
                   transition={{ duration: 0.6, delay: 0.13, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  with Reodite and your classmates.
+                  for UBC students.
                 </motion.span>
               </h1>
               <motion.p
@@ -175,8 +175,7 @@ export function Landing() {
                 animate={heroSublineVariant.visible}
                 transition={{ duration: 0.5, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
-                Reodite answers your questions, often right on the campus map. When you want to dig in yourself, the
-                course and degree planners sit one tap away. Compare timetables with friends and see what campus thinks.
+                Ask our AI, use our tools, and connect with other students.
               </motion.p>
               <motion.div
                 className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:mt-10"
@@ -232,7 +231,7 @@ export function Landing() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
           >
-            What do you want to know?
+            Stop guessing. Start asking.
           </SectionHeading>
           <motion.p
             className="text-on-surface-variant mx-auto mt-4 max-w-xs text-base leading-relaxed"
@@ -240,7 +239,7 @@ export function Landing() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
-            Start with a question. Reodite will point you to the right tool.
+            Courses, buildings, deadlines. One conversation away.
           </motion.p>
           <motion.div
             className="mt-8 flex flex-wrap items-center justify-center gap-3"

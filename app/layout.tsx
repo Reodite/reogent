@@ -22,7 +22,7 @@ const commitMono = localFont({
 
 export const metadata: Metadata = {
   title: "Reodite — AI for your campus",
-  description: "Make your way through UBC with Reodite and your classmates.",
+  description: "Academic assistance for UBC students. Ask our AI, use our tools, and connect with other students.",
 };
 
 export const viewport: Viewport = {
