@@ -175,7 +175,7 @@ export function Landing() {
                 animate={heroSublineVariant.visible}
                 transition={{ duration: 0.5, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
-                Reodite answers your questions and draws them on the campus map. When you want to dig in yourself, the
+                Reodite answers your questions, often right on the campus map. When you want to dig in yourself, the
                 course and degree planners sit one tap away. Compare timetables with friends and see what campus thinks.
               </motion.p>
               <motion.div
