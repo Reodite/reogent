@@ -143,4 +143,41 @@ describe("GET /api/calendar route — projected CalendarEvent[] shape and cachin
     const body = (await res.json()) as ReturnType<typeof projectCalendarEvents>;
     expect(body).toEqual(fixture.academicOnly);
   });
+
+  it("merges live campus events for the requested window", async () => {
+    const fetchMock = vi.fn(async (_url: string) =>
+      Response.json({
+        events: [{ id: 9, title: "Open House", url: "https://events.ubc.ca/e/9", start_date: "2031-03-04 10:00:00" }],
+        total_pages: 1,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const res = await GET(new Request("https://example/api/calendar?kinds=event&from=2031-03-01&to=2031-03-31"));
+      const params = new URL(fetchMock.mock.calls[0][0]).searchParams;
+      expect(params.get("start_date")).toBe("2031-03-01");
+      expect(params.get("end_date")).toBe("2031-03-31 00:00:00");
+      expect(await res.json()).toEqual([
+        { kind: "event", date: "2031-03-04", label: "Open House", source_url: "https://events.ubc.ca/e/9", tags: [] },
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps key dates when events.ubc.ca is down", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("", { status: 503 })),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const res = await GET(new Request("https://example/api/calendar?kinds=academic,event&from=2032-01-01"));
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { kind: string }[];
+      expect(body.every((e) => e.kind !== "event")).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

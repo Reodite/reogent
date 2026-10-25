@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SearchClient } from "../core/types";
 import { prereqModule } from "../prereq/agent-tool";
 import { admissions } from "./admissions";
@@ -6,7 +6,7 @@ import { buildings } from "./buildings";
 import { calendar } from "./calendar";
 import { costs } from "./costs";
 import { courses } from "./courses";
-import { events } from "./events";
+import { categorySlug, events } from "./events";
 import { food } from "./food";
 import { pages } from "./pages";
 import { people } from "./people";
@@ -463,13 +463,8 @@ describe("find_places (agent-tool-redesign)", () => {
 });
 
 describe("find_study_spaces (agent-tool-redesign)", () => {
-  const availability = [
-    { id: "a1", room: "IKB 461", state: "free", start: "08:00", capacity: 10, minutes: 120 },
-    { id: "a2", room: "IKB 462", state: "booked", start: "08:00", capacity: 10 },
-  ];
   const spacesFixture = {
     study_spaces: [{ id: "s1", title: "AERL 120", building_code: "AERL", capacity: 30 }],
-    room_availability: availability,
   };
 
   it("returns informal spaces with capacity sort", async () => {
@@ -485,16 +480,6 @@ describe("find_study_spaces (agent-tool-redesign)", () => {
   it("ingests only learning-space descriptions", () => {
     expect(spaces.indices.map((index) => index.index)).toEqual(["study_spaces"]);
   });
-
-  it.each([{ kind: "bookable" }, { room: "IKB 461" }, { min_minutes: 60 }, { date: "2026-09-12" }])(
-    "rejects booking availability requests without searching stale indexes: %j",
-    async (input) => {
-      const tool = spaces.tools.find((t) => t.spec.name === "find_study_spaces")!;
-      const search = fakeSearch(spacesFixture);
-      await expect(tool.execute(input, search)).rejects.toThrow(/booking availability is not available/i);
-      expect(search.calls()).toEqual({});
-    },
-  );
 });
 
 describe("find_programs (agent-tool-redesign)", () => {
@@ -574,50 +559,62 @@ describe("get_admission_requirements (agent-tool-redesign)", () => {
 });
 
 describe("find_events (agent-tool-redesign)", () => {
-  const eventsFixture: Record<string, unknown[]> = {
-    events: [
-      {
-        id: "e1",
-        title: "Guest Lecture",
-        text: "a talk",
-        start_date: "2026-09-01 10:00:00",
-        end_date: null,
-        all_day: false,
-        venue: "Woodward",
-        venue_address: null,
-        categories: ["Lectures & Talks"],
-        url: null,
-      },
-    ],
-  };
+  afterEach(() => vi.unstubAllGlobals());
 
-  it("filters by date range using start_date bounds", async () => {
-    const tool = events.tools.find((t) => t.spec.name === "find_events")!;
-    const search = fakeSearch(eventsFixture);
-    const out = (await tool.execute({ from_date: "2026-08-01", to_date: "2026-10-01" }, search)) as {
-      events: unknown[];
-    };
-    expect(out.events.length).toBe(1);
+  function stubEvents(rows: Record<string, unknown>[]) {
+    const fetchMock = vi.fn(async (_url: string) => Response.json({ events: rows, total_pages: 1 }));
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+  const row = { id: 7, title: "Guest Lecture", description: "a talk", start_date: "2026-09-01 10:00:00" };
+
+  it("resolves categories by slug, dash-insensitive name, or unique last segment", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          categories: [
+            { name: "Type – Lecture", slug: "type-lecture" },
+            { name: "Subject – Entertainment – Music", slug: "subject-music" },
+            { name: "Type – Concert", slug: "type-concert" },
+            { name: "Subject – Concert", slug: "subject-concert" },
+          ],
+        }),
+      ),
+    );
+    expect(await categorySlug("type-lecture")).toBe("type-lecture");
+    expect(await categorySlug("type - lecture")).toBe("type-lecture");
+    expect(await categorySlug("Music")).toBe("subject-music");
+    await expect(categorySlug("Concert")).rejects.toThrow(/Unknown event category/);
   });
+
+  it("queries events.ubc.ca live with inclusive date bounds", async () => {
+    const tool = events.tools.find((t) => t.spec.name === "find_events")!;
+    const fetchMock = stubEvents([row]);
+    const out = (await tool.execute(
+      { query: "lecture", from_date: "2026-08-01", to_date: "2026-10-01" },
+      fakeSearch({}),
+    )) as {
+      events: { id: string }[];
+    };
+    const params = new URL(fetchMock.mock.calls[0][0]).searchParams;
+    expect(params.get("start_date")).toBe("2026-08-01");
+    expect(params.get("end_date")).toBe("2026-10-01 23:59:59");
+    expect(params.get("search")).toBe("lecture");
+    expect(out.events.map((e) => e.id)).toEqual(["7"]);
+  });
+
+  it("rejects malformed dates before fetching", async () => {
+    const tool = events.tools.find((t) => t.spec.name === "find_events")!;
+    const fetchMock = stubEvents([row]);
+    await expect(tool.execute({ from_date: "next week" }, fakeSearch({}))).rejects.toThrow(/YYYY-MM-DD/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("truncates event text to 400 chars", async () => {
     const tool = events.tools.find((t) => t.spec.name === "find_events")!;
-    const search = fakeSearch({
-      events: [
-        {
-          id: "e1",
-          title: "Talk",
-          text: "x".repeat(500),
-          start_date: null,
-          end_date: null,
-          all_day: false,
-          venue: null,
-          venue_address: null,
-          categories: [],
-          url: null,
-        },
-      ],
-    });
-    const out = (await tool.execute({}, search)) as { events: { text: string }[] };
+    stubEvents([{ ...row, description: "x".repeat(500) }]);
+    const out = (await tool.execute({ limit: 3 }, fakeSearch({}))) as { events: { text: string }[] };
     expect(out.events[0].text.length).toBe(400);
   });
 });
@@ -737,14 +734,26 @@ describe("show_widget (explicit entities)", () => {
     expect(out.result.courses).toHaveLength(1);
   });
 
-  it("accepts an event id exactly as find_events returns it (sanitized)", async () => {
-    const search = fakeSearch({
-      events: [{ id: "events_ubc_ca_id_38483", title: "Talk", text: "x" }],
-    });
-    const out = (await tool.execute({ type: "event", event_ids: ["events_ubc_ca_id_38483"] }, search)) as {
-      result: { events: unknown[] };
-    };
-    expect(out.result.events).toHaveLength(1);
+  it("fetches events live by numeric id or any id ending in it", async () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      Response.json({ id: Number(url.split("/").pop()), title: "Talk", description: "x" }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const out = (await tool.execute(
+        { type: "event", event_ids: ["38483", "events.ubc.ca?id=38484"] },
+        fakeSearch({}),
+      )) as {
+        result: { events: { id: string }[] };
+      };
+      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+        "https://events.ubc.ca/wp-json/tribe/events/v1/events/38483",
+        "https://events.ubc.ca/wp-json/tribe/events/v1/events/38484",
+      ]);
+      expect(out.result.events.map((e) => e.id)).toEqual(["38483", "38484"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("requires course_codes for the courses type", async () => {

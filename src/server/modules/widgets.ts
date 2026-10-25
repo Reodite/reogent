@@ -5,6 +5,7 @@ import { sanitizeMeiliId } from "../ingest";
 import { route } from "../routing";
 import { resolveBuilding } from "./buildings";
 import { findByCode, presentCourse, type CourseDoc } from "./courses";
+import { getEvent } from "./events";
 import { courseGrades } from "./grades";
 import { lookupTuition } from "./tuition";
 
@@ -407,11 +408,9 @@ export function createWidgetsModule(): DatasetModule {
             case "event": {
               const ids = asStringArray(input.event_ids);
               if (ids.length === 0) throw new Error("show_widget type 'event' requires event_ids");
-              // Accept the id exactly as find_events returns it (e.g.
-              // "events_ubc_ca_id_38483", already sanitized) or a bare numeric
-              // suffix (38483); both resolve to the same stored document.
-              const resolved = ids.map((i) => (/^\d+$/.test(i) ? `events.ubc.ca?id=${Number(i)}` : i));
-              const events = await getDocs(search, "events", resolved);
+              // Accepts the numeric id find_events returns or any id ending in it,
+              // such as "events.ubc.ca?id=38483".
+              const events = (await Promise.all(ids.map(getEvent))).filter((e) => e !== null);
               if (events.length === 0) throw new Error("None of the given event ids resolved");
               return {
                 type,

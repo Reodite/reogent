@@ -38,13 +38,13 @@ Use these data tools for facts and show_widget for answer cards:
 - find_places — POIs by category (cafe, restaurant, library, grocery, bank, medical, transit, campus_services, academic) or parking (category "parking"); optionally sorted by walking distance from a building
 - find_person — faculty and staff directory (Science, Applied Science, Law, Nursing, Pharmaceutical Sciences): title, email, phone, office; includes the office building's code and coordinates when it resolves
 - find_food — UBC Food Services outlets (food.ubc.ca) with descriptions and meal-plan acceptance; coordinates/hours only when a campus POI shares the name; optionally sorted by distance from a building. For hours or map-first cafe questions prefer find_places
-- find_study_spaces: study areas and classrooms by building, keywords, space type and seating capacity; booking availability and occupancy are unavailable
+- find_study_spaces: study areas and classrooms by building, keywords, space type and seating capacity (kind "informal"), or UBC Library bookable rooms with live free times for a date (kind "bookable"); pass room for one room's timeline. Occupancy of informal spaces is unavailable
 - get_costs: money by kind: "tuition" (program_slug, student_type, cohort_year), "estimate" (program), "living" (item), "fees" (query), or "housing" (query) for residence fee observations and their source conditions
 - get_library_hours: scheduled opening hours for a library and date in America/Vancouver; missing dates are unknown
 - search_student_resources: IT service source links and audience labels, residence facts, library contacts, student support and policy source indexes
 - find_programs — search undergraduate admission programs
 - get_admission_requirements — admission requirements for a program/location
-- find_events — campus events by keyword and date range
+- find_events — campus events by keyword, date range and category, read live from events.ubc.ca
 - get_key_dates — academic calendar dates, deadlines, holidays
 - search_ubc_pages: relevance-ranked metadata and matching excerpts across all indexed document topics, official hosts and legacy pages; optional source, subcategory or hostname filter and offset pagination
 - get_document: read the complete indexed Markdown using the complete original_id returned by search_ubc_pages
@@ -116,8 +116,8 @@ near_building on places/parking is display-only: it labels the card "near <build
 "Where can I study?" / "study spaces"
 → find_study_spaces(building or keywords), read the space ids, then show_widget(type: "study_spaces", study_space_ids: ["<ids>"]).
 
-"Free rooms right now" / "room booking timeline"
-→ State that room booking availability is unavailable. Offer study-space descriptions or published library hours. Do not infer vacancy from either source.
+"Free rooms right now" / "book a study room" / "room booking timeline"
+→ find_study_spaces(kind: "bookable", building, date when supplied, min_capacity, min_minutes). Answer in text: list rooms with their free times and booking url. Times are America/Vancouver. For one room's day, pass room. A room free now has a free stretch starting at or before the current time.
 
 "Tell me about course X" / "prereqs for X"
 → get_course("X", include_grades:true when the grade history is wanted), then show_widget(type: "course", course: "<the exact code from the result>"). Done. No prose.

@@ -1,5 +1,8 @@
 import type { DatasetModule } from "../core/types";
+import { liveJson } from "../live";
 import { stripHtml } from "./html";
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface EventDoc {
   id: string;
@@ -18,7 +21,7 @@ export interface EventDoc {
 type Row = Record<string, any>;
 
 export function transformEvent(row: Row): { id: string; doc: EventDoc } | null {
-  const id = row.global_id ?? row.id;
+  const id = row.id ?? row.global_id;
   if (id == null || !row.title) return null;
   const venue = Array.isArray(row.venue) ? row.venue[0] : row.venue; // TEC API: object, array, or absent
   return {
@@ -40,61 +43,124 @@ export function transformEvent(row: Row): { id: string; doc: EventDoc } | null {
   };
 }
 
+const BASE = "https://events.ubc.ca/wp-json/tribe/events/v1";
+const EVENTS_TTL_MS = 5 * 60_000;
+const CATEGORIES_TTL_MS = 24 * 60 * 60_000;
+/** The Events Calendar REST API caps `per_page` at 50. */
+const PAGE_SIZE = 50;
+/** Upper bound on pages fetched for one date range. */
+const MAX_PAGES = 20;
+
+interface EventPage {
+  events: EventDoc[];
+  totalPages: number;
+}
+
+function docs(rows: unknown): EventDoc[] {
+  return (Array.isArray(rows) ? (rows as Row[]) : []).flatMap((row) => transformEvent(row)?.doc ?? []);
+}
+
+async function eventPage(params: Record<string, string>): Promise<EventPage> {
+  const body = (await liveJson(`${BASE}/events?${new URLSearchParams(params)}`, EVENTS_TTL_MS)) as Row;
+  return { events: docs(body.events), totalPages: Number(body.total_pages) || 1 };
+}
+
+// Category names mix hyphens and en dashes ("Type – Lecture"); compare them dash- and case-insensitively.
+const normalizeCategory = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/\s*[-–—]\s*/g, " - ");
+
+/**
+ * Maps a category to its slug. Accepts the slug, the full name, or the last
+ * segment of the name ("Lecture" for "Type – Lecture") when only one category
+ * ends with it. Throws listing the known names when none match.
+ */
+export async function categorySlug(category: string): Promise<string> {
+  const body = (await liveJson(`${BASE}/categories?per_page=100`, CATEGORIES_TTL_MS)) as Row;
+  const categories = (Array.isArray(body.categories) ? body.categories : []) as { name: string; slug: string }[];
+  const wanted = normalizeCategory(category);
+  const suffixed = categories.filter((c) => normalizeCategory(c.name).endsWith(` - ${wanted}`));
+  const match =
+    categories.find((c) => c.slug === category.trim().toLowerCase() || normalizeCategory(c.name) === wanted) ??
+    (suffixed.length === 1 ? suffixed[0] : undefined);
+  if (!match)
+    throw new Error(`Unknown event category "${category}". Known: ${categories.map((c) => c.name).join("; ")}`);
+  return match.slug;
+}
+
+/**
+ * Lists events from events.ubc.ca that start in [from, to) (ISO dates), read
+ * live and cached for a few minutes. Stops after a fixed page budget, so very
+ * long ranges come back truncated.
+ */
+export async function eventsBetween(from: string, to: string): Promise<EventDoc[]> {
+  const params = { start_date: from, end_date: `${to} 00:00:00`, per_page: String(PAGE_SIZE) };
+  const first = await eventPage({ ...params, page: "1" });
+  const rest = await Promise.all(
+    Array.from({ length: Math.min(first.totalPages, MAX_PAGES) - 1 }, (_, i) =>
+      eventPage({ ...params, page: String(i + 2) }),
+    ),
+  );
+  return [first, ...rest].flatMap((page) => page.events);
+}
+
+/** Fetches one event by its numeric id, or the id with any prefix such as "events.ubc.ca?id=". Null when it does not resolve. */
+export async function getEvent(id: string): Promise<EventDoc | null> {
+  const numeric = id.match(/(\d+)$/)?.[1];
+  if (!numeric) return null;
+  try {
+    return transformEvent((await liveJson(`${BASE}/events/${numeric}`, EVENTS_TTL_MS)) as Row)?.doc ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const events: DatasetModule = {
   name: "events",
-  indices: [
-    {
-      index: "events",
-      settings: {
-        searchableAttributes: ["title", "text", "venue"],
-        filterableAttributes: ["categories", "start_date"],
-        sortableAttributes: ["start_date"],
-      },
-      async *read(store) {
-        yield* (await store.getJson("events/events.json")) as Row[];
-      },
-      transform: transformEvent,
-    },
-  ],
+  indices: [],
   tools: [
     {
       spec: {
         name: "find_events",
         description:
-          "Search UBC Vancouver events (events.ubc.ca) by keyword and date range. The archive goes back years so you MUST filter by date for current events: use from_date and to_date (ISO format, e.g. 2026-08-01). Without a date range, the tool returns the most recent events (which may be years old). If you pass an empty query, the tool returns all events in the date range.",
+          "Search UBC events (events.ubc.ca, read live) by keyword, date range, and category. Without from_date, results start from now. Pass from_date for past events.",
         inputSchema: {
           json: {
             type: "object",
             properties: {
               query: { type: "string", description: "Optional keywords for title and description" },
               from_date: { type: "string", description: "Optional earliest start date, ISO e.g. 2026-08-01" },
-              to_date: { type: "string", description: "Optional latest start date, ISO e.g. 2026-09-01" },
-              category: { type: "string", description: 'Optional category filter, e.g. "Lectures & Talks"' },
-              limit: { type: "number", description: "Max results (default 10)" },
+              to_date: { type: "string", description: "Optional latest start date, inclusive, ISO e.g. 2026-09-01" },
+              category: {
+                type: "string",
+                description: 'Optional category name, slug, or last name segment, e.g. "Type – Lecture" or "Lecture"',
+              },
+              limit: { type: "number", description: "Max results (default 10, max 30)" },
             },
             required: [],
           },
         },
       },
-      async execute(input, search) {
-        const filters: string[] = [];
-        if (input.from_date) filters.push(`start_date >= '${String(input.from_date)}'`);
-        if (input.to_date) filters.push(`start_date <= '${String(input.to_date)}'`);
-        if (input.category) filters.push(`categories = '${String(input.category)}'`);
-        const res = await search.index("events").search(input.query ? String(input.query) : "", {
-          filter: filters.length > 0 ? filters.join(" AND ") : undefined,
-          limit: Math.min(Number(input.limit) || 10, 30),
-          // upcoming-first when a window is given; otherwise newest-first (the archive is mostly past events)
-          sort: [input.from_date ? "start_date:asc" : "start_date:desc"],
-        });
-        const hits = res.hits;
-        if (hits.length === 0) throw new Error(`No events matched "${input.query ?? ""}"`);
-        return {
-          events: hits.map((h) => {
-            const e = h as unknown as EventDoc;
-            return { ...e, text: e.text.slice(0, 400) };
-          }),
+      async execute(input) {
+        const params: Record<string, string> = {
+          per_page: String(Math.min(Math.max(Number(input.limit) || 10, 1), 30)),
         };
+        for (const [key, name] of [
+          ["from_date", "start_date"],
+          ["to_date", "end_date"],
+        ] as const) {
+          if (input[key] === undefined) continue;
+          const date = String(input[key]);
+          if (!ISO_DATE.test(date)) throw new Error(`${key} must be YYYY-MM-DD`);
+          params[name] = key === "to_date" ? `${date} 23:59:59` : date;
+        }
+        if (input.query) params.search = String(input.query);
+        if (input.category) params.categories = await categorySlug(String(input.category));
+        const { events: hits } = await eventPage(params);
+        if (hits.length === 0) throw new Error(`No events matched "${input.query ?? ""}"`);
+        return { events: hits.map((e) => ({ ...e, text: e.text.slice(0, 400) })) };
       },
     },
   ],

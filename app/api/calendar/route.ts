@@ -1,6 +1,6 @@
 import { projectCalendarEvents, projectCampusEvents } from "@/src/server/calendar-events";
 import type { KeyDateDoc } from "@/src/server/modules/calendar";
-import type { EventDoc } from "@/src/server/modules/events";
+import { eventsBetween } from "@/src/server/modules/events";
 import { getSearch } from "@/src/server/search";
 import { addMonths, parseISODate, toISODate } from "@/src/shared/calendar/date-math";
 import type { CalendarEvent } from "@/src/shared/calendar/event";
@@ -9,7 +9,7 @@ import { json, serverError } from "../http";
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Campus events are served for the visible month plus this many months after
- * it: a full year holds more rows than Meilisearch's hit ceiling. */
+ * it, which keeps the live events.ubc.ca fetch to a handful of pages. */
 const EVENT_WINDOW_MONTHS = 2;
 
 export async function GET(request: Request): Promise<Response> {
@@ -44,13 +44,12 @@ export async function GET(request: Request): Promise<Response> {
       const windowEnd = toISODate(addMonths(parseISODate(eventFrom), EVENT_WINDOW_MONTHS + 1));
       const eventTo = to && to < windowEnd ? to : windowEnd;
       // Filters on start_date only: an event that began before the window and
-      // runs into it is not shown.
-      const res = await search.index("events").search("", {
-        filter: `start_date >= '${eventFrom}' AND start_date < '${eventTo}'`,
-        sort: ["start_date:asc"],
-        limit: 1000,
+      // runs into it is not shown. An events.ubc.ca outage leaves key dates in place.
+      const campus = await eventsBetween(eventFrom, eventTo).catch((e) => {
+        console.error("[calendar] campus events unavailable", e);
+        return [];
       });
-      events.push(...projectCampusEvents(res.hits as unknown as EventDoc[], eventFrom, eventTo));
+      events.push(...projectCampusEvents(campus, eventFrom, eventTo));
       events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     }
     return new Response(JSON.stringify(events), {
