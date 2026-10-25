@@ -103,27 +103,28 @@ describe("Feature carousels", () => {
     }
   });
 
-  it("uses registered cost tools and the conversation's activity labels", () => {
+  it("uses registered tools and the conversation's activity labels", () => {
     render(<FeatureShowcase />);
     const research = carousel("Agent capabilities").slides[1];
     const activities = Array.from(research.querySelectorAll("[data-widget]"));
     const registered = modules.flatMap((module) => module.tools ?? []).map((tool) => tool.spec.name);
 
-    expect(activities).toHaveLength(3);
-    for (const activity of activities) {
-      expect(registered).toContain(activity.getAttribute("data-widget"));
-      expect(activity.getAttribute("data-widget")).toBe("get_costs");
-    }
-    expect(activities.map((activity) => activity.textContent)).toEqual(
-      ["tuition", "fees", "living"].map((kind) => describeToolCall("get_costs", { kind })),
-    );
+    expect(activities.map((activity) => activity.getAttribute("data-widget"))).toEqual([
+      "get_key_dates",
+      "find_events",
+    ]);
+    for (const activity of activities) expect(registered).toContain(activity.getAttribute("data-widget"));
+    expect(activities.map((activity) => activity.textContent)).toEqual([
+      describeToolCall("get_key_dates", { query: "Term 1" }),
+      describeToolCall("find_events", { from_date: "2026-09-08" }),
+    ]);
   });
 
   it("shows CPSC 210's alternative prerequisites instead of an incomplete required chain", () => {
     render(<FeatureShowcase />);
     const prereqs = within(carousel("Tools").slides[2]);
 
-    for (const label of ["CPSC 210", "one of", "CPSC 107", "CPSC 110"]) {
+    for (const label of ["CPSC 210", "one of", "CPSC 107", "CPSC 110", "CPSC 103"]) {
       expect(prereqs.getByText(label)).toBeTruthy();
     }
     expect(prereqs.queryByText("CPSC 221")).toBeNull();
@@ -137,10 +138,12 @@ describe("Feature carousels", () => {
       expect(planner.getByText(SEASON_META[season].short)).toBeTruthy();
       expect(planner.getByText(SEASON_META[season].months)).toBeTruthy();
     }
-    expect(planner.getByText("Selected courses · Year 1")).toBeTruthy();
+    expect(planner.getByText("Year 1")).toBeTruthy();
+    expect(planner.getByText("18 cr")).toBeTruthy();
+    expect(planner.getByText(/CPSC 210 needs/)).toBeTruthy();
   });
 
-  it("uses the real calendar's Sunday-first grid and includes its three event kinds", () => {
+  it("uses the real calendar's Sunday-first grid and marks September 2026 dates by kind", () => {
     render(<FeatureShowcase />);
     const calendar = carousel("Tools").slides[5];
     expect(within(calendar).getByText("September 2026")).toBeTruthy();
@@ -160,9 +163,11 @@ describe("Feature carousels", () => {
     ).toEqual(["S", "M", "T", "W", "T", "F", "S"]);
     expect(days[0].textContent).toBe("30");
     expect(days[2].getAttribute("data-calendar-day")).toBe("2026-09-01");
-    expect(
-      days.filter((day) => day.querySelector(".bg-primary")).map((day) => day.getAttribute("data-calendar-day")),
-    ).toEqual(["2026-09-08", "2026-09-21", "2026-09-28"]);
+    const marked = (kind: string) =>
+      days.filter((day) => day.querySelector(`[data-calendar-marker="${kind}"]`)).map((day) => day.textContent);
+    expect(marked("academic")).toEqual(["8", "21", "28"]);
+    expect(marked("holiday")).toEqual(["7", "30"]);
+    expect(marked("event")).toEqual(["2", "9", "16", "23", "30"]);
   });
 
   it("distinguishes Workday group sharing from the course timetable builder", () => {
@@ -171,11 +176,18 @@ describe("Feature carousels", () => {
     expect(within(sharing).getByText("Shared schedule")).toBeTruthy();
     expect(within(sharing).getByText("Study group")).toBeTruthy();
     expect(within(sharing).getByText(/Workday/)).toBeTruthy();
-    expect(within(sharing).getByText("Common free time · Tue, 12–1 PM")).toBeTruthy();
-    const free = within(sharing).getByText("Free");
-    expect(free.style.gridColumn).toBe("3");
-    expect(free.style.gridRow).toBe("5");
-    expect(within(carousel("Tools").slides[4]).getByText("Illustrative class times")).toBeTruthy();
+    expect(within(sharing).getByText("Common free time · Tue and Thu from 12 PM")).toBeTruthy();
+    expect(
+      Array.from(sharing.querySelectorAll<HTMLElement>("[data-free-time]")).map(
+        (free) => `${free.style.gridColumn} ${free.style.gridRow}`,
+      ),
+    ).toEqual(["3 8 / 10", "5 8 / 10"]);
+    const schedule = carousel("Tools").slides[4];
+    expect(within(schedule).getByText("Illustrative class times")).toBeTruthy();
+    expect(Array.from(schedule.querySelectorAll("[data-conflict]")).map((block) => block.textContent)).toEqual([
+      "CPSC121",
+      "CHEM121",
+    ]);
   });
 
   it.each(["Agent capabilities", "Tools"])("avoids invented route measurements in %s", (title) => {
