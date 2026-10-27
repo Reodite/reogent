@@ -100,6 +100,16 @@ it("preserves article structure while suppressing raw HTML, unsafe links and rem
   }
 });
 
+it("puts wide reply tables in a keyboard-scrollable region", async () => {
+  const content = "| Course | Title |\n| --- | --- |\n| CPSC 110 | Computation, Programs, and Programming |";
+  const view = render(<AssistantMessage message={{ id: "table", role: "assistant", content }} />);
+  await waitFor(() => expect(view.container.querySelector(".assistant-markdown table")).not.toBeNull());
+  const region = view.getByRole("region", { name: "Reply table" });
+  expect(region.classList.contains("markdown-table-wrap")).toBe(true);
+  expect(region.tabIndex).toBe(0);
+  expect(region.querySelector("td")?.textContent).toBe("CPSC 110");
+});
+
 it("links grouped Markdown citations without injecting into code or duplicating nested leaves", async () => {
   const grouped = [1, 2].map((index) => ({
     index,

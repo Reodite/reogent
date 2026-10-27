@@ -1591,10 +1591,13 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   text-align: left;
 }
 
+/* Cells break only between words, so wide tables scroll inside narrow bubbles. */
 .assistant-markdown :where(th, td) {
   border-bottom: 1px solid var(--border);
+  overflow-wrap: break-word;
   padding: 0.55rem 0.7rem;
   vertical-align: top;
+  word-break: normal;
 }
 
 .assistant-markdown th {

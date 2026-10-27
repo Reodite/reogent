@@ -77,9 +77,10 @@ const markdownComponents = (citations: Citation[] | null | undefined) => {
       <span className="markdown-image-alt">{alt ? `[Image: ${alt}]` : "[Image omitted]"}</span>
     ),
     table: ({ children }: { children?: React.ReactNode }) => (
-      <div className="markdown-table-wrap">
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users scroll wide tables within the reply.
+      <section className="markdown-table-wrap" aria-label="Reply table" tabIndex={0}>
         <table>{children}</table>
-      </div>
+      </section>
     ),
     p: leaf("p"),
     li: leaf("li"),

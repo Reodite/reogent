@@ -213,6 +213,13 @@ describe("mobile workspace framing", () => {
     expect(globalsCss).toContain("bottom: calc(var(--map-explore-sheet-height) + 0.5rem);");
   });
 
+  it("scrolls wide reply tables and breaks cells only between words", () => {
+    const cells = globalsCss.match(/\.assistant-markdown :where\(th, td\)\s*\{([^}]+)\}/)?.[1] ?? "";
+    expect(cells).toContain("overflow-wrap: break-word;");
+    expect(cells).toContain("word-break: normal;");
+    expect(globalsCss).toMatch(/\.markdown-table-wrap\s*\{[^}]*overflow-x: auto;/);
+  });
+
   it("keeps the mobile timetable flush and weekend day tabs scrollable", () => {
     expect(mobileLayout).toContain("[data-schedule-canvas]");
     expect(mobileLayout).toContain("[data-schedule-grid-frame]");
