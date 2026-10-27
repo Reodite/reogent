@@ -8,7 +8,7 @@ related_targets: ["src/components/chat/chat-frame.tsx", "src/components/chat/cha
 
 ## Scope and mode
 
-Operate mode for the authenticated shell, shared workspace components, and live/loading chat frames. Applies to Chat, Tools, Unity, and Settings; public marketing and authentication pages keep their existing compositions.
+Operate mode for the authenticated shell, shared workspace components, and live/loading chat frames. Applies to Chat, Tools, Unity, and Settings. Onboarding shares the flat phone page below 640px; public marketing and authentication pages keep their existing compositions.
 
 ## Audience and job
 
