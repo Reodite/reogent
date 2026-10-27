@@ -46,7 +46,7 @@ export function ProgramSelectorsLoading() {
   return (
     <SkeletonGroup
       label="Loading programs…"
-      className="grid w-full grid-cols-2 items-end gap-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3"
+      className="grid w-full grid-cols-1 items-end gap-2 @min-[30rem]:grid-cols-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3"
     >
       {[
         ["Faculty", "@min-[55rem]:w-44"],
@@ -133,7 +133,7 @@ export function ProgramSelectors() {
   }
 
   return (
-    <div className="grid w-full grid-cols-2 items-end gap-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3">
+    <div className="grid w-full grid-cols-1 items-end gap-2 @min-[30rem]:grid-cols-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3">
       <ProgramCombobox
         label="Faculty"
         className="w-full @min-[55rem]:w-44"

@@ -78,7 +78,9 @@ describe("ProgramSelectors", () => {
   it("reserves the responsive three-field row while programs load", () => {
     usePlanner.setState({ major: null });
     const { container } = render(<ProgramSelectorsLoading />);
-    expect(screen.getByRole("status", { name: "Loading programs…" }).className).toContain("grid-cols-2");
+    const row = screen.getByRole("status", { name: "Loading programs…" }).className;
+    expect(row).toContain("grid-cols-1");
+    expect(row).toContain("@min-[30rem]:grid-cols-2");
     expect(container.querySelectorAll("[data-skeleton]")).toHaveLength(6);
     expect(screen.queryByRole("combobox")).toBeNull();
   });
@@ -122,7 +124,8 @@ describe("ProgramSelectors", () => {
 
     const link = await screen.findByRole("link", { name: /UBC Calendar/ });
     const layout = container.firstElementChild as HTMLElement;
-    expect(layout.className).toContain("grid-cols-2");
+    expect(layout.className).toContain("grid-cols-1");
+    expect(layout.className).toContain("@min-[30rem]:grid-cols-2");
     expect(layout.className).toContain("@min-[55rem]:flex");
     const input = screen.getByRole("combobox", { name: "Major / program" });
     await waitFor(() => expect((input as HTMLInputElement).value).toBe("Computer Science"));
