@@ -136,12 +136,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
       <div data-workspace-scroll className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className="workspace-page-layout flex h-full min-h-min flex-col gap-4 p-6">
           {controls ? (
-            <WorkspaceHeaderControls
-              toolbar={props.toolbar}
-              actions={internalActions}
-              pending={pending}
-              embedded={embedded}
-            />
+            <WorkspaceHeaderControls toolbar={props.toolbar} actions={internalActions} pending={pending} />
           ) : null}
 
           {props.notice ? <div inert={pending || undefined}>{props.notice}</div> : null}
@@ -223,22 +218,22 @@ export function WorkspacePage(props: WorkspacePageProps) {
   );
 }
 
+// Stretches with the layout column so phone side margins inset the controls and
+// keep trailing actions on screen.
 function WorkspaceHeaderControls({
   toolbar,
   actions,
-  embedded = false,
   pending = false,
 }: {
   toolbar?: ReactNode;
   actions?: ReactNode;
-  embedded?: boolean;
   pending?: boolean;
 }) {
   return (
     <div
       data-workspace-header-controls
       inert={pending || undefined}
-      className={`flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3 ${embedded ? "" : "w-full"}`}
+      className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3"
     >
       {toolbar ? (
         <div data-workspace-toolbar className="min-w-0 flex-1 overflow-x-auto">

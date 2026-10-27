@@ -99,6 +99,13 @@ describe("WorkspacePage", () => {
     expect(page?.querySelector("[data-workspace-actions]")?.className).toContain("@min-[55rem]:w-auto");
   });
 
+  it("stretches header controls so phone side insets keep trailing actions on screen", () => {
+    const { container } = render(<SplitWorkspace />);
+    const controls = container.querySelector("[data-workspace-header-controls]");
+    expect(controls?.parentElement?.classList.contains("workspace-page-layout")).toBe(true);
+    expect(controls?.classList.contains("w-full")).toBe(false);
+  });
+
   it("keeps header navigation available while pending task controls stay inert", () => {
     navigationState.pending = true;
     const { container } = render(
