@@ -213,6 +213,13 @@ describe("mobile workspace framing", () => {
     expect(globalsCss).toContain("bottom: calc(var(--map-explore-sheet-height) + 0.5rem);");
   });
 
+  it("flattens the onboarding card into the phone surface page", () => {
+    expect(mobileLayout).toMatch(/\[data-onboarding\]\s*\{\s*background-color: var\(--surface\);/);
+    const card = mobileLayout.match(/\[data-onboarding-card\]\s*\{([^}]+)\}/)?.[1] ?? "";
+    expect(card).toContain("box-shadow: none;");
+    expect(card).toContain("padding: 0;");
+  });
+
   it("fits all seven calendar days in phone-width months", () => {
     const narrow = globalsCss.match(/@container \(max-width: 40rem\)\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
     expect(narrow).toMatch(/\.calendar-month-width\s*\{\s*min-width: 0;/);

@@ -1291,6 +1291,18 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
     box-shadow: none;
   }
 
+  /* Onboarding uses the shell's flat surface page; its card keeps the panel
+     material from 640px upward. */
+  [data-onboarding] {
+    background-color: var(--surface);
+  }
+
+  [data-onboarding-card] {
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
   :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .workspace-page-layout {
     padding: 0;
   }
