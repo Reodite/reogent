@@ -46,6 +46,9 @@ describe("ScheduleGrid", () => {
 
     expect(view.getAllByText("Mon").length).toBeGreaterThan(0);
     expect(view.getByText("9 AM")).toBeTruthy();
+    // The guidance overlay spans only the day columns, leaving the time gutter readable.
+    const overlay = view.getByRole("heading", { name: "Build your week" }).closest(".absolute");
+    expect(overlay?.className).toContain("col-[2/-1]");
     fireEvent.keyDown(view.getByRole("tab", { name: "Mon" }), { key: "ArrowRight" });
     expect(onActiveDayChange).toHaveBeenCalledWith("Tue");
     fireEvent.click(view.getByRole("button", { name: "Add course" }));

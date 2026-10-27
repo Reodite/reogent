@@ -474,13 +474,13 @@ export function ScheduleGrid({
             </div>
           ))}
           {!hasBlocks && loading ? (
-            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 flex justify-center sm:top-28">
+            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 col-[2/-1] flex justify-center sm:top-28">
               <SkeletonGroup label={loading} className="bg-surface/95 w-full max-w-sm rounded-lg px-5 py-4">
                 <SkeletonText lines={3} />
               </SkeletonGroup>
             </div>
           ) : !hasBlocks && empty ? (
-            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 flex justify-center sm:top-28">
+            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 col-[2/-1] flex justify-center sm:top-28">
               <div className="bg-surface/95 pointer-events-auto max-w-sm rounded-lg px-5 py-4 text-center">
                 <Heading as="h2" size="section">
                   {empty.title}
