@@ -213,6 +213,13 @@ describe("mobile workspace framing", () => {
     expect(globalsCss).toContain("bottom: calc(var(--map-explore-sheet-height) + 0.5rem);");
   });
 
+  it("fits all seven calendar days in phone-width months", () => {
+    const narrow = globalsCss.match(/@container \(max-width: 40rem\)\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+    expect(narrow).toMatch(/\.calendar-month-width\s*\{\s*min-width: 0;/);
+    expect(narrow).toMatch(/\.calendar-day-agenda-count\s*\{\s*display: none;/);
+    expect(narrow).toMatch(/\.calendar-day-agenda\s*\{[^}]*min-height: 2rem;/);
+  });
+
   it("scrolls wide reply tables and breaks cells only between words", () => {
     const cells = globalsCss.match(/\.assistant-markdown :where\(th, td\)\s*\{([^}]+)\}/)?.[1] ?? "";
     expect(cells).toContain("overflow-wrap: break-word;");

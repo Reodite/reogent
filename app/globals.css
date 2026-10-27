@@ -1387,6 +1387,31 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   }
 }
 
+/* Phone-width months fit all seven days without horizontal scrolling. Dots
+   replace the event count text, and each event day keeps one tap target. */
+@container (max-width: 40rem) {
+  .calendar-month-width {
+    min-width: 0;
+  }
+
+  [data-calendar-grid] {
+    grid-auto-rows: minmax(4rem, 1fr);
+  }
+
+  [data-calendar-day] {
+    padding: 0.25rem 0.125rem;
+  }
+
+  .calendar-day-agenda {
+    flex: 1 1 auto;
+    min-height: 2rem;
+  }
+
+  .calendar-day-agenda-count {
+    display: none;
+  }
+}
+
 @media (min-width: 1024px) {
   [data-shell-boot-mode="ai"] .shell-boot-menu,
   [data-shell-boot-mode="unity"] .shell-boot-menu,

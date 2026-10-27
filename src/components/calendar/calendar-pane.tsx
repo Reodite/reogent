@@ -181,7 +181,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
           <Icon name="right" size={18} />
         </Button>
       </div>
-      <ul aria-label="Legend" className="flex flex-wrap items-center justify-end gap-1">
+      <ul aria-label="Legend" className="flex flex-wrap items-center justify-start gap-1 @min-[40rem]:justify-end">
         {Object.entries(STYLES).map(([key, style]) => {
           const shown = !hidden.includes(key);
           return (
@@ -531,7 +531,9 @@ function MonthGrid({
                         />
                       ))}
                     </span>
-                    {dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}
+                    <span className="calendar-day-agenda-count">
+                      {dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}
+                    </span>
                   </button>
                 </>
               ) : null}
