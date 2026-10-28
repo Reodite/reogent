@@ -328,11 +328,11 @@ export function DegreePlannerPane() {
         mainLabel="Plan"
         railLabel="Requirements and courses"
         toolbar={
-          <div className="flex w-full flex-wrap items-end gap-3">
+          <div className="flex w-full flex-wrap items-end gap-2 @min-[55rem]:gap-3">
             <div className="w-full min-w-0 @min-[55rem]:flex-[1_1_35rem]">
               <ProgramSelectorsLoading />
             </div>
-            <Skeleton className="h-11 w-72 rounded-lg sm:h-9" />
+            <Skeleton className="h-10 w-72 rounded-lg" />
           </div>
         }
         rail={
@@ -422,7 +422,7 @@ export function DegreePlannerPane() {
         toolbar={
           <div
             data-planner-header-controls
-            className="flex w-full flex-col gap-3 @min-[55rem]:flex-row @min-[55rem]:flex-wrap @min-[55rem]:items-end"
+            className="flex w-full flex-col gap-2 @min-[55rem]:flex-row @min-[55rem]:flex-wrap @min-[55rem]:items-end @min-[55rem]:gap-3"
           >
             <div className="w-full min-w-0 @min-[55rem]:flex-[1_1_35rem]">
               <ProgramSelectors />
@@ -665,7 +665,7 @@ function ActionsSection({
         <Button
           variant="ghost"
           size="compact"
-          className="rounded-sm"
+          className="rounded-sm max-sm:h-8"
           onClick={() => {
             setAutofillResult(null);
             undo();
@@ -679,7 +679,7 @@ function ActionsSection({
         <Button
           variant="ghost"
           size="compact"
-          className="rounded-sm"
+          className="rounded-sm max-sm:h-8"
           onClick={() => {
             setAutofillResult(null);
             redo();
@@ -813,7 +813,7 @@ function ActionsSection({
         <Icon name="trash" size={14} />
         <span>Clear</span>
       </Button>
-      <Button variant="primary" onClick={handleAskAi}>
+      <Button variant="primary" onClick={handleAskAi} className="max-sm:h-9">
         <Icon name="chat1" size={14} />
         <span>Ask AI</span>
       </Button>
