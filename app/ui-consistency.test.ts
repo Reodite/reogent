@@ -133,6 +133,10 @@ describe("mobile workspace framing", () => {
     expect(mobileLayout).toMatch(
       /> \[data-workspace-panel\]:only-child\s*> \[data-workspace-panel-header\]\s*\{\s*display: none;/,
     );
+    expect(mobileLayout).toMatch(/\.schedule-grid-day-tabs\s*\{\s*border-radius: 0;\s*padding: 0\.25rem 1rem;/);
+    expect(globalsCss).toMatch(
+      /@container \(max-width: 55rem\)\s*\{[^@]*\.schedule-grid-day-header\s*\{\s*display: none;/,
+    );
   });
 
   it("assigns phone safe areas to bottom navigation and uses native-size text entry", () => {

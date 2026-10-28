@@ -448,13 +448,14 @@ function ScheduleAppInner({ groupCode }: Props) {
       }
     : undefined;
 
-  const actions =
+  const shareAction =
     groupView.status === "ready" ? (
       <Button
         variant="primary"
         size="prominent"
         aria-label={`Copy share link ${groupView.code}`}
         onClick={copyShareLink}
+        className="ml-auto max-sm:h-10"
       >
         <Icon name="externalLink" size={16} />
         Share <span className="text-xs opacity-80">{groupView.code}</span>
@@ -615,12 +616,14 @@ function ScheduleAppInner({ groupCode }: Props) {
                 ? `Group ${groupView.code} is unavailable. Choose another group or check the shared code.`
                 : "Import your Workday schedule, then create or join a group to compare weeks."
         }
-        actions={actions}
         toolbar={
           groupView.status === "loading" ? (
             <ScheduleToolbarSkeleton />
           ) : (
-            <TermSwitcher terms={terms} selected={selectedTermKey} onSelect={setTermKey} />
+            <div className="flex flex-wrap items-center gap-2">
+              <TermSwitcher terms={terms} selected={selectedTermKey} onSelect={setTermKey} />
+              {shareAction}
+            </div>
           )
         }
         controlsLabel="Controls"

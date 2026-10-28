@@ -1378,7 +1378,7 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 
   :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .schedule-grid-day-tabs {
     border-radius: 0;
-    padding: 0.5rem 1rem;
+    padding: 0.25rem 1rem;
     overflow-x: auto;
   }
 
@@ -1412,6 +1412,10 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   .calendar-day-agenda,
   .schedule-grid-day-tabs {
     display: flex;
+  }
+
+  .schedule-grid-day-header {
+    display: none;
   }
 
   [data-calendar-grid] {

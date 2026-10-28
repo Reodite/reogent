@@ -359,9 +359,9 @@ export function ScheduleGrid({
             tabIndex={day === selectedDay ? 0 : -1}
             onClick={() => onActiveDayChange(day)}
             onKeyDown={(event) => moveDayTab(event, index)}
-            className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-lg px-2 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 ${
-              day === selectedDay ? "neu-inset bg-surface-container text-on-surface" : "text-on-surface-variant"
-            }`}
+            className={`focus-visible:ring-primary/40 min-h-8 flex-1 rounded-lg px-2 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 ${
+              day === selectedDay ? "neu-inset bg-surface-container" : ""
+            } ${now?.day === day ? "text-primary" : day === selectedDay ? "text-on-surface" : "text-on-surface-variant"}`}
           >
             {day}
           </button>
@@ -374,7 +374,7 @@ export function ScheduleGrid({
         className="bg-surface focus-visible:ring-primary/40 min-h-0 flex-1 [scrollbar-gutter:stable] overflow-auto rounded-xl focus-visible:ring-2 focus-visible:ring-inset"
       >
         <div
-          className="schedule-grid-columns border-border-subtle bg-surface sticky top-0 z-30 grid border-b"
+          className="schedule-grid-columns schedule-grid-day-header border-border-subtle bg-surface sticky top-0 z-30 grid border-b"
           style={{ ["--schedule-day-count" as string]: model.days.length }}
         >
           <div className="border-border-subtle bg-surface sticky left-0 z-20 border-r" aria-hidden="true" />

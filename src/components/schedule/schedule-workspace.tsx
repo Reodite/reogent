@@ -15,7 +15,6 @@ export type ScheduleWorkspaceView = "schedule" | "controls";
 interface ScheduleWorkspaceProps {
   title: string;
   description: string;
-  actions?: ReactNode;
   toolbar?: ReactNode;
   notice?: ReactNode;
   controlsLabel: string;
@@ -29,7 +28,6 @@ interface ScheduleWorkspaceProps {
 export function ScheduleWorkspace({
   title,
   description,
-  actions,
   toolbar,
   notice,
   controlsLabel,
@@ -46,8 +44,6 @@ export function ScheduleWorkspace({
       title={title}
       description={description}
       toolbar={toolbar}
-      actions={actions}
-      titlebarActions={actions}
       notice={notice}
       view={view}
       onViewChange={(next) => onMobileViewChange(next === "main" ? "schedule" : "controls")}
