@@ -1303,6 +1303,14 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
     padding: 0;
   }
 
+  .workspace-page-header {
+    padding-bottom: 0.5rem;
+  }
+
+  .workspace-page-layout {
+    gap: 0.5rem;
+  }
+
   :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .workspace-page-layout {
     padding: 0;
   }
@@ -1311,6 +1319,11 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
     .workspace-page-layout
     > :not(.workspace-page-body) {
     margin-inline: 1rem;
+  }
+
+  /* The toolbar's 4px padding gives edge focus outlines room inside its scroller; this margin offsets it. */
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .workspace-page-layout > [data-workspace-toolbar] {
+    margin-inline: 0.75rem;
   }
 
   :where(.workspace-page:not([data-workspace-host="answer-canvas"]))
@@ -1326,6 +1339,21 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
 
   :where(.workspace-page:not([data-workspace-host="answer-canvas"])) .workspace-rail {
     gap: 0;
+  }
+
+  /* The view toggle already names a single-panel rail, so its panel header would repeat it. */
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"]))[data-workspace-composition="split"]
+    .workspace-rail
+    > [data-workspace-panel]:only-child
+    > [data-workspace-panel-header] {
+    display: none;
+  }
+
+  :where(.workspace-page:not([data-workspace-host="answer-canvas"]))[data-workspace-composition="split"]
+    .workspace-rail
+    > [data-workspace-panel]:only-child
+    > [data-workspace-panel-body] {
+    border-top-width: 0;
   }
 
   :where(.workspace-page:not([data-workspace-host="answer-canvas"]))

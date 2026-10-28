@@ -126,6 +126,15 @@ describe("mobile workspace framing", () => {
     expect(mobileLayout).toContain("outline-offset: -2px;");
   });
 
+  it("tightens phone workspace chrome around the main region", () => {
+    expect(mobileLayout).toMatch(/\.workspace-page-header\s*\{\s*padding-bottom: 0\.5rem;/);
+    expect(mobileLayout).toMatch(/\.workspace-page-layout\s*\{\s*gap: 0\.5rem;/);
+    expect(mobileLayout).toMatch(/> \[data-workspace-toolbar\]\s*\{\s*margin-inline: 0\.75rem;/);
+    expect(mobileLayout).toMatch(
+      /> \[data-workspace-panel\]:only-child\s*> \[data-workspace-panel-header\]\s*\{\s*display: none;/,
+    );
+  });
+
   it("assigns phone safe areas to bottom navigation and uses native-size text entry", () => {
     const modeBar = globalsCss.match(/\.mobile-mode-bar\s*\{([\s\S]*?)\}/)?.[1] ?? "";
     expect(modeBar).toContain("env(safe-area-inset-bottom)");

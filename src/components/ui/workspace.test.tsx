@@ -86,6 +86,7 @@ describe("WorkspacePage", () => {
     expect(page?.querySelectorAll("[data-workspace-panel]")).toHaveLength(2);
     expect(page?.querySelector("[data-workspace-panel-body]")?.classList.contains("p-4")).toBe(true);
     expect(screen.getByRole("button", { name: "Plan" }).classList.contains("rounded-sm")).toBe(true);
+    expect(screen.getByRole("button", { name: "Requirements and courses" }).classList.contains("min-w-max")).toBe(true);
     const canvas = page?.querySelector("[data-workspace-canvas]");
     expect(canvas?.className).toContain("p-4");
     expect(canvas?.className).toContain("rounded-2xl");
@@ -95,15 +96,34 @@ describe("WorkspacePage", () => {
     expect(canvas?.className).toContain("neu-inset");
     expect(canvas?.className).toContain("neu-shadow-on-surface");
     expect(canvas?.className).not.toContain("border-border");
-    expect(page?.querySelector("[data-workspace-actions]")?.className).toContain("w-full");
-    expect(page?.querySelector("[data-workspace-actions]")?.className).toContain("@min-[55rem]:w-auto");
+    const actions = page?.querySelector("[data-workspace-actions]");
+    expect(heading?.contains(actions ?? null)).toBe(true);
+    expect(scroller?.contains(actions ?? null)).toBe(false);
   });
 
-  it("stretches header controls so phone side insets keep trailing actions on screen", () => {
+  it("stretches the toolbar with the layout and pads it for edge focus outlines", () => {
     const { container } = render(<SplitWorkspace />);
-    const controls = container.querySelector("[data-workspace-header-controls]");
-    expect(controls?.parentElement?.classList.contains("workspace-page-layout")).toBe(true);
-    expect(controls?.classList.contains("w-full")).toBe(false);
+    const toolbar = container.querySelector("[data-workspace-toolbar]");
+    expect(toolbar?.parentElement?.classList.contains("workspace-page-layout")).toBe(true);
+    expect(toolbar?.classList.contains("w-full")).toBe(false);
+    expect(toolbar?.classList.contains("p-1")).toBe(true);
+    expect(toolbar?.classList.contains("-mx-1")).toBe(true);
+    expect(toolbar?.classList.contains("-mb-1")).toBe(true);
+  });
+
+  it("hides help descriptions on phones unless the page keeps them", () => {
+    const { rerender } = render(
+      <WorkspacePage composition="single" title="Calendar" description="Browse dates.">
+        Month
+      </WorkspacePage>,
+    );
+    expect(screen.getByText("Browse dates.").classList.contains("max-sm:hidden")).toBe(true);
+    rerender(
+      <WorkspacePage composition="single" title="Pulse" description="Midterm season" keepDescriptionOnPhones>
+        Questions
+      </WorkspacePage>,
+    );
+    expect(screen.getByText("Midterm season").classList.contains("max-sm:hidden")).toBe(false);
   });
 
   it("keeps header navigation available while pending task controls stay inert", () => {
@@ -159,6 +179,22 @@ describe("WorkspacePage", () => {
     expect(container.querySelector("h1")).toBeNull();
     expect(screen.getByTestId("toolbar")).not.toBeNull();
     expect(container.textContent).not.toContain("Full action");
+    expect(outlet.querySelector("button")?.textContent).toBe("Ask AI");
+    outlet.remove();
+  });
+
+  it("portals page actions into the Answer Canvas titlebar when no bounded variant exists", () => {
+    const outlet = document.createElement("div");
+    document.body.append(outlet);
+    const { container } = render(
+      <WorkspaceHostProvider host="answer-canvas" titlebarOutlet={outlet}>
+        <WorkspacePage composition="canvas" title="Calendar" actions={<button type="button">Ask AI</button>}>
+          <WorkspaceCanvas>Month</WorkspaceCanvas>
+        </WorkspacePage>
+      </WorkspaceHostProvider>,
+    );
+
+    expect(container.querySelector("[data-workspace-actions]")).toBeNull();
     expect(outlet.querySelector("button")?.textContent).toBe("Ask AI");
     outlet.remove();
   });

@@ -13,9 +13,13 @@ export type WorkspaceView = "main" | "rail";
 type WorkspaceBaseProps = {
   title: string;
   loading?: boolean;
+  /** Help text below the title. Phones hide it unless `keepDescriptionOnPhones` is set. */
   description?: ReactNode;
+  /** Keeps a description that carries page content, such as a byline, visible on phones. */
+  keepDescriptionOnPhones?: boolean;
   leading?: ReactNode;
   toolbar?: ReactNode;
+  /** Page actions at the trailing end of the title row. Answer Canvas shows `titlebarActions` instead when set. */
   actions?: ReactNode;
   titlebarActions?: ReactNode;
   notice?: ReactNode;
@@ -60,8 +64,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
   const railRegionRef = useRef<HTMLElement>(null);
   const previousViewRef = useRef(activeView);
   const lastFocusedRegionRef = useRef<WorkspaceView | null>(null);
-  const internalActions = embedded && props.titlebarActions ? null : props.actions;
-  const controls = props.toolbar || internalActions;
+  const titlebarActions = props.titlebarActions ?? props.actions;
 
   useEffect(() => {
     const previousView = previousViewRef.current;
@@ -98,10 +101,10 @@ export function WorkspacePage(props: WorkspacePageProps) {
       data-workspace-view={activeView ?? undefined}
       className="workspace-page flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden"
     >
-      {embedded && titlebarOutlet && props.titlebarActions
+      {embedded && titlebarOutlet && titlebarActions
         ? createPortal(
             <div data-workspace-titlebar-actions className="flex min-w-0 items-center justify-end gap-2">
-              {props.titlebarActions}
+              {titlebarActions}
             </div>,
             titlebarOutlet,
           )
@@ -116,7 +119,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
                 {props.leading}
               </div>
             ) : null}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <Heading as="h1" size="title" className="flex min-h-7 items-center">
                 {props.loading ? (
                   <>
@@ -127,16 +130,33 @@ export function WorkspacePage(props: WorkspacePageProps) {
                   props.title
                 )}
               </Heading>
-              {props.description ? <p className="text-muted text-body-sm mt-1 leading-5">{props.description}</p> : null}
+              {props.description ? (
+                <p
+                  className={`text-muted text-body-sm mt-1 leading-5 ${props.keepDescriptionOnPhones ? "" : "max-sm:hidden"}`}
+                >
+                  {props.description}
+                </p>
+              ) : null}
             </div>
+            {props.actions ? (
+              <div data-workspace-actions inert={pending || undefined} className="flex h-7 shrink-0 items-center gap-2">
+                {props.actions}
+              </div>
+            ) : null}
           </div>
         </header>
       ) : null}
 
       <div data-workspace-scroll className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className="workspace-page-layout flex h-full min-h-min flex-col gap-4 p-6">
-          {controls ? (
-            <WorkspaceHeaderControls toolbar={props.toolbar} actions={internalActions} pending={pending} />
+          {props.toolbar ? (
+            <div
+              data-workspace-toolbar
+              inert={pending || undefined}
+              className="-mx-1 -mb-1 min-w-0 shrink-0 overflow-x-auto p-1"
+            >
+              {props.toolbar}
+            </div>
           ) : null}
 
           {props.notice ? <div inert={pending || undefined}>{props.notice}</div> : null}
@@ -147,8 +167,8 @@ export function WorkspacePage(props: WorkspacePageProps) {
               aria-hidden="true"
               className="workspace-page-toggle neu-inset bg-surface-container-low shrink-0 gap-1 rounded-lg p-1"
             >
-              <Skeleton className="h-11 flex-1 rounded-sm" />
-              <Skeleton className="h-11 flex-1 rounded-sm" />
+              <Skeleton className="h-8 flex-1 rounded-sm" />
+              <Skeleton className="h-8 flex-1 rounded-sm" />
             </div>
           ) : split ? (
             <fieldset
@@ -164,7 +184,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
                 aria-pressed={props.view === "main"}
                 aria-controls={mainId}
                 onClick={() => props.onViewChange("main")}
-                className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-sm px-3 text-sm font-medium focus-visible:ring-2 ${
+                className={`focus-visible:ring-primary/40 min-h-8 min-w-max flex-1 rounded-sm px-3 text-sm font-medium focus-visible:ring-2 ${
                   props.view === "main" ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
                 }`}
               >
@@ -176,7 +196,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
                 aria-pressed={props.view === "rail"}
                 aria-controls={railId}
                 onClick={() => props.onViewChange("rail")}
-                className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-sm px-3 text-sm font-medium focus-visible:ring-2 ${
+                className={`focus-visible:ring-primary/40 min-h-8 min-w-max flex-1 rounded-sm px-3 text-sm font-medium focus-visible:ring-2 ${
                   props.view === "rail" ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
                 }`}
               >
@@ -215,42 +235,6 @@ export function WorkspacePage(props: WorkspacePageProps) {
         </div>
       </div>
     </section>
-  );
-}
-
-// Stretches with the layout column so phone side margins inset the controls and
-// keep trailing actions on screen.
-function WorkspaceHeaderControls({
-  toolbar,
-  actions,
-  pending = false,
-}: {
-  toolbar?: ReactNode;
-  actions?: ReactNode;
-  pending?: boolean;
-}) {
-  return (
-    <div
-      data-workspace-header-controls
-      inert={pending || undefined}
-      className="flex min-w-0 shrink-0 flex-wrap items-center justify-between gap-3"
-    >
-      {toolbar ? (
-        <div data-workspace-toolbar className="min-w-0 flex-1 overflow-x-auto">
-          {toolbar}
-        </div>
-      ) : (
-        <span className="min-w-0 flex-1" />
-      )}
-      {actions ? (
-        <div
-          data-workspace-actions
-          className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 @min-[55rem]:w-auto @min-[55rem]:shrink-0"
-        >
-          {actions}
-        </div>
-      ) : null}
-    </div>
   );
 }
 
@@ -293,7 +277,10 @@ export function WorkspacePanel({
       aria-labelledby={headingId}
       className="neu-panel bg-surface flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl"
     >
-      <header className={`flex shrink-0 items-center justify-between gap-2 px-4 ${leading ? "min-h-15" : "h-12"}`}>
+      <header
+        data-workspace-panel-header
+        className={`flex shrink-0 items-center justify-between gap-2 px-4 ${leading ? "min-h-15" : "h-12"}`}
+      >
         <div className="flex min-w-0 items-center gap-1.5">
           {leading}
           <div className="flex min-w-0 items-baseline gap-2">
