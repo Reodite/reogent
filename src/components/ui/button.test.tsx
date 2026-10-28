@@ -66,7 +66,7 @@ describe("Button", () => {
 
   it.each([
     ["compact", "sm:h-8"],
-    ["toolbar", "sm:h-9"],
+    ["toolbar", "h-9"],
     ["default", "sm:h-9"],
     ["prominent", "sm:h-10"],
     ["field", "h-11"],

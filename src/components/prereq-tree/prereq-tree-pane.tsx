@@ -891,7 +891,7 @@ export function PrereqTreePane({
                     viewSelectedRef.current = true;
                     setCompactView(view);
                   }}
-                  className={`focus-visible:ring-primary/40 min-h-11 rounded-sm px-4 text-sm font-medium whitespace-nowrap capitalize focus-visible:ring-2 ${
+                  className={`focus-visible:ring-primary/40 min-h-8 rounded-sm px-4 text-sm font-medium whitespace-nowrap capitalize focus-visible:ring-2 sm:min-h-9 ${
                     compactView === view ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
                   }`}
                 >

@@ -173,11 +173,24 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   const toolbar = (
     <div className="flex w-full flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-1.5">
-        <Button data-calendar-nav="prev" aria-label="Previous month" onClick={goPrev} size="icon">
+        <Button
+          data-calendar-nav="prev"
+          aria-label="Previous month"
+          onClick={goPrev}
+          size="icon"
+          className="max-sm:size-9"
+        >
           <Icon name="left" size={18} />
         </Button>
         <MonthYearPicker cursorDate={cursorDate} horizon={horizon} onPick={goMonth} />
-        <Button data-calendar-nav="next" aria-label="Next month" disabled={beyondHorizon} onClick={goNext} size="icon">
+        <Button
+          data-calendar-nav="next"
+          aria-label="Next month"
+          disabled={beyondHorizon}
+          onClick={goNext}
+          size="icon"
+          className="max-sm:size-9"
+        >
           <Icon name="right" size={18} />
         </Button>
       </div>
@@ -192,7 +205,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                 data-calendar-legend={key}
                 aria-pressed={shown}
                 onClick={() => toggleKind(key)}
-                className={shown ? "text-on-surface-variant" : "text-muted"}
+                className={`max-sm:h-8 max-sm:px-2 ${shown ? "text-on-surface-variant" : "text-muted"}`}
               >
                 <span
                   aria-hidden
@@ -371,7 +384,7 @@ function MonthYearPicker({
         aria-controls={open ? menuId : undefined}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="w-40 tracking-[-0.01em]"
+        className="w-40 tracking-[-0.01em] max-sm:h-9"
       >
         {formatMonthHeading(cursorDate)}
         <Icon name="down" size={14} />
