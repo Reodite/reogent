@@ -103,9 +103,9 @@ The app has three zones, left to right:
 
 2. **Chat panel** (center): Full-height conversation with scrollable history and a bottom-pinned composer. Without a visual pane, chat fills the remaining width. On phones, use a flat edge-to-edge page with content insets rather than a surrounding card.
 
-3. **Visual pane** (right): Conditionally visible. Appears when the agent's response includes visual content (map route, building highlight, POI pins). Disappears when dismissed. On desktop: side-by-side flex layout with chat (50% width when open, 3.75rem collapsed rail when closed). On mobile (<640px): a draggable bottom sheet (80vh height, 20% drag threshold to dismiss).
+3. **Visual pane** (right): Conditionally visible. Appears when the agent's response includes visual content (map route, building highlight, POI pins). Disappears when dismissed. On desktop: side-by-side flex layout with chat (50% width when open, 3.75rem collapsed rail when closed). On mobile (<640px): a full-screen view over the chat and bottom tabs, opened from the answer's artifact card and closed with its Close button or Escape.
 
-**Critical behavior**: The visual pane is agent-triggered. Users do not toggle it. The pane auto-opens when a tool call returns map-renderable data (walking_distance returns a route, find_building returns a footprint highlight, find_places returns POI pins). Users can dismiss or collapse it. It stays hidden until the next relevant tool call.
+**Critical behavior**: The visual pane is agent-triggered. A tool call that returns map-renderable data (walking_distance returns a route, find_building returns a footprint highlight, find_places returns POI pins) loads it, and the answer shows an artifact card naming the view. From 640px upward the pane auto-opens beside the chat; on phones it stays closed so the answer remains readable, and the card opens it full screen. Users can dismiss or collapse it, then reopen it from the card. A dismissed pane stays hidden until the user opens it again.
 
 ### Data Flow
 
@@ -115,13 +115,13 @@ The app has three zones, left to right:
 4. Events stream back as NDJSON: thinking, text deltas, tool_start, tool_end, done
 5. Client renders the response as it arrives (streaming text, tool execution badges)
 6. On "done" event, both messages are persisted to PostgreSQL
-7. If tool results contain map-relevant data, the visual pane auto-opens with the route/highlight
+7. If tool results contain map-relevant data, the answer shows an artifact card, and the visual pane auto-opens with the route/highlight from 640px upward
 
 ### Device Contexts
 
 - **Desktop (>=1024px)**: Sidebar + Chat + Visual Pane (when active). Sidebar is collapsible (flex layout with animated width). Visual pane transitions width.
 - **Tablet (640-1024px)**: Sidebar is a drawer (hidden by default, triggered by menu button). Chat + Visual Pane side-by-side.
-- **Mobile (<640px)**: Chat, Tools, Unity, and Settings use flat, edge-to-edge main views above persistent AI, Tools, and Unity bottom tabs for signed-in users. Onboarding uses the same flat page without the tabs. Each mode restores its last routed screen; Settings keeps the prior mode without replacing that saved destination. A flat menu button in the route header opens the current mode's destinations in an edge-attached drawer. Keep text and control insets, 44px action targets, 48px drawer rows, and 60px mode targets. Reserve the bottom safe area in the mode bar for signed-in users and in the shell for guests. Size the shell and fixed overlays to the browser's reported visual viewport at normal scale, with the visual pane at 80% height. Keep contained cards and input depth. From 640px upward, retain the existing panel layout and sidebar mode controls.
+- **Mobile (<640px)**: Chat, Tools, Unity, and Settings use flat, edge-to-edge main views above persistent AI, Tools, and Unity bottom tabs for signed-in users. Onboarding uses the same flat page without the tabs. Each mode restores its last routed screen; Settings keeps the prior mode without replacing that saved destination. A flat menu button in the route header opens the current mode's destinations in an edge-attached drawer. Keep text and control insets, 44px action targets, 48px drawer rows, and 60px mode targets. Reserve the bottom safe area in the mode bar for signed-in users and in the shell for guests. Size the shell and fixed overlays to the browser's reported visual viewport at normal scale, with the visual pane covering it in full. Keep contained cards and input depth. From 640px upward, retain the existing panel layout and sidebar mode controls.
 
 ## Capabilities and Constraints
 
