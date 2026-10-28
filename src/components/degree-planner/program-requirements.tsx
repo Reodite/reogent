@@ -5,6 +5,7 @@
 // year-by-year checklist or a flat course fallback. The progress view also
 // shows degree-wide rules and the selected minor's requirements.
 import { Icon } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
 import { RetryAlert } from "@/src/components/ui/feedback";
 import { Field, TextInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
@@ -40,7 +41,7 @@ function creditValue(entry: CourseIndexEntry | undefined): number {
   return entry?.credits ?? 0;
 }
 
-/** Reserves the responsive faculty, major, and minor control row. */
+/** Reserves the responsive faculty, major, and minor row; below 55rem, a saved major reserves the program summary instead. */
 export function ProgramSelectorsLoading() {
   const major = usePlanner((state) => state.major);
   return (
@@ -48,12 +49,16 @@ export function ProgramSelectorsLoading() {
       label="Loading programs…"
       className="grid w-full grid-cols-1 items-end gap-2 @min-[30rem]:grid-cols-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3"
     >
+      {major ? <Skeleton className="h-9 w-full rounded-lg @min-[30rem]:col-span-2 @min-[55rem]:hidden" /> : null}
       {[
         ["Faculty", "@min-[55rem]:w-44"],
         ["Major / program", "@min-[55rem]:w-52"],
         ["Minor (optional)", "@min-[55rem]:w-40"],
       ].map(([label, width]) => (
-        <div key={label} className={`flex w-full min-w-0 flex-col gap-1.5 ${width}`}>
+        <div
+          key={label}
+          className={`flex w-full min-w-0 flex-col gap-1.5 ${width} ${major ? "@max-[55rem]:hidden" : ""}`}
+        >
           <div className="flex min-h-4 flex-wrap items-center justify-between gap-x-2">
             <span className="relative text-xs leading-4 font-medium">
               <span className="invisible">{label}</span>
@@ -75,7 +80,8 @@ export function ProgramSelectorsLoading() {
 }
 
 // Program selectors write the faculty, major, and minor to the planner store.
-// `toolbar` renders the compact row used in the pane header.
+// Below the 55rem workspace width, a chosen major collapses the fields behind
+// a one-row program summary that toggles them.
 export function ProgramSelectors() {
   const faculty = usePlanner((s) => s.faculty);
   const major = usePlanner((s) => s.major);
@@ -84,6 +90,8 @@ export function ProgramSelectors() {
 
   const [index, setIndex] = useState<ProgramIndex | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const fieldsId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -132,51 +140,73 @@ export function ProgramSelectors() {
     return <ProgramSelectorsLoading />;
   }
 
+  const majorLabel = majorOptions.find((option) => option.id === major)?.label;
+  const minorLabel = minorOptions.find((option) => option.id === minor)?.label;
+  const collapsed = !!majorLabel && !expanded;
+
   return (
     <div className="grid w-full grid-cols-1 items-end gap-2 @min-[30rem]:grid-cols-2 @min-[55rem]:flex @min-[55rem]:flex-wrap @min-[55rem]:gap-x-3">
-      <ProgramCombobox
-        label="Faculty"
-        className="w-full @min-[55rem]:w-44"
-        placeholder="Search faculties"
-        value={faculty}
-        options={index.faculties.map((name) => ({ value: name, label: name }))}
-        onChange={(value) => {
-          setProgram("faculty", value);
-          setProgram("major", null);
-          setProgram("minor", null);
-        }}
-      />
-      <ProgramCombobox
-        label="Major / program"
-        className="w-full @min-[55rem]:w-52"
-        labelAction={
-          majorUrl ? (
-            <InlineLink
-              href={majorUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 gap-0.5 text-xs leading-4 whitespace-nowrap"
-            >
-              UBC Calendar
-              <Icon name="externalLink" size={11} />
-            </InlineLink>
-          ) : undefined
-        }
-        placeholder={faculty ? "Search programs" : "Select a faculty first"}
-        value={major}
-        options={majorOptions.map((option) => ({ value: option.id, label: option.label }))}
-        onChange={(value) => setProgram("major", value)}
-        disabled={!faculty}
-      />
-      <ProgramCombobox
-        label="Minor (optional)"
-        className="w-full @min-[55rem]:w-40"
-        placeholder={faculty ? "Search minors" : "Select a faculty first"}
-        value={minor}
-        options={minorOptions.map((option) => ({ value: option.id, label: option.label }))}
-        onChange={(value) => setProgram("minor", value)}
-        disabled={!faculty}
-      />
+      {majorLabel ? (
+        <Button
+          size="toolbar"
+          data-program-summary
+          aria-expanded={!collapsed}
+          aria-controls={fieldsId}
+          onClick={() => setExpanded((open) => !open)}
+          className="w-full text-left @min-[30rem]:col-span-2 @min-[55rem]:hidden"
+        >
+          <span className="text-muted shrink-0">Program</span>
+          <span className="text-on-surface min-w-0 flex-1 truncate text-sm">
+            {minorLabel ? `${majorLabel} · ${minorLabel}` : majorLabel}
+          </span>
+          <Icon name="down" size={12} className={`shrink-0 transition-transform ${collapsed ? "" : "rotate-180"}`} />
+        </Button>
+      ) : null}
+      <div id={fieldsId} className={`contents ${collapsed ? "@max-[55rem]:hidden" : ""}`}>
+        <ProgramCombobox
+          label="Faculty"
+          className="w-full @min-[55rem]:w-44"
+          placeholder="Search faculties"
+          value={faculty}
+          options={index.faculties.map((name) => ({ value: name, label: name }))}
+          onChange={(value) => {
+            setProgram("faculty", value);
+            setProgram("major", null);
+            setProgram("minor", null);
+          }}
+        />
+        <ProgramCombobox
+          label="Major / program"
+          className="w-full @min-[55rem]:w-52"
+          labelAction={
+            majorUrl ? (
+              <InlineLink
+                href={majorUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 gap-0.5 text-xs leading-4 whitespace-nowrap"
+              >
+                UBC Calendar
+                <Icon name="externalLink" size={11} />
+              </InlineLink>
+            ) : undefined
+          }
+          placeholder={faculty ? "Search programs" : "Select a faculty first"}
+          value={major}
+          options={majorOptions.map((option) => ({ value: option.id, label: option.label }))}
+          onChange={(value) => setProgram("major", value)}
+          disabled={!faculty}
+        />
+        <ProgramCombobox
+          label="Minor (optional)"
+          className="w-full @min-[55rem]:w-40"
+          placeholder={faculty ? "Search minors" : "Select a faculty first"}
+          value={minor}
+          options={minorOptions.map((option) => ({ value: option.id, label: option.label }))}
+          onChange={(value) => setProgram("minor", value)}
+          disabled={!faculty}
+        />
+      </div>
     </div>
   );
 }
