@@ -5,6 +5,7 @@
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { GradeDistributionChart } from "@/src/components/course-lookup/grade-distribution-chart";
 import { Icon } from "@/src/components/icons";
+import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { Button } from "@/src/components/ui/button";
 import { Disclosure } from "@/src/components/ui/disclosure";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
@@ -26,7 +27,8 @@ import {
   type TuitionResult,
 } from "@/src/lib/api-types";
 import { describeToolCall, formatCad, formatMeters, formatMinutes } from "@/src/lib/format";
-import { toolCallToCanvasView } from "@/src/lib/walking";
+import { toolCallToCanvasView, type MapHighlight } from "@/src/lib/walking";
+import type { CanvasView } from "@/src/shared/panes";
 import { motion, useReducedMotion } from "motion/react";
 import { useId, useMemo, useState } from "react";
 
@@ -760,14 +762,90 @@ function richWidgetOwnsActivation(call: ToolCall): boolean {
   return type === "courses" || type === "course" || type === "course_detail";
 }
 
+// Opens a mapped call's canvas at the user's request: full screen on phones and
+// beside the chat from 640px upward, including after the user closed it.
+function useShowCallCanvas() {
+  const { activateCanvasView, setUserDismissedPane, setRightPaneCollapsed, setAnswerSheetOpen } = useChatShell();
+  return (call: ToolCall, callKey?: string) => {
+    setUserDismissedPane(false);
+    setAnswerSheetOpen(true);
+    setRightPaneCollapsed(false);
+    activateCanvasView(call, callKey);
+  };
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+/** Summarizes what a canvas view shows, or null when the pane label says enough. */
+export function describeCanvasView(view: CanvasView): string | null {
+  if (view.paneId === "course-lookup") {
+    const code = typeof view.state.code === "string" ? view.state.code.replace("_V", "") : "";
+    return code || null;
+  }
+  if (view.paneId === "calendar") return "Key dates";
+  const highlight = view.paneId === "map" ? (view.state.highlight as MapHighlight | undefined) : undefined;
+  switch (highlight?.kind) {
+    case "route":
+      return `Walking route · ${highlight.from} → ${highlight.to}`;
+    case "buildings": {
+      const [first, ...rest] = highlight.buildings;
+      if (!first) return null;
+      return rest.length > 0 ? `${first.name} and ${plural(rest.length, "more building")}` : first.name;
+    }
+    case "places":
+      return `${plural(highlight.places.length, "place")}${highlight.near ? ` near ${highlight.near}` : ""}`;
+    default:
+      return null;
+  }
+}
+
+/** Opens a message's canvas: full screen on phones and beside the chat from 640px upward. */
+export function ArtifactCard({ call, callKey }: { call: ToolCall; callKey: string }) {
+  const showCanvas = useShowCallCanvas();
+  const view = useMemo(() => toolCallToCanvasView(call), [call]);
+  const entry = view ? PANE_BY_ID[view.paneId] : undefined;
+  if (!view || !entry) return null;
+  const Glyph = entry.icon;
+  const description = describeCanvasView(view);
+  return (
+    <Button
+      variant="secondary"
+      size="field"
+      wrap
+      data-artifact-card={view.paneId}
+      data-sound="open"
+      onClick={() => showCanvas(call, callKey)}
+      className="mt-3 h-auto min-h-14 w-full justify-start gap-3 py-2.5 text-left sm:max-w-sm"
+    >
+      <span
+        aria-hidden="true"
+        className="bg-surface-container-low text-primary grid size-9 shrink-0 place-items-center rounded-lg"
+      >
+        <Glyph className="size-4.5" />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-on-surface truncate text-sm font-medium">
+          <span className="sr-only">Open </span>
+          {entry.label}
+        </span>
+        {description ? <span className="text-muted truncate text-xs font-normal">{description}</span> : null}
+      </span>
+      <Icon name="fullscreen" size={18} className="text-on-surface-variant shrink-0 sm:hidden" />
+      <Icon name="right" size={18} className="text-on-surface-variant hidden shrink-0 sm:block" />
+    </Button>
+  );
+}
+
 /**
  * Renders one tool call. Simple mapped widgets own one canvas action; compound
  * widgets leave interaction to their explicit child controls.
  */
 export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: string }) {
   const reduce = useReducedMotion();
-  const { activeCallKey, activateCanvasView, setUserDismissedPane, setRightPaneCollapsed, setAnswerSheetOpen } =
-    useChatShell();
+  const { activeCallKey } = useChatShell();
+  const showCanvas = useShowCallCanvas();
   const view = useMemo(() => toolCallToCanvasView(call), [call]);
   const mapped = view !== null;
   const interactive = mapped && !richWidgetOwnsActivation(call);
@@ -776,12 +854,7 @@ export function ResponseWidget({ call, callKey }: { call: ToolCall; callKey?: st
   const widget = Renderer !== undefined;
   const loaded = !isToolError(call.result) && call.result !== undefined;
 
-  const toggle = () => {
-    setUserDismissedPane(false);
-    setAnswerSheetOpen(true);
-    setRightPaneCollapsed(false);
-    activateCanvasView(call, callKey);
-  };
+  const toggle = () => showCanvas(call, callKey);
 
   if (!widget) return <ToolBadge call={call} mapped={mapped} active={active} reduce={reduce} onToggle={toggle} />;
 

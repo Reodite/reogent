@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { AssistantMessage } from "./message";
 
-vi.mock("@/src/components/chat/tool-renderers", () => ({ ResponseWidget: () => null }));
+vi.mock("@/src/components/chat/tool-renderers", () => ({ ArtifactCard: () => null, ResponseWidget: () => null }));
 vi.mock("motion/react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("motion/react")>()),
   useReducedMotion: () => true,

@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
 import { ChatPanel } from "@/src/components/chat/chat-panel";
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
-import { renderers, ResponseWidget } from "@/src/components/chat/tool-renderers";
+import { lastCanvasCall } from "@/src/components/chat/message";
+import { ArtifactCard, describeCanvasView, renderers, ResponseWidget } from "@/src/components/chat/tool-renderers";
 import type { ChatMessage, ToolCall } from "@/src/lib/api-types";
 import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
+import type { CanvasView } from "@/src/shared/panes";
 import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -674,5 +676,117 @@ describe("unsupported rich-widget history and stream selection", () => {
       expect(widgets[0].getAttribute("data-active")).toBe("true");
       expect(widgets[1].getAttribute("data-active")).toBeNull();
     }
+  });
+});
+
+describe("message artifact card", () => {
+  const routeCall = {
+    name: "walking_distance",
+    input: { from_building: "BUCH", to_building: "ICCS" },
+    result: { from: "BUCH", to: "ICCS", meters: 720, minutes: 9, method: "network" },
+  } as unknown as ToolCall;
+  const block = (call: ToolCall) => ({
+    type: "tool_call" as const,
+    content: call.name,
+    input: call.input,
+    result: call.result,
+  });
+
+  it("reopens a closed canvas through the message card", () => {
+    shellRef.current = null;
+    const { getByRole } = render(
+      <ChatShellProvider>
+        <ArtifactCard call={routeCall} callKey="message:tc-1" />
+        <Capture />
+      </ChatShellProvider>,
+    );
+    act(() => {
+      shellRef.current?.setUserDismissedPane(true);
+      shellRef.current?.setAnswerSheetOpen(false);
+      shellRef.current?.setRightPaneCollapsed(true);
+    });
+    const card = getByRole("button", { name: /^Open Campus map/ });
+    expect(card.textContent).toContain("Walking route · BUCH → ICCS");
+    fireEvent.click(card);
+    expect(shellRef.current?.workspaceView?.paneId).toBe("map");
+    expect(shellRef.current?.answerSheetOpen).toBe(true);
+    expect(shellRef.current?.rightPaneCollapsed).toBe(false);
+    expect(shellRef.current?.userDismissedPane).toBe(false);
+    expect(shellRef.current?.activeCallKey).toBe("message:tc-1");
+  });
+
+  it("renders no card for calls without a canvas", () => {
+    const { container } = render(
+      <ChatShellProvider>
+        <ArtifactCard call={tuitionCall} callKey="message:tc-0" />
+      </ChatShellProvider>,
+    );
+    expect(container.querySelector("[data-artifact-card]")).toBeNull();
+  });
+
+  it("finds the last canvas call and its condensed index", () => {
+    const blocks = [
+      { type: "thinking" as const, content: "Looking up dates and a route" },
+      block(keyDatesCall),
+      block(routeCall),
+      block(tuitionCall),
+    ];
+    expect(lastCanvasCall(blocks)?.call.name).toBe("walking_distance");
+    expect(lastCanvasCall(blocks)?.index).toBe(2);
+    expect(lastCanvasCall([block(tuitionCall)])).toBeNull();
+  });
+
+  const building = (code: string, name: string) => ({ code, name, lat: 49.26, lon: -123.25 });
+  it.each([
+    [
+      { paneId: "map", state: { highlight: { kind: "route", from: "BUCH", to: "ICCS" } } },
+      "Walking route · BUCH → ICCS",
+    ],
+    [
+      { paneId: "map", state: { highlight: { kind: "buildings", buildings: [building("BUCH", "Buchanan")] } } },
+      "Buchanan",
+    ],
+    [
+      {
+        paneId: "map",
+        state: {
+          highlight: {
+            kind: "buildings",
+            buildings: [building("BUCH", "Buchanan"), building("ICCS", "ICICS"), building("NEST", "Nest")],
+          },
+        },
+      },
+      "Buchanan and 2 more buildings",
+    ],
+    [{ paneId: "map", state: { highlight: { kind: "places", near: "NEST", places: [{}, {}] } } }, "2 places near NEST"],
+    [{ paneId: "map", state: { highlight: { kind: "places", near: null, places: [{}] } } }, "1 place"],
+    [{ paneId: "map", state: {} }, null],
+    [{ paneId: "course-lookup", state: { code: "CPSC_V 110" } }, "CPSC 110"],
+    [{ paneId: "calendar", state: { cursor: "2026-10" } }, "Key dates"],
+  ])("describes canvas view %#", (view, description) => {
+    expect(describeCanvasView(view as CanvasView)).toBe(description);
+  });
+
+  it("keys one card to each message's last canvas call without opening a phone canvas", async () => {
+    api.getSession.mockResolvedValue([
+      { role: "user", content: "Dates and a walk?" },
+      {
+        role: "assistant",
+        content: "Here are both.",
+        activity: [block(keyDatesCall), block(routeCall), block(tuitionCall)],
+      },
+    ]);
+    const { findAllByRole, container } = render(
+      <ChatShellProvider>
+        <ChatPanel sessionId="artifact-history" />
+        <Capture />
+      </ChatShellProvider>,
+    );
+    const [card] = await findAllByRole("button", { name: /^Open Campus map/ });
+    expect(container.querySelectorAll("[data-artifact-card]")).toHaveLength(1);
+    expect(shellRef.current?.answerSheetOpen).toBe(false);
+    fireEvent.click(card);
+    expect(shellRef.current?.answerSheetOpen).toBe(true);
+    expect(shellRef.current?.activeCallKey).toMatch(/:tc-1$/);
   });
 });

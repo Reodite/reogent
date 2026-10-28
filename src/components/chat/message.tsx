@@ -6,10 +6,11 @@
 import { AssistantIdentity } from "@/src/components/chat/assistant-identity";
 import { injectChips } from "@/src/components/chat/citations/chip-injector";
 import { SourcesPanel } from "@/src/components/chat/citations/sources-panel";
-import { ResponseWidget } from "@/src/components/chat/tool-renderers";
+import { ArtifactCard, ResponseWidget } from "@/src/components/chat/tool-renderers";
 import { Icon } from "@/src/components/icons";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
-import type { Citation } from "@/src/lib/api-types";
+import type { Citation, ToolCall } from "@/src/lib/api-types";
+import { toolCallToCanvasView } from "@/src/lib/walking";
 import type { ActivityBlock } from "@/src/shared/types";
 import { motion, useReducedMotion } from "motion/react";
 import { createElement, lazy, memo, Suspense, useMemo, useState } from "react";
@@ -212,6 +213,17 @@ export function condenseActivity(activity: ActivityBlock[]): ActivityBlock[] {
   return out;
 }
 
+/** Returns the last condensed tool call that opens a canvas, with the index that keys its chip. */
+export function lastCanvasCall(blocks: ActivityBlock[]): { call: ToolCall; index: number } | null {
+  for (let index = blocks.length - 1; index >= 0; index--) {
+    const block = blocks[index];
+    if (block.type !== "tool_call") continue;
+    const call = { name: block.content, input: block.input ?? {}, result: block.result };
+    if (toolCallToCanvasView(call)) return { call, index };
+  }
+  return null;
+}
+
 export const AssistantMessage = memo(function AssistantMessage({
   message,
   showAvatar = true,
@@ -222,6 +234,7 @@ export const AssistantMessage = memo(function AssistantMessage({
   const reduce = useReducedMotion();
   const activity = message.activity ?? [];
   const condensed = useMemo(() => condenseActivity(activity), [activity]);
+  const artifact = useMemo(() => lastCanvasCall(condensed), [condensed]);
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 6 }}
@@ -254,6 +267,7 @@ export const AssistantMessage = memo(function AssistantMessage({
           </div>
         )}
         {message.content && <AssistantMarkdown content={message.content} citations={message.citations} />}
+        {artifact ? <ArtifactCard call={artifact.call} callKey={`${message.id}:tc-${artifact.index}`} /> : null}
         {message.stopped && (
           <p className="ui-notice-enter text-muted mt-2 flex items-center gap-1.5 text-xs">
             <Icon name="stop" size={12} className="shrink-0" />
