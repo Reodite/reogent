@@ -6,7 +6,7 @@ import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
 import { AnswerCanvas } from "@/src/components/shell/answer-canvas";
-import { AnswerSheet } from "@/src/components/shell/answer-sheet";
+import { AnswerSheet, INLINE_CANVAS_QUERY } from "@/src/components/shell/answer-sheet";
 import { FullBleedTool } from "@/src/components/shell/full-bleed-tool";
 import { LeftSidebar } from "@/src/components/shell/left-sidebar";
 import { ModeToggle } from "@/src/components/shell/mode-toggle";
@@ -48,7 +48,7 @@ function useIsCanvasInline(): boolean {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-    const media = window.matchMedia("(min-width: 640px)");
+    const media = window.matchMedia(INLINE_CANVAS_QUERY);
     setInline(media.matches);
     const onChange = (event: MediaQueryListEvent) => setInline(event.matches);
     media.addEventListener("change", onChange);

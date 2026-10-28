@@ -4,7 +4,7 @@ import { DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AnswerSheet, shouldDismissAnswerSheet } from "./answer-sheet";
+import { AnswerSheet } from "./answer-sheet";
 
 beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
@@ -122,7 +122,7 @@ describe("AnswerSheet", () => {
     expect(sheet.hasAttribute("aria-hidden")).toBe(false);
   });
 
-  it("retains the sheet height and handle throughout closing", () => {
+  it("covers the visible phone viewport through closing without a drag handle", () => {
     const content = (open: boolean) => (
       <AnswerSheet open={open} collapsed={!open} onClose={() => {}} view={{ paneId: "map", state: {} }}>
         <button type="button">Canvas action</button>
@@ -130,26 +130,18 @@ describe("AnswerSheet", () => {
     );
     const { container, rerender } = render(content(true));
     const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]")!;
-    const handle = sheet.querySelector("[data-answer-drag-handle]");
-    const height = "max-sm:h-[calc(var(--app-viewport-height,100dvh)*0.8)]";
-    expect(sheet.classList.contains(height)).toBe(true);
+    const geometry = [
+      "max-sm:h-[var(--app-viewport-height,100dvh)]",
+      "max-sm:bottom-[var(--app-viewport-bottom,0px)]",
+      "max-sm:pt-[env(safe-area-inset-top)]",
+      "max-sm:pb-[env(safe-area-inset-bottom)]",
+    ];
+    for (const token of geometry) expect(sheet.classList.contains(token)).toBe(true);
+    expect(sheet.className).not.toContain("rounded-t-2xl");
+    expect(sheet.querySelector("[data-answer-drag-handle]")).toBeNull();
     rerender(content(false));
-    expect(sheet.classList.contains(height)).toBe(true);
-    expect(sheet.querySelector("[data-answer-drag-handle]")).toBe(handle);
+    for (const token of geometry) expect(sheet.classList.contains(token)).toBe(true);
     expect(sheet.classList.contains("max-sm:translate-y-full")).toBe(true);
-  });
-
-  it("releases a retained drag handle's capture at logical close", async () => {
-    render(<SheetHarness />);
-    fireEvent.click(screen.getByRole("button", { name: "Open canvas" }));
-    const sheet = await screen.findByRole("dialog", { name: "Answer canvas" });
-    const handle = sheet.querySelector<HTMLElement>("[data-answer-drag-handle]")!;
-    handle.setPointerCapture = vi.fn();
-    handle.hasPointerCapture = vi.fn(() => true);
-    handle.releasePointerCapture = vi.fn();
-    fireEvent.pointerDown(handle, { pointerId: 9, clientY: 20 });
-    fireEvent.keyDown(sheet, { key: "Escape" });
-    expect(handle.releasePointerCapture).toHaveBeenCalledWith(9);
   });
 
   it("resizes the inline panes with pointer and keyboard input", () => {
@@ -228,13 +220,6 @@ describe("AnswerSheet", () => {
 
     expect(splitter.getAttribute("aria-valuenow")).toBe("50");
     expect(sheet.style.flexBasis).toBe("calc(50% - 0.375rem)");
-  });
-
-  it("uses the documented distance and velocity dismissal thresholds", () => {
-    expect(shouldDismissAnswerSheet(99, 100, 500)).toBe(false);
-    expect(shouldDismissAnswerSheet(100, 100, 500)).toBe(true);
-    expect(shouldDismissAnswerSheet(10, 699, 500)).toBe(false);
-    expect(shouldDismissAnswerSheet(10, 700, 500)).toBe(true);
   });
 
   it("traps focus, closes on Escape, and restores the trigger", async () => {
@@ -394,20 +379,5 @@ describe("AnswerSheet", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Answer canvas" })).toBeNull());
     expect(document.activeElement).toBe(trigger);
     expect(document.body.style.overflow).toBe("");
-  });
-
-  it("dismisses from the handle after crossing twenty percent of its height", async () => {
-    render(<SheetHarness />);
-    fireEvent.click(screen.getByRole("button", { name: "Open canvas" }));
-    const sheet = await screen.findByRole("dialog", { name: "Answer canvas" });
-    Object.defineProperty(sheet, "offsetHeight", { configurable: true, value: 500 });
-    const handle = sheet.querySelector<HTMLElement>("[data-answer-drag-handle]");
-    if (!handle) throw new Error("Missing answer sheet drag handle");
-
-    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 20 });
-    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 140 });
-    fireEvent.pointerUp(handle, { pointerId: 1, clientY: 140 });
-
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Answer canvas" })).toBeNull());
   });
 });

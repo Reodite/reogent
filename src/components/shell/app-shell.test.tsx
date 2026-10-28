@@ -420,7 +420,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     );
   });
 
-  it("mobile AI has no way to manually open the answer sheet — only show_widget can", () => {
+  it("mobile AI keeps the answer canvas closed until a message opens it", () => {
     const { container } = renderShell(false);
     expect(container.querySelector('[data-answer-sheet="open"]')).toBeNull();
     expect(container.querySelector('[aria-label="Open answer canvas"]')).toBeNull();

@@ -629,7 +629,12 @@ describe("unsupported rich-widget history and stream selection", () => {
     expect(shellRef.current?.activeCallKey).toBeNull();
   });
 
-  it.each([false, true])("keeps the supported streamed call and dismissal policy (dismissed=%s)", async (dismissed) => {
+  it.each([
+    [false, false],
+    [false, true],
+    [true, false],
+    [true, true],
+  ])("keeps the supported streamed call and opening policy (inline=%s, dismissed=%s)", async (inline, dismissed) => {
     const tools = [keyDatesCall, unsupportedPrereqCall];
     api.chat.mockImplementation(
       async (
@@ -647,34 +652,46 @@ describe("unsupported rich-widget history and stream selection", () => {
         return { message: "Stream complete", tool_calls: tools };
       },
     );
-    const { getByRole, findByText, container } = render(
-      <ChatShellProvider>
-        <ChatPanel sessionId={null} />
-        <Capture />
-      </ChatShellProvider>,
-    );
-    act(() => {
-      shellRef.current?.setUserDismissedPane(dismissed);
-      shellRef.current?.setAnswerSheetOpen(false);
-      shellRef.current?.setRightPaneCollapsed(true);
-    });
-    fireEvent.change(getByRole("textbox", { name: "Message the assistant" }), { target: { value: "Show dates" } });
-    fireEvent.click(getByRole("button", { name: "Send message" }));
-    await findByText("Stream complete");
-    await waitFor(() => expect(shellRef.current?.workspaceView?.paneId).toBe("calendar"));
-    expect(shellRef.current?.userDismissedPane).toBe(dismissed);
-    expect(shellRef.current?.answerSheetOpen).toBe(!dismissed);
-    expect(shellRef.current?.rightPaneCollapsed).toBe(dismissed);
-    const widgets = container.querySelectorAll('[data-widget="show_widget"]');
-    expect(widgets).toHaveLength(2);
-    expect(widgets[1].getAttribute("role")).toBeNull();
-    expect(widgets[1].getAttribute("tabindex")).toBeNull();
-    if (dismissed) {
-      expect(shellRef.current?.activeCallKey).toBeNull();
-    } else {
-      expect(shellRef.current?.activeCallKey).toMatch(/:tc-0$/);
-      expect(widgets[0].getAttribute("data-active")).toBe("true");
-      expect(widgets[1].getAttribute("data-active")).toBeNull();
+    const matchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      ...matchMedia(query),
+      matches: inline && query === "(min-width: 640px)",
+    })) as typeof window.matchMedia;
+    try {
+      const { getByRole, findByText, container } = render(
+        <ChatShellProvider>
+          <ChatPanel sessionId={null} />
+          <Capture />
+        </ChatShellProvider>,
+      );
+      act(() => {
+        shellRef.current?.setUserDismissedPane(dismissed);
+        shellRef.current?.setAnswerSheetOpen(false);
+        shellRef.current?.setRightPaneCollapsed(true);
+      });
+      fireEvent.change(getByRole("textbox", { name: "Message the assistant" }), { target: { value: "Show dates" } });
+      fireEvent.click(getByRole("button", { name: "Send message" }));
+      await findByText("Stream complete");
+      await waitFor(() => expect(shellRef.current?.workspaceView?.paneId).toBe("calendar"));
+      expect(shellRef.current?.userDismissedPane).toBe(dismissed);
+      // Automatic activation never covers a phone chat; the artifact card opens it.
+      expect(shellRef.current?.answerSheetOpen).toBe(false);
+      expect(shellRef.current?.rightPaneCollapsed).toBe(dismissed);
+      const widgets = container.querySelectorAll('[data-widget="show_widget"]');
+      expect(widgets).toHaveLength(2);
+      expect(widgets[1].getAttribute("role")).toBeNull();
+      expect(widgets[1].getAttribute("tabindex")).toBeNull();
+      expect(container.querySelectorAll("[data-artifact-card]")).toHaveLength(1);
+      if (inline && !dismissed) {
+        expect(shellRef.current?.activeCallKey).toMatch(/:tc-0$/);
+        expect(widgets[0].getAttribute("data-active")).toBe("true");
+        expect(widgets[1].getAttribute("data-active")).toBeNull();
+      } else {
+        expect(shellRef.current?.activeCallKey).toBeNull();
+        expect(widgets[0].getAttribute("data-active")).toBeNull();
+      }
+    } finally {
+      window.matchMedia = matchMedia;
     }
   });
 });

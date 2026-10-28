@@ -8,20 +8,20 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
-  useState,
   type PointerEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
 
-const DISMISS_VELOCITY = 700;
 const DEFAULT_SPLIT_POSITION = 50;
 const MIN_SPLIT_POSITION = 25;
 const MAX_SPLIT_POSITION = 75;
 const FALLBACK_MIN_PANE_WIDTH = 288;
 const SPLITTER_WIDTH = 12;
 const KEYBOARD_RESIZE_STEP = 5;
-const INLINE_CANVAS_QUERY = "(min-width: 640px)";
+
+/** Matches widths that show the Answer Canvas beside the chat instead of full screen. */
+export const INLINE_CANVAS_QUERY = "(min-width: 640px)";
 
 type SplitBounds = {
   left: number;
@@ -74,12 +74,7 @@ function releasePointer(element: HTMLElement, pointerId: number) {
   if (element.hasPointerCapture?.(pointerId)) element.releasePointerCapture(pointerId);
 }
 
-/** Returns whether a downward sheet gesture crosses the distance or velocity threshold. */
-export function shouldDismissAnswerSheet(distance: number, velocity: number, height: number): boolean {
-  return distance >= height * 0.2 || velocity >= DISMISS_VELOCITY;
-}
-
-/** Keeps one Answer Canvas mounted while presenting it inline or as a mobile sheet. */
+/** Keeps one Answer Canvas mounted while presenting it inline or as a full-screen phone view. */
 export function AnswerSheet({
   open,
   onClose,
@@ -99,19 +94,9 @@ export function AnswerSheet({
   const resizeStart = useRef<{ pointerId: number; position: number } | null>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  const dragStart = useRef<{ pointerId: number; y: number; time: number } | null>(null);
-  const [dragY, setDragY] = useState(0);
-  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      const handle = sheetRef.current?.querySelector<HTMLElement>("[data-answer-drag-handle]");
-      if (handle && dragStart.current) releasePointer(handle, dragStart.current.pointerId);
-      dragStart.current = null;
-      setDragY(0);
-      setDragging(false);
-      return;
-    }
+    if (!open) return;
 
     const sheet = sheetRef.current;
     if (!sheet) return;
@@ -257,38 +242,9 @@ export function AnswerSheet({
     splitPosition.current = applySplitPosition(sheet, splitter, requestedPosition);
   }
 
-  function beginDrag(event: PointerEvent<HTMLDivElement>) {
-    dragStart.current = { pointerId: event.pointerId, y: event.clientY, time: event.timeStamp };
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    setDragging(true);
-  }
-
-  function moveDrag(event: PointerEvent<HTMLDivElement>) {
-    const start = dragStart.current;
-    if (!start || start.pointerId !== event.pointerId) return;
-    setDragY(Math.max(0, event.clientY - start.y));
-  }
-
-  function finishDrag(event: PointerEvent<HTMLDivElement>) {
-    const start = dragStart.current;
-    if (!start || start.pointerId !== event.pointerId) return;
-    const distance = Math.max(0, event.clientY - start.y);
-    const velocity = (distance / Math.max(1, event.timeStamp - start.time)) * 1000;
-    dragStart.current = null;
-    releasePointer(event.currentTarget, event.pointerId);
-    setDragging(false);
-    setDragY(0);
-    if (shouldDismissAnswerSheet(distance, velocity, sheetRef.current?.offsetHeight ?? 0)) onClose();
-  }
-
-  function cancelDrag(event: PointerEvent<HTMLDivElement>) {
-    dragStart.current = null;
-    releasePointer(event.currentTarget, event.pointerId);
-    setDragging(false);
-    setDragY(0);
-  }
-
-  const slotClass = `flex min-h-0 flex-col max-sm:neu-panel max-sm:bg-surface max-sm:fixed max-sm:inset-x-0 max-sm:bottom-[var(--app-viewport-bottom,0px)] max-sm:z-50 max-sm:h-[calc(var(--app-viewport-height,100dvh)*0.8)] max-sm:overflow-hidden max-sm:rounded-t-2xl max-sm:pb-[env(safe-area-inset-bottom)] max-sm:duration-300 max-sm:[transition-timing-function:var(--neu-ease)] sm:h-full ${
+  // Phones cover the whole visible viewport, including the mode bar, and pad
+  // the notch and home indicator; the canvas titlebar's Close returns to chat.
+  const slotClass = `flex min-h-0 flex-col max-sm:bg-surface max-sm:fixed max-sm:inset-x-0 max-sm:bottom-[var(--app-viewport-bottom,0px)] max-sm:z-50 max-sm:h-[var(--app-viewport-height,100dvh)] max-sm:overflow-hidden max-sm:pt-[env(safe-area-inset-top)] max-sm:pb-[env(safe-area-inset-bottom)] max-sm:duration-300 max-sm:[transition-timing-function:var(--neu-ease)] sm:h-full ${
     open ? "max-sm:transition-[translate,opacity]" : "max-sm:transition-[translate,opacity,visibility]"
   } ${
     splitVisible
@@ -352,23 +308,7 @@ export function AnswerSheet({
         className={slotClass}
         style={splitVisible ? { flexBasis: answerPaneBasis(splitPosition.current) } : undefined}
       >
-        <div
-          className={`flex h-full min-h-0 flex-col ${dragging ? "" : "transition-transform duration-250 [transition-timing-function:var(--neu-ease)]"}`}
-          style={{ transform: `translateY(${dragY}px)` }}
-        >
-          <div
-            aria-hidden="true"
-            data-answer-drag-handle
-            onPointerDown={beginDrag}
-            onPointerMove={moveDrag}
-            onPointerUp={finishDrag}
-            onPointerCancel={cancelDrag}
-            className="flex shrink-0 cursor-grab touch-none items-center justify-center px-4 pt-3 pb-1 active:cursor-grabbing sm:hidden"
-          >
-            <span className="bg-outline/40 h-1.5 w-10 rounded-full" />
-          </div>
-          {children}
-        </div>
+        {children}
       </div>
     </>
   );

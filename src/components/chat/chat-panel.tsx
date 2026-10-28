@@ -10,6 +10,7 @@ import {
   AssistantMessage,
   buildUserContent,
   condenseActivity,
+  lastCanvasCall,
   splitUserContent,
   TypingIndicator,
   UserMessage,
@@ -18,6 +19,7 @@ import {
 } from "@/src/components/chat/message";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
+import { INLINE_CANVAS_QUERY } from "@/src/components/shell/answer-sheet";
 import { ChatMessagesSkeleton } from "@/src/components/shell/shell-loading";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { Button } from "@/src/components/ui/button";
@@ -25,7 +27,7 @@ import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
 import { SkeletonGroup } from "@/src/components/ui/skeleton";
-import { ApiError, isToolError, type ChatMessage, type ToolCall } from "@/src/lib/api-types";
+import { ApiError, isToolError, type ChatMessage } from "@/src/lib/api-types";
 import { siteAudio } from "@/src/lib/audio";
 import { uuid } from "@/src/lib/uuid";
 import { toolCallToCanvasView } from "@/src/lib/walking";
@@ -490,28 +492,16 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
           });
           // Drive the canvas to the last mapped tool call; leave the canvas
           // as-is when the answer has no mapped widget (REQ-3.6: no auto-close).
-          // The chip key (`${streamId}:tc-${condensedIdx}`) marks exactly that
-          // chip as active in the message list.
-          const condensedBlocks = condenseActivity(activity);
-          const toCall = (b: ActivityBlock) => ({ name: b.content, input: b.input ?? {}, result: b.result });
-          let mappedCall: ToolCall | null = null;
-          let mappedKey: string | undefined;
-          for (let i = condensedBlocks.length - 1; i >= 0; i--) {
-            const b = condensedBlocks[i];
-            if (b.type !== "tool_call") continue;
-            const c = toCall(b);
-            if (toolCallToCanvasView(c)) {
-              mappedCall = c;
-              mappedKey = `${streamId}:tc-${i}`;
-              break;
-            }
-          }
-          if (mappedCall) {
-            if (userDismissedPane) {
-              const view = toolCallToCanvasView(mappedCall);
+          // The inline pane opens with the chip key (`${streamId}:tc-${condensedIdx}`)
+          // marking exactly that chip active. Phones and dismissed panes only
+          // load the view; the message's artifact card opens it.
+          const mapped = lastCanvasCall(condenseActivity(activity));
+          if (mapped) {
+            if (userDismissedPane || !window.matchMedia(INLINE_CANVAS_QUERY).matches) {
+              const view = toolCallToCanvasView(mapped.call);
               if (view) setWorkspaceView(view);
             } else {
-              activateCanvasView(mappedCall, mappedKey);
+              activateCanvasView(mapped.call, `${streamId}:tc-${mapped.index}`);
             }
           }
           announce("New response from assistant");
