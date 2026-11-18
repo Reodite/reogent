@@ -1,0 +1,1446 @@
+{
+  "label": "fixed",
+  "samples": [
+    {
+      "scenario": "desktop",
+      "title": "Agent capabilities",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 208,
+        "right": 1232,
+        "top": 220,
+        "bottom": 654.75
+      },
+      "cards": [
+        {
+          "x": 432,
+          "right": 1008,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 819.736083984375,
+          "right": 1269.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 170.867431640625,
+          "right": 620.263916015625,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 196,
+        "width": 1440,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "desktop",
+      "title": "Agent capabilities",
+      "index": 2,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 208,
+        "right": 1232,
+        "top": 220,
+        "bottom": 654.75
+      },
+      "cards": [
+        {
+          "x": 819.736083984375,
+          "right": 1269.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 170.867431640625,
+          "right": 620.263916015625,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 432,
+          "right": 1008,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 196,
+        "width": 1440,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "desktop",
+      "title": "Tools",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 208,
+        "right": 1232,
+        "top": 219.75,
+        "bottom": 654.5
+      },
+      "cards": [
+        {
+          "x": 432,
+          "right": 1008,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 819.736083984375,
+          "right": 1269.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 1101.751220703125,
+          "right": 1464.3441162109375,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -326.38720703125,
+          "right": 75.21475219726562,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -24.3441162109375,
+          "right": 338.24884033203125,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 170.867431640625,
+          "right": 620.263916015625,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 1440,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "desktop",
+      "title": "Tools",
+      "index": 5,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 208,
+        "right": 1232,
+        "top": 219.75,
+        "bottom": 654.5
+      },
+      "cards": [
+        {
+          "x": 819.736083984375,
+          "right": 1269.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 1101.751220703125,
+          "right": 1464.3441162109375,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -326.38720703125,
+          "right": 75.21475219726562,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -24.3441162109375,
+          "right": 338.24884033203125,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 170.867431640625,
+          "right": 620.263916015625,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 432,
+          "right": 1008,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 1440,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "desktop",
+      "title": "Unity",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 208,
+        "right": 1232,
+        "top": 219.5,
+        "bottom": 654.25
+      },
+      "cards": [
+        {
+          "x": 432,
+          "right": 1008,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 819.736083984375,
+          "right": 1269.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 170.867431640625,
+          "right": 620.263916015625,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 1440,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "desktop",
+      "title": "Unity",
+      "index": 2,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 208,
+        "right": 1232,
+        "top": 219.5,
+        "bottom": 654.25
+      },
+      "cards": [
+        {
+          "x": 819.736083984375,
+          "right": 1269.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 170.867431640625,
+          "right": 620.263916015625,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 432,
+          "right": 1008,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 1440,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "tablet",
+      "title": "Agent capabilities",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 24,
+        "right": 744,
+        "top": 220,
+        "bottom": 654.75
+      },
+      "cards": [
+        {
+          "x": 96,
+          "right": 672,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 483.736083984375,
+          "right": 933.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -165.13258361816406,
+          "right": 284.26390075683594,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 196,
+        "width": 768,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "tablet",
+      "title": "Agent capabilities",
+      "index": 2,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 24,
+        "right": 744,
+        "top": 220,
+        "bottom": 654.75
+      },
+      "cards": [
+        {
+          "x": 483.736083984375,
+          "right": 933.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -165.13258361816406,
+          "right": 284.26390075683594,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 96,
+          "right": 672,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 196,
+        "width": 768,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "tablet",
+      "title": "Tools",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 24,
+        "right": 744,
+        "top": 219.75,
+        "bottom": 654.5
+      },
+      "cards": [
+        {
+          "x": 96,
+          "right": 672,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 483.736083984375,
+          "right": 933.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 765.7511596679688,
+          "right": 1128.3441162109375,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -662.38720703125,
+          "right": -260.7852478027344,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -360.3441162109375,
+          "right": 2.24884033203125,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -165.13258361816406,
+          "right": 284.26390075683594,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 768,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "tablet",
+      "title": "Tools",
+      "index": 5,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 24,
+        "right": 744,
+        "top": 219.75,
+        "bottom": 654.5
+      },
+      "cards": [
+        {
+          "x": 483.736083984375,
+          "right": 933.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 765.7511596679688,
+          "right": 1128.3441162109375,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -662.38720703125,
+          "right": -260.7852478027344,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -360.3441162109375,
+          "right": 2.24884033203125,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -165.13258361816406,
+          "right": 284.26390075683594,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 96,
+          "right": 672,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 768,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "tablet",
+      "title": "Unity",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 24,
+        "right": 744,
+        "top": 219.5,
+        "bottom": 654.25
+      },
+      "cards": [
+        {
+          "x": 96,
+          "right": 672,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 483.736083984375,
+          "right": 933.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -165.13258361816406,
+          "right": 284.26390075683594,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 768,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "tablet",
+      "title": "Unity",
+      "index": 2,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 24,
+        "right": 744,
+        "top": 219.5,
+        "bottom": 654.25
+      },
+      "cards": [
+        {
+          "x": 483.736083984375,
+          "right": 933.132568359375,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -165.13258361816406,
+          "right": 284.26390075683594,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 96,
+          "right": 672,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 768,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "mobile",
+      "title": "Agent capabilities",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 374,
+        "top": 219.5,
+        "bottom": 677
+      },
+      "cards": [
+        {
+          "x": 32,
+          "right": 358,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 252.3507537841797,
+          "right": 500.6061706542969,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -110.60617065429688,
+          "right": 137.64926147460938,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 390,
+        "height": 506
+      }
+    },
+    {
+      "scenario": "mobile",
+      "title": "Agent capabilities",
+      "index": 2,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 374,
+        "top": 219.5,
+        "bottom": 677
+      },
+      "cards": [
+        {
+          "x": 252.3507537841797,
+          "right": 500.6061706542969,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -110.60617065429688,
+          "right": 137.64926147460938,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 32,
+          "right": 358,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 390,
+        "height": 506
+      }
+    },
+    {
+      "scenario": "mobile",
+      "title": "Tools",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 374,
+        "top": 219.75,
+        "bottom": 654.5
+      },
+      "cards": [
+        {
+          "x": 32,
+          "right": 358,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 252.3507537841797,
+          "right": 500.6061706542969,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 416.1191101074219,
+          "right": 605.7734375,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -375.57208251953125,
+          "right": -182.11212158203125,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -215.77340698242188,
+          "right": -26.119110107421875,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -110.60617065429688,
+          "right": 137.64926147460938,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 390,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "mobile",
+      "title": "Tools",
+      "index": 5,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 374,
+        "top": 219.75,
+        "bottom": 654.5
+      },
+      "cards": [
+        {
+          "x": 252.3507537841797,
+          "right": 500.6061706542969,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 416.1191101074219,
+          "right": 605.7734375,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -375.57208251953125,
+          "right": -182.11212158203125,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -215.77340698242188,
+          "right": -26.119110107421875,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -110.60617065429688,
+          "right": 137.64926147460938,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 32,
+          "right": 358,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 390,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "mobile",
+      "title": "Unity",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 374,
+        "top": 220.25,
+        "bottom": 655
+      },
+      "cards": [
+        {
+          "x": 32,
+          "right": 358,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 252.3507537841797,
+          "right": 500.6061706542969,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -110.60617065429688,
+          "right": 137.64926147460938,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 196,
+        "width": 390,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "mobile",
+      "title": "Unity",
+      "index": 2,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 374,
+        "top": 220.25,
+        "bottom": 655
+      },
+      "cards": [
+        {
+          "x": 252.3507537841797,
+          "right": 500.6061706542969,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -110.60617065429688,
+          "right": 137.64926147460938,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 32,
+          "right": 358,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.823529 0.823529 0.815686 / 0.17) 3px 3px 8px 0px, color(srgb 1 1 1 / 0.2) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 196,
+        "width": 390,
+        "height": 483
+      }
+    },
+    {
+      "scenario": "narrow-dark",
+      "title": "Agent capabilities",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 304,
+        "top": 219.5,
+        "bottom": 677
+      },
+      "cards": [
+        {
+          "x": 32,
+          "right": 288,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 205.23876953125,
+          "right": 398.86883544921875,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -78.86882781982422,
+          "right": 114.76122283935547,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 320,
+        "height": 506
+      }
+    },
+    {
+      "scenario": "narrow-dark",
+      "title": "Agent capabilities",
+      "index": 2,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 304,
+        "top": 219.5,
+        "bottom": 677
+      },
+      "cards": [
+        {
+          "x": 205.23876953125,
+          "right": 398.86883544921875,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -78.86882781982422,
+          "right": 114.76122283935547,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 32,
+          "right": 288,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 320,
+        "height": 506
+      }
+    },
+    {
+      "scenario": "narrow-dark",
+      "title": "Tools",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 304,
+        "top": 219.5,
+        "bottom": 677
+      },
+      "cards": [
+        {
+          "x": 32,
+          "right": 288,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 205.23876953125,
+          "right": 398.86883544921875,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 334.78533935546875,
+          "right": 480.333984375,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -283.5159606933594,
+          "right": -138.9311065673828,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -160.33399963378906,
+          "right": -14.785354614257812,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -78.86882781982422,
+          "right": 114.76122283935547,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 320,
+        "height": 506
+      }
+    },
+    {
+      "scenario": "narrow-dark",
+      "title": "Tools",
+      "index": 5,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 304,
+        "top": 219.5,
+        "bottom": 677
+      },
+      "cards": [
+        {
+          "x": 205.23876953125,
+          "right": 398.86883544921875,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 334.78533935546875,
+          "right": 480.333984375,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -283.5159606933594,
+          "right": -138.9311065673828,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -160.33399963378906,
+          "right": -14.785354614257812,
+          "opacity": 0,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -78.86882781982422,
+          "right": 114.76122283935547,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 32,
+          "right": 288,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 320,
+        "height": 506
+      }
+    },
+    {
+      "scenario": "narrow-dark",
+      "title": "Unity",
+      "index": 0,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 304,
+        "top": 219.5,
+        "bottom": 677
+      },
+      "cards": [
+        {
+          "x": 32,
+          "right": 288,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 205.23876953125,
+          "right": 398.86883544921875,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -78.86882781982422,
+          "right": 114.76122283935547,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 320,
+        "height": 506
+      }
+    },
+    {
+      "scenario": "narrow-dark",
+      "title": "Unity",
+      "index": 2,
+      "croppedPixels": 0,
+      "largestDifference": 0,
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "previousOverflow": "",
+      "scrollLeft": 0,
+      "scrollbarHeight": 0,
+      "documentOverflow": false,
+      "rootOverflow": "clip",
+      "stage": {
+        "x": 16,
+        "right": 304,
+        "top": 219.5,
+        "bottom": 677
+      },
+      "cards": [
+        {
+          "x": 205.23876953125,
+          "right": 398.86883544921875,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": -78.86882781982422,
+          "right": 114.76122283935547,
+          "opacity": 0.45,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        },
+        {
+          "x": 32,
+          "right": 288,
+          "opacity": 1,
+          "radius": "16px",
+          "shadow": "color(srgb 0.0588235 0.0588235 0.0666667 / 0.55) 3px 3px 8px 0px, color(srgb 0.0823529 0.0823529 0.0901961 / 0.55) -2px -2px 6px 0px",
+          "cornerOverflow": "hidden"
+        }
+      ],
+      "clip": {
+        "x": 0,
+        "y": 195,
+        "width": 320,
+        "height": 506
+      }
+    }
+  ],
+  "errors": []
+}

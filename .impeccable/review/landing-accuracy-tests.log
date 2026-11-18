@@ -1,0 +1,16 @@
+
+> reodite@0.1.0 test
+> vitest run --passWithNoTests --maxWorkers=4
+
+[33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+
+ RUN  v4.1.11 D:/Documents/AI Projects/Reogent
+
+
+ Test Files  208 passed (208)
+      Tests  2684 passed (2684)
+   Start at  00:27:35
+   Duration  68.00s (transform 9.34s, setup 1.61s, import 93.59s, tests 55.84s, environment 65.16s)
+

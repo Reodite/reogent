@@ -1,0 +1,359 @@
+
+> reodite@0.1.0 lint
+> biome lint .
+
+biome.json:2:14 deserialize ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i The configuration schema version does not match the CLI version 2.5.11
+  
+    1 │ {
+  > 2 │   "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+      │              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    3 │   "css": {
+    4 │     "parser": {
+  
+  i   Expected:                     2.5.11
+      Found:                        2.5.7
+  
+  
+  i Run the command biome migrate to migrate the configuration file.
+  
+
+scripts\agent-deep-eval.ts:319:15 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    317 │   const avgAnswerLen = results.reduce((s, r) => s + r.answerLen, 0) / results.length;
+    318 │ 
+  > 319 │   console.log("\n" + "=".repeat(100));
+        │               ^^^^^^^^^^^^^^^^^^^^^^
+    320 │   console.log("DEEP EVAL SUMMARY");
+    321 │   console.log("=".repeat(100));
+  
+  i Unsafe fix: Use a template literal.
+  
+    317 317 │     const avgAnswerLen = results.reduce((s, r) => s + r.answerLen, 0) / results.length;
+    318 318 │   
+    319     │ - ··console.log("\n"·+·"=".repeat(100));
+        319 │ + ··console.log(`\n${"=".repeat(100)}`);
+    320 320 │     console.log("DEEP EVAL SUMMARY");
+    321 321 │     console.log("=".repeat(100));
+  
+
+src\shared\prereq-ast\index.ts:67:14 lint/complexity/noUselessStringRaw ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i String.raw is useless when the raw string doesn't contain any escape sequence.
+  
+    65 │ // campus code is handled without another edit.
+    66 │ const OFF_CAMPUS = String.raw`[A-Z]{2,4}_(?!V\b)[A-Z]\s*\d{2,4}[A-Z]?`;
+  > 67 │ const JOIN = String.raw`(?:[Oo][Rr]|[Aa][Nn][Dd])`;
+       │              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    68 │ // Order matters: consume the attaching joiner/comma first so removing the
+    69 │ // code doesn't strand "… or" or ", ," behind it. Bare removal is the last
+  
+  i Remove the String.raw call because it's useless here, String.raw can deal with string which contains escape sequence like \n, \t, \r, \\, \", \'.
+  
+
+src\shared\prereq-ast\index.ts:224:66 lint/complexity/noUselessEscapeInRegex  FIXABLE  ━━━━━━━━━━━━━
+
+  i The character doesn't need to be escaped.
+  
+    222 │     // `renderTextWithLinks` helper to render as a clickable hyperlink.
+    223 │     if (ch === "h" || ch === "H") {
+  > 224 │       const urlMatch = input.slice(i).match(/^https?:\/\/[^\s<>\]\[)]+/i);
+        │                                                                  ^^
+    225 │       if (urlMatch) {
+    226 │         beginTextChar(urlMatch[0][0]);
+  
+  i The character should only be escaped if it is outside a character class or under the `v` flag.
+  
+  i Safe fix: Unescape the character.
+  
+    224 │ ······const·urlMatch·=·input.slice(i).match(/^https?:\/\/[^\s<>\]\[)]+/i);
+        │                                                                  -        
+
+app\api\prereq-tree\route.ts:21:9 lint/complexity/useOptionalChain  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Change to an optional chain.
+  
+    19 │     const result = canonicalize(root);
+    20 │     if (result?.kind === "rejected") return json({ error: "Okanagan (_O) campus codes are not supported" }, 400);
+  > 21 │     if (!result || result.kind !== "code") return json({ error: `"${root}" is not a valid course code` }, 400);
+       │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    22 │     const graph = await buildPrereqGraph(result, getSearch());
+    23 │     return json(graph);
+  
+  i Unsafe fix: Change to an optional chain.
+  
+    19 19 │       const result = canonicalize(root);
+    20 20 │       if (result?.kind === "rejected") return json({ error: "Okanagan (_O) campus codes are not supported" }, 400);
+    21    │ - ····if·(!result·||·result.kind·!==·"code")·return·json({·error:·`"${root}"·is·not·a·valid·course·code`·},·400);
+       21 │ + ····if·(result?.kind·!==·"code")·return·json({·error:·`"${root}"·is·not·a·valid·course·code`·},·400);
+    22 22 │       const graph = await buildPrereqGraph(result, getSearch());
+    23 23 │       return json(graph);
+  
+
+app\globals.css:261:26 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    259 │   background-repeat: no-repeat;
+    260 │   background-position: right 0.5rem center;
+  > 261 │   padding-right: 1.75rem !important;
+        │                          ^^^^^^^^^^
+    262 │ }
+    263 │ 
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    261 │ ··padding-right:·1.75rem·!important;␍
+        │                         ----------- 
+
+app\globals.css:1745:19 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1743 │   nav,
+    1744 │   [role="dialog"] {
+  > 1745 │     display: none !important;
+         │                   ^^^^^^^^^^
+    1746 │   }
+    1747 │ 
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1745 │ ····display:·none·!important;␍
+         │                  ----------- 
+
+app\globals.css:1753:22 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1751 │   .neu-button,
+    1752 │   .neu-primary-button {
+  > 1753 │     box-shadow: none !important;
+         │                      ^^^^^^^^^^
+    1754 │     background: white !important;
+    1755 │     border: 1px solid #ddd !important;
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1753 │ ····box-shadow:·none·!important;␍
+         │                     ----------- 
+
+app\globals.css:1754:23 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1752 │   .neu-primary-button {
+    1753 │     box-shadow: none !important;
+  > 1754 │     background: white !important;
+         │                       ^^^^^^^^^^
+    1755 │     border: 1px solid #ddd !important;
+    1756 │   }
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1754 │ ····background:·white·!important;␍
+         │                      ----------- 
+
+app\globals.css:1755:28 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1753 │     box-shadow: none !important;
+    1754 │     background: white !important;
+  > 1755 │     border: 1px solid #ddd !important;
+         │                            ^^^^^^^^^^
+    1756 │   }
+    1757 │ 
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1755 │ ····border:·1px·solid·#ddd·!important;␍
+         │                           ----------- 
+
+app\globals.css:1759:18 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1758 │   body {
+  > 1759 │     color: black !important;
+         │                  ^^^^^^^^^^
+    1760 │     background: white !important;
+    1761 │   }
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1759 │ ····color:·black·!important;␍
+         │                 ----------- 
+
+app\globals.css:1760:23 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1758 │   body {
+    1759 │     color: black !important;
+  > 1760 │     background: white !important;
+         │                       ^^^^^^^^^^
+    1761 │   }
+    1762 │ 
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1760 │ ····background:·white·!important;␍
+         │                      ----------- 
+
+app\globals.css:1764:22 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1763 │   .chat-message-well {
+  > 1764 │     box-shadow: none !important;
+         │                      ^^^^^^^^^^
+    1765 │     background: white !important;
+    1766 │     overflow: visible !important;
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1764 │ ····box-shadow:·none·!important;␍
+         │                     ----------- 
+
+app\globals.css:1765:23 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1763 │   .chat-message-well {
+    1764 │     box-shadow: none !important;
+  > 1765 │     background: white !important;
+         │                       ^^^^^^^^^^
+    1766 │     overflow: visible !important;
+    1767 │     height: auto !important;
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1765 │ ····background:·white·!important;␍
+         │                      ----------- 
+
+app\globals.css:1766:23 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1764 │     box-shadow: none !important;
+    1765 │     background: white !important;
+  > 1766 │     overflow: visible !important;
+         │                       ^^^^^^^^^^
+    1767 │     height: auto !important;
+    1768 │   }
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1766 │ ····overflow:·visible·!important;␍
+         │                      ----------- 
+
+app\globals.css:1767:18 lint/complexity/noImportantStyles  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the use of the !important style.
+  
+    1765 │     background: white !important;
+    1766 │     overflow: visible !important;
+  > 1767 │     height: auto !important;
+         │                  ^^^^^^^^^^
+    1768 │   }
+    1769 │ }
+  
+  i This style reverses the cascade logic, and precedence is reversed. This could lead to having styles with higher specificity being overridden by styles with lower specificity.
+  
+  i Unsafe fix: Remove the style.
+  
+    1767 │ ····height:·auto·!important;␍
+         │                 ----------- 
+
+biome.json:90:84 lint/suspicious/useBiomeIgnoreFolder  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Incorrect usage of ignore a folder found.
+  
+    88 │   },
+    89 │   "files": {
+  > 90 │     "includes": ["app/**", "src/**", "scripts/**", "!!.next", "!ubc-unified-data", "!ubc-unified-data/**"]
+       │                                                                                    ^^^^^^^^^^^^^^^^^^^^^^
+    91 │   }
+    92 │ }
+  
+  i Since version 2.2.0, ignoring folders doesn't require the use the trailing /**. This is a bug that affects version prior v2.2.0.
+  
+  i Safe fix: If you want to ignore a folder, use the following pattern instead: !ubc-unified-data.
+  
+    90 │ ····"includes":·["app/**",·"src/**",·"scripts/**",·"!!.next",·"!ubc-unified-data",·"!ubc-unified-data/**"]
+       │                                                                                                      ---  
+
+src\lib\schedule\features\whoIsFreeNow.ts:36:29 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    34 │       let next: ClassRef | null = null;
+    35 │       let hasClassesToday = false;
+  > 36 │       for (const section of person.schedule!.sections) {
+       │                             ^^^^^^^^^^^^^^^^
+    37 │         if (section.termStart && section.termEnd && !dateInRange(iso, section.termStart, section.termEnd)) {
+    38 │           continue;
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+    34 34 │         let next: ClassRef | null = null;
+    35 35 │         let hasClassesToday = false;
+    36    │ - ······for·(const·section·of·person.schedule!.sections)·{
+       36 │ + ······for·(const·section·of·person.schedule?.sections)·{
+    37 37 │           if (section.termStart && section.termEnd && !dateInRange(iso, section.termStart, section.termEnd)) {
+    38 38 │             continue;
+  
+
+src\shared\prereq-ast\index.ts:1299:16 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    1297 │   return normalize({
+    1298 │     kind: "and",
+  > 1299 │     children: [hardExpr!, { kind: "soft", child: softExpr! }],
+         │                ^^^^^^^^^
+    1300 │   });
+    1301 │ }
+  
+
+src\shared\prereq-ast\index.ts:1299:50 lint/style/noNonNullAssertion ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Forbidden non-null assertion.
+  
+    1297 │   return normalize({
+    1298 │     kind: "and",
+  > 1299 │     children: [hardExpr!, { kind: "soft", child: softExpr! }],
+         │                                                  ^^^^^^^^^
+    1300 │   });
+    1301 │ }
+  
+
+The number of diagnostics exceeds the limit allowed. Use --max-diagnostics to increase it.
+Diagnostics not shown: 12.
+Checked 511 files in 1361ms. No fixes applied.
+Found 25 warnings.
+Found 7 infos.
