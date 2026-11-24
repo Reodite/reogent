@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import type { Citation } from "@/src/shared/citations/citation";
 import type { ActivityBlock, ChatMessage, SessionSummary } from "../core/types";
 import { getPool } from "../db";
@@ -113,8 +114,43 @@ export async function createUser(username: string, passwordHash: string): Promis
   return rows[0].id;
 }
 
-export async function getUserByUsername(username: string): Promise<{ id: string; passwordHash: string } | null> {
+/** Returns the account's id and bcrypt hash; the hash is null for Google-only accounts. */
+export async function getUserByUsername(username: string): Promise<{ id: string; passwordHash: string | null } | null> {
   const { rows } = await getPool().query(`SELECT id, password_hash FROM users WHERE username = $1`, [username]);
   if (rows.length === 0) return null;
   return { id: rows[0].id, passwordHash: rows[0].password_hash };
+}
+
+/**
+ * Returns the account linked to a Google subject, creating one on first sign-in.
+ * New usernames combine the given name with four random digits; concurrent first
+ * sign-ins for one subject resolve to the same account.
+ */
+export async function findOrCreateGoogleUser(
+  googleSub: string,
+  givenName?: string,
+): Promise<{ id: string; username: string }> {
+  const { rows } = await getPool().query(`SELECT id, username FROM users WHERE google_sub = $1`, [googleSub]);
+  if (rows[0]) return rows[0];
+  const base =
+    (givenName ?? "")
+      .normalize("NFKD")
+      .replace(/[^a-zA-Z0-9_-]/g, "")
+      .toLowerCase()
+      .slice(0, 32) || "student";
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const { rows: created } = await getPool().query(
+        `INSERT INTO users (username, google_sub) VALUES ($1, $2)
+         ON CONFLICT (google_sub) DO UPDATE SET google_sub = EXCLUDED.google_sub
+         RETURNING id, username`,
+        [`${base}-${randomInt(1000, 10_000)}`, googleSub],
+      );
+      return created[0];
+    } catch (e) {
+      // A taken username raises a unique violation: draw new digits.
+      if ((e as { code?: string }).code !== "23505") throw e;
+    }
+  }
+  throw new Error("Could not allocate a username for the Google account");
 }

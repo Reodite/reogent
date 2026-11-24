@@ -49,7 +49,8 @@ type SharedButtonProps = {
 export type ButtonProps = ComponentPropsWithRef<"button"> & SharedButtonProps;
 export type ButtonLinkProps = ComponentPropsWithRef<typeof Link> & SharedButtonProps;
 
-function buttonClasses({
+/** Returns Button classes for elements that cannot use Button or ButtonLink, such as a native anchor. */
+export function buttonClasses({
   variant,
   size,
   shadowOn,
