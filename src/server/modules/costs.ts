@@ -1,3 +1,4 @@
+import { filterValue } from "@/src/server/core/filter";
 import type { DatasetModule } from "../core/types";
 import { getIndexFreshness } from "../freshness";
 import { lookupTuition, slugify, type TuitionDoc } from "./tuition";
@@ -233,7 +234,7 @@ export const costs: DatasetModule = {
               let best: TuitionDoc | undefined;
               for (const word of words) {
                 const res = await search.index("tuition").search(word, {
-                  filter: `student_type = '${studentType}'`,
+                  filter: `student_type = ${filterValue(studentType)}`,
                   limit: 1,
                 });
                 best = res.hits[0] as unknown as TuitionDoc | undefined;

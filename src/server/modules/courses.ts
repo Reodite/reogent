@@ -1,3 +1,4 @@
+import { filterValue } from "@/src/server/core/filter";
 import { formatSeconds } from "../core/time";
 import type { DatasetModule, SearchClient } from "../core/types";
 import {
@@ -170,7 +171,7 @@ export async function findByCode(search: SearchClient, courseCode: string): Prom
   // Try each candidate as an exact filter match
   for (const code of candidates) {
     const res = await search.index("courses").search("", {
-      filter: `code = '${code}'`,
+      filter: `code = ${filterValue(code)}`,
       limit: 1,
     });
     if (res.hits[0]) return res.hits[0] as unknown as CourseDoc;
@@ -323,7 +324,7 @@ export const courses: DatasetModule = {
         // Route to session index when faculty is specified.
         const useSessionIndex = isSessionSort || (faculty && !needsGradeJoin);
         if (useSessionIndex) {
-          if (faculty) filters.push(`faculty = '${String(faculty).replace(/'/g, "\\'")}'`);
+          if (faculty) filters.push(`faculty = ${filterValue(String(faculty))}`);
           const meiliSort =
             sortBy === "students_desc"
               ? ["reported:desc"]

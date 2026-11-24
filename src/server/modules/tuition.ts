@@ -1,3 +1,4 @@
+import { filterValue } from "@/src/server/core/filter";
 import type { DatasetModule, SearchClient } from "../core/types";
 
 export interface TuitionDoc {
@@ -102,7 +103,7 @@ export async function lookupTuition(
   const cohortYear = Number(input.cohort_year);
   const bySlug = async (s: string) => {
     const res = await search.index("tuition").search("", {
-      filter: `program_slug = '${s}' AND student_type = '${studentType}'`,
+      filter: `program_slug = ${filterValue(s)} AND student_type = ${filterValue(studentType)}`,
       limit: 50,
     });
     return res.hits as unknown as TuitionDoc[];
@@ -111,7 +112,7 @@ export async function lookupTuition(
   let rows = await bySlug(slug);
   if (rows.length === 0) {
     const fuzzy = await search.index("tuition").search(slug.replace(/-/g, " "), {
-      filter: `student_type = '${studentType}'`,
+      filter: `student_type = ${filterValue(studentType)}`,
       limit: 1,
     });
     const best = fuzzy.hits[0] as unknown as TuitionDoc | undefined;

@@ -1,3 +1,4 @@
+import { filterValue } from "@/src/server/core/filter";
 import type { DatasetModule } from "../core/types";
 import { getIndexFreshness } from "../freshness";
 import { stripHtml } from "./html";
@@ -203,7 +204,7 @@ export const admissions: DatasetModule = {
         // is ambiguous ("basic" exists in both province and country curricula).
         const locQuery = String(input.location ?? "");
         const locRes = await search.index("admission_requirements").search(locQuery, {
-          filter: `requirement_key = '${program.requirement_key}'`,
+          filter: `requirement_key = ${filterValue(program.requirement_key)}`,
           limit: 1,
         });
         const loc = locRes.hits[0] as unknown as RequirementDoc | undefined;
