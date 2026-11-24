@@ -3,11 +3,11 @@
 import { dataStore } from "../src/server/data";
 import { runIngest } from "../src/server/ingest";
 import { modules } from "../src/server/modules";
-import { getSearch } from "../src/server/search";
+import { getAdminSearch } from "../src/server/search";
 
 async function ingest() {
   if (process.argv.length > 2) throw new Error("Ingest does not accept arguments");
-  await runIngest(modules, getSearch(), dataStore());
+  await runIngest(modules, getAdminSearch(), dataStore());
 }
 
 ingest()

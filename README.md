@@ -150,6 +150,16 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 
 `npm run ingest` loads the root `.env` when present and preserves variables you set in the shell or Docker. Set `MEILI_MASTER_KEY` to the key used by the Meilisearch service. Ingestion attempts the remaining indexes after a failure and exits nonzero if any index fails.
 
+The app serves requests with a read-only Meilisearch key and refuses to run searches in production without one. Ingestion keeps using `MEILI_MASTER_KEY`. Create the key once per Meilisearch volume and put the returned `key` in `.env` as `MEILI_API_KEY`:
+
+```bash
+curl -s -X POST http://localhost:7700/keys \
+  -H "Authorization: Bearer $MEILI_MASTER_KEY" -H "Content-Type: application/json" \
+  --data '{"name":"reodite-app","actions":["search","documents.get"],"indexes":["*"],"expiresAt":null}'
+```
+
+Outside production the app falls back to `MEILI_MASTER_KEY` when `MEILI_API_KEY` is empty.
+
 ### Environment variables
 
 | Variable                   | Description                                                      |
@@ -162,6 +172,7 @@ The server opens at http://localhost:3000 and applies the Postgres schema on sta
 | `POSTGRES_PASSWORD`        | Postgres password (docker compose)                               |
 | `MEILI_URL`                | Meilisearch URL (`localhost:7700` on host)                       |
 | `MEILI_MASTER_KEY`         | Meilisearch master key                                           |
+| `MEILI_API_KEY`            | Read-only Meilisearch key for the app; required in production    |
 | `MEILI_ENV`                | Meilisearch environment (docker compose)                         |
 | `AUTH_ENABLED`             | Set `false` in non-production to bypass auth                     |
 | `JWT_SECRET`               | Random HMAC signing secret; at least 32 bytes in production      |

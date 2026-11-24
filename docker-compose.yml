@@ -14,6 +14,8 @@ services:
     environment:
       - DATABASE_URL=postgres://reodite:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/reodite
       - MEILI_URL=http://meilisearch:7700
+      # The app reads with MEILI_API_KEY; keep the master key out of its environment.
+      - MEILI_MASTER_KEY=
       - DATA_PATH=/data
       - HOSTNAME=0.0.0.0
 
