@@ -40,6 +40,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.canWriteSession.mockResolvedValue(true);
   mocks.consumeDailyChatMessage.mockResolvedValue(true);
+  mocks.recordTokenUsage.mockResolvedValue(undefined);
   mocks.appendExchange.mockResolvedValue(undefined);
   mocks.getProfile.mockResolvedValue(null);
   mocks.streamAgent.mockImplementation(async function* () {
@@ -106,6 +107,23 @@ describe("chat session ownership", () => {
     ]);
     expect(body).not.toContain('"type":"usage"');
     expect(mocks.appendExchange).toHaveBeenCalledTimes(fail ? 0 : 1);
+  });
+
+  it("streams and persists the answer when the usage write fails", async () => {
+    mocks.recordTokenUsage.mockRejectedValue(new Error("database unavailable"));
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "usage", totalTokens: 100 };
+      yield { type: "done", message: "answer", tool_calls: [], citations };
+    });
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const body = await (await POST(request())).text();
+    await vi.waitFor(() => expect(error).toHaveBeenCalledWith("token usage write failed", "database unavailable"));
+
+    expect(body).toContain('"type":"done"');
+    expect(body).not.toContain('"type":"error"');
+    expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
+    error.mockRestore();
   });
 
   it("does not expose provider credentials or internal errors", async () => {

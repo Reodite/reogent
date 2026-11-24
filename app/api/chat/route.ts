@@ -75,7 +75,10 @@ export async function POST(request: Request): Promise<Response> {
 
           for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch(), profile })) {
             if (event.type === "usage") {
-              await recordTokenUsage(user.sub, event.totalTokens);
+              // A failed usage write logs and leaves the answer streaming and persisting.
+              recordTokenUsage(user.sub, event.totalTokens).catch((e: unknown) => {
+                console.error("token usage write failed", e instanceof Error ? e.message : e);
+              });
               continue;
             }
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
