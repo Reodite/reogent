@@ -29,6 +29,11 @@ vi.mock("@/src/server/agent/stream", () => ({
 }));
 
 vi.mock("@/src/server/search", () => ({ getSearch: () => ({}) }));
+vi.mock("@/src/server/account", () => ({
+  DAILY_CHAT_LIMIT: 10,
+  consumeDailyChatMessage: async () => true,
+  recordTokenUsage: async () => {},
+}));
 
 const { POST: chatPost } = await import("./chat/route");
 const { GET: sessionsGet } = await import("./sessions/route");
