@@ -6,14 +6,7 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname) },
   },
   test: {
-    include: [
-      "proxy.test.ts",
-      "src/**/*.test.ts",
-      "src/**/*.test.tsx",
-      "app/**/*.test.ts",
-      "app/**/*.test.tsx",
-      "scripts/**/*.test.ts",
-    ],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "app/**/*.test.ts", "app/**/*.test.tsx", "scripts/**/*.test.ts"],
     environment: "node",
     globals: true,
     setupFiles: ["./src/test-setup.ts"],

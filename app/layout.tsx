@@ -4,7 +4,6 @@ import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "@/src/lib/sidebar";
 import { THEME_STORAGE_KEY } from "@/src/lib/theme";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { headers } from "next/headers";
 import "./globals.css";
 
 const aspekta = localFont({
@@ -41,14 +40,12 @@ const BOOTSTRAP =
   `try{var p=location.pathname||"";var m=p.indexOf("/app/tools")===0?"tools":(p.indexOf("/app/pulse")===0?"unity":(p==="/app"||p.indexOf("/app/chat")===0?"ai":(localStorage.getItem(${JSON.stringify(SHELL_MODE_STORAGE_KEY)})||"ai")));document.documentElement.dataset.shellMode=(m==="tools"||m==="unity")?m:"ai"}catch(e){document.documentElement.dataset.shellMode="ai"}` +
   `try{document.documentElement.dataset.sidebarCollapsed=localStorage.getItem(${JSON.stringify(SIDEBAR_COLLAPSED_STORAGE_KEY)})==="1"?"true":"false"}catch(e){document.documentElement.dataset.sidebarCollapsed="false"}`;
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // proxy.ts issues the per-request nonce the Content-Security-Policy requires for inline scripts.
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${aspekta.variable} ${commitMono.variable}`} suppressHydrationWarning>
       <head>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static pre-paint bootstrap built from build-time env only */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: BOOTSTRAP }} />
+        <script dangerouslySetInnerHTML={{ __html: BOOTSTRAP }} />
       </head>
       <body>
         <AppProviders>{children}</AppProviders>
