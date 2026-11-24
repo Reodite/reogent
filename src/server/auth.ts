@@ -8,7 +8,8 @@ interface AuthedUser {
 const unauthorized = (error: string) =>
   new Response(JSON.stringify({ error }), { status: 401, headers: { "content-type": "application/json" } });
 
-function getSecret(): Uint8Array {
+/** Returns the JWT signing secret. Throws when unset, or shorter than 32 bytes in production. */
+export function getSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET env var is not set");
   const bytes = new TextEncoder().encode(secret);

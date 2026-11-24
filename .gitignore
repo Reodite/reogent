@@ -50,3 +50,6 @@ next-env.d.ts
 
 # maplibre worker modules synced from node_modules by prebuild/predev
 /public/maplibre-gl-*.mjs
+
+# database dumps from the compose backup task
+/backups/

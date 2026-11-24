@@ -160,6 +160,20 @@ curl -s -X POST http://localhost:7700/keys \
 
 Outside production the app falls back to `MEILI_MASTER_KEY` when `MEILI_API_KEY` is empty.
 
+### Production operations
+
+In production the server exits at startup when the Postgres migration fails, `JWT_SECRET` is missing or short, or `MEILI_API_KEY` is unset. Compose restarts it with `restart: unless-stopped` and publishes it on `127.0.0.1:3000` only, for a reverse proxy on the same host. `GET /api/health` returns 200 when Postgres and Meilisearch respond and 503 otherwise; the compose healthcheck polls it.
+
+Two compose tasks cover data recovery:
+
+```bash
+docker compose --profile ops run --rm ingest   # rebuild Meilisearch indexes from the data submodule
+docker compose --profile ops run --rm backup   # write ./backups/reodite-<UTC timestamp>.dump
+pg_restore -h localhost -U reodite -d reodite --clean ./backups/<file>.dump
+```
+
+Schedule the backup task with cron or a systemd timer and copy `./backups` off the host. The dumps contain accounts, chats and schedules: protect them like the live database.
+
 ### Environment variables
 
 | Variable                   | Description                                                      |
