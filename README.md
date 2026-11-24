@@ -176,25 +176,27 @@ Schedule the backup task with cron or a systemd timer and copy `./backups` off t
 
 ### Environment variables
 
-| Variable                   | Description                                                      |
-| -------------------------- | ---------------------------------------------------------------- |
-| `LLM_API_TYPE`             | `openai`, `anthropic`, or `google` (default openai)              |
-| `LLM_BASE_URL`             | Base URL for OpenAI-compatible endpoints                         |
-| `LLM_MODEL`                | Model identifier                                                 |
-| `LLM_API_KEY`              | Provider API key                                                 |
-| `DATABASE_URL`             | Postgres URL (`localhost:5432` on host)                          |
-| `POSTGRES_PASSWORD`        | Postgres password (docker compose)                               |
-| `MEILI_URL`                | Meilisearch URL (`localhost:7700` on host)                       |
-| `MEILI_MASTER_KEY`         | Meilisearch master key                                           |
-| `MEILI_API_KEY`            | Read-only Meilisearch key for the app; required in production    |
-| `MEILI_ENV`                | Meilisearch environment (docker compose)                         |
-| `AUTH_ENABLED`             | Set `false` in non-production to bypass auth                     |
-| `JWT_SECRET`               | Random HMAC signing secret; at least 32 bytes in production      |
-| `DATA_PATH`                | Raw data root (`./ubc-unified-data/data` on host)                |
-| `PORT`                     | Dev-server port (docker compose)                                 |
-| `TRUSTED_CLIENT_IP_HEADER` | Optional proxy-overwritten single-IP header, such as `x-real-ip` |
+| Variable                   | Description                                                                   |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| `LLM_API_TYPE`             | `openai`, `anthropic`, or `google` (default openai)                           |
+| `LLM_BASE_URL`             | Base URL for OpenAI-compatible endpoints                                      |
+| `LLM_MODEL`                | Model identifier                                                              |
+| `LLM_API_KEY`              | Provider API key                                                              |
+| `DATABASE_URL`             | Postgres URL (`localhost:5432` on host)                                       |
+| `POSTGRES_PASSWORD`        | Postgres password (docker compose)                                            |
+| `MEILI_URL`                | Meilisearch URL (`localhost:7700` on host)                                    |
+| `MEILI_MASTER_KEY`         | Meilisearch master key                                                        |
+| `MEILI_API_KEY`            | Read-only Meilisearch key for the app; required in production                 |
+| `MEILI_ENV`                | Meilisearch environment (docker compose)                                      |
+| `AUTH_ENABLED`             | Set `false` in non-production to bypass auth                                  |
+| `JWT_SECRET`               | Random HMAC signing secret; at least 32 bytes in production                   |
+| `DATA_PATH`                | Raw data root (`./ubc-unified-data/data` on host)                             |
+| `PORT`                     | Dev-server port (docker compose)                                              |
+| `TRUSTED_CLIENT_IP_HEADER` | Proxy-overwritten single-IP header, such as `x-real-ip`; set it in production |
 
-Request throttling ignores forwarding headers by default and uses a shared anonymous bucket. For per-client limits, set `TRUSTED_CLIENT_IP_HEADER` only when your reverse proxy overwrites that header with one validated client IP and blocks direct application access. Do not pass through client-supplied values or comma-separated forwarding chains. The in-process limiter resets on restart and does not coordinate replicas; enforce distributed abuse and concurrency limits at the edge.
+Request throttling ignores forwarding headers by default. Without `TRUSTED_CLIENT_IP_HEADER`, every anonymous caller shares one bucket, so ten login attempts a minute from anyone lock out sign-in for everyone, and the server logs a warning at startup. Set it in production, and only when your reverse proxy overwrites that header with one validated client IP and blocks direct application access. Do not pass through client-supplied values or comma-separated forwarding chains. The in-process limiter resets on restart and does not coordinate replicas; enforce distributed abuse and concurrency limits at the edge.
+
+Each account can send 10 chat messages per day; the count resets at midnight America/Vancouver and lives in Postgres, so restarts do not reset it. Requests the server rejects before reaching the model, such as invalid bodies or a session the caller does not own, do not count. A message counts even when the model then fails.
 
 New passwords require at least 12 characters and at most 72 UTF-8 bytes. Existing bcrypt hashes cannot recover any password suffix beyond 72 bytes; rotate affected legacy credentials. Login retains compatibility with existing passwords.
 
