@@ -26,6 +26,9 @@ const nextConfig: NextConfig = {
           value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'",
         },
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+        // Browsers ignore HSTS over plain HTTP, so local HTTP servers are unaffected.
+        { key: "Strict-Transport-Security", value: "max-age=31536000" },
+        { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
       ],
     },
   ],
