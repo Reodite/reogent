@@ -14,8 +14,10 @@ import {
   type ReactNode,
 } from "react";
 
-const TOKEN_KEY = "reodite.auth.token";
+// Holds the signed-in identity only. The session token lives in an httpOnly cookie.
 const USER_KEY = "reodite.auth.user";
+// Sessions before cookie auth stored a readable token here; the provider deletes it.
+const LEGACY_TOKEN_KEY = "reodite.auth.token";
 
 type AppAuthStatus = "initializing" | "signedOut" | "signedIn";
 
@@ -26,7 +28,6 @@ interface AppAuthUser {
 
 interface AuthSession {
   user: AppAuthUser;
-  token: string;
   persisted: boolean;
 }
 
@@ -36,9 +37,12 @@ interface AppAuth {
   isGuest: boolean;
   signIn: (username: string, password: string) => Promise<{ error?: string }>;
   register: (username: string, password: string) => Promise<{ error?: string }>;
+  /** Ends the session in this browser, including the server cookie. */
   signOut: () => void;
-  /** Returns only this session's token; revoked closures return null. */
-  getToken: () => Promise<string | null>;
+  /** Returns this session's user id for the X-Reodite-User header; revoked closures return null. */
+  getUserId: () => Promise<string | null>;
+  /** Re-reads the signed-in account from the server, for example after a 401. */
+  refresh: () => void;
   continueAsGuest: () => void;
 }
 
@@ -49,7 +53,8 @@ const INITIALIZING: AppAuth = {
   signIn: async () => ({}),
   register: async () => ({}),
   signOut: () => {},
-  getToken: async () => null,
+  getUserId: async () => null,
+  refresh: () => {},
   continueAsGuest: () => {},
 };
 
@@ -59,44 +64,34 @@ export function useAppAuth(): AppAuth {
   return useContext(AppAuthContext);
 }
 
-function tokenPayload(token: string): { sub?: unknown; exp?: unknown } {
-  return JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+function parseUser(value: unknown): AppAuthUser | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const { userId, username } = value as Record<string, unknown>;
+  return typeof userId === "string" && userId && typeof username === "string" ? { userId, username } : null;
 }
 
-function tokenMatchesUser(token: string, userId: string): boolean {
-  if (userId === "guest") return token === "guest";
-  try {
-    // This checks local identity consistency, not the server's JWT signature.
-    return tokenPayload(token).sub === userId;
-  } catch {
-    return false;
-  }
-}
-
-function loadStoredSession(): AuthSession | null {
+function loadStoredUser(): AppAuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
-    const user = raw ? JSON.parse(raw) : null;
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (
-      !user ||
-      typeof user.username !== "string" ||
-      typeof user.userId !== "string" ||
-      !user.userId ||
-      !token ||
-      !tokenMatchesUser(token, user.userId)
-    )
-      return null;
-    return { user: { username: user.username, userId: user.userId }, token, persisted: true };
+    return raw ? parseUser(JSON.parse(raw)) : null;
   } catch {
     return null;
   }
 }
 
-function matchesStoredSession(session: AuthSession): boolean {
-  const stored = loadStoredSession();
-  return stored?.token === session.token && stored.user.userId === session.user.userId;
+/** Writes or clears the stored identity. Returns false when browser storage refuses. */
+function storeUser(user: AppAuthUser | null): boolean {
+  try {
+    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+    else localStorage.removeItem(USER_KEY);
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+const sameUser = (a: AppAuthUser | null | undefined, b: AppAuthUser | null | undefined) =>
+  a?.userId === b?.userId && a?.username === b?.username;
 
 export function AppAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null | undefined>(undefined);
@@ -118,25 +113,49 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
     setSession(next);
   }, []);
 
-  const refreshSession = useCallback(() => {
-    const next = loadStoredSession();
+  const startSession = useCallback(
+    (user: AppAuthUser | null) => {
+      const persisted = storeUser(user);
+      publishSession(user ? { user, persisted } : null);
+    },
+    [publishSession],
+  );
+
+  // Shows the stored identity at once, then lets the session cookie decide. Only a 401 or another
+  // account changes it; a guest stays a guest while signed out; a network failure keeps the stored identity.
+  const refreshSession = useCallback(async () => {
+    const stored = loadStoredUser();
     const current = activeSession.current;
-    // Browsers can deliver both key notifications after the complete session write.
-    if (
-      current?.persisted &&
-      next &&
-      current.token === next.token &&
-      current.user.userId === next.user.userId &&
-      current.user.username === next.user.username
-    )
+    if (stored ? !sameUser(current?.user, stored) : current) {
+      publishSession(stored && { user: stored, persisted: true });
+    }
+    const attempt = ++generation.current;
+    let server: AppAuthUser | null | undefined;
+    try {
+      const response = await fetch("/api/auth/session", { cache: "no-store" });
+      if (response.status === 401) server = null;
+      else if (response.ok) server = parseUser(await response.json()) ?? undefined;
+    } catch {
+      // Offline or unreachable: requests still fail closed on the server.
+    }
+    if (attempt !== generation.current) return;
+    const shown = activeSession.current;
+    if (server === undefined || (server === null && shown?.user.userId === "guest")) {
+      if (shown === undefined) publishSession(null);
       return;
-    publishSession(next);
-  }, [publishSession]);
+    }
+    if (shown === undefined || !sameUser(shown?.user, server)) startSession(server);
+  }, [publishSession, startSession]);
 
   useEffect(() => {
-    refreshSession();
+    try {
+      localStorage.removeItem(LEGACY_TOKEN_KEY);
+    } catch {
+      // Storage unavailable; nothing to remove.
+    }
+    void refreshSession();
     const onStorage = (event: StorageEvent) => {
-      if (event.key === null || event.key === TOKEN_KEY || event.key === USER_KEY) refreshSession();
+      if (event.key === null || event.key === USER_KEY) void refreshSession();
     };
     window.addEventListener("storage", onStorage);
     return () => {
@@ -145,21 +164,6 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
       generation.current += 1;
     };
   }, [refreshSession]);
-
-  const startSession = useCallback(
-    (user: AppAuthUser, token: string) => {
-      let persisted = false;
-      try {
-        localStorage.setItem(TOKEN_KEY, token);
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
-        persisted = true;
-      } catch {
-        // Retain the token in memory when browser storage is unavailable.
-      }
-      publishSession({ user, token, persisted });
-    },
-    [publishSession],
-  );
 
   const authenticate = useCallback(
     async (endpoint: "login" | "register", username: string, password: string) => {
@@ -174,7 +178,7 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
       } catch {
         return { error: "Can't reach the server. Check your connection and try again." };
       }
-      let body: Record<string, unknown>;
+      let body: unknown;
       try {
         body = await res.json();
       } catch {
@@ -182,16 +186,13 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
       }
       if (attempt !== generation.current) return { error: "Sign-in changed. Try again." };
       if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "Invalid server response." };
-      if (!res.ok) return { error: typeof body.error === "string" ? body.error : "Sign-in failed. Try again." };
-      if (
-        typeof body.token !== "string" ||
-        typeof body.username !== "string" ||
-        typeof body.userId !== "string" ||
-        !body.userId ||
-        !tokenMatchesUser(body.token, body.userId)
-      )
-        return { error: "Invalid server response." };
-      startSession({ username: body.username, userId: body.userId }, body.token);
+      if (!res.ok) {
+        const { error } = body as Record<string, unknown>;
+        return { error: typeof error === "string" ? error : "Sign-in failed. Try again." };
+      }
+      const user = parseUser(body);
+      if (!user) return { error: "Invalid server response." };
+      startSession(user);
       return {};
     },
     [startSession],
@@ -205,43 +206,30 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
     (username: string, password: string) => authenticate("register", username, password),
     [authenticate],
   );
-  const continueAsGuest = useCallback(
-    () => startSession({ username: "Guest", userId: "guest" }, "guest"),
-    [startSession],
-  );
+  const continueAsGuest = useCallback(() => startSession({ username: "Guest", userId: "guest" }), [startSession]);
+  const refresh = useCallback(() => void refreshSession(), [refreshSession]);
 
   const signOut = useCallback(() => {
     if (activeSession.current !== session) return;
-    if (session?.persisted) {
-      if (!matchesStoredSession(session)) {
-        refreshSession();
-        return;
-      }
-      try {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-      } catch {
-        // Revoke the in-memory session even when storage cannot be cleared.
-      }
+    // Another tab switched accounts: the shared cookie now belongs to it, so adopt that account instead.
+    if (session?.persisted && !sameUser(loadStoredUser(), session.user)) {
+      void refreshSession();
+      return;
     }
-    publishSession(null);
-  }, [session, publishSession, refreshSession]);
+    if (session && session.user.userId !== "guest") {
+      void fetch("/api/auth/logout", { method: "POST", keepalive: true }).catch(() => {});
+    }
+    startSession(null);
+  }, [session, startSession, refreshSession]);
 
-  const getToken = useCallback(async () => {
+  const getUserId = useCallback(async () => {
     if (!session || activeSession.current !== session) return null;
-    if (session.persisted && !matchesStoredSession(session)) {
-      refreshSession();
+    if (session.persisted && !sameUser(loadStoredUser(), session.user)) {
+      void refreshSession();
       return null;
     }
-    if (session.token !== "guest") {
-      const { exp } = tokenPayload(session.token);
-      if (typeof exp === "number" && exp <= Date.now() / 1000) {
-        signOut();
-        return null;
-      }
-    }
-    return session.token;
-  }, [session, refreshSession, signOut]);
+    return session.user.userId;
+  }, [session, refreshSession]);
 
   const value = useMemo<AppAuth>(
     () => ({
@@ -251,10 +239,11 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
       signIn,
       register,
       signOut,
-      getToken,
+      getUserId,
+      refresh,
       continueAsGuest,
     }),
-    [session, signIn, register, signOut, getToken, continueAsGuest],
+    [session, signIn, register, signOut, getUserId, refresh, continueAsGuest],
   );
 
   return (

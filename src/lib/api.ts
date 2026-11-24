@@ -103,8 +103,8 @@ export interface ChatApi {
 }
 
 interface ChatApiOptions {
-  /** Returns the app session token (JWT), or null when signed out. */
-  getToken: () => Promise<string | null>;
+  /** Returns the signed-in user id sent as X-Reodite-User, or null when signed out. */
+  getUserId: () => Promise<string | null>;
   /** Called once per 401 so the app can redirect to sign-in. */
   onUnauthorized?: () => void;
   baseUrl?: string;
@@ -125,10 +125,10 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, message);
 }
 
-function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOptions): ChatApi {
+function createHttpApi({ getUserId, onUnauthorized, baseUrl = "/api" }: ChatApiOptions): ChatApi {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const token = await getToken();
-    if (!token) {
+    const userId = await getUserId();
+    if (!userId) {
       onUnauthorized?.();
       throw new ApiError(401, "Not signed in");
     }
@@ -136,7 +136,7 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
       ...init,
       signal: init?.signal ?? AbortSignal.timeout(30_000),
       headers: {
-        Authorization: `Bearer ${token}`,
+        "X-Reodite-User": userId,
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
         ...init?.headers,
       },
@@ -178,15 +178,15 @@ function createHttpApi({ getToken, onUnauthorized, baseUrl = "/api" }: ChatApiOp
     },
     signal?: AbortSignal,
   ): Promise<ChatResponse> {
-    const token = await getToken();
-    if (!token) {
+    const userId = await getUserId();
+    if (!userId) {
       onUnauthorized?.();
       throw new ApiError(401, "Not signed in");
     }
     const response = await fetch(`${baseUrl}/chat`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        "X-Reodite-User": userId,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ session_id: sessionId, messages }),

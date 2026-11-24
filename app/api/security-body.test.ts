@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
   effect: vi.fn(),
   stream: vi.fn(),
 }));
-vi.mock("@/src/server/auth", () => ({ requireUser: mocks.requireUser, signToken: async () => "token" }));
+vi.mock("@/src/server/auth", () => ({
+  requireUser: mocks.requireUser,
+  sessionCookie: async () => "reodite_session=token; Path=/",
+}));
 vi.mock("@/src/server/rate-limit", () => ({
   rateLimitResponse: mocks.limit,
   getRateLimitIdentity: () => "test-client",

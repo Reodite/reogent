@@ -6,11 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CreateGroupModal, ScheduleApp, scheduleEmptyState } from "./schedule-app";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-const getToken = vi.hoisted(() => vi.fn(async () => "token"));
+const getUserId = vi.hoisted(() => vi.fn(async () => "u1"));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("@/src/components/auth/app-auth", () => ({
   useAppAuth: () => ({
-    getToken,
+    getUserId,
     user: { userId: "u1", username: "ada" },
   }),
 }));

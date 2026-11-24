@@ -1,10 +1,13 @@
 import { SignJWT } from "jose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requireUser, signToken } from "./auth";
+import { readCookie, requireUser, sessionCookie, signToken } from "./auth";
 
 const secret = "fixture-signing-secret-with-more-than-32-bytes";
 const key = new TextEncoder().encode(secret);
-const req = (token: string) => new Request("http://localhost", { headers: { authorization: `Bearer ${token}` } });
+const req = (token: string, user = "user-1") =>
+  new Request("http://localhost", {
+    headers: { cookie: `theme=dark; reodite_session=${token}`, "x-reodite-user": user },
+  });
 
 beforeEach(() => {
   vi.stubEnv("JWT_SECRET", secret);
@@ -61,5 +64,29 @@ describe("JWT admission", () => {
   it("refuses weak production signing secrets", async () => {
     vi.stubEnv("JWT_SECRET", "change-me-in-production");
     await expect(signToken("user-1", "alice")).rejects.toThrow(/32/);
+  });
+});
+
+describe("session cookie", () => {
+  it("keeps the token away from page scripts and cross-site subrequests", async () => {
+    const cookie = await sessionCookie("user-1", "alice");
+    expect(cookie).toMatch(
+      /^reodite_session=[\w-]+\.[\w-]+\.[\w-]+; Path=\/; Max-Age=604800; HttpOnly; SameSite=Lax; Secure$/,
+    );
+    vi.stubEnv("NODE_ENV", "development");
+    expect(await sessionCookie("user-1", "alice")).not.toContain("Secure");
+  });
+
+  it("reads one named cookie", () => {
+    const request = new Request("http://localhost", { headers: { cookie: "a=1; reodite_session=x=y; b" } });
+    expect(readCookie(request, "reodite_session")).toBe("x=y");
+    expect(readCookie(request, "b")).toBeUndefined();
+  });
+
+  it("requires the request to name the signed-in account", async () => {
+    const token = await signToken("user-1", "alice");
+    expect(((await requireUser(req(token, "user-2"))) as Response).status).toBe(401);
+    const unnamed = new Request("http://localhost", { headers: { cookie: `reodite_session=${token}` } });
+    expect(((await requireUser(unnamed)) as Response).status).toBe(401);
   });
 });

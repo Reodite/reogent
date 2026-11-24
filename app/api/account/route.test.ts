@@ -15,7 +15,7 @@ afterEach(() => vi.unstubAllEnvs());
 
 const request = (token?: string) =>
   new Request("http://localhost/api/account?userId=u2", {
-    headers: token ? { authorization: `Bearer ${token}` } : {},
+    headers: token ? { cookie: `reodite_session=${token}`, "x-reodite-user": "u1" } : {},
   });
 
 describe("GET /api/account", () => {

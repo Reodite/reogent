@@ -35,10 +35,21 @@ vi.mock("motion/react", () => ({
   useReducedMotion: () => true,
 }));
 
+// The session cookie follows a stored account; guests and empty browsers are signed out on the server.
+function sessionResponse() {
+  const raw = localStorage.getItem("reodite.auth.user");
+  const user = raw ? JSON.parse(raw) : null;
+  return user && user.userId !== "guest"
+    ? Response.json(user)
+    : Response.json({ error: "Not signed in" }, { status: 401 });
+}
+
 beforeEach(() => {
   vi.stubGlobal("localStorage", new Storage());
   localStorage.clear();
-  vi.stubGlobal("fetch", fetchMock);
+  vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+    String(input) === "/api/auth/session" ? Promise.resolve(sessionResponse()) : fetchMock(input, init),
+  );
 });
 afterEach(() => {
   cleanup();
@@ -52,18 +63,15 @@ function setRedirect(redirect: string) {
   navigation.search = new URLSearchParams({ redirect }).toString();
 }
 
-const studentToken = `header.${btoa(JSON.stringify({ sub: "student-id", exp: 4_000_000_000 }))}.signature`;
-
 function storeUser(isGuest = false) {
-  localStorage.setItem("reodite.auth.token", isGuest ? "guest" : studentToken);
   localStorage.setItem(
     "reodite.auth.user",
     JSON.stringify({ username: isGuest ? "Guest" : "student", userId: isGuest ? "guest" : "student-id" }),
   );
 }
 
-function submitForm(action: string) {
-  fireEvent.change(screen.getByRole("textbox", { name: "Username" }), { target: { value: " student " } });
+async function submitForm(action: string) {
+  fireEvent.change(await screen.findByRole("textbox", { name: "Username" }), { target: { value: " student " } });
   fireEvent.change(screen.getByLabelText(/Password/), { target: { value: "long-enough-password" } });
   fireEvent.click(screen.getByRole("button", { name: action }));
 }
@@ -136,7 +144,7 @@ describe.each([
       }),
     );
     renderPage();
-    submitForm(action);
+    await submitForm(action);
     expect(screen.getByRole("button").hasAttribute("disabled")).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/auth/${mode}`,
@@ -145,7 +153,7 @@ describe.each([
       }),
     );
     expect(navigation.router.replace).not.toHaveBeenCalled();
-    respond(Response.json({ token: studentToken, username: "student", userId: "student-id" }));
+    respond(Response.json({ username: "student", userId: "student-id" }));
 
     await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith("/app/settings"));
     expect(navigation.router.replace.mock.calls).toEqual([["/app/settings"]]);
@@ -185,7 +193,7 @@ describe.each([
     setRedirect("/app/settings");
     fetchMock.mockResolvedValue(Response.json({ error: "Check your username and password." }, { status: 401 }));
     renderPage();
-    submitForm(action);
+    await submitForm(action);
     expect((await screen.findByRole("alert")).textContent).toBe("Check your username and password.");
     expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Username" }));
     expect(screen.getByRole("button", { name: action }).hasAttribute("disabled")).toBe(false);
@@ -211,10 +219,10 @@ describe.each([
     "/onboarding?redirect=/tools",
   ])("uses /app for missing or untrusted redirect %j", async (redirect) => {
     if (redirect !== undefined) setRedirect(redirect);
-    fetchMock.mockResolvedValue(Response.json({ token: studentToken, username: "student", userId: "student-id" }));
+    fetchMock.mockResolvedValue(Response.json({ username: "student", userId: "student-id" }));
     renderPage();
-    expect(screen.getByRole("link", { name: link }).getAttribute("href")).toBe(`/${opposite}?redirect=%2Fapp`);
-    submitForm(action);
+    expect((await screen.findByRole("link", { name: link })).getAttribute("href")).toBe(`/${opposite}?redirect=%2Fapp`);
+    await submitForm(action);
     await waitFor(() => expect(navigation.router.replace).toHaveBeenCalledWith("/app"));
     expect(navigation.router.replace).toHaveBeenCalledTimes(1);
     expect(navigation.router.push).not.toHaveBeenCalled();

@@ -44,7 +44,7 @@ const req = (init: RequestInit & { auth?: boolean } = {}) =>
   new Request("http://localhost/api/x", {
     ...init,
     headers: {
-      ...(init.auth === false ? {} : { authorization: "Bearer token" }),
+      ...(init.auth === false ? {} : { cookie: "reodite_session=token", "x-reodite-user": "u1" }),
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },

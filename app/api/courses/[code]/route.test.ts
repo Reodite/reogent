@@ -18,7 +18,7 @@ const course = {
 function request(code: string, session = "2025W", token?: string) {
   return GET(
     new Request(`http://localhost/api/courses/${encodeURIComponent(code)}?session=${session}`, {
-      headers: token ? { authorization: `Bearer ${token}` } : {},
+      headers: token ? { cookie: `reodite_session=${token}`, "x-reodite-user": "u1" } : {},
     }),
     { params: Promise.resolve({ code }) },
   );

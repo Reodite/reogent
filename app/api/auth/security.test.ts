@@ -6,7 +6,7 @@ const { createUser, getUserByUsername, hash } = vi.hoisted(() => ({
   hash: vi.fn(),
 }));
 vi.mock("@/src/server/sessions/store", () => ({ createUser, getUserByUsername }));
-vi.mock("@/src/server/auth", () => ({ signToken: async () => "fixture-token" }));
+vi.mock("@/src/server/auth", () => ({ sessionCookie: async () => "reodite_session=fixture-token; Path=/" }));
 vi.mock("bcryptjs", () => ({ default: { hash, compare: async () => false } }));
 
 const request = (body: unknown, ip = "203.0.113.1") =>

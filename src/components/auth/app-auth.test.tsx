@@ -7,7 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppAuthProvider, useAppAuth } from "./app-auth";
 
 let auth: ReturnType<typeof useAppAuth>;
-const fetchMock = vi.fn<typeof fetch>();
+type User = { userId: string; username: string };
+// The account the browser's session cookie belongs to; null means no cookie.
+let cookieUser: User | null;
+let sessionOffline: boolean;
+let loginResponse: () => Promise<Response>;
+const calls: string[] = [];
 
 function Probe() {
   auth = useAppAuth();
@@ -22,86 +27,167 @@ function App() {
   );
 }
 
-function token(userId: string, exp = 4_000_000_000) {
-  return `header.${btoa(JSON.stringify({ sub: userId, exp }))}.signature`;
-}
-
-function response(userId: string) {
-  return Response.json({ userId, username: userId, token: token(userId) });
-}
-
-function storeUser(userId: string, value = token(userId)) {
-  localStorage.setItem("reodite.auth.token", value);
-  localStorage.setItem("reodite.auth.user", JSON.stringify({ userId, username: userId }));
-}
+const user = (userId: string): User => ({ userId, username: userId });
+const storeUser = (userId: string) => localStorage.setItem("reodite.auth.user", JSON.stringify(user(userId)));
+const storedUserId = () => JSON.parse(localStorage.getItem("reodite.auth.user") ?? "null")?.userId ?? null;
+const settle = () => act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
 
 beforeEach(() => {
   vi.stubGlobal("localStorage", new Storage());
-  vi.stubGlobal("fetch", fetchMock);
+  cookieUser = null;
+  sessionOffline = false;
+  calls.length = 0;
+  loginResponse = async () => Response.json({ error: "No login expected" }, { status: 500 });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url === "/api/auth/session") {
+        if (sessionOffline) throw new TypeError("Failed to fetch");
+        return cookieUser ? Response.json(cookieUser) : Response.json({ error: "Not signed in" }, { status: 401 });
+      }
+      if (url === "/api/auth/logout") {
+        cookieUser = null;
+        return new Response(null, { status: 204 });
+      }
+      return loginResponse();
+    }),
+  );
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  fetchMock.mockReset();
 });
 
 it("renders public children during SSR without opening a private session", () => {
   storeUser("stored-A");
   expect(renderToString(<App />)).toContain("Public content: <!-- -->initializing");
-  expect(fetchMock).not.toHaveBeenCalled();
+  expect(calls).toEqual([]);
+});
+
+describe("server session", () => {
+  it("adopts the cookie's account when nothing is stored", async () => {
+    cookieUser = user("cookie-A");
+    render(<App />);
+    expect(auth.status).toBe("initializing");
+    await settle();
+    expect(auth.user?.userId).toBe("cookie-A");
+    expect(storedUserId()).toBe("cookie-A");
+    expect(await auth.getUserId()).toBe("cookie-A");
+  });
+
+  it("shows the stored account at once and signs out when the cookie has expired", async () => {
+    storeUser("expired-A");
+    render(<App />);
+    expect(auth.user?.userId).toBe("expired-A");
+    const getter = auth.getUserId;
+    await settle();
+    expect(auth.status).toBe("signedOut");
+    expect(storedUserId()).toBeNull();
+    expect(await getter()).toBeNull();
+  });
+
+  it("switches to the cookie's account when it differs from the stored one", async () => {
+    storeUser("stale-A");
+    cookieUser = user("fresh-B");
+    render(<App />);
+    await settle();
+    expect(auth.user?.userId).toBe("fresh-B");
+    expect(storedUserId()).toBe("fresh-B");
+  });
+
+  it("keeps the stored account while the server is unreachable", async () => {
+    storeUser("offline-A");
+    sessionOffline = true;
+    render(<App />);
+    await settle();
+    expect(auth.user?.userId).toBe("offline-A");
+  });
+
+  it("signs out an empty browser while the server is unreachable", async () => {
+    sessionOffline = true;
+    render(<App />);
+    await settle();
+    expect(auth.status).toBe("signedOut");
+  });
+
+  it("deletes the readable token left by earlier versions", async () => {
+    localStorage.setItem("reodite.auth.token", "header.payload.signature");
+    render(<App />);
+    await settle();
+    expect(localStorage.getItem("reodite.auth.token")).toBeNull();
+  });
+
+  it("keeps a guest local until the browser holds an account session", async () => {
+    storeUser("guest");
+    render(<App />);
+    await settle();
+    expect(auth.isGuest).toBe(true);
+    expect(await auth.getUserId()).toBe("guest");
+    cookieUser = user("signed-in-elsewhere");
+    act(() => auth.refresh());
+    await settle();
+    expect(auth.user?.userId).toBe("signed-in-elsewhere");
+  });
 });
 
 describe.each(["signIn", "register"] as const)("%s response validation", (method) => {
-  it.each([null, false, 42, "not an object", []].map((body) => ({ body })))(
-    "rejects parsed nonobject bodies: $body",
+  it.each([null, false, 42, "not an object", [], { userId: "", username: "x" }].map((body) => ({ body })))(
+    "rejects invalid bodies: $body",
     async ({ body }) => {
       render(<App />);
+      await settle();
       for (const status of [200, 400]) {
-        fetchMock.mockResolvedValueOnce(Response.json(body, { status }));
+        loginResponse = async () => Response.json(body, { status });
         await act(async () => {
-          expect(await auth[method]("student", "password")).toEqual({ error: "Invalid server response." });
+          const result = await auth[method]("student", "password");
+          if (status === 200 || body === null || typeof body !== "object" || Array.isArray(body)) {
+            expect(result).toEqual({ error: "Invalid server response." });
+          } else {
+            expect(result).toHaveProperty("error");
+          }
         });
         expect(auth.status).toBe("signedOut");
-        expect(localStorage.getItem("reodite.auth.token")).toBeNull();
+        expect(storedUserId()).toBeNull();
       }
     },
   );
 
-  it("rejects a token belonging to a different user", async () => {
+  it("starts the returned account without storing any token", async () => {
     render(<App />);
-    fetchMock.mockResolvedValueOnce(Response.json({ userId: "B", username: "B", token: token("A") }));
-    await act(async () => {
-      expect(await auth[method]("B", "password")).toHaveProperty("error");
-    });
-    expect(auth.status).toBe("signedOut");
+    await settle();
+    loginResponse = async () => Response.json(user("new-A"));
+    await act(async () => expect(await auth[method]("new-A", "password")).toEqual({}));
+    expect(auth.user?.userId).toBe("new-A");
+    expect(storedUserId()).toBe("new-A");
+    expect(Object.keys(localStorage).filter((key) => key.startsWith("reodite.auth"))).toEqual(["reodite.auth.user"]);
   });
 });
 
-it("rejects malformed and mismatched stored sessions", async () => {
-  for (const value of ["invalid", token("B"), `header.${btoa("null")}.signature`]) {
-    storeUser("A", value);
-    const view = render(<App />);
-    expect(auth.status).toBe("signedOut");
-    expect(await auth.getToken()).toBeNull();
-    view.unmount();
-  }
-});
-
-it("revokes expired sessions and their old getter", async () => {
-  storeUser("expired-A", token("expired-A", 1));
+it("ends the server session on sign-out and revokes the old getter", async () => {
+  storeUser("out-A");
+  cookieUser = user("out-A");
   render(<App />);
-  const getter = auth.getToken;
-  await act(async () => expect(await getter()).toBeNull());
+  await settle();
+  const getter = auth.getUserId;
+  act(() => auth.signOut());
+  await settle();
+  expect(calls).toContain("/api/auth/logout");
+  expect(cookieUser).toBeNull();
   expect(auth.status).toBe("signedOut");
-  expect(localStorage.getItem("reodite.auth.token")).toBeNull();
+  expect(storedUserId()).toBeNull();
+  expect(await getter()).toBeNull();
 });
 
 it("revokes a persisted session in memory even when removal fails", async () => {
   storeUser("remove-A");
+  cookieUser = user("remove-A");
   render(<App />);
-  const getter = auth.getToken;
+  await settle();
+  const getter = auth.getUserId;
   vi.spyOn(localStorage, "removeItem").mockImplementation(() => {
     throw new Error("Storage unavailable");
   });
@@ -110,50 +196,66 @@ it("revokes a persisted session in memory even when removal fails", async () => 
   expect(await getter()).toBeNull();
 });
 
-it("keeps a partially persisted login in memory without borrowing old credentials", async () => {
-  storeUser("partial-A");
+it("adopts another tab's account instead of signing it out from a stale tab", async () => {
+  storeUser("stale-tab-A");
+  cookieUser = user("stale-tab-A");
   render(<App />);
-  const oldGetter = auth.getToken;
-  const setItem = localStorage.setItem.bind(localStorage);
-  vi.spyOn(localStorage, "setItem").mockImplementation((key, value) => {
-    if (key === "reodite.auth.user") throw new Error("Quota exceeded");
-    setItem(key, value);
-  });
-  fetchMock.mockResolvedValueOnce(response("partial-B"));
-  await act(async () => expect(await auth.signIn("partial-B", "password")).toEqual({}));
-  expect(await auth.getToken()).toBe(token("partial-B"));
-  expect(await oldGetter()).toBeNull();
+  await settle();
+  // Another tab signs in as B; this tab has not processed the storage event yet.
+  storeUser("other-tab-B");
+  cookieUser = user("other-tab-B");
+  expect(await auth.getUserId()).toBeNull();
   act(() => auth.signOut());
-  expect(auth.status).toBe("signedOut");
+  await settle();
+  expect(calls).not.toContain("/api/auth/logout");
+  expect(auth.user?.userId).toBe("other-tab-B");
+});
+
+it("keeps a partially persisted login in memory without borrowing the old identity", async () => {
+  storeUser("partial-A");
+  cookieUser = user("partial-A");
+  render(<App />);
+  await settle();
+  const oldGetter = auth.getUserId;
+  vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+    throw new Error("Quota exceeded");
+  });
+  loginResponse = async () => Response.json(user("partial-B"));
+  await act(async () => expect(await auth.signIn("partial-B", "password")).toEqual({}));
+  expect(await auth.getUserId()).toBe("partial-B");
+  expect(await oldGetter()).toBeNull();
 });
 
 it.each(["signout", "cross-tab", "unmount"])("ignores a delayed login after %s", async (transition) => {
   storeUser("pending-A");
+  cookieUser = user("pending-A");
   const view = render(<App />);
+  await settle();
   let resolve!: (response: Response) => void;
-  fetchMock.mockReturnValueOnce(
+  loginResponse = () =>
     new Promise<Response>((done) => {
       resolve = done;
-    }),
-  );
+    });
   const pending = auth.signIn("pending-B", "password");
-  act(() => {
+  await act(async () => {
     if (transition === "signout") auth.signOut();
     else if (transition === "unmount") view.unmount();
     else {
       storeUser("tab-C");
+      cookieUser = user("tab-C");
       window.dispatchEvent(new StorageEvent("storage", { key: "reodite.auth.user" }));
     }
   });
   await act(async () => {
-    resolve(response("pending-B"));
+    resolve(Response.json(user("pending-B")));
     expect(await pending).toHaveProperty("error");
   });
-  expect(localStorage.getItem("reodite.auth.token")).not.toBe(token("pending-B"));
+  await settle();
+  expect(storedUserId()).not.toBe("pending-B");
   if (transition === "cross-tab") expect(auth.user?.userId).toBe("tab-C");
 });
 
-it("remounts private descendant state on cross-tab identity changes before any foreign render", () => {
+it("remounts private descendant state on cross-tab identity changes before any foreign render", async () => {
   const renders: { userId: string; privateState: string }[] = [];
   function PrivateState() {
     const { user } = useAppAuth();
@@ -167,16 +269,20 @@ it("remounts private descendant state on cross-tab identity changes before any f
     return auth.status === "signedIn" ? <PrivateState /> : null;
   }
   storeUser("state-A");
+  cookieUser = user("state-A");
   const view = render(
     <AppAuthProvider>
       <GatedState />
     </AppAuthProvider>,
   );
+  await settle();
   expect(view.getByRole("status").textContent).toBe("private content for state-A");
   act(() => {
     storeUser("state-B");
+    cookieUser = user("state-B");
     window.dispatchEvent(new StorageEvent("storage", { key: "reodite.auth.user" }));
   });
+  await settle();
   expect(renders.filter((entry) => entry.userId === "state-B")).toEqual([
     { userId: "state-B", privateState: "private content for state-B" },
   ]);
@@ -187,11 +293,13 @@ it("remounts private descendant state on cross-tab identity changes before any f
 
 it("restores a usable session after Strict Mode effect replay", async () => {
   storeUser("strict-A");
+  cookieUser = user("strict-A");
   render(
     <StrictMode>
       <App />
     </StrictMode>,
   );
+  await settle();
   expect(auth.status).toBe("signedIn");
-  expect(await auth.getToken()).toBe(token("strict-A"));
+  expect(await auth.getUserId()).toBe("strict-A");
 });

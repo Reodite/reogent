@@ -7,7 +7,7 @@ afterEach(() => {
 
 describe("public map API client", () => {
   it("loads public map data without requesting an account token", async () => {
-    const getToken = vi.fn(async () => null);
+    const getUserId = vi.fn(async () => null);
     const onUnauthorized = vi.fn();
     const fetchMock = vi.fn(
       async () =>
@@ -16,15 +16,15 @@ describe("public map API client", () => {
         }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const api = createChatApi({ getToken, onUnauthorized });
+    const api = createChatApi({ getUserId, onUnauthorized });
 
     await api.getGeo("buildings");
 
-    expect(getToken).not.toHaveBeenCalled();
+    expect(getUserId).not.toHaveBeenCalled();
     expect(onUnauthorized).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/geo/buildings",
-      expect.objectContaining({ headers: expect.not.objectContaining({ Authorization: expect.anything() }) }),
+      expect.objectContaining({ headers: expect.not.objectContaining({ "X-Reodite-User": expect.anything() }) }),
     );
   });
 
@@ -38,7 +38,7 @@ describe("public map API client", () => {
         ),
       );
     vi.stubGlobal("fetch", fetchMock);
-    const api = createChatApi({ getToken: async () => null });
+    const api = createChatApi({ getUserId: async () => null });
     const buildingController = new AbortController();
     const routeController = new AbortController();
 
@@ -52,12 +52,12 @@ describe("public map API client", () => {
   it("authenticates favorite reads and idempotent state updates", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ codes: ["IBLC"] })));
     vi.stubGlobal("fetch", fetchMock);
-    const api = createChatApi({ getToken: async () => "jwt" });
+    const api = createChatApi({ getUserId: async () => "jwt" });
 
     await api.getBuildingFavorites();
     await api.setBuildingFavorite("IBLC", true);
 
-    expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({ Authorization: "Bearer jwt" });
+    expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({ "X-Reodite-User": "jwt" });
     expect(fetchMock.mock.calls[1][1]).toMatchObject({
       method: "PUT",
       body: JSON.stringify({ code: "IBLC", saved: true }),
@@ -65,11 +65,11 @@ describe("public map API client", () => {
   });
 
   it("keeps private account requests authenticated", async () => {
-    const getToken = vi.fn(async () => null);
+    const getUserId = vi.fn(async () => null);
     const onUnauthorized = vi.fn();
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const api = createChatApi({ getToken, onUnauthorized });
+    const api = createChatApi({ getUserId, onUnauthorized });
 
     await expect(api.listSessions()).rejects.toMatchObject({ status: 401 });
     expect(onUnauthorized).toHaveBeenCalledOnce();

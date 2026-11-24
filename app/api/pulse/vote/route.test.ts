@@ -20,7 +20,7 @@ const req = (body: unknown, opts: { auth?: boolean; contentType?: string } = {})
   new Request("http://localhost/api/pulse/vote", {
     method: "POST",
     headers: {
-      ...(opts.auth === false ? {} : { authorization: "Bearer token" }),
+      ...(opts.auth === false ? {} : { cookie: "reodite_session=token", "x-reodite-user": "u1" }),
       "content-type": opts.contentType ?? "application/json",
     },
     body: typeof body === "string" ? body : JSON.stringify(body),
