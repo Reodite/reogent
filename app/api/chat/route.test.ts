@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/src/server/auth", () => ({ requireUser: async () => ({ sub: "u1" }) }));
 vi.mock("@/src/server/account", () => ({
-  DAILY_CHAT_LIMIT: 10,
+  DAILY_CHAT_LIMIT: 100,
   consumeDailyChatMessage: mocks.consumeDailyChatMessage,
   recordTokenUsage: mocks.recordTokenUsage,
 }));
@@ -162,7 +162,7 @@ describe("daily chat limit", () => {
     const body = await response.json();
 
     expect(response.status).toBe(429);
-    expect(body.error).toContain("10 messages");
+    expect(body.error).toContain("100 messages");
     expect(mocks.consumeDailyChatMessage).toHaveBeenCalledExactlyOnceWith("u1");
     expect(mocks.streamAgent).not.toHaveBeenCalled();
     expect(mocks.appendExchange).not.toHaveBeenCalled();

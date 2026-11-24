@@ -196,7 +196,7 @@ Schedule the backup task with cron or a systemd timer and copy `./backups` off t
 
 Request throttling ignores forwarding headers by default. Without `TRUSTED_CLIENT_IP_HEADER`, every anonymous caller shares one bucket, so ten login attempts a minute from anyone lock out sign-in for everyone, and the server logs a warning at startup. Set it in production, and only when your reverse proxy overwrites that header with one validated client IP and blocks direct application access. Do not pass through client-supplied values or comma-separated forwarding chains. The in-process limiter resets on restart and does not coordinate replicas; enforce distributed abuse and concurrency limits at the edge.
 
-Each account can send 10 chat messages per day; the count resets at midnight America/Vancouver and lives in Postgres, so restarts do not reset it. Requests the server rejects before reaching the model, such as invalid bodies or a session the caller does not own, do not count. A message counts even when the model then fails.
+Each account can send 100 chat messages per day; the count resets at midnight America/Vancouver and lives in Postgres, so restarts do not reset it. Requests the server rejects before reaching the model, such as invalid bodies or a session the caller does not own, do not count. A message counts even when the model then fails.
 
 New passwords require at least 12 characters and at most 72 UTF-8 bytes. Existing bcrypt hashes cannot recover any password suffix beyond 72 bytes; rotate affected legacy credentials. Login retains compatibility with existing passwords.
 

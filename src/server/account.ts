@@ -31,7 +31,7 @@ export async function getAccount(userId: string): Promise<AccountDetails | null>
 }
 
 /** Chat messages each account may send per Vancouver calendar day. */
-export const DAILY_CHAT_LIMIT = 10;
+export const DAILY_CHAT_LIMIT = 100;
 
 /**
  * Atomically counts one chat message against today's allowance. Returns false

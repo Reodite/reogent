@@ -30,7 +30,7 @@ vi.mock("@/src/server/agent/stream", () => ({
 
 vi.mock("@/src/server/search", () => ({ getSearch: () => ({}) }));
 vi.mock("@/src/server/account", () => ({
-  DAILY_CHAT_LIMIT: 10,
+  DAILY_CHAT_LIMIT: 100,
   consumeDailyChatMessage: async () => true,
   recordTokenUsage: async () => {},
 }));
