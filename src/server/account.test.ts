@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getAccount, recordTokenUsage } from "./account";
+import { consumeDailyChatMessage, DAILY_CHAT_LIMIT, getAccount, recordTokenUsage } from "./account";
 
 const query = vi.hoisted(() => vi.fn());
 vi.mock("./db", () => ({ getPool: () => ({ query }) }));
@@ -78,5 +78,21 @@ describe("token persistence", () => {
   it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])("rejects invalid usage: %s", async (tokens) => {
     await expect(recordTokenUsage("u1", tokens)).rejects.toThrow("Invalid token usage");
     expect(query).not.toHaveBeenCalled();
+  });
+});
+
+describe("daily chat allowance", () => {
+  it("gates the increment on the account, the Vancouver day, and the limit in one statement", async () => {
+    query.mockResolvedValue({ rowCount: 1 });
+    expect(await consumeDailyChatMessage("u1")).toBe(true);
+    const [sql, params] = query.mock.calls[0];
+    expect(params).toEqual(["u1", DAILY_CHAT_LIMIT]);
+    expect(sql).toContain("AT TIME ZONE 'America/Vancouver'");
+    expect(sql).toContain("WHERE id = $1 AND (chat_day IS DISTINCT FROM today.day OR chat_messages < $2)");
+  });
+
+  it("refuses when no row was updated", async () => {
+    query.mockResolvedValue({ rowCount: 0 });
+    expect(await consumeDailyChatMessage("u1")).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { uuid } from "@/src/lib/uuid";
-import { recordTokenUsage } from "@/src/server/account";
+import { consumeDailyChatMessage, DAILY_CHAT_LIMIT, recordTokenUsage } from "@/src/server/account";
 import { streamAgent } from "@/src/server/agent/stream";
 import { requireUser } from "@/src/server/auth";
 import type { ActivityBlock } from "@/src/server/core/types";
@@ -34,6 +34,14 @@ export async function POST(request: Request): Promise<Response> {
 
     if (parsed.value.session_id && !(await canWriteSession(user.sub, parsed.value.session_id))) {
       return json({ error: "Session not found" }, 404);
+    }
+    if (!(await consumeDailyChatMessage(user.sub))) {
+      return json(
+        {
+          error: `You've used all ${DAILY_CHAT_LIMIT} messages for today. You can send more after midnight Pacific time.`,
+        },
+        429,
+      );
     }
 
     const sessionId = parsed.value.session_id ?? uuid();

@@ -8,9 +8,14 @@ const mocks = vi.hoisted(() => ({
   streamAgent: vi.fn(),
   getProfile: vi.fn(),
   recordTokenUsage: vi.fn(),
+  consumeDailyChatMessage: vi.fn(),
 }));
 vi.mock("@/src/server/auth", () => ({ requireUser: async () => ({ sub: "u1" }) }));
-vi.mock("@/src/server/account", () => ({ recordTokenUsage: mocks.recordTokenUsage }));
+vi.mock("@/src/server/account", () => ({
+  DAILY_CHAT_LIMIT: 10,
+  consumeDailyChatMessage: mocks.consumeDailyChatMessage,
+  recordTokenUsage: mocks.recordTokenUsage,
+}));
 vi.mock("@/src/server/rate-limit", () => ({ rateLimitResponse: () => null }));
 vi.mock("@/src/server/sessions/store", () => ({
   canWriteSession: mocks.canWriteSession,
@@ -34,6 +39,7 @@ const request = (id?: string) =>
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.canWriteSession.mockResolvedValue(true);
+  mocks.consumeDailyChatMessage.mockResolvedValue(true);
   mocks.appendExchange.mockResolvedValue(undefined);
   mocks.getProfile.mockResolvedValue(null);
   mocks.streamAgent.mockImplementation(async function* () {
@@ -127,5 +133,30 @@ describe("chat session ownership", () => {
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
     expect(events).toContainEqual({ type: "error", message: "Could not complete the response. Please try again." });
     expect(mocks.generateSessionTitle).not.toHaveBeenCalled();
+  });
+});
+
+describe("daily chat limit", () => {
+  it("rejects a message past the daily allowance before model execution", async () => {
+    mocks.consumeDailyChatMessage.mockResolvedValue(false);
+
+    const response = await POST(request(sessionId));
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(body.error).toContain("10 messages");
+    expect(mocks.consumeDailyChatMessage).toHaveBeenCalledExactlyOnceWith("u1");
+    expect(mocks.streamAgent).not.toHaveBeenCalled();
+    expect(mocks.appendExchange).not.toHaveBeenCalled();
+  });
+
+  it("does not spend the allowance on a session the caller cannot write", async () => {
+    mocks.canWriteSession.mockResolvedValue(false);
+
+    const response = await POST(request(sessionId));
+    await response.text();
+
+    expect(response.status).toBe(404);
+    expect(mocks.consumeDailyChatMessage).not.toHaveBeenCalled();
   });
 });
