@@ -34,7 +34,7 @@ function storedLogin(userId: string) {
 // The session cookie follows the identity stored in this browser.
 function sessionResponse() {
   const raw = localStorage.getItem("reodite.auth.user");
-  return raw ? Response.json(JSON.parse(raw)) : Response.json({ error: "Not signed in" }, { status: 401 });
+  return raw ? Response.json(JSON.parse(raw)) : new Response(null, { status: 204 });
 }
 
 function storageEvent(key: string | null = "reodite.auth.user") {

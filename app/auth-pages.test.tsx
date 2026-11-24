@@ -39,9 +39,7 @@ vi.mock("motion/react", () => ({
 function sessionResponse() {
   const raw = localStorage.getItem("reodite.auth.user");
   const user = raw ? JSON.parse(raw) : null;
-  return user && user.userId !== "guest"
-    ? Response.json(user)
-    : Response.json({ error: "Not signed in" }, { status: 401 });
+  return user && user.userId !== "guest" ? Response.json(user) : new Response(null, { status: 204 });
 }
 
 beforeEach(() => {

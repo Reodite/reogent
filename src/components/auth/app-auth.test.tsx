@@ -45,7 +45,7 @@ beforeEach(() => {
       calls.push(url);
       if (url === "/api/auth/session") {
         if (sessionOffline) throw new TypeError("Failed to fetch");
-        return cookieUser ? Response.json(cookieUser) : Response.json({ error: "Not signed in" }, { status: 401 });
+        return cookieUser ? Response.json(cookieUser) : new Response(null, { status: 204 });
       }
       if (url === "/api/auth/logout") {
         cookieUser = null;

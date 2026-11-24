@@ -133,7 +133,7 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
     let server: AppAuthUser | null | undefined;
     try {
       const response = await fetch("/api/auth/session", { cache: "no-store" });
-      if (response.status === 401) server = null;
+      if (response.status === 204 || response.status === 401) server = null;
       else if (response.ok) server = parseUser(await response.json()) ?? undefined;
     } catch {
       // Offline or unreachable: requests still fail closed on the server.
