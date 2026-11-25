@@ -1,7 +1,6 @@
 "use client";
 
-import { Icon } from "@/src/components/icons";
-import { Button } from "@/src/components/ui/button";
+import { Button, CloseButton } from "@/src/components/ui/button";
 import { DialogActions, DialogHeader, DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import { Field, SelectInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
@@ -64,15 +63,12 @@ export function PlannerImportDialog({
           }
           className="border-border-subtle border-b p-4 sm:p-6"
           closeAction={
-            <Button
+            <CloseButton
               data-dialog-initial-focus
+              density="dense"
+              label="Close Workday import review"
               onClick={onClose}
-              aria-label="Close Workday import review"
-              variant="ghost"
-              size="denseIcon"
-            >
-              <Icon name="close" className="size-4" />
-            </Button>
+            />
           }
         />
 

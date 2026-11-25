@@ -9,7 +9,7 @@ import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/
 import { TermSwitcher } from "@/src/components/schedule/term-switcher";
 import { ToastProvider } from "@/src/components/schedule/toast";
 import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
-import { Button } from "@/src/components/ui/button";
+import { CloseButton } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import { InfoChip } from "@/src/components/ui/info-chip";
 import type { CourseDoc } from "@/src/lib/api-types";
@@ -336,17 +336,14 @@ function SchedulePlannerPaneInner() {
             ? "Some course details could not be refreshed. Cached times remain visible."
             : "The catalog changed since your last visit. Review highlighted course details before registering."}
         </span>
-        <Button
-          variant="ghost"
-          size="denseIcon"
+        <CloseButton
+          density="dense"
+          label="Dismiss notice"
           onClick={() => {
             setStale(false);
             setCatalogError(false);
           }}
-          aria-label="Dismiss notice"
-        >
-          <Icon name="close" className="size-3.5" />
-        </Button>
+        />
       </div>
     ) : undefined;
 

@@ -5,7 +5,7 @@
 // preserve the image slot on load failure.
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
-import { Button } from "@/src/components/ui/button";
+import { CloseButton } from "@/src/components/ui/button";
 import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
 import { Skeleton, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
@@ -184,9 +184,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
             </p>
           )}
         </div>
-        <Button onClick={onClose} aria-label="Close building details" variant="ghost" size="icon">
-          <Icon name="close" size={16} />
-        </Button>
+        <CloseButton label="Close building details" onClick={onClose} />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [overscroll-behavior-y:contain] px-3.5 py-3">

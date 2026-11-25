@@ -9,7 +9,7 @@ import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { SidebarItemButton, SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
 import { ToolList } from "@/src/components/shell/tool-list";
 import { UserMenu } from "@/src/components/shell/user-menu";
-import { Button } from "@/src/components/ui/button";
+import { Button, CloseButton } from "@/src/components/ui/button";
 
 const UNITY_ITEMS: { path: string; label: string; icon: IconName }[] = [
   { path: "/app/pulse/announcements", label: "Announcements", icon: "announcement" },
@@ -129,11 +129,7 @@ export function LeftSidebar({
           !collapsed ? (
             <>
               <CollapseExpandButton collapsed={false} onCollapse={onCollapse} label={label} />
-              {onClose && (
-                <Button onClick={onClose} aria-label={`Close ${label.toLowerCase()}`} variant="ghost" size="icon">
-                  <Icon name="close" size={18} />
-                </Button>
-              )}
+              {onClose && <CloseButton label={`Close ${label.toLowerCase()}`} onClick={onClose} />}
             </>
           ) : undefined
         }

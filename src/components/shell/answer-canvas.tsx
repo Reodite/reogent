@@ -1,11 +1,10 @@
 "use client";
 
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
-import { Icon } from "@/src/components/icons";
 import { MapArea } from "@/src/components/map/map-panel";
 import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useWorkspaceHost, WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
-import { Button } from "@/src/components/ui/button";
+import { CloseButton } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import type { CanvasView, PaneState } from "@/src/shared/panes";
 import { useCallback, useRef, useState, type ComponentType } from "react";
@@ -73,9 +72,7 @@ function AnswerCanvasTitlebar({
       </span>
       <Heading className="min-w-0 shrink-0 truncate">{label}</Heading>
       <div ref={onOutlet} data-pane-titlebar-slot className="relative z-30 min-w-0 flex-1" />
-      <Button aria-label="Close" onClick={onClose} variant="ghost" size="icon">
-        <Icon name="close" size={18} />
-      </Button>
+      <CloseButton label="Close" onClick={onClose} />
     </header>
   );
 }

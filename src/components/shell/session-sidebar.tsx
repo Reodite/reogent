@@ -5,7 +5,7 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { SidebarItemButton, SidebarListItem } from "@/src/components/shell/sidebar-list";
-import { Button } from "@/src/components/ui/button";
+import { Button, CloseButton } from "@/src/components/ui/button";
 import { canRestoreFocus, DialogActions, DialogHeader, DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import { RetryAlert, RetryState } from "@/src/components/ui/feedback";
 import { FloatingPanel } from "@/src/components/ui/floating-panel";
@@ -246,15 +246,7 @@ function SessionItem({
             >
               <Icon name="check" size={16} />
             </Button>
-            <Button
-              variant="ghost"
-              size="denseIcon"
-              onClick={cancelRename}
-              disabled={saving}
-              aria-label="Cancel rename"
-            >
-              <Icon name="close" size={16} />
-            </Button>
+            <CloseButton density="dense" label="Cancel rename" onClick={cancelRename} disabled={saving} />
           </div>
           {error ? (
             <p id={errorId} role="alert" className="text-error px-2 pb-2 text-xs leading-5">
@@ -468,11 +460,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
                 <Icon name="left" size={18} />
               </Button>
             )}
-            {onClose && (
-              <Button onClick={onClose} aria-label="Close sessions" variant="ghost" size="icon">
-                <Icon name="close" size={18} />
-              </Button>
-            )}
+            {onClose && <CloseButton label="Close sessions" onClick={onClose} />}
           </>
         }
       />

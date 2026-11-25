@@ -16,7 +16,7 @@ import {
 } from "@/src/components/dnd/drag-overlay-physics";
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
-import { Button } from "@/src/components/ui/button";
+import { Button, CloseButton } from "@/src/components/ui/button";
 import { RetryAlert } from "@/src/components/ui/feedback";
 import { FloatingPanel } from "@/src/components/ui/floating-panel";
 import { Heading } from "@/src/components/ui/heading";
@@ -868,16 +868,12 @@ function AutofillSummary({ result, onClose }: { result: AutofillResult; onClose:
             </p>
           )}
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="denseIcon"
+        <CloseButton
+          density="dense"
+          label="Dismiss autofill summary"
           onClick={onClose}
-          aria-label="Dismiss autofill summary"
           className="text-muted -mt-1 -mr-1"
-        >
-          <Icon name="close" size={14} />
-        </Button>
+        />
       </div>
     </motion.div>
   );

@@ -108,7 +108,7 @@ export function ButtonLink({
 }
 
 type BackActionProps = {
-  /** Destination-specific accessible name, also shown as the tooltip. */
+  /** Accessible name; back actions also show it as the tooltip. */
   label: string;
 };
 
@@ -130,5 +130,24 @@ export function BackLink({
     <ButtonLink variant="ghost" size="fieldIcon" aria-label={label} title={label} {...props}>
       <Icon name="arrowLeft" size={20} />
     </ButtonLink>
+  );
+}
+
+const CLOSE_DENSITY = {
+  default: { size: "icon", icon: 18 },
+  dense: { size: "denseIcon", icon: 16 },
+} as const;
+
+/** Renders a ghost close or dismiss button; `label` names what closes. Use dense inside dialogs, popovers, and notices. */
+export function CloseButton({
+  label,
+  density = "default",
+  ...props
+}: Omit<ButtonProps, "children" | "variant" | "size"> & BackActionProps & { density?: keyof typeof CLOSE_DENSITY }) {
+  const { size, icon } = CLOSE_DENSITY[density];
+  return (
+    <Button variant="ghost" size={size} aria-label={label} {...props}>
+      <Icon name="close" size={icon} />
+    </Button>
   );
 }

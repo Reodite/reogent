@@ -22,7 +22,7 @@ import { useApi } from "@/src/components/providers";
 import { INLINE_CANVAS_QUERY } from "@/src/components/shell/answer-sheet";
 import { ChatMessagesSkeleton } from "@/src/components/shell/shell-loading";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
-import { Button } from "@/src/components/ui/button";
+import { Button, CloseButton } from "@/src/components/ui/button";
 import { ErrorBoundary } from "@/src/components/ui/error-boundary";
 import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
@@ -749,9 +749,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
                   <Icon name="refresh2" size={14} />
                   Retry
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => setSendError(null)} aria-label="Dismiss error">
-                  <Icon name="close" size={16} />
-                </Button>
+                <CloseButton label="Dismiss error" onClick={() => setSendError(null)} />
               </div>
             </div>
           )}

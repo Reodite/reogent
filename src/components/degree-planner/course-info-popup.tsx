@@ -16,7 +16,7 @@
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
-import { Button } from "@/src/components/ui/button";
+import { CloseButton } from "@/src/components/ui/button";
 import { FloatingPanel } from "@/src/components/ui/floating-panel";
 import { Heading } from "@/src/components/ui/heading";
 import { InlineLink } from "@/src/components/ui/inline-action";
@@ -92,16 +92,12 @@ export function CourseInfoPopup({
           {course.code}
           {course.title && <span className="text-on-surface-variant"> — {course.title}</span>}
         </Heading>
-        <Button
-          type="button"
-          variant="ghost"
-          size="denseIcon"
+        <CloseButton
+          density="dense"
+          label="Close course details"
           onClick={onClose}
           className="text-muted -mt-1 -mr-1"
-          aria-label="Close course details"
-        >
-          <Icon name="close" size={15} />
-        </Button>
+        />
       </div>
       {issues && issues.length > 0 && (
         <div className="flex flex-col gap-1.5">
