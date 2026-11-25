@@ -9,12 +9,12 @@ import { Disclosure } from "@/src/components/ui/disclosure";
 import { RetryState } from "@/src/components/ui/feedback";
 import { Checkbox, Field, SelectInput, TextInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
+import { ApiError } from "@/src/lib/api-types";
 import type { MergedBlock } from "@/src/lib/schedule/calendar/buildCalendar";
 import { buildCalendar, expandBlocks } from "@/src/lib/schedule/calendar/buildCalendar";
 import {
   normalizePerson,
   sharerFetch,
-  SharerFetchError,
   type GroupDetail,
   type GroupSummary,
   type WirePerson,
@@ -134,7 +134,7 @@ function ScheduleAppInner({ groupCode }: Props) {
         const result = await request<{ group: GroupDetail }>(`/groups/${code}`, { method: "GET" });
         return result.group;
       } catch (error) {
-        if (error instanceof SharerFetchError && error.status === 404) return null;
+        if (error instanceof ApiError && error.status === 404) return null;
         throw error;
       }
     },

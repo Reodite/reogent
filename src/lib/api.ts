@@ -19,20 +19,23 @@ import type { CourseIndexEntry } from "@/src/shared/course-index";
 import type { AccountDetails, StudentProfile } from "@/src/shared/profile";
 import type { FeatureCollection } from "geojson";
 
+/** Handlers for the NDJSON events streamed by POST /api/chat. */
+export interface ChatCallbacks {
+  onDelta?: (text: string) => void;
+  onTextClear?: () => void;
+  onThinking?: (text: string) => void;
+  onToolStart?: (name: string, input: Record<string, unknown>) => void;
+  onToolEnd?: (name: string, result: unknown) => void;
+  onTurnStart?: () => void;
+  onCitations?: (citations: Citation[]) => void;
+}
+
 export interface ChatApi {
   /** POST /api/chat — streams NDJSON events; calls onDelta for text, returns final ChatResponse. */
   chat(
     sessionId: string,
     messages: ChatMessage[],
-    callbacks?: {
-      onDelta?: (text: string) => void;
-      onTextClear?: () => void;
-      onThinking?: (text: string) => void;
-      onToolStart?: (name: string, input: Record<string, unknown>) => void;
-      onToolEnd?: (name: string, result: unknown) => void;
-      onTurnStart?: () => void;
-      onCitations?: (citations: Citation[]) => void;
-    },
+    callbacks?: ChatCallbacks,
     signal?: AbortSignal,
   ): Promise<ChatResponse>;
   /** GET /api/sessions — caller's sessions, most recently updated first. */
@@ -125,76 +128,65 @@ async function parseError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, message);
 }
 
+/**
+ * Fetches a JSON endpoint with a 30s default timeout and a JSON content type for bodies.
+ * Throws ApiError with the response's `error` message on non-2xx; resolves 204 to undefined.
+ */
+export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    signal: init?.signal ?? AbortSignal.timeout(30_000),
+    headers: {
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      ...init?.headers,
+    },
+  });
+  if (!response.ok) throw await parseError(response);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
 function createHttpApi({ getUserId, onUnauthorized, baseUrl = "/api" }: ChatApiOptions): ChatApi {
-  async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  async function userHeader(): Promise<{ "X-Reodite-User": string }> {
     const userId = await getUserId();
     if (!userId) {
       onUnauthorized?.();
       throw new ApiError(401, "Not signed in");
     }
-    const response = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      signal: init?.signal ?? AbortSignal.timeout(30_000),
-      headers: {
-        "X-Reodite-User": userId,
-        ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...init?.headers,
-      },
-    });
-    if (!response.ok) {
-      const error = await parseError(response);
-      if (error.status === 401) onUnauthorized?.();
-      throw error;
-    }
-    if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
+    return { "X-Reodite-User": userId };
   }
 
-  async function publicRequest<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      signal: init?.signal ?? AbortSignal.timeout(30_000),
-      headers: {
-        ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...init?.headers,
-      },
-    });
-    if (!response.ok) throw await parseError(response);
-    if (response.status === 204) return undefined as T;
-    return (await response.json()) as T;
+  function reportUnauthorized(error: unknown): void {
+    if (error instanceof ApiError && error.status === 401) onUnauthorized?.();
   }
+
+  async function request<T>(path: string, init?: RequestInit): Promise<T> {
+    const headers = { ...(await userHeader()), ...init?.headers };
+    try {
+      return await fetchJson<T>(`${baseUrl}${path}`, { ...init, headers });
+    } catch (error) {
+      reportUnauthorized(error);
+      throw error;
+    }
+  }
+
+  const publicRequest = <T>(path: string, init?: RequestInit): Promise<T> => fetchJson<T>(`${baseUrl}${path}`, init);
 
   async function chatStream(
     sessionId: string,
     messages: ChatMessage[],
-    callbacks?: {
-      onDelta?: (text: string) => void;
-      onTextClear?: () => void;
-      onThinking?: (text: string) => void;
-      onToolStart?: (name: string, input: Record<string, unknown>) => void;
-      onToolEnd?: (name: string, result: unknown) => void;
-      onTurnStart?: () => void;
-      onCitations?: (citations: Citation[]) => void;
-    },
+    callbacks?: ChatCallbacks,
     signal?: AbortSignal,
   ): Promise<ChatResponse> {
-    const userId = await getUserId();
-    if (!userId) {
-      onUnauthorized?.();
-      throw new ApiError(401, "Not signed in");
-    }
     const response = await fetch(`${baseUrl}/chat`, {
       method: "POST",
-      headers: {
-        "X-Reodite-User": userId,
-        "Content-Type": "application/json",
-      },
+      headers: { ...(await userHeader()), "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sessionId, messages }),
       signal,
     });
     if (!response.ok) {
       const error = await parseError(response);
-      if (error.status === 401) onUnauthorized?.();
+      reportUnauthorized(error);
       throw error;
     }
     if (!response.body) throw new ApiError(500, "No response body");

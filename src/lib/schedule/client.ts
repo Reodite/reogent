@@ -1,3 +1,5 @@
+import { fetchJson } from "@/src/lib/api";
+import { ApiError } from "@/src/lib/api-types";
 import { colorFor, initialsFor } from "./avatar";
 import type { Avatar, Person, Schedule } from "./types";
 
@@ -55,42 +57,13 @@ function isSchedule(value: unknown): value is Schedule {
   return !!value && typeof value === "object" && Array.isArray((value as Schedule).sections);
 }
 
-/** Authenticated fetcher bound to the app session's user id. */
+/** Fetches /api/sharer with the app session's user id; throws ApiError(401) when signed out. */
 export async function sharerFetch<T>(
   getUserId: () => Promise<string | null>,
   path: string,
   init?: RequestInit,
 ): Promise<T> {
   const userId = await getUserId();
-  if (!userId) throw new SharerFetchError(401, "Not signed in");
-  const res = await fetch(`/api/sharer${path}`, {
-    ...init,
-    signal: init?.signal ?? AbortSignal.timeout(30_000),
-    headers: {
-      ...init?.headers,
-      "X-Reodite-User": userId,
-      ...(init?.body ? { "content-type": "application/json" } : {}),
-    },
-  });
-  if (!res.ok) {
-    let message = `Request failed (${res.status})`;
-    try {
-      const body = (await res.json()) as { error?: string };
-      if (body.error) message = body.error;
-    } catch {
-      // non-JSON error body
-    }
-    throw new SharerFetchError(res.status, message);
-  }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
-}
-
-export class SharerFetchError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
+  if (!userId) throw new ApiError(401, "Not signed in");
+  return fetchJson<T>(`/api/sharer${path}`, { ...init, headers: { ...init?.headers, "X-Reodite-User": userId } });
 }
