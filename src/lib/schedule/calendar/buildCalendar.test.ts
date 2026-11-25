@@ -8,14 +8,14 @@ import { parseScheduleXlsx } from "../parse/scheduleParser";
 import type { DayCode, Person, Section } from "../types";
 import { buildCalendar, expandBlocks, layoutDay, mergeBlocks } from "./buildCalendar";
 
-const SPRING = "View_Student_Registration_Saved_Schedule.xlsx";
-const FALL = "View_Student_Registration_Saved_Schedule (1).xlsx";
+const SPRING = "saved-schedule-spring.xlsx";
+const FALL = "saved-schedule-fall.xlsx";
 
 const COGS = "Research Methods in Cognitive Systems";
 const PHIL = "Enriched Symbolic Logic";
 
 function loadExample(name: string): ArrayBuffer {
-  const buf = readFileSync(join(__dirname, "../examples", name));
+  const buf = readFileSync(join(__dirname, "../../../../__fixtures__/workday", name));
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
 }
 

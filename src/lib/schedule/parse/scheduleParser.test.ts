@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 import { parseScheduleXlsx } from "./scheduleParser";
 
 function loadExample(name: string): ArrayBuffer {
-  const buf = readFileSync(join(__dirname, "../examples", name));
+  const buf = readFileSync(join(__dirname, "../../../../__fixtures__/workday", name));
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
 }
 
 describe("parseScheduleXlsx — Spring 2027 example", () => {
-  const schedule = parseScheduleXlsx(loadExample("View_Student_Registration_Saved_Schedule.xlsx"), "spring.xlsx");
+  const schedule = parseScheduleXlsx(loadExample("saved-schedule-spring.xlsx"), "spring.xlsx");
 
   it("extracts all section rows by title", () => {
     const titles = schedule.sections.map((s) => `${s.title}|${s.component}`);
@@ -61,7 +61,7 @@ describe("parseScheduleXlsx — Spring 2027 example", () => {
 });
 
 describe("parseScheduleXlsx — Fall 2026 example", () => {
-  const schedule = parseScheduleXlsx(loadExample("View_Student_Registration_Saved_Schedule (1).xlsx"), "fall.xlsx");
+  const schedule = parseScheduleXlsx(loadExample("saved-schedule-fall.xlsx"), "fall.xlsx");
 
   it("extracts sections", () => {
     const titles = schedule.sections.map((s) => s.title);
@@ -84,7 +84,7 @@ describe("parseScheduleXlsx — Fall 2026 example", () => {
 });
 
 describe('parseScheduleXlsx — "View My Courses" multi-table export', () => {
-  const schedule = parseScheduleXlsx(loadExample("View_My_Courses (1).xlsx"), "mycourses.xlsx");
+  const schedule = parseScheduleXlsx(loadExample("my-courses.xlsx"), "mycourses.xlsx");
 
   it("extracts only Enrolled sections (drops Waitlisted + Dropped/Withdrawn tables)", () => {
     // The file has 12 enrolled rows, 3 waitlisted, and 2 dropped/withdrawn.
@@ -131,13 +131,13 @@ describe('parseScheduleXlsx — "View My Courses" multi-table export', () => {
 
 describe("section identity", () => {
   it("is deterministic across re-parses (merge key for shared sections)", () => {
-    const a = parseScheduleXlsx(loadExample("View_Student_Registration_Saved_Schedule.xlsx"));
-    const b = parseScheduleXlsx(loadExample("View_Student_Registration_Saved_Schedule.xlsx"));
+    const a = parseScheduleXlsx(loadExample("saved-schedule-spring.xlsx"));
+    const b = parseScheduleXlsx(loadExample("saved-schedule-spring.xlsx"));
     expect(a.sections.map((s) => s.id)).toEqual(b.sections.map((s) => s.id));
   });
 
   it("differs between different sections", () => {
-    const a = parseScheduleXlsx(loadExample("View_Student_Registration_Saved_Schedule.xlsx"));
+    const a = parseScheduleXlsx(loadExample("saved-schedule-spring.xlsx"));
     const ids = new Set(a.sections.map((s) => s.id));
     expect(ids.size).toBe(a.sections.length);
   });
