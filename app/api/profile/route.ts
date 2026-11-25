@@ -1,7 +1,7 @@
 import { requireUser } from "@/src/server/auth";
 import { getProfile, saveProfile } from "@/src/server/profile";
 import { parseProfile } from "@/src/shared/profile";
-import { json, readJson, requireJson, serverError } from "../http";
+import { json, readJson, serverError } from "../http";
 
 // Bound account details and preferences before parsing.
 const MAX_PROFILE_BYTES = 4096;
@@ -22,9 +22,6 @@ export async function PUT(request: Request): Promise<Response> {
   try {
     const user = await requireUser(request);
     if (user instanceof Response) return user;
-    const ctError = requireJson(request);
-    if (ctError) return ctError;
-
     const result = await readJson(request, MAX_PROFILE_BYTES);
     if (result instanceof Response) return result;
     const { body } = result;

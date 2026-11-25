@@ -19,8 +19,13 @@ export function requireJson(request: Request): Response | null {
   return null;
 }
 
-/** Reads JSON within a byte ceiling and a fixed 15-second deadline. Returns 400, 408, or 413 on rejection. */
+/**
+ * Reads JSON within a byte ceiling and a fixed 15-second deadline.
+ * Returns 415 for a non-JSON media type, or 400, 408, or 413 when the body is rejected.
+ */
 export async function readJson(request: Request, maxBytes = 4096): Promise<{ body: unknown } | Response> {
+  const mediaTypeError = requireJson(request);
+  if (mediaTypeError) return mediaTypeError;
   try {
     const reader = request.body?.getReader();
     if (!reader) return json({ error: "Invalid JSON body" }, 400);
@@ -57,4 +62,16 @@ export async function readJson(request: Request, maxBytes = 4096): Promise<{ bod
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }
+}
+
+/** Reads a JSON object body with readJson's limits. Returns 400 when the body is not a plain object. */
+export async function readJsonObject(
+  request: Request,
+  maxBytes?: number,
+): Promise<{ body: Record<string, unknown> } | Response> {
+  const result = await readJson(request, maxBytes);
+  if (result instanceof Response) return result;
+  const { body } = result;
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Body must be an object" }, 400);
+  return { body: body as Record<string, unknown> };
 }

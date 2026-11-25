@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { json, readJson, requireJson } from "./http";
+import { json, readJson, readJsonObject, requireJson } from "./http";
 
 const encoder = new TextEncoder();
 function request(body?: string | ReadableStream<Uint8Array>, headers: Record<string, string> = {}) {
   return new Request("http://localhost/api/test", {
     method: "POST",
     body,
-    headers,
+    headers: { "content-type": "application/json", ...headers },
     duplex: "half",
   } as RequestInit);
 }
@@ -43,6 +43,16 @@ describe("requireJson", () => {
 });
 
 describe("readJson", () => {
+  it("rejects a non-JSON media type before reading the body", async () => {
+    const input = request("{}", { "content-type": "text/plain" });
+    expect(((await readJson(input)) as Response).status).toBe(415);
+    expect(input.bodyUsed).toBe(false);
+  });
+
+  it.each(["[]", "null", '"text"'])("readJsonObject rejects the non-object body %s", async (body) => {
+    expect(((await readJsonObject(request(body))) as Response).status).toBe(400);
+  });
+
   it("decodes UTF-8 characters split across chunks at the exact byte ceiling", async () => {
     const bytes = encoder.encode(JSON.stringify({ text: "é🙂" }));
     let offset = 0;

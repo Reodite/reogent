@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { getPerson, savePerson } from "@/src/server/sharer/store";
-import { json, readJson, requireJson, serverError } from "../../http";
+import { json, readJsonObject, serverError } from "../../http";
 
 // A full Workday schedule serializes to a few KB; the cap blocks abuse of
 // the JSONB column rather than any real schedule.
@@ -69,14 +69,9 @@ export async function PUT(request: Request): Promise<Response> {
   try {
     const user = await requireUser(request);
     if (user instanceof Response) return user;
-    const ctError = requireJson(request);
-    if (ctError) return ctError;
-
-    const result = await readJson(request, MAX_SCHEDULE_BYTES);
+    const result = await readJsonObject(request, MAX_SCHEDULE_BYTES);
     if (result instanceof Response) return result;
-    const { body } = result;
-    if (!isRecord(body)) return json({ error: "Body must be an object" }, 400);
-    const { handle, avatar, schedule } = body;
+    const { handle, avatar, schedule } = result.body;
     if (typeof handle !== "string" || handle.trim().length === 0 || handle.length > 64) {
       return json({ error: "handle must be a 1-64 character string" }, 400);
     }

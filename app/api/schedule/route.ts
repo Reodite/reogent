@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { getSchedule, saveSchedule } from "@/src/server/schedules";
-import { json, readJson, requireJson, serverError } from "../http";
+import { json, readJson, serverError } from "../http";
 
 // Generous ceiling for a serialized schedule (a few terms of picked sections
 // is a few KB); blocks arbitrary-blob abuse of the JSONB column.
@@ -58,9 +58,6 @@ export async function PUT(request: Request): Promise<Response> {
   try {
     const user = await requireUser(request);
     if (user instanceof Response) return user;
-    const ctError = requireJson(request);
-    if (ctError) return ctError;
-
     const result = await readJson(request, MAX_SCHEDULE_BYTES);
     if (result instanceof Response) return result;
     const { body } = result;

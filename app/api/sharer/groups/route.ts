@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { createGroup, listGroups } from "@/src/server/sharer/store";
-import { json, readJson, requireJson, serverError } from "../../http";
+import { json, readJsonObject, serverError } from "../../http";
 
 /** GET /api/sharer/groups — groups the caller belongs to. */
 export async function GET(request: Request): Promise<Response> {
@@ -18,16 +18,9 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const user = await requireUser(request);
     if (user instanceof Response) return user;
-    const ctError = requireJson(request);
-    if (ctError) return ctError;
-
-    const result = await readJson(request);
+    const result = await readJsonObject(request);
     if (result instanceof Response) return result;
-    const { body } = result;
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
-      return json({ error: "Body must be an object" }, 400);
-    }
-    const { name } = body as { name?: unknown };
+    const { name } = result.body;
     if (typeof name !== "string" || name.trim().length === 0 || name.length > 80) {
       return json({ error: "name must be a 1-80 character string" }, 400);
     }
