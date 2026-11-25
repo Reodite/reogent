@@ -356,17 +356,7 @@ function findCode(source: string, code: string, used: boolean[]): [number, numbe
   if (sp === -1) return null;
   const subj = code.slice(0, sp);
   const num = code.slice(sp + 1);
-  const re = new RegExp(`\\b${escapeRegExp(subj)}(?:_V)?\\s+${escapeRegExp(num)}\\b`, "gi");
-  let m: RegExpExecArray | null = re.exec(source);
-  while (m !== null) {
-    if (!used[m.index]) {
-      const range: [number, number] = [m.index, m.index + m[0].length];
-      markUsed(used, range[0], range[1]);
-      return range;
-    }
-    m = re.exec(source);
-  }
-  return null;
+  return claimFirst(source, new RegExp(`\\b${escapeRegExp(subj)}(?:_V)?\\s+${escapeRegExp(num)}\\b`, "gi"), used);
 }
 
 // Find a literal prose snippet (used for `flattened` text). Case-
@@ -378,15 +368,16 @@ function findText(source: string, text: string, used: boolean[]): [number, numbe
   const needle = text.trim();
   if (!needle) return null;
   const pattern = needle.split(/\s+/).map(escapeRegExp).join("\\s+");
-  const re = new RegExp(pattern, "gi");
-  let m: RegExpExecArray | null = re.exec(source);
-  while (m !== null) {
-    if (!used[m.index]) {
-      const range: [number, number] = [m.index, m.index + m[0].length];
-      markUsed(used, range[0], range[1]);
-      return range;
-    }
-    m = re.exec(source);
+  return claimFirst(source, new RegExp(pattern, "gi"), used);
+}
+
+// Returns the first `re` match that starts outside a claimed range and claims it.
+function claimFirst(source: string, re: RegExp, used: boolean[]): [number, number] | null {
+  for (const m of source.matchAll(re)) {
+    if (used[m.index]) continue;
+    const range: [number, number] = [m.index, m.index + m[0].length];
+    markUsed(used, range[0], range[1]);
+    return range;
   }
   return null;
 }
