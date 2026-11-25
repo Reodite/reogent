@@ -198,6 +198,27 @@ export function PlannerCourseModule({
     onFocusHandled();
   }, [focusRequest, onFocusHandled]);
 
+  const sectionRow = (group: string) => {
+    const current = selectedByGroup.get(group);
+    return (
+      <PlannerSectionRow
+        key={group}
+        catalogStatus={doc ? "ready" : catalogError ? "error" : "loading"}
+        group={group}
+        options={groups.get(group) ?? []}
+        current={current}
+        conflict={!!current && conflictingIds.has(entryId(current))}
+        conflictLabels={current ? (conflictLabels.get(entryId(current)) ?? []) : []}
+        idPrefix={idPrefix}
+        inputRef={(node) => {
+          if (node) selectorRefs.current.set(group, node);
+          else selectorRefs.current.delete(group);
+        }}
+        onSelect={(next) => onSelectSection(current, next)}
+      />
+    );
+  };
+
   return (
     <article
       ref={rootRef}
@@ -231,26 +252,7 @@ export function PlannerCourseModule({
         </Button>
       </header>
 
-      {known.map((group) => {
-        const current = selectedByGroup.get(group);
-        return (
-          <PlannerSectionRow
-            key={group}
-            catalogStatus={doc ? "ready" : catalogError ? "error" : "loading"}
-            group={group}
-            options={groups.get(group) ?? []}
-            current={current}
-            conflict={!!current && conflictingIds.has(entryId(current))}
-            conflictLabels={current ? (conflictLabels.get(entryId(current)) ?? []) : []}
-            idPrefix={idPrefix}
-            inputRef={(node) => {
-              if (node) selectorRefs.current.set(group, node);
-              else selectorRefs.current.delete(group);
-            }}
-            onSelect={(next) => onSelectSection(current, next)}
-          />
-        );
-      })}
+      {known.map(sectionRow)}
 
       {additional.length > 0 ? (
         <details
@@ -264,26 +266,7 @@ export function PlannerCourseModule({
               {unselectedAdditional > 0 ? `${unselectedAdditional} not selected automatically` : "Configured"}
             </span>
           </summary>
-          {additional.map((group) => {
-            const current = selectedByGroup.get(group);
-            return (
-              <PlannerSectionRow
-                key={group}
-                catalogStatus={doc ? "ready" : catalogError ? "error" : "loading"}
-                group={group}
-                options={groups.get(group) ?? []}
-                current={current}
-                conflict={!!current && conflictingIds.has(entryId(current))}
-                conflictLabels={current ? (conflictLabels.get(entryId(current)) ?? []) : []}
-                idPrefix={idPrefix}
-                inputRef={(node) => {
-                  if (node) selectorRefs.current.set(group, node);
-                  else selectorRefs.current.delete(group);
-                }}
-                onSelect={(next) => onSelectSection(current, next)}
-              />
-            );
-          })}
+          {additional.map(sectionRow)}
         </details>
       ) : null}
 
