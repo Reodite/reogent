@@ -4,7 +4,7 @@ import "reactflow/dist/style.css";
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { CourseSearchField, type Candidate } from "@/src/components/course-search/course-search";
-import { Icon } from "@/src/components/icons";
+import { Icon, type IconName } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { useWorkspaceHost } from "@/src/components/shell/workspace-host";
@@ -13,6 +13,7 @@ import { RetryAlert } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
 import { InlineAction } from "@/src/components/ui/inline-action";
 import { announce } from "@/src/components/ui/live-region";
+import { MENU_SURFACE_CLASSES, MenuItem } from "@/src/components/ui/menu";
 import { SkeletonList } from "@/src/components/ui/skeleton";
 import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 import { courseCodeToSlug } from "@/src/lib/pane-route";
@@ -160,99 +161,45 @@ function TreeContextMenu({
     };
   }, [onClose]);
 
-  const itemClass =
-    "hover:bg-surface-container-high focus-visible:ring-primary/40 flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm focus-visible:ring-2";
+  const items: { icon: IconName; label: string; run: () => void; locked?: string }[] = menu.code
+    ? [
+        { icon: "search", label: "Open in Course Finder", run: () => onOpenFinder(menu.code as string) },
+        {
+          icon: "chat1",
+          label: "Ask AI about this tree",
+          run: onAskAi,
+          locked: aiLocked ? "Sign in to use AI chat" : undefined,
+        },
+      ]
+    : [
+        { icon: "zoomIn", label: "Zoom in", run: () => zoomIn({ duration: reducedMotion ? 0 : 150 }) },
+        { icon: "zoomOut", label: "Zoom out", run: () => zoomOut({ duration: reducedMotion ? 0 : 150 }) },
+        { icon: "fullscreen", label: "Fit view", run: fitGraph },
+      ];
   return (
     <div
       ref={menuRef}
       role="menu"
       data-tree-context-menu
       style={{ left: menu.x, top: menu.y }}
-      className="neu-raised bg-surface text-on-surface absolute z-30 min-w-[200px] rounded-lg p-1"
+      className="text-on-surface absolute z-30 min-w-[200px]"
     >
-      <div className="ui-popover-enter">
-        {menu.code ? (
-          <>
-            <button
-              type="button"
-              role="menuitem"
-              className={itemClass}
-              onClick={() => {
-                onOpenFinder(menu.code as string);
-                onClose();
-              }}
-            >
-              <Icon name="search" size={16} className="text-on-surface-variant" />
-              Open in Course Finder
-            </button>
-            {aiLocked ? (
-              <button
-                type="button"
-                role="menuitem"
-                disabled
-                aria-disabled="true"
-                title="Sign in to use AI chat"
-                className="text-on-surface flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
-              >
-                <Icon name="chat1" size={16} className="text-on-surface-variant" />
-                Ask AI about this tree
-                <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                role="menuitem"
-                className={itemClass}
-                onClick={() => {
-                  onAskAi();
-                  onClose();
-                }}
-              >
-                <Icon name="chat1" size={16} className="text-on-surface-variant" />
-                Ask AI about this tree
-              </button>
-            )}
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              role="menuitem"
-              className={itemClass}
-              onClick={() => {
-                zoomIn({ duration: reducedMotion ? 0 : 150 });
-                onClose();
-              }}
-            >
-              <Icon name="zoomIn" size={16} className="text-on-surface-variant" />
-              Zoom in
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className={itemClass}
-              onClick={() => {
-                zoomOut({ duration: reducedMotion ? 0 : 150 });
-                onClose();
-              }}
-            >
-              <Icon name="zoomOut" size={16} className="text-on-surface-variant" />
-              Zoom out
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className={itemClass}
-              onClick={() => {
-                fitGraph();
-                onClose();
-              }}
-            >
-              <Icon name="fullscreen" size={16} className="text-on-surface-variant" />
-              Fit view
-            </button>
-          </>
-        )}
+      <div className={`ui-popover-enter ${MENU_SURFACE_CLASSES}`}>
+        {items.map((item) => (
+          <MenuItem
+            key={item.label}
+            icon={item.icon}
+            disabled={item.locked !== undefined}
+            title={item.locked}
+            trailing={item.locked ? <Icon name="lock" size={13} /> : undefined}
+            onClick={() => {
+              item.run();
+              onClose();
+            }}
+          >
+            {item.label}
+          </MenuItem>
+        ))}
       </div>
     </div>
   );

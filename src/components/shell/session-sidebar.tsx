@@ -10,6 +10,7 @@ import { canRestoreFocus, DialogActions, DialogHeader, DialogPanel, DialogRoot }
 import { RetryAlert, RetryState } from "@/src/components/ui/feedback";
 import { FloatingPanel } from "@/src/components/ui/floating-panel";
 import { Heading } from "@/src/components/ui/heading";
+import { MENU_SURFACE_CLASSES, MenuItem } from "@/src/components/ui/menu";
 import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
@@ -312,22 +313,19 @@ function SessionItem({
               event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[menuIndex]?.focus();
             }}
             onKeyDown={menuKeyDown}
-            className="neu-panel bg-surface grid w-48 gap-1 rounded-xl p-1"
+            className={`${MENU_SURFACE_CLASSES} w-48`}
           >
-            <button
-              type="button"
-              role="menuitem"
+            <MenuItem
+              icon="pencil"
               tabIndex={menuIndex === 0 ? 0 : -1}
               onFocus={() => setMenuIndex(0)}
               onClick={startRename}
-              className="hover:bg-surface-container-high focus-visible:ring-primary/40 text-on-surface flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-inset"
             >
-              <Icon name="pencil" size={16} />
               Rename
-            </button>
-            <button
-              type="button"
-              role="menuitem"
+            </MenuItem>
+            <MenuItem
+              icon="trash"
+              tone="danger"
               tabIndex={menuIndex === 1 ? 0 : -1}
               onFocus={() => setMenuIndex(1)}
               onClick={() => {
@@ -335,11 +333,9 @@ function SessionItem({
                 setMode("idle");
                 onDelete();
               }}
-              className="hover:bg-error-container/40 focus-visible:ring-error/40 text-error flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-inset"
             >
-              <Icon name="trash" size={16} />
               Delete
-            </button>
+            </MenuItem>
           </FloatingPanel>
         ) : null}
       </AnimatePresence>
