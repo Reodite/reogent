@@ -4,10 +4,9 @@ import { useChatShell } from "@/src/components/chat/chat-shell-context";
 import { CourseDetailCard } from "@/src/components/course-lookup/course-detail-card";
 import { CourseExplorer } from "@/src/components/course-lookup/course-explorer";
 import { CourseSearchField, useCourseAutocomplete } from "@/src/components/course-search/course-search";
-import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
-import { Button } from "@/src/components/ui/button";
+import { BackButton, Button } from "@/src/components/ui/button";
 import { LoadingStatus, RetryAlert, RetryState } from "@/src/components/ui/feedback";
 import { SelectInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
@@ -158,19 +157,13 @@ export function CourseLookupPane({
         title="Course lookup"
         description={`Review ${propCode} catalog details, grades, prerequisites, and sections.`}
         leading={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="sm:size-11"
+          <BackButton
+            label="Back to results"
             onClick={() => {
               setCode("");
               navigate("/app/tools/courses");
             }}
-            aria-label="Back to results"
-            title="Back to results"
-          >
-            <Icon name="arrowLeft" size={20} />
-          </Button>
+          />
         }
         toolbar={
           <div className="flex items-center gap-3">

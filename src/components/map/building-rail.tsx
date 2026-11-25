@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
-import { Button } from "@/src/components/ui/button";
+import { BackButton, Button } from "@/src/components/ui/button";
 import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
 import { SearchInput, TextInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
@@ -475,20 +475,7 @@ export function BuildingRail(props: BuildingRailProps) {
   return (
     <WorkspacePanel
       title={title}
-      leading={
-        backLabel ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="sm:size-11"
-            onClick={props.onBack}
-            aria-label={backLabel}
-            title={backLabel}
-          >
-            <Icon name="arrowLeft" size={20} />
-          </Button>
-        ) : undefined
-      }
+      leading={backLabel ? <BackButton label={backLabel} onClick={props.onBack} /> : undefined}
       bodyMode={props.mode === "details" && props.selected ? "scroll" : "contained"}
       padding="none"
     >

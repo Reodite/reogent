@@ -1,3 +1,4 @@
+import { Icon } from "@/src/components/icons";
 import type { NeumorphicSurfaceToken } from "@/src/shared/color-tokens";
 import Link from "next/link";
 import type { ComponentPropsWithRef } from "react";
@@ -104,4 +105,30 @@ export function ButtonLink({
   ...props
 }: ButtonLinkProps) {
   return <Link className={buttonClasses({ variant, size, shadowOn, wrap, className, link: true })} {...props} />;
+}
+
+type BackActionProps = {
+  /** Destination-specific accessible name, also shown as the tooltip. */
+  label: string;
+};
+
+/** Renders the shared 44px ghost back button with a 20px arrow. */
+export function BackButton({ label, ...props }: Omit<ButtonProps, "children" | "variant" | "size"> & BackActionProps) {
+  return (
+    <Button variant="ghost" size="fieldIcon" aria-label={label} title={label} {...props}>
+      <Icon name="arrowLeft" size={20} />
+    </Button>
+  );
+}
+
+/** Renders BackButton's geometry and arrow as a Next.js link. */
+export function BackLink({
+  label,
+  ...props
+}: Omit<ButtonLinkProps, "children" | "variant" | "size"> & BackActionProps) {
+  return (
+    <ButtonLink variant="ghost" size="fieldIcon" aria-label={label} title={label} {...props}>
+      <Icon name="arrowLeft" size={20} />
+    </ButtonLink>
+  );
 }
