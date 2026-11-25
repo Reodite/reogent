@@ -155,15 +155,7 @@ function RequirementRowContent({
   );
 }
 
-function RequirementRow({
-  rowKey,
-  item,
-  manuallyChecked,
-  plannedCodes,
-  courseIndex,
-  preferredYear,
-  onToggle,
-}: {
+interface RequirementRowProps {
   rowKey: string;
   item: YearRequirement;
   manuallyChecked: boolean;
@@ -171,21 +163,17 @@ function RequirementRow({
   courseIndex: Map<string, CourseIndexEntry>;
   preferredYear: number;
   onToggle: () => void;
-}) {
-  if (item.kind === "text") {
-    return <ManualRequirementRow item={item} checked={manuallyChecked} onToggle={onToggle} />;
+}
+
+/** Shared geometry for requirement rows and their full-row toggle buttons. */
+const ROW_CLASSES = "flex min-h-11 items-start gap-1 rounded-lg px-2 py-1";
+const ROW_BUTTON_CLASSES = `${ROW_CLASSES} hover:bg-surface-container-low w-full text-left`;
+
+function RequirementRow(props: RequirementRowProps) {
+  if (props.item.kind === "text") {
+    return <ManualRequirementRow item={props.item} checked={props.manuallyChecked} onToggle={props.onToggle} />;
   }
-  return (
-    <CourseRequirementRow
-      rowKey={rowKey}
-      item={item}
-      manuallyChecked={manuallyChecked}
-      plannedCodes={plannedCodes}
-      courseIndex={courseIndex}
-      preferredYear={preferredYear}
-      onToggle={onToggle}
-    />
-  );
+  return <CourseRequirementRow {...props} />;
 }
 
 function CourseRequirementRow({
@@ -196,15 +184,7 @@ function CourseRequirementRow({
   courseIndex,
   preferredYear,
   onToggle,
-}: {
-  rowKey: string;
-  item: YearRequirement;
-  manuallyChecked: boolean;
-  plannedCodes: Set<string>;
-  courseIndex: Map<string, CourseIndexEntry>;
-  preferredYear: number;
-  onToggle: () => void;
-}) {
+}: RequirementRowProps) {
   const choices = nextChoices(item, plannedCodes).filter((code) => courseIndex.has(code));
   const [chosenCode, setChosenCode] = useState(choices[0] ?? "");
   const selectedCode = choices.includes(chosenCode) ? chosenCode : (choices[0] ?? "");
@@ -234,7 +214,7 @@ function CourseRequirementRow({
       style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.35 : 1 }}
       onMouseDown={startDrag}
       onTouchStart={startDrag}
-      className={`hover:bg-surface-container-low flex min-h-11 items-start gap-1 rounded-lg px-2 py-1 ${
+      className={`${ROW_CLASSES} hover:bg-surface-container-low ${
         selectedCode && target ? "cursor-grab touch-pan-y active:cursor-grabbing" : ""
       }`}
     >
@@ -305,7 +285,7 @@ function ManualRequirementRow({
         aria-pressed={checked}
         aria-label={checked ? "Mark requirement incomplete" : "Mark requirement complete"}
         onClick={onToggle}
-        className="hover:bg-surface-container-low flex min-h-11 w-full items-start gap-1 rounded-lg px-2 py-1 text-left"
+        className={ROW_BUTTON_CLASSES}
       >
         <PlannerCheckboxMark checked={checked} />
         <RequirementRowContent label={cleanLabel(item.label)} credits={item.credits} />
@@ -337,7 +317,7 @@ function CompletedRequirementRow({
   // Auto-detected rows are inert; manually checked rows stay clickable so the
   // check can be revoked.
   if (met) {
-    return <li className="flex min-h-11 items-start gap-1 rounded-lg px-2 py-1">{content}</li>;
+    return <li className={ROW_CLASSES}>{content}</li>;
   }
   return (
     <li>
@@ -345,7 +325,7 @@ function CompletedRequirementRow({
         type="button"
         aria-pressed="true"
         onClick={onToggle}
-        className="hover:bg-surface-container-low flex min-h-11 w-full items-start gap-1 rounded-lg px-2 py-1 text-left"
+        className={ROW_BUTTON_CLASSES}
         aria-label="Mark requirement incomplete"
       >
         {content}
