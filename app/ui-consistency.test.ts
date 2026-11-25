@@ -126,6 +126,19 @@ describe("mobile workspace framing", () => {
     expect(mobileLayout).toContain("outline-offset: -2px;");
   });
 
+  it("tightens phone workspace chrome around the main region", () => {
+    expect(mobileLayout).toMatch(/\.workspace-page-header\s*\{\s*padding-bottom: 0\.5rem;/);
+    expect(mobileLayout).toMatch(/\.workspace-page-layout\s*\{\s*gap: 0\.5rem;/);
+    expect(mobileLayout).toMatch(/> \[data-workspace-toolbar\]\s*\{\s*margin-inline: 0\.75rem;/);
+    expect(mobileLayout).toMatch(
+      /> \[data-workspace-panel\]:only-child\s*> \[data-workspace-panel-header\]\s*\{\s*display: none;/,
+    );
+    expect(mobileLayout).toMatch(/\.schedule-grid-day-tabs\s*\{\s*border-radius: 0;\s*padding: 0\.25rem 1rem;/);
+    expect(globalsCss).toMatch(
+      /@container \(max-width: 55rem\)\s*\{[^@]*\.schedule-grid-day-header\s*\{\s*display: none;/,
+    );
+  });
+
   it("assigns phone safe areas to bottom navigation and uses native-size text entry", () => {
     const modeBar = globalsCss.match(/\.mobile-mode-bar\s*\{([\s\S]*?)\}/)?.[1] ?? "";
     expect(modeBar).toContain("env(safe-area-inset-bottom)");
@@ -211,6 +224,27 @@ describe("mobile workspace framing", () => {
     expect(globalsCss).toContain("--map-explore-sheet-height: min(72%, 36rem, calc(100% - 7.5rem));");
     expect(globalsCss).toContain("height: var(--map-explore-sheet-height);");
     expect(globalsCss).toContain("bottom: calc(var(--map-explore-sheet-height) + 0.5rem);");
+  });
+
+  it("flattens the onboarding card into the phone surface page", () => {
+    expect(mobileLayout).toMatch(/\[data-onboarding\]\s*\{\s*background-color: var\(--surface\);/);
+    const card = mobileLayout.match(/\[data-onboarding-card\]\s*\{([^}]+)\}/)?.[1] ?? "";
+    expect(card).toContain("box-shadow: none;");
+    expect(card).toContain("padding: 0;");
+  });
+
+  it("fits all seven calendar days in phone-width months", () => {
+    const narrow = globalsCss.match(/@container \(max-width: 40rem\)\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+    expect(narrow).toMatch(/\.calendar-month-width\s*\{\s*min-width: 0;/);
+    expect(narrow).toMatch(/\.calendar-day-agenda-count\s*\{\s*display: none;/);
+    expect(narrow).toMatch(/\.calendar-day-agenda\s*\{[^}]*min-height: 2rem;/);
+  });
+
+  it("scrolls wide reply tables and breaks cells only between words", () => {
+    const cells = globalsCss.match(/\.assistant-markdown :where\(th, td\)\s*\{([^}]+)\}/)?.[1] ?? "";
+    expect(cells).toContain("overflow-wrap: break-word;");
+    expect(cells).toContain("word-break: normal;");
+    expect(globalsCss).toMatch(/\.markdown-table-wrap\s*\{[^}]*overflow-x: auto;/);
   });
 
   it("keeps the mobile timetable flush and weekend day tabs scrollable", () => {

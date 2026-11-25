@@ -42,7 +42,7 @@ export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | nul
       <section
         aria-label={titlebar ? "Answer canvas" : undefined}
         data-pane={paneId}
-        className={`flex h-full w-full flex-col overflow-hidden ${titlebar ? "neu-panel rounded-2xl" : ""}`}
+        className={`flex h-full w-full flex-col overflow-hidden ${titlebar ? "neu-panel rounded-2xl max-sm:rounded-none max-sm:shadow-none" : ""}`}
       >
         {titlebar && (
           <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} onOutlet={setTitlebarOutlet} />

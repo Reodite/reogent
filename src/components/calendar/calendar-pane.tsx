@@ -173,15 +173,28 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
   const toolbar = (
     <div className="flex w-full flex-wrap items-center justify-between gap-2">
       <div className="flex items-center gap-1.5">
-        <Button data-calendar-nav="prev" aria-label="Previous month" onClick={goPrev} size="icon">
+        <Button
+          data-calendar-nav="prev"
+          aria-label="Previous month"
+          onClick={goPrev}
+          size="icon"
+          className="max-sm:size-9"
+        >
           <Icon name="left" size={18} />
         </Button>
         <MonthYearPicker cursorDate={cursorDate} horizon={horizon} onPick={goMonth} />
-        <Button data-calendar-nav="next" aria-label="Next month" disabled={beyondHorizon} onClick={goNext} size="icon">
+        <Button
+          data-calendar-nav="next"
+          aria-label="Next month"
+          disabled={beyondHorizon}
+          onClick={goNext}
+          size="icon"
+          className="max-sm:size-9"
+        >
           <Icon name="right" size={18} />
         </Button>
       </div>
-      <ul aria-label="Legend" className="flex flex-wrap items-center justify-end gap-1">
+      <ul aria-label="Legend" className="flex flex-wrap items-center justify-start gap-1 @min-[40rem]:justify-end">
         {Object.entries(STYLES).map(([key, style]) => {
           const shown = !hidden.includes(key);
           return (
@@ -192,7 +205,7 @@ export function CalendarPane({ state, setState }: { state: Partial<State>; setSt
                 data-calendar-legend={key}
                 aria-pressed={shown}
                 onClick={() => toggleKind(key)}
-                className={shown ? "text-on-surface-variant" : "text-muted"}
+                className={`max-sm:h-8 max-sm:px-2 ${shown ? "text-on-surface-variant" : "text-muted"}`}
               >
                 <span
                   aria-hidden
@@ -371,7 +384,7 @@ function MonthYearPicker({
         aria-controls={open ? menuId : undefined}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="w-40 tracking-[-0.01em]"
+        className="w-40 tracking-[-0.01em] max-sm:h-9"
       >
         {formatMonthHeading(cursorDate)}
         <Icon name="down" size={14} />
@@ -531,7 +544,9 @@ function MonthGrid({
                         />
                       ))}
                     </span>
-                    {dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}
+                    <span className="calendar-day-agenda-count">
+                      {dayEvents.length} {dayEvents.length === 1 ? "event" : "events"}
+                    </span>
                   </button>
                 </>
               ) : null}

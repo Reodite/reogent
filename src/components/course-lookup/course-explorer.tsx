@@ -295,9 +295,9 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
       <div className="flex h-full min-h-0 flex-col gap-3">
         <div
           data-course-command
-          className="mx-4 grid shrink-0 grid-cols-2 items-end gap-3 sm:mx-0 @min-[55rem]:grid-cols-[minmax(18rem,1fr)_9rem_11rem_auto]"
+          className="mx-4 grid shrink-0 grid-cols-[6.5rem_minmax(0,1fr)_auto] items-end gap-2 sm:mx-0 @min-[55rem]:grid-cols-[minmax(18rem,1fr)_9rem_11rem_auto] @min-[55rem]:gap-3"
         >
-          <Field label="Find a course" htmlFor="course-explorer-search" className="col-span-2 @min-[55rem]:col-span-1">
+          <Field label="Find a course" htmlFor="course-explorer-search" className="col-span-3 @min-[55rem]:col-span-1">
             <SearchInput
               id="course-explorer-search"
               type="text"
@@ -321,7 +321,6 @@ export function CourseExplorer({ onSelect }: { onSelect?: (code: string) => void
             aria-expanded={filtersOpen}
             aria-controls="course-explorer-advanced-filters"
             onClick={() => setFiltersOpen((open) => !open)}
-            className="col-span-2 w-full @min-[55rem]:col-span-1"
           >
             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
           </Button>

@@ -12,7 +12,6 @@ function workspace(onMobileViewChange = vi.fn()) {
       title="Course schedule"
       description="Build a conflict-aware week."
       toolbar={<div data-testid="toolbar">Terms</div>}
-      actions={<button type="button">Share</button>}
       controlsLabel="Courses"
       controls={<div data-testid="controls">Controls</div>}
       mobileView="schedule"
@@ -24,7 +23,7 @@ function workspace(onMobileViewChange = vi.fn()) {
 }
 
 describe("ScheduleWorkspace", () => {
-  it("uses the Answer Canvas titlebar only for its bounded action", () => {
+  it("leaves the Answer Canvas titlebar to its own title", () => {
     const outlet = document.createElement("div");
     document.body.append(outlet);
     const { container } = render(
@@ -35,7 +34,7 @@ describe("ScheduleWorkspace", () => {
 
     expect(container.querySelector("h1")).toBeNull();
     expect(container.querySelector("[data-testid='toolbar']")).not.toBeNull();
-    expect(outlet.querySelector("button")?.textContent).toBe("Share");
+    expect(outlet.childElementCount).toBe(0);
     expect(container.textContent).not.toContain("Build a conflict-aware week.");
     outlet.remove();
   });

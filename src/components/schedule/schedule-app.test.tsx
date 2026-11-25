@@ -346,7 +346,7 @@ describe("ScheduleApp group loading", () => {
     const loadingControls = screen.getByRole("status", { name: "Loading schedule controls" }).parentElement;
     expect(loadingControls?.classList.contains("px-4")).toBe(true);
     expect(loadingControls?.classList.contains("px-3")).toBe(false);
-    expect(screen.getByRole("status", { name: "Loading schedule terms" }).querySelector(".sm\\:h-8")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading schedule terms" }).querySelector(".h-8")).toBeTruthy();
     expect(screen.getByRole("status", { name: "Loading your weekly schedule" })).toBeTruthy();
     expect(screen.getByText("9 AM")).toBeTruthy();
     expect(view.container.querySelectorAll("[data-schedule-block]")).toHaveLength(0);
@@ -515,13 +515,13 @@ describe("ScheduleApp controls", () => {
     vi.setSystemTime(new Date("2026-09-08T12:00:00Z"));
   });
 
-  it("keeps Share as the only header action and renders ready controls in order", async () => {
+  it("places Share beside the terms and renders ready controls in order", async () => {
     stubSharerFetch({ loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A") })) });
     const view = render(<ScheduleApp groupCode="AAAAAA" />);
     const share = await screen.findByRole("button", { name: "Copy share link AAAAAA" });
-    const actionContainer = share.parentElement;
 
-    expect(actionContainer?.querySelectorAll("button")).toHaveLength(1);
+    expect(share.closest("[data-workspace-toolbar]")?.querySelector("[role='tablist']")).not.toBeNull();
+    expect(view.container.querySelector("[data-workspace-actions]")).toBeNull();
     expect(screen.getByRole("button", { name: "New group" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Leave" })).toBeTruthy();
     expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "now", "import"]);

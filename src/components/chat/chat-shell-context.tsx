@@ -40,8 +40,10 @@ export type ActiveChannel = { id: PaneId; state: PaneState } | null;
 export interface ChatShellState {
   workspaceView: CanvasView | null;
   setWorkspaceView: (view: CanvasView | null) => void;
-  /** Loads the canvas for a mapped tool call. Unmapped calls are a no-op. When
-   *  `callKey` identifies the chip that triggered it, only that chip highlights. */
+  /** Loads the canvas for a mapped tool call and expands the inline pane; the
+   *  full-screen phone canvas opens only through `setAnswerSheetOpen`. Unmapped
+   *  calls are a no-op. When `callKey` identifies the chip that triggered it,
+   *  only that chip highlights. */
   activateCanvasView: (call: ToolCall, callKey?: string) => void;
 
   /** Key of the tool-call chip that opened the current pane; only that chip shows
@@ -259,9 +261,6 @@ export function ChatShellProvider({ initialMode = "ai", children }: { initialMod
         setRightPaneCollapsed(false);
         // Bump the focus nonce so the map re-focuses on the new highlight.
         setFocusNonce((n) => n + 1);
-        // Widget-driven pane opens as a bottom sheet on mobile unless the user
-        // previously dismissed the pane.
-        if (!userDismissedPaneRef.current) setAnswerSheetOpen(true);
       }
     },
     [setWorkspaceView, setRightPaneCollapsed],

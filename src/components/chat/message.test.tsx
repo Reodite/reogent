@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { AssistantMessage } from "./message";
 
-vi.mock("@/src/components/chat/tool-renderers", () => ({ ResponseWidget: () => null }));
+vi.mock("@/src/components/chat/tool-renderers", () => ({ ArtifactCard: () => null, ResponseWidget: () => null }));
 vi.mock("motion/react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("motion/react")>()),
   useReducedMotion: () => true,
@@ -98,6 +98,16 @@ it("preserves article structure while suppressing raw HTML, unsafe links and rem
   for (const anchor of view.container.querySelectorAll(".assistant-markdown a")) {
     expect(anchor.getAttribute("href") ?? "").not.toMatch(/^(javascript|data):/i);
   }
+});
+
+it("puts wide reply tables in a keyboard-scrollable region", async () => {
+  const content = "| Course | Title |\n| --- | --- |\n| CPSC 110 | Computation, Programs, and Programming |";
+  const view = render(<AssistantMessage message={{ id: "table", role: "assistant", content }} />);
+  await waitFor(() => expect(view.container.querySelector(".assistant-markdown table")).not.toBeNull());
+  const region = view.getByRole("region", { name: "Reply table" });
+  expect(region.classList.contains("markdown-table-wrap")).toBe(true);
+  expect(region.tabIndex).toBe(0);
+  expect(region.querySelector("td")?.textContent).toBe("CPSC 110");
 });
 
 it("links grouped Markdown citations without injecting into code or duplicating nested leaves", async () => {

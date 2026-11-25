@@ -7,8 +7,8 @@ import type { Avatar } from "@/src/lib/schedule/types";
 export function ScheduleToolbarSkeleton() {
   return (
     <SkeletonGroup label="Loading schedule terms" className="flex w-max gap-1 rounded-lg p-1">
-      <Skeleton className="h-11 w-32 rounded-md sm:h-8" />
-      <Skeleton className="h-11 w-32 rounded-md sm:h-8" />
+      <Skeleton className="h-8 w-32 rounded-md" />
+      <Skeleton className="h-8 w-32 rounded-md" />
     </SkeletonGroup>
   );
 }

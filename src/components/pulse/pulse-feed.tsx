@@ -90,6 +90,7 @@ export function PulseFeed() {
       composition="single"
       title="Pulse"
       description={feed?.round?.title ?? "Vote on the questions UBC students are discussing now."}
+      keepDescriptionOnPhones={!!feed?.round?.title}
     >
       <WorkspaceCanvas padding="md">
         <div className="mx-auto flex w-full max-w-xl flex-col gap-6">

@@ -42,11 +42,11 @@ function SectionTable({ sections }: { sections: CourseSection[] }) {
             </span>
           </summary>
           <div className="border-border-subtle overflow-x-auto border-t px-3">
-            <table className="w-full min-w-[36rem] text-sm">
+            <table className="w-full text-sm break-normal">
               <caption className="sr-only">{term} course sections</caption>
               <thead className="sr-only">
                 <tr>
-                  <th>Term</th>
+                  <th>Section</th>
                   <th>Days</th>
                   <th>Time</th>
                   <th>Instructor</th>

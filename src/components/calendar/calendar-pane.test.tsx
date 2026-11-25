@@ -337,6 +337,9 @@ describe("Compact calendar agenda", () => {
     const agenda = await waitForCell(container, "2025-02-17", "[data-calendar-day-agenda]");
     const trigger = agenda.querySelector("[data-calendar-day-agenda]") as HTMLElement;
     expect(trigger.className).toContain("min-h-11");
+    // Phone-width months hide the visible count; the accessible name keeps it.
+    expect(trigger.querySelector(".calendar-day-agenda-count")?.textContent).toBe("2 events");
+    expect(trigger.getAttribute("aria-label")).toMatch(/^Open 2 events on/);
     fireEvent.click(trigger);
 
     const dialog = await screen.findByRole("dialog", { name: /Events on/ });

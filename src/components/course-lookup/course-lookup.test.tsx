@@ -95,6 +95,9 @@ describe("CourseDetailCard — render with sections (13.6, REQ-2.1)", () => {
     expect(container.textContent).toContain("Prerequisite");
     expect(container.textContent).toContain("CPSC 103");
     expect(container.textContent).toContain("2026-27 Winter Term 1");
+    const row = container.querySelector("tbody tr");
+    expect(row?.firstElementChild?.textContent).toBe("101");
+    expect(row?.textContent).not.toContain("Winter Term");
     expect(container.textContent).toContain("Mon Wed Fri");
     expect(container.textContent).toContain("09:00-10:00");
     expect(container.textContent).toContain("C. Karakus");

@@ -25,7 +25,7 @@ const LINK_VARIANT_CLASSES = {
 
 const SIZE_CLASSES = {
   compact: "h-11 rounded-lg px-3 text-xs sm:h-8",
-  toolbar: "h-11 rounded-lg px-3 text-xs sm:h-9",
+  toolbar: "h-9 rounded-lg px-3 text-xs",
   default: "h-11 rounded-lg px-4 text-sm sm:h-9",
   prominent: "h-11 rounded-lg px-4 text-sm sm:h-10",
   field: "h-11 rounded-lg px-4 text-sm",

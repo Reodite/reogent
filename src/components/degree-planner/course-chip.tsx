@@ -90,7 +90,7 @@ export function CourseChip({
                   : `Show ${code} details`
               }
               onClick={ghost ? undefined : () => setInfoOpen((current) => !current)}
-              className={invalid ? "text-error" : undefined}
+              className={`max-sm:size-8 ${invalid ? "text-error" : ""}`}
             >
               <Icon name={invalid ? "alert" : "info"} size={14} />
             </Button>
@@ -99,6 +99,7 @@ export function CourseChip({
               size="compact"
               aria-expanded={placing}
               onClick={ghost ? undefined : () => setPlacing((current) => !current)}
+              className="max-sm:h-8"
             >
               {blockId ? "Move" : "Add"}
             </Button>
@@ -109,7 +110,7 @@ export function CourseChip({
                 aria-label={`Remove ${code}`}
                 title={`Remove ${code}`}
                 onClick={ghost ? undefined : () => removeBlock(blockId)}
-                className="text-muted enabled:hover:bg-error-container enabled:hover:text-error"
+                className="text-muted enabled:hover:bg-error-container enabled:hover:text-error max-sm:size-8"
               >
                 <Icon name="close" size={14} />
               </Button>

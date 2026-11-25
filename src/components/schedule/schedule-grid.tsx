@@ -359,9 +359,9 @@ export function ScheduleGrid({
             tabIndex={day === selectedDay ? 0 : -1}
             onClick={() => onActiveDayChange(day)}
             onKeyDown={(event) => moveDayTab(event, index)}
-            className={`focus-visible:ring-primary/40 min-h-11 flex-1 rounded-lg px-2 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 ${
-              day === selectedDay ? "neu-inset bg-surface-container text-on-surface" : "text-on-surface-variant"
-            }`}
+            className={`focus-visible:ring-primary/40 min-h-8 flex-1 rounded-lg px-2 text-xs font-medium transition-colors duration-150 focus-visible:ring-2 ${
+              day === selectedDay ? "neu-inset bg-surface-container" : ""
+            } ${now?.day === day ? "text-primary" : day === selectedDay ? "text-on-surface" : "text-on-surface-variant"}`}
           >
             {day}
           </button>
@@ -374,7 +374,7 @@ export function ScheduleGrid({
         className="bg-surface focus-visible:ring-primary/40 min-h-0 flex-1 [scrollbar-gutter:stable] overflow-auto rounded-xl focus-visible:ring-2 focus-visible:ring-inset"
       >
         <div
-          className="schedule-grid-columns border-border-subtle bg-surface sticky top-0 z-30 grid border-b"
+          className="schedule-grid-columns schedule-grid-day-header border-border-subtle bg-surface sticky top-0 z-30 grid border-b"
           style={{ ["--schedule-day-count" as string]: model.days.length }}
         >
           <div className="border-border-subtle bg-surface sticky left-0 z-20 border-r" aria-hidden="true" />
@@ -474,13 +474,13 @@ export function ScheduleGrid({
             </div>
           ))}
           {!hasBlocks && loading ? (
-            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 flex justify-center sm:top-28">
+            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 col-[2/-1] flex justify-center sm:top-28">
               <SkeletonGroup label={loading} className="bg-surface/95 w-full max-w-sm rounded-lg px-5 py-4">
                 <SkeletonText lines={3} />
               </SkeletonGroup>
             </div>
           ) : !hasBlocks && empty ? (
-            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 flex justify-center sm:top-28">
+            <div className="pointer-events-none absolute inset-x-4 top-20 z-20 col-[2/-1] flex justify-center sm:top-28">
               <div className="bg-surface/95 pointer-events-auto max-w-sm rounded-lg px-5 py-4 text-center">
                 <Heading as="h2" size="section">
                   {empty.title}

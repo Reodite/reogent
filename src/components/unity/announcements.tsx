@@ -68,6 +68,7 @@ export function AnnouncementDetails({ announcement }: { announcement: Announceme
       composition="single"
       title={announcement.title}
       description={<AnnouncementByline {...announcement} />}
+      keepDescriptionOnPhones
       leading={
         <ButtonLink href="/app/pulse/announcements" variant="ghost" size="fieldIcon" aria-label="Back to Announcements">
           <Icon name="arrowLeft" size={20} />

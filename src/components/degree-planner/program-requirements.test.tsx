@@ -78,14 +78,17 @@ describe("ProgramSelectors", () => {
   it("reserves the responsive three-field row while programs load", () => {
     usePlanner.setState({ major: null });
     const { container } = render(<ProgramSelectorsLoading />);
-    expect(screen.getByRole("status", { name: "Loading programs…" }).className).toContain("grid-cols-2");
+    const row = screen.getByRole("status", { name: "Loading programs…" }).className;
+    expect(row).toContain("grid-cols-1");
+    expect(row).toContain("@min-[30rem]:grid-cols-2");
     expect(container.querySelectorAll("[data-skeleton]")).toHaveLength(6);
     expect(screen.queryByRole("combobox")).toBeNull();
   });
   it("reserves the selected program action and wrapping caption geometry while loading", () => {
     usePlanner.setState({ major: "https://calendar.ubc.ca/program" });
     const { container } = render(<ProgramSelectorsLoading />);
-    expect(container.querySelectorAll("[data-skeleton]")).toHaveLength(7);
+    expect(container.querySelectorAll("[data-skeleton]")).toHaveLength(8);
+    expect(container.querySelector("[data-skeleton].h-9")?.className).toContain("@min-[55rem]:hidden");
     const caption = screen.getByText("Major / program");
     const header = caption.parentElement?.parentElement;
     expect(header?.className).toContain("flex-wrap");
@@ -93,6 +96,30 @@ describe("ProgramSelectors", () => {
     expect(screen.getByText("UBC Calendar").parentElement?.className).toContain("min-h-11");
     expect(screen.getByText("UBC Calendar").parentElement?.className).toContain("sm:min-h-0");
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("collapses a chosen program into a summary that toggles its fields on compact workspaces", async () => {
+    usePlanner.setState({ faculty: "Science", major: "cpsc-major", minor: "math-minor" });
+    render(<ProgramSelectors />);
+
+    const summary = await screen.findByRole("button", { name: /Program\s*Computer Science · Mathematics Minor/ });
+    const fields = document.getElementById(summary.getAttribute("aria-controls") ?? "");
+    expect(summary.getAttribute("aria-expanded")).toBe("false");
+    expect(summary.className).toContain("@min-[55rem]:hidden");
+    expect(fields?.querySelectorAll("input")).toHaveLength(3);
+    expect(fields?.className).toContain("@max-[55rem]:hidden");
+
+    fireEvent.click(summary);
+    expect(summary.getAttribute("aria-expanded")).toBe("true");
+    expect(fields?.className).not.toContain("@max-[55rem]:hidden");
+  });
+
+  it("keeps the fields open without a summary until a major is chosen", async () => {
+    usePlanner.setState({ faculty: "Science", major: null, minor: null });
+    render(<ProgramSelectors />);
+
+    await screen.findByRole("combobox", { name: "Major / program" });
+    expect(screen.queryByRole("button", { name: /^Program/ })).toBeNull();
   });
 
   it("commits an exact faculty choice and preserves its program when refocused", async () => {
@@ -122,7 +149,8 @@ describe("ProgramSelectors", () => {
 
     const link = await screen.findByRole("link", { name: /UBC Calendar/ });
     const layout = container.firstElementChild as HTMLElement;
-    expect(layout.className).toContain("grid-cols-2");
+    expect(layout.className).toContain("grid-cols-1");
+    expect(layout.className).toContain("@min-[30rem]:grid-cols-2");
     expect(layout.className).toContain("@min-[55rem]:flex");
     const input = screen.getByRole("combobox", { name: "Major / program" });
     await waitFor(() => expect((input as HTMLInputElement).value).toBe("Computer Science"));

@@ -62,7 +62,10 @@ function OnboardingContent() {
   if (auth.status !== "signedIn" || auth.isGuest || profile?.onboarding_completed) return null;
 
   return (
-    <main className="auth-canvas flex min-h-svh flex-col items-center justify-center px-4 py-8 sm:py-12">
+    <main
+      data-onboarding
+      className="auth-canvas flex min-h-svh flex-col items-center justify-center px-4 py-8 sm:py-12"
+    >
       <div className="w-full max-w-lg">
         <ol aria-label="Setup progress" className="mb-6 grid grid-cols-3 gap-3">
           {STEPS.map((label, index) => (
@@ -81,7 +84,7 @@ function OnboardingContent() {
             </li>
           ))}
         </ol>
-        <form onSubmit={next} aria-busy={saving} className="neu-panel rounded-2xl p-6 sm:p-8">
+        <form onSubmit={next} aria-busy={saving} data-onboarding-card className="neu-panel rounded-2xl p-6 sm:p-8">
           <motion.div
             key={step}
             initial={reducedMotion ? false : { opacity: 0.5, y: 8 }}
