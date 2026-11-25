@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { DataReader } from "../core/types";
+import { array, record } from "../core/validate";
 
 const CATEGORIES = ["support", "academics", "opportunities", "research", "news", "stories"] as const;
 const MAX_DOCUMENT_BYTES = 1024 * 1024;
@@ -47,18 +48,6 @@ export interface HostDocument {
         }[];
       }
   );
-}
-
-function record(value: unknown, label: string): Row {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`${label} must be an object`);
-  }
-  return value as Row;
-}
-
-function array(value: unknown, label: string): unknown[] {
-  if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
-  return value;
 }
 
 function text(value: unknown, label: string): string {
