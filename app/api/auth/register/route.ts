@@ -1,4 +1,4 @@
-import { signToken } from "@/src/server/auth";
+import { sessionCookie } from "@/src/server/auth";
 import { getRateLimitIdentity, rateLimitResponse } from "@/src/server/rate-limit";
 import { createUser, getUserByUsername } from "@/src/server/sessions/store";
 import bcrypt from "bcryptjs";
@@ -42,9 +42,9 @@ export async function POST(request: Request): Promise<Response> {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const userId = await createUser(username, passwordHash);
-    const token = await signToken(userId, username);
-
-    return json({ token, userId, username }, 201);
+    const response = json({ userId, username }, 201);
+    response.headers.append("set-cookie", await sessionCookie(userId, username));
+    return response;
   } catch (e) {
     return serverError(e);
   }

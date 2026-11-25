@@ -55,20 +55,20 @@ function isSchedule(value: unknown): value is Schedule {
   return !!value && typeof value === "object" && Array.isArray((value as Schedule).sections);
 }
 
-/** Authenticated fetcher bound to the app's token source. */
+/** Authenticated fetcher bound to the app session's user id. */
 export async function sharerFetch<T>(
-  getToken: () => Promise<string | null>,
+  getUserId: () => Promise<string | null>,
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const token = await getToken();
-  if (!token) throw new SharerFetchError(401, "Not signed in");
+  const userId = await getUserId();
+  if (!userId) throw new SharerFetchError(401, "Not signed in");
   const res = await fetch(`/api/sharer${path}`, {
     ...init,
     signal: init?.signal ?? AbortSignal.timeout(30_000),
     headers: {
       ...init?.headers,
-      Authorization: `Bearer ${token}`,
+      "X-Reodite-User": userId,
       ...(init?.body ? { "content-type": "application/json" } : {}),
     },
   });

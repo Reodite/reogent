@@ -38,6 +38,7 @@ const ICON_MAP = {
   sun: "sun-line",
   building1: "building-1-line",
   bling: "bling-line",
+  google: "google-line",
   check: "check-line",
   computer: "computer-line",
   calendar: "calendar-2-line",

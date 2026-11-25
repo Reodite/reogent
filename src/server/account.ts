@@ -30,6 +30,27 @@ export async function getAccount(userId: string): Promise<AccountDetails | null>
   };
 }
 
+/** Chat messages each account may send per Vancouver calendar day. */
+export const DAILY_CHAT_LIMIT = 100;
+
+/**
+ * Atomically counts one chat message against today's allowance. Returns false
+ * when the account has used its daily allowance or no longer exists. The
+ * counter resets at midnight America/Vancouver.
+ */
+export async function consumeDailyChatMessage(userId: string): Promise<boolean> {
+  const { rowCount } = await getPool().query(
+    `WITH today AS (SELECT (now() AT TIME ZONE 'America/Vancouver')::date AS day)
+     UPDATE users
+     SET chat_messages = CASE WHEN chat_day = today.day THEN chat_messages + 1 ELSE 1 END,
+         chat_day = today.day
+     FROM today
+     WHERE id = $1 AND (chat_day IS DISTINCT FROM today.day OR chat_messages < $2)`,
+    [userId, DAILY_CHAT_LIMIT],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 /** Adds provider-reported usage atomically; deleting a conversation does not erase the total. */
 export async function recordTokenUsage(userId: string, totalTokens: number | undefined): Promise<void> {
   if (totalTokens === undefined || totalTokens === 0) return;

@@ -107,8 +107,8 @@ function ScheduleAppInner({ groupCode }: Props) {
   const [showCreate, setShowCreate] = useState(false);
 
   const request = useCallback(
-    <T,>(path: string, init?: RequestInit) => sharerFetch<T>(auth.getToken, path, init),
-    [auth.getToken],
+    <T,>(path: string, init?: RequestInit) => sharerFetch<T>(auth.getUserId, path, init),
+    [auth.getUserId],
   );
 
   const refreshGroups = useCallback(async () => {

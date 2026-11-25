@@ -79,21 +79,22 @@ export function useApi(): ChatApi {
 }
 
 function ApiProvider({ children }: { children: ReactNode }) {
-  const { getToken, signOut, isGuest, user } = useAppAuth();
+  const { getUserId, refresh, isGuest, user } = useAppAuth();
 
   const api = useMemo(() => {
     try {
       return createChatApi({
-        getToken,
+        getUserId,
+        // Asks the server who is signed in: an expired cookie signs out, another tab's account takes over.
         onUnauthorized: () => {
-          if (!isGuest) signOut();
+          if (!isGuest) refresh();
         },
       });
     } catch (e) {
       console.error("Failed to create API client:", e);
       return null;
     }
-  }, [getToken, signOut, isGuest]);
+  }, [getUserId, refresh, isGuest]);
 
   if (!api) {
     return (

@@ -1,4 +1,5 @@
 import { projectCalendarEvents, projectCampusEvents } from "@/src/server/calendar-events";
+import { filterValue } from "@/src/server/core/filter";
 import type { KeyDateDoc } from "@/src/server/modules/calendar";
 import { eventsBetween } from "@/src/server/modules/events";
 import { getSearch } from "@/src/server/search";
@@ -31,7 +32,9 @@ export async function GET(request: Request): Promise<Response> {
     const events: CalendarEvent[] = [];
     if (keyKinds.length > 0 || !wantEvents) {
       const filter =
-        keyKinds.length > 0 ? `${keyKinds.map((k, i) => `${i === 0 ? "" : " OR "}kind = "${k}"`).join("")}` : undefined;
+        keyKinds.length > 0
+          ? `${keyKinds.map((k, i) => `${i === 0 ? "" : " OR "}kind = ${filterValue(k)}`).join("")}`
+          : undefined;
       const res = await search.index("key_dates").search("", {
         filter,
         sort: ["start:asc"],

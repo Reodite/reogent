@@ -29,6 +29,11 @@ vi.mock("@/src/server/agent/stream", () => ({
 }));
 
 vi.mock("@/src/server/search", () => ({ getSearch: () => ({}) }));
+vi.mock("@/src/server/account", () => ({
+  DAILY_CHAT_LIMIT: 100,
+  consumeDailyChatMessage: async () => true,
+  recordTokenUsage: async () => {},
+}));
 
 const { POST: chatPost } = await import("./chat/route");
 const { GET: sessionsGet } = await import("./sessions/route");
@@ -39,7 +44,7 @@ const req = (init: RequestInit & { auth?: boolean } = {}) =>
   new Request("http://localhost/api/x", {
     ...init,
     headers: {
-      ...(init.auth === false ? {} : { authorization: "Bearer token" }),
+      ...(init.auth === false ? {} : { cookie: "reodite_session=token", "x-reodite-user": "u1" }),
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },

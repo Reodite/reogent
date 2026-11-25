@@ -1,5 +1,6 @@
 import { buildingAliases, nonNegativeNumber } from "@/src/lib/building-catalog";
 import { featureCentroid, type BuildingFeature } from "@/src/lib/geo";
+import { filterValue } from "@/src/server/core/filter";
 import type { FeatureCollection } from "geojson";
 import type { DatasetModule, SearchClient } from "../core/types";
 import { dataStore } from "../data";
@@ -167,7 +168,7 @@ export async function resolveBuilding(search: SearchClient, query: string): Prom
       return (await search.index("buildings").getDocument(norm)) as unknown as BuildingDoc;
     } catch {
       const alias = await search.index("buildings").search("", {
-        filter: `aliases = '${norm}'`,
+        filter: `aliases = ${filterValue(norm)}`,
         limit: 1,
       });
       const aliasHit = alias.hits[0];

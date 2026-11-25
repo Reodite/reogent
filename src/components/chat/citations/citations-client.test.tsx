@@ -403,7 +403,7 @@ describe("17.10 — Sources panel renders against the fixture NDJSON stream as c
     const ndjson = fixture.turns[2].providers.anthropic;
     const { fetch } = mockStream(ndjson);
     globalThis.fetch = fetch;
-    const api = createChatApi({ getToken: async () => "test-token" });
+    const api = createChatApi({ getUserId: async () => "u1" });
     const snapshots: Array<{ count: number; usedCount: number }> = [];
     const response = await api.chat("session", [], {
       onCitations(citations) {
@@ -421,7 +421,7 @@ describe("17.10 — Sources panel renders against the fixture NDJSON stream as c
     const ndjson = fixture.turns[1].providers.anthropic;
     const { fetch } = mockStream(ndjson);
     globalThis.fetch = fetch;
-    const api = createChatApi({ getToken: async () => "test-token" });
+    const api = createChatApi({ getUserId: async () => "u1" });
     const seen: number[] = [];
     const response = await api.chat("session", [], {
       onCitations(citations) {
@@ -436,7 +436,7 @@ describe("17.10 — Sources panel renders against the fixture NDJSON stream as c
     const ndjson = fixture.turns[2].providers.anthropic;
     const { fetch } = mockStream(ndjson);
     globalThis.fetch = fetch;
-    const api = createChatApi({ getToken: async () => "test-token" });
+    const api = createChatApi({ getUserId: async () => "u1" });
     let latest: Citation[] = [];
     await api.chat("session", [], {
       onCitations(citations) {

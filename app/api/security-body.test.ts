@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
   effect: vi.fn(),
   stream: vi.fn(),
 }));
-vi.mock("@/src/server/auth", () => ({ requireUser: mocks.requireUser, signToken: async () => "token" }));
+vi.mock("@/src/server/auth", () => ({
+  requireUser: mocks.requireUser,
+  sessionCookie: async () => "reodite_session=token; Path=/",
+}));
 vi.mock("@/src/server/rate-limit", () => ({
   rateLimitResponse: mocks.limit,
   getRateLimitIdentity: () => "test-client",
@@ -22,6 +25,11 @@ vi.mock("@/src/server/sessions/title", () => ({ generateSessionTitle: vi.fn() })
 vi.mock("@/src/server/agent/stream", () => ({ streamAgent: mocks.stream }));
 vi.mock("@/src/server/modules", () => ({ modules: [] }));
 vi.mock("@/src/server/search", () => ({ getSearch: () => ({}) }));
+vi.mock("@/src/server/account", () => ({
+  DAILY_CHAT_LIMIT: 100,
+  consumeDailyChatMessage: async () => true,
+  recordTokenUsage: async () => {},
+}));
 vi.mock("@/src/server/profile", () => ({ getProfile: async () => null, saveProfile: mocks.effect }));
 vi.mock("@/src/server/plans", () => ({ savePlan: mocks.effect }));
 vi.mock("@/src/server/schedules", () => ({ saveSchedule: mocks.effect }));

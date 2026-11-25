@@ -1,3 +1,4 @@
+import { filterValue } from "@/src/server/core/filter";
 import { defaultSession, isSession } from "@/src/server/course-records";
 import { presentCourse, type CourseDoc } from "@/src/server/modules/courses";
 import { getSearch } from "@/src/server/search";
@@ -57,8 +58,8 @@ export async function GET(request: Request): Promise<Response> {
                 ? ["average:asc"]
                 : (["code:asc"] as string[]);
       const filters: string[] = [`session = '${session}'`];
-      if (subject) filters.push(`subject = '${upSubject(subject)}'`);
-      if (faculty) filters.push(`faculty = '${faculty.replace(/'/g, "\\'")}'`);
+      if (subject) filters.push(`subject = ${filterValue(upSubject(subject))}`);
+      if (faculty) filters.push(`faculty = ${filterValue(faculty)}`);
       if (level && Number.isInteger(digit)) {
         // level filtering is code-based; fetch then filter to keep Meilisearch simple.
       }
@@ -89,7 +90,7 @@ export async function GET(request: Request): Promise<Response> {
 
     if (subject) {
       const res = await search.index("courses").search("", {
-        filter: `subject = '${upSubject(subject)}'`,
+        filter: `subject = ${filterValue(upSubject(subject))}`,
         limit: 1000,
       });
       const allPresent = res.hits.map((h) => presentCourse(h as unknown as CourseDoc));

@@ -1,8 +1,10 @@
 services:
   app:
     build: .
+    restart: unless-stopped
+    # Loopback only: serve the app through an HTTPS reverse proxy on this host.
     ports:
-      - "${PORT:-3000}:3000"
+      - "127.0.0.1:${PORT:-3000}:3000"
     env_file: .env
     depends_on:
       postgres:
@@ -14,8 +16,16 @@ services:
     environment:
       - DATABASE_URL=postgres://reodite:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/reodite
       - MEILI_URL=http://meilisearch:7700
+      # The app reads with MEILI_API_KEY; keep the master key out of its environment.
+      - MEILI_MASTER_KEY=
       - DATA_PATH=/data
       - HOSTNAME=0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   dev:
     profiles: ["dev"]
@@ -40,8 +50,39 @@ services:
       - DATA_PATH=/data
       - HOSTNAME=0.0.0.0
 
+  # One-off operator tasks: docker compose --profile ops run --rm ingest (or backup)
+  ingest:
+    profiles: ["ops"]
+    image: node:24-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run ingest"
+    env_file: .env
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./ubc-unified-data/data:/data
+    environment:
+      - MEILI_URL=http://meilisearch:7700
+      - DATA_PATH=/data
+
+  backup:
+    profiles: ["ops"]
+    image: postgres:17-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backups:/backups
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    command: sh -c 'pg_dump -h postgres -U reodite -Fc reodite > /backups/reodite-$$(date -u +%Y%m%dT%H%M%SZ).dump'
+
   postgres:
     image: postgres:17-alpine
+    restart: unless-stopped
     ports:
       - "127.0.0.1:5432:5432"
     environment:
@@ -58,6 +99,7 @@ services:
 
   meilisearch:
     image: getmeili/meilisearch:v1
+    restart: unless-stopped
     ports:
       - "127.0.0.1:7700:7700"
     environment:

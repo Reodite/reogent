@@ -1,4 +1,4 @@
-import { signToken } from "@/src/server/auth";
+import { sessionCookie } from "@/src/server/auth";
 import { getRateLimitIdentity, rateLimitResponse } from "@/src/server/rate-limit";
 import { getUserByUsername } from "@/src/server/sessions/store";
 import bcrypt from "bcryptjs";
@@ -32,13 +32,14 @@ export async function POST(request: Request): Promise<Response> {
     if (accountLimit) return accountLimit;
 
     const user = await getUserByUsername(username);
-    if (!user) return json({ error: "Invalid credentials" }, 401);
+    if (!user?.passwordHash) return json({ error: "Invalid credentials" }, 401);
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return json({ error: "Invalid credentials" }, 401);
 
-    const token = await signToken(user.id, username);
-    return json({ token, userId: user.id, username });
+    const response = json({ userId: user.id, username });
+    response.headers.append("set-cookie", await sessionCookie(user.id, username));
+    return response;
   } catch (e) {
     return serverError(e);
   }

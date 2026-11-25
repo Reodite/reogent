@@ -1,3 +1,4 @@
+import { filterValue } from "@/src/server/core/filter";
 import type { DataReader, DatasetModule, SearchClient } from "../core/types";
 
 interface GradeRow {
@@ -47,7 +48,7 @@ function gsSubject(subject: string): string {
  */
 export async function courseAverage(search: SearchClient, subject: string, course: string): Promise<number | null> {
   const res = await search.index("grades").search("", {
-    filter: `subject = '${gsSubject(subject)}' AND course = '${course}'`,
+    filter: `subject = ${filterValue(gsSubject(subject))} AND course = ${filterValue(course)}`,
     sort: ["year:desc"],
     limit: 200,
   });
@@ -73,7 +74,7 @@ export async function courseGrades(
   course: string,
 ): Promise<{ summary: GradeSummary; distribution: GradeDistribution } | null> {
   const res = await search.index("grades").search("", {
-    filter: `subject = '${gsSubject(subject)}' AND course = '${course}'`,
+    filter: `subject = ${filterValue(gsSubject(subject))} AND course = ${filterValue(course)}`,
     sort: ["year:desc"],
     limit: 200,
   });

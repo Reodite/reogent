@@ -27,13 +27,14 @@ const scheduleReads: string[] = [];
 const scheduleWrites: { token: string | null; schedule: unknown }[] = [];
 const scheduleRenders: { userId: string | undefined; schedule: string }[] = [];
 
-function token(userId: string) {
-  return `header.${btoa(JSON.stringify({ sub: userId, exp: 4_000_000_000 }))}.signature`;
+function storedLogin(userId: string) {
+  localStorage.setItem("reodite.auth.user", JSON.stringify({ userId, username: userId }));
 }
 
-function storedLogin(userId: string) {
-  localStorage.setItem("reodite.auth.token", token(userId));
-  localStorage.setItem("reodite.auth.user", JSON.stringify({ userId, username: userId }));
+// The session cookie follows the identity stored in this browser.
+function sessionResponse() {
+  const raw = localStorage.getItem("reodite.auth.user");
+  return raw ? Response.json(JSON.parse(raw)) : new Response(null, { status: 204 });
 }
 
 function storageEvent(key: string | null = "reodite.auth.user") {
@@ -132,10 +133,12 @@ beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (path: string, init?: RequestInit) => {
-      const authorization = new Headers(init?.headers).get("Authorization");
+      const authorization = new Headers(init?.headers).get("X-Reodite-User");
+      if (path === "/api/auth/session") return sessionResponse();
+      if (path === "/api/auth/logout") return new Response(null, { status: 204 });
       if (path.startsWith("/api/auth/")) {
         const { username } = JSON.parse(init?.body as string);
-        return Response.json({ userId: username, username, token: token(username) });
+        return Response.json({ userId: username, username });
       }
       if (path === "/api/profile") return Response.json({ profile: { onboarding_completed: true } });
       if (path === "/api/plan" && init?.method === "PUT") {
@@ -397,13 +400,13 @@ describe("planner account privacy with real auth and storage", () => {
     render(<App />);
     await act(async () => {});
     const oldApi = api;
-    const oldToken = auth.getToken;
+    const oldToken = auth.getUserId;
     act(() => seedPlan("pending-A"));
     await login("pending-B");
     await act(async () => vi.advanceTimersByTimeAsync(2000));
     expect(
       writes
-        .filter((write) => write.token === `Bearer ${token("pending-B")}`)
+        .filter((write) => write.token === "pending-B")
         .every((write) => !JSON.stringify(write.plan).includes("PRIVATE")),
     ).toBe(true);
     expect(await oldToken()).toBeNull();
@@ -417,7 +420,7 @@ describe("planner account privacy with real auth and storage", () => {
     await act(async () => {});
     act(() => seedPlan("tab-A"));
     const oldApi = api;
-    const oldToken = auth.getToken;
+    const oldToken = auth.getUserId;
     storedLogin("tab-B");
     await act(async () => {
       expect(await oldToken()).toBeNull();
@@ -440,7 +443,7 @@ describe("planner account privacy with real auth and storage", () => {
     storedLogin("hydrate-A");
     const response = deferred<Response>();
     getPlan = async (authorization) =>
-      authorization === `Bearer ${token("hydrate-A")}` ? response.promise : Response.json({ plan: null });
+      authorization === "hydrate-A" ? response.promise : Response.json({ plan: null });
     render(<App />);
     await act(async () => {});
     await login("hydrate-B");
@@ -469,7 +472,7 @@ describe("planner account privacy with real auth and storage", () => {
     expect(writes).toHaveLength(0);
     await act(async () => vi.advanceTimersByTimeAsync(1));
     expect(writes).toHaveLength(1);
-    expect(writes[0]).toMatchObject({ token: `Bearer ${token("normal-A")}`, plan: { lookupQuery: "normal edit" } });
+    expect(writes[0]).toMatchObject({ token: "normal-A", plan: { lookupQuery: "normal edit" } });
     expect(writes[0].plan).not.toHaveProperty("ownerId");
   });
 
@@ -480,18 +483,18 @@ describe("planner account privacy with real auth and storage", () => {
     render(<App />);
     await act(async () => {});
     const currentApi = api;
-    const currentGetter = auth.getToken;
+    const currentGetter = auth.getUserId;
     act(() => store.usePlanner.getState().setLookupQuery("unsaved local edit"));
     act(() => storageEvent("reodite.auth.token"));
     act(() => storageEvent("reodite.auth.user"));
     await act(async () => vi.advanceTimersByTimeAsync(1000));
     expect(api).toBe(currentApi);
-    expect(auth.getToken).toBe(currentGetter);
+    expect(auth.getUserId).toBe(currentGetter);
     expect(reads).toHaveLength(1);
     expect(store.usePlanner.getState().lookupQuery).toBe("unsaved local edit");
     expect(writes).toHaveLength(1);
     expect(writes[0]).toMatchObject({
-      token: `Bearer ${token("same-tab-A")}`,
+      token: "same-tab-A",
       plan: { lookupQuery: "unsaved local edit" },
     });
   });
@@ -500,7 +503,7 @@ describe("planner account privacy with real auth and storage", () => {
     storedLogin("unmount-A");
     const view = render(<App />);
     await act(async () => {});
-    const oldToken = auth.getToken;
+    const oldToken = auth.getUserId;
     const oldApi = api;
     const count = writes.length;
     act(() => seedPlan("unmount-A"));
@@ -524,13 +527,13 @@ describe("planner account privacy with real auth and storage", () => {
     };
     vi.stubGlobal("localStorage", { getItem: unavailable, setItem: unavailable, removeItem: unavailable });
     await login("memory-A");
-    const oldToken = auth.getToken;
-    expect(await oldToken()).toBe(token("memory-A"));
+    const oldToken = auth.getUserId;
+    expect(await oldToken()).toBe("memory-A");
     await login("memory-B");
     expect(await oldToken()).toBeNull();
-    expect(await auth.getToken()).toBe(token("memory-B"));
+    expect(await auth.getUserId()).toBe("memory-B");
     act(() => auth.continueAsGuest());
-    expect(await auth.getToken()).toBe("guest");
+    expect(await auth.getUserId()).toBe("guest");
     expect(store.usePlanner.getState().ownerId).toBeNull();
   });
 });

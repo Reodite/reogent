@@ -6,8 +6,9 @@ const { createUser, getUserByUsername, hash } = vi.hoisted(() => ({
   hash: vi.fn(),
 }));
 vi.mock("@/src/server/sessions/store", () => ({ createUser, getUserByUsername }));
-vi.mock("@/src/server/auth", () => ({ signToken: async () => "fixture-token" }));
-vi.mock("bcryptjs", () => ({ default: { hash, compare: async () => false } }));
+vi.mock("@/src/server/auth", () => ({ sessionCookie: async () => "reodite_session=fixture-token; Path=/" }));
+const compare = vi.hoisted(() => vi.fn(async () => false));
+vi.mock("bcryptjs", () => ({ default: { hash, compare } }));
 
 const request = (body: unknown, ip = "203.0.113.1") =>
   new Request("http://localhost/api/auth/register", {
@@ -68,4 +69,16 @@ describe("credential request boundaries", () => {
     );
     expect(hash).toHaveBeenCalledTimes(5);
   });
+});
+
+it("refuses password sign-in for an account created through Google", async () => {
+  getUserByUsername.mockResolvedValue({ id: "google-user", passwordHash: null });
+  const { POST } = await import("./login/route");
+  const login = new Request("http://localhost/api/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username: "max-1234", password: "anything-long-enough" }),
+  });
+  expect((await POST(login)).status).toBe(401);
+  expect(compare).not.toHaveBeenCalled();
 });

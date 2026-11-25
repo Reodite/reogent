@@ -7,7 +7,7 @@ const { GET } = await import("./route");
 
 const req = (query: string, token?: string) =>
   new Request(`http://localhost/api/courses${query}`, {
-    headers: token ? { authorization: `Bearer ${token}` } : {},
+    headers: token ? { cookie: `reodite_session=${token}`, "x-reodite-user": "u1" } : {},
   });
 
 function fakeCourse(code: string, subject: string, number: string) {

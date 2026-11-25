@@ -21,7 +21,7 @@ const req = (init?: RequestInit, auth = true) =>
   new Request("http://localhost/api/schedule", {
     ...init,
     headers: {
-      ...(auth ? { authorization: "Bearer token" } : {}),
+      ...(auth ? { cookie: "reodite_session=token", "x-reodite-user": "u1" } : {}),
       ...(init?.body ? { "content-type": "application/json" } : {}),
       ...init?.headers,
     },

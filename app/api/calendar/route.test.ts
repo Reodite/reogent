@@ -16,7 +16,7 @@ vi.mock("@/src/server/search", () => {
         async search(_q: string, opts?: { filter?: string }) {
           const filter = opts?.filter ?? "";
           // Honor the kind expression the route emits for `kinds=academic`.
-          const kinds = Array.from(filter.matchAll(/kind = "(\w+)"/g)).map((m) => m[1]);
+          const kinds = Array.from(filter.matchAll(/kind = '(\w+)'/g)).map((m) => m[1]);
           return {
             hits: kinds.length === 0 ? hitsRef.current : hitsRef.current.filter((d) => kinds.includes(d.kind)),
           };

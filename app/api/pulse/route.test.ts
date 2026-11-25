@@ -14,7 +14,9 @@ vi.mock("@/src/server/pulse/store", () => ({ getActiveFeed: (...args: unknown[])
 const { GET } = await import("./route");
 
 const req = (auth = true) =>
-  new Request("http://localhost/api/pulse", { headers: auth ? { authorization: "Bearer token" } : {} });
+  new Request("http://localhost/api/pulse", {
+    headers: auth ? { cookie: "reodite_session=token", "x-reodite-user": "u1" } : {},
+  });
 
 beforeEach(() => {
   verify.mockReset().mockResolvedValue({ payload: { sub: "u1", username: "testuser" } });

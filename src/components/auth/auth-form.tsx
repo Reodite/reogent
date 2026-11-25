@@ -1,7 +1,8 @@
 "use client";
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
-import { Button } from "@/src/components/ui/button";
+import { Icon } from "@/src/components/icons";
+import { Button, buttonClasses } from "@/src/components/ui/button";
 import { Field, TextInput } from "@/src/components/ui/form-controls";
 import { InlineLink } from "@/src/components/ui/inline-action";
 import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
@@ -14,6 +15,13 @@ interface AuthFormProps {
   mode: "login" | "signup";
 }
 
+/** Messages for the error codes the Google sign-in routes add to /login. */
+const GOOGLE_ERRORS: Record<string, string> = {
+  google_unavailable: "Google sign-in isn't set up on this server.",
+  google_cancelled: "Google sign-in was cancelled.",
+  google_failed: "Google sign-in failed. Try again.",
+};
+
 export function AuthFormLoading({ label }: { label: string }) {
   return (
     <SkeletonGroup label={label} className="flex w-full max-w-80 flex-col gap-3">
@@ -25,6 +33,7 @@ export function AuthFormLoading({ label }: { label: string }) {
       ))}
       <span data-auth-loading-feedback className="h-8 shrink-0" />
       <Skeleton data-auth-loading-action className="h-12 w-full rounded-xl" />
+      <Skeleton className="h-12 w-full rounded-xl" />
       <Skeleton className="h-11 w-full rounded-lg" />
     </SkeletonGroup>
   );
@@ -42,6 +51,8 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [pending, setPending] = useState(false);
 
   const safeRedirect = safeAuthRedirect(searchParams.get("redirect"));
+  const googleError = GOOGLE_ERRORS[searchParams.get("error") ?? ""] ?? "";
+  const shownError = error || (pending ? "" : googleError);
   const oppositeHref =
     mode === "login"
       ? `/signup?redirect=${encodeURIComponent(safeRedirect)}`
@@ -113,7 +124,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       </Field>
       <div data-auth-error-slot className="flex min-h-8 items-center justify-center">
         <AnimatePresence>
-          {error ? (
+          {shownError ? (
             <motion.p
               id="auth-error"
               role="alert"
@@ -124,7 +135,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               exit={{ opacity: 0, y: prefersReducedMotion ? 0 : -4 }}
               transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
             >
-              {error}
+              {shownError}
             </motion.p>
           ) : null}
         </AnimatePresence>
@@ -146,6 +157,20 @@ export function AuthForm({ mode }: AuthFormProps) {
             ? "Sign in"
             : "Create account"}
       </Button>
+      <a
+        href={`/api/auth/google?redirect=${encodeURIComponent(safeRedirect)}`}
+        className={buttonClasses({
+          variant: "secondary",
+          size: "large",
+          shadowOn: "background",
+          wrap: false,
+          link: true,
+          className: "w-full",
+        })}
+      >
+        <Icon name="google" size={18} />
+        Continue with Google
+      </a>
       <p className="text-muted flex min-h-11 items-center justify-center text-sm">
         {mode === "login" ? (
           <>

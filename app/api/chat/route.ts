@@ -1,5 +1,5 @@
 import { uuid } from "@/src/lib/uuid";
-import { recordTokenUsage } from "@/src/server/account";
+import { consumeDailyChatMessage, DAILY_CHAT_LIMIT, recordTokenUsage } from "@/src/server/account";
 import { streamAgent } from "@/src/server/agent/stream";
 import { requireUser } from "@/src/server/auth";
 import type { ActivityBlock } from "@/src/server/core/types";
@@ -35,6 +35,14 @@ export async function POST(request: Request): Promise<Response> {
     if (parsed.value.session_id && !(await canWriteSession(user.sub, parsed.value.session_id))) {
       return json({ error: "Session not found" }, 404);
     }
+    if (!(await consumeDailyChatMessage(user.sub))) {
+      return json(
+        {
+          error: `You've used all ${DAILY_CHAT_LIMIT} messages for today. You can send more after midnight Pacific time.`,
+        },
+        429,
+      );
+    }
 
     const sessionId = parsed.value.session_id ?? uuid();
     const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
@@ -67,7 +75,10 @@ export async function POST(request: Request): Promise<Response> {
 
           for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch(), profile })) {
             if (event.type === "usage") {
-              await recordTokenUsage(user.sub, event.totalTokens);
+              // A failed usage write logs and leaves the answer streaming and persisting.
+              recordTokenUsage(user.sub, event.totalTokens).catch((e: unknown) => {
+                console.error("token usage write failed", e instanceof Error ? e.message : e);
+              });
               continue;
             }
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
