@@ -140,7 +140,7 @@ function course(code: string, overrides: Record<string, unknown> = {}): Record<s
     code,
     subject,
     number,
-    level: Number(number.match(/\d/)?.[0] + "00"),
+    level: Number(`${number.match(/\d/)?.[0]}00`),
     title: `Course ${code}`,
     description: "desc",
     credits: 3,

@@ -7,7 +7,7 @@ import { buildPrereqGraph } from "./build-graph";
 
 function code(input: string): CanonicalCode {
   const c = canonicalize(input);
-  if (!c || c.kind !== "code") throw new Error(`not a code: ${input}`);
+  if (c?.kind !== "code") throw new Error(`not a code: ${input}`);
   return c;
 }
 

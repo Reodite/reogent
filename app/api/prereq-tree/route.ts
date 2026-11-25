@@ -18,7 +18,7 @@ export async function GET(request: Request): Promise<Response> {
     if (!root) return json({ error: "root is required" }, 400);
     const result = canonicalize(root);
     if (result?.kind === "rejected") return json({ error: "Okanagan (_O) campus codes are not supported" }, 400);
-    if (!result || result.kind !== "code") return json({ error: `"${root}" is not a valid course code` }, 400);
+    if (result?.kind !== "code") return json({ error: `"${root}" is not a valid course code` }, 400);
     const graph = await buildPrereqGraph(result, getSearch());
     return json(graph);
   } catch (e) {

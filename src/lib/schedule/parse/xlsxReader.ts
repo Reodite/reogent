@@ -213,8 +213,8 @@ function textOf(node: unknown): string {
     const obj = node as Record<string, unknown>;
     // Check child elements before '#text': with trimValues=false, container
     // nodes like <si> carry inter-element whitespace as '#text'.
-    if ("t" in obj) return textOf(obj["t"]);
-    if ("r" in obj) return textOf(obj["r"]);
+    if ("t" in obj) return textOf(obj.t);
+    if ("r" in obj) return textOf(obj.r);
     if ("#text" in obj) return String(obj["#text"]);
   }
   return "";
