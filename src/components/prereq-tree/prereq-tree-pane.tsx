@@ -212,18 +212,6 @@ function TreeContextMenu({
                 Ask AI about this tree
               </button>
             )}
-            <button
-              type="button"
-              role="menuitem"
-              disabled
-              aria-disabled="true"
-              title="Schedule building is coming soon"
-              className="text-on-surface flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm opacity-45"
-            >
-              <Icon name="calendar" size={16} className="text-on-surface-variant" />
-              Add to Schedule
-              <Icon name="lock" size={13} className="text-on-surface-variant ml-auto" />
-            </button>
           </>
         ) : (
           <>
