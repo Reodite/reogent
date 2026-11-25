@@ -36,9 +36,6 @@ export function suggestionPrefix(query: string): string | null {
   return m[2] ? `${m[1]} ${m[2]}` : m[1];
 }
 
-/** Cap on rendered type-ahead rows; a footer row tells the user to keep typing. */
-export const SUGGESTION_CAP = 100;
-
 export interface Graph {
   nodes: Node[];
   edges: Edge[];
@@ -73,9 +70,9 @@ type ColumnItem =
 const X_STEP = 280;
 const Y_STEP = 90; // minimum vertical slot per item — taller blocks grow past this
 const Y_GAP = 20;
-export const NODE_WIDTH = 200;
+const NODE_WIDTH = 200;
 /** The root card renders 50% larger than every other block. */
-export const ROOT_SCALE = 1.5;
+const ROOT_SCALE = 1.5;
 const ROOT_WIDTH = NODE_WIDTH * ROOT_SCALE;
 // Columns after the root shift right by the root's overhang plus half the
 // standard column gap again, so the bigger root card keeps a proportionally

@@ -294,7 +294,6 @@ describe("get_costs (agent-tool-redesign)", () => {
 
   it("falls back to a fuzzy program-name match for tuition", async () => {
     const tool = costs.tools.find((t) => t.spec.name === "get_costs")!;
-    const search = fakeSearch(tuitionFixture);
     // First slug query hits nothing, fuzzy search returns the real program.
     const fuzzy = {
       ...tuitionFixture,

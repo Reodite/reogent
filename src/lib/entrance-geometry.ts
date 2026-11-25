@@ -4,7 +4,7 @@ import type { FeatureCollection, MultiPolygon, Polygon, Position } from "geojson
 
 const METERS_PER_LATITUDE_DEGREE = 110_540;
 const DEFAULT_MAX_WALL_DISTANCE_METERS = 4;
-export const ENTRANCE_DETAIL_ZOOM = 16;
+const ENTRANCE_DETAIL_ZOOM = 16;
 
 type Vec2 = [number, number];
 

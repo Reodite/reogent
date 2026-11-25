@@ -94,5 +94,3 @@ export function CourseNode({ id, data }: NodeProps<CourseNodeData>) {
     </section>
   );
 }
-
-export { VARIANT_CLASS };

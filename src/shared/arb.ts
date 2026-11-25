@@ -4,7 +4,7 @@ import { displayExpr } from "./prereq-ast";
 /** Test-only fast-check generators ported from design.md §Correctness-Properties. */
 
 // 2-4 letter UBC subject code, uppercased.
-export const arbSubject = fc
+const arbSubject = fc
   .string({ minLength: 2, maxLength: 4 })
   .filter((s) => /^[A-Za-z]+$/.test(s))
   .map((s) => s.toUpperCase());
@@ -61,19 +61,19 @@ export const arbPrereqString = fc.oneof(
 const arbNumber = fc.integer({ min: 100, max: 5999 }).map(String);
 
 /** A single canonical code leaf: `{ kind: 'code', code: 'SUBJ NUM' }` (design.md:503). */
-export const arbCode = fc.record({
+const arbCode = fc.record({
   kind: fc.constant("code"),
   code: fc.tuple(arbSubject, arbNumber).map(([s, n]) => `${s} ${n}`),
 });
 
 /** A literal leaf: `{ kind: 'literal', text }` with non-empty text (design.md:504). */
-export const arbLiteral = fc.record({
+const arbLiteral = fc.record({
   kind: fc.constant("literal"),
   text: fc.string({ minLength: 1, maxLength: 20 }),
 });
 
 /** Code-bearing expressions (a code or an AND of codes) for tail suffixes (design.md:505). */
-export const arbCodeExpr = fc.oneof(
+const arbCodeExpr = fc.oneof(
   arbCode,
   fc.record({ kind: fc.constant("and"), children: fc.array(arbCode, { minLength: 2 }) }),
 );

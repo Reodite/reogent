@@ -21,7 +21,7 @@ export interface ScheduledSection {
 
 export type SectionComponent = "lecture" | "laboratory" | "tutorial" | "discussion" | "other";
 
-export const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 const COMPONENT_LETTERS: Record<string, SectionComponent> = {
   L: "laboratory",

@@ -7,9 +7,9 @@ export interface FreeInterval {
   endMin: number;
 }
 
-export const FREE_WINDOW_START = 8 * 60;
-export const FREE_WINDOW_END = 20 * 60;
-export const MIN_FREE_LENGTH = 30;
+const FREE_WINDOW_START = 8 * 60;
+const FREE_WINDOW_END = 20 * 60;
+const MIN_FREE_LENGTH = 30;
 
 /** Finds intervals when all selected people are free within the window, excluding gaps below minLength. */
 export function commonFreeIntervals(

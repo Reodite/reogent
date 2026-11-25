@@ -56,17 +56,13 @@ function groupSections(sections: CourseSection[]): Map<string, CourseSection[]> 
 }
 
 /** Returns the visible component label for known and unrecognized section groups. */
-export function sectionGroupLabel(group: string): string {
+function sectionGroupLabel(group: string): string {
   if (group.startsWith("other:")) return `${group.slice(6)} sections`;
   return GROUP_LABELS[group as SectionComponent];
 }
 
 /** Formats the selected meeting without repeating course identity. */
-export function sectionMeetingLabel(section: {
-  days: string[];
-  start_time: string | null;
-  end_time: string | null;
-}): string {
+function sectionMeetingLabel(section: { days: string[]; start_time: string | null; end_time: string | null }): string {
   const days = normalizeDays(section.days);
   if (days.length === 0 || !section.start_time || !section.end_time) return "Meeting time TBA";
   return `${days.join("/")} · ${section.start_time}–${section.end_time}`;

@@ -16,10 +16,6 @@ export function readAnnouncement(): string {
   return current;
 }
 
-export function useAnnouncer(): (message: string) => void {
-  return announce;
-}
-
 /** Mount once near the app shell root. Updates within one render tick after `announce()` fires. */
 export function LiveRegion() {
   const [message, setMessage] = useState(current);

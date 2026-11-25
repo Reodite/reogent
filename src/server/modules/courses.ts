@@ -2,14 +2,11 @@ import { filterValue } from "@/src/server/core/filter";
 import { formatSeconds } from "../core/time";
 import type { DatasetModule, SearchClient } from "../core/types";
 import {
-  BUCKET_KEYS,
   buildRecordsFromDistributions,
   defaultSession,
   isSession,
-  type BucketKey,
   type CourseCalRow,
   type Session,
-  type SubjectRow,
 } from "../course-records";
 import { getIndexFreshness } from "../freshness";
 import { courseAverage, courseGrades } from "./grades";

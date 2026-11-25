@@ -59,7 +59,7 @@ export function nearestFirst<T extends { lat: number; lon: number }>(
     .sort((a, b) => a.walk_meters - b.walk_meters);
 }
 
-export async function searchNearable<T extends { lat: number; lon: number }>(
+async function searchNearable<T extends { lat: number; lon: number }>(
   search: SearchClient,
   index: string,
   queryText: string,

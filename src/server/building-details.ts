@@ -178,7 +178,7 @@ function photoAllowed(value: string | null): boolean {
   return host === "ubc.ca" || host.endsWith(".ubc.ca");
 }
 
-export function toRoomCard(doc: StudySpaceDoc): RoomCard {
+function toRoomCard(doc: StudySpaceDoc): RoomCard {
   return {
     name: doc.name ?? doc.title,
     roomNumber: doc.room_number,

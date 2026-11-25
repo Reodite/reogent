@@ -192,7 +192,7 @@ export function getProgramIndex(): Promise<ProgramIndex> {
   return indexPromise;
 }
 
-export function getRequirementsOverlay(): Promise<Map<string, StructuredRequirements>> {
+function getRequirementsOverlay(): Promise<Map<string, StructuredRequirements>> {
   if (!overlayPromise) {
     overlayPromise = (async () => {
       const json = await fetchJson<Record<string, Omit<StructuredRequirements, "kind">>>(

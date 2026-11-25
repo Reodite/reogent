@@ -92,11 +92,6 @@ function unique(items: string[]): string[] {
   return [...new Set(items)];
 }
 
-/** Canonical display label shared with the schedule sharer: "CPSC 221 101". */
-export function entryLabel(e: Pick<ScheduleEntry, "code" | "section">): string {
-  return `${normalizeScheduleCode(e.code)} ${e.section}`;
-}
-
 export function syncedSlice(s: ScheduleState): SyncedSchedule {
   return {
     entries: s.entries.map(({ code, section, term }) => ({ code: normalizeScheduleCode(code), section, term })),
@@ -374,16 +369,5 @@ export function clearOwnedScheduleForGuest(): void {
     entries: [],
     activeTerm: "",
     stale: false,
-  });
-}
-
-/** Distinct terms across entries: newest session first, term N ascending
- *  inside a session ("2026-27 Winter Term 1" before "... Term 2"). */
-export function distinctTerms(entries: ScheduleEntry[]): string[] {
-  const sess = (t: string) => t.match(/^\d{4}-\d{2}/)?.[0] ?? t;
-  const rest = (t: string) => t.replace(/^\d{4}-\d{2}\s*/, "");
-  return [...new Set(entries.map((e) => e.term))].sort((a, b) => {
-    const d = sess(b).localeCompare(sess(a));
-    return d !== 0 ? d : rest(a).localeCompare(rest(b));
   });
 }

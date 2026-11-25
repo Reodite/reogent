@@ -180,7 +180,7 @@ function unavailableBuildingDetailSources(details: BuildingDetails) {
   );
 }
 
-export function BuildingDetailContent({ details }: { details: BuildingDetails }) {
+function BuildingDetailContent({ details }: { details: BuildingDetails }) {
   const { building } = details;
   const sources = renderedBuildingDetailSources(details);
   const unavailable = unavailableBuildingDetailSources(details);

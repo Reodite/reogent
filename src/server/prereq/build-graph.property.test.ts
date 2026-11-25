@@ -2,7 +2,7 @@ import { arbCourseDataset } from "@/src/shared/arb";
 import { canonicalize } from "@/src/shared/course-code";
 import { MAX_DEPTH } from "@/src/shared/prereq-ast";
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 import type { SearchClient } from "../core/types";
 import type { CourseDoc } from "../modules/courses";
 import { buildPrereqGraph } from "./build-graph";

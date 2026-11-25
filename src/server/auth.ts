@@ -6,7 +6,7 @@ interface AuthedUser {
 }
 
 /** Name of the httpOnly cookie that carries the signed session token. */
-export const SESSION_COOKIE = "reodite_session";
+const SESSION_COOKIE = "reodite_session";
 const SESSION_SECONDS = 7 * 24 * 60 * 60;
 
 const unauthorized = (error: string) =>

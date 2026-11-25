@@ -221,7 +221,7 @@ function tokenize(input: string): Token[] {
     // CourseNode / DisjunctionNode pick it back out via the
     // `renderTextWithLinks` helper to render as a clickable hyperlink.
     if (ch === "h" || ch === "H") {
-      const urlMatch = input.slice(i).match(/^https?:\/\/[^\s<>\]\[)]+/i);
+      const urlMatch = input.slice(i).match(/^https?:\/\/[^\s<>\][)]+/i);
       if (urlMatch) {
         beginTextChar(urlMatch[0][0]);
         for (let k = 1; k < urlMatch[0].length; k++) textBuf += urlMatch[0][k];

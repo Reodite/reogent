@@ -118,12 +118,3 @@ export function GradeDistributionChart({
     </div>
   );
 }
-
-export function AveragePill({ value, label }: { value: number | null | undefined; label?: string }) {
-  if (value == null || !Number.isFinite(value)) return <span className="text-muted text-sm">N/A</span>;
-  return (
-    <span className={`font-mono text-sm font-medium ${averageColorClass(value)}`} title={label}>
-      {value.toFixed(1)}%
-    </span>
-  );
-}

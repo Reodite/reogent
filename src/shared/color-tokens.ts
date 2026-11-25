@@ -17,7 +17,7 @@ type AliasColorToken = {
 /** Defines a theme color and whether it can host neumorphic surfaces. */
 export type ColorToken = DirectColorToken | AliasColorToken;
 
-export const NEUMORPHIC_COLOR_DIFFERENCE = 0.15;
+const NEUMORPHIC_COLOR_DIFFERENCE = 0.15;
 
 const NEUMORPHIC_CONTEXT_WEIGHTS = {
   light: { shadow: 0.17, highlight: 0.2, deep: 0.25 },
