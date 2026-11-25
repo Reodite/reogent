@@ -156,7 +156,8 @@ export function presentCourse(doc: CourseDoc, maxSections = Number.POSITIVE_INFI
   return { ...doc, sections, total_sections: doc.sections.length };
 }
 
-const upSubject = (s: string) => {
+/** Uppercases a subject and adds the Vancouver suffix when no campus suffix is present: "cpsc" becomes "CPSC_V". */
+export const upSubject = (s: string) => {
   const up = s.trim().toUpperCase();
   return up.includes("_") ? up : `${up}_V`;
 };
