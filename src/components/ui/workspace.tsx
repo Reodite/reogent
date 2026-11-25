@@ -178,30 +178,26 @@ export function WorkspacePage(props: WorkspacePageProps) {
               className="workspace-page-toggle neu-inset bg-surface-container-low shrink-0 gap-1 rounded-lg p-1"
             >
               <legend className="sr-only">{props.title} view</legend>
-              <button
-                ref={mainToggleRef}
-                type="button"
-                aria-pressed={props.view === "main"}
-                aria-controls={mainId}
-                onClick={() => props.onViewChange("main")}
-                className={`focus-visible:ring-primary/40 min-h-8 min-w-max flex-1 rounded-sm px-3 text-sm font-medium focus-visible:ring-2 ${
-                  props.view === "main" ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
-                }`}
-              >
-                {props.mainLabel}
-              </button>
-              <button
-                ref={railToggleRef}
-                type="button"
-                aria-pressed={props.view === "rail"}
-                aria-controls={railId}
-                onClick={() => props.onViewChange("rail")}
-                className={`focus-visible:ring-primary/40 min-h-8 min-w-max flex-1 rounded-sm px-3 text-sm font-medium focus-visible:ring-2 ${
-                  props.view === "rail" ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
-                }`}
-              >
-                {props.railLabel}
-              </button>
+              {(
+                [
+                  ["main", mainToggleRef, mainId, props.mainLabel],
+                  ["rail", railToggleRef, railId, props.railLabel],
+                ] as const
+              ).map(([view, ref, controls, label]) => (
+                <button
+                  key={view}
+                  ref={ref}
+                  type="button"
+                  aria-pressed={props.view === view}
+                  aria-controls={controls}
+                  onClick={() => props.onViewChange(view)}
+                  className={`focus-visible:ring-primary/40 min-h-8 min-w-max flex-1 rounded-sm px-3 text-sm font-medium focus-visible:ring-2 ${
+                    props.view === view ? "neu-raised bg-surface text-primary" : "text-on-surface-variant"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </fieldset>
           ) : null}
 
