@@ -9,6 +9,7 @@ import { Button } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import { SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
 import { siteAudio } from "@/src/lib/audio";
+import { rovingIndex } from "@/src/lib/roving-index";
 import { courseColor } from "@/src/lib/schedule/calendar/colors";
 import {
   buildScheduleGrid,
@@ -328,12 +329,8 @@ export function ScheduleGrid({
   }
 
   function moveDayTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    let next: number;
-    if (event.key === "ArrowRight") next = (index + 1) % model.days.length;
-    else if (event.key === "ArrowLeft") next = (index - 1 + model.days.length) % model.days.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = model.days.length - 1;
-    else return;
+    const next = rovingIndex(event.key, index, model.days.length, "horizontal");
+    if (next === null) return;
     event.preventDefault();
     onActiveDayChange(model.days[next]);
     event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();

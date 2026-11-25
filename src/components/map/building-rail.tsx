@@ -11,6 +11,7 @@ import { WorkspacePanel } from "@/src/components/ui/workspace";
 import type { BuildingDetails, BuildingSummary, OfficialBuildingPhoto, RouteResponse } from "@/src/lib/api-types";
 import { searchBuildings } from "@/src/lib/building-catalog";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
+import { rovingIndex } from "@/src/lib/roving-index";
 import {
   useEffect,
   useId,
@@ -438,18 +439,10 @@ export function BuildingRail(props: BuildingRailProps) {
       return;
     }
     if (results.length === 0) return;
-    if (event.key === "ArrowDown") {
+    const next = rovingIndex(event.key, activeIndex, results.length, "vertical");
+    if (next !== null) {
       event.preventDefault();
-      setActiveIndex((index) => (index + 1) % results.length);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActiveIndex((index) => (index - 1 + results.length) % results.length);
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      setActiveIndex(0);
-    } else if (event.key === "End") {
-      event.preventDefault();
-      setActiveIndex(results.length - 1);
+      setActiveIndex(next);
     } else if (event.key === "Enter") {
       event.preventDefault();
       selectResult(results[Math.min(activeIndex, results.length - 1)]);

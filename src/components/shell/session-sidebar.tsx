@@ -14,6 +14,7 @@ import { MENU_SURFACE_CLASSES, MenuItem } from "@/src/components/ui/menu";
 import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
+import { rovingIndex } from "@/src/lib/roving-index";
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "@/src/lib/sidebar";
 import { AnimatePresence } from "motion/react";
 import Link from "next/link";
@@ -192,12 +193,8 @@ function SessionItem({
 
   function menuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
-    let next = menuIndex;
-    if (event.key === "ArrowDown") next = (menuIndex + 1) % items.length;
-    else if (event.key === "ArrowUp") next = (menuIndex + items.length - 1) % items.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = items.length - 1;
-    else return;
+    const next = rovingIndex(event.key, menuIndex, items.length, "vertical");
+    if (next === null) return;
     event.preventDefault();
     setMenuIndex(next);
     items[next]?.focus();
