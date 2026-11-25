@@ -6,7 +6,8 @@ export const POPULAR_BUILDING_CODES = ["IBLC", "NEST", "LIFE", "BUCH", "ICCS", "
 
 const SEARCH_LIMIT = 20;
 
-function text(value: unknown): string | null {
+/** Returns a trimmed string, or null for non-strings and blank strings. */
+export function optionalText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
@@ -47,20 +48,20 @@ export function buildingAliases(...names: (string | null | undefined)[]): string
 
 export function buildingFromFeature(feature: BuildingFeature): BuildingSummary | null {
   const properties = feature.properties ?? {};
-  const code = normalizeBuildingText(text(properties.BLDG_CODE) ?? "");
-  const name = text(properties.NAME);
+  const code = normalizeBuildingText(optionalText(properties.BLDG_CODE) ?? "");
+  const name = optionalText(properties.NAME);
   const centroid = featureCentroid(feature);
   if (!code || !name || !centroid) return null;
-  const shortName = text(properties.SHORTNAME);
+  const shortName = optionalText(properties.SHORTNAME);
   return {
     code,
     name,
     shortName,
     aliases: buildingAliases(name, shortName),
-    address: text(properties.PRIMARY_ADDRESS),
-    postalCode: text(properties.POSTAL_CODE),
-    usage: text(properties.BLDG_USAGE),
-    state: text(properties.BLDG_STATE),
+    address: optionalText(properties.PRIMARY_ADDRESS),
+    postalCode: optionalText(properties.POSTAL_CODE),
+    usage: optionalText(properties.BLDG_USAGE),
+    state: optionalText(properties.BLDG_STATE),
     floors: nonNegativeNumber(properties.MAX_FLOORS),
     heightMeters: nonNegativeNumber(properties.BLDG_HEIGHT),
     centroid,

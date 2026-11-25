@@ -8,7 +8,7 @@ import type {
   PoiCard,
   RoomCard,
 } from "@/src/lib/api-types";
-import { buildingFromFeature, nonNegativeNumber } from "@/src/lib/building-catalog";
+import { buildingFromFeature, nonNegativeNumber, optionalText } from "@/src/lib/building-catalog";
 import { pointInFeature, type BuildingFeature } from "@/src/lib/geo";
 import type { FeatureCollection } from "geojson";
 import type { SearchClient } from "./core/types";
@@ -20,10 +20,6 @@ import type { StudySpaceDoc } from "./modules/spaces";
 
 const ADDRESS_KEY = "geospatial/ubcv/locations/geojson/ubcv_address.geojson";
 const POI_KEY = "geospatial/ubcv/locations/geojson/ubcv_poi.geojson";
-
-function text(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
 
 function booleanFlag(value: unknown): boolean | null {
   return value === 1 || value === "1" ? true : value === 0 || value === "0" ? false : null;
@@ -61,20 +57,20 @@ function buildingProfile(feature: BuildingFeature): BuildingProfile | null {
   const properties = feature.properties ?? {};
   return {
     ...summary,
-    secondaryUsage: text(properties.BLDG_SEC_USAGE),
-    neighbourhood: text(properties.NEIGHBOURHOOD),
-    jurisdiction: text(properties.JURISDICTION),
-    propertyType: text(properties.PROPERTY_TYPE),
+    secondaryUsage: optionalText(properties.BLDG_SEC_USAGE),
+    neighbourhood: optionalText(properties.NEIGHBOURHOOD),
+    jurisdiction: optionalText(properties.JURISDICTION),
+    propertyType: optionalText(properties.PROPERTY_TYPE),
     hasSubbuildings: booleanFlag(properties.HAS_SUBBLDGS),
-    managingOrganization: text(properties.MANAGE_ORG),
-    maintenanceOrganization: text(properties.BLDG_MAINTENANCE),
-    constructionStatus: text(properties.CONSTR_STATUS),
-    constructionType: text(properties.CONSTR_TYPE),
-    occupancyDate: text(properties.OCCU_DATE),
+    managingOrganization: optionalText(properties.MANAGE_ORG),
+    maintenanceOrganization: optionalText(properties.BLDG_MAINTENANCE),
+    constructionStatus: optionalText(properties.CONSTR_STATUS),
+    constructionType: optionalText(properties.CONSTR_TYPE),
+    occupancyDate: optionalText(properties.OCCU_DATE),
     grossAreaSquareMeters: nonNegativeNumber(properties.GBA),
-    form: text(properties.BLDG_FORM),
-    condition: text(properties.BLDG_CONDITION),
-    greenStatus: text(properties.GREEN_STATUS),
+    form: optionalText(properties.BLDG_FORM),
+    condition: optionalText(properties.BLDG_CONDITION),
+    greenStatus: optionalText(properties.GREEN_STATUS),
   };
 }
 
@@ -86,16 +82,16 @@ function addressesForBuilding(collection: FeatureCollection, buildingUid: string
     })
     .flatMap((feature) => {
       const properties = feature.properties ?? {};
-      const fullAddress = text(properties.FULL_ADDRESS);
+      const fullAddress = optionalText(properties.FULL_ADDRESS);
       if (!fullAddress) return [];
       return [
         {
           fullAddress,
-          siteName: text(properties.SITE_NAME),
+          siteName: optionalText(properties.SITE_NAME),
           primary: properties.IS_PRIMARY === 1,
           official: properties.IS_OFFICIAL_ADDRESS === 1,
           mailing: properties.IS_MAILING_ADDRESS === 1,
-          pointType: text(properties.SITE_POINT_DESCRIPTOR),
+          pointType: optionalText(properties.SITE_POINT_DESCRIPTOR),
         },
       ];
     })
@@ -142,7 +138,7 @@ function entranceSummaries(collection: FeatureCollection, code: string): Buildin
     return [
       {
         id: properties.id,
-        entranceType: text(properties.entranceType),
+        entranceType: optionalText(properties.entranceType),
         doorCount: nonNegativeNumber(properties.doorCount),
         position: [longitude, latitude] as [number, number],
       },
