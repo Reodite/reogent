@@ -1,5 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { getSchedule, saveSchedule } from "@/src/server/schedules";
+import { normalizeCourseCode } from "@/src/shared/course-code";
 import { json, readJson, serverError } from "../http";
 
 // Generous ceiling for a serialized schedule (a few terms of picked sections
@@ -32,14 +33,6 @@ function isValidEntry(e: unknown): e is ScheduleEntry {
     o.term.trim().length > 0 &&
     o.term.length <= MAX_TERM_LENGTH
   );
-}
-
-function canonicalCode(code: string): string {
-  return code
-    .toUpperCase()
-    .replace(/_V(?=\s)/, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 /** GET /api/schedule — the caller's saved schedule, or `{ schedule: null }`. */
@@ -84,7 +77,7 @@ export async function PUT(request: Request): Promise<Response> {
     const parsed = body as { entries: ScheduleEntry[]; activeTerm?: string };
     const schedule = {
       entries: parsed.entries.map(({ code, section, term }) => ({
-        code: canonicalCode(code),
+        code: normalizeCourseCode(code),
         section: section.trim(),
         term: term.trim(),
       })),

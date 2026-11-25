@@ -10,8 +10,9 @@ import type { CourseDoc } from "@/src/lib/api-types";
 import { normalizeDays } from "@/src/lib/schedule";
 import type { PlannerImportReview } from "@/src/lib/schedule-planner-import";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
+import { normalizeCourseCode } from "@/src/shared/course-code";
 import { useState } from "react";
-import { normalizeScheduleCode, type ScheduleImportMode, type ScheduleImportSelection } from "./schedule-store";
+import type { ScheduleImportMode, ScheduleImportSelection } from "./schedule-store";
 
 function importSectionOption(section: CourseDoc["sections"][number]): string {
   const days = normalizeDays(section.days);
@@ -82,7 +83,7 @@ export function PlannerImportDialog({
               const meetingLabel = meeting
                 ? `${meeting.days.join("/")} · ${minutesToFullLabel(meeting.startMin)}–${minutesToFullLabel(meeting.endMin)}`
                 : "Time TBA";
-              const code = normalizeScheduleCode(match.source.courseCode);
+              const code = normalizeCourseCode(match.source.courseCode);
               const selectId = `schedule-import-${match.source.id}`;
               return (
                 <article key={match.source.id} className="bg-surface-container-low rounded-lg p-3">

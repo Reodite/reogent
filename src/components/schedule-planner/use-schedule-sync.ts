@@ -10,12 +10,12 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useApi } from "@/src/components/providers";
 import { normalizeDays } from "@/src/lib/schedule";
+import { normalizeCourseCode } from "@/src/shared/course-code";
 import { useEffect, useState } from "react";
 import {
   componentKey,
   courseTermKey,
   entryId,
-  normalizeScheduleCode,
   syncedSlice,
   useSchedule,
   type ScheduleEntry,
@@ -57,7 +57,7 @@ async function resolveEntries(
   ids: { code: string; section: string; term: string }[],
   current: Map<string, ScheduleEntry>,
 ): Promise<{ entries: ScheduleEntry[]; stale: boolean }> {
-  const codes = [...new Set(ids.map((e) => normalizeScheduleCode(e.code)))];
+  const codes = [...new Set(ids.map((e) => normalizeCourseCode(e.code)))];
   const docs = new Map<string, Awaited<ReturnType<typeof api.getCourse>> | null>();
   await Promise.all(
     codes.map(async (code) => {
@@ -71,7 +71,7 @@ async function resolveEntries(
   let stale = false;
   const entries: ScheduleEntry[] = [];
   for (const rawId of ids) {
-    const id = { ...rawId, code: normalizeScheduleCode(rawId.code) };
+    const id = { ...rawId, code: normalizeCourseCode(rawId.code) };
     const doc = docs.get(id.code);
     const live = doc?.sections.find((s) => s.section === id.section && s.term === id.term);
     const existing = current.get(entryId(id));

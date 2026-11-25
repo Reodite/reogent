@@ -4,6 +4,7 @@
 // local-only snapshot cache so the grid paints before a catalog refetch.
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
 import { normalizeDays, sectionGroup } from "@/src/lib/schedule";
+import { normalizeCourseCode } from "@/src/shared/course-code";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -68,20 +69,12 @@ interface ScheduleState {
   markSynced: (revision: number) => void;
 }
 
-export function normalizeScheduleCode(code: string): string {
-  return code
-    .toUpperCase()
-    .replace(/_V(?=\s)/, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 export function entryId(e: Pick<ScheduleEntry, "code" | "section" | "term">): string {
-  return `${normalizeScheduleCode(e.code)}::${e.section}::${e.term}`;
+  return `${normalizeCourseCode(e.code)}::${e.section}::${e.term}`;
 }
 
 export function courseTermKey(code: string, term: string): string {
-  return `${normalizeScheduleCode(code)}::${term}`;
+  return `${normalizeCourseCode(code)}::${term}`;
 }
 
 export function componentKey(code: string, term: string, section: string): string {
@@ -94,7 +87,7 @@ function unique(items: string[]): string[] {
 
 export function syncedSlice(s: ScheduleState): SyncedSchedule {
   return {
-    entries: s.entries.map(({ code, section, term }) => ({ code: normalizeScheduleCode(code), section, term })),
+    entries: s.entries.map(({ code, section, term }) => ({ code: normalizeCourseCode(code), section, term })),
     activeTerm: s.activeTerm,
   };
 }
@@ -108,7 +101,7 @@ function applyEntries(entries: ScheduleEntry[]): ScheduleEntry[] {
 
 function scheduleEntry(doc: CourseDoc, section: CourseSection): ScheduleEntry {
   return {
-    code: normalizeScheduleCode(doc.code),
+    code: normalizeCourseCode(doc.code),
     section: section.section,
     term: section.term ?? "",
     snapshot: {
@@ -162,11 +155,10 @@ export const useSchedule = create<ScheduleState>()(
       addEntry: (doc, section) =>
         set((s) => {
           const term = section.term ?? "";
-          const code = normalizeScheduleCode(doc.code);
+          const code = normalizeCourseCode(doc.code);
           const component = sectionGroup(section.section);
           const withoutPreviousChoice = s.entries.filter(
-            (e) =>
-              !(normalizeScheduleCode(e.code) === code && e.term === term && sectionGroup(e.section) === component),
+            (e) => !(normalizeCourseCode(e.code) === code && e.term === term && sectionGroup(e.section) === component),
           );
           const selectedKey = componentKey(code, term, section.section);
           const courseKey = courseTermKey(code, term);
@@ -190,12 +182,12 @@ export const useSchedule = create<ScheduleState>()(
       addCourseSections: (doc, sections, options) =>
         set((s) => {
           if (sections.length === 0) return s;
-          const code = normalizeScheduleCode(doc.code);
+          const code = normalizeCourseCode(doc.code);
           const selectedGroups = new Set(sections.map((section) => sectionGroup(section.section)));
           const terms = new Set(sections.map((section) => section.term ?? ""));
           const entries = s.entries.filter(
             (entry) =>
-              normalizeScheduleCode(entry.code) !== code ||
+              normalizeCourseCode(entry.code) !== code ||
               !terms.has(entry.term) ||
               !selectedGroups.has(sectionGroup(entry.section)),
           );
@@ -255,7 +247,7 @@ export const useSchedule = create<ScheduleState>()(
             entries: s.entries.filter(
               (e) =>
                 !(
-                  normalizeScheduleCode(e.code) === normalizeScheduleCode(code) &&
+                  normalizeCourseCode(e.code) === normalizeCourseCode(code) &&
                   e.section === section &&
                   e.term === term
                 ),
@@ -273,7 +265,7 @@ export const useSchedule = create<ScheduleState>()(
             removedComponents: s.removedComponents.filter((candidate) => !candidate.startsWith(`${key}::`)),
             removedCourses: unique([...s.removedCourses, key]),
             entries: s.entries.filter(
-              (e) => normalizeScheduleCode(e.code) !== normalizeScheduleCode(code) || e.term !== term,
+              (e) => normalizeCourseCode(e.code) !== normalizeCourseCode(code) || e.term !== term,
             ),
           };
         }),

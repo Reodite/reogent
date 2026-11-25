@@ -28,6 +28,7 @@ import {
 } from "@/src/lib/api-types";
 import { describeToolCall, formatCad, formatMeters, formatMinutes } from "@/src/lib/format";
 import { toolCallToCanvasView, type MapHighlight } from "@/src/lib/walking";
+import { stripCampusSuffix } from "@/src/shared/course-code";
 import type { CanvasView } from "@/src/shared/panes";
 import { motion, useReducedMotion } from "motion/react";
 import { useId, useMemo, useState } from "react";
@@ -125,7 +126,7 @@ function CourseCard({ course, detailed = false }: { course: CourseDoc; detailed?
   return (
     <article className="bg-surface-container-low rounded-lg p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-body-sm text-primary font-mono font-medium">{course.code.replace("_V", "")}</span>
+        <span className="text-body-sm text-primary font-mono font-medium">{stripCampusSuffix(course.code)}</span>
         {course.credits !== null ? <InfoChip className="shrink-0">{course.credits} cr</InfoChip> : null}
       </div>
       <Heading as="h4" size="subsection" className="mt-1 line-clamp-2">
@@ -267,7 +268,7 @@ function ShowWidgetRenderer({ call }: ToolCallRendererProps) {
           <ToolResultRowContent
             title={
               <span className="flex items-center gap-2">
-                <span className="text-primary font-mono text-xs">{course.code.replace("_V", "")}</span>
+                <span className="text-primary font-mono text-xs">{stripCampusSuffix(course.code)}</span>
                 {course.credits !== null ? <InfoChip>{course.credits} cr</InfoChip> : null}
               </span>
             }
@@ -781,7 +782,7 @@ function plural(count: number, noun: string): string {
 /** Summarizes what a canvas view shows, or null when the pane label says enough. */
 export function describeCanvasView(view: CanvasView): string | null {
   if (view.paneId === "course-lookup") {
-    const code = typeof view.state.code === "string" ? view.state.code.replace("_V", "") : "";
+    const code = typeof view.state.code === "string" ? stripCampusSuffix(view.state.code) : "";
     return code || null;
   }
   if (view.paneId === "calendar") return "Key dates";

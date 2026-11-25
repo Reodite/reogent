@@ -1,5 +1,6 @@
 import type { Citation, CitationKind } from "@/src/shared/citations/citation";
 import { safeSourceUrl as urlOrNull } from "@/src/shared/citations/url";
+import { stripCampusSuffix } from "@/src/shared/course-code";
 import type { AdmissionProgramDoc } from "../modules/admissions";
 import type { KeyDateDoc } from "../modules/calendar";
 import type { CourseDoc } from "../modules/courses";
@@ -9,8 +10,6 @@ import type { PageResult } from "../modules/pages";
 
 export type CitationSeed = Omit<Citation, "index" | "used">;
 export type CitationExtractor = (result: unknown, input: unknown) => CitationSeed[];
-
-const displaySubject = (s: string): string => s.replace(/_V$/, "");
 
 type SourceRecord = {
   title: string;
@@ -52,10 +51,10 @@ function sourceSeed(row: SourceRecord, tool: string, date?: string): CitationSee
 }
 
 const courseSeed = (c: CourseDoc, tool: string): CitationSeed => ({
-  label: `${displaySubject(c.subject)} ${c.number} \u2014 ${c.title}`,
+  label: `${stripCampusSuffix(c.subject)} ${c.number} \u2014 ${c.title}`,
   kind: "course",
   tool,
-  detail: { subject: displaySubject(c.subject), number: c.number },
+  detail: { subject: stripCampusSuffix(c.subject), number: c.number },
 });
 
 export const CITATION_EXTRACTORS: Record<string, CitationExtractor> = {

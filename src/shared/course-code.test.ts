@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalize, extractCourseCodes, isOkanagan } from "./course-code";
+import { canonicalize, extractCourseCodes, isOkanagan, normalizeCourseCode, stripCampusSuffix } from "./course-code";
 
 describe("canonicalize", () => {
   it("strips _V and canonicalizes a Vancouver code", () => {
@@ -76,5 +76,18 @@ describe("extractCourseCodes", () => {
     expect(extractCourseCodes("Take CPSC_V 110 and cpsc 210 before CPSC_O 999")).toEqual(["CPSC 110", "CPSC 210"]);
     expect(extractCourseCodes("no codes here")).toEqual([]);
     expect(extractCourseCodes("")).toEqual([]);
+  });
+});
+
+describe("course code display", () => {
+  it("strips only a trailing-word Vancouver suffix", () => {
+    expect(stripCampusSuffix("CPSC_V 110")).toBe("CPSC 110");
+    expect(stripCampusSuffix("CPSC_V")).toBe("CPSC");
+    expect(stripCampusSuffix("Intro to CPSC")).toBe("Intro to CPSC");
+  });
+
+  it("normalizes case, suffix, and spacing for catalog and Workday codes", () => {
+    expect(normalizeCourseCode(" cpsc_v   221 ")).toBe("CPSC 221");
+    expect(normalizeCourseCode("MATH 100")).toBe("MATH 100");
   });
 });

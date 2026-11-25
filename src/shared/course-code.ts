@@ -25,6 +25,16 @@ const PARTIAL_CODE_RE = /^([A-Za-z]{2,4})(?:_V)?\s*([0-9]{1,2}[A-Za-z]?)$/;
 const OKANAGAN_RE = /\b[A-Za-z]{2,4}_O\b/;
 const BARE_SUBJECT_RE = /^[A-Za-z]{2,5}$/;
 
+/** Removes the Vancouver campus suffix from a dataset code: "CPSC_V 110" becomes "CPSC 110". */
+export function stripCampusSuffix(code: string): string {
+  return code.replace(/_V(?=\s|$)/, "");
+}
+
+/** Uppercases a catalog or Workday code, drops the Vancouver suffix, and collapses whitespace. */
+export function normalizeCourseCode(code: string): string {
+  return stripCampusSuffix(code.toUpperCase().replace(/\s+/g, " ").trim());
+}
+
 /** True iff `raw` carries an `_O` (Okanagan) campus suffix. */
 export function isOkanagan(raw: string): boolean {
   return OKANAGAN_RE.test(raw);
