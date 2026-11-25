@@ -43,8 +43,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# impeccable design tooling state (keep design.json only)
+# impeccable design tooling state (keep design.json and surfaces only)
 .impeccable/critique/
+.impeccable/review/
 
 # opencode local runtime (ralph-loop state)
 .opencode/

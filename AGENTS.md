@@ -48,7 +48,7 @@ If a recommended skill is missing when needed, ask the operator to install it be
 - Colocate tests as `*.test.ts` next to the code under test (Vitest)
 - Follow Biome lint and Prettier formatting (`npm run lint`, `npm run format:check`)
 - Docs: `README.md` (overview), `DESIGN.md` (visual design), `PRODUCT.md` (product spec)
-- Do not commit `.env*` (ignored) or `impeccable` critique state (`.impeccable/critique/`)
+- Do not commit `.env*` (ignored) or `impeccable` critique and review captures (`.impeccable/critique/`, `.impeccable/review/`)
 
 ## UI overrides
 
