@@ -2,7 +2,7 @@ import type { DayCode, MeetingPattern, Section } from "../types";
 import { DAY_ORDER } from "../types";
 
 /** Gaps longer than this never need a route check; no UBC walk takes longer. */
-export const MAX_TRANSFER_GAP = 30;
+const MAX_TRANSFER_GAP = 30;
 
 /** Back-to-back meetings in different buildings within the same week. */
 export interface Transfer {

@@ -3,7 +3,7 @@
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { useChatShellOptional } from "@/src/components/chat/chat-shell-context";
 import { Icon } from "@/src/components/icons";
-import { Button } from "@/src/components/ui/button";
+import { Button, CloseButton } from "@/src/components/ui/button";
 import { DialogHeader, DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
 import { FloatingPanel } from "@/src/components/ui/floating-panel";
@@ -579,11 +579,7 @@ function DayAgendaDialog({
           title="Day agenda"
           description={date ? formatFullDate(parseISODate(date)) : undefined}
           className="mb-3"
-          closeAction={
-            <Button data-dialog-initial-focus variant="ghost" size="denseIcon" aria-label="Close" onClick={onClose}>
-              <Icon name="close" size={16} />
-            </Button>
-          }
+          closeAction={<CloseButton data-dialog-initial-focus density="dense" label="Close" onClick={onClose} />}
         />
         <div className="flex min-h-0 flex-col gap-1 overflow-y-auto">
           {events.map((event) => (
@@ -617,11 +613,7 @@ function EventModal({ event, onClose }: { event: CalendarEvent; onClose: () => v
           description={formatFullDate(parseISODate(event.date))}
           leading={<span aria-hidden className={`h-6 w-1.5 shrink-0 rounded-full ${styleOf(event).bar}`} />}
           className="mb-3"
-          closeAction={
-            <Button data-dialog-initial-focus variant="ghost" size="denseIcon" aria-label="Close" onClick={onClose}>
-              <Icon name="close" size={16} />
-            </Button>
-          }
+          closeAction={<CloseButton data-dialog-initial-focus density="dense" label="Close" onClick={onClose} />}
         />
         <div className="flex flex-wrap items-center gap-1.5">
           <InfoChip emphasis="strong">{styleOf(event).label}</InfoChip>

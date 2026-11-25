@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/src/components/icons";
-import { Button } from "@/src/components/ui/button";
+import { BackButton, Button } from "@/src/components/ui/button";
 import { LoadingStatus, RetryAlert } from "@/src/components/ui/feedback";
 import { SearchInput, TextInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
@@ -11,6 +11,7 @@ import { WorkspacePanel } from "@/src/components/ui/workspace";
 import type { BuildingDetails, BuildingSummary, OfficialBuildingPhoto, RouteResponse } from "@/src/lib/api-types";
 import { searchBuildings } from "@/src/lib/building-catalog";
 import { formatMeters, formatMinutes } from "@/src/lib/format";
+import { rovingIndex } from "@/src/lib/roving-index";
 import {
   useEffect,
   useId,
@@ -180,7 +181,7 @@ function unavailableBuildingDetailSources(details: BuildingDetails) {
   );
 }
 
-export function BuildingDetailContent({ details }: { details: BuildingDetails }) {
+function BuildingDetailContent({ details }: { details: BuildingDetails }) {
   const { building } = details;
   const sources = renderedBuildingDetailSources(details);
   const unavailable = unavailableBuildingDetailSources(details);
@@ -438,18 +439,10 @@ export function BuildingRail(props: BuildingRailProps) {
       return;
     }
     if (results.length === 0) return;
-    if (event.key === "ArrowDown") {
+    const next = rovingIndex(event.key, activeIndex, results.length, "vertical");
+    if (next !== null) {
       event.preventDefault();
-      setActiveIndex((index) => (index + 1) % results.length);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setActiveIndex((index) => (index - 1 + results.length) % results.length);
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      setActiveIndex(0);
-    } else if (event.key === "End") {
-      event.preventDefault();
-      setActiveIndex(results.length - 1);
+      setActiveIndex(next);
     } else if (event.key === "Enter") {
       event.preventDefault();
       selectResult(results[Math.min(activeIndex, results.length - 1)]);
@@ -475,20 +468,7 @@ export function BuildingRail(props: BuildingRailProps) {
   return (
     <WorkspacePanel
       title={title}
-      leading={
-        backLabel ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="sm:size-11"
-            onClick={props.onBack}
-            aria-label={backLabel}
-            title={backLabel}
-          >
-            <Icon name="arrowLeft" size={20} />
-          </Button>
-        ) : undefined
-      }
+      leading={backLabel ? <BackButton label={backLabel} onClick={props.onBack} /> : undefined}
       bodyMode={props.mode === "details" && props.selected ? "scroll" : "contained"}
       padding="none"
     >

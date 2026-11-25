@@ -56,17 +56,13 @@ function groupSections(sections: CourseSection[]): Map<string, CourseSection[]> 
 }
 
 /** Returns the visible component label for known and unrecognized section groups. */
-export function sectionGroupLabel(group: string): string {
+function sectionGroupLabel(group: string): string {
   if (group.startsWith("other:")) return `${group.slice(6)} sections`;
   return GROUP_LABELS[group as SectionComponent];
 }
 
 /** Formats the selected meeting without repeating course identity. */
-export function sectionMeetingLabel(section: {
-  days: string[];
-  start_time: string | null;
-  end_time: string | null;
-}): string {
+function sectionMeetingLabel(section: { days: string[]; start_time: string | null; end_time: string | null }): string {
   const days = normalizeDays(section.days);
   if (days.length === 0 || !section.start_time || !section.end_time) return "Meeting time TBA";
   return `${days.join("/")} · ${section.start_time}–${section.end_time}`;
@@ -202,6 +198,27 @@ export function PlannerCourseModule({
     onFocusHandled();
   }, [focusRequest, onFocusHandled]);
 
+  const sectionRow = (group: string) => {
+    const current = selectedByGroup.get(group);
+    return (
+      <PlannerSectionRow
+        key={group}
+        catalogStatus={doc ? "ready" : catalogError ? "error" : "loading"}
+        group={group}
+        options={groups.get(group) ?? []}
+        current={current}
+        conflict={!!current && conflictingIds.has(entryId(current))}
+        conflictLabels={current ? (conflictLabels.get(entryId(current)) ?? []) : []}
+        idPrefix={idPrefix}
+        inputRef={(node) => {
+          if (node) selectorRefs.current.set(group, node);
+          else selectorRefs.current.delete(group);
+        }}
+        onSelect={(next) => onSelectSection(current, next)}
+      />
+    );
+  };
+
   return (
     <article
       ref={rootRef}
@@ -235,26 +252,7 @@ export function PlannerCourseModule({
         </Button>
       </header>
 
-      {known.map((group) => {
-        const current = selectedByGroup.get(group);
-        return (
-          <PlannerSectionRow
-            key={group}
-            catalogStatus={doc ? "ready" : catalogError ? "error" : "loading"}
-            group={group}
-            options={groups.get(group) ?? []}
-            current={current}
-            conflict={!!current && conflictingIds.has(entryId(current))}
-            conflictLabels={current ? (conflictLabels.get(entryId(current)) ?? []) : []}
-            idPrefix={idPrefix}
-            inputRef={(node) => {
-              if (node) selectorRefs.current.set(group, node);
-              else selectorRefs.current.delete(group);
-            }}
-            onSelect={(next) => onSelectSection(current, next)}
-          />
-        );
-      })}
+      {known.map(sectionRow)}
 
       {additional.length > 0 ? (
         <details
@@ -268,26 +266,7 @@ export function PlannerCourseModule({
               {unselectedAdditional > 0 ? `${unselectedAdditional} not selected automatically` : "Configured"}
             </span>
           </summary>
-          {additional.map((group) => {
-            const current = selectedByGroup.get(group);
-            return (
-              <PlannerSectionRow
-                key={group}
-                catalogStatus={doc ? "ready" : catalogError ? "error" : "loading"}
-                group={group}
-                options={groups.get(group) ?? []}
-                current={current}
-                conflict={!!current && conflictingIds.has(entryId(current))}
-                conflictLabels={current ? (conflictLabels.get(entryId(current)) ?? []) : []}
-                idPrefix={idPrefix}
-                inputRef={(node) => {
-                  if (node) selectorRefs.current.set(group, node);
-                  else selectorRefs.current.delete(group);
-                }}
-                onSelect={(next) => onSelectSection(current, next)}
-              />
-            );
-          })}
+          {additional.map(sectionRow)}
         </details>
       ) : null}
 

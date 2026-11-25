@@ -5,7 +5,7 @@
 // preserve the image slot on load failure.
 import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
-import { Button } from "@/src/components/ui/button";
+import { CloseButton } from "@/src/components/ui/button";
 import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
 import { Skeleton, SkeletonGroup, SkeletonText } from "@/src/components/ui/skeleton";
@@ -18,30 +18,26 @@ function Carousel({ label, children }: { label: string; children: React.ReactNod
   const scroller = useRef<HTMLDivElement>(null);
   const scrollBy = (dir: -1 | 1) =>
     scroller.current?.scrollBy({ left: dir * scroller.current.clientWidth, behavior: "smooth" });
+  const step = (dir: -1 | 1) => (
+    <button
+      type="button"
+      aria-label={`${dir < 0 ? "Previous" : "Next"} ${label}`}
+      onClick={() => scrollBy(dir)}
+      className="focus-visible:ring-primary/40 bg-surface-container text-on-surface-variant hover:text-primary flex size-8 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
+    >
+      <Icon name={dir < 0 ? "left" : "right"} size={14} />
+    </button>
+  );
   return (
     <section className="flex items-center gap-1" aria-roledescription="carousel" aria-label={label}>
-      <button
-        type="button"
-        aria-label={`Previous ${label}`}
-        onClick={() => scrollBy(-1)}
-        className="focus-visible:ring-primary/40 bg-surface-container text-on-surface-variant hover:text-primary flex size-8 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-      >
-        <Icon name="left" size={14} />
-      </button>
+      {step(-1)}
       <div
         ref={scroller}
         className="flex min-w-0 flex-1 snap-x snap-mandatory [scrollbar-width:none] gap-2 overflow-x-auto [overscroll-behavior-x:contain] [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </div>
-      <button
-        type="button"
-        aria-label={`Next ${label}`}
-        onClick={() => scrollBy(1)}
-        className="focus-visible:ring-primary/40 bg-surface-container text-on-surface-variant hover:text-primary flex size-8 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-offset-1"
-      >
-        <Icon name="right" size={14} />
-      </button>
+      {step(1)}
     </section>
   );
 }
@@ -184,9 +180,7 @@ export function BuildingPopup({ building, onClose }: { building: SelectedBuildin
             </p>
           )}
         </div>
-        <Button onClick={onClose} aria-label="Close building details" variant="ghost" size="icon">
-          <Icon name="close" size={16} />
-        </Button>
+        <CloseButton label="Close building details" onClick={onClose} />
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [overscroll-behavior-y:contain] px-3.5 py-3">

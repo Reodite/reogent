@@ -1,4 +1,5 @@
 import type { DataReader, DatasetModule, SearchClient } from "../core/types";
+import { array, record } from "../core/validate";
 import { stripHtml } from "./html";
 
 const CATEGORIES = ["housing", "libraries", "student-support", "policies"] as const;
@@ -94,18 +95,6 @@ export interface LibraryHoursDoc extends SourceRecord {
   schedule_retrieved_at: string;
   schedule_record_sha256: string;
   request_url: string;
-}
-
-function record(value: unknown, field: string): Row {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new Error(`${field} must be an object`);
-  }
-  return value as Row;
-}
-
-function array(value: unknown, field: string): unknown[] {
-  if (!Array.isArray(value)) throw new Error(`${field} must be an array`);
-  return value;
 }
 
 function text(value: unknown, field: string, allowEmpty = false): string {

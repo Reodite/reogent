@@ -1,7 +1,7 @@
 import { requireUser } from "@/src/server/auth";
 import { listBuildingFavorites, setBuildingFavorite } from "@/src/server/building-favorites";
 import { getBuildingsGeoJson } from "@/src/server/modules/buildings";
-import { json, readJson, requireJson, serverError } from "../http";
+import { json, readJson, serverError } from "../http";
 
 const MAX_BODY_BYTES = 256;
 
@@ -31,8 +31,6 @@ export async function PUT(request: Request): Promise<Response> {
   try {
     const user = await requireUser(request);
     if (user instanceof Response) return user;
-    const contentTypeError = requireJson(request);
-    if (contentTypeError) return contentTypeError;
     const result = await readJson(request, MAX_BODY_BYTES);
     if (result instanceof Response) return result;
     const { body } = result;

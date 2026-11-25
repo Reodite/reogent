@@ -26,7 +26,7 @@ export type ParsedQuery =
  * level boundary). A trailing operator on any other number yields an
  * `invalidFilter` so the UI can explain instead of silently dropping it.
  */
-export function parseQuery(raw: string): ParsedQuery {
+function parseQuery(raw: string): ParsedQuery {
   const q = raw.toUpperCase().trim();
   if (!q) return { kind: "none" };
 

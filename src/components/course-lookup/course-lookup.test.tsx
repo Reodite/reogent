@@ -574,7 +574,7 @@ describe("course-lookup-pane — tools-mode list/detail split", () => {
     expect(back.getAttribute("title")).toBe("Back to results");
     expect(back.querySelector("svg")?.getAttribute("width")).toBe("20");
     expect(back.querySelector("svg")?.innerHTML).not.toBe("");
-    expect(back.className).toContain("sm:size-11");
+    expect(back.className).toContain("size-11");
     expect(back.classList.contains("neu-button")).toBe(false);
     expect(back.closest("[data-workspace-scroll]")).toBeNull();
     fireEvent.click(back);

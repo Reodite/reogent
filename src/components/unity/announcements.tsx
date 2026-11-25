@@ -1,5 +1,5 @@
 import { Icon } from "@/src/components/icons";
-import { ButtonLink } from "@/src/components/ui/button";
+import { BackLink } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import { WorkspaceCanvas, WorkspacePage } from "@/src/components/ui/workspace";
 import type { Announcement } from "@/src/server/announcements";
@@ -69,11 +69,7 @@ export function AnnouncementDetails({ announcement }: { announcement: Announceme
       title={announcement.title}
       description={<AnnouncementByline {...announcement} />}
       keepDescriptionOnPhones
-      leading={
-        <ButtonLink href="/app/pulse/announcements" variant="ghost" size="fieldIcon" aria-label="Back to Announcements">
-          <Icon name="arrowLeft" size={20} />
-        </ButtonLink>
-      }
+      leading={<BackLink href="/app/pulse/announcements" label="Back to Announcements" />}
     >
       <WorkspaceCanvas padding="md" role="region" aria-label="Announcement details" tabIndex={0}>
         <article className="mx-auto w-full max-w-[70ch] text-sm">

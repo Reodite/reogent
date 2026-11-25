@@ -42,17 +42,22 @@ function gsSubject(subject: string): string {
   return s.replace(/_(V|K|F)$/, "");
 }
 
-/**
- * Pooled course-average over recent grade records. Returns the
- * enrollment-weighted mean of section averages, or null when no records exist.
- */
-export async function courseAverage(search: SearchClient, subject: string, course: string): Promise<number | null> {
+/** Returns the most recent grade records for a course, newest year first. */
+async function gradeRows(search: SearchClient, subject: string, course: string): Promise<GradeRow[]> {
   const res = await search.index("grades").search("", {
     filter: `subject = ${filterValue(gsSubject(subject))} AND course = ${filterValue(course)}`,
     sort: ["year:desc"],
     limit: 200,
   });
-  const rows = res.hits as unknown as GradeRow[];
+  return res.hits as unknown as GradeRow[];
+}
+
+/**
+ * Pooled course-average over recent grade records. Returns the
+ * enrollment-weighted mean of section averages, or null when no records exist.
+ */
+export async function courseAverage(search: SearchClient, subject: string, course: string): Promise<number | null> {
+  const rows = await gradeRows(search, subject, course);
   if (rows.length === 0) return null;
   let weightedSum = 0;
   let totalEnrolled = 0;
@@ -73,12 +78,7 @@ export async function courseGrades(
   subject: string,
   course: string,
 ): Promise<{ summary: GradeSummary; distribution: GradeDistribution } | null> {
-  const res = await search.index("grades").search("", {
-    filter: `subject = ${filterValue(gsSubject(subject))} AND course = ${filterValue(course)}`,
-    sort: ["year:desc"],
-    limit: 200,
-  });
-  const rows = res.hits as unknown as GradeRow[];
+  const rows = await gradeRows(search, subject, course);
   if (rows.length === 0) return null;
   let weightedSum = 0;
   let totalEnrolled = 0;

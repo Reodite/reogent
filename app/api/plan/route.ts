@@ -1,6 +1,6 @@
 import { requireUser } from "@/src/server/auth";
 import { getPlan, savePlan } from "@/src/server/plans";
-import { json, readJson, requireJson, serverError } from "../http";
+import { json, readJson, serverError } from "../http";
 
 // Generous ceiling for a serialized plan (a full 6-year board is a few KB);
 // blocks arbitrary-blob abuse of the JSONB column.
@@ -22,9 +22,6 @@ export async function PUT(request: Request): Promise<Response> {
   try {
     const user = await requireUser(request);
     if (user instanceof Response) return user;
-    const ctError = requireJson(request);
-    if (ctError) return ctError;
-
     const result = await readJson(request, MAX_PLAN_BYTES);
     if (result instanceof Response) return result;
     const { body } = result;

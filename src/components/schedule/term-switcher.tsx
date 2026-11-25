@@ -1,5 +1,6 @@
 "use client";
 
+import { rovingIndex } from "@/src/lib/roving-index";
 import type { KeyboardEvent } from "react";
 
 interface TermOption {
@@ -22,12 +23,8 @@ export function TermSwitcher({ terms, selected, onSelect }: Props) {
   );
 
   function moveTermTab(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    let next: number;
-    if (event.key === "ArrowRight") next = (index + 1) % terms.length;
-    else if (event.key === "ArrowLeft") next = (index - 1 + terms.length) % terms.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = terms.length - 1;
-    else return;
+    const next = rovingIndex(event.key, index, terms.length, "horizontal");
+    if (next === null) return;
     event.preventDefault();
     onSelect(terms[next].key);
     event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();

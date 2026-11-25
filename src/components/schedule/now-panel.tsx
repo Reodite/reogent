@@ -5,6 +5,7 @@ import { displayHandles } from "@/src/lib/schedule/display";
 import { whoIsFreeNow } from "@/src/lib/schedule/features/whoIsFreeNow";
 import type { Person } from "@/src/lib/schedule/types";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
+import { stripCampusSuffix } from "@/src/shared/course-code";
 import { AvatarChip } from "./avatar-chip";
 
 interface Props {
@@ -14,7 +15,7 @@ interface Props {
 
 /** prefer the compact code; clip a code-less title for the one-line row */
 function shortLabel(section: { courseCode: string; title: string }): string {
-  if (section.courseCode) return section.courseCode.replace(/_V(?=\s)/, "");
+  if (section.courseCode) return stripCampusSuffix(section.courseCode);
   return section.title.length > 26 ? `${section.title.slice(0, 24)}…` : section.title;
 }
 

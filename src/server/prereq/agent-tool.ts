@@ -27,7 +27,7 @@ export const prereqModule: DatasetModule = {
       },
       async execute(input, search) {
         const code = canonicalize(String(input.course_code ?? ""));
-        if (!code || code.kind !== "code") throw new Error(`Invalid course code "${input.course_code}"`);
+        if (code?.kind !== "code") throw new Error(`Invalid course code "${input.course_code}"`);
         return buildPrereqGraph(code, search);
       },
     },

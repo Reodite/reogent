@@ -139,7 +139,7 @@ export function publicEntrancesGeoJson(
   };
 }
 
-export async function getPublicBuildingsGeoJson(): Promise<FeatureCollection> {
+async function getPublicBuildingsGeoJson(): Promise<FeatureCollection> {
   return publicBuildingsGeoJson(await getBuildingsGeoJson());
 }
 

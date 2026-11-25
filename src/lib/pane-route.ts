@@ -14,7 +14,7 @@ export const TOOL_SLUG_TO_PANE_ID: Record<string, PaneId> = {
 
 /** Inverse of {@link TOOL_SLUG_TO_PANE_ID}: every registered pane maps to its
  *  public slug (or null if none exists). */
-export const PANE_ID_TO_TOOL_SLUG: Record<PaneId, string | null> = Object.fromEntries(
+const PANE_ID_TO_TOOL_SLUG: Record<PaneId, string | null> = Object.fromEntries(
   Object.entries(TOOL_SLUG_TO_PANE_ID).map(([slug, id]) => [id, slug]),
 ) as Record<PaneId, string | null>;
 

@@ -123,7 +123,7 @@ function parseRow(row: SheetRow, cols: Partial<Record<HeaderKey, string>>): Sect
   return { ...base, id: computeSectionId(base) };
 }
 
-export function parseScheduleGrid(grid: SheetGrid, sourceFileName?: string): Schedule {
+function parseScheduleGrid(grid: SheetGrid, sourceFileName?: string): Schedule {
   const headers = findHeaders(grid);
   if (headers.length === 0) {
     throw new Error(

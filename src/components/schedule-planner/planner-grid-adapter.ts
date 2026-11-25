@@ -11,14 +11,15 @@ import {
 } from "@/src/lib/schedule";
 import type { ScheduleGridItem } from "@/src/lib/schedule/grid";
 import { DAY_ORDER, type DayCode } from "@/src/lib/schedule/types";
-import { entryId, normalizeScheduleCode, type ScheduleEntry } from "./schedule-store";
+import { normalizeCourseCode } from "@/src/shared/course-code";
+import { entryId, type ScheduleEntry } from "./schedule-store";
 
 const DAY_CODES = new Set<string>(DAY_ORDER);
 
 /** Converts persisted planner entries into the shared conflict-checking shape. */
 export function plannerScheduledSections(entries: ScheduleEntry[]): ScheduledSection[] {
   return entries.map((entry) => ({
-    code: normalizeScheduleCode(entry.code),
+    code: normalizeCourseCode(entry.code),
     title: entry.snapshot.title,
     section: entry.section,
     term: entry.term,
@@ -53,8 +54,8 @@ export function plannerGridItems(entries: ScheduleEntry[]): ScheduleGridItem[] {
   const conflictSet = conflictedIndices(scheduled);
   return entries.map((entry, index) => ({
     id: entryId(entry),
-    courseKey: normalizeScheduleCode(entry.code),
-    code: normalizeScheduleCode(entry.code),
+    courseKey: normalizeCourseCode(entry.code),
+    code: normalizeCourseCode(entry.code),
     title: entry.snapshot.title,
     section: entry.section,
     component: componentLabel(entry.section),
@@ -92,7 +93,7 @@ export function plannerDragOptions(
   const currentIndex = entries.findIndex((entry) => entryId(entry) === blockId);
   const current = entries[currentIndex];
   if (!current) return [];
-  const code = normalizeScheduleCode(current.code);
+  const code = normalizeCourseCode(current.code);
   const doc = docs.get(code);
   if (!doc) return [];
   const group = sectionGroup(current.section);

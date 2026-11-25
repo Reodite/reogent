@@ -27,6 +27,8 @@
 // toward progress. Rows that don't parse to a year table at all yield an empty
 // result so the caller can fall back to the flat referenced-courses list.
 
+import { stripCampusSuffix } from "@/src/shared/course-code";
+
 export type RequirementMode = "oneof" | "all";
 
 export interface YearRequirement {
@@ -144,7 +146,7 @@ function extractCodeMentions(label: string): CodeMention[] {
         pendingSubjectStart = null;
         continue;
       }
-      subject = tok.replace(/_V$/, "");
+      subject = stripCampusSuffix(tok);
       pendingSubjectStart = start;
     }
   }

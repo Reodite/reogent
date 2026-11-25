@@ -1,14 +1,9 @@
 import { filterValue } from "@/src/server/core/filter";
 import { defaultSession, isSession } from "@/src/server/course-records";
-import { presentCourse, type CourseDoc } from "@/src/server/modules/courses";
+import { presentCourse, upSubject, type CourseDoc } from "@/src/server/modules/courses";
 import { getSearch } from "@/src/server/search";
 import { matchesLevel, type LevelOp } from "@/src/shared/course-code";
 import { json, serverError } from "../http";
-
-const upSubject = (s: string) => {
-  const up = s.trim().toUpperCase();
-  return up.includes("_") ? up : `${up}_V`;
-};
 
 const LEVEL_OPS: Record<string, LevelOp> = { eq: "=", plus: "+", minus: "-" };
 

@@ -37,7 +37,7 @@ export function isSession(v: unknown): v is Session {
   return typeof v === "string" && SESSION_SET.has(v);
 }
 
-export function latestWinterSession(sessions: readonly string[] = [...SESSIONS]): string {
+function latestWinterSession(sessions: readonly string[] = [...SESSIONS]): string {
   const winters = sessions.filter((s) => s.endsWith("W"));
   if (winters.length === 0) return sessions[sessions.length - 1] ?? "2025W";
   return [...winters].sort().at(-1)!;
@@ -56,20 +56,6 @@ export function gradeClass(avg: number | null | undefined): string {
   if (v >= 70) return "fair-average";
   if (v >= 60) return "bad-average";
   return "horrible-average";
-}
-
-export function getTermLabel(term: unknown): string {
-  if (term === undefined || term === null) return "N/A";
-  if (typeof term === "number") return term === 1 ? "1" : "2";
-  if (typeof term === "string") return term === "1-2" ? "Both" : term;
-  if (Array.isArray(term)) {
-    const has1 = (term as unknown[]).includes(1);
-    const has2 = (term as unknown[]).includes(2);
-    if (has1 && has2) return "1,2";
-    if (has1) return "1";
-    if (has2) return "2";
-  }
-  return "N/A";
 }
 
 function parseLevel(code: string): number | null {
@@ -107,6 +93,7 @@ function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
+/** Returns the course_sessions primary key for a bare "SUBJ NUM" code and session. */
 export function courseRecordId(code: string, session: Session): string {
   return sanitizeId(`${code}__${session}`);
 }
@@ -256,9 +243,4 @@ export function buildRecordsFromDistributions(opts: {
     });
   }
   return out;
-}
-
-/** Faculty display name without the honorary-science suffix (mirrors dataService.getBaseFaculty). */
-export function baseFaculty(faculty: string): string {
-  return faculty.replace(" (Honorary Science Credit)", "");
 }

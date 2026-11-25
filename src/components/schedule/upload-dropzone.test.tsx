@@ -32,7 +32,7 @@ describe("UploadDropzone", () => {
         <UploadDropzone onParsed={onParsed} />
       </ToastProvider>,
     );
-    const bytes = readFileSync("src/lib/schedule/examples/View_Student_Registration_Saved_Schedule.xlsx");
+    const bytes = readFileSync("__fixtures__/workday/saved-schedule-spring.xlsx");
     const file = new File([new Uint8Array(bytes)], "schedule.XLSX");
     const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
     const dropzone = screen.getByRole("button", { name: /Import Workday schedule/ });

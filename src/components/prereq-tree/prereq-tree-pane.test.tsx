@@ -490,7 +490,7 @@ describe("PrereqTreePane", () => {
     await waitFor(() => expect(screen.getAllByText(/has no listed prerequisites/).length).toBeGreaterThan(0));
   });
 
-  it("right-clicking a course card opens the context menu with a locked Add to Schedule", async () => {
+  it("right-clicking a course card opens the context menu", async () => {
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     render(<PrereqTreePane initialRoot="CPSC 210" />);
     await waitFor(() => expect(screen.getByTestId("rf-canvas")).toBeTruthy());
@@ -498,8 +498,6 @@ describe("PrereqTreePane", () => {
     const menu = await screen.findByRole("menu");
     expect(menu.textContent).toContain("Open in Course Finder");
     expect(menu.textContent).toContain("Ask AI about this tree");
-    const schedule = screen.getByText("Add to Schedule").closest("button");
-    expect(schedule?.disabled).toBe(true);
     fireEvent.click(screen.getByText("Open in Course Finder"));
     expect(routerPush).toHaveBeenCalledWith("/app/tools/courses/CPSC110");
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());

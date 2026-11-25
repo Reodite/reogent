@@ -7,6 +7,7 @@ import { Button } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import { InfoChip } from "@/src/components/ui/info-chip";
 import type { CourseDoc, CourseSection } from "@/src/lib/api-types";
+import { stripCampusSuffix } from "@/src/shared/course-code";
 import { useId } from "react";
 
 function FieldRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
@@ -119,7 +120,7 @@ export function CourseDetailCard({
         <div className="flex flex-wrap items-baseline gap-1.5">
           {/* Catalog codes carry a _V campus suffix after the subject; display strips it. */}
           <Heading as="h2" size="section" className="font-mono">
-            {record.code.replace(/_V(?=\b|$)/, "")}
+            {stripCampusSuffix(record.code)}
           </Heading>
           {sess ? <InfoChip>{sess}</InfoChip> : null}
           {record.credits != null ? <InfoChip>{record.credits} cr</InfoChip> : null}

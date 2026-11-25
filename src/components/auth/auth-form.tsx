@@ -2,14 +2,16 @@
 
 import { useAppAuth } from "@/src/components/auth/app-auth";
 import { Icon } from "@/src/components/icons";
-import { Button, buttonClasses } from "@/src/components/ui/button";
+import { ThemeToggle } from "@/src/components/theme-toggle";
+import { BackLink, Button, buttonClasses } from "@/src/components/ui/button";
 import { Field, TextInput } from "@/src/components/ui/form-controls";
+import { Heading } from "@/src/components/ui/heading";
 import { InlineLink } from "@/src/components/ui/inline-action";
 import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
 import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 interface AuthFormProps {
   mode: "login" | "signup";
@@ -189,5 +191,46 @@ export function AuthForm({ mode }: AuthFormProps) {
         )}
       </p>
     </form>
+  );
+}
+
+const AUTH_PAGE_COPY = {
+  login: { title: "Welcome back", subtitle: "Sign in to continue to Reodite", loading: "Loading sign in" },
+  signup: {
+    title: "Create an account",
+    subtitle: "Sign up to start using Reodite — it's free",
+    loading: "Loading sign up",
+  },
+} as const;
+
+/** Renders the sign-in or sign-up page: sticky back link, branded heading, form, and theme footer. */
+export function AuthPage({ mode }: AuthFormProps) {
+  const copy = AUTH_PAGE_COPY[mode];
+  return (
+    <div className="auth-canvas flex min-h-svh flex-col pb-8">
+      <nav className="bg-background sticky top-0 z-20 flex shrink-0 items-center pt-[max(1rem,env(safe-area-inset-top))] pb-4">
+        <BackLink href="/" label="Back to home" shadowOn="background" />
+      </nav>
+      <div
+        data-auth-content
+        className="ui-content-enter flex flex-1 flex-col items-center justify-center py-6 sm:py-12"
+      >
+        <div className="flex w-full max-w-sm flex-col items-center">
+          <span className="neu-raised bg-surface text-primary mb-8 flex size-14 items-center justify-center rounded-2xl">
+            <Icon name="school" size={27} />
+          </span>
+          <Heading as="h1" size="title" className="mb-1 text-center">
+            {copy.title}
+          </Heading>
+          <p className="text-muted mb-6 text-center text-sm">{copy.subtitle}</p>
+          <Suspense fallback={<AuthFormLoading label={copy.loading} />}>
+            <AuthForm mode={mode} />
+          </Suspense>
+        </div>
+      </div>
+      <footer className="flex items-center justify-center pb-2">
+        <ThemeToggle />
+      </footer>
+    </div>
   );
 }

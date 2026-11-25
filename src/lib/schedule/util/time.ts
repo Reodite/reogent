@@ -2,7 +2,7 @@ import type { DayCode } from "../types";
 import { DAY_ORDER } from "../types";
 
 /** 570 -> '9:30', 750 -> '12:30' (no am/pm; calendar gutter adds it) */
-export function minutesToLabel(min: number): string {
+function minutesToLabel(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   const h12 = h % 12 === 0 ? 12 : h % 12;
@@ -14,11 +14,6 @@ export function minutesToFullLabel(min: number): string {
   const h = Math.floor(min / 60);
   const ampm = h < 12 ? "AM" : "PM";
   return `${minutesToLabel(min)} ${ampm}`;
-}
-
-/** '9:30–11:00' style compact range */
-export function rangeLabel(startMin: number, endMin: number): string {
-  return `${minutesToLabel(startMin)}–${minutesToLabel(endMin)}`;
 }
 
 /** Date -> local ISO 'YYYY-MM-DD' */

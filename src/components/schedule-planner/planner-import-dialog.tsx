@@ -1,7 +1,6 @@
 "use client";
 
-import { Icon } from "@/src/components/icons";
-import { Button } from "@/src/components/ui/button";
+import { Button, CloseButton } from "@/src/components/ui/button";
 import { DialogActions, DialogHeader, DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import { Field, SelectInput } from "@/src/components/ui/form-controls";
 import { Heading } from "@/src/components/ui/heading";
@@ -10,8 +9,9 @@ import type { CourseDoc } from "@/src/lib/api-types";
 import { normalizeDays } from "@/src/lib/schedule";
 import type { PlannerImportReview } from "@/src/lib/schedule-planner-import";
 import { minutesToFullLabel } from "@/src/lib/schedule/util/time";
+import { normalizeCourseCode } from "@/src/shared/course-code";
 import { useState } from "react";
-import { normalizeScheduleCode, type ScheduleImportMode, type ScheduleImportSelection } from "./schedule-store";
+import type { ScheduleImportMode, ScheduleImportSelection } from "./schedule-store";
 
 function importSectionOption(section: CourseDoc["sections"][number]): string {
   const days = normalizeDays(section.days);
@@ -63,15 +63,12 @@ export function PlannerImportDialog({
           }
           className="border-border-subtle border-b p-4 sm:p-6"
           closeAction={
-            <Button
+            <CloseButton
               data-dialog-initial-focus
+              density="dense"
+              label="Close Workday import review"
               onClick={onClose}
-              aria-label="Close Workday import review"
-              variant="ghost"
-              size="denseIcon"
-            >
-              <Icon name="close" className="size-4" />
-            </Button>
+            />
           }
         />
 
@@ -82,7 +79,7 @@ export function PlannerImportDialog({
               const meetingLabel = meeting
                 ? `${meeting.days.join("/")} · ${minutesToFullLabel(meeting.startMin)}–${minutesToFullLabel(meeting.endMin)}`
                 : "Time TBA";
-              const code = normalizeScheduleCode(match.source.courseCode);
+              const code = normalizeCourseCode(match.source.courseCode);
               const selectId = `schedule-import-${match.source.id}`;
               return (
                 <article key={match.source.id} className="bg-surface-container-low rounded-lg p-3">

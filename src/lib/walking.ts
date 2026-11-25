@@ -6,6 +6,32 @@ import { isToolError, type RouteResponse, type ToolCall, type WalkingDistanceRes
 import type { CanvasView } from "@/src/shared/panes";
 import type { LngLat } from "@/src/shared/types";
 
+/** True when `point` carries finite WGS84 `lat` and `lon` values. */
+function hasCoordinates<T extends { lat?: unknown; lon?: unknown }>(
+  point: T,
+): point is T & { lat: number; lon: number } {
+  const { lat, lon } = point;
+  return (
+    typeof lat === "number" &&
+    typeof lon === "number" &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lon >= -180 &&
+    lon <= 180
+  );
+}
+
+/** The building a places result centers on: the tool's answer first, then the requested building. */
+function nearBuilding(call: ToolCall, result: { near_building?: unknown }): string | null {
+  return (
+    (typeof result.near_building === "string" && result.near_building) ||
+    (typeof call.input.near_building === "string" && call.input.near_building) ||
+    null
+  );
+}
+
 interface WalkingHighlight {
   kind: "route";
   /** Building identifiers as the tool reported them (code preferred). */
@@ -102,17 +128,7 @@ export function extractWalkingHighlight(call: ToolCall): WalkingHighlight | null
 export function extractBuildingHighlight(call: ToolCall): BuildingsHighlight | null {
   if (call.name !== "find_building" || isToolError(call.result)) return null;
   const result = call.result as Partial<BuildingRef> | undefined;
-  if (
-    typeof result?.code !== "string" ||
-    !result.code ||
-    typeof result.lat !== "number" ||
-    typeof result.lon !== "number"
-  ) {
-    return null;
-  }
-  // Reject coordinates outside valid WGS84 range
-  if (!Number.isFinite(result.lat) || !Number.isFinite(result.lon)) return null;
-  if (result.lat < -90 || result.lat > 90 || result.lon < -180 || result.lon > 180) return null;
+  if (!result || typeof result.code !== "string" || !result.code || !hasCoordinates(result)) return null;
   const name = typeof result.name === "string" && result.name ? result.name : result.code;
   return { kind: "buildings", buildings: [{ code: result.code, name, lat: result.lat, lon: result.lon }] };
 }
@@ -127,10 +143,7 @@ export function extractPlacesHighlight(call: ToolCall): PlacesHighlight | null {
   if (!Array.isArray(result?.places)) return null;
   const places: PlacePin[] = [];
   for (const p of result.places as Partial<PlacePin>[]) {
-    if (typeof p?.name !== "string" || !p.name || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
-    // Filter entries with invalid coordinates
-    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
-    if (p.lat < -90 || p.lat > 90 || p.lon < -180 || p.lon > 180) continue;
+    if (typeof p?.name !== "string" || !p.name || !hasCoordinates(p)) continue;
     places.push({
       name: p.name,
       lat: p.lat,
@@ -139,11 +152,7 @@ export function extractPlacesHighlight(call: ToolCall): PlacesHighlight | null {
     });
   }
   if (places.length === 0) return null;
-  const near =
-    (typeof result.near_building === "string" && result.near_building) ||
-    (typeof call.input.near_building === "string" && call.input.near_building) ||
-    null;
-  return { kind: "places", near, places };
+  return { kind: "places", near: nearBuilding(call, result), places };
 }
 
 /**
@@ -158,17 +167,11 @@ export function extractParkingHighlight(call: ToolCall): PlacesHighlight | null 
   if (!Array.isArray(result?.parking)) return null;
   const places: PlacePin[] = [];
   for (const p of result.parking as Partial<{ name: string; lat: number; lon: number }>[]) {
-    if (typeof p?.name !== "string" || !p.name || typeof p.lat !== "number" || typeof p.lon !== "number") continue;
-    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
-    if (p.lat < -90 || p.lat > 90 || p.lon < -180 || p.lon > 180) continue;
+    if (typeof p?.name !== "string" || !p.name || !hasCoordinates(p)) continue;
     places.push({ name: p.name, lat: p.lat, lon: p.lon, service_type: null });
   }
   if (places.length === 0) return null;
-  const near =
-    (typeof result.near_building === "string" && result.near_building) ||
-    (typeof call.input.near_building === "string" && call.input.near_building) ||
-    null;
-  return { kind: "places", near, places };
+  return { kind: "places", near: nearBuilding(call, result), places };
 }
 
 /**
@@ -183,10 +186,10 @@ export function extractPeopleHighlight(call: ToolCall): BuildingsHighlight | nul
   const byCode = new Map<string, BuildingRef>();
   for (const person of result.people as { building?: Partial<BuildingRef> }[]) {
     const b = person?.building;
-    if (!b || typeof b.code !== "string" || !b.code || typeof b.lat !== "number" || typeof b.lon !== "number") continue;
-    if (!Number.isFinite(b.lat) || !Number.isFinite(b.lon)) continue;
-    if (b.lat < -90 || b.lat > 90 || b.lon < -180 || b.lon > 180) continue;
-    if (!byCode.has(b.code)) byCode.set(b.code, { code: b.code, name: b.name || b.code, lat: b.lat, lon: b.lon });
+    if (!b || typeof b.code !== "string" || !b.code || !hasCoordinates(b)) continue;
+    if (!byCode.has(b.code)) {
+      byCode.set(b.code, { code: b.code, name: b.name || b.code, lat: b.lat, lon: b.lon });
+    }
   }
   if (byCode.size === 0) return null;
   return { kind: "buildings", buildings: [...byCode.values()] };
@@ -201,16 +204,11 @@ function richBuildingHighlight(
     typeof building?.code !== "string" ||
     !building.code ||
     !Array.isArray(building.centroid) ||
-    building.centroid.length < 2 ||
-    typeof building.centroid[0] !== "number" ||
-    typeof building.centroid[1] !== "number"
+    !hasCoordinates({ lat: building.centroid[1], lon: building.centroid[0] })
   ) {
     return null;
   }
-  const [lon, lat] = building.centroid;
-  if (!Number.isFinite(lon) || !Number.isFinite(lat) || lon < -180 || lon > 180 || lat < -90 || lat > 90) {
-    return null;
-  }
+  const [lon, lat] = building.centroid as [number, number];
   return {
     kind: "buildings",
     buildings: [
@@ -275,7 +273,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
     }
     case "building": {
       const b = data as { code?: string; name?: string; lat?: number; lon?: number } | undefined;
-      if (!b?.code || typeof b.lat !== "number" || typeof b.lon !== "number") return null;
+      if (!b?.code || !hasCoordinates(b)) return null;
       const highlightBuildings: MapHighlight = {
         kind: "buildings",
         buildings: [{ code: b.code, name: b.name ?? b.code, lat: b.lat, lon: b.lon }],
@@ -291,7 +289,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
         | undefined;
       if (!Array.isArray(p?.places)) return null;
       const places = p.places
-        .filter((pl) => typeof pl?.name === "string" && typeof pl.lat === "number" && typeof pl.lon === "number")
+        .filter((pl) => typeof pl?.name === "string" && hasCoordinates(pl))
         .map((pl) => ({
           name: pl.name as string,
           lat: pl.lat as number,
@@ -307,7 +305,7 @@ export function toolCallToCanvasView(call: ToolCall): CanvasView | null {
         { near_building?: string; parking?: { name?: string; lat?: number; lon?: number }[] } | undefined;
       if (!Array.isArray(p?.parking)) return null;
       const places = p.parking
-        .filter((pl) => typeof pl?.name === "string" && typeof pl.lat === "number" && typeof pl.lon === "number")
+        .filter((pl) => typeof pl?.name === "string" && hasCoordinates(pl))
         .map((pl) => ({
           name: pl.name as string,
           lat: pl.lat as number,

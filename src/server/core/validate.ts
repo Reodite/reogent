@@ -36,3 +36,17 @@ export function validateChatRequest(body: unknown): Result {
   }
   return { ok: true, value: { session_id: b.session_id as string | undefined, messages: b.messages } };
 }
+
+/** Returns `value` as a plain object; throws "`label` must be an object" otherwise. */
+export function record(value: unknown, label: string): Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+  return value as Record<string, unknown>;
+}
+
+/** Returns `value` as an array; throws "`label` must be an array" otherwise. */
+export function array(value: unknown, label: string): unknown[] {
+  if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
+  return value;
+}

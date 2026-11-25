@@ -6,7 +6,7 @@ import { ProfileFields } from "@/src/components/auth/profile-fields";
 import { Icon } from "@/src/components/icons";
 import { useProfile, useTheme } from "@/src/components/providers";
 import { ThemeToggle } from "@/src/components/theme-toggle";
-import { Button } from "@/src/components/ui/button";
+import { BackButton, Button } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import type { StudentProfile } from "@/src/shared/profile";
@@ -131,16 +131,11 @@ function OnboardingContent() {
             </p>
           )}
           <div className="mt-8 flex items-center justify-between gap-4">
-            <Button
-              variant="ghost"
-              size="fieldIcon"
+            <BackButton
+              label={step === 2 ? "Back to personal details" : "Back to welcome"}
               disabled={step === 0 || saving}
               onClick={() => setStep(step - 1)}
-              aria-label={step === 2 ? "Back to personal details" : "Back to welcome"}
-              title={step === 2 ? "Back to personal details" : "Back to welcome"}
-            >
-              <Icon name="arrowLeft" size={20} />
-            </Button>
+            />
             <Button type="submit" variant="primary" size="large" disabled={saving}>
               {saving ? "Saving…" : step === 2 ? "Finish setup" : "Next"}
               {!saving && <Icon name={step === 2 ? "check" : "right"} size={16} />}

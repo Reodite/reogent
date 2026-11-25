@@ -1,5 +1,6 @@
 import { getRateLimitIdentity, rateLimitResponse } from "@/src/server/rate-limit";
 import { getSearch } from "@/src/server/search";
+import { stripCampusSuffix } from "@/src/shared/course-code";
 import type { CourseIndexEntry } from "@/src/shared/course-index";
 import { serverError } from "../http";
 
@@ -22,7 +23,7 @@ async function loadIndex(): Promise<CourseIndexEntry[]> {
     }>({ fields: ["code", "title", "credits", "prerequisite", "corequisite"], limit: PAGE, offset });
     for (const doc of res.results) {
       out.push({
-        code: doc.code.replace(/_V(?=\s)/, ""),
+        code: stripCampusSuffix(doc.code),
         title: doc.title,
         credits: doc.credits ?? null,
         prerequisite: doc.prerequisite ?? null,

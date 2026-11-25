@@ -5,14 +5,16 @@ import { Icon } from "@/src/components/icons";
 import { useApi } from "@/src/components/providers";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { SidebarItemButton, SidebarListItem } from "@/src/components/shell/sidebar-list";
-import { Button } from "@/src/components/ui/button";
+import { Button, CloseButton } from "@/src/components/ui/button";
 import { canRestoreFocus, DialogActions, DialogHeader, DialogPanel, DialogRoot } from "@/src/components/ui/dialog";
 import { RetryAlert, RetryState } from "@/src/components/ui/feedback";
 import { FloatingPanel } from "@/src/components/ui/floating-panel";
 import { Heading } from "@/src/components/ui/heading";
+import { MENU_SURFACE_CLASSES, MenuItem } from "@/src/components/ui/menu";
 import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
 import type { SessionSummary } from "@/src/lib/api-types";
 import { SESSION_GROUP_ORDER, sessionGroup, type SessionGroup } from "@/src/lib/format";
+import { rovingIndex } from "@/src/lib/roving-index";
 import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "@/src/lib/sidebar";
 import { AnimatePresence } from "motion/react";
 import Link from "next/link";
@@ -191,12 +193,8 @@ function SessionItem({
 
   function menuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
-    let next = menuIndex;
-    if (event.key === "ArrowDown") next = (menuIndex + 1) % items.length;
-    else if (event.key === "ArrowUp") next = (menuIndex + items.length - 1) % items.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = items.length - 1;
-    else return;
+    const next = rovingIndex(event.key, menuIndex, items.length, "vertical");
+    if (next === null) return;
     event.preventDefault();
     setMenuIndex(next);
     items[next]?.focus();
@@ -245,15 +243,7 @@ function SessionItem({
             >
               <Icon name="check" size={16} />
             </Button>
-            <Button
-              variant="ghost"
-              size="denseIcon"
-              onClick={cancelRename}
-              disabled={saving}
-              aria-label="Cancel rename"
-            >
-              <Icon name="close" size={16} />
-            </Button>
+            <CloseButton density="dense" label="Cancel rename" onClick={cancelRename} disabled={saving} />
           </div>
           {error ? (
             <p id={errorId} role="alert" className="text-error px-2 pb-2 text-xs leading-5">
@@ -312,22 +302,19 @@ function SessionItem({
               event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[menuIndex]?.focus();
             }}
             onKeyDown={menuKeyDown}
-            className="neu-panel bg-surface grid w-48 gap-1 rounded-xl p-1"
+            className={`${MENU_SURFACE_CLASSES} w-48`}
           >
-            <button
-              type="button"
-              role="menuitem"
+            <MenuItem
+              icon="pencil"
               tabIndex={menuIndex === 0 ? 0 : -1}
               onFocus={() => setMenuIndex(0)}
               onClick={startRename}
-              className="hover:bg-surface-container-high focus-visible:ring-primary/40 text-on-surface flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-inset"
             >
-              <Icon name="pencil" size={16} />
               Rename
-            </button>
-            <button
-              type="button"
-              role="menuitem"
+            </MenuItem>
+            <MenuItem
+              icon="trash"
+              tone="danger"
               tabIndex={menuIndex === 1 ? 0 : -1}
               onFocus={() => setMenuIndex(1)}
               onClick={() => {
@@ -335,11 +322,9 @@ function SessionItem({
                 setMode("idle");
                 onDelete();
               }}
-              className="hover:bg-error-container/40 focus-visible:ring-error/40 text-error flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-inset"
             >
-              <Icon name="trash" size={16} />
               Delete
-            </button>
+            </MenuItem>
           </FloatingPanel>
         ) : null}
       </AnimatePresence>
@@ -472,11 +457,7 @@ export function SessionSidebar({ onCollapse, onClose, footer }: SessionSidebarPr
                 <Icon name="left" size={18} />
               </Button>
             )}
-            {onClose && (
-              <Button onClick={onClose} aria-label="Close sessions" variant="ghost" size="icon">
-                <Icon name="close" size={18} />
-              </Button>
-            )}
+            {onClose && <CloseButton label="Close sessions" onClick={onClose} />}
           </>
         }
       />

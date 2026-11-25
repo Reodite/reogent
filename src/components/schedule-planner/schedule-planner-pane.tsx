@@ -9,7 +9,7 @@ import { ScheduleWorkspace, type ScheduleWorkspaceView } from "@/src/components/
 import { TermSwitcher } from "@/src/components/schedule/term-switcher";
 import { ToastProvider } from "@/src/components/schedule/toast";
 import { UploadDropzone } from "@/src/components/schedule/upload-dropzone";
-import { Button } from "@/src/components/ui/button";
+import { CloseButton } from "@/src/components/ui/button";
 import { Heading } from "@/src/components/ui/heading";
 import { InfoChip } from "@/src/components/ui/info-chip";
 import type { CourseDoc } from "@/src/lib/api-types";
@@ -18,6 +18,7 @@ import { selectAutomaticSections } from "@/src/lib/schedule-planner";
 import { resolvePlannerImport, type PlannerImportReview } from "@/src/lib/schedule-planner-import";
 import { buildScheduleGrid } from "@/src/lib/schedule/grid";
 import type { DayCode, Schedule } from "@/src/lib/schedule/types";
+import { normalizeCourseCode } from "@/src/shared/course-code";
 import { AnimatePresence } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PlannerCourseModule, PlannerCoursesSkeleton, type PlannerCourseFocusRequest } from "./planner-course-module";
@@ -28,13 +29,7 @@ import {
   plannerScheduledSections,
 } from "./planner-grid-adapter";
 import { PlannerImportDialog } from "./planner-import-dialog";
-import {
-  entryId,
-  normalizeScheduleCode,
-  useSchedule,
-  type ScheduleImportMode,
-  type ScheduleImportSelection,
-} from "./schedule-store";
+import { entryId, useSchedule, type ScheduleImportMode, type ScheduleImportSelection } from "./schedule-store";
 import { useScheduleSync } from "./use-schedule-sync";
 
 function termLabel(term: string): string {
@@ -104,7 +99,7 @@ function SchedulePlannerPaneInner() {
             ...list,
             candidates: list.candidates.map((candidate) => ({
               ...candidate,
-              code: normalizeScheduleCode(candidate.code),
+              code: normalizeCourseCode(candidate.code),
             })),
           }
         : null,
@@ -147,7 +142,7 @@ function SchedulePlannerPaneInner() {
     importSections(selections, mode);
     setDocs((current) => {
       const next = new Map(current);
-      for (const { doc } of selections) next.set(normalizeScheduleCode(doc.code), doc);
+      for (const { doc } of selections) next.set(normalizeCourseCode(doc.code), doc);
       return next;
     });
     setImportReview(null);
@@ -155,7 +150,7 @@ function SchedulePlannerPaneInner() {
   }
 
   const storedCodeKey = useMemo(
-    () => [...new Set(entries.map((entry) => normalizeScheduleCode(entry.code)))].sort().join("\u0000"),
+    () => [...new Set(entries.map((entry) => normalizeCourseCode(entry.code)))].sort().join("\u0000"),
     [entries],
   );
 
@@ -184,7 +179,7 @@ function SchedulePlannerPaneInner() {
 
   const allTerms = useMemo(() => {
     const terms = entries.map((entry) => entry.term);
-    const pickedCourseCodes = new Set(entries.map((entry) => normalizeScheduleCode(entry.code)));
+    const pickedCourseCodes = new Set(entries.map((entry) => normalizeCourseCode(entry.code)));
     for (const code of pickedCourseCodes) terms.push(...(docs.get(code)?.terms ?? []));
     return sortTerms(terms);
   }, [docs, entries]);
@@ -197,7 +192,7 @@ function SchedulePlannerPaneInner() {
   const visibleEntries = useMemo(() => entries.filter((entry) => entry.term === activeTerm), [activeTerm, entries]);
   const gridItems = useMemo(() => plannerGridItems(visibleEntries), [visibleEntries]);
   const gridModel = useMemo(() => buildScheduleGrid(gridItems), [gridItems]);
-  const pickedCodes = new Set(visibleEntries.map((entry) => normalizeScheduleCode(entry.code)));
+  const pickedCodes = new Set(visibleEntries.map((entry) => normalizeCourseCode(entry.code)));
   const conflictingIds = new Set(gridItems.filter((item) => item.conflict).map((item) => item.id));
   const conflictLabels = useMemo(() => plannerConflictLabels(visibleEntries), [visibleEntries]);
   const conflictCount = conflictingIds.size;
@@ -211,7 +206,7 @@ function SchedulePlannerPaneInner() {
 
   const commitCandidate = useCallback(
     async (candidateCode: string) => {
-      const code = normalizeScheduleCode(candidateCode);
+      const code = normalizeCourseCode(candidateCode);
       const expectedQuery = queryRef.current;
       const token = ++commitToken.current;
       setCommitPendingCode(code);
@@ -220,7 +215,7 @@ function SchedulePlannerPaneInner() {
 
       let doc: CourseDoc;
       try {
-        doc = record && normalizeScheduleCode(record.code) === code ? record : await api.getCourse(code);
+        doc = record && normalizeCourseCode(record.code) === code ? record : await api.getCourse(code);
       } catch {
         if (!mounted.current || token !== commitToken.current || queryRef.current !== expectedQuery) return;
         setCommitPendingCode(null);
@@ -231,7 +226,7 @@ function SchedulePlannerPaneInner() {
       if (!mounted.current || token !== commitToken.current || queryRef.current !== expectedQuery) return;
 
       const activeDuplicate = entries.some(
-        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === activeTerm,
+        (entry) => normalizeCourseCode(entry.code) === code && entry.term === activeTerm,
       );
       setDocs((current) => new Map(current).set(code, doc));
       if (activeDuplicate) {
@@ -249,9 +244,7 @@ function SchedulePlannerPaneInner() {
         return;
       }
 
-      const duplicate = entries.some(
-        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === targetTerm,
-      );
+      const duplicate = entries.some((entry) => normalizeCourseCode(entry.code) === code && entry.term === targetTerm);
       if (duplicate) {
         if (targetTerm !== activeTerm) setActiveTerm(targetTerm);
         setCommitPendingCode(null);
@@ -282,8 +275,8 @@ function SchedulePlannerPaneInner() {
 
   const getCandidatePresentation = useCallback(
     (candidate: Candidate) => {
-      const code = normalizeScheduleCode(candidate.code);
-      const exactRecord = record && normalizeScheduleCode(record.code) === code ? record : null;
+      const code = normalizeCourseCode(candidate.code);
+      const exactRecord = record && normalizeCourseCode(record.code) === code ? record : null;
       const offeredTerms = sortTerms(
         exactRecord
           ? exactRecord.sections.flatMap((section) => (section.term ? [section.term] : []))
@@ -291,7 +284,7 @@ function SchedulePlannerPaneInner() {
       );
       const targetTerm = offeredTerms.includes(activeTerm) ? activeTerm : offeredTerms[0];
       const activeDuplicate = entries.some(
-        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === activeTerm,
+        (entry) => normalizeCourseCode(entry.code) === code && entry.term === activeTerm,
       );
       if (activeDuplicate) {
         return {
@@ -302,9 +295,7 @@ function SchedulePlannerPaneInner() {
       if (!targetTerm || unavailableCodes.has(code)) {
         return { annotation: "No offered sections", disabled: true };
       }
-      const duplicate = entries.some(
-        (entry) => normalizeScheduleCode(entry.code) === code && entry.term === targetTerm,
-      );
+      const duplicate = entries.some((entry) => normalizeCourseCode(entry.code) === code && entry.term === targetTerm);
       const annotation = duplicate
         ? `Added — switch to ${targetTerm}`
         : targetTerm === activeTerm
@@ -324,7 +315,7 @@ function SchedulePlannerPaneInner() {
       onDrop: (blockId, optionId) => {
         const current = visibleEntries.find((entry) => entryId(entry) === blockId);
         if (!current) return;
-        const doc = docs.get(normalizeScheduleCode(current.code));
+        const doc = docs.get(normalizeCourseCode(current.code));
         const section = doc?.sections.find(
           (candidate) =>
             candidate.term === current.term &&
@@ -345,17 +336,14 @@ function SchedulePlannerPaneInner() {
             ? "Some course details could not be refreshed. Cached times remain visible."
             : "The catalog changed since your last visit. Review highlighted course details before registering."}
         </span>
-        <Button
-          variant="ghost"
-          size="denseIcon"
+        <CloseButton
+          density="dense"
+          label="Dismiss notice"
           onClick={() => {
             setStale(false);
             setCatalogError(false);
           }}
-          aria-label="Dismiss notice"
-        >
-          <Icon name="close" className="size-3.5" />
-        </Button>
+        />
       </div>
     ) : undefined;
 
@@ -437,7 +425,7 @@ function SchedulePlannerPaneInner() {
         <div className="flex flex-col gap-2">
           {[...pickedCodes].sort().map((code) => {
             const doc = docs.get(code);
-            const selected = visibleEntries.filter((entry) => normalizeScheduleCode(entry.code) === code);
+            const selected = visibleEntries.filter((entry) => normalizeCourseCode(entry.code) === code);
             return (
               <div key={code} className="ui-content-enter">
                 <PlannerCourseModule

@@ -2,7 +2,7 @@ import { sessionCookie } from "@/src/server/auth";
 import { getRateLimitIdentity, rateLimitResponse } from "@/src/server/rate-limit";
 import { createUser, getUserByUsername } from "@/src/server/sessions/store";
 import bcrypt from "bcryptjs";
-import { json, readJson, requireJson, serverError } from "../../http";
+import { json, readJsonObject, serverError } from "../../http";
 
 const REGISTER_LIMIT = { windowMs: 60_000, maxRequests: 5 };
 
@@ -12,17 +12,9 @@ export async function POST(request: Request): Promise<Response> {
     const limited = rateLimitResponse(`register:${ip}`, REGISTER_LIMIT);
     if (limited) return limited;
 
-    const ctError = requireJson(request);
-    if (ctError) return ctError;
-
-    const result = await readJson(request);
+    const result = await readJsonObject(request);
     if (result instanceof Response) return result;
-    const { body } = result;
-
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
-      return json({ error: "Body must be an object" }, 400);
-    }
-    const { username, password } = body as Record<string, unknown>;
+    const { username, password } = result.body;
     if (!username || !password) return json({ error: "Username and password required" }, 400);
     if (typeof username !== "string" || typeof password !== "string")
       return json({ error: "Username and password must be strings" }, 400);

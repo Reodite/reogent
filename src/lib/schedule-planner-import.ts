@@ -1,3 +1,4 @@
+import { normalizeCourseCode } from "@/src/shared/course-code";
 import type { CourseDoc, CourseSection } from "./api-types";
 import { normalizeDays, parseTime, sectionComponent, type SectionComponent } from "./schedule";
 import type { Schedule, Section } from "./schedule/types";
@@ -17,14 +18,6 @@ export interface PlannerImportMatch {
 export interface PlannerImportReview {
   sourceFileName?: string;
   matches: PlannerImportMatch[];
-}
-
-function normalizeCode(code: string): string {
-  return code
-    .toUpperCase()
-    .replace(/_V(?=\s)/, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function expectedTermPrefix(iso: string | undefined): string | null {
@@ -73,7 +66,9 @@ export async function resolvePlannerImport(
   schedule: Schedule,
   resolveCourse: (code: string) => Promise<CourseDoc>,
 ): Promise<PlannerImportReview> {
-  const codes = [...new Set(schedule.sections.map((section) => normalizeCode(section.courseCode)).filter(Boolean))];
+  const codes = [
+    ...new Set(schedule.sections.map((section) => normalizeCourseCode(section.courseCode)).filter(Boolean)),
+  ];
   const docs = new Map<string, CourseDoc | null>();
   await Promise.all(
     codes.map(async (code) => {
@@ -86,7 +81,7 @@ export async function resolvePlannerImport(
   );
 
   const matches = schedule.sections.map((source): PlannerImportMatch => {
-    const code = normalizeCode(source.courseCode);
+    const code = normalizeCourseCode(source.courseCode);
     const doc = docs.get(code) ?? null;
     if (!code || !doc) {
       return { source, doc, candidates: [], status: "unmatched", reason: "Course not found in the catalog." };

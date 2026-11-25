@@ -1,3 +1,4 @@
+import { stripCampusSuffix } from "@/src/shared/course-code";
 import type { DayCode, Schedule } from "../types";
 
 const BYDAY: Record<DayCode, string> = { Mon: "MO", Tue: "TU", Wed: "WE", Thu: "TH", Fri: "FR", Sat: "SA", Sun: "SU" };
@@ -79,7 +80,7 @@ export function scheduleToIcs(schedule: Schedule, now = new Date()): string {
         `DTEND;TZID=America/Vancouver:${compactDate(first)}T${clock(pattern.endMin)}`,
         // UNTIL must be UTC; 06:59Z the next day is 22:59 PST or 23:59 PDT on the last local day.
         `RRULE:FREQ=WEEKLY;BYDAY=${days.map((day) => BYDAY[day]).join(",")};UNTIL=${compactDate(until)}T065959Z`,
-        `SUMMARY:${escapeText(`${section.courseCode.replace(/_V(?=\s)/, "")} ${section.component}`)}`,
+        `SUMMARY:${escapeText(`${stripCampusSuffix(section.courseCode)} ${section.component}`)}`,
         `DESCRIPTION:${escapeText([section.title, ...section.instructors].join("\n"))}`,
         ...(where ? [`LOCATION:${escapeText(where)}`] : []),
         "END:VEVENT",
