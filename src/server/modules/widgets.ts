@@ -4,7 +4,7 @@ import { BUCKET_KEYS, defaultSession, isSession, type BucketKey, type Session } 
 import { sanitizeMeiliId } from "../ingest";
 import { route } from "../routing";
 import { resolveBuilding } from "./buildings";
-import { findByCode, presentCourse, type CourseDoc } from "./courses";
+import { findByCode, getSessionRecord, presentCourse, type CourseDoc } from "./courses";
 import { getEvent } from "./events";
 import { courseGrades } from "./grades";
 import { lookupTuition } from "./tuition";
@@ -238,16 +238,7 @@ export function createWidgetsModule(): DatasetModule {
               const rawSession = typeof input.session === "string" ? input.session.trim() : "";
               if (rawSession && !isSession(rawSession)) throw new Error(`Unknown session "${rawSession}"`);
               const session = (rawSession || defaultSession()) as Session;
-              // Session records are keyed by the user-facing code (no campus
-              // suffix): get_course stores "EOSC_111__2025W", not "EOSC_V_...".
-              const bareSubject = doc.subject.replace(/_[VKF]$/i, "").toUpperCase();
-              const sid = `${bareSubject}_${doc.number}__${session}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-              let rec: Record<string, unknown> | null = null;
-              try {
-                rec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
-              } catch {
-                // not offered in this session
-              }
+              const rec = await getSessionRecord(search, doc.code, session);
               const buckets = rec?.buckets as Record<string, number> | undefined;
               const hasBuckets = !!buckets && Object.values(buckets).some((v) => v > 0);
               if (rec && hasBuckets) {
@@ -478,13 +469,7 @@ export function createWidgetsModule(): DatasetModule {
               if (hb && !(BUCKET_KEYS as readonly string[]).includes(hb)) {
                 throw new Error(`Unknown bucket "${hb}". Valid buckets: ${BUCKET_KEYS.join(", ")}`);
               }
-              const sid = `${code.toUpperCase().replace(/\s+/g, "_")}__${session}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-              let rec: Record<string, unknown> | null = null;
-              try {
-                rec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
-              } catch {
-                // not offered in this session
-              }
+              const rec = await getSessionRecord(search, code, session);
               const buckets = rec?.buckets as Record<string, number> | undefined;
               if (rec && buckets && Object.values(buckets).some((v) => v > 0)) {
                 return {

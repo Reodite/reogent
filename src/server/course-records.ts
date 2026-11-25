@@ -93,7 +93,8 @@ function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-function courseRecordId(code: string, session: Session): string {
+/** Returns the course_sessions primary key for a bare "SUBJ NUM" code and session. */
+export function courseRecordId(code: string, session: Session): string {
   return sanitizeId(`${code}__${session}`);
 }
 

@@ -1,8 +1,10 @@
 import { filterValue } from "@/src/server/core/filter";
+import { normalizeCourseCode } from "@/src/shared/course-code";
 import { formatSeconds } from "../core/time";
 import type { DatasetModule, SearchClient } from "../core/types";
 import {
   buildRecordsFromDistributions,
+  courseRecordId,
   defaultSession,
   isSession,
   type CourseCalRow,
@@ -161,6 +163,20 @@ export const upSubject = (s: string) => {
   const up = s.trim().toUpperCase();
   return up.includes("_") ? up : `${up}_V`;
 };
+
+/** Fetches the per-session grade record for a course code, or null when that session has no record. */
+export async function getSessionRecord(
+  search: SearchClient,
+  code: string,
+  session: Session,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const id = courseRecordId(normalizeCourseCode(code), session);
+    return (await search.index("course_sessions").getDocument(id)) as unknown as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 export async function findByCode(search: SearchClient, courseCode: string): Promise<CourseDoc | null> {
   const norm = courseCode.trim().toUpperCase().replace(/\s+/g, " ");
@@ -479,20 +495,8 @@ export const courses: DatasetModule = {
         const doc = await findByCode(search, String(input.course_code ?? ""));
         if (!doc) throw new Error(`No course found with code "${input.course_code}"`);
         const base = presentCourse(doc);
-        // Session-enriched grade/distribution for the requested session
-        let sessRec: Record<string, unknown> | null = null;
-        try {
-          const codeNorm = String(input.course_code ?? "")
-            .trim()
-            .toUpperCase()
-            .replace(/\s+/g, " ");
-          const id = `${codeNorm.replace(" ", "_")}__${session}`;
-          // sanitize as courseRecordId does (space -> _ already, session safe)
-          const sid = id.replace(/[^a-zA-Z0-9_-]/g, "_");
-          sessRec = (await search.index("course_sessions").getDocument(sid)) as unknown as Record<string, unknown>;
-        } catch {
-          // not offered in this session — fall through to pooled
-        }
+        // Session-enriched grade/distribution for the requested session; null falls through to pooled.
+        const sessRec = await getSessionRecord(search, doc.code, session);
         const asOf = await getIndexFreshness("courses");
         if (sessRec) {
           const result: Record<string, unknown> = {
