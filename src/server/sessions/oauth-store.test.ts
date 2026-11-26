@@ -35,6 +35,10 @@ describe("provider-neutral account persistence", () => {
     expect(mocks.clientQuery.mock.calls[1][0]).toContain("pg_advisory_xact_lock");
     expect(mocks.clientQuery.mock.calls[2][1]).toEqual(["google", "subject-1"]);
     expect(mocks.clientQuery.mock.calls[3][0]).toContain("INSERT INTO oauth_profiles");
+    expect(mocks.clientQuery.mock.calls[3][0]).toContain("email = COALESCE(EXCLUDED.email, oauth_profiles.email)");
+    expect(mocks.clientQuery.mock.calls[3][0]).toContain(
+      "CASE WHEN EXCLUDED.email IS NULL THEN oauth_profiles.email_verified",
+    );
     expect(mocks.clientQuery.mock.calls[3][1]).toEqual([
       "google",
       "subject-1",
@@ -94,5 +98,16 @@ describe("provider-neutral account persistence", () => {
     await expect(findOrCreateOAuthUser("google", "subject-4", {})).rejects.toThrow("account insert failed");
     expect(mocks.clientQuery.mock.calls.at(-1)?.[0]).toBe("ROLLBACK");
     expect(mocks.release).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["invalid provider", "Google", "subject", {}],
+    ["empty subject", "google", " ", {}],
+    ["oversized display name", "google", "subject", { displayName: "x".repeat(201) }],
+    ["non-HTTPS avatar", "google", "subject", { avatarUrl: "http://images.example/avatar.png" }],
+  ])("rejects %s before opening a transaction", async (_label, provider, subject, profile) => {
+    await expect(findOrCreateOAuthUser(provider, subject, profile)).rejects.toThrow();
+    expect(mocks.clientQuery).not.toHaveBeenCalled();
+    expect(mocks.release).not.toHaveBeenCalled();
   });
 });

@@ -117,8 +117,20 @@ export async function findOrCreateOAuthUser(
   providerSubject: string,
   profile: OAuthProfileClaims,
 ): Promise<{ id: string; username: string }> {
+  if (!/^[a-z][a-z0-9-]{0,31}$/.test(provider)) throw new Error("Invalid OAuth provider");
+  if (!providerSubject.trim() || providerSubject.length > 512) throw new Error("Invalid OAuth subject");
+  const email = profile.email?.trim() || null;
+  if (email && email.length > 320) throw new Error("Invalid OAuth email");
+  const displayName = profile.displayName?.trim() || null;
+  if (displayName && displayName.length > 200) throw new Error("Invalid OAuth display name");
+  let avatarUrl: string | null = null;
+  if (profile.avatarUrl) {
+    const parsed = new URL(profile.avatarUrl);
+    if (parsed.protocol !== "https:") throw new Error("Invalid OAuth avatar URL");
+    avatarUrl = parsed.href;
+  }
   const base =
-    (profile.displayName ?? provider)
+    (displayName ?? provider)
       .normalize("NFKD")
       .replace(/[^a-zA-Z0-9_-]/g, "")
       .toLowerCase()
@@ -155,19 +167,12 @@ export async function findOrCreateOAuthUser(
        SELECT id, $3, $4, $5, $6 FROM oauth_accounts
        WHERE provider = $1 AND provider_subject = $2
        ON CONFLICT (oauth_account_id) DO UPDATE
-       SET email = EXCLUDED.email,
-           email_verified = EXCLUDED.email_verified,
+       SET email = COALESCE(EXCLUDED.email, oauth_profiles.email),
+           email_verified = CASE WHEN EXCLUDED.email IS NULL THEN oauth_profiles.email_verified ELSE EXCLUDED.email_verified END,
            display_name = COALESCE(EXCLUDED.display_name, oauth_profiles.display_name),
            avatar_url = COALESCE(EXCLUDED.avatar_url, oauth_profiles.avatar_url),
            updated_at = now()`,
-      [
-        provider,
-        providerSubject,
-        profile.email ?? null,
-        profile.emailVerified ?? false,
-        profile.displayName ?? null,
-        profile.avatarUrl ?? null,
-      ],
+      [provider, providerSubject, email, profile.emailVerified ?? false, displayName, avatarUrl],
     );
     await client.query("COMMIT");
     return user;
