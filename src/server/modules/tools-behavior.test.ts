@@ -115,10 +115,20 @@ function matchClause(doc: Record<string, unknown>, clause: string): boolean {
     if (typeof v !== "string") return false;
     return v <= leStr[2];
   }
+  const le = clause.match(/^(\w+) <= ([\d.]+)$/);
+  if (le) {
+    const v = doc[le[1]];
+    return typeof v === "number" && v <= Number(le[2]);
+  }
   const ge = clause.match(/^(\w+) >= ([\d.]+)$/);
   if (ge) {
     const v = doc[ge[1]];
     return typeof v === "number" && v >= Number(ge[2]);
+  }
+  const inList = clause.match(/^(\w+) IN (\[.*\])$/);
+  if (inList) {
+    const values = JSON.parse(inList[2]) as unknown[];
+    return values.map(String).includes(String(doc[inList[1]]));
   }
   const eq = clause.match(/^(\w+) = '?([^']*)'?$/);
   if (eq) {
@@ -162,6 +172,62 @@ const courseFixture: Record<string, unknown[]> = {
 };
 
 describe("find_courses (agent-tool-redesign)", () => {
+  it("validates grade bounds and filters session averages", async () => {
+    const search = fakeSearch({
+      course_sessions: [
+        { code: "CPSC 110", subject: "CPSC", number: "110", session: "2025W", average: 81, reported: 10 },
+        { code: "CPSC 210", subject: "CPSC", number: "210", session: "2025W", average: 65, reported: 10 },
+      ],
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ session: "2025W", min_grade_avg: 70, max_grade_avg: 85 }, search)) as {
+      courses: { code: string }[];
+    };
+    expect(result.courses.map(({ code }) => code)).toEqual(["CPSC 110"]);
+    await expect(tool.execute({ min_grade_avg: Number.NaN }, search)).rejects.toThrow("finite numbers");
+    await expect(tool.execute({ min_grade_avg: 80, max_grade_avg: 70 }, search)).rejects.toThrow(
+      "minimum at or below maximum",
+    );
+  });
+
+  it("applies faculty filters to pooled grade ranking candidates", async () => {
+    const search = fakeSearch({
+      courses: [course("CPSC_V 110"), course("CPSC_V 210")],
+      course_sessions: [
+        { code: "CPSC 110", session: "2025W", faculty: "Science" },
+        { code: "CPSC 210", session: "2025W", faculty: "Applied Science" },
+      ],
+      grades: [
+        { subject: "CPSC", course: "110", year: 2025, enrolled: 10, avg: 80 },
+        { subject: "CPSC", course: "210", year: 2025, enrolled: 10, avg: 90 },
+      ],
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ faculty: "Science", sort: "grade_avg_desc", min_grade_avg: 70 }, search)) as {
+      courses: { code: string; grade_avg: number }[];
+    };
+
+    expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 110"]);
+    expect(search.calls().course_sessions).toBeGreaterThan(0);
+  });
+
+  it("sorts session-index fallback by course code", async () => {
+    const search = fakeSearch({
+      course_sessions: [
+        { code: "CPSC 210", subject: "CPSC", number: "210", session: "2025W", average: 70, reported: 10 },
+        { code: "CPSC 110", subject: "CPSC", number: "110", session: "2025W", average: 80, reported: 10 },
+      ],
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ session: "2025W", sort: "code" }, search)) as {
+      courses: { code: string }[];
+    };
+    expect(result.courses.map(({ code }) => code)).toEqual(["CPSC 110", "CPSC 210"]);
+  });
+
   it("filters on level, credits, and has_no_prereqs", async () => {
     const search = fakeSearch(courseFixture);
     const tool = courses.tools.find((t) => t.spec.name === "find_courses")!;
