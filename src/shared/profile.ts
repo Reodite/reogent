@@ -19,6 +19,8 @@ export interface StudentProfile {
 /** The signed-in user's identity, saved student profile, and recorded activity. */
 export interface AccountDetails {
   username: string;
+  displayName?: string | null;
+  email?: string | null;
   createdAt: string | null;
   profile: StudentProfile | null;
   tokensSpent: number;

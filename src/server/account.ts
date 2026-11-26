@@ -5,13 +5,15 @@ import { getPool } from "./db";
 export async function getAccount(userId: string): Promise<AccountDetails | null> {
   const { rows } = await getPool().query<{
     username: string;
+    display_name: string | null;
+    email: string | null;
     created_at: Date | null;
     profile: StudentProfile | null;
     tokens_spent: string;
     token_tracking_started_at: Date;
     pulse_questions_answered: string;
   }>(
-    `SELECT u.username, u.created_at, p.data AS profile, u.tokens_spent, u.token_tracking_started_at,
+    `SELECT u.username, u.display_name, u.email, u.created_at, p.data AS profile, u.tokens_spent, u.token_tracking_started_at,
             (SELECT COUNT(*) FROM pulse_votes WHERE user_id = u.id) AS pulse_questions_answered
      FROM users u
      LEFT JOIN user_profiles p ON p.user_id = u.id
@@ -22,6 +24,8 @@ export async function getAccount(userId: string): Promise<AccountDetails | null>
   if (!row) return null;
   return {
     username: row.username,
+    displayName: row.display_name,
+    email: row.email,
     createdAt: row.created_at?.toISOString() ?? null,
     profile: row.profile,
     tokensSpent: Number(row.tokens_spent),
