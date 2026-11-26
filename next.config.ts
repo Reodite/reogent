@@ -21,6 +21,9 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  typescript: {
+    tsconfigPath: dev ? "tsconfig.json" : "tsconfig.build.json",
+  },
   output: "standalone",
   outputFileTracingExcludes: { "/*": ["./data/**/*", "./ubc-unified-data/**/*", "./.cache/**/*"] },
   devIndicators: false,
