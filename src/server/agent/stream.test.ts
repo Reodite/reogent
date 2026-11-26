@@ -64,6 +64,54 @@ it("stops a model that ignores tool removal at the hard turn limit", async () =>
   expect(events.at(-1)).toEqual({ type: "error", message: "Response limit reached. Please ask a narrower question." });
 });
 
+it("rejects an already-aborted request before calling the provider", async () => {
+  const controller = new AbortController();
+  controller.abort(new Error("client disconnected"));
+
+  await expect(
+    Array.fromAsync(
+      streamAgent([{ role: "user", content: "test" }], {
+        modules: [],
+        search: {} as SearchClient,
+        signal: controller.signal,
+      }),
+    ),
+  ).rejects.toThrow("client disconnected");
+  expect(llm.converseStream).not.toHaveBeenCalled();
+});
+
+it("rejects cancellation during a provider turn without yielding done", async () => {
+  const controller = new AbortController();
+  llm.converseStream.mockImplementationOnce(async function* () {
+    yield { type: "text", delta: "partial" };
+    controller.abort(new Error("client disconnected"));
+    yield { type: "stop", reason: "end_turn" };
+  });
+  const events: unknown[] = [];
+  const iterator = streamAgent([{ role: "user", content: "test" }], {
+    modules: [],
+    search: {} as SearchClient,
+    signal: controller.signal,
+  });
+
+  await expect(
+    (async () => {
+      for await (const event of iterator) events.push(event);
+    })(),
+  ).rejects.toThrow("client disconnected");
+  expect(events.some((event) => (event as { type?: string }).type === "done")).toBe(false);
+});
+
+it("rejects provider EOF without a stop event", async () => {
+  llm.converseStream.mockImplementationOnce(async function* () {
+    yield { type: "text", delta: "partial" };
+  });
+
+  await expect(
+    Array.fromAsync(streamAgent([{ role: "user", content: "test" }], { modules: [], search: {} as SearchClient })),
+  ).rejects.toThrow("Model stream ended without a stop event");
+});
+
 it("refuses a tool batch that exceeds the remaining execution budget", async () => {
   vi.useFakeTimers();
   const execute = vi.fn(async () => ({ found: true }));
