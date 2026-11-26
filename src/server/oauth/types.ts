@@ -18,7 +18,7 @@ export interface OAuthIdentity {
   avatarUrl?: string;
 }
 
-/** Provider adapter for authorization-code sign-in. */
+/** Exchanges authorization codes and validates provider identities before normalization. */
 export interface OAuthProvider {
   id: string;
   getConfig(): OAuthProviderConfig | null;
