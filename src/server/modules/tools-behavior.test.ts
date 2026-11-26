@@ -213,6 +213,28 @@ describe("find_courses (agent-tool-redesign)", () => {
     expect(search.calls().course_sessions).toBeGreaterThan(0);
   });
 
+  it("keeps faculty matches beyond the first pooled page", async () => {
+    const catalogue = Array.from({ length: 205 }, (_, index) => course(`CPSC_V ${String(100 + index)}`));
+    const last = course("CPSC_V 999");
+    catalogue.push(last);
+    const grades = [{ subject: "CPSC", course: "999", year: 2025, enrolled: 10, avg: 99 }];
+    const search = fakeSearch({
+      courses: catalogue,
+      course_sessions: [{ code: "CPSC 999", session: "2025W", faculty: 'Faculty "A"' }],
+      grades,
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ faculty: 'Faculty "A"', sort: "grade_avg_desc", limit: 5 }, search)) as {
+      courses: { code: string; grade_avg: number }[];
+      note?: string;
+    };
+
+    expect(result.courses.map(({ code, grade_avg }) => [code, grade_avg])).toEqual([["CPSC_V 999", 99]]);
+    expect(result.note).toBeUndefined();
+    expect(search.calls().course_sessions).toBeGreaterThan(1);
+  });
+
   it("sorts session-index fallback by course code", async () => {
     const search = fakeSearch({
       course_sessions: [
