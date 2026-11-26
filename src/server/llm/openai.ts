@@ -25,13 +25,17 @@ function toOpenAIMessages(messages: ConverseMessage[], system: string): ChatComp
         .filter((b) => b.text)
         .map((b) => b.text ?? "")
         .join("");
-      const toolCalls = m.content
-        .filter((b) => b.toolUse)
-        .map((b) => ({
-          id: b.toolUse!.toolUseId,
-          type: "function" as const,
-          function: { name: b.toolUse!.name, arguments: JSON.stringify(b.toolUse!.input) },
-        }));
+      const toolCalls = m.content.flatMap(({ toolUse }) =>
+        toolUse
+          ? [
+              {
+                id: toolUse.toolUseId,
+                type: "function" as const,
+                function: { name: toolUse.name, arguments: JSON.stringify(toolUse.input) },
+              },
+            ]
+          : [],
+      );
 
       out.push({
         role: "assistant",
