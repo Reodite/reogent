@@ -1,291 +1,183 @@
 # Reodite
 
-Conversational AI for UBC students. Ask about courses, tuition, walking routes, parking, events, or study spaces. A streaming agent answers from indexed campus data and draws walking routes on an interactive map.
+Reodite helps UBC students find campus information through chat and an interactive map.
 
-Built with Next.js 16 (App Router), React 19, and TypeScript.
+Ask about courses, tuition, events, parking, study spaces, or walking between buildings.
 
-`/` is the public landing page, including for signed-in users. Open `/app` for a new conversation; workspace routes live under `/app`, including `/app/tools` and `/app/pulse`. The Reodite logo returns to `/`. Existing workspace URLs redirect to their `/app` equivalents.
+## Try Reodite
 
-## Stack
+If you have access to a Reodite deployment, open it and start a conversation.
 
-| Layer    | Choice                                                |
-| -------- | ----------------------------------------------------- |
-| Frontend | Next.js 16, React 19, Tailwind CSS 4                  |
-| Map      | MapLibre GL + deck.gl                                 |
-| Auth     | Google OAuth, JWT (HS256, 7-day expiry)               |
-| AI       | Anthropic, OpenAI-compatible, or Google, via adapters |
-| Database | Postgres (users, sessions, messages, Pulse votes)     |
-| Search   | Meilisearch (campus datasets)                         |
-| Testing  | Vitest, fast-check (property tests)                   |
-| Lint     | Biome, Prettier                                       |
+Ask a question in everyday language. For example:
 
-## Responsive UI
+> How long is the walk from Buchanan to ICICS, and which Computer Science courses have no prerequisites?
 
-Below 640px, Chat, Tools, Unity, and Settings use flat, edge-to-edge pages above persistent AI/Tools/Unity bottom tabs, and onboarding uses the same flat page. Mode links restore each area's last routed screen. Route headers contain a flat menu button; the current mode's destinations open in an edge-attached drawer with touch-sized rows. Header content and command groups keep 16px side insets; the mobile menu's interaction surface extends to 8px edge clearance. Workspace headers drop help descriptions on phones and keep page actions in the title row, while dense toolbars and view switches use 32-36px controls so the main canvas starts higher. Bottom-tab feedback sits 8px inside each full-size hit region, and phone text fields use 16px text. Answers with a map or tool view end with an artifact card: on phones it opens that view full screen over the chat, and Close returns to the conversation; wider screens reopen it beside the chat. At wider sizes, the shell keeps its 12px gutters, raised panels, and sidebar mode controls.
+Reodite can answer both parts in one conversation.
 
-Shared layout lives in `src/components/ui/workspace.tsx`, `src/components/chat/chat-frame.tsx`, and `app/globals.css`. `WorkspaceHostProvider` supplies header navigation to loaded, pending, and recovery frames. Keep navigation outside pending-only inert regions. `src/components/shell/mode-toggle.tsx` owns both mode presentations, and `use-mobile-viewport.ts` sizes the phone shell and overlays to the reported visible area without constraining pinch zoom. The bottom bar owns the page's bottom safe area. The 55rem workspace container threshold still controls rail/canvas switching.
+Some answers include a map or another interactive view.
 
-Shared optical contracts live in `src/components/ui/workspace.tsx`: a 28px title anchor, 16px plain panel insets, and a 2px `frame` canvas surround for timetables. Keep theme groups intrinsic-width. Follow the measured concentric-contour recipes in `DESIGN.md`; independent cards and controls keep their own geometry.
+## Run Reodite on your computer
 
-Shared motion lives in `src/components/ui/use-overlay-presence.ts`, `src/components/ui/disclosure.tsx`, and the CSS arrival utilities. Keep `AnimatePresence` outside conditional overlay components, and let the shared primitives release focus and disable exiting controls. Data replacement stays immediate; avoid retaining obsolete search, group, or route content for a fade. Reduced-motion paths cover both entrances and exits.
+You need Node.js 24 or newer, Docker, and an LLM provider. Reodite supports OpenAI-compatible services, Anthropic, and Google; see the configuration table below to choose one.
 
-Development indicators stay disabled so framework chrome does not cover the mobile tabs; Next.js still surfaces compile and runtime errors.
+1. Clone the repository and enter its folder:
 
-See `DESIGN.md`, `PRODUCT.md`, and `.impeccable/surfaces/` for design contracts. Run `npm test` for shared UI and layout regressions, then check rendered phone and desktop views for overflow and focus placement.
+   ```bash
+   git clone https://github.com/Reodite/reogent.git
+   cd reogent
+   ```
 
-## Agent and tools
+2. Install dependencies and download the campus data:
 
-The agent runs a streaming tool-calling loop. Each user message can trigger up to 8 model turns. The model calls tools, receives results, and continues until it can respond. The client receives NDJSON events (`thinking`, `text`, `tool_start`, `tool_end`, `done`).
+   ```bash
+   npm install
+   git submodule update --init
+   ```
 
-The module registry defines data access and presentation tools:
+3. Create your local settings file:
 
-| Module          | Tools                                           | Data source                                                        |
-| --------------- | ----------------------------------------------- | ------------------------------------------------------------------ |
-| courses         | `find_courses`, `get_course`                    | Course catalog and section schedules                               |
-| tuition, costs  | `get_costs`                                     | Tuition, cost estimates, student fees and housing fee observations |
-| buildings       | `walking_distance`, `find_building`             | Building coordinates and pedestrian routes                         |
-| admissions      | `find_programs`, `get_admission_requirements`   | Undergraduate programs and requirements                            |
-| calendar        | `get_key_dates`                                 | Academic calendar dates                                            |
-| places, parking | `find_places`                                   | Campus POIs and parking facts                                      |
-| spaces          | `find_study_spaces`                             | Study-area descriptions, live library room availability            |
-| events          | `find_events`                                   | Campus events, read live                                           |
-| pages           | `search_ubc_pages`                              | Relevance-ranked search across all indexed prose and legacy pages  |
-| documents       | `get_document`                                  | Complete Markdown articles with original source provenance         |
-| undergraduate   | `search_student_resources`, `get_library_hours` | Housing, libraries, support and policy source/fact records         |
-| grades          | Through `get_course` and grade widgets          | Grade distributions                                                |
-| people          | `find_person`                                   | Faculty/staff directory profiles                                   |
-| food            | `find_food`                                     | Food outlets                                                       |
-| prereq-tree     | `get_prereq_tree`                               | Course prerequisite graph                                          |
-| widgets         | `show_widget`                                   | Presentation of previously retrieved entities                      |
+   ```bash
+   cp .env.example .env
+   ```
 
-Walking routes use Dijkstra shortest-path on a pedestrian network derived from GeoJSON.
+   Set the values listed in the [configuration reference](#configuration-reference). The sample values are in [`.env.example`](.env.example).
 
-## Project structure
+4. Start the services and prepare the campus data:
 
-```
-app/                          Route handlers + pages
-├── api/                      /api/* endpoints
-│   ├── chat/route.ts         POST streaming agent response
-│   ├── sessions/route.ts     GET sessions
-│   ├── sessions/[id]/route.ts GET/DELETE/PATCH one session
-│   ├── route/route.ts        GET walking-route polyline
-│   ├── building/[code]/route.ts GET building details
-│   ├── geo/[name]/route.ts   GET GeoJSON layers
-│   ├── auth/google           Google OAuth start and callback
-│   └── preview/route.ts      GET og:image resolution for card links
-└── chat/                     App-shell chat workspace
+   ```bash
+   docker compose up -d postgres meilisearch
+   ```
 
-src/
-├── components/               UI (auth, chat, map, shell, landing)
-├── lib/                      Client utils (API client, formatting, geo)
-└── server/
-    ├── agent/                Streaming tool-calling loop
-    ├── modules/              Dataset adapters and tool definitions
-    ├── llm/                  LLM adapters (openai, anthropic, google)
-    ├── sessions/             Postgres session store
-    ├── db/                   Postgres schema + migration
-    ├── data.ts               Filesystem store for raw datasets
-    └── search.ts             Shared Meilisearch client
+   Validate and index the data:
 
-scripts/
-└── ingest.ts                 Index datasets into Meilisearch
-```
+   ```bash
+   npm run validate:documents
+   npm run ingest
+   ```
 
-### Module ownership
+5. Start the app:
 
-- `src/shared/` owns cross-layer contracts, including course-index and pane state types. Routes and UI registries consume these contracts.
-- `src/lib/` owns client calculations and helpers. Planner calculations use `planner-model.ts`; the feature-local `planner-store.ts` owns Zustand, persistence, migration, and undo/redo.
-- `src/components/ui/` owns shared visual primitives. Feature components compose them and retain feature-specific behavior.
-- Biome rejects `@/` imports from client helpers into routes or components, from shared modules into application layers, and from components into route entrypoints.
+   ```bash
+   npm run dev
+   ```
 
-## Data
+6. Open [http://localhost:3000](http://localhost:3000) and ask a question.
 
-`ubc-unified-data` is a git submodule holding scraped UBC datasets: courses, tuition, building and walking GeoJSON, study spaces, events, and grade distributions (`data/grades/`, collected from [ubc-pair-grade-data](https://github.com/DonneyF/ubc-pair-grade-data) by the submodule's `grades` collector).
+   The server applies the database schema when it starts.
 
-The undergraduate tables contain factual labels, source links, housing fee observations and dated library hours. They do not contain full page bodies. Housing `amount_cents` values retain their exact integer or null value; consult the linked conditions before using a rate. Library `booking_lid` strings belong to a separate namespace from `hours_id`. Hours describe a schedule in `America/Vancouver`, including `closes_next_day`; an absent date remains unknown. See [UNDERGRADUATE-SOURCES.md](ubc-unified-data/UNDERGRADUATE-SOURCES.md) for table contracts.
+## Configuration reference
 
-Campus events (events.ubc.ca) and library room availability (LibCal) come from live JSON APIs at request time, cached in memory for a few minutes; ingest does not index them. Room names and capacities still come from the submodule's `room-bookings/rooms.json`. Study-space descriptions and scheduled library hours do not establish live vacancy.
+This table lists the app's configurable environment variables.
 
-Datasets and crawl caches stay outside application images and standalone output. Mount `DATA_PATH` for filesystem-backed tools and ingestion.
+Keep secrets in `.env`. Do not commit that file.
 
-### Prose knowledge base
+| Variable                   | What it controls                                                                                                                                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LLM_API_TYPE`             | Provider: `openai`, `anthropic`, or `google`. Defaults to `openai`.                                                                                                                                                   |
+| `LLM_MODEL`                | Model name. Defaults to `llama3.1`, `claude-sonnet-4-20250514`, or `gemini-2.0-flash`, depending on provider.                                                                                                         |
+| `LLM_API_KEY`              | Provider API key. Google accepts comma-separated keys and rotates between them.                                                                                                                                       |
+| `LLM_BASE_URL`             | Optional endpoint for OpenAI-compatible services or an Anthropic-compatible proxy.                                                                                                                                    |
+| `DATABASE_URL`             | Postgres connection URL. Use `localhost:5432` for host-run commands. Its password must match `POSTGRES_PASSWORD`; Compose uses its Postgres service address inside containers.                                        |
+| `POSTGRES_PASSWORD`        | Postgres password. Generate a unique value with `openssl rand -hex 32`; use it in `DATABASE_URL` too. To change it for an existing database, update the password inside Postgres; editing `.env` alone is not enough. |
+| `MEILI_URL`                | Meilisearch address. Use `http://localhost:7700` for host-run commands; Compose uses its service address inside containers.                                                                                           |
+| `MEILI_MASTER_KEY`         | Meilisearch admin key for ingestion. Generate a unique value with `openssl rand -hex 32`; Compose removes it from the app container.                                                                                  |
+| `MEILI_API_KEY`            | Read-only key used by the app in production. Local development can fall back to `MEILI_MASTER_KEY`.                                                                                                                   |
+| `MEILI_ENV`                | Meilisearch environment for Compose. Defaults to `production`.                                                                                                                                                        |
+| `DATA_PATH`                | Folder containing campus data. Set to `./ubc-unified-data/data` for this repository; defaults to `./data`.                                                                                                            |
+| `JWT_SECRET`               | Session-signing secret. Generate a unique value with `openssl rand -hex 32`; production requires at least 32 bytes.                                                                                                   |
+| `AUTH_ENABLED`             | Set to `false` to bypass sign-in outside production.                                                                                                                                                                  |
+| `USE_OAUTH`                | Unset or `true`: Google sign-in. `false`: username and password sign-in. Google OAuth credentials are listed under deployment.                                                                                        |
+| `GOOGLE_CLIENT_ID`         | Google OAuth client ID.                                                                                                                                                                                               |
+| `GOOGLE_CLIENT_SECRET`     | Google OAuth client secret.                                                                                                                                                                                           |
+| `APP_URL`                  | Public app origin used to build the Google callback URL.                                                                                                                                                              |
+| `PORT`                     | Host port exposed by Docker Compose. Defaults to `3000`.                                                                                                                                                              |
+| `TRUSTED_CLIENT_IP_HEADER` | Optional header name set by a trusted reverse proxy for rate limiting.                                                                                                                                                |
+| `RATE_LIMIT_PREREQ`        | Requests per minute allowed for prerequisite lookups. Defaults to `10`.                                                                                                                                               |
 
-Default ingestion reads both published prose contracts under `DATA_PATH`:
+`NEXT_PUBLIC_REOGENT_VERSION` comes from `package.json`. You do not need to set it.
 
-- `prose/_catalog.json` declares source-based article tables, including Workday, advising, housing and student services.
-- `official-hosts.json` declares Markdown roots across support, academics, opportunities, research, news and stories. A host can span several category directories.
+The framework sets `NODE_ENV` and `NEXT_RUNTIME`.
 
-Run `npm run validate:documents` before ingestion to check the complete catalog and host inventory offline. Missing files, count mismatches, invalid identities or content hashes stop publication. The loader preserves source URLs, nullable dates, extraction warnings and source-record references. See [PROSE.md](ubc-unified-data/PROSE.md) and [HOST-DOCUMENTS.md](ubc-unified-data/HOST-DOCUMENTS.md) for the producer contracts. Coverage means the published collections, not all UBC websites.
+## Run the app in Docker
 
-The agent uses `search_ubc_pages` to search the `documents` and legacy `pages` indexes in one relevance-ranked Meilisearch request. The default covers all indexed topics and hosts, with no audience or date cutoff. Optional filters narrow the scope; `next_offset` requests another result page. If a hostname search finds no keyword matches, the tool returns a labeled inventory of that host's documents. Continue browsing with the returned empty `query` and `next_offset`. Search returns metadata and query-centered excerpts. The agent then calls `get_document` with the complete `original_id` before describing procedures or eligibility rules. Before finalizing a document-based answer, the agent checks that it has read the cited documents. It retracts an unverified draft and requests full reads once. If the next answer still relies on unread documents, it returns an error. Full retrieval uses Meilisearch and needs no corpus files at runtime. Dedicated tools still handle structured courses, costs, hours and other facts.
+The Compose development profile runs Node.js in a container and connects to Postgres and Meilisearch by their service names.
 
-Ingestion creates bounded, overlapping search sections so long articles remain searchable beyond Meilisearch's per-field word-position limit. Full retrieval preserves the original Markdown and its content hash. Treat historical announcements according to their source dates and retrieved text as untrusted material.
+If your LLM runs outside Docker, set `LLM_BASE_URL` to an address reachable from the app container. Inside the container, `localhost` refers to the container itself.
 
-After changing the submodule pin or search schema, validate and run `npm run ingest` against the intended Meilisearch service before serving this agent version. Use a Meilisearch release compatible with the installed SDK; integration checks use v1.54.2 from the project's `v1` image. Older servers can reject the snapshot-swap request even when search works. A missing document index is an error, rather than a fallback to a smaller corpus. Configure `MEILI_URL` and `MEILI_MASTER_KEY` for the same service; ingestion does not repair authentication failures.
-
-### Snapshot replacement
-
-`documents`, `student_resources`, `housing_fees` and `library_hours` replace their complete snapshots. Ingestion loads and validates a temporary index, waits for its tasks, then swaps it into place. This removes dated records absent from the next library-hours snapshot. A pre-swap failure leaves the previous index active; cleanup errors report failure without rolling back an already published snapshot. Other indexes retain upsert behavior.
-
-Run one ingestion process per destination and allow storage for both generations during replacement. Ingestion requires a writable `DATA_PATH` for derived artifacts; the application can use a read-only data mount. Source `retrieved_at` timestamps remain distinct from index-build times and publisher modification dates.
-
-## Setup
-
-Requirements: Node.js 24, Docker.
+Create `.env` as described above, then run:
 
 ```bash
-npm install
-git submodule update --init
-cp .env.example .env
-# Configure the secrets in .env before starting services.
-docker compose up -d postgres meilisearch
-npm run validate:documents
-npm run ingest
-npm run dev
+docker compose --profile dev up
 ```
 
-Generate a separate value with `openssl rand -hex 32` for `POSTGRES_PASSWORD`, `MEILI_MASTER_KEY`, and `JWT_SECRET`. Set the Postgres password in `DATABASE_URL` too. Docker Compose refuses missing database or search credentials and binds their host ports to loopback. The development container also binds to loopback; keep development servers off public networks.
+The app is available at [http://localhost:3000](http://localhost:3000).
 
-The server opens at http://localhost:3000 and applies the Postgres schema on startup. The sample environment points host processes at `localhost`; Docker Compose overrides those service URLs with container hostnames. Put production traffic behind an HTTPS reverse proxy; configure TLS, HSTS, request/concurrency limits, and firewall rules there. Changing `POSTGRES_PASSWORD` in `.env` does not rotate an existing database user's password. Rotate it in Postgres and update dependent configuration together.
+## Deploying
 
-`npm run ingest` loads the root `.env` when present and preserves variables you set in the shell or Docker. Set `MEILI_MASTER_KEY` to the key used by the Meilisearch service. Ingestion attempts the remaining indexes after a failure and exits nonzero if any index fails.
+Configure these deployment values before starting the app:
 
-The app serves requests with a read-only Meilisearch key and refuses to run searches in production without one. Ingestion keeps using `MEILI_MASTER_KEY`. Create the key once per Meilisearch volume and put the returned `key` in `.env` as `MEILI_API_KEY`:
+| Variable                   | Required value              | Notes                                                                                                  |
+| -------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GOOGLE_CLIENT_ID`         | OAuth client ID.            | Required for default Google sign-in.                                                                   |
+| `GOOGLE_CLIENT_SECRET`     | OAuth client secret.        | Required for default Google sign-in.                                                                   |
+| `APP_URL`                  | Public HTTPS origin.        | Register its `/api/auth/google/callback` URL in Google Cloud Console.                                  |
+| `MEILI_API_KEY`            | Read-only Meilisearch key.  | Create after Meilisearch starts, then set the returned key here. Production will not start without it. |
+| `TRUSTED_CLIENT_IP_HEADER` | Proxy header name, if used. | Set only when the proxy overwrites it with one validated client IP and blocks direct app access.       |
+
+Start Postgres and Meilisearch without starting the app:
+
+```bash
+docker compose up -d postgres meilisearch
+```
+
+Then create `MEILI_API_KEY` from a shell where `MEILI_MASTER_KEY` is set:
 
 ```bash
 curl -s -X POST http://localhost:7700/keys \
-  -H "Authorization: Bearer $MEILI_MASTER_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $MEILI_MASTER_KEY" \
+  -H "Content-Type: application/json" \
   --data '{"name":"reodite-app","actions":["search","documents.get"],"indexes":["*"],"expiresAt":null}'
 ```
 
-Outside production the app falls back to `MEILI_MASTER_KEY` when `MEILI_API_KEY` is empty.
+Copy the returned `key` into `.env` as `MEILI_API_KEY`.
 
-### Production operations
-
-In production the server exits at startup when the Postgres migration fails, `JWT_SECRET` is missing or short, or `MEILI_API_KEY` is unset. Compose restarts it with `restart: unless-stopped` and publishes it on `127.0.0.1:3000` only, for a reverse proxy on the same host. `GET /api/health` returns 200 when Postgres and Meilisearch respond and 503 otherwise; the compose healthcheck polls it.
-
-Two compose tasks cover data recovery:
+Before starting the app, validate and index the campus data:
 
 ```bash
-docker compose --profile ops run --rm ingest   # rebuild Meilisearch indexes from the data submodule
-docker compose --profile ops run --rm backup   # write ./backups/reodite-<UTC timestamp>.dump
-pg_restore -h localhost -U reodite -d reodite --clean ./backups/<file>.dump
+npm run validate:documents
+npm run ingest
 ```
 
-Schedule the backup task with cron or a systemd timer and copy `./backups` off the host. The dumps contain accounts, chats and schedules: protect them like the live database.
+Put the app behind an HTTPS reverse proxy with TLS, HSTS, firewall rules, request and concurrency limits, and distributed rate limiting.
 
-### Environment variables
+Compose binds app, Postgres, and Meilisearch ports to loopback. Run the proxy on the same host.
 
-| Variable                   | Description                                                                   |
-| -------------------------- | ----------------------------------------------------------------------------- |
-| `LLM_API_TYPE`             | `openai`, `anthropic`, or `google` (default openai)                           |
-| `LLM_BASE_URL`             | Base URL for OpenAI-compatible endpoints                                      |
-| `LLM_MODEL`                | Model identifier                                                              |
-| `LLM_API_KEY`              | Provider API key                                                              |
-| `DATABASE_URL`             | Postgres URL (`localhost:5432` on host)                                       |
-| `POSTGRES_PASSWORD`        | Postgres password (docker compose)                                            |
-| `MEILI_URL`                | Meilisearch URL (`localhost:7700` on host)                                    |
-| `MEILI_MASTER_KEY`         | Meilisearch master key                                                        |
-| `MEILI_API_KEY`            | Read-only Meilisearch key for the app; required in production                 |
-| `MEILI_ENV`                | Meilisearch environment (docker compose)                                      |
-| `AUTH_ENABLED`             | Set `false` in non-production to bypass auth                                  |
-| `USE_OAUTH`                | Defaults to `true`; set `false` to use username/password authentication       |
-| `JWT_SECRET`               | Random HMAC signing secret; at least 32 bytes in production                   |
-| `GOOGLE_CLIENT_ID`         | Google OAuth client ID; required for sign-in                                  |
-| `GOOGLE_CLIENT_SECRET`     | Google OAuth client secret                                                    |
-| `APP_URL`                  | Public HTTPS origin, such as `https://reodite.example`                        |
-| `DATA_PATH`                | Raw data root (`./ubc-unified-data/data` on host)                             |
-| `PORT`                     | Dev-server port (docker compose)                                              |
-| `TRUSTED_CLIENT_IP_HEADER` | Proxy-overwritten single-IP header, such as `x-real-ip`; set it in production |
+Without `TRUSTED_CLIENT_IP_HEADER`, anonymous callers share one rate-limit bucket. Read [`SECURITY.md`](SECURITY.md) before deployment.
 
-Request throttling ignores forwarding headers by default. Without `TRUSTED_CLIENT_IP_HEADER`, anonymous callers share a request bucket, and the server logs a warning at startup. Set it in production only when your reverse proxy overwrites that header with one validated client IP and blocks direct application access. Do not pass through client-supplied values or comma-separated forwarding chains. The in-process limiter resets on restart and does not coordinate replicas; enforce distributed abuse and concurrency limits at the edge.
+## Backups and maintenance
 
-Each account can send 100 chat messages per day; the count resets at midnight America/Vancouver and lives in Postgres, so restarts do not reset it. Requests the server rejects before reaching the model, such as invalid bodies or a session the caller does not own, do not count. A message counts even when the model then fails.
+The Compose operations profile supports these tasks:
 
-### Sessions and sign-in modes
+| Task                   | Command                                        | Result                                     |
+| ---------------------- | ---------------------------------------------- | ------------------------------------------ |
+| Rebuild search indexes | `docker compose --profile ops run --rm ingest` | Reads campus data and updates Meilisearch. |
+| Back up Postgres       | `docker compose --profile ops run --rm backup` | Writes a dump under `./backups`.           |
 
-Sign-in sets a 7-day session in an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production), so page scripts cannot read it. Every authenticated API request must also send `X-Reodite-User` with the signed-in user id; cross-site pages cannot attach that header, and a request queued before an account switch fails instead of writing to the new account. Serve production over HTTPS: browsers drop `Secure` cookies on plain HTTP except on localhost.
+Copy backups off the server and protect them like the live database. They contain accounts and conversations.
 
-`USE_OAUTH` defaults to `true`. In this mode, Google is the only enabled sign-in method; configure a Web OAuth client in Google Cloud Console and register `https://<your domain>/api/auth/google/callback`, then set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `APP_URL`. Set `USE_OAUTH=false` to enable username/password sign-in and registration instead. The inactive mode's endpoints reject requests. Passwords require 12 characters and at most 72 UTF-8 bytes. OAuth identities remain stored separately in `oauth_accounts` and `oauth_profiles`; both modes use the same internal user UUID and session cookie. Google cannot confirm UBC enrolment: UBC student email runs on Microsoft 365.
+To restore a dump, use `pg_restore` with the target database credentials.
 
-## Security
+Run these checks before proposing a change:
 
-Read [SECURITY.md](SECURITY.md) before deployment for the audit findings, verification limits, and required infrastructure controls. Keep private browser data on a trusted browser profile. The planner preserves ambiguous legacy data under `reodite-planner.unowned-backup` for manual recovery and does not upload it into the next signed-in account.
-
-## Scripts
-
-| Command                      | Action                                                         |
-| ---------------------------- | -------------------------------------------------------------- |
-| `npm run dev`                | Start dev server                                               |
-| `npm run build`              | Production build                                               |
-| `npm run lint`               | Biome lint                                                     |
-| `npm test`                   | Vitest (unit tests)                                            |
-| `npm run format`             | Prettier format                                                |
-| `npm run ingest`             | Index campus datasets into Meilisearch                         |
-| `npm run validate:documents` | Validate all published prose and host documents offline        |
-| `npm run pulse:publish`      | Publish a Pulse question round ([guide](data/pulse/README.md)) |
-
-## Announcements
-
-Unity lists **Announcements** first in its navigation. `/app/pulse/announcements` shows newest-first cards; each card links to `/app/pulse/announcements/<filename-without-extension>`.
-
-To publish an entry:
-
-1. Copy `content/announcements/welcome-to-announcements.md` to a new `.md` file in the same folder. Use a lowercase, hyphenated filename such as `schedule-update.md`. Keep that filename after publishing so shared links remain valid.
-2. Edit the JSON metadata between the `---` lines. `title`, `date`, `summary`, and `author` are required, non-empty strings. Use a real `YYYY-MM-DD` date. The feed sorts by date descending, then filename for entries on the same date.
-3. Write the full post below the metadata in Markdown. Start sections at `##`; the page supplies the main title. Links, lists, images, tables, and fenced code blocks work. Raw HTML does not render.
-4. Preview `/app/pulse/announcements` in the dev server. Run `npm test` and `npm run build`, then commit and deploy to publish.
-
-For example:
-
-```text
----
-{
-  "title": "Your announcement title",
-  "date": "2026-10-13",
-  "summary": "A short description for the card.",
-  "author": "Reodite team"
-}
----
-
-Write the full announcement here.
-
-## Details
-
-Include instructions, links, or screenshots that help readers use the update.
+```bash
+npm test
+npm run lint
+npm run format:check
 ```
 
-The metadata uses JSON, including double quotes, rather than YAML. Invalid files fail validation with their filename. Files in this folder are published content: keep drafts outside it. Dates control ordering, not scheduled publication. Announcements ship with the app and need no database migration or ingestion step; do not put private information in these files.
+The app lives in `app/`, `src/components/`, and `src/server/`.
 
-## API endpoints
-
-| Method | Path                        | Purpose                                      |
-| ------ | --------------------------- | -------------------------------------------- |
-| POST   | `/api/chat`                 | Stream agent response (NDJSON)               |
-| GET    | `/api/sessions`             | List user sessions                           |
-| GET    | `/api/sessions/:id`         | Session messages                             |
-| PATCH  | `/api/sessions/:id`         | Rename a session                             |
-| DELETE | `/api/sessions/:id`         | Delete a session                             |
-| GET    | `/api/route?from=&to=`      | Walking-route polyline                       |
-| GET    | `/api/building/:code`       | Building details (rooms, POIs, entrances)    |
-| GET    | `/api/geo/:name`            | GeoJSON layer                                |
-| GET    | `/api/pulse`                | Active Pulse round with the caller's votes   |
-| POST   | `/api/pulse/vote`           | Record an agree/disagree vote                |
-| GET    | `/api/pulse/history`        | Locked Pulse rounds with final tallies       |
-| GET    | `/api/auth/google`          | Start Google OAuth                           |
-| GET    | `/api/auth/google/callback` | Complete Google OAuth                        |
-| POST   | `/api/auth/login`           | Password sign-in when `USE_OAUTH=false`      |
-| POST   | `/api/auth/register`        | Password registration when `USE_OAUTH=false` |
-| GET    | `/api/preview?url=`         | Resolve og:image for card links              |
-
-## Example query
-
-```
-How long is the walk from the Buchanan building to ICICS,
-and what Computer Science courses have no prerequisites?
-```
-
-This triggers `walking_distance` and `find_courses` in a single agent turn.
+See [`PRODUCT.md`](PRODUCT.md) for product direction and [`DESIGN.md`](DESIGN.md) for interface guidance. Campus data and its collection tools live in the [`ubc-unified-data`](https://github.com/reodite/ubc-unified-data) submodule.
 
 ## License
 
