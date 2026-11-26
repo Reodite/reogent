@@ -189,6 +189,7 @@ Schedule the backup task with cron or a systemd timer and copy `./backups` off t
 | `MEILI_API_KEY`            | Read-only Meilisearch key for the app; required in production                 |
 | `MEILI_ENV`                | Meilisearch environment (docker compose)                                      |
 | `AUTH_ENABLED`             | Set `false` in non-production to bypass auth                                  |
+| `USE_OAUTH`                | Defaults to `true`; set `false` to use username/password authentication       |
 | `JWT_SECRET`               | Random HMAC signing secret; at least 32 bytes in production                   |
 | `GOOGLE_CLIENT_ID`         | Google OAuth client ID; required for sign-in                                  |
 | `GOOGLE_CLIENT_SECRET`     | Google OAuth client secret                                                    |
@@ -201,11 +202,11 @@ Request throttling ignores forwarding headers by default. Without `TRUSTED_CLIEN
 
 Each account can send 100 chat messages per day; the count resets at midnight America/Vancouver and lives in Postgres, so restarts do not reset it. Requests the server rejects before reaching the model, such as invalid bodies or a session the caller does not own, do not count. A message counts even when the model then fails.
 
-### Sessions and Google sign-in
+### Sessions and sign-in modes
 
 Sign-in sets a 7-day session in an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production), so page scripts cannot read it. Every authenticated API request must also send `X-Reodite-User` with the signed-in user id; cross-site pages cannot attach that header, and a request queued before an account switch fails instead of writing to the new account. Serve production over HTTPS: browsers drop `Secure` cookies on plain HTTP except on localhost.
 
-Create an OAuth client of type "Web application" in Google Cloud Console (APIs & Services, Credentials). Add `https://<your domain>/api/auth/google/callback` as an authorized redirect URI, then set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `APP_URL`. Google is the only enabled account sign-in provider. The app requests `openid profile email`; `oauth_accounts` stores Google's stable subject and `oauth_profiles` stores verified email and provider profile claims. `users` remains the app account, and related data keep its UUID. Future authorization-code adapters can implement `OAuthProvider` in `src/server/oauth/types.ts` and register in `src/server/oauth/providers.ts`; each adapter must validate its provider's identity response and map it to the normalized subject/profile contract. Google cannot confirm UBC enrolment: UBC student email runs on Microsoft 365.
+`USE_OAUTH` defaults to `true`. In this mode, Google is the only enabled sign-in method; configure a Web OAuth client in Google Cloud Console and register `https://<your domain>/api/auth/google/callback`, then set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `APP_URL`. Set `USE_OAUTH=false` to enable username/password sign-in and registration instead. The inactive mode's endpoints reject requests. Passwords require 12 characters and at most 72 UTF-8 bytes. OAuth identities remain stored separately in `oauth_accounts` and `oauth_profiles`; both modes use the same internal user UUID and session cookie. Google cannot confirm UBC enrolment: UBC student email runs on Microsoft 365.
 
 ## Security
 
@@ -258,22 +259,24 @@ The metadata uses JSON, including double quotes, rather than YAML. Invalid files
 
 ## API endpoints
 
-| Method | Path                        | Purpose                                    |
-| ------ | --------------------------- | ------------------------------------------ |
-| POST   | `/api/chat`                 | Stream agent response (NDJSON)             |
-| GET    | `/api/sessions`             | List user sessions                         |
-| GET    | `/api/sessions/:id`         | Session messages                           |
-| PATCH  | `/api/sessions/:id`         | Rename a session                           |
-| DELETE | `/api/sessions/:id`         | Delete a session                           |
-| GET    | `/api/route?from=&to=`      | Walking-route polyline                     |
-| GET    | `/api/building/:code`       | Building details (rooms, POIs, entrances)  |
-| GET    | `/api/geo/:name`            | GeoJSON layer                              |
-| GET    | `/api/pulse`                | Active Pulse round with the caller's votes |
-| POST   | `/api/pulse/vote`           | Record an agree/disagree vote              |
-| GET    | `/api/pulse/history`        | Locked Pulse rounds with final tallies     |
-| GET    | `/api/auth/google`          | Start Google OAuth                         |
-| GET    | `/api/auth/google/callback` | Complete Google OAuth                      |
-| GET    | `/api/preview?url=`         | Resolve og:image for card links            |
+| Method | Path                        | Purpose                                      |
+| ------ | --------------------------- | -------------------------------------------- |
+| POST   | `/api/chat`                 | Stream agent response (NDJSON)               |
+| GET    | `/api/sessions`             | List user sessions                           |
+| GET    | `/api/sessions/:id`         | Session messages                             |
+| PATCH  | `/api/sessions/:id`         | Rename a session                             |
+| DELETE | `/api/sessions/:id`         | Delete a session                             |
+| GET    | `/api/route?from=&to=`      | Walking-route polyline                       |
+| GET    | `/api/building/:code`       | Building details (rooms, POIs, entrances)    |
+| GET    | `/api/geo/:name`            | GeoJSON layer                                |
+| GET    | `/api/pulse`                | Active Pulse round with the caller's votes   |
+| POST   | `/api/pulse/vote`           | Record an agree/disagree vote                |
+| GET    | `/api/pulse/history`        | Locked Pulse rounds with final tallies       |
+| GET    | `/api/auth/google`          | Start Google OAuth                           |
+| GET    | `/api/auth/google/callback` | Complete Google OAuth                        |
+| POST   | `/api/auth/login`           | Password sign-in when `USE_OAUTH=false`      |
+| POST   | `/api/auth/register`        | Password registration when `USE_OAUTH=false` |
+| GET    | `/api/preview?url=`         | Resolve og:image for card links              |
 
 ## Example query
 

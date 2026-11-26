@@ -11,6 +11,7 @@ type User = { userId: string; username: string };
 // The account the browser's session cookie belongs to; null means no cookie.
 let cookieUser: User | null;
 let sessionOffline: boolean;
+let credentialResponse: (url: string, init?: RequestInit) => Promise<Response>;
 const calls: string[] = [];
 
 function Probe() {
@@ -35,10 +36,11 @@ beforeEach(() => {
   vi.stubGlobal("localStorage", new Storage());
   cookieUser = null;
   sessionOffline = false;
+  credentialResponse = async () => new Response(null, { status: 404 });
   calls.length = 0;
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) => {
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       calls.push(url);
       if (url === "/api/auth/session") {
@@ -49,6 +51,7 @@ beforeEach(() => {
         cookieUser = null;
         return new Response(null, { status: 204 });
       }
+      if (url === "/api/auth/login" || url === "/api/auth/register") return credentialResponse(url, init);
       return new Response(null, { status: 404 });
     }),
   );
@@ -132,12 +135,22 @@ describe("server session", () => {
   });
 });
 
-it("exposes session management without credential sign-in methods", async () => {
+it("posts credentials and publishes the returned account identity", async () => {
   render(<App />);
   await settle();
+  let requestBody: unknown;
+  credentialResponse = async (_url, init) => {
+    requestBody = JSON.parse(String(init?.body));
+    cookieUser = user("password-user");
+    return Response.json(cookieUser);
+  };
 
-  expect(auth).not.toHaveProperty("signIn");
-  expect(auth).not.toHaveProperty("register");
+  await act(async () => {
+    await expect(auth.signIn(" student ", "correct horse battery")).resolves.toEqual({});
+  });
+  expect(requestBody).toEqual({ username: "student", password: "correct horse battery" });
+  expect(auth.user?.userId).toBe("password-user");
+  expect(storedUserId()).toBe("password-user");
 });
 
 it("ends the server session on sign-out and revokes the old getter", async () => {

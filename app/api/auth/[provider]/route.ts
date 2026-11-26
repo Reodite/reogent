@@ -1,10 +1,14 @@
 import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import { cookieHeader } from "@/src/server/auth";
+import { getAuthMode } from "@/src/server/auth-mode";
 import { OAUTH_COOKIE } from "@/src/server/oauth/constants";
 import { getOAuthProvider } from "@/src/server/oauth/providers";
 
 /** GET /api/auth/:provider: sends the browser to a configured OAuth provider. */
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }): Promise<Response> {
+  if (getAuthMode() === "password") {
+    return new Response(null, { status: 302, headers: { location: "/login?error=oauth_unavailable" } });
+  }
   const { provider: providerId } = await params;
   const provider = getOAuthProvider(providerId);
   const config = provider?.getConfig();

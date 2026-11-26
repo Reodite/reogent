@@ -35,6 +35,8 @@ interface AppAuth {
   status: AppAuthStatus;
   user: AppAuthUser | null;
   isGuest: boolean;
+  signIn: (username: string, password: string) => Promise<{ error?: string }>;
+  register: (username: string, password: string) => Promise<{ error?: string }>;
   /** Ends the session in this browser, including the server cookie. */
   signOut: () => void;
   /** Returns this session's user id for the X-Reodite-User header; revoked closures return null. */
@@ -48,6 +50,8 @@ const INITIALIZING: AppAuth = {
   status: "initializing",
   user: null,
   isGuest: false,
+  signIn: async () => ({}),
+  register: async () => ({}),
   signOut: () => {},
   getUserId: async () => null,
   refresh: () => {},
@@ -161,6 +165,47 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
     };
   }, [refreshSession]);
 
+  const authenticate = useCallback(
+    async (endpoint: "login" | "register", username: string, password: string) => {
+      const attempt = ++generation.current;
+      let response: Response;
+      try {
+        response = await fetch(`/api/auth/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username.trim(), password }),
+        });
+      } catch {
+        return { error: "Can't reach the server. Check your connection and try again." };
+      }
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch {
+        return { error: "Unexpected response from server. Try again in a moment." };
+      }
+      if (attempt !== generation.current) return { error: "Sign-in changed. Try again." };
+      if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "Invalid server response." };
+      if (!response.ok) {
+        const { error } = body as Record<string, unknown>;
+        return { error: typeof error === "string" ? error : "Sign-in failed. Try again." };
+      }
+      const user = parseUser(body);
+      if (!user) return { error: "Invalid server response." };
+      startSession(user);
+      return {};
+    },
+    [startSession],
+  );
+
+  const signIn = useCallback(
+    (username: string, password: string) => authenticate("login", username, password),
+    [authenticate],
+  );
+  const register = useCallback(
+    (username: string, password: string) => authenticate("register", username, password),
+    [authenticate],
+  );
   const continueAsGuest = useCallback(() => startSession({ username: "Guest", userId: "guest" }), [startSession]);
   const refresh = useCallback(() => void refreshSession(), [refreshSession]);
 
@@ -191,12 +236,14 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
       status: session === undefined ? "initializing" : session ? "signedIn" : "signedOut",
       user: session?.user ?? null,
       isGuest: session?.user.userId === "guest",
+      signIn,
+      register,
       signOut,
       getUserId,
       refresh,
       continueAsGuest,
     }),
-    [session, signOut, getUserId, refresh, continueAsGuest],
+    [session, signIn, register, signOut, getUserId, refresh, continueAsGuest],
   );
 
   return (

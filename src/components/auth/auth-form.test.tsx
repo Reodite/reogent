@@ -25,7 +25,7 @@ afterEach(() => {
 describe("AuthForm", () => {
   it("offers Google sign-in and keeps a safe redirect", () => {
     navigation.search = new URLSearchParams({ redirect: "/app/settings" }).toString();
-    const { container } = render(<AuthForm mode="login" />);
+    const { container } = render(<AuthForm mode="login" authMode="oauth" providerIds={["google"]} />);
 
     expect(screen.getByRole("link", { name: "Continue with Google" }).getAttribute("href")).toBe(
       "/api/auth/google?redirect=%2Fapp%2Fsettings",
@@ -36,9 +36,18 @@ describe("AuthForm", () => {
 
   it("shows a provider configuration error", () => {
     navigation.search = new URLSearchParams({ error: "oauth_unavailable" }).toString();
-    render(<AuthForm mode="login" />);
+    render(<AuthForm mode="login" authMode="oauth" providerIds={["google"]} />);
 
     expect(screen.getByRole("alert").textContent).toBe("Sign-in isn't set up on this server.");
+  });
+
+  it("renders username and password fields without OAuth links in password mode", () => {
+    render(<AuthForm mode="login" authMode="password" />);
+
+    expect(screen.getByRole("textbox", { name: "Username" })).not.toBeNull();
+    expect(screen.getByLabelText("Password")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Sign in" })).not.toBeNull();
+    expect(screen.queryByRole("link", { name: "Continue with Google" })).toBeNull();
   });
 
   it("matches the single-action loading footprint", () => {

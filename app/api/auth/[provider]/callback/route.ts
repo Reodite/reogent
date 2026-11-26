@@ -1,5 +1,6 @@
 import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import { cookieHeader, readCookie, sessionCookie } from "@/src/server/auth";
+import { getAuthMode } from "@/src/server/auth-mode";
 import { OAUTH_COOKIE } from "@/src/server/oauth/constants";
 import { getOAuthProvider } from "@/src/server/oauth/providers";
 import { findOrCreateOAuthUser } from "@/src/server/sessions/store";
@@ -14,6 +15,7 @@ function redirect(location: string, cookiePath: string, ...cookies: string[]): R
 /** Completes provider sign-in after validating the browser's single-use state cookie. */
 export async function GET(request: Request, { params }: { params: Promise<{ provider: string }> }): Promise<Response> {
   const { provider: providerId } = await params;
+  if (getAuthMode() === "password") return redirect("/login?error=oauth_unavailable", "/api/auth");
   const provider = getOAuthProvider(providerId);
   const config = provider?.getConfig();
   if (!provider || !config) return redirect("/login?error=oauth_unavailable", "/api/auth");

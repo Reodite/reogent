@@ -1,5 +1,9 @@
 import { AuthPage } from "@/src/components/auth/auth-form";
+import { getAuthMode } from "@/src/server/auth-mode";
+import { connection } from "next/server";
 
-export default function LoginPage() {
-  return <AuthPage mode="login" />;
+export default async function LoginPage() {
+  await connection();
+  const authMode = getAuthMode();
+  return <AuthPage mode="login" authMode={authMode} providerIds={authMode === "oauth" ? ["google"] : []} />;
 }
