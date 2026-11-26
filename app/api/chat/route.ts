@@ -54,81 +54,119 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
+    const owner = new AbortController();
+    const abortOwner = () => owner.abort(request.signal.reason);
+    request.signal.addEventListener("abort", abortOwner, { once: true });
+    if (request.signal.aborted) abortOwner();
+    const iterator = streamAgent(parsed.value.messages, {
+      modules,
+      search: getSearch(),
+      profile,
+      signal: owner.signal,
+    })[Symbol.asyncIterator]();
+    const activity: ActivityBlock[] = [];
+    const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;
+    let closed = false;
+    let clientCancelled = false;
+    let completed = false;
+    let cleanup: Promise<void> | undefined;
+    const cleanupIterator = () => {
+      cleanup ??= (async () => {
+        request.signal.removeEventListener("abort", abortOwner);
         try {
-          let doneEvent: {
-            message: string;
-            tool_calls: { name: string; input: Record<string, unknown>; result?: unknown }[];
-            citations: {
-              index: number;
-              label: string;
-              kind: string;
-              used: boolean;
-              source_url?: string;
-              tool: string;
-            }[];
-            warning?: string;
-            follow_ups?: string[];
-          } | null = null;
-          const activity: ActivityBlock[] = [];
-
-          for await (const event of streamAgent(parsed.value.messages, { modules, search: getSearch(), profile })) {
+          await iterator.return?.(undefined);
+        } catch {
+          // Preserve the primary stream result if iterator cleanup fails.
+        }
+      })();
+      return cleanup;
+    };
+    const stream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        try {
+          let event: Awaited<ReturnType<typeof iterator.next>>["value"];
+          do {
+            owner.signal.throwIfAborted();
+            const next = await iterator.next();
+            owner.signal.throwIfAborted();
+            if (next.done) {
+              await cleanupIterator();
+              closed = true;
+              controller.close();
+              return;
+            }
+            event = next.value;
             if (event.type === "usage") {
-              // A failed usage write logs and leaves the answer streaming and persisting.
               recordTokenUsage(user.sub, event.totalTokens).catch((e: unknown) => {
                 console.error("token usage write failed", e instanceof Error ? e.message : e);
               });
-              continue;
             }
-            controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
-            if (event.type === "thinking") {
-              const last = activity[activity.length - 1];
-              if (last?.type === "thinking") {
-                last.content += event.delta;
-              } else {
-                activity.push({ type: "thinking", content: event.delta });
+          } while (event.type === "usage");
+          if (event.type === "thinking") {
+            const last = activity[activity.length - 1];
+            if (last?.type === "thinking") last.content += event.delta;
+            else activity.push({ type: "thinking", content: event.delta });
+          } else if (event.type === "tool_start") {
+            activity.push({ type: "tool_call", content: event.name, input: event.input });
+          } else if (event.type === "tool_end") {
+            for (let j = activity.length - 1; j >= 0; j--) {
+              if (
+                activity[j].type === "tool_call" &&
+                activity[j].content === event.name &&
+                activity[j].result === undefined
+              ) {
+                activity[j].result = event.result;
+                break;
               }
-            } else if (event.type === "tool_start") {
-              activity.push({ type: "tool_call", content: event.name, input: event.input });
-            } else if (event.type === "tool_end") {
-              for (let j = activity.length - 1; j >= 0; j--) {
-                if (
-                  activity[j].type === "tool_call" &&
-                  activity[j].content === event.name &&
-                  activity[j].result === undefined
-                ) {
-                  activity[j].result = event.result;
-                  break;
-                }
-              }
-            } else if (event.type === "done") {
-              doneEvent = event;
             }
           }
-
-          // Persist after streaming completes
-          if (doneEvent && lastUser) {
-            await appendExchange(
-              user.sub,
-              sessionId,
-              lastUser.content,
-              doneEvent.message,
-              activity.length > 0 ? activity : undefined,
-              doneEvent.citations,
-            );
-            // Generate a proper title on first exchange (fire-and-forget)
-            const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;
-            if (isFirstExchange) {
-              generateSessionTitle(user.sub, sessionId, lastUser.content, doneEvent.message);
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+          if (event.type === "done") {
+            completed = true;
+            if (lastUser) {
+              await appendExchange(
+                user.sub,
+                sessionId,
+                lastUser.content,
+                event.message,
+                activity.length > 0 ? activity : undefined,
+                event.citations,
+              );
+              if (isFirstExchange && !clientCancelled) {
+                generateSessionTitle(user.sub, sessionId, lastUser.content, event.message);
+              }
+            }
+            await cleanupIterator();
+            if (!closed) {
+              closed = true;
+              controller.close();
+            }
+          } else if (event.type === "error") {
+            await cleanupIterator();
+            if (!closed) {
+              closed = true;
+              controller.close();
             }
           }
-        } catch {
-          const message = "Could not complete the response. Please try again.";
-          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error", message })}\n`));
-        } finally {
-          controller.close();
+        } catch (error) {
+          if (!owner.signal.aborted) owner.abort(error);
+          await cleanupIterator();
+          if (!clientCancelled && !request.signal.aborted) {
+            const message = "Could not complete the response. Please try again.";
+            if (!closed) controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error", message })}\n`));
+          }
+          if (!closed) {
+            closed = true;
+            controller.close();
+          }
         }
+      },
+      async cancel(reason) {
+        if (completed) return;
+        clientCancelled = true;
+        closed = true;
+        owner.abort(reason);
+        await cleanupIterator();
       },
     });
 
