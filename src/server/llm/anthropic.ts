@@ -184,6 +184,7 @@ export function createAnthropicAdapter(): LlmAdapter {
           yield { type: "stop", reason };
         }
       }
+      req.signal?.throwIfAborted();
     } finally {
       if (req.signal?.aborted) stream.abort();
     }

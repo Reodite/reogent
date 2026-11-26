@@ -117,6 +117,84 @@ describe("provider token usage", () => {
     );
   });
 
+  it("aborts active provider streams and closes their iterators", async () => {
+    const controller = new AbortController();
+    let resolveNext!: (value: IteratorResult<unknown>) => void;
+    let startedOpenAI!: () => void;
+    const openaiStarted = new Promise<void>((resolve) => (startedOpenAI = resolve));
+    const openaiReturn = vi.fn(async () => ({ done: true, value: undefined }));
+    sdk.openai.mockResolvedValueOnce({
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => {
+            startedOpenAI();
+            return new Promise<IteratorResult<unknown>>((resolve) => (resolveNext = resolve));
+          },
+          return: openaiReturn,
+        };
+      },
+    });
+    const openai = createOpenAIAdapter().converseStream({ ...request, signal: controller.signal });
+    const openaiNext = openai.next();
+    await openaiStarted;
+    controller.abort(new Error("cancelled"));
+    resolveNext({ done: false, value: { choices: [{ delta: { content: "late" }, finish_reason: null }] } });
+    await expect(openaiNext).rejects.toThrow("cancelled");
+    expect(openaiReturn).toHaveBeenCalled();
+
+    const anthropicController = new AbortController();
+    const anthropicAbort = vi.fn();
+    let resolveAnthropic!: (value: IteratorResult<unknown>) => void;
+    let startedAnthropic!: () => void;
+    const anthropicStarted = new Promise<void>((resolve) => (startedAnthropic = resolve));
+    sdk.anthropicStream.mockReturnValueOnce(
+      Object.assign(
+        {
+          [Symbol.asyncIterator]() {
+            return {
+              next: () => {
+                startedAnthropic();
+                return new Promise<IteratorResult<unknown>>((resolve) => (resolveAnthropic = resolve));
+              },
+            };
+          },
+        },
+        { abort: anthropicAbort, finalMessage: async () => ({ usage: {} }) },
+      ),
+    );
+    const anthropic = createAnthropicAdapter().converseStream({ ...request, signal: anthropicController.signal });
+    const anthropicNext = anthropic.next();
+    await anthropicStarted;
+    anthropicController.abort(new Error("cancelled"));
+    resolveAnthropic({ done: true, value: undefined });
+    await expect(anthropicNext).rejects.toThrow("cancelled");
+    expect(anthropicAbort).toHaveBeenCalledOnce();
+
+    const googleController = new AbortController();
+    const googleReturn = vi.fn(async () => ({ done: true, value: undefined }));
+    let resolveGoogle!: (value: IteratorResult<unknown>) => void;
+    let startedGoogle!: () => void;
+    const googleStarted = new Promise<void>((resolve) => (startedGoogle = resolve));
+    sdk.googleStream.mockResolvedValueOnce({
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => {
+            startedGoogle();
+            return new Promise<IteratorResult<unknown>>((resolve) => (resolveGoogle = resolve));
+          },
+          return: googleReturn,
+        };
+      },
+    });
+    const google = createGoogleAdapter().converseStream({ ...request, signal: googleController.signal });
+    const googleNext = google.next();
+    await googleStarted;
+    googleController.abort(new Error("cancelled"));
+    resolveGoogle({ done: true, value: undefined });
+    await expect(googleNext).rejects.toThrow("cancelled");
+    expect(googleReturn).toHaveBeenCalled();
+  });
+
   it("does not invent usage when an OpenAI-compatible provider omits it", async () => {
     sdk.openai.mockResolvedValueOnce({ choices: [{ message: { content: "Hi" }, finish_reason: "stop" }] });
     const adapter = createOpenAIAdapter();

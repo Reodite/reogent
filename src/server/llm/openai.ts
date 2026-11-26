@@ -200,6 +200,7 @@ export function createOpenAIAdapter(): LlmAdapter {
         yield { type: "stop", reason };
       }
     }
+    req.signal?.throwIfAborted();
     if (totalTokens !== undefined) yield { type: "usage", totalTokens };
   }
 
