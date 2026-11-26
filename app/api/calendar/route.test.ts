@@ -134,6 +134,13 @@ describe("GET /api/calendar route — projected CalendarEvent[] shape and cachin
     expect(Object.keys(await import("./route"))).toEqual(["GET"]);
   });
 
+  it("serves academic dates without an authenticated session", async () => {
+    const res = await GET(new Request("https://example/api/calendar?kinds=academic"));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(fixture.academicOnly);
+  });
+
   it("returns the projected array with a 5-minute public cache header", async () => {
     const request = new Request("https://example/api/calendar?kinds=academic");
     const res = await GET(request);
