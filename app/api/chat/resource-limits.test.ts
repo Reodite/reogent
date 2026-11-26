@@ -76,4 +76,35 @@ describe("chat resource limits", () => {
     await next.text();
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
   });
+
+  it("aborts timed-out model work and releases its capacity slot", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("CHAT_TIMEOUT_MS", "1000");
+    let firstSignal: AbortSignal | undefined;
+    mocks.streamAgent
+      .mockImplementationOnce(async function* (_messages, deps) {
+        firstSignal = deps.signal;
+        yield { type: "thinking", delta: "partial" };
+        await new Promise<void>((resolve) => firstSignal?.addEventListener("abort", resolve, { once: true }));
+        firstSignal?.throwIfAborted();
+      })
+      .mockImplementationOnce(async function* () {
+        yield { type: "done", message: "complete", tool_calls: [], citations: [] };
+      });
+    const { POST } = await import("./route");
+    const timed = await POST(request());
+    const pending = timed.text();
+    await vi.advanceTimersByTimeAsync(1000);
+    const body = await pending;
+
+    expect(firstSignal?.aborted).toBe(true);
+    expect(body).toContain('"type":"thinking","delta":"partial"');
+    expect(body).toContain('"type":"error","message":"Could not complete the response. Please try again."');
+    expect(body).not.toContain('"type":"done"');
+    expect(mocks.appendExchange).not.toHaveBeenCalled();
+
+    const next = await POST(request());
+    await next.text();
+    expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
+  });
 });
