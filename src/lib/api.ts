@@ -147,6 +147,9 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
 }
 
 function createHttpApi({ getUserId, onUnauthorized, baseUrl = "/api" }: ChatApiOptions): ChatApi {
+  let courseIndex: Promise<{ courses: CourseIndexEntry[] }> | undefined;
+  let courseIndexLoadedAt: number | undefined;
+
   async function userHeader(): Promise<{ "X-Reodite-User": string }> {
     const userId = await getUserId();
     if (!userId) {
@@ -298,7 +301,22 @@ function createHttpApi({ getUserId, onUnauthorized, baseUrl = "/api" }: ChatApiO
         `/courses?${sp.toString()}`,
       );
     },
-    getCourseIndex: () => publicRequest<{ courses: CourseIndexEntry[] }>("/course-index"),
+    getCourseIndex: () => {
+      if (courseIndexLoadedAt !== undefined && Date.now() - courseIndexLoadedAt >= 60 * 60 * 1000) {
+        courseIndex = undefined;
+        courseIndexLoadedAt = undefined;
+      }
+      courseIndex ??= publicRequest<{ courses: CourseIndexEntry[] }>("/course-index")
+        .then((result) => {
+          courseIndexLoadedAt = Date.now();
+          return result;
+        })
+        .catch((error) => {
+          courseIndex = undefined;
+          throw error;
+        });
+      return courseIndex;
+    },
     getPulseFeed: () => request<PulseFeed>("/pulse"),
     votePulse: (questionId, agree) =>
       request<PulseVoteResult>("/pulse/vote", {
