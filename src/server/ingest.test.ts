@@ -73,7 +73,10 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 describe("ingest command environment", () => {
   it.each([
@@ -146,6 +149,38 @@ describe("ingest command arguments", () => {
 });
 
 describe("runIngest", () => {
+  it("splits batches by serialized UTF-8 bytes", async () => {
+    vi.stubEnv("INGEST_BATCH_BYTES", "72");
+    vi.stubEnv("INGEST_MAX_REQUEST_BYTES", "256");
+    const f = fixture(3);
+    f.first.definition.transform = vi.fn((row: { id: string; title: string; kind: string }) => ({
+      id: row.id,
+      doc: { ...row, title: `${row.title} 🧭` },
+    }));
+
+    await expect(runIngest(f.modules, f.search, f.store)).resolves.toBeUndefined();
+
+    expect(f.first.addDocuments.mock.calls.map(([docs]) => docs.length)).toEqual([1, 1, 1]);
+    for (const [docs] of f.first.addDocuments.mock.calls) {
+      expect(Buffer.byteLength(JSON.stringify(docs), "utf8")).toBeLessThanOrEqual(72);
+    }
+  });
+
+  it("rejects one document larger than the hard request ceiling", async () => {
+    vi.stubEnv("INGEST_BATCH_BYTES", "64");
+    vi.stubEnv("INGEST_MAX_REQUEST_BYTES", "64");
+    const f = fixture(1);
+    f.first.definition.transform = vi.fn((row: { id: string; title: string; kind: string }) => ({
+      id: row.id,
+      doc: { ...row, title: "界".repeat(100) },
+    }));
+
+    await expect(runIngest(f.modules, f.search, f.store)).rejects.toMatchObject({
+      errors: [expect.objectContaining({ message: expect.stringContaining("exceeding INGEST_MAX_REQUEST_BYTES") })],
+    });
+    expect(f.first.addDocuments).not.toHaveBeenCalled();
+  });
+
   it("awaits each task, batches sanitized documents, and finishes indexes sequentially", async () => {
     const f = fixture(501);
 
