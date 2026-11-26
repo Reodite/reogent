@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/src/components/theme-toggle";
 import { AUDIO_STORAGE_KEY, siteAudio } from "@/src/lib/audio";
 import type { StudentProfile } from "@/src/shared/profile";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Storage } from "happy-dom";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +35,7 @@ vi.mock("motion/react", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("localStorage", new Storage());
   localStorage.clear();
   document.documentElement.dataset.theme = "light";
   state.pathname = "/onboarding";
@@ -49,6 +51,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 async function start() {

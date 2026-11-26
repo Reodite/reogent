@@ -2,6 +2,7 @@
 import { ChatShellProvider, useChatShell } from "@/src/components/chat/chat-shell-context";
 import type { BuildingSummary, RouteResponse } from "@/src/lib/api-types";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Storage } from "happy-dom";
 import { useEffect, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -196,6 +197,8 @@ const buildingGeo = {
 };
 
 beforeEach(() => {
+  vi.stubGlobal("localStorage", new Storage());
+  vi.stubGlobal("sessionStorage", new Storage());
   localStorage.clear();
   sessionStorage.clear();
   window.history.replaceState(null, "", "/app/tools/map");
@@ -226,6 +229,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 function renderMap(mode: "tools" | "ai" = "tools") {

@@ -3,12 +3,14 @@ import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { AUDIO_STORAGE_KEY, DEFAULT_AUDIO_PREFERENCES, siteAudio } from "@/src/lib/audio";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { Storage } from "happy-dom";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AudioSettings, AudioVolumeControl } from "./audio-controls";
 import { AudioProvider } from "./audio-provider";
 
 beforeEach(() => {
+  vi.stubGlobal("localStorage", new Storage());
   localStorage.clear();
   vi.spyOn(siteAudio, "configure").mockImplementation(() => {});
   vi.spyOn(siteAudio, "unlock").mockResolvedValue();
