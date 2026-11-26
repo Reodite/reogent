@@ -81,18 +81,25 @@ export function createAnthropicAdapter(): LlmAdapter {
     messages,
     system,
     toolSpecs,
+    signal,
   }: {
     messages: ConverseMessage[];
     system: string;
     toolSpecs: ToolSpec[];
+    signal?: AbortSignal;
   }) => {
-    const res = await getClient().messages.create({
-      model: getModel(),
-      max_tokens: 16384,
-      system,
-      messages: toAnthropicMessages(messages),
-      ...(toolSpecs.length ? { tools: toAnthropicTools(toolSpecs) } : {}),
-    });
+    signal?.throwIfAborted();
+    const res = await getClient().messages.create(
+      {
+        model: getModel(),
+        max_tokens: 16384,
+        system,
+        messages: toAnthropicMessages(messages),
+        ...(toolSpecs.length ? { tools: toAnthropicTools(toolSpecs) } : {}),
+      },
+      { signal },
+    );
+    signal?.throwIfAborted();
 
     const content: ContentBlock[] = [];
     for (const block of res.content) {
@@ -117,58 +124,68 @@ export function createAnthropicAdapter(): LlmAdapter {
     messages: ConverseMessage[];
     system: string;
     toolSpecs: ToolSpec[];
+    signal?: AbortSignal;
   }): AsyncGenerator<ConverseStreamEvent> {
-    const stream = getClient().messages.stream({
-      model: getModel(),
-      max_tokens: 16384,
-      system: req.system,
-      messages: toAnthropicMessages(req.messages),
-      ...(req.toolSpecs.length ? { tools: toAnthropicTools(req.toolSpecs) } : {}),
-    });
+    req.signal?.throwIfAborted();
+    const stream = getClient().messages.stream(
+      {
+        model: getModel(),
+        max_tokens: 16384,
+        system: req.system,
+        messages: toAnthropicMessages(req.messages),
+        ...(req.toolSpecs.length ? { tools: toAnthropicTools(req.toolSpecs) } : {}),
+      },
+      { signal: req.signal },
+    );
 
     let currentToolId = "";
     let currentToolName = "";
     let currentToolInput = "";
 
-    for await (const event of stream) {
-      if (event.type === "content_block_start") {
-        const block = event.content_block;
-        if (block.type === "thinking") {
-          // Thinking block start; deltas follow
-        } else if (block.type === "tool_use") {
-          currentToolId = block.id;
-          currentToolName = block.name;
-          currentToolInput = "";
-        }
-      } else if (event.type === "content_block_delta") {
-        const delta = event.delta;
-        if (delta.type === "thinking_delta") {
-          yield { type: "thinking", delta: delta.thinking };
-        } else if (delta.type === "text_delta") {
-          yield { type: "text", delta: delta.text };
-        } else if (delta.type === "input_json_delta") {
-          currentToolInput += delta.partial_json;
-        }
-      } else if (event.type === "content_block_stop") {
-        if (currentToolId) {
-          let input: Record<string, unknown> = {};
-          try {
-            input = JSON.parse(currentToolInput || "{}");
-          } catch {
-            /* pass */
+    try {
+      for await (const event of stream) {
+        req.signal?.throwIfAborted();
+        if (event.type === "content_block_start") {
+          const block = event.content_block;
+          if (block.type === "thinking") {
+            // Thinking block start; deltas follow
+          } else if (block.type === "tool_use") {
+            currentToolId = block.id;
+            currentToolName = block.name;
+            currentToolInput = "";
           }
-          yield { type: "tool_use", toolUseId: currentToolId, name: currentToolName, input };
-          currentToolId = "";
-          currentToolName = "";
-          currentToolInput = "";
+        } else if (event.type === "content_block_delta") {
+          const delta = event.delta;
+          if (delta.type === "thinking_delta") {
+            yield { type: "thinking", delta: delta.thinking };
+          } else if (delta.type === "text_delta") {
+            yield { type: "text", delta: delta.text };
+          } else if (delta.type === "input_json_delta") {
+            currentToolInput += delta.partial_json;
+          }
+        } else if (event.type === "content_block_stop") {
+          if (currentToolId) {
+            let input: Record<string, unknown> = {};
+            try {
+              input = JSON.parse(currentToolInput || "{}");
+            } catch {
+              /* pass */
+            }
+            yield { type: "tool_use", toolUseId: currentToolId, name: currentToolName, input };
+            currentToolId = "";
+            currentToolName = "";
+            currentToolInput = "";
+          }
+        } else if (event.type === "message_stop") {
+          const msg = await stream.finalMessage();
+          const tokens = totalTokens(msg.usage);
+          if (tokens !== undefined) yield { type: "usage", totalTokens: tokens };
+          const reason = msg.stop_reason === "tool_use" ? "tool_use" : "end_turn";
+          yield { type: "stop", reason };
         }
-      } else if (event.type === "message_stop") {
-        const msg = await stream.finalMessage();
-        const tokens = totalTokens(msg.usage);
-        if (tokens !== undefined) yield { type: "usage", totalTokens: tokens };
-        const reason = msg.stop_reason === "tool_use" ? "tool_use" : "end_turn";
-        yield { type: "stop", reason };
       }
+    } finally {
+      if (req.signal?.aborted) stream.abort();
     }
   }
 

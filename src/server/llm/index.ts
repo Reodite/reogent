@@ -36,6 +36,7 @@ export function converseStream(req: {
   system: string;
   toolSpecs: ToolSpec[];
   forceToolUse?: boolean;
+  signal?: AbortSignal;
 }): AsyncGenerator<ConverseStreamEvent> {
   return getAdapter().converseStream(req);
 }

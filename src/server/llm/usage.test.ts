@@ -102,10 +102,19 @@ describe("provider token usage", () => {
     const adapter = createGoogleAdapter();
     expect((await adapter.converse(request)).totalTokens).toBe(170);
     sdk.googleStream.mockResolvedValueOnce(
-      chunks([{ usageMetadata: { totalTokenCount: 100 } }, response, { candidates: [] }]),
+      chunks([{ usageMetadata: { totalTokenCount: 100 } }, response, { candidates: [{ finishReason: "STOP" }] }]),
     );
     const events = await Array.fromAsync(adapter.converseStream(request));
     expect(events.filter((event) => event.type === "usage")).toEqual([{ type: "usage", totalTokens: 170 }]);
+  });
+
+  it("rejects Google stream EOF without a finish reason", async () => {
+    sdk.googleStream.mockResolvedValueOnce(chunks([{ candidates: [{ content: { parts: [{ text: "partial" }] } }] }]));
+    const adapter = createGoogleAdapter();
+
+    await expect(Array.fromAsync(adapter.converseStream(request))).rejects.toThrow(
+      "Google model stream ended without a finish reason",
+    );
   });
 
   it("does not invent usage when an OpenAI-compatible provider omits it", async () => {
