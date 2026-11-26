@@ -34,7 +34,10 @@ describe("account details", () => {
     expect(query.mock.calls[0][1]).toEqual(["u1"]);
     const sql = query.mock.calls[0][0];
     expect(sql).toContain("WHERE u.id = $1");
-    expect(sql).toContain("u.display_name, u.email");
+    expect(sql).toContain("FROM oauth_accounts oa");
+    expect(sql).toContain("JOIN oauth_profiles pr ON pr.oauth_account_id = oa.id");
+    expect(sql).toContain("oa.user_id = u.id AND oa.is_primary");
+    expect(sql).toContain("CASE WHEN pr.email_verified THEN pr.email END");
     expect(sql).toContain("LEFT JOIN user_profiles p ON p.user_id = u.id");
     expect(sql).toContain("COUNT(*) FROM pulse_votes WHERE user_id = u.id");
     expect(sql).not.toContain("status = 'active'");
@@ -64,6 +67,26 @@ describe("account details", () => {
     });
     query.mockResolvedValue({ rows: [] });
     expect(await getAccount("missing")).toBeNull();
+  });
+
+  it("keeps an OAuth display name when the provider email is unverified", async () => {
+    query.mockResolvedValue({
+      rows: [
+        {
+          username: "new-user",
+          display_name: "New User",
+          email: null,
+          created_at: new Date("2026-10-01T12:00:00Z"),
+          profile: null,
+          tokens_spent: "0",
+          token_tracking_started_at: new Date("2026-10-01T12:00:00Z"),
+          pulse_questions_answered: "0",
+        },
+      ],
+    });
+
+    expect(await getAccount("u1")).toMatchObject({ displayName: "New User", email: null });
+    expect(query.mock.calls[0][0]).toContain("CASE WHEN pr.email_verified THEN pr.email END");
   });
 });
 

@@ -13,10 +13,18 @@ export async function getAccount(userId: string): Promise<AccountDetails | null>
     token_tracking_started_at: Date;
     pulse_questions_answered: string;
   }>(
-    `SELECT u.username, u.display_name, u.email, u.created_at, p.data AS profile, u.tokens_spent, u.token_tracking_started_at,
+    `SELECT u.username, op.display_name, op.email, u.created_at, p.data AS profile, u.tokens_spent, u.token_tracking_started_at,
             (SELECT COUNT(*) FROM pulse_votes WHERE user_id = u.id) AS pulse_questions_answered
      FROM users u
      LEFT JOIN user_profiles p ON p.user_id = u.id
+     LEFT JOIN LATERAL (
+       SELECT pr.display_name, CASE WHEN pr.email_verified THEN pr.email END AS email
+       FROM oauth_accounts oa
+       JOIN oauth_profiles pr ON pr.oauth_account_id = oa.id
+       WHERE oa.user_id = u.id AND oa.is_primary
+       ORDER BY oa.created_at
+       LIMIT 1
+     ) op ON true
      WHERE u.id = $1`,
     [userId],
   );
