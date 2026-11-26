@@ -95,6 +95,36 @@ describe("buildGraph (ported reodite logic)", () => {
     expect((ddd.data as { coreq?: boolean }).coreq).toBe(true);
   });
 
+  it.each(["AAA 200.", "One of AAA 200, DDD 200."])(
+    "expands prerequisite chains behind corequisite %j",
+    (corequisite) => {
+      const index: CourseIndex = new Map([
+        course("ROOT 300", "Root", null, corequisite),
+        course("AAA 200", "Corequisite", "BBB 100.", "EEE 100."),
+        course("BBB 100", "Prerequisite", "CCC 100."),
+        course("CCC 100", "Transitive prerequisite", "BBB 100."),
+        course("DDD 200", "Alternative"),
+        course("EEE 100", "Nested corequisite"),
+      ]);
+      const graph = buildGraph(
+        "ROOT 300",
+        index,
+        new Map(),
+        () => {},
+        new Map(),
+        () => {},
+      );
+      const nodeIds = graph.nodes.map((node) => node.id);
+
+      expect(nodeIds).toEqual(expect.arrayContaining(["BBB 100", "CCC 100"]));
+      expect(graph.edges).toEqual(
+        expect.arrayContaining([expect.objectContaining({ source: "CCC 100", target: "BBB 100" })]),
+      );
+      expect(nodeIds).not.toContain("EEE 100");
+      expect(nodeIds).not.toContain("DDD 200");
+    },
+  );
+
   it("records semantic targets only for top-level corequisite layout edges", () => {
     const index = new Map([
       ...INDEX,
