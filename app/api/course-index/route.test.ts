@@ -80,4 +80,23 @@ describe("GET /api/course-index", () => {
     expect(await (await GET(request())).json()).toEqual({ courses: [] });
     expect(getDocuments).toHaveBeenCalledTimes(2);
   });
+
+  it("coalesces concurrent requests and reuses the serialized response", async () => {
+    let resolveDocuments!: (value: { results: { code: string; title: string }[]; total: number }) => void;
+    getDocuments.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDocuments = resolve;
+        }),
+    );
+    const { GET } = await import("./route");
+    const first = GET(request());
+    const second = GET(request());
+    await vi.waitFor(() => expect(getDocuments).toHaveBeenCalledTimes(1));
+    resolveDocuments({ results: [{ code: "CPSC_V 110", title: "Computation" }], total: 1 });
+
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+    expect(await firstResponse.json()).toEqual(await secondResponse.json());
+    expect(getDocuments).toHaveBeenCalledTimes(1);
+  });
 });
