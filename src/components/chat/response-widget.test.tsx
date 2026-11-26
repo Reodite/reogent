@@ -676,7 +676,7 @@ describe("unsupported rich-widget history and stream selection", () => {
       expect(shellRef.current?.userDismissedPane).toBe(dismissed);
       // Automatic activation never covers a phone chat; the artifact card opens it.
       expect(shellRef.current?.answerSheetOpen).toBe(false);
-      expect(shellRef.current?.rightPaneCollapsed).toBe(dismissed);
+      await waitFor(() => expect(shellRef.current?.rightPaneCollapsed).toBe(dismissed));
       const widgets = container.querySelectorAll('[data-widget="show_widget"]');
       expect(widgets).toHaveLength(2);
       expect(widgets[1].getAttribute("role")).toBeNull();
