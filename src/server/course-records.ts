@@ -93,9 +93,14 @@ function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-/** Returns the course_sessions primary key for a bare "SUBJ NUM" code and session. */
+/** Returns the course_sessions primary key for a canonical Vancouver code and session. */
 export function courseRecordId(code: string, session: Session): string {
-  return sanitizeId(`${code}__${session}`);
+  const canonicalCode = code
+    .trim()
+    .toUpperCase()
+    .replace(/_V(?=\s|$)/, "")
+    .replace(/\s+/g, " ");
+  return sanitizeId(`${canonicalCode}__${session}`);
 }
 
 // Raw shape of grades/distributions.json (minimal fields we aggregate)
