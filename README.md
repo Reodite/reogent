@@ -174,4 +174,4 @@ Read [`PRODUCT.md`](PRODUCT.md) for product direction and [`DESIGN.md`](DESIGN.m
 
 ## License
 
-Built for UBC CIC Hackathon 2026.
+Reodite's code is licensed under the GNU Affero General Public License v3.0 only. See [LICENSE](LICENSE). Third-party dependencies, fonts, and data in the `ubc-unified-data` submodule may have separate terms.
