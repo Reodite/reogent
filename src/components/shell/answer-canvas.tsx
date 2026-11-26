@@ -1,13 +1,15 @@
 "use client";
 
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
-import { MapArea } from "@/src/components/map/map-panel";
 import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useWorkspaceHost, WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { CloseButton } from "@/src/components/ui/button";
+import { ErrorBoundary } from "@/src/components/ui/error-boundary";
+import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
-import type { CanvasView, PaneState } from "@/src/shared/panes";
-import { useCallback, useRef, useState, type ComponentType } from "react";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import type { CanvasView, PaneId, PaneState } from "@/src/shared/panes";
+import { Suspense, useCallback, useRef, useState, type ComponentType } from "react";
 
 /**
  * The AI Mode Answer Canvas: the idle map overview when no widget is active, or
@@ -47,7 +49,11 @@ export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | nul
           <AnswerCanvasTitlebar label={label} Glyph={PaneGlyph} onClose={onClose} onOutlet={setTitlebarOutlet} />
         )}
         <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
-          <ActiveCanvasView view={view} />
+          <ErrorBoundary key={paneId} fallback={<PaneError paneId={paneId} />}>
+            <Suspense fallback={<PaneLoading label={label} />}>
+              <ActiveCanvasView view={view} />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </section>
     </WorkspaceHostProvider>
@@ -101,13 +107,30 @@ function ActiveCanvasView({ view }: { view: CanvasView }) {
   // AnswerCanvas already guards this case before mounting the view.
   if (!entry) return null;
 
-  if (view.paneId === "map") {
-    return <MapArea />;
-  }
-
   return (
     <div className="h-full">
       <entry.Component state={view.state} setState={setState} />
     </div>
+  );
+}
+
+function PaneLoading({ label }: { label: string }) {
+  return (
+    <div role="status" aria-live="polite" aria-label={`Loading ${label}`} className="h-full p-4">
+      <Skeleton aria-hidden="true" className="h-full w-full rounded-xl" />
+    </div>
+  );
+}
+
+function PaneError({ paneId }: { paneId: PaneId }) {
+  const label = PANE_BY_ID[paneId].label;
+  return (
+    <RetryState
+      title={`${label} unavailable`}
+      message="Reload the page to try loading this tool again."
+      retryLabel="Reload page"
+      onRetry={() => window.location.reload()}
+      className="min-h-full justify-center p-4"
+    />
   );
 }

@@ -30,7 +30,7 @@ describe("PANE_REGISTRY — composition (REQ-19.5, design.md §G)", () => {
       expect(typeof entry.id).toBe("string");
       expect(typeof entry.label).toBe("string");
       expect(typeof entry.icon).toBe("function");
-      expect(typeof entry.Component).toBe("function");
+      expect(["function", "object"]).toContain(typeof entry.Component);
       expect(entry.defaultState).toBeTypeOf("object");
     }
   });

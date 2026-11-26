@@ -226,15 +226,15 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
 
-  it("renders pathname-owned tool content without a post-paint activator", () => {
+  it("renders pathname-owned tool content without a post-paint activator", async () => {
     pathname.value = "/app/tools/map";
     const view = renderShell(true);
-    expect(view.getByTestId("map-area")).not.toBeNull();
+    await view.findByTestId("map-area");
 
     pathname.value = "/app/tools/calendar";
     view.rerender(<ShellFixture />);
+    await view.findByTestId("calendar-pane");
     expect(view.queryByTestId("map-area")).toBeNull();
-    expect(view.getByTestId("calendar-pane")).not.toBeNull();
   });
 
   it("preserves the active ChatPanel when native history mints its session URL", () => {

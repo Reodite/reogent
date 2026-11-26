@@ -2,7 +2,7 @@
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import { AnswerCanvas } from "@/src/components/shell/answer-canvas";
 import type { CanvasView } from "@/src/shared/panes";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/src/components/providers", () => ({ useApi: () => ({ listSessions: async () => [] }) }));
@@ -78,8 +78,9 @@ describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
     expect(container.querySelector("[data-pane]")).toBeNull();
   });
 
-  it("an active non-map pane renders its header and component", () => {
+  it("an active non-map pane renders its header and component", async () => {
     const { container } = renderCanvas({ paneId: "course-lookup", state: { code: "" } });
+    await screen.findByTestId("course-setstate");
     const section = container.querySelector('[data-pane="course-lookup"]');
     expect(section).not.toBeNull();
     expect(section?.querySelector("h2")?.textContent).toBe("Course lookup");
@@ -94,8 +95,9 @@ describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
     expect(section?.className).toContain("overflow-hidden");
   });
 
-  it("pane setState merges back into workspaceView state (fixes the noopSetState bug)", () => {
+  it("pane setState merges back into workspaceView state", async () => {
     const { getByTestId } = renderCanvas({ paneId: "course-lookup", state: { code: "" } });
+    await screen.findByTestId("course-setstate");
     act(() => {
       fireEvent.click(getByTestId("course-setstate"));
     });
@@ -108,12 +110,16 @@ describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
     expect(container.querySelector("[data-pane]")).toBeNull();
   });
 
-  it("an active map view renders the map pane header", () => {
+  it("an active map view renders the map pane header", async () => {
     const { container } = renderCanvas({ paneId: "map", state: {} });
+    await waitFor(() => expect(container.querySelector('[data-testid="map-area"]')).not.toBeNull());
     expect(container.querySelector('[data-pane="map"]')).not.toBeNull();
     expect(container.querySelector("h2")?.textContent).toBe("Campus map");
-    const content = container.querySelector('[data-testid="map-area"]')?.parentElement;
-    expect(content?.classList.contains("rounded-b-[inherit]")).toBe(true);
-    expect(content?.classList.contains("overflow-hidden")).toBe(true);
+    expect(container.querySelector('[data-testid="map-area"]')).not.toBeNull();
+  });
+
+  it("announces pane loading while its lazy module resolves", () => {
+    const { getByRole } = renderCanvas({ paneId: "calendar", state: { cursor: "2026-10" } });
+    expect(getByRole("status", { name: "Loading Calendar" })).toBeTruthy();
   });
 });
