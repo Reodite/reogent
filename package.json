@@ -30,6 +30,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "^2.19.0",
+    "bcryptjs": "^3.0.3",
     "fast-xml-parser": "^5.12.1",
     "fflate": "^0.8.2",
     "jose": "^6.2.10",

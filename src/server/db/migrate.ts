@@ -4,9 +4,11 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
+  password_hash TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tokens_spent BIGINT NOT NULL DEFAULT 0 CHECK (tokens_spent >= 0);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS token_tracking_started_at TIMESTAMPTZ NOT NULL DEFAULT now();
 ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_day DATE;
