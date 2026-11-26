@@ -1,8 +1,11 @@
 import { recordTokenUsage } from "../account";
 import { converse } from "../llm";
+import { createCapacityLimit, MAX_TIMER_MS, positiveIntegerEnv } from "../resource-limits";
 import { updateSessionTitle } from "../sessions/store";
 
 const TITLE_PROMPT = `Generate a short title (max 60 chars) for this conversation based on the user's question and the assistant's response. Return ONLY the title text, no quotes, no punctuation at the end.`;
+const acquireTitle = createCapacityLimit(positiveIntegerEnv("TITLE_MAX_CONCURRENT", 2));
+const TITLE_TIMEOUT_MS = positiveIntegerEnv("TITLE_TIMEOUT_MS", 15_000, MAX_TIMER_MS);
 
 /** Fire-and-forget: generates a title from the first exchange and updates the DB. */
 export function generateSessionTitle(
@@ -11,22 +14,37 @@ export function generateSessionTitle(
   userMessage: string,
   assistantMessage: string,
 ): void {
+  const release = acquireTitle();
+  if (!release) return;
+  const owner = new AbortController();
+  let deadline: ReturnType<typeof setTimeout> | undefined;
   void (async () => {
     try {
-      const result = await converse({
-        system: TITLE_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                text: `User asked: ${userMessage}\n\nAssistant replied: ${assistantMessage.slice(0, 300)}\n\nGenerate a short title for this conversation.`,
-              },
-            ],
-          },
-        ],
-        toolSpecs: [],
-      });
+      const result = await Promise.race([
+        converse({
+          system: TITLE_PROMPT,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  text: `User asked: ${userMessage}\n\nAssistant replied: ${assistantMessage.slice(0, 300)}\n\nGenerate a short title for this conversation.`,
+                },
+              ],
+            },
+          ],
+          toolSpecs: [],
+          signal: owner.signal,
+        }),
+        new Promise<never>((_, reject) => {
+          deadline = setTimeout(() => {
+            const error = new Error("Title deadline exceeded");
+            owner.abort(error);
+            reject(error);
+          }, TITLE_TIMEOUT_MS);
+        }),
+      ]);
+      owner.signal.throwIfAborted();
       await recordTokenUsage(userId, result.totalTokens);
       const raw = (result.message.content ?? [])
         .map((b) => b.text)
@@ -40,6 +58,9 @@ export function generateSessionTitle(
       }
     } catch (e) {
       console.error("[title-gen] Failed to generate session title:", e);
+    } finally {
+      clearTimeout(deadline);
+      release();
     }
   })();
 }
