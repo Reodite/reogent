@@ -14,7 +14,7 @@ beforeEach(() => {
   vi.stubEnv("GOOGLE_CLIENT_SECRET", "client-secret");
   vi.stubEnv("APP_URL", "https://reodite.test");
   vi.stubEnv("JWT_SECRET", "fixture-signing-secret-with-more-than-32-bytes");
-  mocks.finish.mockReset().mockResolvedValue({ sub: "google-123", givenName: "Max" });
+  mocks.finish.mockReset().mockResolvedValue({ sub: "google-123", email: "max@example.com", name: "Max Student" });
   mocks.findOrCreate.mockReset().mockResolvedValue({ id: "user-1", username: "max-1234" });
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -61,7 +61,7 @@ describe("GET /api/auth/google/callback", () => {
       "auth-code",
       expect.any(String),
     );
-    expect(mocks.findOrCreate).toHaveBeenCalledWith("google-123", "Max");
+    expect(mocks.findOrCreate).toHaveBeenCalledWith("google-123", { email: "max@example.com", name: "Max Student" });
     const set = cookies(response);
     expect(set.some((c) => c.startsWith("reodite_oauth=;") && c.includes("Max-Age=0"))).toBe(true);
     expect(set.some((c) => /^reodite_session=[\w-]+\.[\w-]+\.[\w-]+; .*HttpOnly/.test(c))).toBe(true);

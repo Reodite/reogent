@@ -27,7 +27,7 @@ export async function GET(request: Request): Promise<Response> {
   if (!state || !verifier || !code || params.get("state") !== state) return redirect("/login?error=google_failed");
   try {
     const account = await finishGoogleSignIn(config, code, verifier);
-    const user = await findOrCreateGoogleUser(account.sub, account.givenName);
+    const user = await findOrCreateGoogleUser(account.sub, { email: account.email, name: account.name });
     return redirect(
       safeAuthRedirect(Buffer.from(destination ?? "", "base64url").toString()),
       await sessionCookie(user.id, user.username),

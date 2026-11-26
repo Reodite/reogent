@@ -25,7 +25,7 @@ export function googleConfig(): GoogleConfig | null {
 /**
  * Starts the authorization code flow with PKCE. Returns Google's consent URL plus
  * the state and code verifier the caller keeps in an httpOnly cookie. Requests
- * only the `openid profile` scopes: no email address.
+ * the `openid profile email` scopes.
  */
 export function startGoogleSignIn(config: GoogleConfig): { url: string; state: string; verifier: string } {
   const state = randomBytes(32).toString("base64url");
@@ -35,7 +35,7 @@ export function startGoogleSignIn(config: GoogleConfig): { url: string; state: s
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
     response_type: "code",
-    scope: "openid profile",
+     scope: "openid profile email",
     state,
     code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     code_challenge_method: "S256",
@@ -53,7 +53,7 @@ export async function finishGoogleSignIn(
   config: GoogleConfig,
   code: string,
   verifier: string,
-): Promise<{ sub: string; givenName?: string }> {
+): Promise<{ sub: string; email?: string; name?: string }> {
   const response = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -72,5 +72,9 @@ export async function finishGoogleSignIn(
   if (typeof idToken !== "string") throw new Error("Google returned no ID token");
   const { payload } = await jose.jwtVerify(idToken, googleKeys, { issuer: ISSUERS, audience: config.clientId });
   if (!payload.sub) throw new Error("Google ID token has no subject");
-  return { sub: payload.sub, givenName: typeof payload.given_name === "string" ? payload.given_name : undefined };
+  return {
+    sub: payload.sub,
+    email: typeof payload.email === "string" && payload.email_verified === true ? payload.email : undefined,
+    name: typeof payload.name === "string" && payload.name.trim() ? payload.name.trim() : undefined,
+  };
 }

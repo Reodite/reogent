@@ -56,12 +56,12 @@ describe("googleConfig", () => {
 });
 
 describe("startGoogleSignIn", () => {
-  it("asks only for identity and binds the code to a PKCE verifier", () => {
+  it("requests profile and email and binds the code to a PKCE verifier", () => {
     const first = startGoogleSignIn(config);
     const second = startGoogleSignIn(config);
     const params = new URL(first.url).searchParams;
     expect(new URL(first.url).origin).toBe("https://accounts.google.com");
-    expect(params.get("scope")).toBe("openid profile");
+    expect(params.get("scope")).toBe("openid profile email");
     expect(params.get("state")).toBe(first.state);
     expect(params.get("redirect_uri")).toBe(config.redirectUri);
     expect(params.get("code_challenge_method")).toBe("S256");
@@ -72,13 +72,29 @@ describe("startGoogleSignIn", () => {
 });
 
 describe("finishGoogleSignIn", () => {
-  const claims = { iss: "https://accounts.google.com", aud: "client-id", sub: "google-123", given_name: "Max" };
+  const claims = {
+    iss: "https://accounts.google.com",
+    aud: "client-id",
+    sub: "google-123",
+    name: "Max Student",
+    email: "max@example.com",
+    email_verified: true,
+  };
 
   it("returns the verified subject and sends the PKCE verifier", async () => {
     idToken = await sign(claims);
-    expect(await finishGoogleSignIn(config, "auth-code", "verifier")).toEqual({ sub: "google-123", givenName: "Max" });
+    expect(await finishGoogleSignIn(config, "auth-code", "verifier")).toEqual({
+      sub: "google-123",
+      email: "max@example.com",
+      name: "Max Student",
+    });
     expect(tokenBodies[0].get("code_verifier")).toBe("verifier");
     expect(tokenBodies[0].get("client_secret")).toBe("client-secret");
+  });
+
+  it("does not return an unverified Google email", async () => {
+    idToken = await sign({ ...claims, email_verified: false });
+    expect(await finishGoogleSignIn(config, "auth-code", "verifier")).toEqual({ sub: "google-123", name: "Max Student" });
   });
 
   it.each([

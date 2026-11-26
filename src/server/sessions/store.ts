@@ -121,19 +121,13 @@ export async function getUserByUsername(username: string): Promise<{ id: string;
   return { id: rows[0].id, passwordHash: rows[0].password_hash };
 }
 
-/**
- * Returns the account linked to a Google subject, creating one on first sign-in.
- * New usernames combine the given name with four random digits; concurrent first
- * sign-ins for one subject resolve to the same account.
- */
+/** Returns the account linked to a Google subject, creating one on first sign-in. */
 export async function findOrCreateGoogleUser(
   googleSub: string,
-  givenName?: string,
+  profile: { email?: string; name?: string },
 ): Promise<{ id: string; username: string }> {
-  const { rows } = await getPool().query(`SELECT id, username FROM users WHERE google_sub = $1`, [googleSub]);
-  if (rows[0]) return rows[0];
   const base =
-    (givenName ?? "")
+    (profile.name ?? "")
       .normalize("NFKD")
       .replace(/[^a-zA-Z0-9_-]/g, "")
       .toLowerCase()
@@ -141,10 +135,12 @@ export async function findOrCreateGoogleUser(
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const { rows: created } = await getPool().query(
-        `INSERT INTO users (username, google_sub) VALUES ($1, $2)
-         ON CONFLICT (google_sub) DO UPDATE SET google_sub = EXCLUDED.google_sub
+        `INSERT INTO users (username, google_sub, email, display_name) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (google_sub) DO UPDATE
+         SET email = COALESCE(EXCLUDED.email, users.email),
+             display_name = COALESCE(EXCLUDED.display_name, users.display_name)
          RETURNING id, username`,
-        [`${base}-${randomInt(1000, 10_000)}`, googleSub],
+        [`${base}-${randomInt(1000, 10_000)}`, googleSub, profile.email ?? null, profile.name ?? null],
       );
       return created[0];
     } catch (e) {

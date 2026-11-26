@@ -4,7 +4,10 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,
+  google_sub TEXT UNIQUE,
+  email TEXT,
+  display_name TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -12,8 +15,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS tokens_spent BIGINT NOT NULL DEFAULT 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS token_tracking_started_at TIMESTAMPTZ NOT NULL DEFAULT now();
 ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_day DATE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_messages INTEGER NOT NULL DEFAULT 0;
--- Google accounts sign in without a password.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT;
 ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS sessions (
