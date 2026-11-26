@@ -7,6 +7,7 @@ import { validateChatRequest } from "@/src/server/core/validate";
 import { modules } from "@/src/server/modules";
 import { getProfile } from "@/src/server/profile";
 import { rateLimitResponse } from "@/src/server/rate-limit";
+import { createCapacityLimit, MAX_TIMER_MS, positiveIntegerEnv } from "@/src/server/resource-limits";
 import { getSearch } from "@/src/server/search";
 import { appendExchange, canWriteSession } from "@/src/server/sessions/store";
 import { generateSessionTitle } from "@/src/server/sessions/title";
@@ -14,6 +15,9 @@ import { json, readJson, requireJson, serverError } from "../http";
 
 const MAX_BODY_BYTES = 256 * 1024; // 256 KB
 const CHAT_LIMIT = { windowMs: 60_000, maxRequests: 20 };
+const acquireChat = createCapacityLimit(positiveIntegerEnv("CHAT_MAX_CONCURRENT", 8));
+const CHAT_TIMEOUT_MS = positiveIntegerEnv("CHAT_TIMEOUT_MS", 180_000, MAX_TIMER_MS);
+const FAILURE_MESSAGE = "Could not complete the response. Please try again.";
 
 export async function POST(request: Request): Promise<Response> {
   try {
@@ -44,6 +48,13 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
+    const releaseCapacity = acquireChat();
+    if (!releaseCapacity) {
+      const response = json({ error: "The assistant is busy. Please try again." }, 503);
+      response.headers.set("Retry-After", "1");
+      return response;
+    }
+
     const sessionId = parsed.value.session_id ?? uuid();
     const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
     // An unreadable profile (no row, no DB, non-UUID dev user) only means no
@@ -55,6 +66,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const encoder = new TextEncoder();
     const owner = new AbortController();
+    const deadline = setTimeout(() => owner.abort(new Error("Chat deadline exceeded")), CHAT_TIMEOUT_MS);
     const abortOwner = () => owner.abort(request.signal.reason);
     request.signal.addEventListener("abort", abortOwner, { once: true });
     if (request.signal.aborted) abortOwner();
@@ -72,12 +84,14 @@ export async function POST(request: Request): Promise<Response> {
     let cleanup: Promise<void> | undefined;
     const cleanupIterator = () => {
       cleanup ??= (async () => {
+        clearTimeout(deadline);
         request.signal.removeEventListener("abort", abortOwner);
         try {
           await iterator.return?.(undefined);
         } catch {
           // Preserve the primary stream result if iterator cleanup fails.
         }
+        releaseCapacity();
       })();
       return cleanup;
     };
@@ -152,8 +166,8 @@ export async function POST(request: Request): Promise<Response> {
           if (!owner.signal.aborted) owner.abort(error);
           await cleanupIterator();
           if (!clientCancelled && !request.signal.aborted) {
-            const message = "Could not complete the response. Please try again.";
-            if (!closed) controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error", message })}\n`));
+            if (!closed)
+              controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error", message: FAILURE_MESSAGE })}\n`));
           }
           if (!closed) {
             closed = true;
