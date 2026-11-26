@@ -31,7 +31,9 @@ vi.mock("@/src/components/calendar/calendar-pane", () => ({
     </WorkspacePage>
   ),
 }));
-vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({ CourseLookupPane: () => null }));
+vi.mock("@/src/components/course-lookup/course-lookup-pane", () => ({
+  CourseLookupPane: () => <div data-testid="course-lookup-ready" />,
+}));
 vi.mock("@/src/components/shell/session-sidebar", () => ({
   useSidebarCollapsed: () => [false, () => {}],
   BrandHeader: ({ trailing }: { trailing?: ReactNode }) => trailing,
@@ -235,6 +237,24 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     view.rerender(<ShellFixture />);
     await view.findByTestId("calendar-pane");
     expect(view.queryByTestId("map-area")).toBeNull();
+  });
+
+  it("preserves focus on the selected tool control while its lazy pane loads", async () => {
+    pathname.value = "/app/tools/map";
+    const view = renderShell(true);
+    await view.findByTestId("map-area");
+    resizeViewport(1280);
+    const tool = view.container.querySelector<HTMLButtonElement>('aside [data-tool-id="course-lookup"]');
+    expect(tool).not.toBeNull();
+    fireEvent.click(tool!);
+    tool?.focus();
+    expect(document.activeElement).toBe(tool);
+
+    pathname.value = "/app/tools/courses";
+    view.rerender(<ShellFixture />);
+    await view.findByTestId("course-lookup-ready");
+
+    expect(document.activeElement).toBe(tool);
   });
 
   it("preserves the active ChatPanel when native history mints its session URL", () => {

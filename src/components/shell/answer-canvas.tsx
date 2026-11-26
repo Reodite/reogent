@@ -1,6 +1,7 @@
 "use client";
 
 import { useChatShell } from "@/src/components/chat/chat-shell-context";
+import { restorePaneTrigger } from "@/src/components/shell/pane-focus";
 import { PANE_BY_ID } from "@/src/components/shell/pane-registry";
 import { useWorkspaceHost, WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
 import { CloseButton } from "@/src/components/ui/button";
@@ -9,7 +10,7 @@ import { RetryState } from "@/src/components/ui/feedback";
 import { Heading } from "@/src/components/ui/heading";
 import { Skeleton } from "@/src/components/ui/skeleton";
 import type { CanvasView, PaneId, PaneState } from "@/src/shared/panes";
-import { Suspense, useCallback, useRef, useState, type ComponentType } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 
 /**
  * The AI Mode Answer Canvas: the idle map overview when no widget is active, or
@@ -51,13 +52,20 @@ export function AnswerCanvas({ view, titlebar = true }: { view: CanvasView | nul
         <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
           <ErrorBoundary key={paneId} fallback={<PaneError paneId={paneId} />}>
             <Suspense fallback={<PaneLoading label={label} />}>
-              <ActiveCanvasView view={view} />
+              <PaneFocusReturn paneId={paneId}>
+                <ActiveCanvasView view={view} />
+              </PaneFocusReturn>
             </Suspense>
           </ErrorBoundary>
         </div>
       </section>
     </WorkspaceHostProvider>
   );
+}
+
+function PaneFocusReturn({ paneId, children }: { paneId: PaneId; children: React.ReactNode }) {
+  useEffect(() => restorePaneTrigger(paneId), [paneId]);
+  return children;
 }
 
 function AnswerCanvasTitlebar({

@@ -1,5 +1,6 @@
 "use client";
 
+import { rememberPaneTrigger } from "@/src/components/shell/pane-focus";
 import { PANE_REGISTRY } from "@/src/components/shell/pane-registry";
 import { useShellNavigation } from "@/src/components/shell/shell-navigation";
 import { SidebarItemButton, SidebarListItem, SidebarListNav } from "@/src/components/shell/sidebar-list";
@@ -23,8 +24,9 @@ export function ToolList({ collapsed = false, onSelect }: { collapsed?: boolean;
               data-tool-id={entry.id}
               aria-pressed={active}
               disabled={!slug}
-              onClick={() => {
+              onClick={(event) => {
                 if (!slug) return;
+                rememberPaneTrigger(entry.id, event.currentTarget);
                 navigation.push(`/app/tools/${slug}`);
                 onSelect?.();
               }}
