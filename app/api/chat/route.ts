@@ -134,7 +134,6 @@ export async function POST(request: Request): Promise<Response> {
               }
             }
           }
-          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
           if (event.type === "done") {
             completed = true;
             if (lastUser) {
@@ -146,6 +145,9 @@ export async function POST(request: Request): Promise<Response> {
                 activity.length > 0 ? activity : undefined,
                 event.citations,
               );
+            }
+            controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+            if (lastUser) {
               if (isFirstExchange && !clientCancelled) {
                 generateSessionTitle(user.sub, sessionId, lastUser.content, event.message);
               }
@@ -156,11 +158,14 @@ export async function POST(request: Request): Promise<Response> {
               controller.close();
             }
           } else if (event.type === "error") {
+            controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
             await cleanupIterator();
             if (!closed) {
               closed = true;
               controller.close();
             }
+          } else {
+            controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
           }
         } catch (error) {
           if (!owner.signal.aborted) owner.abort(error);

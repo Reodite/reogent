@@ -169,6 +169,7 @@ describe("chat session ownership", () => {
     expect(mocks.canWriteSession).toHaveBeenCalledExactlyOnceWith("u1", sessionId);
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
     expect(events).toContainEqual({ type: "error", message: "Could not complete the response. Please try again." });
+    expect(events.some((event) => event.type === "done")).toBe(false);
     expect(mocks.generateSessionTitle).not.toHaveBeenCalled();
   });
 });
