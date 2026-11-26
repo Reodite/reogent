@@ -43,11 +43,17 @@ function gsSubject(subject: string): string {
 }
 
 /** Returns the most recent grade records for a course, newest year first. */
-async function gradeRows(search: SearchClient, subject: string, course: string): Promise<GradeRow[]> {
+async function gradeRows(
+  search: SearchClient,
+  subject: string,
+  course: string,
+  fields: (keyof GradeRow)[],
+): Promise<GradeRow[]> {
   const res = await search.index("grades").search("", {
     filter: `subject = ${filterValue(gsSubject(subject))} AND course = ${filterValue(course)}`,
     sort: ["year:desc"],
     limit: 200,
+    attributesToRetrieve: fields,
   });
   return res.hits as unknown as GradeRow[];
 }
@@ -57,7 +63,7 @@ async function gradeRows(search: SearchClient, subject: string, course: string):
  * enrollment-weighted mean of section averages, or null when no records exist.
  */
 export async function courseAverage(search: SearchClient, subject: string, course: string): Promise<number | null> {
-  const rows = await gradeRows(search, subject, course);
+  const rows = await gradeRows(search, subject, course, ["avg", "enrolled"]);
   if (rows.length === 0) return null;
   let weightedSum = 0;
   let totalEnrolled = 0;
@@ -78,7 +84,7 @@ export async function courseGrades(
   subject: string,
   course: string,
 ): Promise<{ summary: GradeSummary; distribution: GradeDistribution } | null> {
-  const rows = await gradeRows(search, subject, course);
+  const rows = await gradeRows(search, subject, course, ["avg", "enrolled", "median", "year", "distribution"]);
   if (rows.length === 0) return null;
   let weightedSum = 0;
   let totalEnrolled = 0;

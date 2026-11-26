@@ -12,17 +12,23 @@ interface GradeRow {
   distribution: Record<string, number>;
 }
 
-function gradeSearch(rows: GradeRow[]): SearchClient {
+function gradeSearch(rows: GradeRow[], onSearch?: (options: Record<string, unknown>) => void): SearchClient {
   return {
     index: () => ({
       search: async (_q: string, opts?: Record<string, unknown>) => {
+        onSearch?.(opts ?? {});
         const filter = String(opts?.filter ?? "");
         const subjectMatch = filter.match(/subject = '([^']+)'/);
         const courseMatch = filter.match(/course = '([^']+)'/);
+        const fields = opts?.attributesToRetrieve as string[] | undefined;
         return {
-          hits: rows.filter(
-            (r) => (!subjectMatch || r.subject === subjectMatch[1]) && (!courseMatch || r.course === courseMatch[1]),
-          ),
+          hits: rows
+            .filter(
+              (r) => (!subjectMatch || r.subject === subjectMatch[1]) && (!courseMatch || r.course === courseMatch[1]),
+            )
+            .map((row) =>
+              fields ? Object.fromEntries(fields.map((field) => [field, row[field as keyof GradeRow]])) : row,
+            ),
         };
       },
     }),
@@ -54,6 +60,19 @@ describe("grades pooling helpers (agent-tool-redesign)", () => {
   it("courseAverage is enrollment-weighted across records", async () => {
     // (80*10 + 70*20) / 30 = 73.3
     expect(await courseAverage(gradeSearch(rows), "CPSC", "110")).toBeCloseTo(73.3, 1);
+  });
+
+  it("requests only fields consumed by each grade helper", async () => {
+    const projections: string[][] = [];
+    const search = gradeSearch(rows, (options) => projections.push(options.attributesToRetrieve as string[]));
+
+    await courseAverage(search, "CPSC", "110");
+    await courseGrades(search, "CPSC", "110");
+
+    expect(projections).toEqual([
+      ["avg", "enrolled"],
+      ["avg", "enrolled", "median", "year", "distribution"],
+    ]);
   });
 
   it("courseAverage normalizes the _V subject suffix", async () => {
