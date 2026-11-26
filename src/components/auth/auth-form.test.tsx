@@ -1,72 +1,60 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthForm, AuthFormLoading } from "./auth-form";
 
-const signIn = vi.hoisted(() => vi.fn());
-const register = vi.hoisted(() => vi.fn());
-const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
+const navigation = vi.hoisted(() => ({ replace: vi.fn(), search: "" }));
 
-vi.mock("@/src/components/auth/app-auth", () => ({
-  useAppAuth: () => ({ status: "signedOut", isGuest: false, signIn, register }),
-}));
+vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => ({ status: "signedOut", isGuest: false }) }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => router,
-  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: navigation.replace }),
+  useSearchParams: () => new URLSearchParams(navigation.search),
 }));
 vi.mock("motion/react", () => ({
-  AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
-  motion: {
-    p: ({
-      children,
-      initial,
-      animate,
-      exit,
-      transition,
-      ...props
-    }: React.ComponentProps<"p"> & { initial?: unknown; animate?: unknown; exit?: unknown; transition?: unknown }) => (
-      <p {...props} data-motion={JSON.stringify({ initial, animate, exit, transition })}>
-        {children}
-      </p>
-    ),
-  },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  motion: { p: ({ children, ...props }: React.ComponentProps<"p">) => <p {...props}>{children}</p> },
   useReducedMotion: () => true,
 }));
 
 afterEach(() => {
   cleanup();
-  signIn.mockReset();
-  register.mockReset();
-  router.push.mockReset();
-  router.replace.mockReset();
+  navigation.replace.mockReset();
+  navigation.search = "";
 });
 
 describe("AuthForm", () => {
-  it("reserves a stable two-line feedback slot", async () => {
-    signIn.mockResolvedValue({ error: "Check your username and password." });
-    const { container } = render(<AuthForm mode="login" />);
+  it("offers Google sign-in and keeps a safe redirect", () => {
+    navigation.search = new URLSearchParams({ redirect: "/app/settings" }).toString();
+    const { container } = render(<AuthForm mode="login" authMode="oauth" providerIds={["google"]} />);
 
-    const slot = container.querySelector("[data-auth-error-slot]") as HTMLElement;
-    expect(slot.className).toContain("min-h-8");
-    fireEvent.change(screen.getByRole("textbox", { name: "Username" }), { target: { value: "student" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
-
-    const alert = await screen.findByRole("alert");
-    const animation = JSON.parse(alert.getAttribute("data-motion")!);
-    expect(animation.initial).toBe(false);
-    expect(animation.exit).toEqual({ opacity: 0, y: 0 });
-    expect(animation.transition.duration).toBe(0);
-    expect(container.querySelector("[data-auth-error-slot]")).toBe(slot);
+    expect(screen.getByRole("link", { name: "Continue with Google" }).getAttribute("href")).toBe(
+      "/api/auth/google?redirect=%2Fapp%2Fsettings",
+    );
+    expect(container.querySelector("input, button[type=submit]")).toBeNull();
+    expect(container.querySelector("[data-auth-error-slot]")?.className).toContain("min-h-8");
   });
 
-  it("matches the loaded form footprint while authentication initializes", () => {
+  it("shows a provider configuration error", () => {
+    navigation.search = new URLSearchParams({ error: "oauth_unavailable" }).toString();
+    render(<AuthForm mode="login" authMode="oauth" providerIds={["google"]} />);
+
+    expect(screen.getByRole("alert").textContent).toBe("Sign-in isn't set up on this server.");
+  });
+
+  it("renders username and password fields without OAuth links in password mode", () => {
+    render(<AuthForm mode="login" authMode="password" />);
+
+    expect(screen.getByRole("textbox", { name: "Username" })).not.toBeNull();
+    expect(screen.getByLabelText("Password")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Sign in" })).not.toBeNull();
+    expect(screen.queryByRole("link", { name: "Continue with Google" })).toBeNull();
+  });
+
+  it("matches the single-action loading footprint", () => {
     render(<AuthFormLoading label="Loading sign in" />);
 
     const loading = screen.getByRole("status", { name: "Loading sign in" });
-    expect(loading.className).toContain("max-w-80");
+    expect(loading.querySelectorAll("[data-auth-loading-action]")).toHaveLength(1);
     expect(loading.querySelector("[data-auth-loading-action]")?.className).toContain("h-12");
-    expect(loading.querySelector("[data-auth-loading-feedback]")?.className).toContain("h-8");
   });
 });

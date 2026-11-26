@@ -168,25 +168,25 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
   const authenticate = useCallback(
     async (endpoint: "login" | "register", username: string, password: string) => {
       const attempt = ++generation.current;
-      let res: Response;
+      let response: Response;
       try {
-        res = await fetch(`/api/auth/${endpoint}`, {
+        response = await fetch(`/api/auth/${endpoint}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username: username.trim(), password }),
         });
       } catch {
         return { error: "Can't reach the server. Check your connection and try again." };
       }
       let body: unknown;
       try {
-        body = await res.json();
+        body = await response.json();
       } catch {
         return { error: "Unexpected response from server. Try again in a moment." };
       }
       if (attempt !== generation.current) return { error: "Sign-in changed. Try again." };
       if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "Invalid server response." };
-      if (!res.ok) {
+      if (!response.ok) {
         const { error } = body as Record<string, unknown>;
         return { error: typeof error === "string" ? error : "Sign-in failed. Try again." };
       }

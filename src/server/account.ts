@@ -5,16 +5,26 @@ import { getPool } from "./db";
 export async function getAccount(userId: string): Promise<AccountDetails | null> {
   const { rows } = await getPool().query<{
     username: string;
+    display_name: string | null;
+    email: string | null;
     created_at: Date | null;
     profile: StudentProfile | null;
     tokens_spent: string;
     token_tracking_started_at: Date;
     pulse_questions_answered: string;
   }>(
-    `SELECT u.username, u.created_at, p.data AS profile, u.tokens_spent, u.token_tracking_started_at,
+    `SELECT u.username, op.display_name, op.email, u.created_at, p.data AS profile, u.tokens_spent, u.token_tracking_started_at,
             (SELECT COUNT(*) FROM pulse_votes WHERE user_id = u.id) AS pulse_questions_answered
      FROM users u
      LEFT JOIN user_profiles p ON p.user_id = u.id
+     LEFT JOIN LATERAL (
+       SELECT pr.display_name, CASE WHEN pr.email_verified THEN pr.email END AS email
+       FROM oauth_accounts oa
+       JOIN oauth_profiles pr ON pr.oauth_account_id = oa.id
+       WHERE oa.user_id = u.id AND oa.is_primary
+       ORDER BY oa.created_at
+       LIMIT 1
+     ) op ON true
      WHERE u.id = $1`,
     [userId],
   );
@@ -22,6 +32,8 @@ export async function getAccount(userId: string): Promise<AccountDetails | null>
   if (!row) return null;
   return {
     username: row.username,
+    displayName: row.display_name,
+    email: row.email,
     createdAt: row.created_at?.toISOString() ?? null,
     profile: row.profile,
     tokensSpent: Number(row.tokens_spent),

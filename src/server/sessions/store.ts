@@ -104,9 +104,8 @@ export async function deleteSession(userId: string, sessionId: string): Promise<
   return (rowCount ?? 0) > 0;
 }
 
-// --- User management (for auth) ---
-
-export async function createUser(username: string, passwordHash: string): Promise<string> {
+/** Creates an account with a locally hashed password. */
+export async function createPasswordUser(username: string, passwordHash: string): Promise<string> {
   const { rows } = await getPool().query(`INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id`, [
     username,
     passwordHash,
@@ -114,43 +113,88 @@ export async function createUser(username: string, passwordHash: string): Promis
   return rows[0].id;
 }
 
-/** Returns the account's id and bcrypt hash; the hash is null for Google-only accounts. */
-export async function getUserByUsername(username: string): Promise<{ id: string; passwordHash: string | null } | null> {
+/** Returns a local account's password hash, or null when the username is unknown. */
+export async function getPasswordUser(username: string): Promise<{ id: string; passwordHash: string | null } | null> {
   const { rows } = await getPool().query(`SELECT id, password_hash FROM users WHERE username = $1`, [username]);
-  if (rows.length === 0) return null;
-  return { id: rows[0].id, passwordHash: rows[0].password_hash };
+  return rows[0] ? { id: rows[0].id, passwordHash: rows[0].password_hash } : null;
 }
 
-/**
- * Returns the account linked to a Google subject, creating one on first sign-in.
- * New usernames combine the given name with four random digits; concurrent first
- * sign-ins for one subject resolve to the same account.
- */
-export async function findOrCreateGoogleUser(
-  googleSub: string,
-  givenName?: string,
+export interface OAuthProfileClaims {
+  email?: string;
+  emailVerified?: boolean;
+  displayName?: string;
+  avatarUrl?: string;
+}
+
+/** Returns the account linked to a provider identity, creating one on first sign-in. */
+export async function findOrCreateOAuthUser(
+  provider: string,
+  providerSubject: string,
+  profile: OAuthProfileClaims,
 ): Promise<{ id: string; username: string }> {
-  const { rows } = await getPool().query(`SELECT id, username FROM users WHERE google_sub = $1`, [googleSub]);
-  if (rows[0]) return rows[0];
+  if (!/^[a-z][a-z0-9-]{0,31}$/.test(provider)) throw new Error("Invalid OAuth provider");
+  if (!providerSubject.trim() || providerSubject.length > 512) throw new Error("Invalid OAuth subject");
+  const email = profile.email?.trim() || null;
+  if (email && email.length > 320) throw new Error("Invalid OAuth email");
+  const displayName = profile.displayName?.trim() || null;
+  if (displayName && displayName.length > 200) throw new Error("Invalid OAuth display name");
+  let avatarUrl: string | null = null;
+  if (profile.avatarUrl) {
+    const parsed = new URL(profile.avatarUrl);
+    if (parsed.protocol !== "https:") throw new Error("Invalid OAuth avatar URL");
+    avatarUrl = parsed.href;
+  }
   const base =
-    (givenName ?? "")
+    (displayName ?? provider)
       .normalize("NFKD")
       .replace(/[^a-zA-Z0-9_-]/g, "")
       .toLowerCase()
       .slice(0, 32) || "student";
-  for (let attempt = 0; attempt < 5; attempt++) {
-    try {
-      const { rows: created } = await getPool().query(
-        `INSERT INTO users (username, google_sub) VALUES ($1, $2)
-         ON CONFLICT (google_sub) DO UPDATE SET google_sub = EXCLUDED.google_sub
-         RETURNING id, username`,
-        [`${base}-${randomInt(1000, 10_000)}`, googleSub],
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))`, [provider, providerSubject]);
+    const { rows: existing } = await client.query(
+      `SELECT u.id, u.username
+       FROM oauth_accounts oa JOIN users u ON u.id = oa.user_id
+       WHERE oa.provider = $1 AND oa.provider_subject = $2`,
+      [provider, providerSubject],
+    );
+    let user = existing[0] as { id: string; username: string } | undefined;
+    if (!user) {
+      for (let attempt = 0; attempt < 5 && !user; attempt++) {
+        const candidate = `${base}-${randomInt(1000, 10_000)}`;
+        const { rows } = await client.query(
+          `INSERT INTO users (username) VALUES ($1) ON CONFLICT (username) DO NOTHING RETURNING id, username`,
+          [candidate],
+        );
+        user = rows[0];
+      }
+      if (!user) throw new Error("Could not allocate a username for the OAuth account");
+      await client.query(
+        `INSERT INTO oauth_accounts (user_id, provider, provider_subject, is_primary)
+         VALUES ($1, $2, $3, true)`,
+        [user.id, provider, providerSubject],
       );
-      return created[0];
-    } catch (e) {
-      // A taken username raises a unique violation: draw new digits.
-      if ((e as { code?: string }).code !== "23505") throw e;
     }
+    await client.query(
+      `INSERT INTO oauth_profiles (oauth_account_id, email, email_verified, display_name, avatar_url)
+       SELECT id, $3, $4, $5, $6 FROM oauth_accounts
+       WHERE provider = $1 AND provider_subject = $2
+       ON CONFLICT (oauth_account_id) DO UPDATE
+       SET email = COALESCE(EXCLUDED.email, oauth_profiles.email),
+           email_verified = CASE WHEN EXCLUDED.email IS NULL THEN oauth_profiles.email_verified ELSE EXCLUDED.email_verified END,
+           display_name = COALESCE(EXCLUDED.display_name, oauth_profiles.display_name),
+           avatar_url = COALESCE(EXCLUDED.avatar_url, oauth_profiles.avatar_url),
+           updated_at = now()`,
+      [provider, providerSubject, email, profile.emailVerified ?? false, displayName, avatarUrl],
+    );
+    await client.query("COMMIT");
+    return user;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
-  throw new Error("Could not allocate a username for the Google account");
 }

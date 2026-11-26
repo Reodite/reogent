@@ -4,17 +4,37 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tokens_spent BIGINT NOT NULL DEFAULT 0 CHECK (tokens_spent >= 0);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS token_tracking_started_at TIMESTAMPTZ NOT NULL DEFAULT now();
 ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_day DATE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS chat_messages INTEGER NOT NULL DEFAULT 0;
--- Google accounts sign in without a password.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE;
-ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  provider_subject TEXT NOT NULL,
+  is_primary BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (provider, provider_subject)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_oauth_accounts_one_primary_user
+  ON oauth_accounts(user_id) WHERE is_primary;
+CREATE INDEX IF NOT EXISTS idx_oauth_accounts_user ON oauth_accounts(user_id);
+
+CREATE TABLE IF NOT EXISTS oauth_profiles (
+  oauth_account_id UUID PRIMARY KEY REFERENCES oauth_accounts(id) ON DELETE CASCADE,
+  email TEXT,
+  email_verified BOOLEAN NOT NULL DEFAULT false,
+  display_name TEXT,
+  avatar_url TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -134,8 +154,42 @@ BEGIN
 END $$;
 `;
 
+const MIGRATE_OAUTH_IDENTITIES = `
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'google_sub'
+  ) THEN
+    INSERT INTO oauth_accounts (user_id, provider, provider_subject, is_primary)
+    SELECT id, 'google', google_sub, true FROM users WHERE google_sub IS NOT NULL
+    ON CONFLICT (provider, provider_subject) DO NOTHING;
+
+    INSERT INTO oauth_profiles (oauth_account_id, email, email_verified, display_name)
+    SELECT oa.id, u.email, u.email IS NOT NULL, u.display_name
+    FROM oauth_accounts oa
+    JOIN users u ON u.google_sub = oa.provider_subject
+    WHERE oa.provider = 'google'
+    ON CONFLICT (oauth_account_id) DO NOTHING;
+
+    ALTER TABLE users DROP COLUMN google_sub, DROP COLUMN email, DROP COLUMN display_name;
+  END IF;
+END $$;
+`;
+
 /** Applies schema and legacy migrations if needed. Idempotent. */
 export async function migrate(): Promise<void> {
   await getPool().query(SCHEMA);
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(MIGRATE_OAUTH_IDENTITIES);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
   await getPool().query(MIGRATE_LEGACY);
 }

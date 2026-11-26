@@ -15,6 +15,8 @@ vi.mock("@/src/components/auth/app-auth", () => ({ useAppAuth: () => auth }));
 
 const details: AccountDetails = {
   username: "ada",
+  displayName: "Ada Lovelace",
+  email: "ada@example.com",
   createdAt: "2025-09-01T12:00:00.000Z",
   profile: {
     preferred_name: "Ada",
@@ -43,6 +45,7 @@ describe("Account", () => {
     expect(screen.getByRole("heading", { name: "Account", level: 1 })).not.toBeNull();
     expect(await screen.findByRole("heading", { name: "Ada" })).not.toBeNull();
     expect(screen.getByText("@ada")).not.toBeNull();
+    expect(screen.getByText("Google account").nextElementSibling?.textContent).toBe("ada@example.com");
     expect(screen.getByText("Account created").nextElementSibling?.querySelector("time")?.dateTime).toBe(
       details.createdAt,
     );
@@ -60,6 +63,15 @@ describe("Account", () => {
     expect(container.querySelectorAll("main")).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(auth.signOut).toHaveBeenCalledOnce();
+  });
+
+  it("uses the Google display name when no preferred name exists", async () => {
+    api.getAccount.mockResolvedValue({ ...details, profile: null });
+    render(<AccountPage />);
+
+    expect(await screen.findByRole("heading", { name: "Ada Lovelace" })).not.toBeNull();
+    expect(screen.getByText("@ada")).not.toBeNull();
+    expect(screen.getByText("Google account").nextElementSibling?.textContent).toBe("ada@example.com");
   });
 
   it("edits student defaults in Account and updates the saved details", async () => {
@@ -205,6 +217,8 @@ describe("Account", () => {
   it("shows empty saved fields and genuine zero usage without inventing a creation date", async () => {
     api.getAccount.mockResolvedValue({
       ...details,
+      displayName: null,
+      email: null,
       profile: null,
       createdAt: null,
       tokensSpent: 0,

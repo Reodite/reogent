@@ -11,76 +11,58 @@ import { Skeleton, SkeletonGroup } from "@/src/components/ui/skeleton";
 import { safeAuthRedirect } from "@/src/lib/auth-redirect";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 interface AuthFormProps {
   mode: "login" | "signup";
+  authMode: "oauth" | "password";
+  providerIds?: string[];
 }
 
-/** Messages for the error codes the Google sign-in routes add to /login. */
-const GOOGLE_ERRORS: Record<string, string> = {
-  google_unavailable: "Google sign-in isn't set up on this server.",
-  google_cancelled: "Google sign-in was cancelled.",
-  google_failed: "Google sign-in failed. Try again.",
+/** Messages for the error codes OAuth routes add to /login. */
+const OAUTH_ERRORS: Record<string, string> = {
+  oauth_unavailable: "Sign-in isn't set up on this server.",
+  oauth_cancelled: "Sign-in was cancelled.",
+  oauth_failed: "Sign-in failed. Try again.",
 };
 
 export function AuthFormLoading({ label }: { label: string }) {
   return (
     <SkeletonGroup label={label} className="flex w-full max-w-80 flex-col gap-3">
-      {["username", "password"].map((field) => (
-        <div key={field} className="flex flex-col gap-1.5">
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-11 w-full rounded-lg" />
-        </div>
-      ))}
       <span data-auth-loading-feedback className="h-8 shrink-0" />
       <Skeleton data-auth-loading-action className="h-12 w-full rounded-xl" />
-      <Skeleton className="h-12 w-full rounded-xl" />
-      <Skeleton className="h-11 w-full rounded-lg" />
     </SkeletonGroup>
   );
 }
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ mode, authMode, providerIds = [] }: AuthFormProps) {
   const auth = useAppAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefersReducedMotion = useReducedMotion();
-  const usernameRef = useRef<HTMLInputElement>(null);
+  const safeRedirect = safeAuthRedirect(searchParams.get("redirect"));
+  const oauthError = OAUTH_ERRORS[searchParams.get("error") ?? ""] ?? "";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
-
-  const safeRedirect = safeAuthRedirect(searchParams.get("redirect"));
-  const googleError = GOOGLE_ERRORS[searchParams.get("error") ?? ""] ?? "";
-  const shownError = error || (pending ? "" : googleError);
-  const oppositeHref =
-    mode === "login"
-      ? `/signup?redirect=${encodeURIComponent(safeRedirect)}`
-      : `/login?redirect=${encodeURIComponent(safeRedirect)}`;
-
+  const shownError = error || oauthError;
   const authenticatedAccount = auth.status === "signedIn" && !auth.isGuest;
+  const oppositeHref = mode === "login" ? "/signup" : "/login";
 
   useEffect(() => {
     if (authenticatedAccount) router.replace(safeRedirect);
   }, [authenticatedAccount, router, safeRedirect]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (pending) return;
     setError("");
     setPending(true);
-
-    const trimmedUsername = username.trim();
     const result =
-      mode === "login" ? await auth.signIn(trimmedUsername, password) : await auth.register(trimmedUsername, password);
-
+      mode === "login" ? await auth.signIn(username.trim(), password) : await auth.register(username.trim(), password);
     setPending(false);
-    if (result.error) {
-      setError(result.error);
-      usernameRef.current?.focus();
-    }
+    if (result.error) setError(result.error);
   }
 
   if (auth.status === "initializing" || authenticatedAccount) {
@@ -88,42 +70,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} aria-busy={pending} className="flex w-full max-w-80 flex-col gap-3">
-      <Field label="Username" htmlFor="auth-username">
-        <TextInput
-          ref={usernameRef}
-          id="auth-username"
-          type="text"
-          autoComplete="username"
-          autoCapitalize="none"
-          spellCheck={false}
-          maxLength={64}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-          aria-invalid={!!error}
-          aria-describedby={error ? "auth-error" : undefined}
-          shadowOn="background"
-        />
-      </Field>
-      <Field
-        label={<>Password{mode === "signup" && <span className="text-muted ml-1">(12+ characters)</span>}</>}
-        htmlFor="auth-password"
-      >
-        <TextInput
-          id="auth-password"
-          type="password"
-          autoComplete={mode === "login" ? "current-password" : "new-password"}
-          maxLength={mode === "signup" ? 72 : 128}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={mode === "signup" ? 12 : 6}
-          aria-invalid={!!error}
-          aria-describedby={error ? "auth-error" : undefined}
-          shadowOn="background"
-        />
-      </Field>
+    <div className="flex w-full max-w-80 flex-col gap-3">
       <div data-auth-error-slot className="flex min-h-8 items-center justify-center">
         <AnimatePresence>
           {shownError ? (
@@ -142,70 +89,104 @@ export function AuthForm({ mode }: AuthFormProps) {
           ) : null}
         </AnimatePresence>
       </div>
-      <Button
-        type="submit"
-        variant="primary"
-        size="large"
-        shadowOn="background"
-        disabled={pending}
-        aria-busy={pending}
-        className="w-full"
-      >
-        {pending
-          ? mode === "login"
-            ? "Signing in…"
-            : "Creating account…"
-          : mode === "login"
-            ? "Sign in"
-            : "Create account"}
-      </Button>
-      <a
-        href={`/api/auth/google?redirect=${encodeURIComponent(safeRedirect)}`}
-        className={buttonClasses({
-          variant: "secondary",
-          size: "large",
-          shadowOn: "background",
-          wrap: false,
-          link: true,
-          className: "w-full",
-        })}
-      >
-        <Icon name="google" size={18} />
-        Continue with Google
-      </a>
-      <p className="text-muted flex min-h-11 items-center justify-center text-sm">
-        {mode === "login" ? (
-          <>
-            Don&apos;t have an account?{" "}
-            <InlineLink href={oppositeHref} className="ml-1 font-medium">
-              Sign up
+      {authMode === "password" ? (
+        <>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <Field label="Username" htmlFor="auth-username">
+              <TextInput
+                id="auth-username"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                maxLength={64}
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                required
+                aria-invalid={!!shownError}
+                aria-describedby={shownError ? "auth-error" : undefined}
+                shadowOn="background"
+              />
+            </Field>
+            <Field label={mode === "signup" ? "Password (12+ characters)" : "Password"} htmlFor="auth-password">
+              <TextInput
+                id="auth-password"
+                type="password"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                maxLength={mode === "signup" ? 72 : 128}
+                minLength={mode === "signup" ? 12 : 1}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                aria-invalid={!!shownError}
+                aria-describedby={shownError ? "auth-error" : undefined}
+                shadowOn="background"
+              />
+            </Field>
+            <Button type="submit" variant="primary" size="large" disabled={pending} className="w-full">
+              {pending
+                ? mode === "login"
+                  ? "Signing in…"
+                  : "Creating account…"
+                : mode === "login"
+                  ? "Sign in"
+                  : "Create account"}
+            </Button>
+          </form>
+          <p className="text-muted flex min-h-11 items-center justify-center text-sm">
+            {mode === "login" ? "Need an account?" : "Already have an account?"}{" "}
+            <InlineLink
+              href={`${oppositeHref}?redirect=${encodeURIComponent(safeRedirect)}`}
+              className="ml-1 font-medium"
+            >
+              {mode === "login" ? "Sign up" : "Sign in"}
             </InlineLink>
-          </>
-        ) : (
-          <>
-            Already have an account?{" "}
-            <InlineLink href={oppositeHref} className="ml-1 font-medium">
-              Sign in
-            </InlineLink>
-          </>
-        )}
-      </p>
-    </form>
+          </p>
+        </>
+      ) : (
+        <>
+          {providerIds.includes("google") && (
+            <a
+              href={`/api/auth/google?redirect=${encodeURIComponent(safeRedirect)}`}
+              className={buttonClasses({
+                variant: "secondary",
+                size: "large",
+                shadowOn: "background",
+                wrap: false,
+                link: true,
+                className: "w-full",
+              })}
+            >
+              <Icon name="google" size={18} />
+              Continue with Google
+            </a>
+          )}
+          <p className="text-muted flex min-h-11 items-center justify-center text-center text-sm">
+            Sign in or create an account with a linked provider.
+          </p>
+        </>
+      )}
+    </div>
   );
 }
 
 const AUTH_PAGE_COPY = {
-  login: { title: "Welcome back", subtitle: "Sign in to continue to Reodite", loading: "Loading sign in" },
-  signup: {
-    title: "Create an account",
-    subtitle: "Sign up to start using Reodite — it's free",
-    loading: "Loading sign up",
+  oauth: {
+    login: { title: "Welcome back", subtitle: "Sign in to continue to Reodite", loading: "Loading sign in" },
+    signup: {
+      title: "Get started with Reodite",
+      subtitle: "Create an account or sign in with Google",
+      loading: "Loading Google sign in",
+    },
+  },
+  password: {
+    login: { title: "Welcome back", subtitle: "Sign in with your account", loading: "Loading sign in" },
+    signup: { title: "Create an account", subtitle: "Sign up to start using Reodite", loading: "Loading sign up" },
   },
 } as const;
 
 /** Renders the sign-in or sign-up page: sticky back link, branded heading, form, and theme footer. */
-export function AuthPage({ mode }: AuthFormProps) {
-  const copy = AUTH_PAGE_COPY[mode];
+export function AuthPage({ mode, authMode, providerIds = [] }: AuthFormProps) {
+  const copy = AUTH_PAGE_COPY[authMode][mode];
   return (
     <div className="auth-canvas flex min-h-svh flex-col pb-8">
       <nav className="bg-background sticky top-0 z-20 flex shrink-0 items-center pt-[max(1rem,env(safe-area-inset-top))] pb-4">
@@ -224,7 +205,7 @@ export function AuthPage({ mode }: AuthFormProps) {
           </Heading>
           <p className="text-muted mb-6 text-center text-sm">{copy.subtitle}</p>
           <Suspense fallback={<AuthFormLoading label={copy.loading} />}>
-            <AuthForm mode={mode} />
+            <AuthForm mode={mode} authMode={authMode} providerIds={providerIds} />
           </Suspense>
         </div>
       </div>

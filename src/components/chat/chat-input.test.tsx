@@ -62,10 +62,22 @@ it("swaps only icon presentation while send and stop actions change immediately"
 
 describe("account-scoped drafts", () => {
   let auth: ReturnType<typeof useAppAuth>;
+  let cookieUser: { userId: string; username: string } | null;
   const onSend = vi.fn();
   const commits: { userId: string | undefined; value: string | undefined }[] = [];
   beforeEach(() => {
     commits.length = 0;
+    cookieUser = null;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (path: string) => {
+        if (path === "/api/auth/session") {
+          return cookieUser ? Response.json(cookieUser) : new Response(null, { status: 204 });
+        }
+        if (path === "/api/auth/logout") return new Response(null, { status: 204 });
+        return new Response(null, { status: 404 });
+      }),
+    );
   });
 
   function Composer() {
@@ -151,28 +163,18 @@ describe("account-scoped drafts", () => {
   });
 
   it("resets in-memory drafts across account changes when storage fails", async () => {
+    cookieUser = { userId: "memory-A", username: "memory-A" };
     const view = render(<App />);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
     const unavailable = () => {
       throw new Error("Storage unavailable");
     };
     vi.stubGlobal("localStorage", { getItem: unavailable, setItem: unavailable, removeItem: unavailable });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (_path, init) => {
-        const { username } = JSON.parse(init.body);
-        return Response.json({
-          userId: username,
-          username,
-          token: `header.${btoa(JSON.stringify({ sub: username }))}.signature`,
-        });
-      }),
-    );
-    await act(async () => {
-      await auth.signIn("memory-A", "password");
-    });
     fireEvent.change(view.getByRole("textbox"), { target: { value: "memory A secret" } });
+    cookieUser = { userId: "memory-B", username: "memory-B" };
     await act(async () => {
-      await auth.signIn("memory-B", "password");
+      auth.refresh();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect((view.getByRole("textbox") as HTMLTextAreaElement).value).toBe("");
     fireEvent.change(view.getByRole("textbox"), { target: { value: "memory B question" } });

@@ -29,7 +29,7 @@ function AccountContent({ account }: { account: AccountDetails }) {
   const editing = draft !== null;
   const saving = status === "saving";
   const saved = status === "saved" && savedMode === mode;
-  const name = profile?.preferred_name || account.username;
+  const name = profile?.preferred_name || account.displayName || account.username;
   const fields = [
     ["Preferred name", profile?.preferred_name || "Not set"],
     ["Program", profile?.program || "Not set"],
@@ -86,6 +86,12 @@ function AccountContent({ account }: { account: AccountDetails }) {
         </div>
       </div>
       <dl className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        {account.email && (
+          <>
+            <dt className="text-muted">Google account</dt>
+            <dd className="text-on-surface">{account.email}</dd>
+          </>
+        )}
         <dt className="text-muted">Account created</dt>
         <dd className="text-on-surface">
           {account.createdAt ? (

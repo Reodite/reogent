@@ -1,18 +1,14 @@
 import { createHash, randomBytes } from "node:crypto";
 import * as jose from "jose";
+import type { OAuthIdentity, OAuthProvider, OAuthProviderConfig, OAuthStart } from "./oauth/types";
 
 const AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
 const googleKeys = jose.createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 
-/** Name of the short-lived cookie that carries sign-in state between the start and callback routes. */
-export const OAUTH_COOKIE = "reodite_oauth";
-
-export interface GoogleConfig {
-  clientId: string;
+export interface GoogleConfig extends OAuthProviderConfig {
   clientSecret: string;
-  redirectUri: string;
 }
 
 /** Reads Google OAuth settings, or null when GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET or APP_URL is unset. */
@@ -25,9 +21,9 @@ export function googleConfig(): GoogleConfig | null {
 /**
  * Starts the authorization code flow with PKCE. Returns Google's consent URL plus
  * the state and code verifier the caller keeps in an httpOnly cookie. Requests
- * only the `openid profile` scopes: no email address.
+ * the `openid profile email` scopes.
  */
-export function startGoogleSignIn(config: GoogleConfig): { url: string; state: string; verifier: string } {
+export function startGoogleSignIn(config: GoogleConfig): OAuthStart {
   const state = randomBytes(32).toString("base64url");
   const verifier = randomBytes(32).toString("base64url");
   const url = new URL(AUTHORIZE_URL);
@@ -35,7 +31,7 @@ export function startGoogleSignIn(config: GoogleConfig): { url: string; state: s
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
     response_type: "code",
-    scope: "openid profile",
+    scope: "openid profile email",
     state,
     code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     code_challenge_method: "S256",
@@ -49,11 +45,7 @@ export function startGoogleSignIn(config: GoogleConfig): { url: string; state: s
  * signature, issuer, audience and expiry. Returns the Google subject and given
  * name. Throws on any failure, including a 10-second exchange timeout.
  */
-export async function finishGoogleSignIn(
-  config: GoogleConfig,
-  code: string,
-  verifier: string,
-): Promise<{ sub: string; givenName?: string }> {
+export async function finishGoogleSignIn(config: GoogleConfig, code: string, verifier: string): Promise<OAuthIdentity> {
   const response = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -72,5 +64,24 @@ export async function finishGoogleSignIn(
   if (typeof idToken !== "string") throw new Error("Google returned no ID token");
   const { payload } = await jose.jwtVerify(idToken, googleKeys, { issuer: ISSUERS, audience: config.clientId });
   if (!payload.sub) throw new Error("Google ID token has no subject");
-  return { sub: payload.sub, givenName: typeof payload.given_name === "string" ? payload.given_name : undefined };
+  return {
+    subject: payload.sub,
+    email: typeof payload.email === "string" ? payload.email : undefined,
+    emailVerified: payload.email_verified === true,
+    displayName: typeof payload.name === "string" && payload.name.trim() ? payload.name.trim() : undefined,
+    avatarUrl:
+      typeof payload.picture === "string" && payload.picture.startsWith("https://") ? payload.picture : undefined,
+  };
+}
+
+export const googleOAuthProvider: OAuthProvider = {
+  id: "google",
+  getConfig: googleConfig,
+  start: (config) => startGoogleSignIn(requireGoogleConfig(config)),
+  finish: (config, code, verifier) => finishGoogleSignIn(requireGoogleConfig(config), code, verifier),
+};
+
+function requireGoogleConfig(config: OAuthProviderConfig): GoogleConfig {
+  if (!config.clientSecret) throw new Error("Google OAuth client secret is missing");
+  return { ...config, clientSecret: config.clientSecret };
 }
