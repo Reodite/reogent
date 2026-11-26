@@ -32,7 +32,7 @@ The agent calls tools with verifiable data sources. It does not answer factual U
 
 Visitors can open the landing page at `/` without leaving their signed-in or guest session. The Reodite logo returns there from the app. Signed-in visitors choose Open app to return to `/app`; guests enter Tools. Keep workspace routes under `/app` and retain redirects from existing links.
 
-Users sign in with Google OAuth. The server issues a JWT (HS256, 7-day expiry) in an httpOnly session cookie, and authenticated API calls echo the user id in an `X-Reodite-User` header. Google sign-in requests `openid profile email` and creates an account on first use. Postgres stores the stable Google subject, verified email when available, display name, and an internal unique username; related records continue to reference the internal user UUID.
+Users sign in with Google OAuth. The server issues a JWT (HS256, 7-day expiry) in an httpOnly session cookie, and authenticated API calls echo the user id in an `X-Reodite-User` header. Google sign-in requests `openid profile email` and creates an account on first use. `users` stores the app account and internal username; `oauth_accounts` stores the provider and stable provider subject; `oauth_profiles` stores claims scoped to that identity. Related records continue to reference the internal user UUID. Student preferences remain app-owned in `user_profiles`.
 
 When `AUTH_ENABLED=false` (development), all requests bypass auth with a default user.
 

@@ -35,10 +35,10 @@ describe("AuthForm", () => {
   });
 
   it("shows a provider configuration error", () => {
-    navigation.search = new URLSearchParams({ error: "google_unavailable" }).toString();
+    navigation.search = new URLSearchParams({ error: "oauth_unavailable" }).toString();
     render(<AuthForm mode="login" />);
 
-    expect(screen.getByRole("alert").textContent).toBe("Google sign-in isn't set up on this server.");
+    expect(screen.getByRole("alert").textContent).toBe("Sign-in isn't set up on this server.");
   });
 
   it("matches the single-action loading footprint", () => {

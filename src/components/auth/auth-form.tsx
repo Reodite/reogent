@@ -15,11 +15,11 @@ interface AuthFormProps {
   mode: "login" | "signup";
 }
 
-/** Messages for the error codes the Google sign-in routes add to /login. */
-const GOOGLE_ERRORS: Record<string, string> = {
-  google_unavailable: "Google sign-in isn't set up on this server.",
-  google_cancelled: "Google sign-in was cancelled.",
-  google_failed: "Google sign-in failed. Try again.",
+/** Messages for the error codes OAuth routes add to /login. */
+const OAUTH_ERRORS: Record<string, string> = {
+  oauth_unavailable: "Sign-in isn't set up on this server.",
+  oauth_cancelled: "Sign-in was cancelled.",
+  oauth_failed: "Sign-in failed. Try again.",
 };
 
 export function AuthFormLoading({ label }: { label: string }) {
@@ -37,7 +37,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const searchParams = useSearchParams();
   const prefersReducedMotion = useReducedMotion();
   const safeRedirect = safeAuthRedirect(searchParams.get("redirect"));
-  const googleError = GOOGLE_ERRORS[searchParams.get("error") ?? ""] ?? "";
+  const oauthError = OAUTH_ERRORS[searchParams.get("error") ?? ""] ?? "";
   const authenticatedAccount = auth.status === "signedIn" && !auth.isGuest;
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     <div className="flex w-full max-w-80 flex-col gap-3">
       <div data-auth-error-slot className="flex min-h-8 items-center justify-center">
         <AnimatePresence>
-          {googleError ? (
+          {oauthError ? (
             <motion.p
               id="auth-error"
               role="alert"
@@ -63,7 +63,7 @@ export function AuthForm({ mode }: AuthFormProps) {
               exit={{ opacity: 0, y: prefersReducedMotion ? 0 : -4 }}
               transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
             >
-              {googleError}
+              {oauthError}
             </motion.p>
           ) : null}
         </AnimatePresence>

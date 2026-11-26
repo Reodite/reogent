@@ -84,9 +84,10 @@ describe("finishGoogleSignIn", () => {
   it("returns the verified subject and sends the PKCE verifier", async () => {
     idToken = await sign(claims);
     expect(await finishGoogleSignIn(config, "auth-code", "verifier")).toEqual({
-      sub: "google-123",
+      subject: "google-123",
       email: "max@example.com",
-      name: "Max Student",
+      emailVerified: true,
+      displayName: "Max Student",
     });
     expect(tokenBodies[0].get("code_verifier")).toBe("verifier");
     expect(tokenBodies[0].get("client_secret")).toBe("client-secret");
@@ -95,8 +96,10 @@ describe("finishGoogleSignIn", () => {
   it("does not return an unverified Google email", async () => {
     idToken = await sign({ ...claims, email_verified: false });
     expect(await finishGoogleSignIn(config, "auth-code", "verifier")).toEqual({
-      sub: "google-123",
-      name: "Max Student",
+      subject: "google-123",
+      email: "max@example.com",
+      emailVerified: false,
+      displayName: "Max Student",
     });
   });
 
