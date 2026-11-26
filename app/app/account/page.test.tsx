@@ -217,6 +217,8 @@ describe("Account", () => {
   it("shows empty saved fields and genuine zero usage without inventing a creation date", async () => {
     api.getAccount.mockResolvedValue({
       ...details,
+      displayName: null,
+      email: null,
       profile: null,
       createdAt: null,
       tokensSpent: 0,
