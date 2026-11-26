@@ -11,7 +11,6 @@ type User = { userId: string; username: string };
 // The account the browser's session cookie belongs to; null means no cookie.
 let cookieUser: User | null;
 let sessionOffline: boolean;
-let loginResponse: () => Promise<Response>;
 const calls: string[] = [];
 
 function Probe() {
@@ -37,7 +36,6 @@ beforeEach(() => {
   cookieUser = null;
   sessionOffline = false;
   calls.length = 0;
-  loginResponse = async () => Response.json({ error: "No login expected" }, { status: 500 });
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
@@ -51,7 +49,7 @@ beforeEach(() => {
         cookieUser = null;
         return new Response(null, { status: 204 });
       }
-      return loginResponse();
+      return new Response(null, { status: 404 });
     }),
   );
 });
@@ -134,37 +132,12 @@ describe("server session", () => {
   });
 });
 
-describe.each(["signIn", "register"] as const)("%s response validation", (method) => {
-  it.each([null, false, 42, "not an object", [], { userId: "", username: "x" }].map((body) => ({ body })))(
-    "rejects invalid bodies: $body",
-    async ({ body }) => {
-      render(<App />);
-      await settle();
-      for (const status of [200, 400]) {
-        loginResponse = async () => Response.json(body, { status });
-        await act(async () => {
-          const result = await auth[method]("student", "password");
-          if (status === 200 || body === null || typeof body !== "object" || Array.isArray(body)) {
-            expect(result).toEqual({ error: "Invalid server response." });
-          } else {
-            expect(result).toHaveProperty("error");
-          }
-        });
-        expect(auth.status).toBe("signedOut");
-        expect(storedUserId()).toBeNull();
-      }
-    },
-  );
+it("exposes session management without credential sign-in methods", async () => {
+  render(<App />);
+  await settle();
 
-  it("starts the returned account without storing any token", async () => {
-    render(<App />);
-    await settle();
-    loginResponse = async () => Response.json(user("new-A"));
-    await act(async () => expect(await auth[method]("new-A", "password")).toEqual({}));
-    expect(auth.user?.userId).toBe("new-A");
-    expect(storedUserId()).toBe("new-A");
-    expect(Object.keys(localStorage).filter((key) => key.startsWith("reodite.auth"))).toEqual(["reodite.auth.user"]);
-  });
+  expect(auth).not.toHaveProperty("signIn");
+  expect(auth).not.toHaveProperty("register");
 });
 
 it("ends the server session on sign-out and revokes the old getter", async () => {
@@ -211,7 +184,7 @@ it("adopts another tab's account instead of signing it out from a stale tab", as
   expect(auth.user?.userId).toBe("other-tab-B");
 });
 
-it("keeps a partially persisted login in memory without borrowing the old identity", async () => {
+it("keeps a cookie-backed identity when local storage cannot persist it", async () => {
   storeUser("partial-A");
   cookieUser = user("partial-A");
   render(<App />);
@@ -220,39 +193,11 @@ it("keeps a partially persisted login in memory without borrowing the old identi
   vi.spyOn(localStorage, "setItem").mockImplementation(() => {
     throw new Error("Quota exceeded");
   });
-  loginResponse = async () => Response.json(user("partial-B"));
-  await act(async () => expect(await auth.signIn("partial-B", "password")).toEqual({}));
+  cookieUser = user("partial-B");
+  act(() => auth.refresh());
+  await settle();
   expect(await auth.getUserId()).toBe("partial-B");
   expect(await oldGetter()).toBeNull();
-});
-
-it.each(["signout", "cross-tab", "unmount"])("ignores a delayed login after %s", async (transition) => {
-  storeUser("pending-A");
-  cookieUser = user("pending-A");
-  const view = render(<App />);
-  await settle();
-  let resolve!: (response: Response) => void;
-  loginResponse = () =>
-    new Promise<Response>((done) => {
-      resolve = done;
-    });
-  const pending = auth.signIn("pending-B", "password");
-  await act(async () => {
-    if (transition === "signout") auth.signOut();
-    else if (transition === "unmount") view.unmount();
-    else {
-      storeUser("tab-C");
-      cookieUser = user("tab-C");
-      window.dispatchEvent(new StorageEvent("storage", { key: "reodite.auth.user" }));
-    }
-  });
-  await act(async () => {
-    resolve(Response.json(user("pending-B")));
-    expect(await pending).toHaveProperty("error");
-  });
-  await settle();
-  expect(storedUserId()).not.toBe("pending-B");
-  if (transition === "cross-tab") expect(auth.user?.userId).toBe("tab-C");
 });
 
 it("remounts private descendant state on cross-tab identity changes before any foreign render", async () => {

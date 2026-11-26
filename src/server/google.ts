@@ -35,7 +35,7 @@ export function startGoogleSignIn(config: GoogleConfig): { url: string; state: s
     client_id: config.clientId,
     redirect_uri: config.redirectUri,
     response_type: "code",
-     scope: "openid profile email",
+    scope: "openid profile email",
     state,
     code_challenge: createHash("sha256").update(verifier).digest("base64url"),
     code_challenge_method: "S256",

@@ -26,15 +26,15 @@ let getSchedule: (token: string) => Promise<Response>;
 const scheduleReads: string[] = [];
 const scheduleWrites: { token: string | null; schedule: unknown }[] = [];
 const scheduleRenders: { userId: string | undefined; schedule: string }[] = [];
+let cookieUser: { userId: string; username: string } | null = null;
 
 function storedLogin(userId: string) {
   localStorage.setItem("reodite.auth.user", JSON.stringify({ userId, username: userId }));
+  cookieUser = { userId, username: userId };
 }
 
-// The session cookie follows the identity stored in this browser.
 function sessionResponse() {
-  const raw = localStorage.getItem("reodite.auth.user");
-  return raw ? Response.json(JSON.parse(raw)) : new Response(null, { status: 204 });
+  return cookieUser ? Response.json(cookieUser) : new Response(null, { status: 204 });
 }
 
 function storageEvent(key: string | null = "reodite.auth.user") {
@@ -104,7 +104,9 @@ function App({ showPlan = true, showSchedule = false }: { showPlan?: boolean; sh
 
 async function login(userId: string) {
   await act(async () => {
-    expect(await auth.signIn(userId, "password")).toEqual({});
+    cookieUser = { userId, username: userId };
+    auth.refresh();
+    await Promise.resolve();
   });
 }
 
@@ -120,6 +122,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   localStorage.clear();
+  cookieUser = null;
   store.usePlanner.setState({ ...store.usePlanner.getInitialState(), ownerId: null });
   scheduleStore.useSchedule.setState(scheduleStore.useSchedule.getInitialState());
   scheduleReads.length = 0;
@@ -136,10 +139,6 @@ beforeEach(() => {
       const authorization = new Headers(init?.headers).get("X-Reodite-User");
       if (path === "/api/auth/session") return sessionResponse();
       if (path === "/api/auth/logout") return new Response(null, { status: 204 });
-      if (path.startsWith("/api/auth/")) {
-        const { username } = JSON.parse(init?.body as string);
-        return Response.json({ userId: username, username });
-      }
       if (path === "/api/profile") return Response.json({ profile: { onboarding_completed: true } });
       if (path === "/api/plan" && init?.method === "PUT") {
         writes.push({ token: authorization, plan: JSON.parse(init.body as string) });

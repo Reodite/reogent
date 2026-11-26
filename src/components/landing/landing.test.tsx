@@ -77,6 +77,13 @@ describe("Landing navigation", () => {
     expect(router.push).not.toHaveBeenCalled();
   });
 
+  it("sends both account actions to Google sign-in", () => {
+    render(<Landing />);
+
+    expect(screen.getByRole("link", { name: "Get started" }).getAttribute("href")).toBe("/login");
+    expect(screen.getByRole("link", { name: "Get started free" }).getAttribute("href")).toBe("/login");
+  });
+
   it.each([0, 1])("opens /app after starting a guest session from action %s", (index) => {
     render(<Landing />);
     fireEvent.click(screen.getAllByRole("button", { name: "Continue as guest" })[index]);

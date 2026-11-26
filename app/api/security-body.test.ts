@@ -8,19 +8,15 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/src/server/auth", () => ({
   requireUser: mocks.requireUser,
-  sessionCookie: async () => "reodite_session=token; Path=/",
 }));
 vi.mock("@/src/server/rate-limit", () => ({
   rateLimitResponse: mocks.limit,
   getRateLimitIdentity: () => "test-client",
 }));
 vi.mock("@/src/server/sessions/store", () => ({
-  getUserByUsername: mocks.effect,
-  createUser: mocks.effect,
   renameSession: mocks.effect,
   appendExchange: mocks.effect,
 }));
-vi.mock("bcryptjs", () => ({ default: { compare: async () => true, hash: async () => "hash" } }));
 vi.mock("@/src/server/sessions/title", () => ({ generateSessionTitle: vi.fn() }));
 vi.mock("@/src/server/agent/stream", () => ({ streamAgent: mocks.stream }));
 vi.mock("@/src/server/modules", () => ({ modules: [] }));
@@ -41,8 +37,6 @@ vi.mock("@/src/server/modules/buildings", () => ({
 }));
 
 const { POST: chat } = await import("./chat/route");
-const { POST: login } = await import("./auth/login/route");
-const { POST: register } = await import("./auth/register/route");
 const { PUT: favorite } = await import("./building-favorites/route");
 const { PUT: plan } = await import("./plan/route");
 const { PUT: profile } = await import("./profile/route");
@@ -54,14 +48,6 @@ const { POST: vote } = await import("./pulse/vote/route");
 
 const routes = [
   { name: "chat", run: chat, max: 262_144, body: { messages: [{ role: "user", content: "hi" }] }, status: 200 },
-  { name: "login", run: login, max: 4096, body: { username: "student", password: "password" }, status: 401 },
-  {
-    name: "register",
-    run: register,
-    max: 4096,
-    body: { username: "student", password: "test-passphrase" },
-    status: 201,
-  },
   { name: "favorite", run: favorite, max: 256, body: { code: "CHEM", saved: true }, status: 200 },
   { name: "plan", run: plan, max: 262_144, body: { years: [] }, status: 204 },
   { name: "profile", run: profile, max: 4096, body: {}, status: 204 },
@@ -135,7 +121,6 @@ describe.each(routes)("$name body boundary", ({ name, run, max, body, status }) 
   });
 
   it("preserves small-body behavior with normalized JSON media types", async () => {
-    if (name === "login" || name === "register") mocks.effect.mockResolvedValueOnce(null);
     const response = await run(request(JSON.stringify(body), { "content-type": "Application/JSON; charset=utf-8" }));
     expect(response.status).toBe(status);
     if (name === "chat") expect(await response.text()).toContain('"delta":"hello"');
@@ -211,18 +196,15 @@ describe.each(routes)("$name body boundary", ({ name, run, max, body, status }) 
 });
 
 describe("body admission order", () => {
-  it.each(routes.filter(({ name }) => name !== "login" && name !== "register"))(
-    "$name authenticates before reading",
-    async ({ run }) => {
-      mocks.requireUser.mockResolvedValue(new Response(null, { status: 401 }));
-      const input = request("{");
-      expect((await run(input)).status).toBe(401);
-      expect(input.bodyUsed).toBe(false);
-      expect(mocks.limit).not.toHaveBeenCalled();
-    },
-  );
+  it.each(routes)("$name authenticates before reading", async ({ run }) => {
+    mocks.requireUser.mockResolvedValue(new Response(null, { status: 401 }));
+    const input = request("{");
+    expect((await run(input)).status).toBe(401);
+    expect(input.bodyUsed).toBe(false);
+    expect(mocks.limit).not.toHaveBeenCalled();
+  });
 
-  it.each([chat, vote, login, register])("checks the rate limit before reading", async (run) => {
+  it.each([chat, vote])("checks the rate limit before reading", async (run) => {
     mocks.limit.mockReturnValue(new Response(null, { status: 429 }));
     const input = request("{");
     expect((await run(input)).status).toBe(429);
@@ -230,12 +212,7 @@ describe("body admission order", () => {
     expect(mocks.effect).not.toHaveBeenCalled();
   });
 
-  it.each([login, register])("checks auth route rate limits before media type", async (run) => {
-    mocks.limit.mockReturnValue(new Response(null, { status: 429 }));
-    expect((await run(request("{}", { "content-type": "text/plain" }))).status).toBe(429);
-  });
-
-  it.each([chat, vote, routes[9].run])("checks media type before authentication", async (run) => {
+  it.each([chat, vote, routes[7].run])("checks media type before authentication", async (run) => {
     expect((await run(request("{}", { "content-type": "text/plain" }))).status).toBe(415);
     expect(mocks.requireUser).not.toHaveBeenCalled();
   });

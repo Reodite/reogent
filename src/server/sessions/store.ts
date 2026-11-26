@@ -104,23 +104,6 @@ export async function deleteSession(userId: string, sessionId: string): Promise<
   return (rowCount ?? 0) > 0;
 }
 
-// --- User management (for auth) ---
-
-export async function createUser(username: string, passwordHash: string): Promise<string> {
-  const { rows } = await getPool().query(`INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id`, [
-    username,
-    passwordHash,
-  ]);
-  return rows[0].id;
-}
-
-/** Returns the account's id and bcrypt hash; the hash is null for Google-only accounts. */
-export async function getUserByUsername(username: string): Promise<{ id: string; passwordHash: string | null } | null> {
-  const { rows } = await getPool().query(`SELECT id, password_hash FROM users WHERE username = $1`, [username]);
-  if (rows.length === 0) return null;
-  return { id: rows[0].id, passwordHash: rows[0].password_hash };
-}
-
 /** Returns the account linked to a Google subject, creating one on first sign-in. */
 export async function findOrCreateGoogleUser(
   googleSub: string,

@@ -94,7 +94,10 @@ describe("finishGoogleSignIn", () => {
 
   it("does not return an unverified Google email", async () => {
     idToken = await sign({ ...claims, email_verified: false });
-    expect(await finishGoogleSignIn(config, "auth-code", "verifier")).toEqual({ sub: "google-123", name: "Max Student" });
+    expect(await finishGoogleSignIn(config, "auth-code", "verifier")).toEqual({
+      sub: "google-123",
+      name: "Max Student",
+    });
   });
 
   it.each([

@@ -188,7 +188,7 @@ export function Landing() {
                   animate={heroCTAVariant.visible}
                   transition={{ type: "spring", stiffness: 80, damping: 18, delay: 0.32 }}
                 >
-                  <ButtonLink href={signedIn ? "/app" : "/signup"} variant="primary" size="large" shadowOn="background">
+                  <ButtonLink href={signedIn ? "/app" : "/login"} variant="primary" size="large" shadowOn="background">
                     {signedIn ? "Open app" : "Get started"}
                   </ButtonLink>
                 </motion.div>
@@ -247,7 +247,7 @@ export function Landing() {
             animate={ctaInView || skipAnim ? featureItemVariant.visible : featureItemVariant.hidden}
             transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
-            <ButtonLink href={signedIn ? "/app" : "/signup"} variant="primary" size="large" shadowOn="background">
+            <ButtonLink href={signedIn ? "/app" : "/login"} variant="primary" size="large" shadowOn="background">
               {signedIn ? "Open app" : "Get started free"}
             </ButtonLink>
             {!signedIn && (

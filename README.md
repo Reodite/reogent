@@ -12,7 +12,7 @@ Built with Next.js 16 (App Router), React 19, and TypeScript.
 | -------- | ----------------------------------------------------- |
 | Frontend | Next.js 16, React 19, Tailwind CSS 4                  |
 | Map      | MapLibre GL + deck.gl                                 |
-| Auth     | Username/password, JWT (HS256, 7-day expiry)          |
+| Auth     | Google OAuth, JWT (HS256, 7-day expiry)               |
 | AI       | Anthropic, OpenAI-compatible, or Google, via adapters |
 | Database | Postgres (users, sessions, messages, Pulse votes)     |
 | Search   | Meilisearch (campus datasets)                         |
@@ -71,7 +71,7 @@ app/                          Route handlers + pages
 │   ├── route/route.ts        GET walking-route polyline
 │   ├── building/[code]/route.ts GET building details
 │   ├── geo/[name]/route.ts   GET GeoJSON layers
-│   ├── auth/login|register   POST sign-in / sign-up
+│   ├── auth/google           Google OAuth start and callback
 │   └── preview/route.ts      GET og:image resolution for card links
 └── chat/                     App-shell chat workspace
 
@@ -190,14 +190,14 @@ Schedule the backup task with cron or a systemd timer and copy `./backups` off t
 | `MEILI_ENV`                | Meilisearch environment (docker compose)                                      |
 | `AUTH_ENABLED`             | Set `false` in non-production to bypass auth                                  |
 | `JWT_SECRET`               | Random HMAC signing secret; at least 32 bytes in production                   |
-| `GOOGLE_CLIENT_ID`         | Google OAuth client ID; Google sign-in needs all three Google variables       |
+| `GOOGLE_CLIENT_ID`         | Google OAuth client ID; required for sign-in                                  |
 | `GOOGLE_CLIENT_SECRET`     | Google OAuth client secret                                                    |
 | `APP_URL`                  | Public HTTPS origin, such as `https://reodite.example`                        |
 | `DATA_PATH`                | Raw data root (`./ubc-unified-data/data` on host)                             |
 | `PORT`                     | Dev-server port (docker compose)                                              |
 | `TRUSTED_CLIENT_IP_HEADER` | Proxy-overwritten single-IP header, such as `x-real-ip`; set it in production |
 
-Request throttling ignores forwarding headers by default. Without `TRUSTED_CLIENT_IP_HEADER`, every anonymous caller shares one bucket, so ten login attempts a minute from anyone lock out sign-in for everyone, and the server logs a warning at startup. Set it in production, and only when your reverse proxy overwrites that header with one validated client IP and blocks direct application access. Do not pass through client-supplied values or comma-separated forwarding chains. The in-process limiter resets on restart and does not coordinate replicas; enforce distributed abuse and concurrency limits at the edge.
+Request throttling ignores forwarding headers by default. Without `TRUSTED_CLIENT_IP_HEADER`, anonymous callers share a request bucket, and the server logs a warning at startup. Set it in production only when your reverse proxy overwrites that header with one validated client IP and blocks direct application access. Do not pass through client-supplied values or comma-separated forwarding chains. The in-process limiter resets on restart and does not coordinate replicas; enforce distributed abuse and concurrency limits at the edge.
 
 Each account can send 100 chat messages per day; the count resets at midnight America/Vancouver and lives in Postgres, so restarts do not reset it. Requests the server rejects before reaching the model, such as invalid bodies or a session the caller does not own, do not count. A message counts even when the model then fails.
 
@@ -205,9 +205,7 @@ Each account can send 100 chat messages per day; the count resets at midnight Am
 
 Sign-in sets a 7-day session in an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production), so page scripts cannot read it. Every authenticated API request must also send `X-Reodite-User` with the signed-in user id; cross-site pages cannot attach that header, and a request queued before an account switch fails instead of writing to the new account. Serve production over HTTPS: browsers drop `Secure` cookies on plain HTTP except on localhost.
 
-To turn on Google sign-in, create an OAuth client of type "Web application" in Google Cloud Console (APIs & Services, Credentials). Add `https://<your domain>/api/auth/google/callback` as an authorized redirect URI, then set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `APP_URL`. The app requests the `openid profile` scopes only, so it never receives email addresses. A first Google sign-in creates an account named after the given name plus four digits, such as `max-4821`; that account has no password. Google cannot confirm UBC enrolment: UBC student email runs on Microsoft 365.
-
-New passwords require at least 12 characters and at most 72 UTF-8 bytes. Existing bcrypt hashes cannot recover any password suffix beyond 72 bytes; rotate affected legacy credentials. Login retains compatibility with existing passwords.
+Create an OAuth client of type "Web application" in Google Cloud Console (APIs & Services, Credentials). Add `https://<your domain>/api/auth/google/callback` as an authorized redirect URI, then set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `APP_URL`. Google sign-in is the only account sign-in method. The app requests `openid profile email`; it stores the stable Google subject, verified email when available, and display name in Postgres. Existing account UUIDs and their related data stay unchanged. Google cannot confirm UBC enrolment: UBC student email runs on Microsoft 365.
 
 ## Security
 
@@ -260,22 +258,22 @@ The metadata uses JSON, including double quotes, rather than YAML. Invalid files
 
 ## API endpoints
 
-| Method | Path                   | Purpose                                    |
-| ------ | ---------------------- | ------------------------------------------ |
-| POST   | `/api/chat`            | Stream agent response (NDJSON)             |
-| GET    | `/api/sessions`        | List user sessions                         |
-| GET    | `/api/sessions/:id`    | Session messages                           |
-| PATCH  | `/api/sessions/:id`    | Rename a session                           |
-| DELETE | `/api/sessions/:id`    | Delete a session                           |
-| GET    | `/api/route?from=&to=` | Walking-route polyline                     |
-| GET    | `/api/building/:code`  | Building details (rooms, POIs, entrances)  |
-| GET    | `/api/geo/:name`       | GeoJSON layer                              |
-| GET    | `/api/pulse`           | Active Pulse round with the caller's votes |
-| POST   | `/api/pulse/vote`      | Record an agree/disagree vote              |
-| GET    | `/api/pulse/history`   | Locked Pulse rounds with final tallies     |
-| POST   | `/api/auth/login`      | Sign in, returns JWT                       |
-| POST   | `/api/auth/register`   | Create account, returns JWT                |
-| GET    | `/api/preview?url=`    | Resolve og:image for card links            |
+| Method | Path                        | Purpose                                    |
+| ------ | --------------------------- | ------------------------------------------ |
+| POST   | `/api/chat`                 | Stream agent response (NDJSON)             |
+| GET    | `/api/sessions`             | List user sessions                         |
+| GET    | `/api/sessions/:id`         | Session messages                           |
+| PATCH  | `/api/sessions/:id`         | Rename a session                           |
+| DELETE | `/api/sessions/:id`         | Delete a session                           |
+| GET    | `/api/route?from=&to=`      | Walking-route polyline                     |
+| GET    | `/api/building/:code`       | Building details (rooms, POIs, entrances)  |
+| GET    | `/api/geo/:name`            | GeoJSON layer                              |
+| GET    | `/api/pulse`                | Active Pulse round with the caller's votes |
+| POST   | `/api/pulse/vote`           | Record an agree/disagree vote              |
+| GET    | `/api/pulse/history`        | Locked Pulse rounds with final tallies     |
+| GET    | `/api/auth/google`          | Start Google OAuth                         |
+| GET    | `/api/auth/google/callback` | Complete Google OAuth                      |
+| GET    | `/api/preview?url=`         | Resolve og:image for card links            |
 
 ## Example query
 
