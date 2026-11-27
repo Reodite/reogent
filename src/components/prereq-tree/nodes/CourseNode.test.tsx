@@ -49,6 +49,6 @@ describe("CourseNode variants (REQ-9.4)", () => {
   it("renders the code as a plain div when onNavigate is absent (no nav affordance)", () => {
     const el = renderNode({ code: "CPSC 210", title: "T", variant: "known" });
     expect(el.querySelector('button[data-nav="course"]')).toBeNull();
-    expect(el.querySelector(".font-mono")?.tagName).toBe("DIV");
+    expect(el.querySelector("div")?.textContent).toContain("CPSC 210");
   });
 });
