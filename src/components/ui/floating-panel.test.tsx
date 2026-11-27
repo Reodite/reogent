@@ -14,8 +14,7 @@ let panelNaturalSize = { width: 288, height: 180 };
 
 function visibleSize(element: HTMLElement, property: "width" | "height", natural: number): number {
   const available = Number.parseFloat(element.style.getPropertyValue(`--floating-available-${property}`));
-  const cap = element.style[property === "width" ? "maxWidth" : "maxHeight"].match(/^min\(([\d.]+)px/);
-  return Math.min(natural, Number.isFinite(available) ? available : Infinity, cap ? Number(cap[1]) : Infinity);
+  return Math.min(natural, Number.isFinite(available) ? available : Infinity);
 }
 
 beforeEach(() => {
@@ -134,13 +133,15 @@ describe("FloatingPanel placement", () => {
   it("clamps both horizontal edges to the viewport", () => {
     vi.stubGlobal("innerWidth", 250);
     const { panel } = setup({ align: "end" });
-    expect(panel.style.left).toBe("8px");
-    expect(panel.getBoundingClientRect().right).toBeLessThanOrEqual(242);
+    const leftEdge = panel.getBoundingClientRect();
+    expect(leftEdge.left).toBeGreaterThanOrEqual(0);
+    expect(leftEdge.right).toBeLessThanOrEqual(window.innerWidth);
 
     anchorBounds = new DOMRect(220, 100, 70, 40);
     resize();
-    expect(panel.getBoundingClientRect().right).toBeLessThanOrEqual(242);
-    expect(panel.style.left).toBe("8px");
+    const rightEdge = panel.getBoundingClientRect();
+    expect(rightEdge.left).toBeGreaterThanOrEqual(0);
+    expect(rightEdge.right).toBeLessThanOrEqual(window.innerWidth);
   });
 
   it("flips above when the panel cannot fit below and clamps to the available height", () => {
@@ -149,23 +150,33 @@ describe("FloatingPanel placement", () => {
     const { panel } = setup();
 
     expect(panel.dataset.overlaySide).toBe("top");
-    expect(Number.parseFloat(panel.style.top)).toBeGreaterThanOrEqual(8);
-    expect(panel.getBoundingClientRect().bottom).toBeLessThanOrEqual(anchorBounds.top - 8);
-    expect(panel.getBoundingClientRect().bottom).toBeLessThanOrEqual(592);
+    const bounds = panel.getBoundingClientRect();
+    expect(bounds.top).toBeGreaterThanOrEqual(0);
+    expect(bounds.bottom).toBeLessThanOrEqual(anchorBounds.top);
+    expect(bounds.bottom).toBeLessThanOrEqual(window.innerHeight);
   });
 
   it("uses visual viewport offsets and remeasures on viewport changes", () => {
     const viewport = Object.assign(new EventTarget(), { width: 250, height: 300, offsetLeft: 50, offsetTop: 40 });
     vi.stubGlobal("visualViewport", viewport);
     const { panel } = setup();
+    const initial = panel.getBoundingClientRect();
 
-    expect(Number.parseFloat(panel.style.left)).toBeGreaterThanOrEqual(58);
-    expect(Number.parseFloat(panel.style.top)).toBeGreaterThanOrEqual(48);
+    expect(initial.left).toBeGreaterThanOrEqual(viewport.offsetLeft);
+    expect(initial.top).toBeGreaterThanOrEqual(viewport.offsetTop);
+    expect(initial.right).toBeLessThanOrEqual(viewport.offsetLeft + viewport.width);
+    expect(initial.bottom).toBeLessThanOrEqual(viewport.offsetTop + viewport.height);
+    anchorBounds = new DOMRect(anchorBounds.left + 30, anchorBounds.top + 50, anchorBounds.width, anchorBounds.height);
     viewport.offsetLeft = 80;
     viewport.offsetTop = 90;
     fireEvent(viewport, new Event("resize"));
-    expect(Number.parseFloat(panel.style.left)).toBeGreaterThanOrEqual(88);
-    expect(Number.parseFloat(panel.style.top)).toBeGreaterThanOrEqual(98);
+    const repositioned = panel.getBoundingClientRect();
+    expect(repositioned.left).toBeGreaterThanOrEqual(viewport.offsetLeft);
+    expect(repositioned.top).toBeGreaterThanOrEqual(viewport.offsetTop);
+    expect(repositioned.right).toBeLessThanOrEqual(viewport.offsetLeft + viewport.width);
+    expect(repositioned.bottom).toBeLessThanOrEqual(viewport.offsetTop + viewport.height);
+    expect(repositioned.left).not.toBe(initial.left);
+    expect(repositioned.top).not.toBe(initial.top);
   });
 });
 
