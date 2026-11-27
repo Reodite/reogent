@@ -4,8 +4,8 @@ import { TOOL_SLUG_TO_PANE_ID } from "@/src/lib/pane-route";
 import { SEASON_META } from "@/src/lib/planner-model";
 import { modules } from "@/src/server/modules";
 import { buildMonthGrid, parseISODate, toISODate } from "@/src/shared/calendar/date-math";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { animate } from "motion/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { animate, frame } from "motion/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FeatureShowcase } from "./feature-showcase";
 
@@ -44,6 +44,33 @@ function carousel(title: string) {
     dots: within(progress).getAllByRole("button"),
     status: within(region).getByRole("status"),
   };
+}
+
+async function nextFrame() {
+  await act(() => new Promise<void>((resolve) => frame.postRender(() => resolve())));
+}
+
+async function swipe(viewport: HTMLElement, x: number, y = 0, cancel = false) {
+  function pointer(type: string, target: HTMLElement | Window, clientX: number, clientY: number) {
+    const event = new PointerEvent(type, {
+      pointerId: 1,
+      pointerType: "touch",
+      isPrimary: true,
+      button: 0,
+      clientX,
+      clientY,
+      bubbles: true,
+    });
+    Object.defineProperties(event, { pageX: { value: clientX }, pageY: { value: clientY } });
+    fireEvent(target, event);
+  }
+  pointer("pointerdown", viewport, 300, 200);
+  pointer("pointermove", window, 300 + x / 2, 200 + y / 2);
+  await nextFrame();
+  pointer("pointermove", window, 300 + x, 200 + y);
+  await nextFrame();
+  pointer(cancel ? "pointercancel" : "pointerup", window, 300 + x, 200 + y);
+  await nextFrame();
 }
 
 describe("Feature carousels", () => {
@@ -243,6 +270,24 @@ describe("Feature carousels", () => {
     fireEvent.wheel(tools.viewport, { deltaX: 100 });
     expect(tools.status.textContent).toBe("2 of 6: Course lookup");
   });
+
+  it.each([true, false])(
+    "supports horizontal swipes and cancels vertical or interrupted gestures with reduced motion %s",
+    async (reduced) => {
+      motionPreference.reduced = reduced;
+      render(<FeatureShowcase />);
+      const tools = carousel("Tools");
+
+      await swipe(tools.viewport, 140);
+      expect(tools.status.textContent).toBe("6 of 6: Calendar");
+      await swipe(tools.viewport, -140);
+      expect(tools.status.textContent).toBe("1 of 6: Campus map");
+      await swipe(tools.viewport, -10, 120);
+      expect(tools.status.textContent).toBe("1 of 6: Campus map");
+      await swipe(tools.viewport, -140, 0, true);
+      expect(tools.status.textContent).toBe("1 of 6: Campus map");
+    },
+  );
 
   it("preserves selection on resize and stops animation on unmount", () => {
     const view = render(<FeatureShowcase />);
