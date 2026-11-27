@@ -21,7 +21,10 @@ import { createWidgetsModule } from "./widgets";
  * and can return `_formatted` for highlight-paging tools when the fixture sets
  * it. Tracks per-index call counts so tests can assert routing.
  */
-function fakeSearch(data: Record<string, unknown[]>): SearchClient & {
+function fakeSearch(
+  data: Record<string, unknown[]>,
+  caps: Record<string, number> = {},
+): SearchClient & {
   calls: () => Record<string, number>;
   searchCalls: () => { index: string; query: string; options?: Record<string, unknown> }[];
 } {
@@ -46,6 +49,7 @@ function fakeSearch(data: Record<string, unknown[]>): SearchClient & {
       };
       return {
         getDocument,
+        getSettings: async () => ({ pagination: { maxTotalHits: caps[name] ?? 1000 } }),
         search: async (_q: string, opts?: Record<string, unknown>) => {
           recordedSearches.push({ index: name, query: _q, options: opts });
           const filter = String(opts?.filter ?? "");
@@ -76,8 +80,13 @@ function fakeSearch(data: Record<string, unknown[]>): SearchClient & {
           }
           const limit = Number(opts?.limit ?? hits.length);
           const offset = Number(opts?.offset ?? 0);
-          const sliced = hits.slice(offset, offset + (Number.isFinite(limit) ? limit : hits.length));
-          const base = { estimatedTotalHits: hits.length };
+          const effectiveLimit = Math.min(
+            Number.isFinite(limit) ? limit : hits.length,
+            caps[name] ?? Number.POSITIVE_INFINITY,
+          );
+          const cap = caps[name] ?? Number.POSITIVE_INFINITY;
+          const sliced = offset >= cap ? [] : hits.slice(offset, Math.min(offset + effectiveLimit, cap));
+          const base = { estimatedTotalHits: Math.min(hits.length, cap) };
           if ((opts?.attributesToHighlight as string[] | undefined)?.includes("text")) {
             return {
               ...base,
@@ -295,6 +304,37 @@ describe("find_courses (agent-tool-redesign)", () => {
         return filter.match(/code IN \[(.*)\]/)?.[1].split(", ").length;
       }),
     ).toEqual([100, 100]);
+  });
+
+  it("paginates faculty matches when the session index caps each response", async () => {
+    const search = fakeSearch(
+      {
+        courses: [course("CPSC_V 198"), course("CPSC_V 199"), course("CPSC_V 200")],
+        course_sessions: [
+          { code: "CPSC 198", session: "2025W", faculty: "Science" },
+          { code: "CPSC 199", session: "2025W", faculty: "Science" },
+          { code: "CPSC 200", session: "2025W", faculty: "Science" },
+        ],
+        grades: [
+          { subject: "CPSC", course: "198", year: 2025, enrolled: 10, avg: 88 },
+          { subject: "CPSC", course: "199", year: 2025, enrolled: 10, avg: 89 },
+          { subject: "CPSC", course: "200", year: 2025, enrolled: 10, avg: 90 },
+        ],
+      },
+      { course_sessions: 2 },
+    );
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ faculty: "Science", sort: "grade_avg_desc" }, search)) as {
+      courses: { code: string; grade_avg: number }[];
+      note?: string;
+    };
+
+    expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 199", "CPSC_V 198"]);
+    expect(result.note).toContain("session index result cap was reached");
+    const joinCalls = search.searchCalls().filter(({ index }) => index === "course_sessions");
+    expect(joinCalls).toHaveLength(1);
+    expect(joinCalls[0].options).toMatchObject({ limit: 2, offset: 0 });
   });
 
   it("sorts session-index fallback by course code", async () => {

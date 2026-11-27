@@ -403,6 +403,11 @@ export const courses: DatasetModule = {
           const POOL_PAGE = 200;
           const POOL_CAP = 2000;
           const candidates: CourseDoc[] = [];
+          let facultyTruncated = false;
+          const sessionMaxTotalHits = facultyFilter
+            ? ((await search.index("course_sessions").getSettings()).pagination?.maxTotalHits ?? 1000)
+            : 1000;
+          const sessionPageSize = Math.min(100, sessionMaxTotalHits);
           let offset = 0;
           let scanned = 0;
           let estimated = Number.POSITIVE_INFINITY;
@@ -423,12 +428,26 @@ export const courses: DatasetModule = {
               const CODE_BATCH = 100;
               for (let i = 0; i < codes.length; i += CODE_BATCH) {
                 const codeBatch = codes.slice(i, i + CODE_BATCH);
-                const members = await search.index("course_sessions").search("", {
-                  filter: `session = ${filterValue(session)} AND ${facultyFilter} AND code IN [${codeBatch.map(filterValue).join(", ")}]`,
-                  limit: codeBatch.length,
-                  attributesToRetrieve: ["code"],
-                });
-                for (const hit of members.hits) matching.add(normalizeCourseCode(String(hit.code)));
+                const filter = `session = ${filterValue(session)} AND ${facultyFilter} AND code IN [${codeBatch.map(filterValue).join(", ")}]`;
+                let offset = 0;
+                let sessionEstimate = 0;
+                if (sessionPageSize === 0) {
+                  facultyTruncated = true;
+                  continue;
+                }
+                while (offset < sessionMaxTotalHits) {
+                  const members = await search.index("course_sessions").search("", {
+                    filter,
+                    limit: sessionPageSize,
+                    offset,
+                    attributesToRetrieve: ["code"],
+                  });
+                  for (const hit of members.hits) matching.add(normalizeCourseCode(String(hit.code)));
+                  offset += members.hits.length;
+                  sessionEstimate = members.estimatedTotalHits;
+                  if (members.hits.length < sessionPageSize) break;
+                }
+                if (sessionEstimate >= sessionMaxTotalHits) facultyTruncated = true;
               }
               page = page.filter(({ code }) => matching.has(normalizeCourseCode(code)));
             }
@@ -458,17 +477,21 @@ export const courses: DatasetModule = {
             ranked.sort((a, b) => b.avg_grade - a.avg_grade);
           }
           const asOf = await getIndexFreshness("courses");
+          const notes = [
+            truncated
+              ? `Sorting was evaluated over the first ${scanned} catalogue matches; results may be incomplete.`
+              : null,
+            facultyTruncated
+              ? "Faculty matches may be incomplete because the session index result cap was reached."
+              : null,
+          ].filter((note): note is string => note !== null);
           return {
             courses: ranked.slice(0, Math.min(Number(limit) || 20, 50)).map((r) => ({
               ...presentCourse(r.course, 10),
               grade_avg: r.avg_grade,
             })),
             ...(asOf ? { catalog_as_of: asOf } : {}),
-            ...(truncated
-              ? {
-                  note: `Sorting was evaluated over the first ${scanned} catalogue matches; results may be incomplete.`,
-                }
-              : {}),
+            ...(notes.length ? { note: notes.join(" ") } : {}),
           };
         }
 
