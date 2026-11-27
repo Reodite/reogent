@@ -147,7 +147,7 @@ describe("ThemeToggle", () => {
     });
     Object.defineProperty(document, "startViewTransition", { configurable: true, value: startTransition });
     renderToggle();
-    fireEvent.click(screen.getByRole("radio", { name: "Dark" }), { detail: 1, clientX: 120, clientY: 80 });
+    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
     await waitFor(() => expect(snapshots).toEqual([{ theme: "dark", checked: "true" }]));
     expect(startTransition).toHaveBeenCalledTimes(1);
     finish();

@@ -351,7 +351,7 @@ describe("FloatingPanel interaction", () => {
   });
 
   it("disconnects observers and removes document, window, and visual viewport listeners on unmount", () => {
-    const viewport = Object.assign(new EventTarget(), { width: 800, height: 600, offsetLeft: 0, offsetTop: 0 });
+    const viewport = new EventTarget();
     vi.stubGlobal("visualViewport", viewport);
     const documentAdd = vi.spyOn(document, "addEventListener");
     const documentRemove = vi.spyOn(document, "removeEventListener");

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { canRestoreFocus, DialogActions, DialogHeader, DialogPanel, DialogRoot } from "./dialog";
 
 beforeEach(() => {
-  // HappyDOM has no layout; model rects only within the dialog fixtures.
+  // HappyDOM has no layout; model rect existence only within the dialog fixtures.
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) {
     return (this.closest("[data-dialog-root]") && !this.closest("details:not([open]) > :not(summary)")
       ? [{} as DOMRect]

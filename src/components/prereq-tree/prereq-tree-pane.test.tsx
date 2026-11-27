@@ -58,11 +58,11 @@ vi.mock("reactflow", () => ({
   },
   Background: () => null,
   ReactFlowProvider: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  useReactFlow: () => ({ setViewport: vi.fn(), ...flowActions, fitView: vi.fn() }),
-  useStoreApi: () => ({ getState: () => ({ width: 0, height: 0 }) }),
+  useReactFlow: () => ({ getNodes: () => [], setViewport: vi.fn(), ...flowActions, fitView: vi.fn() }),
+  useStoreApi: () => ({ getState: () => ({ width: undefined, height: undefined }) }),
   useNodesInitialized: () => flowState.initialized,
-  getViewportForBounds: () => ({ x: 0, y: 0, zoom: 1 }),
-  getNodesBounds: () => ({ x: 0, y: 0, width: 0, height: 0 }),
+  getViewportForBounds: vi.fn(),
+  getNodesBounds: vi.fn(),
   Handle: () => null,
   Position: { Left: "left", Right: "right", Top: "top", Bottom: "bottom" },
   useStore: () => 1,
@@ -445,7 +445,7 @@ describe("PrereqTreePane", () => {
     ] as const) {
       act(() => {
         const open = flowProps.current?.onPaneContextMenu as (event: unknown) => void;
-        open({ clientX: 20, clientY: 20, preventDefault: vi.fn() });
+        open({ clientX: undefined, clientY: undefined, preventDefault: vi.fn() });
       });
       screen.getByRole("menu");
       fireEvent.click(screen.getByRole("menuitem", { name: label }));
