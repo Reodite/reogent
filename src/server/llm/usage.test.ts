@@ -143,6 +143,36 @@ describe("provider token usage", () => {
     expect(returnIterator).toHaveBeenCalledOnce();
   });
 
+  it("does not rotate Google keys after the caller aborts", async () => {
+    vi.stubEnv("LLM_API_KEY", "first-key,second-key");
+    const controller = new AbortController();
+    let started!: () => void;
+    const requestStarted = new Promise<void>((resolve) => (started = resolve));
+    sdk.googleStream.mockImplementationOnce(({ config }: { config: { abortSignal?: AbortSignal } }) => {
+      return new Promise<never>((_, reject) => {
+        config.abortSignal?.addEventListener(
+          "abort",
+          () => {
+            started();
+            reject(config.abortSignal?.reason ?? new Error("Request aborted by client"));
+          },
+          { once: true },
+        );
+      });
+    });
+    sdk.googleStream.mockImplementationOnce(() => {
+      throw new Error("Unexpected second Google request");
+    });
+
+    const pending = Array.fromAsync(createGoogleAdapter().converseStream({ ...request, signal: controller.signal }));
+    await vi.waitFor(() => expect(sdk.googleStream).toHaveBeenCalledOnce());
+    controller.abort(new Error("client disconnected"));
+    await requestStarted;
+    await expect(pending).rejects.toThrow("client disconnected");
+
+    expect(sdk.googleStream).toHaveBeenCalledOnce();
+  });
+
   it("aborts the Google provider request when the idle timeout expires", async () => {
     let started!: () => void;
     const nextStarted = new Promise<void>((resolve) => (started = resolve));
