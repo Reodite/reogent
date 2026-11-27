@@ -520,7 +520,11 @@ describe("ScheduleApp controls", () => {
     const view = render(<ScheduleApp groupCode="AAAAAA" />);
     const share = await screen.findByRole("button", { name: "Copy share link AAAAAA" });
 
-    expect(share.closest("[data-workspace-toolbar]")?.querySelector("[role='tablist']")).not.toBeNull();
+    const toolbar = share.closest("[data-workspace-toolbar]");
+    const toolbarContent = share.parentElement;
+    expect(toolbar?.contains(toolbarContent ?? null)).toBe(true);
+    expect(toolbarContent?.querySelector("[role='tablist']")).not.toBeNull();
+    expect(toolbarContent?.querySelectorAll(":scope > button")).toHaveLength(1);
     expect(view.container.querySelector("[data-workspace-actions]")).toBeNull();
     expect(screen.getByRole("button", { name: "New group" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Leave" })).toBeTruthy();
