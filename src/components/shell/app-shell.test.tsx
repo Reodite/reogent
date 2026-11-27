@@ -438,7 +438,7 @@ describe("13.3 — focus move/return + inert (REQ-2.5, REQ-8.1, REQ-8.3)", () =>
   it("loops drawer focus without reaching the underlying navigation", () => {
     const rects = vi
       .spyOn(HTMLElement.prototype, "getClientRects")
-      .mockReturnValue([new DOMRect(0, 0, 44, 44)] as unknown as DOMRectList);
+      .mockReturnValue([{} as DOMRect] as unknown as DOMRectList);
     try {
       const { container, getByRole } = renderShell(false);
       fireEvent.click(getByRole("button", { name: "Open sidebar" }));

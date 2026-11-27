@@ -8,7 +8,7 @@ beforeEach(() => {
   // HappyDOM has no layout; model rects only within the dialog fixtures.
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) {
     return (this.closest("[data-dialog-root]") && !this.closest("details:not([open]) > :not(summary)")
-      ? [new DOMRect(0, 0, 100, 44)]
+      ? [{} as DOMRect]
       : []) as unknown as DOMRectList;
   });
 });

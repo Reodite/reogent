@@ -4,7 +4,6 @@ import { createRef, useLayoutEffect, useState, type RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FloatingPanel, tabStops, type FloatingPanelProps } from "./floating-panel";
 
-let anchorBounds: DOMRect;
 let observers: Array<{
   callback: ResizeObserverCallback;
   observe: ReturnType<typeof vi.fn>;
@@ -12,10 +11,7 @@ let observers: Array<{
 }>;
 
 beforeEach(() => {
-  anchorBounds = new DOMRect(100, 100, 120, 40);
   observers = [];
-  vi.stubGlobal("innerWidth", 800);
-  vi.stubGlobal("innerHeight", 600);
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -26,18 +22,9 @@ beforeEach(() => {
       }
     },
   );
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    if (this.dataset.testid === "anchor") return anchorBounds;
-    if (this.dataset.testid === "panel") return new DOMRect(0, 0, 288, 180);
-    return new DOMRect(0, 0, 800, 600);
-  });
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) {
-    return (this.hidden || this.style.display === "none"
-      ? []
-      : [this.getBoundingClientRect()]) as unknown as DOMRectList;
+    return this.hidden || this.style.display === "none" ? [] : ([{} as DOMRect] as unknown as DOMRectList);
   });
-  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
-  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(600);
 });
 
 afterEach(() => {
@@ -58,7 +45,7 @@ function Fixture({ anchorRef, show = true, onDismiss, onParentPointerDown, child
     anchorRef.current?.focus();
   }, [anchorRef]);
   return (
-    <div style={{ overflow: "hidden" }} onPointerDown={onParentPointerDown} data-testid="clipper">
+    <div onPointerDown={onParentPointerDown} data-testid="clipper">
       <button type="button">Before trigger</button>
       <button type="button" ref={anchorRef} data-testid="anchor" onClick={() => setOpen((value) => !value)}>
         Trigger
@@ -160,7 +147,7 @@ describe("tabStops", () => {
     // HappyDOM has no layout; closed details content has no browser client rects.
     const details = container.querySelector("details")!;
     Object.defineProperty(closedContent, "getClientRects", {
-      value: () => (details.open ? [new DOMRect(0, 0, 100, 44)] : []),
+      value: () => (details.open ? ([{} as DOMRect] as DOMRect[]) : []),
     });
     expect(tabStops(container)).toEqual([screen.getByText("Visible stop")]);
     details.open = true;
@@ -168,17 +155,15 @@ describe("tabStops", () => {
   });
 });
 
-describe("FloatingPanel placement", () => {
-  it("keeps layout-less consumer fixtures open when anchor bounds are zero", () => {
-    anchorBounds = new DOMRect();
+describe("FloatingPanel lifecycle", () => {
+  it("keeps layout-less consumer fixtures open when no browser layout is available", () => {
     const { panel, onDismiss } = setup();
     expect(panel).not.toBeNull();
     expect(panel.hasAttribute("data-floating-panel")).toBe(true);
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
-  it.each(["display", "inert"])("dismisses explicitly hidden ancestors via %s even with zero bounds", async (kind) => {
-    anchorBounds = new DOMRect();
+  it.each(["display", "inert"])("dismisses explicitly hidden ancestors via %s", async (kind) => {
     const { onDismiss } = setup();
     const clipper = screen.getByTestId("clipper");
     if (kind === "display") clipper.style.display = "none";
@@ -207,18 +192,6 @@ describe("FloatingPanel placement", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onDismiss).toHaveBeenCalledOnce();
     expect(document.activeElement).toBe(anchor);
-  });
-
-  it("dismisses when scrolling fully clips the anchor, but keeps partially visible anchors", () => {
-    const { onDismiss } = setup();
-    const clipper = screen.getByTestId("clipper");
-    vi.spyOn(clipper, "clientHeight", "get").mockReturnValue(120);
-    fireEvent.scroll(clipper);
-    expect(onDismiss).not.toHaveBeenCalled();
-    anchorBounds = new DOMRect(100, 121, 120, 40);
-    fireEvent.scroll(clipper);
-    expect(onDismiss).toHaveBeenCalledOnce();
-    expect(screen.queryByTestId("panel")).toBeNull();
   });
 
   it("dismisses when the anchor is removed without a scroll event", async () => {

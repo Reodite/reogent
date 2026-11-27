@@ -60,9 +60,7 @@ beforeEach(() => {
   vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation((id) => {
     frames.delete(id);
   });
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
-    new DOMRect(0, 0, 120, 44),
-  ] as unknown as DOMRectList);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{} as DOMRect] as unknown as DOMRectList);
 });
 
 afterEach(() => {

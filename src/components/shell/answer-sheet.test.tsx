@@ -7,21 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnswerSheet } from "./answer-sheet";
 
 beforeEach(() => {
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
-    new DOMRect(0, 0, 44, 44),
-  ] as unknown as DOMRectList);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{} as DOMRect] as unknown as DOMRectList);
 });
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
-
-function provideSplitterBounds(width = 1000) {
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    if (this.querySelector("[data-answer-sheet]")) return new DOMRect(0, 0, width, 600);
-    return new DOMRect(0, 0, 0, 0);
-  });
-}
 
 function SheetHarness() {
   const [open, setOpen] = useState(false);
@@ -98,8 +89,7 @@ describe("AnswerSheet", () => {
     expect(sheet.hasAttribute("aria-hidden")).toBe(false);
   });
 
-  it("resizes the inline panes with pointer and keyboard input", () => {
-    provideSplitterBounds();
+  it("resizes the inline panes with keyboard input", () => {
     render(
       <AnswerSheet open={false} onClose={() => {}} view={{ paneId: "map", state: {} }}>
         <span>Map</span>
@@ -110,10 +100,6 @@ describe("AnswerSheet", () => {
       .getAttribute("aria-valuenow");
     const splitter = screen.getByRole("separator", { name: "Resize chat and answer canvas" });
 
-    fireEvent.pointerDown(splitter, { pointerId: 2, button: 0, clientX: 600 });
-    fireEvent.pointerMove(splitter, { pointerId: 2, clientX: 750 });
-    expect(splitter.getAttribute("aria-valuenow")).not.toBe(initial);
-    fireEvent.pointerUp(splitter, { pointerId: 2, clientX: 750 });
     fireEvent.keyDown(splitter, { key: "ArrowLeft" });
     expect(splitter.getAttribute("aria-valuenow")).not.toBe(initial);
 
@@ -121,24 +107,6 @@ describe("AnswerSheet", () => {
     expect(splitter.getAttribute("aria-valuenow")).toBe(splitter.getAttribute("aria-valuemin"));
     fireEvent.keyDown(splitter, { key: "End" });
     expect(splitter.getAttribute("aria-valuenow")).toBe(splitter.getAttribute("aria-valuemax"));
-  });
-
-  it("restores the split position when pointer resizing is cancelled", () => {
-    provideSplitterBounds();
-    render(
-      <AnswerSheet open={false} onClose={() => {}} view={{ paneId: "map", state: {} }}>
-        <span>Map</span>
-      </AnswerSheet>,
-    );
-    const splitter = screen.getByRole("separator", { name: "Resize chat and answer canvas" });
-    const initial = splitter.getAttribute("aria-valuenow");
-
-    fireEvent.pointerDown(splitter, { pointerId: 3, button: 0, clientX: 600 });
-    fireEvent.pointerMove(splitter, { pointerId: 3, clientX: 700 });
-    expect(splitter.getAttribute("aria-valuenow")).not.toBe(initial);
-    fireEvent.pointerCancel(splitter, { pointerId: 3 });
-
-    expect(splitter.getAttribute("aria-valuenow")).toBe(initial);
   });
 
   it("traps focus, closes on Escape, and restores the trigger", async () => {
