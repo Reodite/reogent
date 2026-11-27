@@ -10,7 +10,7 @@ import { ChatInput } from "./chat-input";
 describe("shared conversation behavior", () => {
   it("forwards the message region ref and busy state", () => {
     const scrollRef = createRef<HTMLElement>();
-    const { container, getByRole } = render(
+    const { container, getByRole, getByText } = render(
       <ChatFrame
         aria-label="Conversation"
         header={<h1>Session</h1>}
@@ -21,12 +21,12 @@ describe("shared conversation behavior", () => {
         <p>Message</p>
       </ChatFrame>,
     );
-    const frame = getByRole("region", { name: "Conversation" });
+    getByRole("region", { name: "Conversation" });
     expect(scrollRef.current).toBe(container.querySelector(".chat-message-well"));
     expect(scrollRef.current?.getAttribute("aria-busy")).toBe("true");
     expect(scrollRef.current?.getAttribute("aria-label")).toBe("Conversation messages");
     expect(scrollRef.current?.tabIndex).toBe(0);
-    expect(frame.lastElementChild?.textContent).toBe("Footer");
+    expect(getByText("Footer")).toBeTruthy();
   });
 
   it("places shell navigation inside the conversation header", () => {

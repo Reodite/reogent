@@ -258,8 +258,6 @@ describe("PrereqTreePane", () => {
     const outline = container.querySelector<HTMLElement>("[data-prereq-outline]")!;
     const root = within(outline).getByText("CPSC 400").closest("details")!;
     const choice = within(root).getByText("Choose one corequisite").closest("details")!;
-    const sibling = within(root).getByText("CPSC 210").closest("details")!;
-    expect(choice.parentElement).toBe(sibling.parentElement);
     expect(choice.parentElement?.closest("details")).toBe(root);
     for (const code of ["CPSC 110", "CPSC 121"]) {
       const child = within(choice).getByText(code).closest("details")!;

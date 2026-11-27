@@ -98,7 +98,7 @@ describe("Account", () => {
     expect(screen.getByText("Tuition defaults").nextElementSibling?.textContent).toBe("Domestic student");
     expect(screen.getByText("Tokens spent").nextElementSibling?.textContent).toBe("12,345");
     expect(screen.getByRole("status").textContent).toBe("Saved");
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit profile" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit profile" })));
     expect(screen.queryByLabelText("What are you studying?")).toBeNull();
     expect(api.getAccount).toHaveBeenCalledOnce();
 
