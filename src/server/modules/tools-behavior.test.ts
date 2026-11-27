@@ -290,7 +290,10 @@ describe("find_courses (agent-tool-redesign)", () => {
     const joinCalls = search.searchCalls().filter(({ index }) => index === "course_sessions");
     expect(joinCalls).toHaveLength(2);
     expect(
-      joinCalls.map(({ options }) => (options?.filter as string).match(/code IN \[(.*)\]/)?.[1].split(", ").length),
+      joinCalls.map(({ options }) => {
+        const filter = String(options?.filter ?? "");
+        return filter.match(/code IN \[(.*)\]/)?.[1].split(", ").length;
+      }),
     ).toEqual([100, 100]);
   });
 
