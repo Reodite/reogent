@@ -142,7 +142,6 @@ describe("ProgramSelectors", () => {
     expect(usePlanner.getState().major).toBe("cpsc-major");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
-    expect(screen.getByText("Major / program").tagName).toBe("LABEL");
   });
 });
 

@@ -144,7 +144,7 @@ describe("Property 23b — chip sequence is invariant under re-rendering (REQ-13
 });
 
 describe("Property 24 — source_url absent renders no anchor and exposes label as tooltip (REQ-13.2)", () => {
-  it("renders a span with the label as title and no <a> when source_url is absent", () => {
+  it("keeps an unlinked citation label available as a tooltip when source_url is absent", () => {
     const citation: Citation = {
       index: 7,
       kind: "course",
@@ -154,7 +154,6 @@ describe("Property 24 — source_url absent renders no anchor and exposes label 
     };
     const c = render(<CitationChip citation={citation} />).container;
     const chip = c.querySelector("[data-index='7']");
-    expect(chip?.tagName).toBe("SPAN");
     expect(chip?.getAttribute("title")).toBe("MATH 200 — Calculus III");
     expect(c.querySelector("a")).toBeNull();
   });

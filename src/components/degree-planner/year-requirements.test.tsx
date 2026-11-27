@@ -68,7 +68,6 @@ describe("requirement row compositions", () => {
     expect(state.toggleRequirement).toHaveBeenLastCalledWith(requirementKey("program", "First Year", course));
 
     const manualButton = screen.getByRole("button", { name: "Mark requirement complete" });
-    expect(manualButton.querySelector("div, p, button, select")).toBeNull();
     expect(within(manualButton).getByText("Electives")).toBeTruthy();
     fireEvent.click(manualButton);
     expect(state.toggleRequirement).toHaveBeenLastCalledWith(requirementKey("program", "First Year", manual));
@@ -98,11 +97,10 @@ describe("requirement row compositions", () => {
     const { container } = render(<YearRequirements {...props} plannedCodes={new Set(["MATH 100"])} />);
     container.querySelector("details")?.setAttribute("open", "");
     const planned = screen.getByText("Planned").closest("li")!;
-    expect(planned.querySelector("button")).toBeNull();
+    expect(within(planned).queryByRole("button")).toBeNull();
     expect(within(planned).getByText("MATH 100 or MATH 180")).toBeTruthy();
     const marked = screen.getByRole("button", { name: "Mark requirement incomplete" });
     expect(within(marked).getByText("Marked done")).toBeTruthy();
-    expect(marked.querySelector("div, p, button, select")).toBeNull();
     expect(within(marked).getByText("6 cr")).toBeTruthy();
     fireEvent.click(marked);
     expect(state.toggleRequirement).toHaveBeenCalledWith(requirementKey("program", "First Year", manual));

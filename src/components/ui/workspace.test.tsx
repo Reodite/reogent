@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { WorkspaceHostProvider } from "@/src/components/shell/workspace-host";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceCanvas, WorkspacePage, WorkspacePanel, WorkspaceRail, type WorkspaceView } from "./workspace";
@@ -181,7 +181,7 @@ describe("WorkspacePage", () => {
       </WorkspaceRail>,
     );
     const panel = container.querySelector("[data-workspace-panel]");
-    expect(panel?.querySelector("header button + div h2")?.textContent).toBe("Controls");
+    expect(within(panel as HTMLElement).getByRole("heading", { name: "Controls" })).not.toBeNull();
     expect(screen.getByText("Body")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back to controls" })).toBeTruthy();
   });
