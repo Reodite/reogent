@@ -46,10 +46,6 @@ beforeEach(() => {
   document.documentElement.style.removeProperty("--ripple-x");
   document.documentElement.style.removeProperty("--ripple-y");
   Reflect.deleteProperty(document, "startViewTransition");
-  document.head.innerHTML = `
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f7f5">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121214">
-  `;
   deviceAppearance(false);
 });
 
@@ -57,7 +53,6 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   window.localStorage.clear();
-  document.head.innerHTML = "";
   Reflect.deleteProperty(document, "startViewTransition");
 });
 
@@ -147,7 +142,7 @@ describe("ThemeToggle", () => {
     });
     Object.defineProperty(document, "startViewTransition", { configurable: true, value: startTransition });
     renderToggle();
-    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    fireEvent.keyDown(screen.getByRole("radio", { name: "Light" }), { key: "ArrowRight" });
     await waitFor(() => expect(snapshots).toEqual([{ theme: "dark", checked: "true" }]));
     expect(startTransition).toHaveBeenCalledTimes(1);
     finish();
