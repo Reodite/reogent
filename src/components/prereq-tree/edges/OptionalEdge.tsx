@@ -13,9 +13,9 @@ export interface OptionalEdgeData {
 }
 
 /** Dashed-bezier edge for an optional (Soft-wrapped) subtree, with a toggle
- *  pill at the bezier midpoint (REQ-10.1). The pill flips the soft branch:
+ *  pill at the bezier midpoint. The pill flips the soft branch:
  *  when disabled, the graph rebuild fades the source block and suppresses its
- *  upstream walk (REQ-10.2). */
+ *  upstream walk. */
 export function OptionalEdge({
   sourceX,
   sourceY,
