@@ -430,7 +430,6 @@ export const courses: DatasetModule = {
                 const codeBatch = codes.slice(i, i + CODE_BATCH);
                 const filter = `session = ${filterValue(session)} AND ${facultyFilter} AND code IN [${codeBatch.map(filterValue).join(", ")}]`;
                 let offset = 0;
-                let sessionEstimate = 0;
                 if (sessionPageSize === 0) {
                   facultyTruncated = true;
                   continue;
@@ -444,10 +443,15 @@ export const courses: DatasetModule = {
                   });
                   for (const hit of members.hits) matching.add(normalizeCourseCode(String(hit.code)));
                   offset += members.hits.length;
-                  sessionEstimate = members.estimatedTotalHits;
                   if (members.hits.length < sessionPageSize) break;
                 }
-                if (sessionEstimate >= sessionMaxTotalHits) facultyTruncated = true;
+                const { totalHits } = await search.index("course_sessions").search("", {
+                  filter,
+                  hitsPerPage: 0,
+                  page: 1,
+                  attributesToRetrieve: ["code"],
+                });
+                if (totalHits > sessionMaxTotalHits) facultyTruncated = true;
               }
               page = page.filter(({ code }) => matching.has(normalizeCourseCode(code)));
             }

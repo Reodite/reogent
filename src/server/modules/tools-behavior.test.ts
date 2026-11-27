@@ -87,6 +87,9 @@ function fakeSearch(
           const cap = caps[name] ?? Number.POSITIVE_INFINITY;
           const sliced = offset >= cap ? [] : hits.slice(offset, Math.min(offset + effectiveLimit, cap));
           const base = { estimatedTotalHits: Math.min(hits.length, cap) };
+          if (opts?.hitsPerPage === 0) {
+            return { hits: [], totalHits: hits.length };
+          }
           if ((opts?.attributesToHighlight as string[] | undefined)?.includes("text")) {
             return {
               ...base,
@@ -296,7 +299,9 @@ describe("find_courses (agent-tool-redesign)", () => {
     };
 
     expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 199", "CPSC_V 198"]);
-    const joinCalls = search.searchCalls().filter(({ index }) => index === "course_sessions");
+    const joinCalls = search
+      .searchCalls()
+      .filter(({ index, options }) => index === "course_sessions" && options?.hitsPerPage !== 0);
     expect(joinCalls).toHaveLength(2);
     expect(
       joinCalls.map(({ options }) => {
@@ -306,7 +311,33 @@ describe("find_courses (agent-tool-redesign)", () => {
     ).toEqual([100, 100]);
   });
 
-  it("rejects faculty matches when the session index result cap is reached", async () => {
+  it("accepts faculty matches exactly at the session index result cap", async () => {
+    const search = fakeSearch(
+      {
+        courses: [course("CPSC_V 198"), course("CPSC_V 199")],
+        course_sessions: [
+          { code: "CPSC 198", session: "2025W", faculty: "Science" },
+          { code: "CPSC 199", session: "2025W", faculty: "Science" },
+        ],
+        grades: [
+          { subject: "CPSC", course: "198", year: 2025, enrolled: 10, avg: 88 },
+          { subject: "CPSC", course: "199", year: 2025, enrolled: 10, avg: 89 },
+        ],
+      },
+      { course_sessions: 2 },
+    );
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ faculty: "Science", sort: "grade_avg_desc" }, search)) as {
+      courses: { code: string; grade_avg: number }[];
+      note?: string;
+    };
+    expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 199", "CPSC_V 198"]);
+    expect(result.note).toBeUndefined();
+    expect(search.calls().grades).toBeGreaterThan(0);
+  });
+
+  it("rejects faculty matches above the session index result cap", async () => {
     const search = fakeSearch(
       {
         courses: [course("CPSC_V 198"), course("CPSC_V 199"), course("CPSC_V 200")],
@@ -328,7 +359,9 @@ describe("find_courses (agent-tool-redesign)", () => {
     await expect(tool.execute({ faculty: "Science", sort: "grade_avg_desc" }, search)).rejects.toThrow(
       "Faculty course matches exceed the session index result cap",
     );
-    const joinCalls = search.searchCalls().filter(({ index }) => index === "course_sessions");
+    const joinCalls = search
+      .searchCalls()
+      .filter(({ index, options }) => index === "course_sessions" && options?.hitsPerPage !== 0);
     expect(joinCalls).toHaveLength(1);
     expect(joinCalls[0].options).toMatchObject({ limit: 2, offset: 0 });
     expect(search.calls().grades).toBeUndefined();
