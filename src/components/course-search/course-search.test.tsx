@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { CourseSearchField, useCourseAutocomplete, type Candidate } from "@/src/components/course-search/course-search";
 import { ApiError, type CourseDoc } from "@/src/lib/api-types";
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiState = vi.hoisted(() => ({
@@ -310,7 +310,7 @@ describe("CourseSearchField loading compositions", () => {
     );
     const options = screen.getAllByRole("option") as HTMLButtonElement[];
     expect(options.every((option) => option.disabled && option.getAttribute("aria-busy") === "true")).toBe(true);
-    expect(screen.getAllByText("Adding course…")).toHaveLength(2);
+    for (const option of options) expect(within(option).getByText("Adding course…")).toBeTruthy();
   });
 });
 
