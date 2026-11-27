@@ -56,7 +56,6 @@ describe("validatePlan", () => {
   });
 
   it("preserves completion snapshots and inputs across generated plans", () => {
-    // Feature: codebase-restructuring, Property 1: Stable completion snapshots.
     const codes = fc.array(fc.constantFrom("CPSC 110", "CPSC 210", "MATH 100"), { maxLength: 4 });
     fc.assert(
       fc.property(fc.array(fc.array(codes, { minLength: 2, maxLength: 4 }), { maxLength: 4 }), (plan) => {

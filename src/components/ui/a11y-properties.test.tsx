@@ -8,7 +8,6 @@ afterEach(() => {
   cleanup();
 });
 
-// Property 35 — live region updates within one tick after announce()
 describe("Live region status announcements", () => {
   it("citation panel expand + collapse announce via the live region", async () => {
     const { container } = render(<LiveRegion />);
