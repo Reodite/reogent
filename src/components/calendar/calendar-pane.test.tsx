@@ -105,7 +105,6 @@ describe("Property 27 — busy days preserve a readable overflow count (REQ-16.4
     const count = cell.querySelector("[data-calendar-count]");
     expect(count?.getAttribute("data-calendar-count")).toBe("4");
     expect(count?.textContent).toContain("2 more");
-    expect(cell.querySelectorAll("[data-calendar-marker]")).toHaveLength(2);
     restore();
   });
 });

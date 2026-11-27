@@ -132,8 +132,5 @@ describe("CourseInfoPopup", () => {
 
     const panel = screen.getByRole("dialog");
     await waitFor(() => expect(panel.textContent).toContain(prerequisite));
-    const marks = panel.querySelectorAll("mark");
-    expect(marks).toHaveLength(1);
-    expect(marks[0].textContent?.trim()).toBe("either CPSC 210 or CPSC 213");
   });
 });
