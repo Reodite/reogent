@@ -89,6 +89,57 @@ describe("chat resource limits", () => {
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
   });
 
+  it("holds capacity while persistence is pending after client cancellation", async () => {
+    let resolveAppend!: () => void;
+    mocks.appendExchange.mockImplementationOnce(() => new Promise<void>((resolve) => (resolveAppend = resolve)));
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "done", message: "answer", tool_calls: [], citations: [] };
+    });
+    const { POST } = await import("./route");
+    const response = await POST(request());
+    const reader = response.body?.getReader();
+    const read = reader?.read();
+    await vi.waitFor(() => expect(mocks.appendExchange).toHaveBeenCalledOnce());
+    const cancel = reader?.cancel("client disconnected");
+    try {
+      const limited = await POST(request());
+      expect(limited.status).toBe(503);
+    } finally {
+      resolveAppend();
+      await cancel;
+      await read;
+    }
+    const retry = await POST(request());
+    expect(retry.status).toBe(200);
+    await retry.text();
+  });
+
+  it("holds capacity while persistence is pending after the chat deadline", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("CHAT_TIMEOUT_MS", "1000");
+    let resolveAppend!: () => void;
+    mocks.appendExchange.mockImplementationOnce(() => new Promise<void>((resolve) => (resolveAppend = resolve)));
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "done", message: "answer", tool_calls: [], citations: [] };
+    });
+    const { POST } = await import("./route");
+    const response = await POST(request());
+    const read = response.text();
+    await vi.waitFor(() => expect(mocks.appendExchange).toHaveBeenCalledOnce());
+    try {
+      await vi.advanceTimersByTimeAsync(1000);
+      const limited = await POST(request());
+      expect(limited.status).toBe(503);
+    } finally {
+      resolveAppend();
+    }
+    const body = await read;
+    expect(body).not.toContain('"type":"done"');
+    const retry = await POST(request());
+    expect(retry.status).toBe(200);
+    await retry.text();
+  });
+
   it("aborts timed-out model work and releases its capacity slot", async () => {
     vi.useFakeTimers();
     vi.stubEnv("CHAT_TIMEOUT_MS", "1000");

@@ -108,18 +108,23 @@ export async function POST(request: Request): Promise<Response> {
     const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;
     let closed = false;
     let clientCancelled = false;
-    let completed = false;
+    let persistencePending = false;
     let cleanup: Promise<void> | undefined;
+    let finalized = false;
+    const finalize = () => {
+      if (finalized || persistencePending) return;
+      finalized = true;
+      clearTimeout(deadline);
+      request.signal.removeEventListener("abort", abortOwner);
+      releaseCapacity();
+    };
     const cleanupIterator = () => {
       cleanup ??= (async () => {
-        clearTimeout(deadline);
-        request.signal.removeEventListener("abort", abortOwner);
         try {
           await iterator.return?.(undefined);
         } catch {
           // Preserve the primary stream result if iterator cleanup fails.
         }
-        releaseCapacity();
       })();
       return cleanup;
     };
@@ -163,17 +168,27 @@ export async function POST(request: Request): Promise<Response> {
             }
           }
           if (event.type === "done") {
-            completed = true;
             if (lastUser) {
-              await appendExchange(
-                user.sub,
-                sessionId,
-                lastUser.content,
-                event.message,
-                activity.length > 0 ? activity : undefined,
-                event.citations,
-              );
+              persistencePending = true;
+              try {
+                await appendExchange(
+                  user.sub,
+                  sessionId,
+                  lastUser.content,
+                  event.message,
+                  activity.length > 0 ? activity : undefined,
+                  event.citations,
+                );
+              } finally {
+                persistencePending = false;
+                if (clientCancelled || request.signal.aborted || owner.signal.aborted) finalize();
+              }
             }
+            if (clientCancelled || request.signal.aborted || owner.signal.aborted) {
+              await cleanupIterator();
+              return;
+            }
+            if (closed) return;
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
             if (lastUser) {
               if (isFirstExchange && !clientCancelled) {
@@ -181,6 +196,7 @@ export async function POST(request: Request): Promise<Response> {
               }
             }
             await cleanupIterator();
+            finalize();
             if (!closed) {
               closed = true;
               controller.close();
@@ -188,6 +204,7 @@ export async function POST(request: Request): Promise<Response> {
           } else if (event.type === "error") {
             controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
             await cleanupIterator();
+            finalize();
             if (!closed) {
               closed = true;
               controller.close();
@@ -198,6 +215,7 @@ export async function POST(request: Request): Promise<Response> {
         } catch (error) {
           if (!owner.signal.aborted) owner.abort(error);
           await cleanupIterator();
+          finalize();
           if (!clientCancelled && !request.signal.aborted) {
             if (!closed)
               controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error", message: FAILURE_MESSAGE })}\n`));
@@ -209,11 +227,11 @@ export async function POST(request: Request): Promise<Response> {
         }
       },
       async cancel(reason) {
-        if (completed) return;
         clientCancelled = true;
         closed = true;
         owner.abort(reason);
         await cleanupIterator();
+        finalize();
       },
     });
 
