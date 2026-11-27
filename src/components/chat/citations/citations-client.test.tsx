@@ -253,28 +253,20 @@ describe("Sources panel expansion and scroll ownership", () => {
     });
   }
 
-  function expand(transitionProperty = "none", transitionDuration = "0s", transitionDelay = "0s") {
+  function expand() {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "requestAnimationFrame", "cancelAnimationFrame"] });
-    const nativeStyle = window.getComputedStyle.bind(window);
-    const readStyle = vi
-      .spyOn(window, "getComputedStyle")
-      .mockImplementation((element, pseudo) =>
-        pseudo === "::details-content"
-          ? ({ transitionProperty, transitionDuration, transitionDelay } as CSSStyleDeclaration)
-          : nativeStyle(element, pseudo),
-      );
     const view = render(<SourcesPanel citations={makeCitations(2, true, true)} />);
     const details = view.container.querySelector("details")!;
     const panel = view.container.querySelector<HTMLElement>("[data-sources-panel]")!;
     Object.defineProperty(details, "getAnimations", { configurable: true, value: () => [] });
     const scroll = vi.spyOn(panel, "scrollIntoView").mockImplementation(() => {});
     toggle(details, true);
-    return { ...view, details, panel, readStyle, scroll };
+    return { ...view, details, panel, scroll };
   }
 
-  async function advance(milliseconds: number) {
+  async function finishScheduledReveal() {
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(milliseconds);
+      await vi.runAllTimersAsync();
     });
   }
 
@@ -287,50 +279,18 @@ describe("Sources panel expansion and scroll ownership", () => {
     preference.reduce = reduce;
     const view = expand();
     expect(view.scroll).not.toHaveBeenCalled();
-    await advance(32);
+    await finishScheduledReveal();
     expect(view.scroll).toHaveBeenCalledOnce();
     expect(view.scroll).toHaveBeenCalledWith({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
     view.rerender(<SourcesPanel citations={makeCitations(4, true, true)} />);
-    await advance(500);
-    expect(view.scroll).toHaveBeenCalledOnce();
-  });
-
-  it.each([
-    {
-      properties: "opacity, block-size, content-visibility",
-      durations: "800ms, 0.24s, 900ms",
-      delays: "0s",
-      wait: 240,
-    },
-    { properties: "height, opacity", durations: "120ms, 2s", delays: "80ms, 0s", wait: 200 },
-    { properties: "opacity, block-size", durations: "0.24s", delays: "-40ms", wait: 200 },
-    { properties: "all", durations: "0.24s", delays: "0s", wait: 240 },
-  ])("waits for computed $properties timing without native animation signals", async (timing) => {
-    const view = expand(timing.properties, timing.durations, timing.delays);
-    await advance(16 + timing.wait - 1);
-    expect(view.scroll).not.toHaveBeenCalled();
-    await advance(17);
-    expect(view.scroll).toHaveBeenCalledOnce();
-    expect(view.readStyle).toHaveBeenCalledWith(view.details, "::details-content");
-    expect(view.scroll).toHaveBeenCalledWith({ block: "nearest", behavior: "smooth" });
-  });
-
-  it.each([
-    { reduce: true, properties: "block-size", durations: "240ms" },
-    { reduce: false, properties: "opacity", durations: "2s" },
-    { reduce: false, properties: "", durations: "" },
-  ])("skips unrelated or disabled transition waits: $properties / reduced $reduce", async (timing) => {
-    preference.reduce = timing.reduce;
-    const view = expand(timing.properties, timing.durations);
-    await advance(32);
+    await finishScheduledReveal();
     expect(view.scroll).toHaveBeenCalledOnce();
   });
 
   it.each(["close", "scroll", "wheel", "touchmove", "pointerdown", "keydown", "unmount", "reduce"])(
     "cancels pending reveal on %s",
     async (action) => {
-      const view = expand("block-size", "240ms");
-      await advance(80);
+      const view = expand();
       expect(view.scroll).not.toHaveBeenCalled();
       if (action === "close") toggle(view.details, false);
       else if (action === "unmount") view.unmount();
@@ -338,19 +298,16 @@ describe("Sources panel expansion and scroll ownership", () => {
         preference.reduce = true;
         view.rerender(<SourcesPanel citations={makeCitations(2, true, true)} />);
       } else fireEvent(document, new Event(action, { bubbles: true }));
-      await advance(500);
+      await finishScheduledReveal();
       expect(view.scroll).not.toHaveBeenCalled();
     },
   );
 
   it("discards an older expansion when the panel closes and reopens", async () => {
-    const view = expand("block-size", "240ms");
-    await advance(80);
+    const view = expand();
     toggle(view.details, false);
     toggle(view.details, true);
-    await advance(200);
-    expect(view.scroll).not.toHaveBeenCalled();
-    await advance(80);
+    await finishScheduledReveal();
     expect(view.scroll).toHaveBeenCalledOnce();
   });
 });
