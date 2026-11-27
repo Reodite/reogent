@@ -70,12 +70,20 @@ export async function POST(request: Request): Promise<Response> {
     const abortOwner = () => owner.abort(request.signal.reason);
     request.signal.addEventListener("abort", abortOwner, { once: true });
     if (request.signal.aborted) abortOwner();
-    const iterator = streamAgent(parsed.value.messages, {
-      modules,
-      search: getSearch(),
-      profile,
-      signal: owner.signal,
-    })[Symbol.asyncIterator]();
+    let iterator: ReturnType<typeof streamAgent>;
+    try {
+      iterator = streamAgent(parsed.value.messages, {
+        modules,
+        search: getSearch(),
+        profile,
+        signal: owner.signal,
+      })[Symbol.asyncIterator]();
+    } catch (error) {
+      clearTimeout(deadline);
+      request.signal.removeEventListener("abort", abortOwner);
+      releaseCapacity();
+      throw error;
+    }
     const activity: ActivityBlock[] = [];
     const isFirstExchange = parsed.value.messages.filter((m) => m.role === "user").length === 1;
     let closed = false;

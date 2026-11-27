@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   canWriteSession: vi.fn(),
   consumeDailyChatMessage: vi.fn(),
   appendExchange: vi.fn(),
+  getSearch: vi.fn(),
 }));
 
 vi.mock("@/src/server/auth", () => ({ requireUser: async () => ({ sub: "u1" }) }));
@@ -22,7 +23,7 @@ vi.mock("@/src/server/sessions/title", () => ({ generateSessionTitle: vi.fn() })
 vi.mock("@/src/server/agent/stream", () => ({ streamAgent: mocks.streamAgent }));
 vi.mock("@/src/server/profile", () => ({ getProfile: async () => null }));
 vi.mock("@/src/server/modules", () => ({ modules: [] }));
-vi.mock("@/src/server/search", () => ({ getSearch: () => ({}) }));
+vi.mock("@/src/server/search", () => ({ getSearch: mocks.getSearch }));
 
 const request = () =>
   new Request("http://localhost/api/chat", {
@@ -38,6 +39,7 @@ beforeEach(() => {
   mocks.canWriteSession.mockResolvedValue(true);
   mocks.consumeDailyChatMessage.mockResolvedValue(true);
   mocks.appendExchange.mockResolvedValue(undefined);
+  mocks.getSearch.mockReturnValue({});
 });
 
 afterEach(() => {
@@ -106,5 +108,22 @@ describe("chat resource limits", () => {
     const next = await POST(request());
     await next.text();
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases capacity when search initialization fails", async () => {
+    mocks.getSearch.mockImplementationOnce(() => {
+      throw new Error("MEILI_API_KEY is not set");
+    });
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "done", message: "recovered", tool_calls: [], citations: [] };
+    });
+    const { POST } = await import("./route");
+
+    const failed = await POST(request());
+    expect(failed.status).toBe(500);
+
+    const next = await POST(request());
+    expect(next.status).toBe(200);
+    await next.text();
   });
 });
