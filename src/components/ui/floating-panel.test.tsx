@@ -9,9 +9,21 @@ let observers: Array<{
   observe: ReturnType<typeof vi.fn>;
   disconnect: ReturnType<typeof vi.fn>;
 }>;
+let anchorBounds: DOMRect;
+let panelNaturalSize = { width: 288, height: 180 };
+
+function visibleSize(element: HTMLElement, property: "width" | "height", natural: number): number {
+  const available = Number.parseFloat(element.style.getPropertyValue(`--floating-available-${property}`));
+  const cap = element.style[property === "width" ? "maxWidth" : "maxHeight"].match(/^min\(([\d.]+)px/);
+  return Math.min(natural, Number.isFinite(available) ? available : Infinity, cap ? Number(cap[1]) : Infinity);
+}
 
 beforeEach(() => {
   observers = [];
+  anchorBounds = new DOMRect(100, 100, 120, 40);
+  panelNaturalSize = { width: 288, height: 180 };
+  vi.stubGlobal("innerWidth", 800);
+  vi.stubGlobal("innerHeight", 600);
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -22,6 +34,26 @@ beforeEach(() => {
       }
     },
   );
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    if (this.dataset.testid === "anchor") return anchorBounds;
+    if (this.dataset.testid === "panel") {
+      return new DOMRect(
+        Number.parseFloat(this.style.left) || 0,
+        Number.parseFloat(this.style.top) || 0,
+        visibleSize(this, "width", panelNaturalSize.width),
+        visibleSize(this, "height", panelNaturalSize.height),
+      );
+    }
+    return new DOMRect(0, 0, 800, 600);
+  });
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
+    return this.dataset.testid === "panel" ? visibleSize(this, "width", panelNaturalSize.width) : 800;
+  });
+  vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+    return this.dataset.testid === "panel" ? visibleSize(this, "height", panelNaturalSize.height) : 600;
+  });
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(600);
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) {
     return this.hidden || this.style.display === "none" ? [] : ([{} as DOMRect] as unknown as DOMRectList);
   });
@@ -91,6 +123,51 @@ function setup(props: Partial<FixtureProps> = {}) {
     },
   };
 }
+
+function resize() {
+  act(() => {
+    for (const observer of observers) observer.callback([], observer as unknown as ResizeObserver);
+  });
+}
+
+describe("FloatingPanel placement", () => {
+  it("clamps both horizontal edges to the viewport", () => {
+    vi.stubGlobal("innerWidth", 250);
+    const { panel } = setup({ align: "end" });
+    expect(panel.style.left).toBe("8px");
+    expect(panel.getBoundingClientRect().right).toBeLessThanOrEqual(242);
+
+    anchorBounds = new DOMRect(220, 100, 70, 40);
+    resize();
+    expect(panel.getBoundingClientRect().right).toBeLessThanOrEqual(242);
+    expect(panel.style.left).toBe("8px");
+  });
+
+  it("flips above when the panel cannot fit below and clamps to the available height", () => {
+    anchorBounds = new DOMRect(200, 480, 100, 40);
+    panelNaturalSize = { width: 288, height: 500 };
+    const { panel } = setup();
+
+    expect(panel.dataset.overlaySide).toBe("top");
+    expect(Number.parseFloat(panel.style.top)).toBeGreaterThanOrEqual(8);
+    expect(panel.getBoundingClientRect().bottom).toBeLessThanOrEqual(anchorBounds.top - 8);
+    expect(panel.getBoundingClientRect().bottom).toBeLessThanOrEqual(592);
+  });
+
+  it("uses visual viewport offsets and remeasures on viewport changes", () => {
+    const viewport = Object.assign(new EventTarget(), { width: 250, height: 300, offsetLeft: 50, offsetTop: 40 });
+    vi.stubGlobal("visualViewport", viewport);
+    const { panel } = setup();
+
+    expect(Number.parseFloat(panel.style.left)).toBeGreaterThanOrEqual(58);
+    expect(Number.parseFloat(panel.style.top)).toBeGreaterThanOrEqual(48);
+    viewport.offsetLeft = 80;
+    viewport.offsetTop = 90;
+    fireEvent(viewport, new Event("resize"));
+    expect(Number.parseFloat(panel.style.left)).toBeGreaterThanOrEqual(88);
+    expect(Number.parseFloat(panel.style.top)).toBeGreaterThanOrEqual(98);
+  });
+});
 
 describe("tabStops", () => {
   it("includes native summaries without tabindex attributes in keyboard order", () => {
