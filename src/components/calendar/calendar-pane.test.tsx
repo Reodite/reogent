@@ -101,9 +101,11 @@ describe("Property 27 — busy days preserve a readable overflow count (REQ-16.4
       }),
     );
     const { container, restore } = renderPane({ cursor: "2024-11" }, events);
-    const cell = await waitForCell(container, "2024-11-29", "[data-calendar-count]");
-    const count = cell.querySelector("[data-calendar-count]");
-    expect(count?.getAttribute("data-calendar-count")).toBe("4");
+    const cell = await waitForCell(
+      container,
+      "2024-11-29",
+      '[aria-label="Open all 4 events on Friday, November 29, 2024"]',
+    );
     expect(within(cell).getByRole("button", { name: "Open all 4 events on Friday, November 29, 2024" })).not.toBeNull();
     restore();
   });
@@ -195,7 +197,7 @@ describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17
 });
 
 describe("20.13 + Property 27b — multi-event-day popover enumerates each event by row with labels and source links (REQ-16.3, REQ-16.4)", () => {
-  it("opens all three events from the desktop overflow control and selects the hidden event", async () => {
+  it("opens all three events from the multi-event action and selects an event", async () => {
     const events: CalendarEvent[] = [
       {
         kind: "academic",
@@ -305,9 +307,8 @@ describe("Compact calendar agenda", () => {
       { kind: "academic", date: "2025-02-17", label: "Reading week", source_url: null, tags: [] },
     ];
     const { container, restore } = renderPane({ cursor: "2025-02" }, events);
-    const agenda = await waitForCell(container, "2025-02-17", "[data-calendar-day-agenda]");
-    const trigger = agenda.querySelector("[data-calendar-day-agenda]") as HTMLElement;
-    expect(trigger.getAttribute("aria-label")).toMatch(/^Open 2 events on/);
+    const agenda = await waitForCell(container, "2025-02-17", '[aria-label^="Open 2 events on"]');
+    const trigger = within(agenda).getByRole("button", { name: /^Open 2 events on/ });
     fireEvent.click(trigger);
 
     const dialog = await screen.findByRole("dialog", { name: /Events on/ });
