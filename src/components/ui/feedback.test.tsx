@@ -46,7 +46,7 @@ describe("shared feedback states", () => {
   });
 
   it("announces the requested loading label", () => {
-    const { getByRole } = render(<LoadingStatus size="md">Loading calendar…</LoadingStatus>);
+    const { getByRole } = render(<LoadingStatus>Loading calendar…</LoadingStatus>);
     const status = getByRole("status");
     expect(status.textContent).toContain("Loading calendar…");
   });
