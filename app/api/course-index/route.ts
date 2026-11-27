@@ -6,8 +6,10 @@ import { serverError } from "../http";
 
 const COURSE_INDEX_LIMIT = { windowMs: 60_000, maxRequests: Number(process.env.RATE_LIMIT_PREREQ) || 10 };
 const PAGE = 5000;
+const CACHE_TTL_MS = 60 * 60 * 1000;
 
 let cache: Promise<string> | undefined;
+let cacheLoadedAt: number | undefined;
 
 async function loadIndex(): Promise<string> {
   const index = getSearch().index("courses");
@@ -42,10 +44,20 @@ export async function GET(request: Request): Promise<Response> {
     const ip = getRateLimitIdentity(request);
     const limited = rateLimitResponse(`course-index:${ip}`, COURSE_INDEX_LIMIT);
     if (limited) return limited;
-    cache ??= loadIndex().catch((error) => {
+    if (cacheLoadedAt !== undefined && Date.now() - cacheLoadedAt >= CACHE_TTL_MS) {
       cache = undefined;
-      throw error;
-    });
+      cacheLoadedAt = undefined;
+    }
+    cache ??= loadIndex()
+      .catch((error) => {
+        cache = undefined;
+        cacheLoadedAt = undefined;
+        throw error;
+      })
+      .then((result) => {
+        cacheLoadedAt = Date.now();
+        return result;
+      });
     return new Response(await cache, {
       headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" },
     });
