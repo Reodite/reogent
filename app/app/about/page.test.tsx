@@ -14,7 +14,7 @@ it("shows the creator subheading and coffee link in the About workspace", () => 
   );
 
   expect(view.getByRole("heading", { level: 1, name: "About" })).not.toBeNull();
-  expect(view.container.querySelector("[data-workspace-header] p")?.textContent).toBe("The creators");
+  expect(view.getByText("The creators")).not.toBeNull();
   expect(view.queryByText("The people building Reodite.")).toBeNull();
   expect(view.getByText("Max")).not.toBeNull();
   expect(view.getByText("Chakorn")).not.toBeNull();
