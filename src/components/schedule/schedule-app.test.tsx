@@ -218,6 +218,7 @@ describe("ScheduleApp invitation consent", () => {
     const cancel = await screen.findByRole("button", { name: "Cancel" });
     if (action === "Cancel") fireEvent.click(cancel);
     else fireEvent.keyDown(cancel, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     view.rerender(<ScheduleApp groupCode="DDDDDD" />);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(router.replace).toHaveBeenCalledWith("/app/pulse/schedule");
