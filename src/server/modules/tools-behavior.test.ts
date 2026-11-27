@@ -23,8 +23,10 @@ import { createWidgetsModule } from "./widgets";
  */
 function fakeSearch(data: Record<string, unknown[]>): SearchClient & {
   calls: () => Record<string, number>;
+  searchCalls: () => { index: string; query: string; options?: Record<string, unknown> }[];
 } {
   const callCounts: Record<string, number> = {};
+  const recordedSearches: { index: string; query: string; options?: Record<string, unknown> }[] = [];
   const docs = new Map<string, Record<string, unknown>>();
   for (const [idx, arr] of Object.entries(data)) {
     for (const d of arr) {
@@ -34,6 +36,7 @@ function fakeSearch(data: Record<string, unknown[]>): SearchClient & {
   }
   return {
     calls: () => ({ ...callCounts }),
+    searchCalls: () => recordedSearches,
     index: (name: string) => {
       callCounts[name] = (callCounts[name] ?? 0) + 1;
       const getDocument = async (id: string) => {
@@ -44,6 +47,7 @@ function fakeSearch(data: Record<string, unknown[]>): SearchClient & {
       return {
         getDocument,
         search: async (_q: string, opts?: Record<string, unknown>) => {
+          recordedSearches.push({ index: name, query: _q, options: opts });
           const filter = String(opts?.filter ?? "");
           const filterOk = (h: unknown): boolean => {
             if (!filter) return true;
@@ -127,8 +131,8 @@ function matchClause(doc: Record<string, unknown>, clause: string): boolean {
   }
   const inList = clause.match(/^(\w+) IN (\[.*\])$/);
   if (inList) {
-    const values = JSON.parse(inList[2]) as unknown[];
-    return values.map(String).includes(String(doc[inList[1]]));
+    const values = [...inList[2].matchAll(/'((?:\\'|[^'])*)'/g)].map(([, value]) => value.replace(/\\'/g, "'"));
+    return values.includes(String(doc[inList[1]]));
   }
   const eq = clause.match(/^(\w+) = '?([^']*)'?$/);
   if (eq) {
@@ -211,6 +215,34 @@ describe("find_courses (agent-tool-redesign)", () => {
 
     expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 110"]);
     expect(search.calls().course_sessions).toBeGreaterThan(0);
+  });
+
+  it("uses normalized, quoted course codes when joining faculty matches", async () => {
+    const search = fakeSearch({
+      courses: [course("CPSC_V 110"), course("CPSC_V 210")],
+      course_sessions: [
+        { code: "CPSC 110", session: "2025W", faculty: "Faculty of Science" },
+        { code: "CPSC 210", session: "2025W", faculty: "Applied Science" },
+      ],
+      grades: [
+        { subject: "CPSC", course: "110", year: 2025, enrolled: 10, avg: 80 },
+        { subject: "CPSC", course: "210", year: 2025, enrolled: 10, avg: 90 },
+      ],
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ faculty: "Faculty of Science", sort: "grade_avg_desc" }, search)) as {
+      courses: { code: string }[];
+    };
+
+    expect(search.searchCalls()).toContainEqual({
+      index: "course_sessions",
+      query: "",
+      options: expect.objectContaining({
+        filter: "session = '2025W' AND faculty = \"Faculty of Science\" AND code IN ['CPSC 110', 'CPSC 210']",
+      }),
+    });
+    expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 110"]);
   });
 
   it("keeps faculty matches beyond the first pooled page", async () => {

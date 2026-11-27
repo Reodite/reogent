@@ -418,14 +418,14 @@ export const courses: DatasetModule = {
             let page = catRes.hits as unknown as CourseDoc[];
             scanned += page.length;
             if (facultyFilter && page.length > 0) {
-              const codes = [...new Set(page.flatMap(({ code }) => [code, code.replace(/_V(?=\s)/, "")]))];
+              const codes = [...new Set(page.map(({ code }) => normalizeCourseCode(code)))];
               const members = await search.index("course_sessions").search("", {
-                filter: `session = '${session}' AND ${facultyFilter} AND code IN ${JSON.stringify(codes)}`,
+                filter: `session = ${filterValue(session)} AND ${facultyFilter} AND code IN [${codes.map(filterValue).join(", ")}]`,
                 limit: codes.length,
                 attributesToRetrieve: ["code"],
               });
-              const matching = new Set(members.hits.map((hit) => String(hit.code).replace(/_V(?=\s)/, "")));
-              page = page.filter(({ code }) => matching.has(code.replace(/_V(?=\s)/, "")));
+              const matching = new Set(members.hits.map((hit) => normalizeCourseCode(String(hit.code))));
+              page = page.filter(({ code }) => matching.has(normalizeCourseCode(code)));
             }
             candidates.push(...page);
             offset += POOL_PAGE;
