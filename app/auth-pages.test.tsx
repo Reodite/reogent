@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { AuthPage } from "@/src/components/auth/auth-form";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import LoginPage from "./login/page";
@@ -67,6 +67,15 @@ describe.each([
     expect(screen.getByLabelText(/Password/)).not.toBeNull();
     expect(screen.queryByRole("link", { name: "Continue with Google" })).toBeNull();
   });
+});
+
+it("provides a named back-to-home link on the auth page", () => {
+  render(<AuthPage mode="login" authMode="oauth" providerIds={["google"]} />);
+
+  const back = screen.getByRole("link", { name: "Back to home" });
+  expect(back.getAttribute("href")).toBe("/");
+  fireEvent.click(back);
+  expect(back.getAttribute("href")).toBe("/");
 });
 
 it("passes the request-time mode into the login page", async () => {
