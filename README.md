@@ -120,7 +120,7 @@ Set these values in `.env` before deployment:
 1. Start Postgres and Meilisearch. Keep the app stopped:
 
 ```bash
-docker compose up -d postgres meilisearch
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d postgres meilisearch
 ```
 
 2. Create the read-only `MEILI_API_KEY`. Run this command from a shell where `MEILI_MASTER_KEY` is set:
@@ -148,7 +148,7 @@ Compose binds app, Postgres, and Meilisearch to loopback, so run the proxy on th
 5. Build and start the app:
 
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --build
 ```
 
 ## Backups and maintenance
@@ -157,8 +157,8 @@ Use the Compose operations profile for these tasks:
 
 | Task                   | Command                                        | Result                                     |
 | ---------------------- | ---------------------------------------------- | ------------------------------------------ |
-| Rebuild search indexes | `docker compose --profile ops run --rm ingest` | Reads campus data and updates Meilisearch. |
-| Back up Postgres       | `docker compose --profile ops run --rm backup` | Writes a dump under `./backups`.           |
+| Rebuild search indexes | `docker compose -f docker-compose.yml -f docker-compose.production.yml --profile ops run --rm ingest` | Reads campus data and updates Meilisearch. |
+| Back up Postgres       | `docker compose -f docker-compose.yml -f docker-compose.production.yml --profile ops run --rm backup` | Writes a dump under `./backups`.           |
 
 Copy backups off the server. Protect them like the live database because they contain accounts and conversations.
 
