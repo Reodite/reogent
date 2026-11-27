@@ -431,6 +431,39 @@ describe("find_courses (agent-tool-redesign)", () => {
     expect(out.courses[0].grade_avg).toBe(99);
   });
 
+  it("reports when course results reach the search index cap", async () => {
+    const catalogue = Array.from({ length: 1001 }, (_, index) => course(`CPSC_V ${String(100 + index)}`));
+    const search = fakeSearch({ courses: catalogue }, { courses: 1000 });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ sort: "grade_avg_desc" }, search)) as { note?: string };
+
+    expect(result.note).toContain("results may be incomplete");
+    expect(search.searchCalls().filter(({ index }) => index === "courses")).toHaveLength(6);
+  });
+
+  it("reports when course results reach the candidate pool cap", async () => {
+    const catalogue = Array.from({ length: 2001 }, (_, index) => course(`CPSC_V ${String(100 + index)}`));
+    const search = fakeSearch({ courses: catalogue }, { courses: 3000 });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ sort: "grade_avg_desc" }, search)) as { note?: string };
+
+    expect(result.note).toContain("results may be incomplete");
+    expect(search.searchCalls().filter(({ index }) => index === "courses")).toHaveLength(10);
+  });
+
+  it("does not report truncation when a short final page proves the result set is complete", async () => {
+    const catalogue = Array.from({ length: 999 }, (_, index) => course(`CPSC_V ${String(100 + index)}`));
+    const search = fakeSearch({ courses: catalogue }, { courses: 1000 });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ sort: "grade_avg_desc" }, search)) as { note?: string };
+
+    expect(result.note).toBeUndefined();
+    expect(search.searchCalls().filter(({ index }) => index === "courses")).toHaveLength(5);
+  });
+
   it("returns available_terms when a term filter is present", async () => {
     const search = fakeSearch({
       ...courseFixture,

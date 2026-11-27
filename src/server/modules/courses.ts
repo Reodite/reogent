@@ -404,6 +404,7 @@ export const courses: DatasetModule = {
           const POOL_CAP = 2000;
           const candidates: CourseDoc[] = [];
           let facultyTruncated = false;
+          const courseMaxTotalHits = (await search.index("courses").getSettings()).pagination?.maxTotalHits ?? 1000;
           const sessionMaxTotalHits = facultyFilter
             ? ((await search.index("course_sessions").getSettings()).pagination?.maxTotalHits ?? 1000)
             : 1000;
@@ -459,7 +460,7 @@ export const courses: DatasetModule = {
             offset += POOL_PAGE;
             if (catRes.hits.length < POOL_PAGE || scanned >= POOL_CAP) break;
           }
-          const truncated = scanned < estimated;
+          const truncated = scanned < estimated || (scanned >= courseMaxTotalHits && estimated >= courseMaxTotalHits);
           if (candidates.length === 0 && !truncated) {
             throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"}`);
           }
