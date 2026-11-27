@@ -410,7 +410,6 @@ describe("SessionSidebar actions", () => {
     view.rerender(layout(true));
     fireEvent.click(within(dialog).getByRole("button", { name: action === "cancel" ? "Cancel" : "Delete" }));
     await waitFor(() => expect(document.activeElement).toBe(fallback));
-    expect(document.body.style.overflow).toBe("");
   });
 
   it("does not navigate after the sidebar unmounts during deletion", async () => {

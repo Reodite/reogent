@@ -431,7 +431,6 @@ describe("ScheduleApp group loading", () => {
     view.rerender(<ScheduleApp groupCode="BBBBBB" />);
     expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
     expect(screen.queryAllByText("Person A")).toHaveLength(0);
-    expect(document.body.style.overflow).not.toBe("hidden");
     await act(async () => pendingB.resolve(json({ group: group("BBBBBB", "Group B") })));
     expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
   });

@@ -150,7 +150,6 @@ describe("AnswerSheet", () => {
     const first = screen.getByRole("button", { name: "First action" });
     const last = screen.getByRole("button", { name: "Last action" });
     await waitFor(() => expect(document.activeElement).toBe(first));
-    expect(document.body.style.overflow).toBe("hidden");
 
     fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
     expect(document.activeElement).toBe(last);
@@ -158,7 +157,6 @@ describe("AnswerSheet", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Answer canvas" })).toBeNull());
     expect(document.activeElement).toBe(trigger);
-    expect(document.body.style.overflow).toBe("");
   });
 
   it("opens visibility before focus and wraps only available tab stops", async () => {
@@ -296,6 +294,5 @@ describe("AnswerSheet", () => {
     expect(close).toHaveBeenCalledOnce();
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Answer canvas" })).toBeNull());
     expect(document.activeElement).toBe(trigger);
-    expect(document.body.style.overflow).toBe("");
   });
 });

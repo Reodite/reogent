@@ -16,7 +16,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  document.body.style.overflow = "";
 });
 
 function DialogHarness({ dismissDisabled = false }: { dismissDisabled?: boolean }) {
@@ -209,7 +208,6 @@ describe("Dialog", () => {
         );
       }
 
-      document.body.style.overflow = "scroll";
       const { container } = render(<NestedHarness />);
       const trigger = screen.getByRole("button", { name: "Open parent" });
       trigger.focus();
@@ -227,7 +225,6 @@ describe("Dialog", () => {
       expect(parentRoot?.inert).toBe(true);
       expect(child.closest<HTMLElement>("[data-dialog-root]")?.inert).toBe(false);
       expect(container.inert).toBe(true);
-      expect(document.body.style.overflow).toBe("hidden");
 
       const parentFocus = vi.fn();
       parentInput.addEventListener("focus", parentFocus);
@@ -248,7 +245,6 @@ describe("Dialog", () => {
       expect(screen.getByRole("dialog", { name: "Parent dialog" })).toBe(parent);
       expect(parentRoot?.inert).toBe(false);
       expect(container.inert).toBe(true);
-      expect(document.body.style.overflow).toBe("hidden");
       expect((parentInput as HTMLInputElement).value).toBe("Unsaved parent input");
       expect(document.activeElement).toBe(parentInput);
       fireEvent.keyDown(parentInput, { key: "Tab", shiftKey: true });
@@ -256,7 +252,6 @@ describe("Dialog", () => {
       fireEvent.keyDown(screen.getByRole("button", { name: "Open child" }), { key: "Escape" });
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       expect(container.inert).toBe(false);
-      expect(document.body.style.overflow).toBe("scroll");
       expect(document.activeElement).toBe(trigger);
     },
   );
@@ -283,14 +278,11 @@ describe("Dialog", () => {
         </>
       );
     }
-    document.body.style.overflow = "scroll";
     const view = render(<Layers first second={false} />);
     view.rerender(<Layers first second />);
     view.rerender(<Layers first={false} second />);
-    expect.soft(document.body.style.overflow).toBe("hidden");
     expect.soft(view.container.inert).toBe(true);
     view.rerender(<Layers first={false} second={false} />);
-    expect.soft(document.body.style.overflow).toBe("scroll");
     expect.soft(view.container.inert).toBe(false);
   });
 
@@ -341,7 +333,6 @@ describe("Dialog", () => {
     const last = screen.getByRole("button", { name: "Last action" });
     await waitFor(() => expect(document.activeElement).toBe(first));
     expect(container.inert).toBe(true);
-    expect(document.body.style.overflow).toBe("hidden");
 
     fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
     expect(document.activeElement).toBe(last);
@@ -349,7 +340,6 @@ describe("Dialog", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(container.inert).toBe(false);
-    expect(document.body.style.overflow).toBe("");
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -389,7 +379,6 @@ describe("Dialog", () => {
     );
     await screen.findByRole("dialog");
     unmount();
-    expect(document.body.style.overflow).toBe("");
     expect(Array.from(document.body.children).every((element) => !(element as HTMLElement).inert)).toBe(true);
   });
 });

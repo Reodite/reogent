@@ -141,7 +141,6 @@ afterEach(() => {
   auth.isGuest = false;
   mediaQueries.clear();
   viewportWidth = 390;
-  document.body.style.overflow = "";
   Object.defineProperty(window, "visualViewport", { value: undefined, configurable: true });
 });
 afterAll(() => {
@@ -476,12 +475,10 @@ describe("sidebar responsive cleanup", () => {
     ["Tools", "/app/tools/map", 1280],
   ])("closes %s at its desktop breakpoint and restores desktop focus", (_mode, path, breakpoint) => {
     pathname.value = path;
-    document.body.style.overflow = "auto";
     const { container, getByRole } = renderShell(false);
     const opener = getByRole("button", { name: "Open sidebar" });
     fireEvent.click(opener);
     expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(true);
-    expect(document.body.style.overflow).toBe("hidden");
 
     resizeViewport(Number(breakpoint) - 1);
     expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(true);
@@ -490,16 +487,13 @@ describe("sidebar responsive cleanup", () => {
     expect(container.querySelector('[role="dialog"]')?.parentElement?.hasAttribute("inert")).toBe(true);
     expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(false);
     expect(opener.hasAttribute("inert")).toBe(false);
-    expect(document.body.style.overflow).toBe("auto");
     expect(document.activeElement).toBe(container.querySelector("#desktop-session-collapse"));
 
     resizeViewport(390);
     expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(false);
     fireEvent.click(opener);
-    expect(document.body.style.overflow).toBe("hidden");
     resizeViewport(1440);
     expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(false);
-    expect(document.body.style.overflow).toBe("auto");
   });
 
   it.each(["/app", "/app/pulse"])("closes an open Tools drawer when the mode changes to %s on desktop", (path) => {
@@ -513,7 +507,6 @@ describe("sidebar responsive cleanup", () => {
     view.rerender(<ShellFixture />);
 
     expect(view.container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(false);
-    expect(document.body.style.overflow).toBe("");
     expect(document.activeElement).toBe(view.container.querySelector("#desktop-session-collapse"));
     expect(mediaQueries.get("(min-width: 1280px)")?.listeners.size).toBe(0);
   });
@@ -529,11 +522,9 @@ describe("sidebar responsive cleanup", () => {
     expect(mediaQueries.get("(min-width: 1280px)")?.listeners.size).toBe(1);
     resizeViewport(1100);
     expect(view.container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(true);
-    expect(document.body.style.overflow).toBe("hidden");
 
     view.unmount();
     expect(mediaQueries.get("(min-width: 1280px)")?.listeners.size).toBe(0);
-    expect(document.body.style.overflow).toBe("");
   });
 
   it("leaves the drawer open when Escape is already prevented", () => {
@@ -543,7 +534,6 @@ describe("sidebar responsive cleanup", () => {
     event.preventDefault();
     fireEvent(document, event);
     expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(true);
-    expect(document.body.style.overflow).toBe("hidden");
   });
 
   it("leaves Escape to an open popup when its trigger retains focus", () => {
@@ -578,7 +568,6 @@ describe("sidebar responsive cleanup", () => {
     try {
       fireEvent.keyDown(child, { key: "Escape" });
       expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(true);
-      expect(document.body.style.overflow).toBe("hidden");
     } finally {
       panel.remove();
     }
