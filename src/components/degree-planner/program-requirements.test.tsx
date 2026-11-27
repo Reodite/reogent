@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getRequirementsFor, getDegreeRules } = vi.hoisted(() => ({
@@ -95,7 +95,9 @@ describe("ProgramSelectors", () => {
     const summary = await screen.findByRole("button", { name: /Program\s*Computer Science · Mathematics Minor/ });
     const fields = document.getElementById(summary.getAttribute("aria-controls") ?? "");
     expect(summary.getAttribute("aria-expanded")).toBe("false");
-    expect(fields?.querySelectorAll("input")).toHaveLength(3);
+    expect(within(fields as HTMLElement).getByRole("combobox", { name: "Faculty" })).not.toBeNull();
+    expect(within(fields as HTMLElement).getByRole("combobox", { name: "Major / program" })).not.toBeNull();
+    expect(within(fields as HTMLElement).getByRole("combobox", { name: "Minor (optional)" })).not.toBeNull();
 
     fireEvent.click(summary);
     expect(summary.getAttribute("aria-expanded")).toBe("true");
