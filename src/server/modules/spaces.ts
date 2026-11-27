@@ -202,7 +202,10 @@ function roomMatches(room: LibRoom, query: string): boolean {
 /** Bookable-room mode of find_study_spaces: rooms with free stretches on a date, or one room's timeline. */
 async function bookableRooms(input: Record<string, unknown>, search: SearchClient) {
   const date = input.date === undefined ? vancouverToday() : String(input.date);
-  if (!ISO_DATE.test(date)) throw new Error("date must be YYYY-MM-DD");
+  const parsedDate = new Date(`${date}T00:00:00Z`);
+  if (!ISO_DATE.test(date) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+    throw new Error("date must be YYYY-MM-DD");
+  }
   const { locations, rooms } = await libraryCatalog();
   let scope = locations;
   if (input.building) {
