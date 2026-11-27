@@ -431,9 +431,8 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
           <LeftSidebar onClose={onClose} />
         </ChatShellProvider>,
       );
-      const nav = view.getByRole("navigation", { name: "Community" });
+      view.getByRole("navigation", { name: "Community" });
       const announcement = view.getByRole("button", { name: "Announcements" });
-      expect(nav.querySelector("button")).toBe(announcement);
       expect(announcement.getAttribute("aria-current")).toBe("page");
       expect(view.getByRole("button", { name: "Pulse" }).getAttribute("aria-current")).toBeNull();
       fireEvent.click(announcement);

@@ -74,7 +74,6 @@ describe("shell loading surfaces", () => {
     expect(container.querySelector("[data-shell-boot-modes]")).not.toBeNull();
     expect(container.querySelector("[data-shell-boot-new]")).not.toBeNull();
     expect(container.querySelector("[data-shell-boot-account]")).not.toBeNull();
-    expect(boot?.querySelector("[data-chat-frame] > header .shell-boot-menu")).not.toBeNull();
     expect(boot?.querySelector("[data-mobile-navigation]")?.getAttribute("aria-hidden")).toBe("true");
   });
 

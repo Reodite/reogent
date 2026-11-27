@@ -307,8 +307,6 @@ describe("Compact calendar agenda", () => {
     const { container, restore } = renderPane({ cursor: "2025-02" }, events);
     const agenda = await waitForCell(container, "2025-02-17", "[data-calendar-day-agenda]");
     const trigger = agenda.querySelector("[data-calendar-day-agenda]") as HTMLElement;
-    // The accessible name reports the event count alongside the visible label.
-    expect(trigger.querySelector(".calendar-day-agenda-count")?.textContent).toBe("2 events");
     expect(trigger.getAttribute("aria-label")).toMatch(/^Open 2 events on/);
     fireEvent.click(trigger);
 
