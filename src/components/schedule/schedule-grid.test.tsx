@@ -123,8 +123,8 @@ describe("ScheduleGrid", () => {
     );
     const block = view.getByRole("button", { name: /CPSC 210.*Laboratory/ });
 
-    expect(block.textContent).toBe("CPSC 210Laboratory");
-    expect(block.textContent).not.toContain("lab · Laboratory");
+    expect(block.getAttribute("aria-label")).toContain("CPSC 210 · Laboratory, Software Construction");
     expect(block.getAttribute("aria-label")).toContain("People: ada, grace");
+    expect(block.getAttribute("aria-label")).not.toContain("section");
   });
 });
