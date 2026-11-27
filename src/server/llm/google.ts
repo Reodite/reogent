@@ -171,23 +171,33 @@ export function createGoogleAdapter(): LlmAdapter {
   }): AsyncGenerator<ConverseStreamEvent> {
     req.signal?.throwIfAborted();
     const tools = req.toolSpecs.length ? [{ functionDeclarations: toGoogleTools(req.toolSpecs) }] : undefined;
+    const owner = new AbortController();
+    const abortOwner = () => owner.abort(req.signal?.reason);
+    req.signal?.addEventListener("abort", abortOwner, { once: true });
+    if (req.signal?.aborted) abortOwner();
 
-    const stream = await withKeyRotation((client) =>
-      client.models.generateContentStream({
-        model: modelName,
-        contents: toGoogleContents(req.messages),
-        config: {
-          systemInstruction: req.system,
-          abortSignal: req.signal,
-          ...(tools ? { tools } : {}),
-          // Force at least one tool call so data questions can't be answered
-          // from memory. Mirrors OpenAI's tool_choice: "required".
-          ...(req.forceToolUse && tools
-            ? { toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } }
-            : {}),
-        },
-      }),
-    );
+    let stream: Awaited<ReturnType<GoogleGenAI["models"]["generateContentStream"]>>;
+    try {
+      stream = await withKeyRotation((client) =>
+        client.models.generateContentStream({
+          model: modelName,
+          contents: toGoogleContents(req.messages),
+          config: {
+            systemInstruction: req.system,
+            abortSignal: owner.signal,
+            ...(tools ? { tools } : {}),
+            // Force at least one tool call so data questions can't be answered
+            // from memory. Mirrors OpenAI's tool_choice: "required".
+            ...(req.forceToolUse && tools
+              ? { toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } }
+              : {}),
+          },
+        }),
+      );
+    } catch (error) {
+      req.signal?.removeEventListener("abort", abortOwner);
+      throw error;
+    }
 
     let hasToolUse = false;
     let totalTokens: number | undefined;
@@ -200,23 +210,30 @@ export function createGoogleAdapter(): LlmAdapter {
     let pendingNext: Promise<IteratorResult<GoogleChunk>> | undefined;
     try {
       while (true) {
-        req.signal?.throwIfAborted();
+        owner.signal.throwIfAborted();
         let watchdog: ReturnType<typeof setTimeout> | undefined;
-        const timeout = new Promise<never>((_, reject) => {
-          watchdog = setTimeout(() => reject(new Error("Google model stream timed out")), STREAM_IDLE_MS);
-        });
-        pendingNext = iterator.next();
         let onAbort: (() => void) | undefined;
         const aborted = new Promise<never>((_, reject) => {
-          onAbort = () => reject(req.signal?.reason ?? new DOMException("Aborted", "AbortError"));
-          req.signal?.addEventListener("abort", onAbort, { once: true });
+          onAbort = () => reject(owner.signal.reason ?? new DOMException("Aborted", "AbortError"));
+          owner.signal.addEventListener("abort", onAbort, { once: true });
         });
-        const next = await Promise.race([pendingNext, timeout, aborted]).finally(() => {
+        const timeout = new Promise<"timeout">((resolve) => {
+          watchdog = setTimeout(() => resolve("timeout"), STREAM_IDLE_MS);
+        });
+        pendingNext = iterator.next();
+        const read = pendingNext;
+        const outcome = await Promise.race([read, timeout, aborted]).finally(() => {
           clearTimeout(watchdog);
-          if (onAbort) req.signal?.removeEventListener("abort", onAbort);
+          if (onAbort) owner.signal.removeEventListener("abort", onAbort);
         });
+        if (outcome === "timeout") {
+          const error = new Error("Google model stream timed out");
+          owner.abort(error);
+          throw error;
+        }
         pendingNext = undefined;
-        req.signal?.throwIfAborted();
+        const next = outcome;
+        owner.signal.throwIfAborted();
         if (next.done) {
           if (!finished) throw new Error("Google model stream ended without a finish reason");
           break;
@@ -239,9 +256,10 @@ export function createGoogleAdapter(): LlmAdapter {
         }
       }
     } finally {
-      if (req.signal?.aborted) {
+      req.signal?.removeEventListener("abort", abortOwner);
+      if (pendingNext || owner.signal.aborted) {
         void pendingNext?.catch(() => {});
-        void iterator.return?.(undefined);
+        void Promise.resolve(iterator.return?.(undefined)).catch(() => {});
       }
     }
     if (!finished) throw new Error("Google model stream ended without a finish reason");

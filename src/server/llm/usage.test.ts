@@ -143,6 +143,37 @@ describe("provider token usage", () => {
     expect(returnIterator).toHaveBeenCalledOnce();
   });
 
+  it("aborts the Google provider request when the idle timeout expires", async () => {
+    let started!: () => void;
+    const nextStarted = new Promise<void>((resolve) => (started = resolve));
+    const returnIterator = vi.fn(async () => ({ done: true, value: undefined }));
+    let providerSignal: AbortSignal | undefined;
+    sdk.googleStream.mockImplementationOnce(({ config }: { config: { abortSignal?: AbortSignal } }) => {
+      providerSignal = config.abortSignal;
+      return Promise.resolve({
+        [Symbol.asyncIterator]() {
+          return {
+            next: () => {
+              started();
+              return new Promise<IteratorResult<unknown>>(() => {});
+            },
+            return: returnIterator,
+          };
+        },
+      });
+    });
+    const stream = createGoogleAdapter().converseStream(request);
+    const pending = stream.next();
+    const rejection = expect(pending).rejects.toThrow("Google model stream timed out");
+    await nextStarted;
+
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    await rejection;
+    expect(providerSignal?.aborted).toBe(true);
+    expect(returnIterator).toHaveBeenCalledOnce();
+  });
+
   it("aborts active provider streams and closes their iterators", async () => {
     const controller = new AbortController();
     let resolveNext!: (value: IteratorResult<unknown>) => void;
