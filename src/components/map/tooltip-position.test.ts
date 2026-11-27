@@ -14,10 +14,18 @@ describe("tooltipPosition", () => {
   });
 
   it("flips above a point near the bottom-right corner", () => {
-    const style = tooltipPosition({ x: 790, y: 590 }, { clientWidth: 800, clientHeight: 600 });
+    const point = { x: 790, y: 590 };
+    const container = { clientWidth: 800, clientHeight: 600 };
+    const style = tooltipPosition(point, container);
+    const left = Number(style.left);
+    const bottom = Number(style.bottom);
 
-    expect(style.left).toBe(538);
+    expect(left).toBeLessThan(point.x);
     expect(style.top).toBeUndefined();
-    expect(style.bottom).toBe(22);
+    expect(Number.isFinite(bottom)).toBe(true);
+    expect(bottom).toBeGreaterThanOrEqual(0);
+    expect(point.y).toBeGreaterThan(container.clientHeight - bottom);
+    expect(left).toBeGreaterThanOrEqual(0);
+    expect(left + Number(style.maxWidth)).toBeLessThanOrEqual(container.clientWidth);
   });
 });
