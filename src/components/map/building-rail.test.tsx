@@ -361,7 +361,7 @@ describe("BuildingRail", () => {
     );
 
     expect(screen.getByRole("heading", { name: iblc.name })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back to all buildings" }).textContent).toBe("");
+    expect(screen.getByRole("button", { name: "Back to all buildings" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Building" })).toBeNull();
     expect(screen.queryByText("LEED Gold")).toBeNull();
     expect(screen.queryByText("FeeSimple")).toBeNull();

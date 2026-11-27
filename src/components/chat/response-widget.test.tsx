@@ -6,7 +6,7 @@ import { ArtifactCard, describeCanvasView, renderers, ResponseWidget } from "@/s
 import type { ChatMessage, ToolCall } from "@/src/lib/api-types";
 import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import type { CanvasView } from "@/src/shared/panes";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -85,7 +85,10 @@ function renderWidget(call: ToolCall, callKey?: string) {
 const keyDatesCall = {
   name: "show_widget",
   input: { type: "key_dates" },
-  result: { type: "key_dates", result: { dates: [{ kind: "academic", name: "W", start: "2026-10-01", end: null }] } },
+  result: {
+    type: "key_dates",
+    result: { dates: [{ kind: "academic", name: "Registration deadline", start: "2026-10-01", end: null }] },
+  },
   status: "ok",
 } as unknown as ToolCall;
 // get_tuition has no canvas mapping: static, non-focusable summary.
@@ -468,9 +471,9 @@ it("reveals the loaded widget once without remounting on payload updates", () =>
   );
   const { container, rerender } = render(view({ ...keyDatesCall, result: undefined }));
   const widget = container.querySelector('[data-widget="show_widget"]');
-  expect(widget?.textContent).not.toContain("W");
+  expect(within(widget as HTMLElement).queryByText("Registration deadline")).toBeNull();
   rerender(view(keyDatesCall));
-  expect(widget?.textContent).toContain("W");
+  expect(within(widget as HTMLElement).getByText("Registration deadline")).not.toBeNull();
   rerender(
     view({
       ...keyDatesCall,

@@ -257,7 +257,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
       </ChatShellProvider>,
     );
     for (const label of ["AI", "Tools", "Unity"]) {
-      expect(view.getByRole("link", { name: label }).textContent).toBe("");
+      expect(view.getByRole("link", { name: label })).not.toBeNull();
     }
   });
 

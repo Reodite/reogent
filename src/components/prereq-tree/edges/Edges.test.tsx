@@ -19,13 +19,13 @@ const edgeProps = {
 } as const;
 
 describe("OptionalEdge (REQ-10.1, REQ-10.2)", () => {
-  it("renders a dashed path with data-edge-variant=optional and a soft-toggle pill", () => {
+  it("exposes the optional branch and its soft-toggle control", () => {
     const { container } = render(
       <OptionalEdge {...edgeProps} data={{ softKey: "", disabled: false, onToggle: () => {} }} />,
     );
     const path = container.querySelector("path[data-edge-variant='optional']");
     expect(path).toBeTruthy();
-    const pill = container.querySelector('button[data-toggle="soft-toggle"]');
+    const pill = container.querySelector('button[aria-label="Hide optional subtree"]');
     expect(pill).toBeTruthy();
     expect(pill?.getAttribute("data-path")).toBe("");
     expect(pill?.getAttribute("aria-pressed")).toBe("true");
