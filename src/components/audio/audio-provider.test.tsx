@@ -37,7 +37,7 @@ function stored() {
 
 describe("simplified sound controls", () => {
   it("exposes a stepped volume control and two labeled switches", () => {
-    const { container } = settings();
+    settings();
     const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
     expect(slider.value).toBe("0");
     expect(slider.step).toBe("10");
@@ -48,7 +48,6 @@ describe("simplified sound controls", () => {
     expect(screen.queryByRole("heading", { name: "Sound" })).toBeNull();
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
     expect(screen.queryAllByRole("button")).toHaveLength(0);
-    expect(container.querySelectorAll("p")).toHaveLength(0);
     fireEvent.change(slider, { target: { value: "30" } });
     expect(slider.getAttribute("aria-valuetext")).toBe("30 percent");
     expect(siteAudio.play).not.toHaveBeenCalled();

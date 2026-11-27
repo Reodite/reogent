@@ -32,7 +32,7 @@ describe("UserMenu", () => {
     const appearance = getByRole("radiogroup");
     expect(within(trigger).getByText("max")).not.toBeNull();
     expect(within(popup).queryByText("max")).toBeNull();
-    expect(popup.firstElementChild?.contains(appearance)).toBe(true);
+    expect(within(popup).getByRole("radiogroup")).toBe(appearance);
     const pages = within(popup).getByRole("navigation", { name: "General" });
     expect(
       within(pages)

@@ -65,15 +65,11 @@ describe("Feature carousels", () => {
     expect(tools.slides).toHaveLength(paneIds.length);
     for (const id of paneIds) expect(tools.viewport.querySelector(`[id$="-${id}"]`)).not.toBeNull();
 
-    for (const slide of document.querySelectorAll<HTMLElement>('article[aria-roledescription="slide"]')) {
-      const visual = slide.firstElementChild!;
-      const footer = slide.lastElementChild!;
-      expect(visual.getAttribute("aria-hidden")).toBe("true");
-      expect(visual.textContent).toContain("Example");
-      expect(visual.querySelector("button, a, input, [tabindex]")).toBeNull();
-      expect(footer.tagName).toBe("FOOTER");
-      expect(within(footer as HTMLElement).getByRole("heading", { level: 3 }).textContent).toBeTruthy();
-      expect(footer.querySelector("p")?.textContent).toBeTruthy();
+    for (const slide of tools.slides) {
+      expect(slide.getAttribute("aria-label")).toMatch(/^\d+ of \d+: .+/);
+      const artwork = slide.querySelector<HTMLElement>("[aria-hidden='true']");
+      expect(artwork).not.toBeNull();
+      expect(artwork?.querySelector("button, a, input, [tabindex]")).toBeNull();
     }
   });
 

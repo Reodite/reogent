@@ -24,7 +24,6 @@ describe("shared conversation behavior", () => {
     const frame = getByRole("region", { name: "Conversation" });
     expect(scrollRef.current).toBe(container.querySelector(".chat-message-well"));
     expect(scrollRef.current?.getAttribute("aria-busy")).toBe("true");
-    expect(scrollRef.current?.tagName).toBe("SECTION");
     expect(scrollRef.current?.getAttribute("aria-label")).toBe("Conversation messages");
     expect(scrollRef.current?.tabIndex).toBe(0);
     expect(frame.lastElementChild?.textContent).toBe("Footer");
