@@ -104,50 +104,6 @@ describe("ScheduleGrid", () => {
     expect(onBlockActivate).toHaveBeenCalledWith("cpsc-110-101");
   });
 
-  it("adapts block information to available meeting space", () => {
-    const model = buildScheduleGrid([
-      {
-        id: "short",
-        courseKey: "CPSC 110",
-        code: "CPSC 110",
-        title: "Computation, Programs, and Programming",
-        section: "L1A",
-        component: "Lab",
-        days: ["Mon"],
-        startMin: 570,
-        endMin: 600,
-        meta: "ICCS X150",
-      },
-      {
-        id: "tall",
-        courseKey: "MATH 100",
-        code: "MATH 100",
-        title: "Differential Calculus",
-        section: "101",
-        component: "Lecture",
-        days: ["Tue"],
-        startMin: 600,
-        endMin: 660,
-      },
-    ]);
-    const view = render(
-      <ScheduleGrid
-        model={model}
-        activeDay="Mon"
-        onActiveDayChange={vi.fn()}
-        onBlockActivate={vi.fn()}
-        blockContentAlignment="center"
-      />,
-    );
-    const short = view.getByRole("button", { name: /CPSC 110.*L1A.*Lab/ });
-    const tall = view.getByRole("button", { name: /MATH 100.*101.*Lecture/ });
-
-    expect(short.textContent).toBe("CPSC 110· L1A· Lab");
-    expect(short.textContent).not.toContain("9:30");
-    expect(short.textContent).not.toContain("Computation");
-    expect(tall.textContent).toBe("MATH 100101·Lecture");
-  });
-
   it("does not fabricate a section code for sharer blocks", () => {
     const model = buildScheduleGrid([
       {

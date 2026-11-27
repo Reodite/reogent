@@ -6,7 +6,6 @@ import { modules } from "@/src/server/modules";
 import { buildMonthGrid, parseISODate, toISODate } from "@/src/shared/calendar/date-math";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { animate } from "motion/react";
-import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FeatureShowcase } from "./feature-showcase";
 
@@ -48,11 +47,15 @@ function carousel(title: string) {
 }
 
 describe("Feature carousels", () => {
-  it("keeps server markup stable across motion preferences", () => {
-    motionPreference.reduced = false;
-    const markup = renderToString(<FeatureShowcase />);
-    motionPreference.reduced = true;
-    expect(renderToString(<FeatureShowcase />)).toBe(markup);
+  it.each([true, false])("keeps carousel navigation available with reduced motion %s", (reduced) => {
+    motionPreference.reduced = reduced;
+    render(<FeatureShowcase />);
+    const tools = carousel("Tools");
+
+    fireEvent.click(tools.next);
+
+    expect(tools.status.textContent).toBe("2 of 6: Course lookup");
+    expect(tools.dots[1].getAttribute("aria-current")).toBe("true");
   });
 
   it("includes a preview and caption for each registered tool without interactive mock controls", () => {

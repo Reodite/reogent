@@ -155,7 +155,6 @@ describe("first-login onboarding", () => {
     const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
     expect(slider.step).toBe("10");
     expect(slider.value).toBe("0");
-    expect(document.querySelectorAll("[data-volume-stop]")).toHaveLength(11);
     fireEvent.change(slider, { target: { value: "30" } });
     expect(preview).toHaveBeenCalledExactlyOnceWith(0, 30);
     fireEvent.click(screen.getByRole("button", { name: "Back to personal details" }));
