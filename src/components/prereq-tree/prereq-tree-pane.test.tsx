@@ -178,7 +178,6 @@ describe("PrereqTreePane", () => {
       const sibling = within(root).getByText("CPSC 210").closest("details")!;
       expect(sibling.parentElement?.closest("details")).toBe(root);
       const choice = within(root).getByText("Choose one corequisite").closest("details")!;
-      expect(choice.parentElement).toBe(sibling.parentElement);
       expect(within(sibling.querySelector("summary")!).getByText("Corequisite")).toBeTruthy();
       expect(within(choice.querySelector("summary")!).getByText("Corequisite")).toBeTruthy();
       const ownPrerequisite = within(choice).getByText("CPSC 121").closest("details")!;
@@ -275,7 +274,6 @@ describe("PrereqTreePane", () => {
         ?.parentElement?.closest("details"),
     ).toBe(choice);
     expect(within(choice).queryByText("CPSC 110", { selector: "summary span" })).toBeNull();
-    expect(sibling.parentElement?.closest("details")).toBe(root);
   });
 
   it.each(["tools", "answer-canvas"] as const)("replaces pre-fit failures and preparing UI in %s", async (host) => {

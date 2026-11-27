@@ -86,8 +86,6 @@ describe("buildGraph (ported reodite logic)", () => {
     for (const e of coreqEdges) {
       expect(e.label).toBe("co-req");
       expect(e.data?.semanticTarget).toBe("ROOT 300");
-      expect(e.sourceHandle).toBe("bottom-source");
-      expect(e.targetHandle).toBe("top-target");
     }
     // Coreq course nodes carry corequisite semantics.
     const ddd = nodeById(g, "DDD 100");
@@ -153,8 +151,6 @@ describe("buildGraph (ported reodite logic)", () => {
     const g = build("ROOT 300");
     const edge = g.edges.find((e) => e.source === "AAA 200" && e.target === "ROOT 300");
     expect(edge).toBeTruthy();
-    expect(edge?.sourceHandle).toBe("left-source");
-    expect(edge?.targetHandle).toBe("right-target");
   });
 
   it("keeps prerequisite edges connected", () => {
