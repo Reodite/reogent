@@ -166,15 +166,22 @@ describe("chat resource limits", () => {
   it("releases capacity when profile loading exceeds the chat deadline", async () => {
     vi.useFakeTimers();
     vi.stubEnv("CHAT_TIMEOUT_MS", "1000");
+    let started!: () => void;
+    const profileStarted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
     let resolveProfile!: (profile: null) => void;
     const profileRequest = new Promise<null>((resolve) => {
       resolveProfile = resolve;
     });
-    mocks.getProfile.mockReturnValue(profileRequest);
+    mocks.getProfile.mockImplementation(() => {
+      started();
+      return profileRequest;
+    });
     const { POST } = await import("./route");
 
     const pending = POST(request());
-    await vi.waitFor(() => expect(mocks.getProfile).toHaveBeenCalledOnce());
+    await profileStarted;
     await vi.advanceTimersByTimeAsync(1000);
     const failed = await pending;
     expect(failed.status).toBe(504);
