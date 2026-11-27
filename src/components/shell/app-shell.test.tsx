@@ -4,7 +4,7 @@ import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/comp
 import { AppShell } from "@/src/components/shell/app-shell";
 import { ShellNavigationProvider } from "@/src/components/shell/shell-navigation";
 import { WorkspacePage } from "@/src/components/ui/workspace";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -316,7 +316,10 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(menu.getAttribute("aria-expanded")).toBe("false");
     expect(getByRole("link", { name: "Skip to main content" }).closest("nav")).not.toBeNull();
     const bottom = container.querySelector("[data-mobile-navigation]");
-    expect(bottom?.querySelectorAll("[data-mode-toggle]")).toHaveLength(3);
+    const bottomNavigation = within(bottom as HTMLElement).getByRole("navigation", { name: "Reodite areas" });
+    for (const mode of ["AI", "Tools", "Unity"]) {
+      expect(within(bottomNavigation).getByRole("link", { name: mode })).not.toBeNull();
+    }
     fireEvent.click(menu);
     expect(bottom?.hasAttribute("inert")).toBe(true);
     fireEvent.keyDown(document, { key: "Escape" });
