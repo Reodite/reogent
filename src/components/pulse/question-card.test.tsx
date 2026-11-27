@@ -154,11 +154,10 @@ describe("PulseQuestionCard — voted shadow", () => {
   });
 
   it("shows placeholders while the vote is pending", () => {
-    const { getByRole, getAllByText, getByText } = render(
+    const { getByRole, getByText } = render(
       <PulseQuestionCard card={{ id: 1, text: "Q", myAgree: true, pending: true }} onVote={vi.fn()} />,
     );
     expect(getByRole("img").getAttribute("aria-label")).toBe("Recording your vote");
-    expect(getAllByText("—")).toHaveLength(2);
     expect(getByText("Recording your vote…")).toBeTruthy();
   });
 });

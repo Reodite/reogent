@@ -75,7 +75,8 @@ describe("WorkspacePage", () => {
     expect(page?.querySelectorAll("main")).toHaveLength(0);
     const heading = page?.querySelector("[data-workspace-heading]");
     expect(heading?.querySelector("h1")?.textContent).toBe("Degree Planner");
-    expect(page?.querySelectorAll("[data-workspace-panel]")).toHaveLength(2);
+    expect(screen.getByRole("heading", { name: "Requirements" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Find courses" })).not.toBeNull();
     const actions = page?.querySelector("[data-workspace-actions]");
     expect(heading?.contains(actions ?? null)).toBe(true);
   });

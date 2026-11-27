@@ -321,7 +321,7 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(queryByRole("button", { name: /Quiet room/ })).toBeNull();
   });
 
-  it("only styles program rows as links when they have a destination", () => {
+  it("renders program rows as links only when they have a destination", () => {
     const call = {
       name: "show_widget",
       input: { type: "program" },
