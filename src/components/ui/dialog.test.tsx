@@ -31,7 +31,7 @@ function DialogHarness({ dismissDisabled = false }: { dismissDisabled?: boolean 
           dismissDisabled={dismissDisabled}
           backdropLabel="Close test dialog"
         >
-          <DialogPanel aria-label="Test dialog" className="p-4">
+          <DialogPanel aria-label="Test dialog">
             <button type="button" data-dialog-initial-focus>
               First action
             </button>

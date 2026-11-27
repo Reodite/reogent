@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 describe("shared skeletons", () => {
   it("hides shapes from assistive technology", () => {
-    const { container } = render(<Skeleton className="h-11 w-40" />);
+    const { container } = render(<Skeleton />);
     const shape = container.querySelector("[data-skeleton]");
     expect(shape?.getAttribute("aria-hidden")).toBe("true");
   });

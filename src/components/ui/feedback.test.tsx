@@ -16,7 +16,7 @@ describe("RetryAlert", () => {
 
   it("supports a soft surface, native paragraph props, and no retry action", () => {
     const { getByRole, queryByRole } = render(
-      <RetryAlert variant="soft" id="load-error" className="pointer-events-auto">
+      <RetryAlert variant="soft" id="load-error">
         Course data is unavailable.
       </RetryAlert>,
     );

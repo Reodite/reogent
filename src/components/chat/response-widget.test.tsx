@@ -470,10 +470,9 @@ it("reveals the loaded widget once without remounting on payload updates", () =>
   );
   const { container, rerender } = render(view({ ...keyDatesCall, result: undefined }));
   const widget = container.querySelector('[data-widget="show_widget"]');
-  expect(widget?.querySelector(".ui-content-enter")).toBeNull();
+  expect(widget?.textContent).not.toContain("W");
   rerender(view(keyDatesCall));
-  const payload = widget?.querySelector(".ui-content-enter");
-  expect(payload).not.toBeNull();
+  expect(widget?.textContent).toContain("W");
   rerender(
     view({
       ...keyDatesCall,
@@ -481,8 +480,7 @@ it("reveals the loaded widget once without remounting on payload updates", () =>
     }),
   );
   expect(container.querySelector('[data-widget="show_widget"]')).toBe(widget);
-  expect(widget?.querySelector(".ui-content-enter")).toBe(payload);
-  expect(payload?.textContent).toContain("Updated date");
+  expect(widget?.textContent).toContain("Updated date");
 });
 
 it("expands extra courses without remounting the preview and deactivates closing rows", () => {

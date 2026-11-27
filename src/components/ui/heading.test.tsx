@@ -17,7 +17,7 @@ describe("Heading", () => {
   it("forwards native heading props and refs", () => {
     const ref = createRef<HTMLHeadingElement>();
     const { getByRole } = render(
-      <Heading ref={ref} id="details-title" className="truncate">
+      <Heading ref={ref} id="details-title">
         Details
       </Heading>,
     );

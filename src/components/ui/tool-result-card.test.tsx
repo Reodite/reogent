@@ -1,13 +1,7 @@
 // @vitest-environment happy-dom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import {
-  ToolResultCard,
-  ToolResultFailure,
-  ToolResultList,
-  toolResultRowClasses,
-  ToolResultRowContent,
-} from "./tool-result-card";
+import { ToolResultCard, ToolResultFailure, ToolResultList, ToolResultRowContent } from "./tool-result-card";
 
 describe("tool result primitives", () => {
   it("preserves zero metadata and exposes the action", () => {
@@ -35,7 +29,7 @@ describe("tool result primitives", () => {
   it("renders list content and preserves button semantics", () => {
     render(
       <ToolResultList header="near IKB" footer="2 more">
-        <button type="button" className={toolResultRowClasses(true)}>
+        <button type="button">
           <ToolResultRowContent title="Room 201" description="ICCS" trailing={<span>40 seats</span>} />
         </button>
       </ToolResultList>,
@@ -48,7 +42,7 @@ describe("tool result primitives", () => {
 
   it("renders row title, description, metadata, and trailing content", () => {
     const { getByText } = render(
-      <div className={toolResultRowClasses()}>
+      <div>
         <ToolResultRowContent
           title="Registration deadline"
           description="Undergraduate registration"

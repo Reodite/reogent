@@ -14,7 +14,6 @@ describe("TextInput", () => {
         aria-label="Program"
         aria-invalid="true"
         placeholder="Computer Science"
-        className="max-w-80"
         onChange={onChange}
       />,
     );

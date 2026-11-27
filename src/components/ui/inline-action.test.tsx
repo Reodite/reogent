@@ -9,7 +9,7 @@ describe("InlineAction", () => {
     const onClick = vi.fn();
     const ref = createRef<HTMLButtonElement>();
     const { getByRole } = render(
-      <InlineAction ref={ref} onClick={onClick} aria-describedby="error" className="ml-1">
+      <InlineAction ref={ref} onClick={onClick} aria-describedby="error">
         Retry
       </InlineAction>,
     );

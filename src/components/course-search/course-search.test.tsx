@@ -53,11 +53,7 @@ afterEach(() => {
 
 describe("CourseSearchField overlay", () => {
   it("owns combobox semantics and selects the active option with the keyboard", async () => {
-    const { container } = render(
-      <div style={{ overflow: "hidden", height: 50 }}>
-        <CourseSearchField {...baseProps} presentation="overlay" />
-      </div>,
-    );
+    const { container } = render(<CourseSearchField {...baseProps} presentation="overlay" />);
 
     const input = screen.getByRole("combobox");
     const listbox = await screen.findByRole("listbox");

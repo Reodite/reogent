@@ -9,7 +9,7 @@ describe("Button", () => {
     const onClick = vi.fn();
     const ref = createRef<HTMLButtonElement>();
     const { getByRole } = render(
-      <Button ref={ref} type="submit" className="w-full" aria-describedby="help" onClick={onClick}>
+      <Button ref={ref} type="submit" aria-describedby="help" onClick={onClick}>
         Save
       </Button>,
     );

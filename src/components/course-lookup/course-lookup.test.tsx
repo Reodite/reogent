@@ -225,8 +225,8 @@ describe("course-lookup-pane — partial-code narrows by number-prefix (13.9, RE
     await waitFor(() => {
       expect(document.querySelectorAll("[data-course-list] button")).toHaveLength(8);
     });
-    const firstRow = document.querySelector("[data-course-list] button .font-mono")?.textContent.trim();
-    expect(firstRow).toBe("CPSC_V 110");
+    const firstRow = document.querySelector("[data-course-list] button")?.textContent?.trim();
+    expect(firstRow?.match(/^(CPSC_V \d+)/)?.[1]).toBe("CPSC_V 110");
     expect(apiState.searchCourses).toHaveBeenCalledWith({ subject: "CPSC", number: "11" });
   });
 });
@@ -251,8 +251,8 @@ describe("course-lookup-pane — partial-code falls back to title search when su
     render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "calc 3" } });
     await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalledWith({ q: "CALC" }));
-    const rows = [...document.querySelectorAll("[data-course-list] button .font-mono")].map((n) =>
-      n.textContent.trim(),
+    const rows = [...document.querySelectorAll("[data-course-list] button")].map(
+      (button) => button.textContent?.trim().match(/^(MATH_V \d+)/)?.[1],
     );
     expect(rows).toContain("MATH_V 200");
   });
@@ -274,8 +274,8 @@ describe("course-lookup-pane — partial-subject fallback (CPS → CPSC/CPEN)", 
     render(<CourseLookupPane state={{ code: "" }} setState={setState} />);
     fireEvent.change(screen.getByLabelText("Course code"), { target: { value: "CPS" } });
     await waitFor(() => expect(apiState.searchCourses).toHaveBeenCalledWith({ q: "CPS" }));
-    const listedCodes = [...document.querySelectorAll("[data-course-list] button .font-mono")].map((n) =>
-      n.textContent.trim(),
+    const listedCodes = [...document.querySelectorAll("[data-course-list] button")].map(
+      (button) => button.textContent?.trim().match(/^(CPSC \d+)/)?.[1],
     );
     expect(listedCodes).toEqual(["CPSC 110", "CPSC 121"]);
   });

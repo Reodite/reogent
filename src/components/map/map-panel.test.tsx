@@ -58,9 +58,7 @@ const chem: BuildingSummary = {
 vi.mock("motion/react", () => ({
   AnimatePresence: ({ children }: { children: ReactNode }) => <>{children}</>,
   motion: {
-    div: ({ children, className }: { children: ReactNode; className?: string }) => (
-      <div className={className}>{children}</div>
-    ),
+    div: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   },
   useReducedMotion: () => true,
 }));
