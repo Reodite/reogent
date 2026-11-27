@@ -48,13 +48,6 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
-    const releaseCapacity = acquireChat();
-    if (!releaseCapacity) {
-      const response = json({ error: "The assistant is busy. Please try again." }, 503);
-      response.headers.set("Retry-After", "1");
-      return response;
-    }
-
     const sessionId = parsed.value.session_id ?? uuid();
     const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
     // An unreadable profile (no row, no DB, non-UUID dev user) only means no
@@ -63,6 +56,13 @@ export async function POST(request: Request): Promise<Response> {
       console.warn("profile load failed", e instanceof Error ? e.message : e);
       return null;
     });
+
+    const releaseCapacity = acquireChat();
+    if (!releaseCapacity) {
+      const response = json({ error: "The assistant is busy. Please try again." }, 503);
+      response.headers.set("Retry-After", "1");
+      return response;
+    }
 
     const encoder = new TextEncoder();
     const owner = new AbortController();

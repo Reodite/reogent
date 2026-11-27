@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   consumeDailyChatMessage: vi.fn(),
   appendExchange: vi.fn(),
   getSearch: vi.fn(),
+  getProfile: vi.fn(),
 }));
 
 vi.mock("@/src/server/auth", () => ({ requireUser: async () => ({ sub: "u1" }) }));
@@ -21,7 +22,7 @@ vi.mock("@/src/server/sessions/store", () => ({
 }));
 vi.mock("@/src/server/sessions/title", () => ({ generateSessionTitle: vi.fn() }));
 vi.mock("@/src/server/agent/stream", () => ({ streamAgent: mocks.streamAgent }));
-vi.mock("@/src/server/profile", () => ({ getProfile: async () => null }));
+vi.mock("@/src/server/profile", () => ({ getProfile: mocks.getProfile }));
 vi.mock("@/src/server/modules", () => ({ modules: [] }));
 vi.mock("@/src/server/search", () => ({ getSearch: mocks.getSearch }));
 
@@ -40,6 +41,7 @@ beforeEach(() => {
   mocks.consumeDailyChatMessage.mockResolvedValue(true);
   mocks.appendExchange.mockResolvedValue(undefined);
   mocks.getSearch.mockReturnValue({});
+  mocks.getProfile.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -125,5 +127,29 @@ describe("chat resource limits", () => {
     const next = await POST(request());
     expect(next.status).toBe(200);
     await next.text();
+  });
+
+  it("does not hold chat capacity while loading the profile", async () => {
+    let resolveProfile!: (profile: null) => void;
+    const profileRequest = new Promise<null>((resolve) => {
+      resolveProfile = resolve;
+    });
+    mocks.getProfile.mockReturnValueOnce(profileRequest).mockResolvedValue(null);
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "done", message: "answer", tool_calls: [], citations: [] };
+    });
+    const { POST } = await import("./route");
+
+    const firstPending = POST(request());
+    await vi.waitFor(() => expect(mocks.getProfile).toHaveBeenCalledTimes(1));
+    const next = await POST(request());
+    expect(next.status).toBe(200);
+    await next.text();
+
+    resolveProfile(null);
+    const first = await firstPending;
+    expect(first.status).toBe(200);
+    await first.text();
+    expect(mocks.appendExchange).toHaveBeenCalledTimes(2);
   });
 });
