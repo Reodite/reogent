@@ -244,7 +244,7 @@ describe("Multi-event agenda and event details", () => {
   });
 });
 
-describe("Redesign — upcoming sidebar lists future events grouped by date (desktop)", () => {
+describe("upcoming events", () => {
   it("shows the Upcoming heading and one entry per upcoming event, none from the past", async () => {
     const { container, restore } = renderPane({ cursor: "2024-04" });
     await waitFor(() => expect(container.querySelector("[data-calendar-upcoming]")).not.toBeNull());
@@ -258,7 +258,7 @@ describe("Redesign — upcoming sidebar lists future events grouped by date (des
   });
 });
 
-describe("Redesign — clicking an event marker opens the modal with tags and kind", () => {
+describe("event details", () => {
   it("opens on a single-event day and closes via the close button", async () => {
     const { container, restore } = renderPane({ cursor: "2025-02" });
     const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
@@ -273,7 +273,7 @@ describe("Redesign — clicking an event marker opens the modal with tags and ki
   });
 });
 
-describe("Redesign — event modal closes on Escape", () => {
+describe("event modal dismissal", () => {
   it("opens on an event marker and closes when Escape is pressed", async () => {
     const { container, restore } = renderPane({ cursor: "2025-02" });
     const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");

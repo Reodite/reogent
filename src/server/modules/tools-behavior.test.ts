@@ -187,7 +187,7 @@ const courseFixture: Record<string, unknown[]> = {
   ],
 };
 
-describe("find_courses (agent-tool-redesign)", () => {
+describe("find_courses", () => {
   it("validates grade bounds and filters session averages", async () => {
     const search = fakeSearch({
       course_sessions: [
@@ -481,7 +481,7 @@ describe("find_courses (agent-tool-redesign)", () => {
   });
 });
 
-describe("get_course (agent-tool-redesign)", () => {
+describe("get_course", () => {
   it("returns grade_summary and grade_distribution when include_grades is set", async () => {
     const search = fakeSearch({
       courses: [course("CPSC_V 110", { prerequisite: null })],
@@ -519,7 +519,7 @@ describe("get_course (agent-tool-redesign)", () => {
   });
 });
 
-describe("get_costs (agent-tool-redesign)", () => {
+describe("get_costs", () => {
   const tuitionFixture = {
     tuition: [
       {
@@ -687,7 +687,7 @@ describe("get_costs (agent-tool-redesign)", () => {
   });
 });
 
-describe("find_places (agent-tool-redesign)", () => {
+describe("find_places", () => {
   it("routes category parking to the parking index", async () => {
     const tool = places.tools.find((t) => t.spec.name === "find_places")!;
     const search = fakeSearch({
@@ -714,7 +714,7 @@ describe("find_places (agent-tool-redesign)", () => {
   });
 });
 
-describe("find_study_spaces (agent-tool-redesign)", () => {
+describe("find_study_spaces", () => {
   const spacesFixture = {
     study_spaces: [{ id: "s1", title: "AERL 120", building_code: "AERL", capacity: 30 }],
   };
@@ -734,7 +734,7 @@ describe("find_study_spaces (agent-tool-redesign)", () => {
   });
 });
 
-describe("find_programs (agent-tool-redesign)", () => {
+describe("find_programs", () => {
   it("searches programs and truncates summaries", async () => {
     const tool = admissions.tools.find((t) => t.spec.name === "find_programs")!;
     const out = (await tool.execute(
@@ -764,7 +764,7 @@ describe("find_programs (agent-tool-redesign)", () => {
   });
 });
 
-describe("get_admission_requirements (agent-tool-redesign)", () => {
+describe("get_admission_requirements", () => {
   it("distinguishes hard requirements and omits advisory by default", async () => {
     const tool = admissions.tools.find((t) => t.spec.name === "get_admission_requirements")!;
     const search = fakeSearch({
@@ -810,7 +810,7 @@ describe("get_admission_requirements (agent-tool-redesign)", () => {
   });
 });
 
-describe("find_events (agent-tool-redesign)", () => {
+describe("find_events", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   function stubEvents(rows: Record<string, unknown>[]) {
@@ -871,7 +871,7 @@ describe("find_events (agent-tool-redesign)", () => {
   });
 });
 
-describe("get_key_dates (agent-tool-redesign)", () => {
+describe("get_key_dates", () => {
   it("filters by kind", async () => {
     const tool = calendar.tools.find((t) => t.spec.name === "get_key_dates")!;
     const search = fakeSearch({
@@ -885,7 +885,7 @@ describe("get_key_dates (agent-tool-redesign)", () => {
   });
 });
 
-describe("search_ubc_pages (agent-tool-redesign)", () => {
+describe("search_ubc_pages", () => {
   it("returns cropped matching snippets through federation", async () => {
     const tool = pages.tools.find((t) => t.spec.name === "search_ubc_pages")!;
     const search = {
@@ -909,7 +909,7 @@ describe("search_ubc_pages (agent-tool-redesign)", () => {
   });
 });
 
-describe("find_building (agent-tool-redesign)", () => {
+describe("find_building", () => {
   it("resolves an exact code via getDocument", async () => {
     const tool = buildings.tools.find((t) => t.spec.name === "find_building")!;
     const search = fakeSearch({
@@ -925,7 +925,7 @@ describe("find_building (agent-tool-redesign)", () => {
   });
 });
 
-describe("walking_distance (agent-tool-redesign)", () => {
+describe("walking_distance", () => {
   it("short-circuits to zero for the same building", async () => {
     const tool = buildings.tools.find((t) => t.spec.name === "walking_distance")!;
     const search = fakeSearch({
@@ -950,7 +950,7 @@ describe("walking_distance (agent-tool-redesign)", () => {
   });
 });
 
-describe("get_prereq_tree (agent-tool-redesign)", () => {
+describe("get_prereq_tree", () => {
   const tool = prereqModule.tools[0];
 
   it("rejects an invalid course code", async () => {

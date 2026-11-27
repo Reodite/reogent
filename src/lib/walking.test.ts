@@ -90,7 +90,7 @@ describe("extractWalkingHighlight", () => {
     });
   });
 
-  it("never fabricates a highlight without both endpoints and numeric measures (property)", () => {
+  it("never fabricates a highlight without both endpoints and numeric measures", () => {
     fc.assert(
       fc.property(
         fc.record({

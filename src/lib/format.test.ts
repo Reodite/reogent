@@ -32,7 +32,7 @@ describe("sessionGroup", () => {
     expect(sessionGroup("1990-01-01T00:00:00Z", now)).toBe("Older");
   });
 
-  it("always returns a known group, and newer timestamps never land in older buckets (property)", () => {
+  it("returns a known group and keeps newer timestamps in newer buckets", () => {
     const iso = fc
       .date({ min: new Date("2020-01-01"), max: new Date("2026-08-06T11:59:59Z"), noInvalidDate: true })
       .map((d) => d.toISOString());

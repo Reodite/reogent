@@ -231,7 +231,7 @@ describe("Partial course code matching", () => {
   });
 });
 
-describe("course-lookup-pane — partial-code falls back to title search when subject isn't real (13.9)", () => {
+describe("course lookup fallback search", () => {
   it("drops the trailing number and q-searches the subject fragment for title matching", async () => {
     apiState.searchCourses.mockImplementation(async (params: { subject?: string; number?: string; q?: string }) => {
       if (params.subject && params.number) return { courses: [], subject_total: 0 };

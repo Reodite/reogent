@@ -158,7 +158,7 @@ describe("history rehydration preserves stored citation data", () => {
   });
 });
 
-describe("16.3 Integration — appendExchange → getSessionMessages round-trip", () => {
+describe("appendExchange and getSessionMessages", () => {
   let captured: string | null = null;
 
   beforeEach(() => {

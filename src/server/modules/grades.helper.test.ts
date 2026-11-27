@@ -56,7 +56,7 @@ const rows: GradeRow[] = [
   },
 ];
 
-describe("grades pooling helpers (agent-tool-redesign)", () => {
+describe("grades pooling helpers", () => {
   it("courseAverage is enrollment-weighted across records", async () => {
     // (80*10 + 70*20) / 30 = 73.3
     expect(await courseAverage(gradeSearch(rows), "CPSC", "110")).toBeCloseTo(73.3, 1);
