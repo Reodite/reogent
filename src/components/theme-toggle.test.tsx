@@ -42,9 +42,6 @@ function renderToggle(showLabels = false) {
 beforeEach(() => {
   window.localStorage.clear();
   document.documentElement.dataset.theme = "light";
-  document.documentElement.classList.remove("vt-active");
-  document.documentElement.style.removeProperty("--ripple-x");
-  document.documentElement.style.removeProperty("--ripple-y");
   Reflect.deleteProperty(document, "startViewTransition");
   deviceAppearance(false);
 });
