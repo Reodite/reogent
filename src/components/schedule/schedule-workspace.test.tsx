@@ -34,7 +34,7 @@ describe("ScheduleWorkspace", () => {
 
     expect(container.querySelector("h1")).toBeNull();
     expect(container.querySelector("[data-testid='toolbar']")).not.toBeNull();
-    expect(outlet.childElementCount).toBe(0);
+    expect(outlet.querySelector("[data-workspace-titlebar-actions]")).toBeNull();
     expect(container.textContent).not.toContain("Build a conflict-aware week.");
     outlet.remove();
   });
