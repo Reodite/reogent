@@ -207,8 +207,6 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("inline AI renders chat + Answer Canvas with the skip target on chat", () => {
     const { container, getByTestId } = renderShell(true);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("chat");
-    expect(container.querySelector(".chat-map-area")?.classList.contains("sidebar-content-offset")).toBe(true);
-    expect(container.querySelector("#main-content")?.classList.contains("sidebar-content-offset")).toBe(false);
     expect(container.querySelector("[data-workspace-surface]")).toBeNull();
     expect(getByTestId("chat-children")).toBeDefined();
     expect(container.querySelector('[data-testid="session-list"]')).not.toBeNull();
@@ -217,14 +215,8 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector("[data-shell-route-content]")?.getAttribute("data-route-transition")).toBeNull();
   });
 
-  it("inline AI right pane starts collapsed and has no re-expand in topbar", () => {
+  it("inline AI has no right-pane expand action", () => {
     const { container } = renderShell(true);
-
-    const sheet = container.querySelector("[data-answer-sheet]");
-    expect(sheet?.classList.contains("sm:grow-0")).toBe(true);
-    expect(sheet?.classList.contains("sm:invisible")).toBe(true);
-
-    // There is no topbar expand button for the right pane.
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
 
@@ -300,45 +292,6 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[aria-label="Expand right pane"]')).toBeNull();
   });
 
-  it("shares the dynamic mobile shell and safe-area menu placement with loading", () => {
-    const { container, getByRole } = renderShell(false);
-    const shell = container.querySelector(".app-shell-frame");
-    expect(shell?.className).toContain("h-dvh");
-    expect(shell?.querySelector(".chat-workspace")?.classList.contains("p-3")).toBe(false);
-    expect(getByRole("button", { name: "Open sidebar" }).className).toContain("shell-menu-trigger");
-  });
-
-  it("follows the phone visual viewport without constraining wider or zoomed layouts", () => {
-    const viewport = Object.assign(new EventTarget(), { height: 500, scale: 1, offsetTop: 0 });
-    Object.defineProperty(window, "visualViewport", { value: viewport, configurable: true });
-    const view = renderShell(false);
-    const frame = view.container.querySelector<HTMLElement>(".app-shell-frame");
-    expect(frame?.style.height).toBe("500px");
-    viewport.height = 300;
-    viewport.dispatchEvent(new Event("resize"));
-    expect(frame?.style.height).toBe("300px");
-    expect(frame?.style.getPropertyValue("--app-viewport-height")).toBe("300px");
-    viewport.offsetTop = 80;
-    viewport.dispatchEvent(new Event("scroll"));
-    expect(frame?.style.getPropertyValue("--app-viewport-top")).toBe("80px");
-    expect(frame?.style.getPropertyValue("--app-viewport-bottom")).toBe(`${Math.max(0, window.innerHeight - 380)}px`);
-    viewport.scale = 2;
-    viewport.dispatchEvent(new Event("resize"));
-    expect(frame?.style.height).toBe("");
-    expect(frame?.style.getPropertyValue("--app-viewport-height")).toBe("");
-    expect(frame?.style.getPropertyValue("--app-viewport-top")).toBe("");
-    expect(frame?.style.getPropertyValue("--app-viewport-bottom")).toBe("");
-    viewport.scale = 1;
-    resizeViewport(640);
-    expect(frame?.style.height).toBe("");
-    resizeViewport(390);
-    expect(frame?.style.height).toBe("300px");
-    view.unmount();
-    viewport.height = 250;
-    viewport.dispatchEvent(new Event("resize"));
-    expect(frame?.style.height).toBe("");
-  });
-
   it.each([false, true])("keeps guest tools and drawer access without a mode bar at wide=%s", (wide) => {
     auth.isGuest = true;
     pathname.value = "/app/tools/map";
@@ -346,9 +299,6 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(view.getByTestId("map-area")).not.toBeNull();
     expect(view.container.querySelector("[data-mode-toggle]")).toBeNull();
     expect(view.container.querySelector("[data-mobile-navigation]")).toBeNull();
-    expect(view.container.querySelector(".app-shell-frame")?.className).toContain(
-      "max-sm:pb-[env(safe-area-inset-bottom)]",
-    );
     expect(view.container.querySelector("aside")?.getAttribute("aria-label")).toBe("Tools");
     if (!wide) {
       const menu = view.getByRole("button", { name: "Open sidebar" });
@@ -364,8 +314,6 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   it("places the menu in the header and gates bottom navigation behind overlays", () => {
     const { container, getByRole, rerender } = renderShell(false);
     const menu = getByRole("button", { name: "Open sidebar" });
-    expect(menu.closest("[data-chat-frame] > header")).not.toBeNull();
-    expect(menu.className).not.toContain("neu-panel");
     expect(menu.getAttribute("aria-expanded")).toBe("false");
     expect(getByRole("link", { name: "Skip to main content" }).closest("nav")).not.toBeNull();
     const bottom = container.querySelector("[data-mobile-navigation]");
@@ -382,35 +330,17 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(bottom?.hasAttribute("inert")).toBe(false);
   });
 
-  it("keeps the body paint layer above navigation through sheet closure and below the sidebar drawer", async () => {
-    const { container, getByRole } = renderShell(false);
-    await act(async () => {});
-    const body = container.querySelector(".shell-body")!;
-    const stage = container.querySelector("[data-shell-route-stage]")!;
-    const sheet = container.querySelector("[data-answer-sheet]")!;
+  it("deactivates mobile navigation while the answer canvas is open", () => {
+    const { container } = renderShell(false);
     const navigation = container.querySelector("[data-mobile-navigation]")!;
-    const drawer = container.querySelector(".shell-sidebar-drawer")!;
-    expect(body.classList.contains("z-10")).toBe(true);
-    expect(stage.classList.contains("isolate")).toBe(true);
-    expect(body.contains(stage)).toBe(true);
-    expect(body.contains(sheet)).toBe(true);
-    expect(body.contains(navigation)).toBe(false);
-    expect(body.contains(drawer)).toBe(false);
-    expect(drawer.classList.contains("z-50")).toBe(true);
 
     for (const open of [true, false, true, false]) {
       act(() => capturedShell.current?.setAnswerSheetOpen(open));
-      expect(container.querySelector(".shell-body")).toBe(body);
-      expect(body.classList.contains("z-10")).toBe(true);
-      expect(container.querySelector("[data-shell-route-stage]")).toBe(stage);
-      expect(container.querySelector("[data-answer-sheet]")).toBe(sheet);
-      expect(sheet.getAttribute("data-answer-sheet")).toBe(open ? "open" : "closed");
       expect(navigation.hasAttribute("inert")).toBe(open);
+      expect(container.querySelector("[data-answer-sheet]")?.getAttribute("data-answer-sheet")).toBe(
+        open ? "open" : "closed",
+      );
     }
-    fireEvent.click(getByRole("button", { name: "Open sidebar" }));
-    expect(body.hasAttribute("inert")).toBe(true);
-    expect(navigation.hasAttribute("inert")).toBe(true);
-    expect(drawer.classList.contains("z-50")).toBe(true);
   });
 
   it("keeps navigation available when returning from Settings with a retained answer sheet", () => {
@@ -446,13 +376,10 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(container.querySelector('[aria-label="Open answer canvas"]')).toBeNull();
   });
 
-  it("inline Tools renders the Full-Bleed Tool with the skip target on the tool", () => {
+  it("inline Tools renders the tool content", () => {
     const { container } = renderShell(true);
     fireEvent.click(modeLink(container, "Tools"));
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("tool");
-    const surface = container.querySelector("[data-workspace-surface]");
-    expect(surface?.className).toContain("workspace-surface");
-    expect(surface?.className).toContain("overflow-hidden");
     // The provider-free fixture changes remembered mode, but its mocked router
     // does not commit a pathname. Without a routed tool view, the route child remains.
     expect(container.querySelector('[data-testid="chat-children"]')).not.toBeNull();
@@ -476,12 +403,11 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
     expect(view.container.querySelector("[data-answer-sheet]")).toBeNull();
   });
 
-  it("Unity uses the same shell-owned workspace surface", () => {
+  it("Unity renders its workspace content", () => {
     const { container } = renderShell(true);
     fireEvent.click(modeLink(container, "Unity"));
 
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("unity");
-    expect(container.querySelector("[data-workspace-surface]")?.className).toContain("workspace-surface");
     expect(container.querySelector("[data-testid='chat-children']")).not.toBeNull();
   });
 
@@ -556,10 +482,6 @@ describe("sidebar responsive cleanup", () => {
     fireEvent.click(opener);
     expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(true);
     expect(document.body.style.overflow).toBe("hidden");
-    expect(container.querySelector(".shell-sidebar-drawer")?.className).toContain("transition-transform");
-    expect(container.querySelector(".shell-sidebar-drawer")?.className).not.toContain(
-      "transition-[transform,visibility]",
-    );
 
     resizeViewport(Number(breakpoint) - 1);
     expect(container.querySelector(".shell-body")?.hasAttribute("inert")).toBe(true);

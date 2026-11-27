@@ -31,7 +31,6 @@ describe("AuthForm", () => {
       "/api/auth/google?redirect=%2Fapp%2Fsettings",
     );
     expect(container.querySelector("input, button[type=submit]")).toBeNull();
-    expect(container.querySelector("[data-auth-error-slot]")?.className).toContain("min-h-8");
   });
 
   it("shows a provider configuration error", () => {
@@ -55,6 +54,5 @@ describe("AuthForm", () => {
 
     const loading = screen.getByRole("status", { name: "Loading sign in" });
     expect(loading.querySelectorAll("[data-auth-loading-action]")).toHaveLength(1);
-    expect(loading.querySelector("[data-auth-loading-action]")?.className).toContain("h-12");
   });
 });

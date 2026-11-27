@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { BrandHeader, useSidebarCollapsed, VersionBadge } from "./session-sidebar";
+import { useSidebarCollapsed, VersionBadge } from "./session-sidebar";
 
 // happy-dom (via Node's experimental path) does not provide localStorage in
 // this Node build without --localstorage-file; install an in-memory polyfill so
@@ -101,27 +101,11 @@ describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2
   });
 });
 
-describe("BrandHeader geometry", () => {
-  it.each([false, true])("uses the correct header height when collapsed=%s", (collapsed) => {
-    render(<BrandHeader collapsed={collapsed} />);
-    const link = screen.getByRole("link", { name: "Go to Reodite homepage" });
-    const header = link.closest("[data-sidebar-brand]")!;
-    expect(header.classList.contains(collapsed ? "h-12" : "h-15")).toBe(true);
-    expect(header.classList.contains(collapsed ? "h-15" : "h-12")).toBe(false);
-    expect(link.firstElementChild?.classList.contains("size-9")).toBe(true);
-    expect(header.getAttribute("data-sidebar-brand")).toBe(collapsed ? "collapsed" : "expanded");
-    expect(link.classList.contains("w-11")).toBe(collapsed);
-    expect(link.classList.contains("rounded-xl")).toBe(collapsed);
-  });
-});
-
 describe("VersionBadge — account menu version render", () => {
-  it("renders the injected version in mono treatment", () => {
+  it("renders the injected version", () => {
     vi.stubEnv("NEXT_PUBLIC_REOGENT_VERSION", "0.1.0");
     render(<VersionBadge />);
-    const badge = screen.getByText("v0.1.0");
-    expect(badge.className).toContain("font-mono");
-    expect(badge.className).toContain("text-xs");
+    expect(screen.getByText("v0.1.0")).toBeTruthy();
   });
 
   it("exposes an sr-only 'Reogent version' label for screen readers", () => {

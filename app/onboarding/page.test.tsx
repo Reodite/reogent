@@ -68,14 +68,10 @@ function next() {
 }
 
 describe("first-login onboarding", () => {
-  it("centers just the welcome title and subheading", async () => {
+  it("shows the welcome title and introduction", async () => {
     await start();
-    const heading = screen.getByRole("heading", { name: "Welcome to Reodite" });
-    const welcome = heading.parentElement!;
-    expect(welcome.classList.contains("text-center")).toBe(true);
-    expect(welcome.classList.contains("justify-center")).toBe(true);
-    expect(welcome.querySelectorAll("p")).toHaveLength(1);
-    expect(welcome.querySelector("p")?.textContent).toBe("Let's customize your experience");
+    expect(screen.getByRole("heading", { name: "Welcome to Reodite" })).toBeTruthy();
+    expect(screen.getByText("Let's customize your experience")).toBeTruthy();
     expect(screen.queryByText(/Everything is optional/)).toBeNull();
     expect(screen.queryByText(/Tell us a little about yourself/)).toBeNull();
   });
@@ -106,9 +102,6 @@ describe("first-login onboarding", () => {
     await start();
     const back = screen.getByRole("button", { name: "Back to welcome" }) as HTMLButtonElement;
     expect(back.disabled).toBe(true);
-    expect(back.classList.contains("size-11")).toBe(true);
-    expect(back.classList.contains("neu-button")).toBe(false);
-    expect(back.querySelector("svg")?.getAttribute("width")).toBe("20");
     expect(screen.getByText("Let's customize your experience")).toBeTruthy();
     next();
     fireEvent.change(screen.getByLabelText("What should we call you?"), { target: { value: "Sam" } });

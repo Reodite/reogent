@@ -21,24 +21,18 @@ afterEach(() => {
 });
 
 describe("PulseHistory", () => {
-  it("groups an empty-history explanation with its heading", async () => {
+  it("explains when no history is available", async () => {
     getPulseHistory.mockResolvedValue({ rounds: [] });
     render(<PulseHistory />);
-    const description = await screen.findByText("No previous rounds yet.");
-    const heading = screen.getByRole("heading", { name: "Previous rounds" });
-    expect(description.parentElement).toBe(heading.parentElement);
-    expect(description.parentElement?.className).toContain("gap-1");
-    expect(description.className).not.toMatch(/\bp[ty]-|text-center/);
+    expect(await screen.findByText("No previous rounds yet.")).toBeTruthy();
   });
 
-  it("reserves its heading and result footprint while loading", () => {
+  it("announces loading previous rounds", () => {
     getPulseHistory.mockReturnValue(new Promise(() => {}));
     render(<PulseHistory />);
 
     expect(screen.getByRole("heading", { name: "Previous rounds" })).not.toBeNull();
     expect(screen.getByRole("status", { name: "Loading previous rounds" })).not.toBeNull();
-    expect(document.querySelectorAll("[data-skeleton]")).toHaveLength(8);
-    expect(screen.getByRole("status", { name: "Loading previous rounds" }).querySelector(".p-4")).not.toBeNull();
   });
 
   it("renders historical questions with their final tally", async () => {

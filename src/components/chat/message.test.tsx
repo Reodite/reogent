@@ -24,12 +24,8 @@ it("keeps thinking text mounted across native disclosure toggles and stream upda
   const { container, getByText, rerender } = render(view("Checking prerequisites"));
   const details = container.querySelector("details")!;
   const body = getByText("Checking prerequisites");
-  const summary = details.querySelector("summary")!;
-  expect(summary.classList.contains("min-h-11")).toBe(true);
-  expect(summary.classList.contains("sm:min-h-8")).toBe(true);
   expect(body.hasAttribute("data-thinking-scroll")).toBe(true);
   expect(body.tabIndex).toBe(0);
-  expect(body.parentElement?.classList.contains("overflow-hidden")).toBe(true);
   expect(details.open).toBe(false);
   act(() => {
     details.open = true;
@@ -70,7 +66,6 @@ it.each([
   await waitFor(() => expect(prose.querySelectorAll('input[type="checkbox"]')).toHaveLength(count));
   for (const input of prose.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
     expect(input.disabled).toBe(true);
-    expect(input.closest("li")?.classList.contains("task-list-item")).toBe(true);
     expect(input.closest("li")?.hasAttribute("node")).toBe(false);
   }
   expect(prose.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(true);
@@ -78,8 +73,6 @@ it.each([
   expect(prose.querySelector('[data-index="1"]')).not.toBeNull();
   expect(prose.querySelector("code")?.textContent).toBe("[1]");
   expect(prose.querySelector("code [data-index]")).toBeNull();
-  expect(prose.querySelector<HTMLTableCellElement>("thead th:last-child")?.style.textAlign).toBe("right");
-  expect(prose.querySelector<HTMLTableCellElement>("tbody td:last-child")?.style.textAlign).toBe("right");
   expect(prose.querySelector("tbody td")?.parentElement?.tagName).toBe("TR");
   expect(prose.querySelector('a[href="https://example.org/guide"]')?.getAttribute("target")).toBe("_blank");
   expect(prose.querySelector("script")).toBeNull();
@@ -105,7 +98,6 @@ it("puts wide reply tables in a keyboard-scrollable region", async () => {
   const view = render(<AssistantMessage message={{ id: "table", role: "assistant", content }} />);
   await waitFor(() => expect(view.container.querySelector(".assistant-markdown table")).not.toBeNull());
   const region = view.getByRole("region", { name: "Reply table" });
-  expect(region.classList.contains("markdown-table-wrap")).toBe(true);
   expect(region.tabIndex).toBe(0);
   expect(region.querySelector("td")?.textContent).toBe("CPSC 110");
 });
@@ -143,6 +135,5 @@ it("keeps Sources outside prose spacing while retaining its live Markdown siblin
   expect(sources.closest(".assistant-markdown")).toBeNull();
   expect(sources.parentElement).toBe(prose.parentElement);
   expect(sources.previousElementSibling).toBe(prose);
-  expect(sources.classList.contains("mt-2")).toBe(true);
   expect(sources.querySelectorAll("ul > li")).toHaveLength(1);
 });

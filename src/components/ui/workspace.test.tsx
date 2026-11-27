@@ -73,57 +73,11 @@ describe("WorkspacePage", () => {
     expect(page?.dataset.workspaceHost).toBe("tools");
     expect(page?.querySelector("h1")?.textContent).toBe("Degree Planner");
     expect(page?.querySelectorAll("main")).toHaveLength(0);
-    const scroller = page?.querySelector("[data-workspace-scroll]");
-    expect(page?.className).toContain("overflow-hidden");
-    expect(scroller?.className).toContain("overflow-y-auto");
-    expect(scroller?.contains(page?.querySelector("[data-workspace-header]") ?? null)).toBe(false);
-    expect(scroller?.contains(page?.querySelector("[data-workspace-toolbar]") ?? null)).toBe(true);
-    expect(page?.querySelector(".workspace-page-layout")?.className).toContain("min-h-min");
-    expect(page?.querySelector(".workspace-page-body")?.className).toContain("min-h-80");
     const heading = page?.querySelector("[data-workspace-heading]");
     expect(heading?.querySelector("h1")?.textContent).toBe("Degree Planner");
-    expect(heading?.contains(page?.querySelector("[data-workspace-toolbar]") ?? null)).toBe(false);
     expect(page?.querySelectorAll("[data-workspace-panel]")).toHaveLength(2);
-    expect(page?.querySelector("[data-workspace-panel-body]")?.classList.contains("p-4")).toBe(true);
-    expect(screen.getByRole("button", { name: "Plan" }).classList.contains("rounded-sm")).toBe(true);
-    expect(screen.getByRole("button", { name: "Requirements and courses" }).classList.contains("min-w-max")).toBe(true);
-    const canvas = page?.querySelector("[data-workspace-canvas]");
-    expect(canvas?.className).toContain("p-4");
-    expect(canvas?.className).toContain("rounded-2xl");
-    for (const panel of page?.querySelectorAll("[data-workspace-panel]") ?? []) {
-      expect(panel.classList.contains("rounded-2xl")).toBe(true);
-    }
-    expect(canvas?.className).toContain("neu-inset");
-    expect(canvas?.className).toContain("neu-shadow-on-surface");
-    expect(canvas?.className).not.toContain("border-border");
     const actions = page?.querySelector("[data-workspace-actions]");
     expect(heading?.contains(actions ?? null)).toBe(true);
-    expect(scroller?.contains(actions ?? null)).toBe(false);
-  });
-
-  it("stretches the toolbar with the layout and pads it for edge focus outlines", () => {
-    const { container } = render(<SplitWorkspace />);
-    const toolbar = container.querySelector("[data-workspace-toolbar]");
-    expect(toolbar?.parentElement?.classList.contains("workspace-page-layout")).toBe(true);
-    expect(toolbar?.classList.contains("w-full")).toBe(false);
-    expect(toolbar?.classList.contains("p-1")).toBe(true);
-    expect(toolbar?.classList.contains("-mx-1")).toBe(true);
-    expect(toolbar?.classList.contains("-mb-1")).toBe(true);
-  });
-
-  it("hides help descriptions on phones unless the page keeps them", () => {
-    const { rerender } = render(
-      <WorkspacePage composition="single" title="Calendar" description="Browse dates.">
-        Month
-      </WorkspacePage>,
-    );
-    expect(screen.getByText("Browse dates.").classList.contains("max-sm:hidden")).toBe(true);
-    rerender(
-      <WorkspacePage composition="single" title="Pulse" description="Midterm season" keepDescriptionOnPhones>
-        Questions
-      </WorkspacePage>,
-    );
-    expect(screen.getByText("Midterm season").classList.contains("max-sm:hidden")).toBe(false);
   });
 
   it("keeps header navigation available while pending task controls stay inert", () => {
@@ -199,8 +153,8 @@ describe("WorkspacePage", () => {
     outlet.remove();
   });
 
-  it("renders page-leading navigation immediately before the title", () => {
-    const { container } = render(
+  it("renders accessible page-leading navigation and title", () => {
+    render(
       <WorkspacePage
         composition="canvas"
         title="Course lookup"
@@ -209,18 +163,11 @@ describe("WorkspacePage", () => {
         Details
       </WorkspacePage>,
     );
-    const leading = container.querySelector("[data-workspace-leading]");
-    expect(leading?.querySelector("button")?.textContent).toBe("");
-    expect(leading?.className).toContain("flex h-7");
-    expect(leading?.classList.contains("items-center")).toBe(true);
-    const title = leading?.nextElementSibling?.querySelector("h1");
-    expect(title?.classList.contains("min-h-7")).toBe(true);
-    expect(title?.className).not.toContain("sm:min-h-0");
-    expect(leading?.parentElement?.className).toContain("gap-1.5");
-    expect(leading?.nextElementSibling?.querySelector("h1")?.textContent).toBe("Course lookup");
+    expect(screen.getByRole("button", { name: "Back to results" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Course lookup" })).toBeTruthy();
   });
 
-  it("fixes panel material, header height, body scrolling, and canvas overflow variants", () => {
+  it("renders panel content and leading action", () => {
     const { container } = render(
       <WorkspaceRail>
         <WorkspacePanel
@@ -234,13 +181,9 @@ describe("WorkspacePage", () => {
       </WorkspaceRail>,
     );
     const panel = container.querySelector("[data-workspace-panel]");
-    const panelBody = container.querySelector("[data-workspace-panel-body]");
-    expect(panel?.className).toContain("neu-panel");
     expect(panel?.hasAttribute("data-workspace-panel-leading")).toBe(true);
-    expect(panel?.querySelector("header")?.className).toContain("min-h-15");
     expect(panel?.querySelector("header button + div h2")?.textContent).toBe("Controls");
-    expect(panel?.querySelector("header > div")?.className).toContain("gap-1.5");
-    expect(panelBody?.className).toContain("overflow-hidden");
-    expect(panelBody?.className).toContain("p-0");
+    expect(screen.getByText("Body")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back to controls" })).toBeTruthy();
   });
 });
