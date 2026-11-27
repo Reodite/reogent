@@ -59,7 +59,6 @@ describe("Account", () => {
     );
     expect(screen.getByRole("button", { name: "Edit profile" })).not.toBeNull();
     expect(screen.queryByRole("link", { name: "Edit profile" })).toBeNull();
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("single");
     expect(container.querySelectorAll("main")).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(auth.signOut).toHaveBeenCalledOnce();

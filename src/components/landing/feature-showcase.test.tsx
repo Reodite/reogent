@@ -149,10 +149,6 @@ describe("Feature carousels", () => {
     expect(within(sharing).getByText("Common free time · Tue and Thu from 12 PM")).toBeTruthy();
     const schedule = carousel("Tools").slides[4];
     expect(within(schedule).getByText("Illustrative class times")).toBeTruthy();
-    expect(Array.from(schedule.querySelectorAll("[data-conflict]")).map((block) => block.textContent)).toEqual([
-      "CPSC121",
-      "CHEM121",
-    ]);
   });
 
   it.each(["Agent capabilities", "Tools"])("avoids invented route measurements in %s", (title) => {

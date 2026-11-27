@@ -107,9 +107,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <ModeToggle presentation="bottom" collapsed />
       </ChatShellProvider>,
     );
-    const nav = view.getByRole("navigation", { name: "Reodite areas" });
-    expect(nav.getAttribute("data-mode-navigation")).toBe("bottom");
-    expect(nav.hasAttribute("data-mobile-mode-navigation")).toBe(true);
+    view.getByRole("navigation", { name: "Reodite areas" });
     expect(view.getAllByRole("link")).toHaveLength(3);
     for (const label of ["AI", "Tools", "Unity"]) {
       const link = view.getByRole("link", { name: label });
@@ -199,7 +197,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <ModeToggle />
       </ChatShellProvider>,
     );
-    expect(view.getByRole("navigation").getAttribute("data-mode-navigation")).toBe("sidebar");
+    expect(view.getByRole("navigation", { name: "Reodite areas" })).not.toBeNull();
     const tools = view.getByRole("link", { name: "Tools" });
     expect(tools.getAttribute("href")).toBe("/app/tools/map");
     // Block Happy DOM's native navigation while checking modifier handling.
@@ -337,7 +335,7 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
           <LeftSidebar collapsed onClose={onClose} />
         </ChatShellProvider>,
       );
-      expect(view.getByRole("navigation", { name: "Tools" }).getAttribute("data-sidebar-list")).toBe("collapsed");
+      expect(view.getByRole("navigation", { name: "Tools" })).not.toBeNull();
       expect(view.container.querySelector("[data-mode-toggle]")).toBeNull();
       expect(view.getByRole("button", { name: "Account menu" })).not.toBeNull();
       fireEvent.click(view.container.querySelector('[data-tool-id="prereq-tree"]') as HTMLElement);

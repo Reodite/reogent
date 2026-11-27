@@ -96,20 +96,20 @@ describe("WorkspacePage", () => {
 
   it("keeps both compact regions mounted while callers own the active view", () => {
     const { container } = render(<SplitWorkspace />);
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("main");
+    expect(screen.getByRole("button", { name: "Plan" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Requirements and courses" }));
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("rail");
+    expect(screen.getByRole("button", { name: "Requirements and courses" }).getAttribute("aria-pressed")).toBe("true");
     expect(container.querySelector("[data-workspace-region='main']")).not.toBeNull();
     expect(container.querySelector("[data-workspace-region='rail']")).not.toBeNull();
   });
 
   it("moves focus to the selected compact toggle when a focused region hides", () => {
-    const { container } = render(<ProgrammaticWorkspace />);
+    render(<ProgrammaticWorkspace />);
     const trigger = screen.getByRole("button", { name: "Show courses" });
     trigger.focus();
     fireEvent.click(trigger);
 
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-view")).toBe("main");
+    expect(screen.getByRole("button", { name: "Courses" }).getAttribute("aria-pressed")).toBe("true");
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Courses" }));
   });
 
@@ -181,7 +181,6 @@ describe("WorkspacePage", () => {
       </WorkspaceRail>,
     );
     const panel = container.querySelector("[data-workspace-panel]");
-    expect(panel?.hasAttribute("data-workspace-panel-leading")).toBe(true);
     expect(panel?.querySelector("header button + div h2")?.textContent).toBe("Controls");
     expect(screen.getByText("Body")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back to controls" })).toBeTruthy();

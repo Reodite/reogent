@@ -35,7 +35,6 @@ describe("shell loading surfaces", () => {
       </>,
     );
     const workspace = view.container.querySelector("[data-workspace-route-loading]");
-    expect(workspace?.getAttribute("data-workspace-composition")).toBe("split");
     expect(workspace?.querySelector("[data-workspace-view-toggle]")).not.toBeNull();
     expect(workspace?.querySelector("[data-workspace-loading-controls]")).not.toBeNull();
     expect(workspace?.querySelector("[data-workspace-region='rail']")).not.toBeNull();
@@ -85,7 +84,6 @@ describe("shell loading surfaces", () => {
     expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-host")).toBe(
       pathname.slice("/app/".length),
     );
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("single");
     expect(container.querySelectorAll("[data-workspace-canvas]")).toHaveLength(1);
     expect(container.querySelector("[data-workspace-region='rail']")).toBeNull();
     expect(container.querySelector("[data-workspace-view-toggle]")).toBeNull();

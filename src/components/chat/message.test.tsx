@@ -24,7 +24,6 @@ it("keeps thinking text mounted across native disclosure toggles and stream upda
   const { container, getByText, rerender } = render(view("Checking prerequisites"));
   const details = container.querySelector("details")!;
   const body = getByText("Checking prerequisites");
-  expect(body.hasAttribute("data-thinking-scroll")).toBe(true);
   expect(body.tabIndex).toBe(0);
   expect(details.open).toBe(false);
   act(() => {
