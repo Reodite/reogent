@@ -89,7 +89,7 @@ describe("Property 26 — two events on one day with different kinds render two 
   });
 });
 
-describe("Property 27 — busy days preserve a readable overflow count (REQ-16.4)", () => {
+describe("Property 27 — busy days expose the total event count (REQ-16.4)", () => {
   it("a day with four events exposes an action for the full event count", async () => {
     const events: CalendarEvent[] = (["Academic one", "Academic two", "Academic three", "Academic four"] as const).map(
       (label) => ({
