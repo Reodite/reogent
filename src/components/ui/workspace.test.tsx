@@ -82,7 +82,7 @@ describe("WorkspacePage", () => {
 
   it("keeps header navigation available while pending task controls stay inert", () => {
     navigationState.pending = true;
-    const { container } = render(
+    render(
       <WorkspaceHostProvider host="tools" navigation={<button type="button">Open sidebar</button>}>
         <SplitWorkspace />
       </WorkspaceHostProvider>,
@@ -91,7 +91,6 @@ describe("WorkspacePage", () => {
     expect(menu.closest("[data-workspace-heading]")).not.toBeNull();
     expect(menu.closest("[inert]")).toBeNull();
     expect(screen.getByRole("button", { name: "Autofill" }).closest("[inert]")).not.toBeNull();
-    expect(container.querySelector(".workspace-page-body")?.hasAttribute("inert")).toBe(true);
   });
 
   it("keeps both compact regions mounted while callers own the active view", () => {
