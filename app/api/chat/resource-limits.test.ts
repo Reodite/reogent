@@ -33,6 +33,14 @@ const request = () =>
     body: JSON.stringify({ messages: [{ role: "user", content: "question" }] }),
   });
 
+const abortableRequest = (signal: AbortSignal) =>
+  new Request("http://localhost/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ messages: [{ role: "user", content: "question" }] }),
+    signal,
+  });
+
 beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
@@ -129,7 +137,7 @@ describe("chat resource limits", () => {
     await next.text();
   });
 
-  it("does not hold chat capacity while loading the profile", async () => {
+  it("holds capacity while loading the profile and releases it after completion", async () => {
     let resolveProfile!: (profile: null) => void;
     const profileRequest = new Promise<null>((resolve) => {
       resolveProfile = resolve;
@@ -143,13 +151,70 @@ describe("chat resource limits", () => {
     const firstPending = POST(request());
     await vi.waitFor(() => expect(mocks.getProfile).toHaveBeenCalledTimes(1));
     const next = await POST(request());
-    expect(next.status).toBe(200);
-    await next.text();
+    expect(next.status).toBe(503);
 
     resolveProfile(null);
     const first = await firstPending;
     expect(first.status).toBe(200);
     await first.text();
+    const retry = await POST(request());
+    expect(retry.status).toBe(200);
+    await retry.text();
     expect(mocks.appendExchange).toHaveBeenCalledTimes(2);
+  });
+
+  it("releases capacity when profile loading exceeds the chat deadline", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("CHAT_TIMEOUT_MS", "1000");
+    let resolveProfile!: (profile: null) => void;
+    const profileRequest = new Promise<null>((resolve) => {
+      resolveProfile = resolve;
+    });
+    mocks.getProfile.mockReturnValue(profileRequest);
+    const { POST } = await import("./route");
+
+    const pending = POST(request());
+    await vi.waitFor(() => expect(mocks.getProfile).toHaveBeenCalledOnce());
+    await vi.advanceTimersByTimeAsync(1000);
+    const failed = await pending;
+    expect(failed.status).toBe(504);
+    resolveProfile(null);
+
+    mocks.getProfile.mockResolvedValue(null);
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "done", message: "recovered", tool_calls: [], citations: [] };
+    });
+    const next = await POST(request());
+    expect(next.status).toBe(200);
+    await next.text();
+  });
+
+  it("releases capacity when the client cancels during profile loading", async () => {
+    let started!: () => void;
+    const profileStarted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    let resolveProfile!: (profile: null) => void;
+    mocks.getProfile.mockImplementationOnce(
+      () =>
+        new Promise<null>((resolve) => {
+          resolveProfile = resolve;
+          started();
+        }),
+    );
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "done", message: "recovered", tool_calls: [], citations: [] };
+    });
+    const { POST } = await import("./route");
+    const controller = new AbortController();
+    const pending = POST(abortableRequest(controller.signal));
+    await profileStarted;
+    controller.abort(new Error("client disconnected"));
+    expect((await pending).status).toBe(204);
+    resolveProfile(null);
+
+    const next = await POST(request());
+    expect(next.status).toBe(200);
+    await next.text();
   });
 });

@@ -48,15 +48,6 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
-    const sessionId = parsed.value.session_id ?? uuid();
-    const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
-    // An unreadable profile (no row, no DB, non-UUID dev user) only means no
-    // defaults in the prompt; it never blocks the chat.
-    const profile = await getProfile(user.sub).catch((e: unknown) => {
-      console.warn("profile load failed", e instanceof Error ? e.message : e);
-      return null;
-    });
-
     const releaseCapacity = acquireChat();
     if (!releaseCapacity) {
       const response = json({ error: "The assistant is busy. Please try again." }, 503);
@@ -64,12 +55,41 @@ export async function POST(request: Request): Promise<Response> {
       return response;
     }
 
-    const encoder = new TextEncoder();
+    const sessionId = parsed.value.session_id ?? uuid();
+    const lastUser = parsed.value.messages.findLast((m) => m.role === "user");
     const owner = new AbortController();
     const deadline = setTimeout(() => owner.abort(new Error("Chat deadline exceeded")), CHAT_TIMEOUT_MS);
     const abortOwner = () => owner.abort(request.signal.reason);
     request.signal.addEventListener("abort", abortOwner, { once: true });
     if (request.signal.aborted) abortOwner();
+    // An unreadable profile (no row, no DB, non-UUID dev user) only means no
+    // defaults in the prompt; it never blocks the chat.
+    let profile: Awaited<ReturnType<typeof getProfile>>;
+    let rejectProfileOnAbort: (() => void) | undefined;
+    try {
+      profile = await Promise.race([
+        getProfile(user.sub).catch((e: unknown) => {
+          console.warn("profile load failed", e instanceof Error ? e.message : e);
+          return null;
+        }),
+        new Promise<never>((_, reject) => {
+          rejectProfileOnAbort = () => reject(owner.signal.reason ?? new Error("Chat setup aborted"));
+          if (owner.signal.aborted) rejectProfileOnAbort();
+          else owner.signal.addEventListener("abort", rejectProfileOnAbort, { once: true });
+        }),
+      ]);
+    } catch (error) {
+      clearTimeout(deadline);
+      request.signal.removeEventListener("abort", abortOwner);
+      releaseCapacity();
+      if (request.signal.aborted) return new Response(null, { status: 204 });
+      if (owner.signal.aborted) return json({ error: FAILURE_MESSAGE }, 504);
+      throw error;
+    } finally {
+      if (rejectProfileOnAbort) owner.signal.removeEventListener("abort", rejectProfileOnAbort);
+    }
+
+    const encoder = new TextEncoder();
     let iterator: ReturnType<typeof streamAgent>;
     try {
       iterator = streamAgent(parsed.value.messages, {
