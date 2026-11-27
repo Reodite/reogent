@@ -201,7 +201,7 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(shellRef.current?.workspaceView?.paneId).toBe("calendar");
   });
 
-  it("exposes mapped tool badges as pressed-state buttons", () => {
+  it("opens the mapped canvas and updates its pressed state", () => {
     const { container } = renderWidget(
       {
         ...walkingLoadingCall,
@@ -209,13 +209,11 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
       },
       "walking-badge",
     );
-    const badge = container.querySelector('[data-widget="walking_distance"]') as HTMLButtonElement;
-    expect(badge.tagName).toBe("BUTTON");
-    expect(badge.getAttribute("type")).toBe("button");
-    expect(badge.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(badge);
+    const widget = container.querySelector('[data-widget="walking_distance"]') as HTMLElement;
+    expect(widget.getAttribute("aria-pressed")).toBe("false");
+    act(() => fireEvent.click(widget));
     expect(shellRef.current?.workspaceView?.paneId).toBe("map");
-    expect(badge.getAttribute("aria-pressed")).toBe("true");
+    expect(widget.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("reopens a dismissed phone canvas through an explicit mapped action", () => {

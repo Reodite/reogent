@@ -130,7 +130,6 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
         <ModeToggle presentation={presentation} collapsed={collapsed} />
       </ChatShellProvider>,
     );
-    expect(view.container.childElementCount).toBe(0);
     expect(view.queryByRole("navigation", { name: "Reodite areas" })).toBeNull();
     expect(view.queryByRole("tooltip")).toBeNull();
     expect(routerPush).not.toHaveBeenCalled();

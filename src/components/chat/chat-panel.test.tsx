@@ -4,7 +4,7 @@ import { ChatPanel } from "@/src/components/chat/chat-panel";
 import { ChatShellProvider, useChatShell, type ChatShellState } from "@/src/components/chat/chat-shell-context";
 import type { ChatMessage, ToolCall } from "@/src/lib/api-types";
 import { siteAudio } from "@/src/lib/audio";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -260,16 +260,14 @@ describe("14.3 — revisit an earlier widget + keyboard activation (REQ-3.4, REQ
 
     const widgets = container.querySelectorAll('[data-widget="show_widget"]');
     expect(widgets.length).toBe(2);
-    const earlier = widgets[0].querySelector<HTMLButtonElement>('[data-action="open-course-details"]');
-    const later = widgets[1].querySelector<HTMLButtonElement>('[data-action="open-course-details"]');
-    expect(earlier?.tagName).toBe("BUTTON");
-    expect(later?.tagName).toBe("BUTTON");
+    const earlier = within(widgets[0] as HTMLElement).getByRole("button", { name: "Course details" });
+    const later = within(widgets[1] as HTMLElement).getByRole("button", { name: "Course details" });
 
-    fireEvent.click(earlier as HTMLButtonElement);
+    fireEvent.click(earlier);
     expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 110");
 
     later?.focus();
-    fireEvent.click(later as HTMLButtonElement);
+    fireEvent.click(later);
     expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 320");
     expect(document.activeElement).toBe(later);
   });

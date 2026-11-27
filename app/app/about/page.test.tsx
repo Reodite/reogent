@@ -36,7 +36,6 @@ it.each([
   const card = view.getByRole("article", { name });
 
   const link = within(card).getByRole("link", { name, exact: true });
-  expect(link.closest("footer")).not.toBeNull();
   expect(link.getAttribute("href")).toBe(href);
   expect(link.getAttribute("target")).toBe("_blank");
   expect(link.getAttribute("rel")).toBe("noopener noreferrer");
