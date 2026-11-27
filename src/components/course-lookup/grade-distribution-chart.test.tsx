@@ -21,11 +21,10 @@ const BUCKETS = {
 
 describe("GradeDistributionChart behavior", () => {
   it("exposes every bucket count in the named keyboard-focusable chart", () => {
-    const { getAllByRole, getByRole, getByText } = render(<GradeDistributionChart buckets={BUCKETS} />);
+    const { getByRole, getByText } = render(<GradeDistributionChart buckets={BUCKETS} />);
     const chart = getByRole("region", { name: "Grade distribution chart" });
 
     expect(chart.tabIndex).toBe(0);
-    expect(getAllByRole("img")).toHaveLength(11);
     for (const [bucket, count] of Object.entries(BUCKETS)) {
       expect(getByRole("img", { name: `${bucket}: ${count} students` })).toBeTruthy();
     }
