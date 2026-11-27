@@ -594,7 +594,7 @@ describe("course loading consistency", () => {
     expect(screen.queryByRole("status", { name: "Loading course details" })).toBeNull();
   });
 
-  it("matches the loaded table header, padded cells, compact metadata, and count footer", async () => {
+  it("shows loaded course results and their count after the initial request", async () => {
     shellState.mode = "tools";
     const pending = deferred<{ courses: CourseDoc[]; subject_total: number }>();
     apiState.searchCourses.mockReturnValue(pending.promise);
