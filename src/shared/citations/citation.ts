@@ -3,13 +3,13 @@ export type CitationKind = "course" | "program" | "event" | "calendar" | "page" 
 /** A single source attributed to an assistant response, allocated by the
  * citations server and rendered as a chip by the client. */
 export type Citation = {
-  /** 1-indexed position in the response's citation array (Property 18). */
+  /** 1-indexed position in the response's citation array. */
   index: number;
   label: string;
   kind: CitationKind;
   /** True after `stampUsed` finds this index in a final-text citation marker. */
   used: boolean;
-  /** Omitted entirely when absent or empty (Property 19, REQ-12.3). */
+  /** Omitted entirely when absent or empty. */
   source_url?: string;
   /** Originating tool name. */
   tool: string;

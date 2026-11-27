@@ -40,7 +40,7 @@ const extract = (name: keyof typeof CITATION_EXTRACTORS) => {
   return fn;
 };
 
-describe("allocateCitations — Property 18, Index-1 continuity", () => {
+describe("allocateCitations assigns contiguous indices", () => {
   it("assigned index values form exactly 1..length with no gaps or duplicates", () => {
     fc.assert(
       fc.property(fc.array(arbSeed, { maxLength: 30 }), (seeds) => {
@@ -75,7 +75,7 @@ describe("allocateCitations — Property 18, Index-1 continuity", () => {
   });
 });
 
-describe("extractors — Property 19, Source-url honesty", () => {
+describe("extractors preserve valid source URLs", () => {
   const arbUrlSlot = fc.oneof(fc.constant(""), fc.constant(null), fc.constant(undefined), fc.webUrl());
 
   it("search_ubc_pages never emits an empty source_url", () => {
@@ -364,7 +364,7 @@ describe("extractors — Property 19, Source-url honesty", () => {
   });
 });
 
-describe("stampUsed — Property 20, Used-only-after-stamp", () => {
+describe("stampUsed marks referenced sources", () => {
   it.each(["[1,2]", "[1, 2]", "[ 1 , 2 ]", "[2, 1, 2]"])(
     "marks sources referenced by grouped citations: %s",
     (marker) => {

@@ -144,7 +144,7 @@ describe("drawableRoutePath", () => {
     expect(drawableRoutePath({ ...network, polyline: [network.polyline[0], network.polyline[0]] })).toBeNull();
   });
 
-  // Feature: campus-map-explorer, Property 7: Estimated routes never become path geometry.
+  // Estimated routes never become path geometry.
   it("emits geometry exactly for valid network routes", () => {
     fc.assert(
       fc.property(
@@ -449,7 +449,7 @@ describe("toolCallToCanvasView", () => {
     expect(highlight.detailKind).toBe(detailKind);
   });
 
-  // Feature: campus-map-explorer, Property 5: Map widget mapping rejects malformed spatial state.
+  // Reject malformed spatial state when mapping map widgets.
   it("accepts rich widgets exactly for finite in-range building centroids", () => {
     fc.assert(
       fc.property(fc.double({ noNaN: false }), fc.double({ noNaN: false }), (lon, lat) => {

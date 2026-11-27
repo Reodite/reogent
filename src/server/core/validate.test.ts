@@ -8,8 +8,7 @@ const validMessage = fc.record({
 });
 
 describe("chat request validation", () => {
-  // Feature: reodite, Property 5: Request validation
-  it("Property 5: rejects missing/empty messages, accepts non-empty role/content pairs", () => {
+  it("rejects missing or empty messages and accepts non-empty role/content pairs", () => {
     fc.assert(
       fc.property(
         fc.oneof(

@@ -3,9 +3,8 @@ import type { Citation } from "@/src/shared/citations/citation";
 
 const dedupeKey = (s: CitationSeed): string => `${s.source_url ?? ""}\u0000${s.label}`;
 
-/** Assigns 1-indexed `index`, dedupes by `source_url`+`label`, leaves `used`
- * false until `stampUsed` runs on `done`. Satisfies Property 18: the returned
- * `index` values form exactly `1..length` with no gaps or duplicates. */
+/** Assigns contiguous 1-based indices, deduplicates by `source_url` and `label`,
+ * and leaves `used` false until `stampUsed` runs on `done`. */
 export function allocateCitations(seeds: CitationSeed[]): Citation[] {
   const seen = new Set<string>();
   const unique: CitationSeed[] = [];

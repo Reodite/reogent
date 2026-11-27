@@ -10,8 +10,7 @@ const spec = (name: string) => ({ name, description: "d", inputSchema: { json: {
 afterEach(() => vi.useRealTimers());
 
 describe("tool executor", () => {
-  // Feature: reodite, Property 4: Tool failures are contained
-  it("Property 4: throwing tools, unknown tools, and empty results never escape as exceptions", async () => {
+  it("contains failures from throwing tools, unknown tools, and empty results", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.oneof(

@@ -126,7 +126,7 @@ describe("session write ownership", () => {
   });
 });
 
-describe("16.4 Property 21 — History rehydration byte-equality", () => {
+describe("history rehydration preserves stored citation data", () => {
   it("for any JSONB citations cell, the deserialized message byte-equals the original", async () => {
     await fc.assert(
       fc.asyncProperty(arbPersistedMessage, async ({ rawJson, parsed }) => {
@@ -147,7 +147,7 @@ describe("16.4 Property 21 — History rehydration byte-equality", () => {
         expect(JSON.stringify(JSON.parse(rawJson))).toEqual(JSON.stringify(msgs[0].citations));
         expect(msgs[0].citations).toEqual(parsed);
         if (Array.isArray(parsed)) {
-          // Property 18 holds through the load path: indices form 1..length.
+          // Citation indices remain contiguous and 1-based after loading.
           expect(msgs[0]?.citations?.map((c) => c.index)).toEqual([...(parsed ?? []).keys()].map((i) => i + 1));
           if (parsed.length === 0) {
             // Empty arrays reload identically — our persistence stores null only when [] was written.

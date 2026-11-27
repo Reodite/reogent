@@ -8,7 +8,7 @@ export type CalendarEvent = {
   date: string;
   label: string;
   /** Propagated from the originating KeyDateDoc, omitted entirely when
-   * absent or empty (Property 19, REQ-12.3). */
+   * absent or empty. */
   source_url: string | null;
   /** Sub-kind tags inferred from the event name (e.g. "exam",
    * "reading-week", "deadline", "term"). */

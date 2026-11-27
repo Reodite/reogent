@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { arbCourseCode, arbOkanaganCode } from "./arb";
 import { canonicalize } from "./course-code";
 
-/** Property 1 — Canonical form invariant (REQ-1.1, REQ-1.2). */
-describe("Property 1: canonical form invariant", () => {
+/** Canonicalizes supported course codes into a stable display form. */
+describe("canonical course code form", () => {
   it("raw equals the uppercased subject + space + uppercased number", () => {
     fc.assert(
       fc.property(arbCourseCode, ({ input, subject, number }) => {
@@ -18,8 +18,8 @@ describe("Property 1: canonical form invariant", () => {
   });
 });
 
-/** Property 2 — Okanagan rejection invariant (REQ-1.3). */
-describe("Property 2: no _O code emits kind 'code'", () => {
+/** Rejects Okanagan-suffixed inputs as course codes. */
+describe("Okanagan course code rejection", () => {
   it("canonicalize of a _O-suffixed code never returns kind 'code'", () => {
     fc.assert(
       fc.property(arbOkanaganCode, (input) => {
@@ -30,8 +30,8 @@ describe("Property 2: no _O code emits kind 'code'", () => {
   });
 });
 
-/** Property 3 — Subject-prefix shape (REQ-1.4). */
-describe("Property 3: bare subjects produce kind 'subject'", () => {
+/** Recognizes bare subject prefixes. */
+describe("bare subject prefixes", () => {
   it("a 2-5 letter bare string canonicalizes to a subject prefix", () => {
     const arbBareSubject = fc.string({ minLength: 2, maxLength: 5 }).filter((s) => /^[A-Za-z]+$/.test(s));
     fc.assert(
@@ -43,8 +43,8 @@ describe("Property 3: bare subjects produce kind 'subject'", () => {
   });
 });
 
-/** Property 4 — Canonicalization idempotence (REQ-1.1). */
-describe("Property 4: canonicalize is idempotent", () => {
+/** Re-canonicalizing a canonical result leaves it unchanged. */
+describe("canonicalization idempotence", () => {
   it("canonicalize(canonicalize(s).raw) equals canonicalize(s)", () => {
     fc.assert(
       fc.property(arbCourseCode, ({ input }) => {

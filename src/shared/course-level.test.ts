@@ -2,8 +2,8 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { canonicalize, CODE_RE, firstDigit, isOkanagan, matchesLevel } from "./course-code";
 
-describe("canonicalize (Property 1-4)", () => {
-  it("round-trips: canonical code raw matches SUBJ NUM with _V stripped from subject (Property 1)", () => {
+describe("canonicalize", () => {
+  it("round-trips canonical codes with the _V suffix stripped from the subject", () => {
     fc.assert(
       fc.property(fromCodeSubjectNumber(), (str) => {
         const r = canonicalize(str);
@@ -14,7 +14,7 @@ describe("canonicalize (Property 1-4)", () => {
     );
   });
 
-  it("Okanagan rejection: _O codes never emit kind 'code' (Property 2)", () => {
+  it("does not emit code results for Okanagan-suffixed inputs", () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1 }).map((s) => `MATH_O ${s}`),
@@ -28,12 +28,12 @@ describe("canonicalize (Property 1-4)", () => {
     );
   });
 
-  it("bare subject returns kind 'subject' (Property 3)", () => {
+  it("returns a subject result for a bare subject", () => {
     expect(canonicalize("CPSC")?.kind).toBe("subject");
     expect(canonicalize("math")?.kind).toBe("subject");
   });
 
-  it("idempotence: canonicalize(raw) === canonicalize(canonicalize(s).raw) (Property 4)", () => {
+  it("is idempotent for canonicalized inputs", () => {
     fc.assert(
       fc.property(fromCodeSubjectNumber(), (s) => {
         const a = canonicalize(s);
@@ -45,7 +45,7 @@ describe("canonicalize (Property 1-4)", () => {
   });
 });
 
-describe("matchesLevel — first-digit relation (Property 37, REQ-3.1/3.2/3.3)", () => {
+describe("matchesLevel first-digit relation", () => {
   const arbSubject = fc
     .string({ minLength: 2, maxLength: 4 })
     .filter((s) => /^[A-Za-z]+$/.test(s))
@@ -64,7 +64,7 @@ describe("matchesLevel — first-digit relation (Property 37, REQ-3.1/3.2/3.3)",
     );
   });
 
-  it("arbLevelQuery generator shape: subject × op × digit (REQ-3.3 contract edge)", () => {
+  it("generates subject, operator, and digit queries within their supported ranges", () => {
     fc.assert(
       fc.property(fc.tuple(arbSubject, arbOp, fc.integer({ min: 1, max: 5 }).map(String)), ([subject, op, digit]) => {
         expect(CODE_RE).toBeDefined();
