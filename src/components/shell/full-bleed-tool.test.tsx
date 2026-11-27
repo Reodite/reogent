@@ -74,7 +74,7 @@ function renderTool(view: CanvasView | null) {
   );
 }
 
-describe("7.2 — FullBleedTool (REQ-4.3, REQ-4.4)", () => {
+describe("Full-bleed tool navigation", () => {
   it("renders nothing when view is null", () => {
     const { container } = renderTool(null);
     expect(container.querySelector("[data-pane]")).toBeNull();

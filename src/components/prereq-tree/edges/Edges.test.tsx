@@ -18,7 +18,7 @@ const edgeProps = {
   targetPosition: "left" as const,
 } as const;
 
-describe("OptionalEdge (REQ-10.1, REQ-10.2)", () => {
+describe("Optional prerequisite edge behavior", () => {
   it("exposes the optional branch and forwards its toggle key", () => {
     const onToggle = vi.fn();
     const { container } = render(

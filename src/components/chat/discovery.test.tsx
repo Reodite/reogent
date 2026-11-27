@@ -90,7 +90,7 @@ const getCourseCall: ToolCall = {
   status: "ok",
 } as unknown as ToolCall;
 
-describe("22.6 — Course tool card Prereq Tree affordance routes code into the tree (REQ-4.2)", () => {
+describe("Course tool card prerequisite navigation", () => {
   it("rendering a get_course card with a prerequisite shows a Prereq Tree button whose click opens the tree rooted at the card's code", () => {
     shellRef.current = null;
     const { container } = render(

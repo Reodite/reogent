@@ -202,7 +202,7 @@ it("gates private content during SSR, initialization and signout", () => {
   expect(view.queryByTestId("chat-children")).toBeNull();
 });
 
-describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
+describe("App shell routes and workspace modes", () => {
   it("inline AI renders chat + Answer Canvas with the skip target on chat", () => {
     const { container, getByTestId } = renderShell(true);
     expect(container.querySelector("#main-content")?.getAttribute("data-pane")).toBe("chat");
@@ -426,7 +426,7 @@ describe("10.4 — AppShell layouts (REQ-2.1, REQ-4.1, REQ-7.1)", () => {
   });
 });
 
-describe("13.2 — ARIA landmarks (REQ-8.2)", () => {
+describe("App shell landmarks", () => {
   it("the ChatSurface wrapper is the sole <main> and carries #main-content; the Answer canvas is a labelled region", () => {
     const { container } = renderShell(true);
     const main = container.querySelectorAll("main");
@@ -437,7 +437,7 @@ describe("13.2 — ARIA landmarks (REQ-8.2)", () => {
   });
 });
 
-describe("13.3 — focus move/return + inert (REQ-2.5, REQ-8.1, REQ-8.3)", () => {
+describe("App shell focus and inert behavior", () => {
   it("loops drawer focus without reaching the underlying navigation", () => {
     const rects = vi
       .spyOn(HTMLElement.prototype, "getClientRects")

@@ -130,7 +130,7 @@ const unsupportedPrereqCall: ToolCall = {
   result: { type: "prereq_tree", result: { rootCode: "CPSC 320", nodes: [], edges: [] } },
 };
 
-describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
+describe("Response widget behavior", () => {
   it("does not give an unsupported prereq widget an empty action or tab stop", () => {
     const { container, queryByRole } = renderWidget(unsupportedPrereqCall, "unsupported");
     const widget = container.querySelector('[data-widget="show_widget"]')!;

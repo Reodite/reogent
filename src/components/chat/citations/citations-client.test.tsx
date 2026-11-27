@@ -55,7 +55,7 @@ function makeCitations(n: number, used = false, withUrl = false): Citation[] {
   }));
 }
 
-describe("Property 22 — out-of-range [k] markers render as the literal [k] (REQ-13.3)", () => {
+describe("Out-of-range citation markers", () => {
   const cases: Array<[string, number]> = [
     ["[0]", 3],
     ["[4]", 3],
@@ -83,7 +83,7 @@ describe("Property 22 — out-of-range [k] markers render as the literal [k] (RE
   });
 });
 
-describe("Property 23a — in-range [N] becomes a chip at every injected leaf string (REQ-13.4)", () => {
+describe("Citation chips in text leaves", () => {
   const stems = [
     "Intro [1].",
     "Take [2] or [3].",
@@ -129,7 +129,7 @@ describe("grouped citation markers", () => {
   });
 });
 
-describe("Property 23b — chip sequence is invariant under re-rendering (REQ-13.4)", () => {
+describe("Citation chip order across renders", () => {
   it("re-rendering the same injected children yields identical data-index sequences", () => {
     const citations = makeCitations(4);
     const renderIds = () =>
@@ -143,7 +143,7 @@ describe("Property 23b — chip sequence is invariant under re-rendering (REQ-13
   });
 });
 
-describe("Property 24 — source_url absent renders no anchor and exposes label as tooltip (REQ-13.2)", () => {
+describe("Citation links and labels", () => {
   it("keeps an unlinked citation label available as a tooltip when source_url is absent", () => {
     const citation: Citation = {
       index: 7,
@@ -219,7 +219,7 @@ describe("source safety and provenance", () => {
   });
 });
 
-describe("17.8 — Sources panel two-list rendering edge cases", () => {
+describe("Sources panel used and unused citations", () => {
   it("splits used and unused rows under a 'Sources used' summary when both lists are non-empty", () => {
     const citations = [
       ...makeCitations(3, true, true),
@@ -311,7 +311,7 @@ describe("Sources panel expansion and scroll ownership", () => {
   });
 });
 
-describe("Property 41 (15.11) — renderer tolerates null/undefined/non-array citations (REQ-13.1)", () => {
+describe("Invalid citation inputs", () => {
   const bad: Array<[string, unknown]> = [
     ["null", null],
     ["undefined", undefined],
@@ -331,7 +331,7 @@ describe("Property 41 (15.11) — renderer tolerates null/undefined/non-array ci
   });
 });
 
-describe("17.10 — Sources panel renders against the fixture NDJSON stream as citations fill (REQ-13.5)", () => {
+describe("Citation updates from streamed responses", () => {
   const originalFetch = globalThis.fetch;
 
   afterEach(() => {

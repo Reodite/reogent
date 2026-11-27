@@ -65,7 +65,7 @@ async function waitForCell(container: HTMLElement, day: string, selector: string
   return container.querySelector(`[data-calendar-day="${day}"]`) as HTMLElement;
 }
 
-describe("Property 25 — empty month renders no markers (REQ-16.5)", () => {
+describe("Empty months", () => {
   it("August 2024 is empty in the fixture: no event markers anywhere", async () => {
     const { container, restore } = renderPane({ cursor: "2024-08" });
     await waitFor(() => expect(container.querySelectorAll("[data-calendar-marker]")).toHaveLength(0));
@@ -75,7 +75,7 @@ describe("Property 25 — empty month renders no markers (REQ-16.5)", () => {
   });
 });
 
-describe("Property 26 — two events on one day with different kinds render two distinct markers (REQ-16.2)", () => {
+describe("Days with events of different kinds", () => {
   it("2025-02-17 has both a Family Day holiday and the Winter Term 2 Reading week begin (academic)", async () => {
     const { container, restore } = renderPane({ cursor: "2025-02" });
     const cell = await waitForCell(container, "2025-02-17", "[data-calendar-marker]");
@@ -88,7 +88,7 @@ describe("Property 26 — two events on one day with different kinds render two 
   });
 });
 
-describe("Property 27 — busy days expose the total event count (REQ-16.4)", () => {
+describe("Busy-day event actions", () => {
   it("a day with four events exposes an action for the full event count", async () => {
     const events: CalendarEvent[] = (["Academic one", "Academic two", "Academic three", "Academic four"] as const).map(
       (label) => ({
@@ -110,7 +110,7 @@ describe("Property 27 — busy days expose the total event count (REQ-16.4)", ()
   });
 });
 
-describe("Property 28 — today's cell is identified independently of event markers (REQ-17.4)", () => {
+describe("Today's calendar cell", () => {
   it("a today cell and neighboring dates use their readable state tokens", async () => {
     const { container, restore } = renderPane({ cursor: "2024-04" });
     await waitFor(() => expect(container.querySelector('[data-calendar-today="2024-04-15"]')).not.toBeNull());
@@ -120,7 +120,7 @@ describe("Property 28 — today's cell is identified independently of event mark
   });
 });
 
-describe("Property 29 — cursors beyond futureHorizonMonths disable the next-month affordance (REQ-17.5)", () => {
+describe("Calendar navigation horizon", () => {
   it("next-month is enabled at April 2024 and disabled past the 24-month horizon", async () => {
     const near = renderPane({ cursor: "2024-04" });
     await waitFor(() => expect(near.container.querySelector("[data-calendar-day]")).not.toBeNull());
@@ -133,7 +133,7 @@ describe("Property 29 — cursors beyond futureHorizonMonths disable the next-mo
   });
 });
 
-describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17.1/17.2/17.3)", () => {
+describe("Calendar month navigation", () => {
   it("prev-month button decrements cursor by one month", async () => {
     const { container, setState, restore } = renderPane({ cursor: "2024-04" });
     await waitFor(() => expect(container.querySelector('[data-calendar-nav="prev"]')).not.toBeNull());
@@ -195,7 +195,7 @@ describe("20.10 — prev/next/today jumps update the cursor via setState (REQ-17
   });
 });
 
-describe("20.13 + Property 27b — multi-event-day popover enumerates each event by row with labels and source links (REQ-16.3, REQ-16.4)", () => {
+describe("Multi-event agenda and event details", () => {
   it("opens all three events from the multi-event action and selects an event", async () => {
     const events: CalendarEvent[] = [
       {

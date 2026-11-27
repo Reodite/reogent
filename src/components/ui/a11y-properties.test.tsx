@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 // Property 35 — live region updates within one tick after announce()
-describe("Property 35 — status changes announce to an sr-only live region within one frame (REQ-20.4)", () => {
+describe("Live region status announcements", () => {
   it("citation panel expand + collapse announce via the live region", async () => {
     const { container } = render(<LiveRegion />);
     const region = container.querySelector("[data-live-region]") as HTMLElement;

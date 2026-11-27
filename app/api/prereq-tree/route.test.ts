@@ -38,14 +38,14 @@ describe("GET /api/prereq-tree", () => {
     expect((await res.json()).error).toMatch(/root is required/);
   });
 
-  it("400 on an Okanagan code (REQ-1.3)", async () => {
+  it("rejects an Okanagan course code", async () => {
     const res = await GET(req("?root=HES_O+120"));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/Okanagan/i);
     expect(buildPrereqGraph).not.toHaveBeenCalled();
   });
 
-  it("400 on a bare subject (REQ-1.4)", async () => {
+  it("rejects a bare course subject", async () => {
     const res = await GET(req("?root=CPSC"));
     expect(res.status).toBe(400);
     expect(buildPrereqGraph).not.toHaveBeenCalled();

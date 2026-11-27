@@ -44,7 +44,7 @@ function Probe() {
   );
 }
 
-describe("useSidebarCollapsed — collapse-state persistence (REQ-11.1, REQ-11.2)", () => {
+describe("Sidebar collapse state persistence", () => {
   it("re-renders collapsed on first paint when localStorage is '1'", () => {
     mem.set("reogent.sidebar.collapsed", "1");
     render(<Probe />);
@@ -121,7 +121,7 @@ describe("VersionBadge — account menu version render", () => {
   });
 });
 
-describe("AUTH_ENABLED=false smoke (REQ-11.4)", () => {
+describe("Sidebar behavior when authentication is disabled", () => {
   it("collapse persistence and version badge function identically with auth disabled", () => {
     vi.stubEnv("AUTH_ENABLED", "false");
     mem.set("reogent.sidebar.collapsed", "1");

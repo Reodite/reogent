@@ -28,7 +28,7 @@ const options = [
 
 const detail = { kind: "course", code: "MATH 100", title: "Differential Calculus with Applications" } as const;
 
-describe("DropdownDisjunctionNode (REQ-9.1)", () => {
+describe("Dropdown prerequisite choices", () => {
   it("renders closed by default, opens on trigger click, closes on Escape", () => {
     render(<DropdownDisjunctionNode id="d1" data={{ options, selectedIdx: 0, onChange: vi.fn(), detail }} />);
     expect(screen.queryByRole("listbox")).toBeNull();
@@ -61,7 +61,7 @@ describe("DropdownDisjunctionNode (REQ-9.1)", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("keeps wheel events inside the open menu and closes it when the canvas zoom changes (REQ-9.1)", async () => {
+  it("keeps wheel events inside the menu and closes it when canvas zoom changes", async () => {
     viewState.transform = [0, 0, 1];
     const data = { options, selectedIdx: 0, onChange: vi.fn(), detail };
     const { rerender } = render(<DropdownDisjunctionNode id="z" data={data} />);
@@ -73,7 +73,7 @@ describe("DropdownDisjunctionNode (REQ-9.1)", () => {
   });
 });
 
-describe("StackedDisjunctionNode (REQ-9.2)", () => {
+describe("Stacked prerequisite choices", () => {
   const stackedOptions = [
     { label: "a", display: "MATH 100" },
     { label: "b", display: "MATH 102" },

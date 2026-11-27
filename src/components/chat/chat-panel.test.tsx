@@ -201,7 +201,7 @@ async function send(text: string) {
   await new Promise((r) => setTimeout(r, 50));
 }
 
-describe("14.1 — agent stream drives the canvas (REQ-3.1, REQ-9.1)", () => {
+describe("Agent stream canvas activation", () => {
   it("a mapped tool call loads its canvas view after the stream resolves", async () => {
     streamResponse([courseCall("CPSC 110")]);
     renderPanel(null);
@@ -210,7 +210,7 @@ describe("14.1 — agent stream drives the canvas (REQ-3.1, REQ-9.1)", () => {
     expect(shellRef.current?.workspaceView?.state.code).toBe("CPSC 110");
   });
 
-  it("an unmapped-only turn leaves the existing canvas unchanged (REQ-3.6)", async () => {
+  it("an unmapped-only turn leaves the existing canvas unchanged", async () => {
     // Existing session whose last assistant turn already drove the canvas.
     api.getSession.mockResolvedValue([
       { role: "user", content: "CPSC 110?" },
@@ -226,7 +226,7 @@ describe("14.1 — agent stream drives the canvas (REQ-3.1, REQ-9.1)", () => {
   });
 });
 
-describe("14.2 — reload re-activates the latest widget (REQ-3.8, REQ-9.5)", () => {
+describe("Restoring the latest widget after reload", () => {
   it("re-activates the last mapped tool's view on session load", async () => {
     api.getSession.mockResolvedValue([
       { role: "user", content: "what is CPSC 110" },
@@ -246,7 +246,7 @@ describe("14.2 — reload re-activates the latest widget (REQ-3.8, REQ-9.5)", ()
   });
 });
 
-describe("14.3 — revisit an earlier widget + keyboard activation (REQ-3.4, REQ-3.5, REQ-8.1)", () => {
+describe("Revisiting earlier widgets with keyboard activation", () => {
   it("uses explicit native controls to revisit earlier widgets", async () => {
     api.getSession.mockResolvedValue([
       { role: "user", content: "CPSC 110?" },

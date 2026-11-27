@@ -99,7 +99,7 @@ function modeLink(container: HTMLElement, label: string): HTMLAnchorElement {
   return link;
 }
 
-describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
+describe("Mode navigation and sidebar", () => {
   it("renders bottom navigation with the routed area current", () => {
     pathname.value = "/app/tools/map";
     const view = render(

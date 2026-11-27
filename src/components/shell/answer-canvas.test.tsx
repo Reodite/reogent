@@ -72,7 +72,7 @@ function renderCanvas(view: CanvasView | null, titlebar = true) {
   );
 }
 
-describe("6.2 — AnswerCanvas (REQ-7.1, REQ-7.2)", () => {
+describe("Answer canvas navigation", () => {
   it("idle (view null) renders nothing", () => {
     const { container } = renderCanvas(null);
     expect(container.querySelector("[data-pane]")).toBeNull();

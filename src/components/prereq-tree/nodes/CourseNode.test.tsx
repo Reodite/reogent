@@ -12,7 +12,7 @@ vi.mock("reactflow", () => ({
 
 const renderNode = (data: CourseNodeData, id = "n1") => render(<CourseNode id={id} data={data} />).container;
 
-describe("CourseNode variants (REQ-9.4)", () => {
+describe("Prerequisite course nodes", () => {
   it("renders root course information", () => {
     const node = renderNode({ code: "CPSC 320", title: "Intermediate Algorithm Design and Analysis", variant: "root" });
     expect(node.textContent).toContain("CPSC 320");

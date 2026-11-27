@@ -78,7 +78,7 @@ beforeEach(() => {
 
 afterEach(() => cleanup());
 
-describe("CourseDetailCard — render with sections (13.6, REQ-2.1)", () => {
+describe("Course detail sections", () => {
   it("renders code, title, credits, description, prerequisite, terms, and a section row", () => {
     const { container } = render(<CourseDetailCard record={fullRecord} />);
     expect(container.textContent).toContain("CPSC 110");
@@ -97,7 +97,7 @@ describe("CourseDetailCard — render with sections (13.6, REQ-2.1)", () => {
   });
 });
 
-describe("CourseDetailCard — null-or-empty field omission (13.7, REQ-2.2)", () => {
+describe("Course detail optional fields", () => {
   it("omits credits badge, description, corequisite, offered, sections, and the Prereq Tree affordance when those fields are absent", () => {
     const { container } = render(<CourseDetailCard record={sparseRecord} />);
     expect(container.textContent).not.toContain("cr");
@@ -108,7 +108,7 @@ describe("CourseDetailCard — null-or-empty field omission (13.7, REQ-2.2)", ()
   });
 });
 
-describe("CourseDetailCard — Prereq Tree affordance (13.11, REQ-4.1)", () => {
+describe("Course detail prerequisite navigation", () => {
   it("opens the prereq tree pane rooted at the record's code on click", () => {
     const { container } = render(
       <CourseDetailCard
@@ -151,7 +151,7 @@ function makeCourse(code: string, subject: string, number: string, title?: strin
   };
 }
 
-describe("course-lookup-pane — subject cap 200 + footer notice (13.8, REQ-3.2)", () => {
+describe("Course subject result limit and notice", () => {
   it("renders the subject listing capped at 200 with the 'Showing first 200 of N' footer", async () => {
     const subjectCourses = Array.from({ length: 200 }, (_, i) =>
       makeCourse(`CPSC ${100 + i}`, "CPSC", String(100 + i)),
@@ -184,7 +184,7 @@ describe("course-lookup-pane — external code drive (widget navigation)", () =>
   });
 });
 
-describe("course-lookup-pane — dead exact code narrows to same-number match (13.9, REQ-3.5)", () => {
+describe("Exact course lookup fallback", () => {
   it("on a dead canonical code, subject search filters by exact number — no q-fuzzy spew", async () => {
     const subjectCourses = Array.from({ length: 12 }, (_, i) => makeCourse(`CPSC ${110 + i}`, "CPSC", String(110 + i)));
     apiState.getCourse.mockImplementation(async () => {
@@ -202,7 +202,7 @@ describe("course-lookup-pane — dead exact code narrows to same-number match (1
   });
 });
 
-describe("course-lookup-pane — partial-code narrows by number-prefix (13.9, REQ-3.5)", () => {
+describe("Partial course code matching", () => {
   it("calls subject+number search and renders the server-filtered matches verbatim", async () => {
     // Simulate the server's response (contains-prefix match, sorted ascending, capped at 8).
     const cpscMatched = [

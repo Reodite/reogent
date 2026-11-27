@@ -349,7 +349,7 @@ describe("PrereqTreePane", () => {
     expect(screen.getByTestId("rf-canvas")).toBeTruthy();
   });
 
-  it("renders the not-found state with CPSC 110 / MATH 200 suggestions on a missing submit (REQ-10.4)", async () => {
+  it("renders course suggestions after a missing course is submitted", async () => {
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     render(<PrereqTreePane />);
     await waitFor(() => expect(screen.queryByText(/Loading course index/)).toBeNull());
@@ -378,7 +378,7 @@ describe("PrereqTreePane", () => {
     expect(routerPush).toHaveBeenLastCalledWith("/app/tools/prereq");
   });
 
-  it("renders the empty state when a found course has no prereqs or coreqs (REQ-10.3)", async () => {
+  it("renders the empty state when a course has no prerequisites or corequisites", async () => {
     apiState.getCourseIndex.mockResolvedValue({ courses: COURSES });
     render(<PrereqTreePane initialRoot="CPSC 110" />);
     await waitFor(() => expect(screen.getAllByText(/has no listed prerequisites/).length).toBeGreaterThan(0));

@@ -39,7 +39,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("projectCalendarEvents — calendar server projection (REQ-16.1)", () => {
+describe("Calendar event projection", () => {
   it("drops rows without a usable start date", () => {
     const out = projectCalendarEvents(input);
     expect(out.find((e) => e.label.includes("To be confirmed by Senate"))).toBeUndefined();
@@ -129,7 +129,7 @@ describe("projectCampusEvents — campus events as per-day event-kind entries", 
   });
 });
 
-describe("GET /api/calendar route — projected CalendarEvent[] shape and caching (REQ-16.1)", () => {
+describe("Calendar route response and caching", () => {
   it("keeps the route export contract", async () => {
     expect(Object.keys(await import("./route"))).toEqual(["GET"]);
   });

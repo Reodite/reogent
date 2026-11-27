@@ -13,7 +13,7 @@ vi.mock("@/src/components/map/map-panel", () => ({
 
 const { PANE_REGISTRY, PANE_BY_ID } = await import("./pane-registry");
 
-describe("PANE_REGISTRY — composition (REQ-19.5, design.md §G)", () => {
+describe("Pane registry composition", () => {
   it("registers the panes in canonical order", () => {
     expect(PANE_REGISTRY.map((e) => e.id)).toEqual([
       "map",
