@@ -10,7 +10,7 @@ import { ChatInput } from "./chat-input";
 describe("shared conversation behavior", () => {
   it("forwards the message region ref and busy state", () => {
     const scrollRef = createRef<HTMLElement>();
-    const { container, getByRole, getByText } = render(
+    const { getByRole, getByText } = render(
       <ChatFrame
         aria-label="Conversation"
         header={<h1>Session</h1>}
@@ -22,7 +22,7 @@ describe("shared conversation behavior", () => {
       </ChatFrame>,
     );
     getByRole("region", { name: "Conversation" });
-    expect(scrollRef.current).toBe(container.querySelector(".chat-message-well"));
+    expect(scrollRef.current).toBe(getByRole("region", { name: "Conversation messages" }));
     expect(scrollRef.current?.getAttribute("aria-busy")).toBe("true");
     expect(scrollRef.current?.getAttribute("aria-label")).toBe("Conversation messages");
     expect(scrollRef.current?.tabIndex).toBe(0);

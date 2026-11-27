@@ -68,7 +68,7 @@ describe("shell loading surfaces", () => {
     expect(container.querySelectorAll("main")).toHaveLength(1);
     const boot = container.querySelector("[data-shell-boot-loading]");
     expect(boot?.getAttribute("data-shell-boot-mode")).toBe("ai");
-    expect(container.querySelector(".shell-boot-sidebar")).not.toBeNull();
+    expect(container.querySelector("aside")).not.toBeNull();
     expect(container.querySelector("[data-shell-boot-footer]")).not.toBeNull();
     expect(container.querySelector("[data-shell-boot-modes]")).not.toBeNull();
     expect(container.querySelector("[data-shell-boot-new]")).not.toBeNull();
