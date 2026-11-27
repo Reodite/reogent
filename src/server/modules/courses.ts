@@ -459,6 +459,9 @@ export const courses: DatasetModule = {
           if (candidates.length === 0 && !truncated) {
             throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"}`);
           }
+          if (facultyTruncated) {
+            throw new Error("Faculty course matches exceed the session index result cap; narrow the query or filters.");
+          }
           const withGrades = await Promise.all(
             candidates.map(async (c) => ({
               course: c,
@@ -477,21 +480,17 @@ export const courses: DatasetModule = {
             ranked.sort((a, b) => b.avg_grade - a.avg_grade);
           }
           const asOf = await getIndexFreshness("courses");
-          const notes = [
-            truncated
-              ? `Sorting was evaluated over the first ${scanned} catalogue matches; results may be incomplete.`
-              : null,
-            facultyTruncated
-              ? "Faculty matches may be incomplete because the session index result cap was reached."
-              : null,
-          ].filter((note): note is string => note !== null);
           return {
             courses: ranked.slice(0, Math.min(Number(limit) || 20, 50)).map((r) => ({
               ...presentCourse(r.course, 10),
               grade_avg: r.avg_grade,
             })),
             ...(asOf ? { catalog_as_of: asOf } : {}),
-            ...(notes.length ? { note: notes.join(" ") } : {}),
+            ...(truncated
+              ? {
+                  note: `Sorting was evaluated over the first ${scanned} catalogue matches; results may be incomplete.`,
+                }
+              : {}),
           };
         }
 

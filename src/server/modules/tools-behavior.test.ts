@@ -306,7 +306,7 @@ describe("find_courses (agent-tool-redesign)", () => {
     ).toEqual([100, 100]);
   });
 
-  it("paginates faculty matches when the session index caps each response", async () => {
+  it("rejects faculty matches when the session index result cap is reached", async () => {
     const search = fakeSearch(
       {
         courses: [course("CPSC_V 198"), course("CPSC_V 199"), course("CPSC_V 200")],
@@ -325,16 +325,13 @@ describe("find_courses (agent-tool-redesign)", () => {
     );
     const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
 
-    const result = (await tool.execute({ faculty: "Science", sort: "grade_avg_desc" }, search)) as {
-      courses: { code: string; grade_avg: number }[];
-      note?: string;
-    };
-
-    expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 199", "CPSC_V 198"]);
-    expect(result.note).toContain("session index result cap was reached");
+    await expect(tool.execute({ faculty: "Science", sort: "grade_avg_desc" }, search)).rejects.toThrow(
+      "Faculty course matches exceed the session index result cap",
+    );
     const joinCalls = search.searchCalls().filter(({ index }) => index === "course_sessions");
     expect(joinCalls).toHaveLength(1);
     expect(joinCalls[0].options).toMatchObject({ limit: 2, offset: 0 });
+    expect(search.calls().grades).toBeUndefined();
   });
 
   it("sorts session-index fallback by course code", async () => {
