@@ -3,9 +3,10 @@ import fixture from "@/__fixtures__/calendar-events.json";
 import { CalendarPane } from "@/src/components/calendar/calendar-pane";
 import type { CalendarEvent } from "@/src/shared/calendar/event";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fixtureEvents = fixture.output as CalendarEvent[];
+const originalFetch = globalThis.fetch;
 
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
@@ -28,11 +29,9 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
-  cleanup();
-});
-
-afterAll(() => {
   vi.unstubAllGlobals();
+  globalThis.fetch = originalFetch;
+  cleanup();
 });
 
 interface State {
@@ -42,17 +41,25 @@ interface State {
 
 function renderPane(state: Partial<State> = {}, events: CalendarEvent[] = fixtureEvents) {
   const setState = vi.fn();
-  const original = globalThis.fetch;
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify(events), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    })) as unknown as typeof globalThis.fetch;
+  const previousFetch = globalThis.fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      async () =>
+        new Response(JSON.stringify(events), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    ),
+  );
   const result = render(
     <CalendarPane state={{ cursor: state.cursor ?? "2024-04", hidden: state.hidden }} setState={setState} />,
   );
+  let restored = false;
   const restore = () => {
-    globalThis.fetch = original;
+    if (restored) return;
+    restored = true;
+    globalThis.fetch = previousFetch;
   };
   return { ...result, setState, restore };
 }

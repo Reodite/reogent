@@ -44,6 +44,13 @@ beforeEach(() => {
   document.documentElement.dataset.theme = "light";
   Reflect.deleteProperty(document, "startViewTransition");
   deviceAppearance(false);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/auth/session") return new Response(null, { status: 204 });
+      throw new Error(`Unexpected request: ${String(input)}`);
+    }),
+  );
 });
 
 afterEach(() => {

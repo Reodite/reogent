@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { createPlannerYear } from "@/src/lib/planner-model";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { usePlanner, type Year } from "./planner-store";
 
 vi.hoisted(() => {
@@ -10,13 +10,33 @@ vi.hoisted(() => {
 const api = vi.hoisted(() => ({ getCourseIndex: vi.fn() }));
 vi.mock("@/src/components/providers", () => ({ useApi: () => api }));
 vi.mock("./use-plan-sync", () => ({ usePlanSync: () => {} }));
-const programs = vi.hoisted(() => ({ getRequirementsFor: vi.fn() }));
+const programs = vi.hoisted(() => ({
+  getProgramIndex: vi.fn(),
+  getDegreeRules: vi.fn(),
+  getSubjectFaculties: vi.fn(),
+  getRequirementsFor: vi.fn(),
+}));
 vi.mock("@/src/lib/program-requirements", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/src/lib/program-requirements")>()),
+  getProgramIndex: programs.getProgramIndex,
+  getDegreeRules: programs.getDegreeRules,
+  getSubjectFaculties: programs.getSubjectFaculties,
   getRequirementsFor: programs.getRequirementsFor,
 }));
 
 const { DegreePlannerPane } = await import("./degree-planner-pane");
+
+beforeEach(() => {
+  programs.getProgramIndex.mockResolvedValue({
+    faculties: [],
+    majorsByFaculty: new Map(),
+    minorsByFaculty: new Map(),
+    byId: new Map(),
+    byUrl: new Map(),
+  });
+  programs.getDegreeRules.mockResolvedValue(new Map());
+  programs.getSubjectFaculties.mockResolvedValue({});
+});
 
 afterEach(() => {
   cleanup();
