@@ -184,14 +184,14 @@ describe("source retrieval and attribution", () => {
   });
 });
 
-describe("15.12 SYSTEM_PROMPT contract paragraph verbatim", () => {
+describe("system prompt attribution guidance", () => {
   it("includes the [N] attribution sentence verbatim", () => {
     expect(SYSTEM_PROMPT).toContain("attribute every tool result you relied on with a bracketed index like [1], [2]");
     expect(SYSTEM_PROMPT).toContain("Sources this turn");
   });
 });
 
-describe("15.10 Per-provider system-prompt parity smoke", () => {
+describe("provider system prompt forwarding", () => {
   it("Anthropic forwards the system string (contract + live citation list) to its SDK verbatim", async () => {
     const adapter = createAnthropicAdapter();
     await adapter.converse({ messages: emptyMsgs, system, toolSpecs: [] });
