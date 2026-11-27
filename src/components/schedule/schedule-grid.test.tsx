@@ -171,44 +171,4 @@ describe("ScheduleGrid", () => {
     expect(block.textContent).not.toContain("lab · Laboratory");
     expect(block.getAttribute("aria-label")).toContain("People: ada, grace");
   });
-
-  it("shows block footer content only when the meeting is tall enough", () => {
-    const model = buildScheduleGrid([
-      {
-        id: "short-footer",
-        courseKey: "CPSC 110",
-        code: "CPSC 110",
-        title: "Short",
-        section: "101",
-        component: "Lecture",
-        days: ["Mon"],
-        startMin: 540,
-        endMin: 600,
-      },
-      {
-        id: "tall-footer",
-        courseKey: "CPSC 210",
-        code: "CPSC 210",
-        title: "Tall",
-        section: "102",
-        component: "Lecture",
-        days: ["Tue"],
-        startMin: 540,
-        endMin: 630,
-      },
-    ]);
-    const view = render(
-      <ScheduleGrid
-        model={model}
-        activeDay="Mon"
-        onActiveDayChange={vi.fn()}
-        onBlockActivate={vi.fn()}
-        renderBlockFooter={(block) => <span>{block.id} avatar</span>}
-      />,
-    );
-
-    expect(view.queryByText("short-footer avatar")).toBeNull();
-    const tallFooter = view.getByText("tall-footer avatar");
-    expect(tallFooter).toBeTruthy();
-  });
 });

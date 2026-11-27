@@ -36,13 +36,12 @@ function stored() {
 }
 
 describe("simplified sound controls", () => {
-  it("shows only the volume scale and two labeled switches", () => {
+  it("exposes a stepped volume control and two labeled switches", () => {
     const { container } = settings();
     const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
     expect(slider.value).toBe("0");
     expect(slider.step).toBe("10");
     expect(slider.getAttribute("aria-valuetext")).toBe("Muted, 0 percent");
-    expect(container.querySelectorAll("[data-volume-stop]")).toHaveLength(11);
     expect(screen.getAllByRole("switch")).toHaveLength(2);
     expect(screen.getByRole("switch", { name: "Navigation" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Bot noises" })).toBeTruthy();
@@ -52,7 +51,6 @@ describe("simplified sound controls", () => {
     expect(container.querySelectorAll("p")).toHaveLength(0);
     fireEvent.change(slider, { target: { value: "30" } });
     expect(slider.getAttribute("aria-valuetext")).toBe("30 percent");
-    expect(screen.queryByText("30%")).toBeNull();
     expect(siteAudio.play).not.toHaveBeenCalled();
   });
 

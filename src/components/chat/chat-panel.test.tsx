@@ -28,19 +28,7 @@ vi.mock("motion/react", async (importOriginal) => {
   const staticElement = (tag: string) =>
     function StaticMotionElement({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) {
       const domProps = Object.fromEntries(Object.entries(props).filter(([key]) => !motionProps.has(key)));
-      return React.createElement(
-        tag,
-        {
-          ...domProps,
-          "data-motion": JSON.stringify({
-            initial: props.initial,
-            animate: props.animate,
-            exit: props.exit,
-            transition: props.transition,
-          }),
-        },
-        children,
-      );
+      return React.createElement(tag, domProps, children);
     };
 
   return {
