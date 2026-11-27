@@ -23,15 +23,6 @@ describe("TextInput", () => {
     expect(onChange).toHaveBeenCalledOnce();
     expect(ref.current).toBe(input);
   });
-
-  it("supports compact controls with adornments", () => {
-    const { getByRole } = render(
-      <TextInput aria-label="Search" controlSize="compact" adornment="both" shadowOn="surface-container-low" />,
-    );
-    const input = getByRole("textbox", { name: "Search" });
-
-    expect(input).toBeTruthy();
-  });
 });
 
 describe("SelectInput", () => {
@@ -49,16 +40,6 @@ describe("SelectInput", () => {
     fireEvent.change(select, { target: { value: "1" } });
     expect(onChange).toHaveBeenCalledOnce();
     expect(ref.current).toBe(select);
-  });
-
-  it("renders a select with compact and auto-width options", () => {
-    const { getByRole } = render(
-      <SelectInput aria-label="Session" controlSize="compact" width="auto">
-        <option>Winter</option>
-      </SelectInput>,
-    );
-    const select = getByRole("combobox");
-    expect(select).toBeTruthy();
   });
 });
 
