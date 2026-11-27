@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Button } from "./button";
 
 describe("Button", () => {
-  it("passes native props, events, classes, and refs through", () => {
+  it("forwards native props, events, and refs", () => {
     const onClick = vi.fn();
     const ref = createRef<HTMLButtonElement>();
     const { getByRole } = render(

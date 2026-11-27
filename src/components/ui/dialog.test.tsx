@@ -113,7 +113,7 @@ describe("Dialog", () => {
     expect(document.activeElement).toBe(first);
   });
 
-  it("shares title semantics, responsive insets, and action spacing", async () => {
+  it("labels the dialog from its title and focuses its close action", async () => {
     render(
       <DialogRoot onDismiss={() => {}} backdropLabel="Close profile">
         <DialogPanel aria-labelledby="profile-title">
@@ -138,11 +138,11 @@ describe("Dialog", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
   });
 
-  it("renders stacked footer actions", async () => {
+  it("renders its dialog action", async () => {
     render(
       <DialogRoot onDismiss={() => {}} backdropLabel="Close import">
         <DialogPanel aria-label="Import" padding="none">
-          <DialogActions layout="stack" spacing="none">
+          <DialogActions>
             <button type="button">Apply</button>
           </DialogActions>
         </DialogPanel>
@@ -286,7 +286,7 @@ describe("Dialog", () => {
     expect.soft(view.container.inert).toBe(false);
   });
 
-  it.each([false, true])("uses a visible return-focus fallback only when the trigger hides (%s)", (hidden) => {
+  it.each([false, true])("restores focus to the fallback only when the trigger is hidden (%s)", (hidden) => {
     const origin = createRef<HTMLButtonElement>();
     const fallback = createRef<HTMLButtonElement>();
     function ReturnFocus({ open, hide }: { open: boolean; hide: boolean }) {
@@ -301,11 +301,7 @@ describe("Dialog", () => {
             Visible fallback
           </button>
           {open ? (
-            <DialogRoot
-              onDismiss={() => {}}
-              backdropLabel="Close responsive dialog"
-              returnFocusFallback={() => fallback.current}
-            >
+            <DialogRoot onDismiss={() => {}} backdropLabel="Close dialog" returnFocusFallback={() => fallback.current}>
               <DialogPanel aria-label="Responsive dialog">
                 <button type="button">Dialog action</button>
               </DialogPanel>

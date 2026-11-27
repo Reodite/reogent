@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Checkbox, Field, SearchInput, SelectInput, TextInput } from "./form-controls";
 
 describe("TextInput", () => {
-  it("renders the shared inset field with native props", () => {
+  it("forwards native props and change events", () => {
     const ref = createRef<HTMLInputElement>();
     const onChange = vi.fn();
     const { getByRole } = render(
@@ -51,7 +51,7 @@ describe("SelectInput", () => {
     expect(ref.current).toBe(select);
   });
 
-  it("supports compact auto-width selects", () => {
+  it("renders a select with compact and auto-width options", () => {
     const { getByRole } = render(
       <SelectInput aria-label="Session" controlSize="compact" width="auto">
         <option>Winter</option>

@@ -110,7 +110,7 @@ describe("Property 27 — busy days preserve a readable overflow count (REQ-16.4
   });
 });
 
-describe("Property 28 — today's cell receives the 'today' style independent of event markers (REQ-17.4)", () => {
+describe("Property 28 — today's cell is identified independently of event markers (REQ-17.4)", () => {
   it("a today cell and neighboring dates use their readable state tokens", async () => {
     const { container, restore } = renderPane({ cursor: "2024-04" });
     await waitFor(() => expect(container.querySelector('[data-calendar-today="2024-04-15"]')).not.toBeNull());
@@ -303,7 +303,7 @@ describe("Compact calendar agenda", () => {
     expect(screen.getByText("No events upcoming.")).not.toBeNull();
   });
 
-  it("opens one touch-sized day target and then the selected event", async () => {
+  it("opens the day's event list and then the selected event", async () => {
     const events: CalendarEvent[] = [
       { kind: "holiday", date: "2025-02-17", label: "Family Day", source_url: null, tags: [] },
       { kind: "academic", date: "2025-02-17", label: "Reading week", source_url: null, tags: [] },
@@ -311,7 +311,7 @@ describe("Compact calendar agenda", () => {
     const { container, restore } = renderPane({ cursor: "2025-02" }, events);
     const agenda = await waitForCell(container, "2025-02-17", "[data-calendar-day-agenda]");
     const trigger = agenda.querySelector("[data-calendar-day-agenda]") as HTMLElement;
-    // Phone-width months hide the visible count; the accessible name keeps it.
+    // The accessible name reports the event count alongside the visible label.
     expect(trigger.querySelector(".calendar-day-agenda-count")?.textContent).toBe("2 events");
     expect(trigger.getAttribute("aria-label")).toMatch(/^Open 2 events on/);
     fireEvent.click(trigger);

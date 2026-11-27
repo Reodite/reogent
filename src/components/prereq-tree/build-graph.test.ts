@@ -124,7 +124,7 @@ describe("buildGraph (ported reodite logic)", () => {
     },
   );
 
-  it("records semantic targets only for top-level corequisite layout edges", () => {
+  it("records semantic targets only for top-level corequisite edges", () => {
     const index = new Map([
       ...INDEX,
       course("ROOT 300", "Root Course", null, "DDD 100 and either (a) BBB 100 and CCC 100 or (b) EEE 100."),
@@ -157,11 +157,7 @@ describe("buildGraph (ported reodite logic)", () => {
     expect(edge?.targetHandle).toBe("right-target");
   });
 
-  it("keeps the prerequisite chain connected when node measurements are provided", () => {
-    const measured = new Map([
-      ["CHAIN 300", 120],
-      ["AAA 200", 80],
-    ]);
+  it("keeps prerequisite edges connected", () => {
     const g = buildGraph(
       "CHAIN 300",
       INDEX,
@@ -169,8 +165,6 @@ describe("buildGraph (ported reodite logic)", () => {
       () => {},
       new Map(),
       () => {},
-      undefined,
-      measured,
     );
     expect(g.edges).toEqual(
       expect.arrayContaining([expect.objectContaining({ source: "AAA 200", target: "CHAIN 300" })]),

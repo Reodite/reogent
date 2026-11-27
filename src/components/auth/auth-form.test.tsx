@@ -49,7 +49,7 @@ describe("AuthForm", () => {
     expect(screen.queryByRole("link", { name: "Continue with Google" })).toBeNull();
   });
 
-  it("matches the single-action loading footprint", () => {
+  it("renders one action placeholder in the loading status", () => {
     render(<AuthFormLoading label="Loading sign in" />);
 
     const loading = screen.getByRole("status", { name: "Loading sign in" });

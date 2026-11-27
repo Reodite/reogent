@@ -156,7 +156,7 @@ describe("tabStops", () => {
 });
 
 describe("FloatingPanel lifecycle", () => {
-  it("keeps layout-less consumer fixtures open when no browser layout is available", () => {
+  it("keeps the panel open while its consumer fixture is mounted", () => {
     const { panel, onDismiss } = setup();
     expect(panel).not.toBeNull();
     expect(panel.hasAttribute("data-floating-panel")).toBe(true);

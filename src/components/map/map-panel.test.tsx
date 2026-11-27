@@ -301,7 +301,7 @@ describe("MapArea", () => {
     expect(screen.getByRole("button", { name: "Collapse Explore" })).toBeTruthy();
   });
 
-  it("uses an inset catalog list and preserves map access through catalog retry", async () => {
+  it("preserves map access through catalog retry", async () => {
     api.getGeo.mockRejectedValueOnce(new Error("offline"));
     renderMap();
     expect(screen.getByRole("status", { name: "Loading building catalog" })).toBeTruthy();

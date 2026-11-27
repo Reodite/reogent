@@ -125,7 +125,7 @@ it("links grouped Markdown citations without injecting into code or duplicating 
   expect(container.querySelector("code [data-index]")).toBeNull();
 });
 
-it("keeps Sources outside prose spacing while retaining its live Markdown sibling", async () => {
+it("keeps Sources as a sibling of the live Markdown content", async () => {
   const { container } = render(
     <AssistantMessage message={{ id: "sources", role: "assistant", content: "Read [1].", citations }} />,
   );

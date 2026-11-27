@@ -119,7 +119,7 @@ function expand() {
 }
 
 describe("Disclosure focus reveal", () => {
-  it("keeps immediate focus and waits for its opening completion plus layout", () => {
+  it("keeps immediate focus and waits for its opening completion before scrolling", () => {
     const view = expand();
     expect(document.activeElement).toBe(view.select);
     expect(view.select.parentElement?.hasAttribute("data-disclosure-content")).toBe(true);
@@ -213,7 +213,7 @@ describe("Disclosure focus reveal", () => {
     expect(scroll).toHaveBeenCalledOnce();
   });
 
-  it("settles reduced-motion entry after layout without an animation callback", () => {
+  it("scrolls focused content after reduced-motion entry without an animation callback", () => {
     motionState.reduce = true;
     const view = expand();
     expect(document.activeElement).toBe(view.select);
