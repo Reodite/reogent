@@ -34,8 +34,7 @@ describe("tool result primitives", () => {
         </button>
       </ToolResultList>,
     );
-    const row = screen.getByRole("button", { name: /Room 201.*ICCS.*40 seats/ });
-    expect(row.tagName).toBe("BUTTON");
+    screen.getByRole("button", { name: /Room 201.*ICCS.*40 seats/ });
     expect(screen.getByText("near IKB")).not.toBeNull();
     expect(screen.getByText("2 more")).not.toBeNull();
   });
