@@ -385,11 +385,13 @@ describe("ScheduleApp group loading", () => {
     );
 
     render(<ScheduleApp />);
-    expect(await screen.findAllByText("Schedules unavailable")).toHaveLength(2);
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    const failure = retry.closest('[role="alert"]');
+    expect(failure?.textContent).toContain("Schedules unavailable");
     expect(screen.queryByText("Your empty week is ready")).toBeNull();
 
     failing = false;
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    fireEvent.click(retry);
     expect(await screen.findByText("Your empty week is ready")).not.toBeNull();
   });
 

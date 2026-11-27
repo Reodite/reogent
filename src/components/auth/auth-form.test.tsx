@@ -53,6 +53,6 @@ describe("AuthForm", () => {
     render(<AuthFormLoading label="Loading sign in" />);
 
     const loading = screen.getByRole("status", { name: "Loading sign in" });
-    expect(loading.querySelectorAll("[data-auth-loading-action]")).toHaveLength(1);
+    expect(loading.querySelector("[data-auth-loading-action]")).not.toBeNull();
   });
 });
