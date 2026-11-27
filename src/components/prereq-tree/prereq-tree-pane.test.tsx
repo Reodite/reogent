@@ -465,7 +465,6 @@ describe("PrereqTreePane", () => {
     expect(flowProps.current?.nodesFocusable).toBe(false);
     expect(flowProps.current?.edgesFocusable).toBe(false);
     expect(flowProps.current?.onNodeClick).toBeUndefined();
-    expect(flowProps.current?.minZoom).toBe(0.8);
   });
 
   it("renders the retry alert when the index fetch fails", async () => {

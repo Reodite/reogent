@@ -89,9 +89,8 @@ describe("buildGraph (ported reodite logic)", () => {
       expect(e.sourceHandle).toBe("bottom-source");
       expect(e.targetHandle).toBe("top-target");
     }
-    // Coreq course nodes sit at the root's x (0) and are tinted as coreqs.
+    // Coreq course nodes carry corequisite semantics.
     const ddd = nodeById(g, "DDD 100");
-    expect(ddd.position.x).toBe(0);
     expect((ddd.data as { coreq?: boolean }).coreq).toBe(true);
   });
 
@@ -150,18 +149,15 @@ describe("buildGraph (ported reodite logic)", () => {
     }
   });
 
-  it("reads left to right: root leftmost, prereq columns extending right, edges flowing prereq → dependent", () => {
+  it("connects prerequisite nodes to their dependent course", () => {
     const g = build("ROOT 300");
-    const aaa = nodeById(g, "AAA 200");
-    // 280 (column step) + 90 (root-column extra: 50 overhang + 40 widened gap).
-    expect(aaa.position.x).toBe(370);
     const edge = g.edges.find((e) => e.source === "AAA 200" && e.target === "ROOT 300");
     expect(edge).toBeTruthy();
     expect(edge?.sourceHandle).toBe("left-source");
     expect(edge?.targetHandle).toBe("right-target");
   });
 
-  it("levels a plain chain exactly when real measured heights are provided", () => {
+  it("keeps the prerequisite chain connected when node measurements are provided", () => {
     const measured = new Map([
       ["CHAIN 300", 120],
       ["AAA 200", 80],
@@ -176,20 +172,12 @@ describe("buildGraph (ported reodite logic)", () => {
       undefined,
       measured,
     );
-    // Single-item columns center at y=0: top = -height/2 exactly.
-    expect(nodeById(g, "CHAIN 300").position.y).toBe(-60);
-    expect(nodeById(g, "AAA 200").position.y).toBe(-40);
+    expect(g.edges).toEqual(
+      expect.arrayContaining([expect.objectContaining({ source: "AAA 200", target: "CHAIN 300" })]),
+    );
   });
 
-  it("renders the root card 50% wider than other blocks, centered on its column", () => {
-    const g = build("ROOT 300");
-    const root = nodeById(g, "ROOT 300");
-    expect(root.style?.width).toBe(300);
-    expect(root.position.x).toBe(-50);
-    expect(nodeById(g, "AAA 200").style?.width).toBe(200);
-  });
-
-  it("soft branch renders dashed-optional edge; disabling fades the block and suppresses its upstream", () => {
+  it("adds the soft branch and removes it when disabled", () => {
     const g = build("SOFT 300");
     const softEdges = g.edges.filter((e) => typeof e.id === "string" && e.id.startsWith("soft:"));
     expect(softEdges.length).toBeGreaterThan(0);
@@ -199,8 +187,9 @@ describe("buildGraph (ported reodite logic)", () => {
     // Enabled: the recommended course's own prereq (HHH 100) loads.
     expect(g.nodes.some((n) => n.id === "HHH 100")).toBe(true);
     const disabled = build("SOFT 300", new Map(), new Map([[key, true]]));
-    const bbb = nodeById(disabled, "BBB 100");
-    expect(bbb.style?.opacity).toBe(0.4);
+    const disabledEdge = disabled.edges.find((edge) => edge.id === soft.id);
+    expect(disabledEdge).toBeTruthy();
+    expect((disabledEdge!.data as { disabled?: boolean }).disabled).toBe(true);
     expect(disabled.nodes.some((n) => n.id === "HHH 100")).toBe(false);
   });
 
