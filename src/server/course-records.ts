@@ -40,7 +40,8 @@ export function isSession(v: unknown): v is Session {
 function latestWinterSession(sessions: readonly string[] = [...SESSIONS]): string {
   const winters = sessions.filter((s) => s.endsWith("W"));
   if (winters.length === 0) return sessions[sessions.length - 1] ?? "2025W";
-  return [...winters].sort().at(-1)!;
+  const latestWinter = [...winters].sort().at(-1);
+  return latestWinter ?? "2025W";
 }
 
 export function defaultSession(): Session {

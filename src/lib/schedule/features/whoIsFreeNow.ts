@@ -28,12 +28,13 @@ export function whoIsFreeNow(people: Person[], now: Date): NowStatus[] {
   const nowMin = minutesNow(now);
 
   const statuses = people
-    .filter((p) => p.schedule)
     .map((person) => {
+      const schedule = person.schedule;
+      if (!schedule) return null;
       let current: ClassRef | null = null;
       let next: ClassRef | null = null;
       let hasClassesToday = false;
-      for (const section of person.schedule!.sections) {
+      for (const section of schedule.sections) {
         if (section.termStart && section.termEnd && !dateInRange(iso, section.termStart, section.termEnd)) {
           continue;
         }
@@ -48,7 +49,8 @@ export function whoIsFreeNow(people: Person[], now: Date): NowStatus[] {
         }
       }
       return { person, current, next, hasClassesToday };
-    });
+    })
+    .filter((status): status is NowStatus => status !== null);
 
   // free people first, then by soonest class end
   return statuses.sort((a, b) => {

@@ -178,6 +178,11 @@ describe("commonFreeIntervals", () => {
 });
 
 describe("whoIsFreeNow", () => {
+  it("omits people without a schedule", () => {
+    const person = { ...alice, schedule: null };
+    expect(whoIsFreeNow([person], new Date(2027, 0, 13, 10, 0))).toEqual([]);
+  });
+
   it("reports in-class vs free with term awareness", () => {
     // Wed 2027-01-13 10:00 — alice is in COGS (9:30-11:00 Mon Wed)
     const inClass = whoIsFreeNow([alice], new Date(2027, 0, 13, 10, 0));
