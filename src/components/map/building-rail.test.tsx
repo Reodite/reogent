@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import type { BuildingDetails, BuildingSummary } from "@/src/lib/api-types";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BuildingRail,
@@ -178,6 +178,41 @@ describe("BuildingRail", () => {
     expect(screen.getByRole("button", { name: "Directions" })).toBe(directions);
     expect(screen.getByText("IBLC 100")).toBeTruthy();
     expect(screen.queryByRole("status", { name: "Loading building details" })).toBeNull();
+  });
+
+  it("resets detail scrolling for a new building and retains it across same-building updates", () => {
+    const railProps = props({ mode: "details", selected: iblc, details: { status: "ready", data: details } });
+    const view = render(<BuildingRail {...railProps} />);
+    const body = view.container.querySelector<HTMLElement>("[data-workspace-panel-body]")!;
+
+    body.scrollTop = 120;
+    view.rerender(<BuildingRail {...railProps} shareStatus="copy" />);
+    expect(body.scrollTop).toBe(120);
+
+    view.rerender(<BuildingRail {...railProps} selected={chem} details={{ status: "loading" }} />);
+    expect(body.scrollTop).toBe(0);
+
+    body.scrollTop = 45;
+    view.rerender(<BuildingRail {...railProps} selected={chem} details={{ status: "error" }} />);
+    expect(body.scrollTop).toBe(45);
+  });
+
+  it("restores the discovery list scroll position after returning from details", async () => {
+    const railProps = props({ onSelect: vi.fn() });
+    const view = render(<BuildingRail {...railProps} />);
+    const list = view.container.querySelector<HTMLElement>("[data-workspace-panel-body] > div > div:last-child")!;
+    list.scrollTop = 95;
+    fireEvent.click(
+      within(screen.getByRole("listbox", { name: "Curated popular buildings" })).getByRole("option", {
+        name: new RegExp(chem.name),
+      }),
+    );
+    expect(railProps.onSelect).toHaveBeenCalledWith(chem);
+
+    view.rerender(<BuildingRail {...railProps} mode="details" selected={chem} />);
+    view.rerender(<BuildingRail {...railProps} mode="discover" selected={null} />);
+
+    await waitFor(() => expect(list.scrollTop).toBe(95));
   });
 
   it("shows curated buildings while saved buildings load and reports favorite failures", () => {
