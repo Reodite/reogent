@@ -117,6 +117,32 @@ describe("provider token usage", () => {
     );
   });
 
+  it("exits promptly when a Google stream stalls and is aborted", async () => {
+    const controller = new AbortController();
+    let started!: () => void;
+    const nextStarted = new Promise<void>((resolve) => (started = resolve));
+    const returnIterator = vi.fn(async () => ({ done: true, value: undefined }));
+    sdk.googleStream.mockResolvedValueOnce({
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => {
+            started();
+            return new Promise<IteratorResult<unknown>>(() => {});
+          },
+          return: returnIterator,
+        };
+      },
+    });
+    const stream = createGoogleAdapter().converseStream({ ...request, signal: controller.signal });
+    const pending = stream.next();
+    await nextStarted;
+
+    controller.abort(new Error("cancelled"));
+
+    await expect(pending).rejects.toThrow("cancelled");
+    expect(returnIterator).toHaveBeenCalledOnce();
+  });
+
   it("aborts active provider streams and closes their iterators", async () => {
     const controller = new AbortController();
     let resolveNext!: (value: IteratorResult<unknown>) => void;

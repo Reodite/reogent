@@ -196,6 +196,8 @@ export function createGoogleAdapter(): LlmAdapter {
     // Idle watchdog: fail when the provider stops sending chunks before completion.
     const STREAM_IDLE_MS = 15_000;
     const iterator = stream[Symbol.asyncIterator]();
+    type GoogleChunk = Awaited<ReturnType<typeof stream.next>>["value"];
+    let pendingNext: Promise<IteratorResult<GoogleChunk>> | undefined;
     try {
       while (true) {
         req.signal?.throwIfAborted();
@@ -203,7 +205,17 @@ export function createGoogleAdapter(): LlmAdapter {
         const timeout = new Promise<never>((_, reject) => {
           watchdog = setTimeout(() => reject(new Error("Google model stream timed out")), STREAM_IDLE_MS);
         });
-        const next = await Promise.race([iterator.next(), timeout]).finally(() => clearTimeout(watchdog));
+        pendingNext = iterator.next();
+        let onAbort: (() => void) | undefined;
+        const aborted = new Promise<never>((_, reject) => {
+          onAbort = () => reject(req.signal?.reason ?? new DOMException("Aborted", "AbortError"));
+          req.signal?.addEventListener("abort", onAbort, { once: true });
+        });
+        const next = await Promise.race([pendingNext, timeout, aborted]).finally(() => {
+          clearTimeout(watchdog);
+          if (onAbort) req.signal?.removeEventListener("abort", onAbort);
+        });
+        pendingNext = undefined;
         req.signal?.throwIfAborted();
         if (next.done) {
           if (!finished) throw new Error("Google model stream ended without a finish reason");
@@ -227,7 +239,10 @@ export function createGoogleAdapter(): LlmAdapter {
         }
       }
     } finally {
-      if (req.signal?.aborted) await iterator.return?.(undefined);
+      if (req.signal?.aborted) {
+        void pendingNext?.catch(() => {});
+        void iterator.return?.(undefined);
+      }
     }
     if (!finished) throw new Error("Google model stream ended without a finish reason");
 
