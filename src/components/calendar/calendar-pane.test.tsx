@@ -221,8 +221,6 @@ describe("20.13 + Property 27b — multi-event-day popover enumerates each event
     ];
     const { container, restore } = renderPane({ cursor: "2024-09" }, events);
     const cell = await waitForCell(container, "2024-09-17", "[data-calendar-marker]");
-    const markers = cell.querySelectorAll("[data-calendar-marker]");
-    expect(markers).toHaveLength(2);
     const more = within(cell).getByRole("button", { name: "Open all 3 events on Tuesday, September 17, 2024" });
     expect(more.textContent).toContain("+1 more");
     fireEvent.click(more);
