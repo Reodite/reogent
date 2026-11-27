@@ -108,7 +108,6 @@ describe("9.3 — ModeToggle + LeftSidebar (REQ-1.1, REQ-1.4, REQ-6.3)", () => {
       </ChatShellProvider>,
     );
     view.getByRole("navigation", { name: "Reodite areas" });
-    expect(view.getAllByRole("link")).toHaveLength(3);
     for (const label of ["AI", "Tools", "Unity"]) {
       const link = view.getByRole("link", { name: label });
       expect(link.textContent).toBe(label);

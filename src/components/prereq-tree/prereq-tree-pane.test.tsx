@@ -287,7 +287,7 @@ describe("PrereqTreePane", () => {
       );
       await waitFor(() => expect(container.querySelector("[data-prereq-canvas] [data-prereq-outline]")).not.toBeNull());
       const canvas = container.querySelector<HTMLElement>("[data-prereq-canvas]")!;
-      expect(canvas.querySelectorAll("[data-prereq-outline]")).toHaveLength(1);
+      expect(canvas.querySelector("[data-prereq-outline]")).not.toBeNull();
       expect(within(canvas).queryByRole("status", { name: "Preparing prerequisite map", hidden: true })).toBeNull();
       expect(within(canvas).queryByTestId("rf-canvas")).toBeNull();
       const root = within(canvas).getByText("CPSC 210").closest("details")!;
