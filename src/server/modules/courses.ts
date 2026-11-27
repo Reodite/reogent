@@ -419,12 +419,17 @@ export const courses: DatasetModule = {
             scanned += page.length;
             if (facultyFilter && page.length > 0) {
               const codes = [...new Set(page.map(({ code }) => normalizeCourseCode(code)))];
-              const members = await search.index("course_sessions").search("", {
-                filter: `session = ${filterValue(session)} AND ${facultyFilter} AND code IN [${codes.map(filterValue).join(", ")}]`,
-                limit: codes.length,
-                attributesToRetrieve: ["code"],
-              });
-              const matching = new Set(members.hits.map((hit) => normalizeCourseCode(String(hit.code))));
+              const matching = new Set<string>();
+              const CODE_BATCH = 100;
+              for (let i = 0; i < codes.length; i += CODE_BATCH) {
+                const codeBatch = codes.slice(i, i + CODE_BATCH);
+                const members = await search.index("course_sessions").search("", {
+                  filter: `session = ${filterValue(session)} AND ${facultyFilter} AND code IN [${codeBatch.map(filterValue).join(", ")}]`,
+                  limit: codeBatch.length,
+                  attributesToRetrieve: ["code"],
+                });
+                for (const hit of members.hits) matching.add(normalizeCourseCode(String(hit.code)));
+              }
               page = page.filter(({ code }) => matching.has(normalizeCourseCode(code)));
             }
             candidates.push(...page);

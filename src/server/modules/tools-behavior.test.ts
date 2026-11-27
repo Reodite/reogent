@@ -267,6 +267,33 @@ describe("find_courses (agent-tool-redesign)", () => {
     expect(search.calls().course_sessions).toBeGreaterThan(1);
   });
 
+  it("joins faculty matches across bounded code batches", async () => {
+    const catalogue = Array.from({ length: 200 }, (_, index) => course(`CPSC_V ${String(100 + index)}`));
+    const search = fakeSearch({
+      courses: catalogue,
+      course_sessions: [
+        { code: "CPSC 198", session: "2025W", faculty: "Science" },
+        { code: "CPSC 199", session: "2025W", faculty: "Science" },
+      ],
+      grades: [
+        { subject: "CPSC", course: "198", year: 2025, enrolled: 10, avg: 88 },
+        { subject: "CPSC", course: "199", year: 2025, enrolled: 10, avg: 89 },
+      ],
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    const result = (await tool.execute({ faculty: "Science", sort: "grade_avg_desc" }, search)) as {
+      courses: { code: string; grade_avg: number }[];
+    };
+
+    expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 199", "CPSC_V 198"]);
+    const joinCalls = search.searchCalls().filter(({ index }) => index === "course_sessions");
+    expect(joinCalls).toHaveLength(2);
+    expect(
+      joinCalls.map(({ options }) => (options?.filter as string).match(/code IN \[(.*)\]/)?.[1].split(", ").length),
+    ).toEqual([100, 100]);
+  });
+
   it("sorts session-index fallback by course code", async () => {
     const search = fakeSearch({
       course_sessions: [
