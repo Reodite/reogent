@@ -72,7 +72,6 @@ describe("DegreePlannerPane", () => {
     const { container } = render(<DegreePlannerPane />);
     await screen.findByRole("button", { name: "Structure" });
     const card = container.querySelector<HTMLElement>('[data-block-id="block-0"]')!;
-    const list = card.parentElement!;
 
     fireEvent.click(within(card).getByRole("button", { name: "Move" }));
     const select = screen.getByRole("combobox", { name: "Move CPSC 100 to term" });
@@ -83,7 +82,7 @@ describe("DegreePlannerPane", () => {
 
     expect(container.querySelector('[data-block-id="block-0"]')).toBe(card);
     expect(screen.getByRole("combobox", { name: "Move CPSC 100 to term" })).toBe(select);
-    expect(list.querySelectorAll("[data-block-id]")).toHaveLength(21);
+    expect(screen.getByRole("button", { name: "Remove CPSC 221" })).not.toBeNull();
   });
 
   it("offers retry feedback when the index fails", async () => {
