@@ -178,6 +178,34 @@ describe("FloatingPanel placement", () => {
     expect(repositioned.left).not.toBe(initial.left);
     expect(repositioned.top).not.toBe(initial.top);
   });
+
+  it("repositions on ancestor scrolling and ignores scrolling inside the panel", () => {
+    const { panel } = setup();
+    const initial = panel.getBoundingClientRect();
+    anchorBounds = new DOMRect(220, 240, 120, 40);
+
+    fireEvent.scroll(panel);
+    expect(panel.getBoundingClientRect()).toEqual(initial);
+
+    fireEvent.scroll(screen.getByTestId("clipper"));
+    const repositioned = panel.getBoundingClientRect();
+    expect(repositioned.left).not.toBe(initial.left);
+    expect(repositioned.top).not.toBe(initial.top);
+  });
+
+  it("dismisses when scrolling fully clips the anchor and stays open while it remains visible", () => {
+    const { onDismiss } = setup();
+    const clipper = screen.getByTestId("clipper");
+    clipper.style.overflowY = "auto";
+    vi.spyOn(clipper, "clientHeight", "get").mockReturnValue(120);
+    fireEvent.scroll(clipper);
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    anchorBounds = new DOMRect(100, 121, 120, 40);
+    fireEvent.scroll(clipper);
+    expect(onDismiss).toHaveBeenCalledOnce();
+    expect(screen.queryByTestId("panel")).toBeNull();
+  });
 });
 
 describe("tabStops", () => {
