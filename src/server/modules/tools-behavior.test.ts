@@ -251,10 +251,29 @@ describe("find_courses", () => {
       index: "course_sessions",
       query: "",
       options: expect.objectContaining({
-        filter: "session = '2025W' AND faculty = \"Faculty of Science\" AND code IN ['CPSC 110', 'CPSC 210']",
+        filter: "session = '2025W' AND faculty = 'Faculty of Science' AND code IN ['CPSC 110', 'CPSC 210']",
       }),
     });
     expect(result.courses.map(({ code }) => code)).toEqual(["CPSC_V 110"]);
+  });
+
+  it("escapes faculty filter values when joining pooled grade candidates", async () => {
+    const faculty = "Faculty O'\"Science\\";
+    const search = fakeSearch({
+      courses: [course("CPSC_V 110")],
+      course_sessions: [{ code: "CPSC 110", session: "2025W", faculty: "Faculty of Science" }],
+    });
+    const tool = courses.tools.find((entry) => entry.spec.name === "find_courses")!;
+
+    await expect(tool.execute({ faculty, sort: "grade_avg_desc" }, search)).rejects.toThrow("No courses matched");
+
+    expect(
+      search.searchCalls().find(({ index, options }) => index === "course_sessions" && options?.hitsPerPage !== 0),
+    ).toMatchObject({
+      options: expect.objectContaining({
+        filter: "session = '2025W' AND faculty = 'Faculty O\\'\"Science' AND code IN ['CPSC 110']",
+      }),
+    });
   });
 
   it("keeps faculty matches beyond the first pooled page", async () => {
