@@ -152,24 +152,44 @@ export async function getGroupForMember(userId: string, code: string): Promise<G
 /** Adds the caller to a group. Null when unknown; rejoining is a no-op. */
 export async function joinGroup(userId: string, code: string): Promise<GroupDetail | null> {
   await connectDatabase();
-  const session = await SharerGroup.startSession();
-  let exists = false;
-  try {
-    await session.withTransaction(async () => {
-      exists = (await SharerGroup.exists({ _id: code }).session(session).lean()) !== null;
-      if (!exists) return;
-      await SharerGroupMember.create([{ groupCode: code, userId }], { ordered: true, session });
-    });
-  } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
-      exists = (await SharerGroup.exists({ _id: code })) !== null;
-    } else {
-      throw error;
+  return (await createMembership(userId, code)) ? getGroup(code) : null;
+}
+
+async function createMembership(userId: string, code: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const session = await SharerGroup.startSession();
+    let groupExists = false;
+    let memberExists = false;
+    try {
+      await session.withTransaction(async () => {
+        groupExists = (await SharerGroup.exists({ _id: code }).session(session).lean()) !== null;
+        if (!groupExists) return;
+        memberExists = (await SharerGroupMember.exists({ groupCode: code, userId }).session(session).lean()) !== null;
+        if (memberExists) return;
+        await SharerGroupMember.create([{ groupCode: code, userId }], { ordered: true, session });
+        memberExists = true;
+      });
+      return groupExists && memberExists;
+    } catch (error) {
+      if (!isMembershipDuplicate(error, code, userId)) throw error;
+      const [group, member] = await Promise.all([
+        SharerGroup.exists({ _id: code }),
+        SharerGroupMember.exists({ groupCode: code, userId }),
+      ]);
+      if (!group) return false;
+      if (member) return true;
+      if (attempt === 1) throw error;
+    } finally {
+      await session.endSession();
     }
-  } finally {
-    await session.endSession();
   }
-  return exists ? getGroup(code) : null;
+  return false;
+}
+
+function isMembershipDuplicate(error: unknown, code: string, userId: string): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error) || error.code !== 11000) return false;
+  const keyValue = (error as { keyValue?: Record<string, unknown> }).keyValue;
+  return keyValue?.groupCode === code && keyValue.userId === userId;
 }
 
 /** Removes the caller from a group. False when they were not a member. */

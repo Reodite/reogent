@@ -171,13 +171,48 @@ describe("group membership", () => {
 
   it("adds membership transactionally and tolerates duplicate membership", async () => {
     mocks.groupExists.mockReturnValue({ session: () => lean({ _id: "aB12cD" }) });
-    mocks.memberCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.memberExists
+      .mockReturnValueOnce({ session: () => lean(null) })
+      .mockResolvedValueOnce({ groupCode: "aB12cD", userId: "u1" });
+    mocks.memberCreate.mockRejectedValueOnce({ code: 11000, keyValue: { groupCode: "aB12cD", userId: "u1" } });
     mocks.groupFindById.mockReturnValue(lean({ _id: "aB12cD", name: "Crew", createdBy: "u1", createdAt: new Date() }));
     mocks.memberFind.mockReturnValue({ sort: () => lean([]) });
     mocks.userFind.mockReturnValue({ select: () => lean([]) });
     mocks.peopleFind.mockReturnValue(lean([]));
     await expect(joinGroup("u1", "aB12cD")).resolves.toMatchObject({ code: "aB12cD" });
     expect(mongoSession.withTransaction).toHaveBeenCalledOnce();
+  });
+
+  it("retries membership after a duplicate when the caller is no longer a member", async () => {
+    mocks.groupExists
+      .mockReturnValueOnce({ session: () => lean({ _id: "aB12cD" }) })
+      .mockResolvedValueOnce({ _id: "aB12cD" })
+      .mockReturnValueOnce({ session: () => lean({ _id: "aB12cD" }) });
+    mocks.memberExists
+      .mockReturnValueOnce({ session: () => lean(null) })
+      .mockResolvedValueOnce(null)
+      .mockReturnValueOnce({ session: () => lean(null) });
+    mocks.memberCreate
+      .mockRejectedValueOnce({ code: 11000, keyValue: { groupCode: "aB12cD", userId: "u1" } })
+      .mockResolvedValueOnce([{ groupCode: "aB12cD", userId: "u1" }]);
+    mocks.groupFindById.mockReturnValue(lean({ _id: "aB12cD", name: "Crew", createdBy: "u1", createdAt: new Date() }));
+    mocks.memberFind.mockReturnValue({ sort: () => lean([]) });
+    mocks.userFind.mockReturnValue({ select: () => lean([]) });
+    mocks.peopleFind.mockReturnValue(lean([]));
+
+    await expect(joinGroup("u1", "aB12cD")).resolves.toMatchObject({ code: "aB12cD" });
+    expect(mocks.memberCreate).toHaveBeenCalledTimes(2);
+    expect(mongoSession.withTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("propagates duplicate errors for unrelated unique keys", async () => {
+    mocks.groupExists.mockReturnValue({ session: () => lean({ _id: "aB12cD" }) });
+    mocks.memberExists.mockReturnValue({ session: () => lean(null) });
+    const conflict = { code: 11000, keyValue: { _id: "other" } };
+    mocks.memberCreate.mockRejectedValueOnce(conflict);
+
+    await expect(joinGroup("u1", "aB12cD")).rejects.toMatchObject(conflict);
+    expect(mocks.groupFindById).not.toHaveBeenCalled();
   });
 
   it("reports whether membership was removed", async () => {
