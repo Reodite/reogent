@@ -199,6 +199,17 @@ describe("session write ownership", () => {
     expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledOnce();
   });
 
+  it("does not treat an unrelated duplicate document ID as a session collision", async () => {
+    const conflict = { code: 11000, keyPattern: { _id: 1 }, keyValue: { _id: "another-document" } };
+    mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
+    mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
+    mocks.sessionCreate.mockRejectedValueOnce(conflict);
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).rejects.toMatchObject(conflict);
+    expect(mocks.sessionFindById).not.toHaveBeenCalled();
+    expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledOnce();
+  });
+
   it("does not retry a first-session collision owned by another user", async () => {
     mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
     mocks.sessionExists.mockReturnValue({ session: () => lean(null) });

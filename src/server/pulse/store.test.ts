@@ -69,8 +69,8 @@ describe("getActiveFeed", () => {
     mocks.questionFind.mockReturnValue({
       sort: () =>
         lean([
-          { _id: 10, text: "Q1" },
-          { _id: 11, text: "Q2" },
+          { _id: 10, roundId: 3, text: "Q1" },
+          { _id: 11, roundId: 3, text: "Q2" },
         ]),
     });
     mocks.voteAggregate.mockResolvedValue([
@@ -87,7 +87,7 @@ describe("getActiveFeed", () => {
         { id: 11, text: "Q2", myAgree: null, agreeCount: 1, disagreeCount: 0 },
       ],
     });
-    expect(mocks.questionFind).toHaveBeenCalledWith({ roundId: 3 });
+    expect(mocks.questionFind).toHaveBeenCalledWith({ roundId: { $in: [3] } });
     expect(mocks.voteFind).toHaveBeenCalledWith({ questionId: { $in: [10, 11] }, userId: "u1" });
   });
 });
@@ -107,16 +107,17 @@ describe("getRoundHistory", () => {
       { _id: 1, title: null, publishedAt: new Date("2026-08-13T00:00:00Z") },
     ];
     mocks.roundFind.mockReturnValue({ sort: () => ({ limit: () => lean(rounds) }) });
-    mocks.questionFind.mockImplementation(({ roundId }: { roundId: number }) => ({
+    mocks.questionFind.mockImplementation(({ roundId: { $in: roundIds } }: { roundId: { $in: number[] } }) => ({
       sort: () =>
-        lean(
-          roundId === 2
+        lean([
+          ...(roundIds.includes(1) ? [{ _id: 10, roundId: 1, text: "Old" }] : []),
+          ...(roundIds.includes(2)
             ? [
-                { _id: 20, text: "New A" },
-                { _id: 21, text: "New B" },
+                { _id: 20, roundId: 2, text: "New A" },
+                { _id: 21, roundId: 2, text: "New B" },
               ]
-            : [{ _id: 10, text: "Old" }],
-        ),
+            : []),
+        ]),
     }));
     mocks.voteAggregate.mockImplementation(async ([match]) => {
       const ids = match.$match.questionId.$in as number[];
@@ -208,6 +209,10 @@ describe("publishRound", () => {
       { $set: { status: "locked", lockedAt: expect.any(Date) } },
       { returnDocument: "after", session: mongoSession },
     );
+    expect(mocks.counterFindOneAndUpdate.mock.calls[0][2]).toMatchObject({ updatePipeline: true });
+    expect(mocks.counterFindOneAndUpdate.mock.calls[0][1]).toEqual([
+      { $set: { value: { $add: [{ $ifNull: ["$value", 0] }, 1] } } },
+    ]);
     expect(mocks.questionInsertMany).toHaveBeenCalledWith(
       [
         { _id: 1, roundId: 3, position: 0, text: "A" },
@@ -224,6 +229,26 @@ describe("publishRound", () => {
     mocks.roundCreate.mockResolvedValue([{ _id: 1 }]);
     const { publishRound } = await import("./store");
     await expect(publishRound({ title: null, questions: [] })).resolves.toEqual({ lockedRoundId: null, roundId: 1 });
+  });
+
+  it("starts pulse question IDs at one when counters are absent", async () => {
+    mocks.roundFindOneAndUpdate.mockReturnValue(lean(null));
+    mocks.counterFindOneAndUpdate.mockReturnValueOnce(lean({ value: 1 })).mockReturnValueOnce(lean({ value: 2 }));
+    mocks.roundCreate.mockResolvedValue([{ _id: 1 }]);
+    mocks.questionInsertMany.mockResolvedValue([]);
+    const { publishRound } = await import("./store");
+    await expect(publishRound({ title: null, questions: ["A", "B"] })).resolves.toEqual({
+      lockedRoundId: null,
+      roundId: 1,
+    });
+    expect(mocks.questionInsertMany).toHaveBeenCalledWith(
+      [
+        { _id: 1, roundId: 1, position: 0, text: "A" },
+        { _id: 2, roundId: 1, position: 1, text: "B" },
+      ],
+      { session: mongoSession },
+    );
+    expect(mocks.counterFindOneAndUpdate.mock.calls[1][2]).toMatchObject({ updatePipeline: true });
   });
 
   it("propagates transaction failures and ends the session", async () => {

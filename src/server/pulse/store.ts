@@ -25,8 +25,11 @@ export interface PulseVoteTally {
   disagreeCount: number;
 }
 
-async function questionsForRound(roundId: number, userId: string): Promise<PulseFeedQuestion[]> {
-  const questions = await PulseQuestion.find({ roundId }).sort({ position: 1 }).lean();
+async function questionsForRounds(roundIds: number[], userId: string): Promise<Map<number, PulseFeedQuestion[]>> {
+  if (roundIds.length === 0) return new Map();
+  const questions = await PulseQuestion.find({ roundId: { $in: roundIds } })
+    .sort({ roundId: 1, position: 1 })
+    .lean();
   const questionIds = questions.map(({ _id }) => _id);
   const [votes, callerVotes] = await Promise.all([
     PulseVote.aggregate([
@@ -42,16 +45,18 @@ async function questionsForRound(roundId: number, userId: string): Promise<Pulse
     tally[vote._id.agree ? "agree" : "disagree"] = vote.count;
     tallies.set(vote._id.questionId, tally);
   }
-  return questions.map((question) => {
+  const results = new Map(roundIds.map((roundId) => [roundId, [] as PulseFeedQuestion[]]));
+  for (const question of questions) {
     const tally = tallies.get(question._id) ?? { agree: 0, disagree: 0 };
-    return {
+    results.get(question.roundId)?.push({
       id: question._id,
       text: question.text,
       myAgree: myVotes.get(question._id) ?? null,
       agreeCount: tally.agree,
       disagreeCount: tally.disagree,
-    };
-  });
+    });
+  }
+  return results;
 }
 
 function toRound(round: { _id: number; title?: string | null; publishedAt: Date }): PulseRound {
@@ -65,7 +70,8 @@ export async function getActiveFeed(
   await connectDatabase();
   const round = await PulseRoundModel.findOne({ status: "active" }).lean();
   if (!round) return { round: null, questions: [] };
-  return { round: toRound(round), questions: await questionsForRound(round._id, userId) };
+  const questions = await questionsForRounds([round._id], userId);
+  return { round: toRound(round), questions: questions.get(round._id) ?? [] };
 }
 
 /**
@@ -78,12 +84,11 @@ export async function getRoundHistory(
 ): Promise<{ round: PulseRound; questions: PulseFeedQuestion[] }[]> {
   await connectDatabase();
   const rounds = await PulseRoundModel.find({ status: "locked" }).sort({ publishedAt: -1 }).limit(limit).lean();
-  return Promise.all(
-    rounds.map(async (round) => ({
-      round: toRound(round),
-      questions: await questionsForRound(round._id, userId),
-    })),
+  const questions = await questionsForRounds(
+    rounds.map(({ _id }) => _id),
+    userId,
   );
+  return rounds.map((round) => ({ round: toRound(round), questions: questions.get(round._id) ?? [] }));
 }
 
 /**
@@ -143,18 +148,26 @@ export async function publishRound(input: {
       ).lean();
       const counter = await Counter.findOneAndUpdate(
         { _id: "pulse-round" },
-        { $inc: { value: 1 } },
-        { upsert: true, returnDocument: "after", session },
+        [{ $set: { value: { $add: [{ $ifNull: ["$value", 0] }, 1] } } }],
+        { upsert: true, returnDocument: "after", updatePipeline: true, session },
       ).lean();
-      const roundId = counter?.value ?? 1;
+      const roundId = counter?.value;
+      if (!roundId) throw new Error("Could not allocate a Pulse round ID");
       await PulseRoundModel.create([{ _id: roundId, title: input.title, status: "active" }], { session });
       if (input.questions.length) {
         const questionCounter = await Counter.findOneAndUpdate(
           { _id: "pulse-question" },
-          { $inc: { value: input.questions.length } },
-          { upsert: true, returnDocument: "after", session },
+          [
+            {
+              $set: {
+                value: { $add: [{ $ifNull: ["$value", 0] }, input.questions.length] },
+              },
+            },
+          ],
+          { upsert: true, returnDocument: "after", updatePipeline: true, session },
         ).lean();
-        const firstQuestionId = (questionCounter?.value ?? input.questions.length) - input.questions.length + 1;
+        if (!questionCounter) throw new Error("Could not allocate Pulse question IDs");
+        const firstQuestionId = questionCounter.value - input.questions.length + 1;
         await PulseQuestion.insertMany(
           input.questions.map((text, position) => ({ _id: firstQuestionId + position, roundId, position, text })),
           { session },

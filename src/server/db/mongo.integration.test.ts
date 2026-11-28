@@ -3,7 +3,8 @@ import mongoose, { Schema } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDatabase } from "../db";
 import { migrate } from "../db/migrate";
-import { Message, OAuthAccount, Session, User } from "../db/models";
+import { Counter, Message, OAuthAccount, PulseQuestion, PulseRound, PulseVote, Session, User } from "../db/models";
+import { castVote, getRoundHistory, publishRound } from "../pulse/store";
 import { appendExchange, findOrCreateOAuthUser, getSessionMessages, listSessions } from "../sessions/store";
 
 const uri = process.env.MONGODB_TEST_URI;
@@ -13,6 +14,8 @@ const Record = mongoose.model(`ReoditeIntegration_${process.pid}_${Date.now()}`,
 const importedUsers: string[] = [];
 const importedSessions: string[] = [];
 const oauthSubjects: string[] = [];
+const pulseRoundIds: number[] = [];
+const pulseQuestionIds: number[] = [];
 const originalExternalToggle = process.env.USE_EXTERNAL_MONGODB;
 const originalMongoUri = process.env.MONGODB_URI;
 
@@ -24,18 +27,27 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
   });
 
   afterAll(async () => {
-    await Record.collection.drop().catch(() => {});
-    await Promise.all([
-      Session.deleteMany({ _id: { $in: importedSessions } }),
-      Message.deleteMany({ sessionId: { $in: importedSessions } }),
-      OAuthAccount.deleteMany({ providerSubject: { $in: oauthSubjects } }),
-      User.deleteMany({ _id: { $in: importedUsers } }),
-    ]);
-    await closeDatabase();
-    if (originalExternalToggle === undefined) delete process.env.USE_EXTERNAL_MONGODB;
-    else process.env.USE_EXTERNAL_MONGODB = originalExternalToggle;
-    if (originalMongoUri === undefined) delete process.env.MONGODB_URI;
-    else process.env.MONGODB_URI = originalMongoUri;
+    try {
+      if (mongoose.connection.readyState === 1) {
+        await Record.collection.drop().catch(() => {});
+        await Promise.all([
+          Session.deleteMany({ _id: { $in: importedSessions } }),
+          Message.deleteMany({ sessionId: { $in: importedSessions } }),
+          OAuthAccount.deleteMany({ providerSubject: { $in: oauthSubjects } }),
+          User.deleteMany({ _id: { $in: importedUsers } }),
+          PulseVote.deleteMany({ questionId: { $in: pulseQuestionIds } }),
+          PulseQuestion.deleteMany({ _id: { $in: pulseQuestionIds } }),
+          PulseRound.deleteMany({ _id: { $in: pulseRoundIds } }),
+        ]);
+        await Counter.deleteMany({ _id: { $in: [`pulse-round`, `pulse-question`] } });
+      }
+    } finally {
+      await closeDatabase().catch(() => {});
+      if (originalExternalToggle === undefined) delete process.env.USE_EXTERNAL_MONGODB;
+      else process.env.USE_EXTERNAL_MONGODB = originalExternalToggle;
+      if (originalMongoUri === undefined) delete process.env.MONGODB_URI;
+      else process.env.MONGODB_URI = originalMongoUri;
+    }
   });
 
   it("commits and aborts multi-document transactions", async () => {
@@ -89,5 +101,30 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
     importedUsers.push(first.id);
     expect(second).toEqual(first);
     await expect(OAuthAccount.countDocuments({ provider: "google", providerSubject })).resolves.toBe(1);
+  });
+
+  it("freezes historical Pulse tallies after a round locks", async () => {
+    const userIds = [randomUUID(), randomUUID()];
+    importedUsers.push(...userIds);
+    await User.create(
+      userIds.map((id) => ({ _id: id, username: `pulse-integration-${id}` })),
+      { ordered: true },
+    );
+    const first = await publishRound({ title: "Integration round", questions: ["Statement"] });
+    pulseRoundIds.push(first.roundId);
+    const question = await PulseQuestion.findOne({ roundId: first.roundId }).lean();
+    if (!question) throw new Error("Published Pulse question not found");
+    pulseQuestionIds.push(question._id);
+    await expect(castVote(userIds[0], question._id, true)).resolves.toMatchObject({ agree: true, agreeCount: 1 });
+
+    const second = await publishRound({ title: "Next round", questions: ["Another statement"] });
+    pulseRoundIds.push(second.roundId);
+    const before = await getRoundHistory(userIds[1]);
+    expect(before[0]).toMatchObject({ round: { id: first.roundId }, questions: [{ id: question._id, agreeCount: 1 }] });
+    await expect(castVote(userIds[1], question._id, false)).resolves.toBeNull();
+    await expect(getRoundHistory(userIds[1])).resolves.toEqual(before);
+
+    const nextQuestion = await PulseQuestion.findOne({ roundId: second.roundId }).lean();
+    if (nextQuestion) pulseQuestionIds.push(nextQuestion._id);
   });
 });

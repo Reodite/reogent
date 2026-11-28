@@ -67,8 +67,8 @@ export async function appendExchange(
 
 function isSessionIdDuplicate(error: unknown, sessionId: string): boolean {
   if (typeof error !== "object" || error === null || !("code" in error) || error.code !== 11000) return false;
-  const duplicate = error as { keyPattern?: Record<string, unknown>; keyValue?: Record<string, unknown> };
-  return duplicate.keyPattern?._id === 1 || duplicate.keyValue?._id === sessionId;
+  const duplicate = error as { keyValue?: Record<string, unknown> };
+  return duplicate.keyValue?._id === sessionId;
 }
 
 async function findSessionOwnerAfterDuplicate(sessionId: string): Promise<string | null> {
