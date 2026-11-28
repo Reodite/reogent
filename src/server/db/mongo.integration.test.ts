@@ -38,7 +38,7 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
         await Promise.all([
           Session.deleteMany({ _id: { $in: importedSessions } }),
           Message.deleteMany({ sessionId: { $in: importedSessions } }),
-          OAuthAccount.deleteMany({ providerSubject: { $in: oauthSubjects } }),
+          OAuthAccount.deleteMany({ provider: "google", providerSubject: { $in: oauthSubjects } }),
           User.deleteMany({ _id: { $in: importedUsers } }),
           PulseVote.deleteMany({ questionId: { $in: pulseQuestionIds } }),
           PulseQuestion.deleteMany({ _id: { $in: pulseQuestionIds } }),
