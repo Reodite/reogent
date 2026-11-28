@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { consumeDailyChatMessage, DAILY_CHAT_LIMIT, getAccount, recordTokenUsage } from "./account";
 
 const mocks = vi.hoisted(() => ({
+  connectDatabase: vi.fn(),
   userFindById: vi.fn(),
   oauthFindOne: vi.fn(),
   profileFindById: vi.fn(),
@@ -10,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   userUpdateOne: vi.fn(),
 }));
 
+vi.mock("./db", () => ({ connectDatabase: mocks.connectDatabase }));
 vi.mock("./db/models", () => ({
   User: {
     findById: mocks.userFindById,
@@ -23,6 +25,7 @@ vi.mock("./db/models", () => ({
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
+  mocks.connectDatabase.mockResolvedValue(undefined);
 });
 
 describe("account details", () => {
@@ -54,6 +57,7 @@ describe("account details", () => {
       tokenTrackingStartedAt: "2026-10-01T12:00:00.000Z",
       pulseQuestionsAnswered: 12,
     });
+    expect(mocks.connectDatabase).toHaveBeenCalledOnce();
     expect(mocks.oauthFindOne).toHaveBeenCalledWith({ userId: "u1", isPrimary: true });
     expect(mocks.voteCountDocuments).toHaveBeenCalledWith({ userId: "u1" });
   });

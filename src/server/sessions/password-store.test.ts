@@ -1,18 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPasswordUser, getPasswordUser } from "./store";
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), findOne: vi.fn() }));
+const mocks = vi.hoisted(() => ({ connectDatabase: vi.fn(), create: vi.fn(), findOne: vi.fn() }));
+vi.mock("../db", () => ({ connectDatabase: mocks.connectDatabase }));
 vi.mock("../db/models", () => ({ User: mocks }));
 
 beforeEach(() => {
   mocks.create.mockReset();
   mocks.findOne.mockReset();
+  mocks.connectDatabase.mockReset().mockResolvedValue(undefined);
 });
 
 describe("password account persistence", () => {
   it("stores a supplied hash without retaining the plaintext password", async () => {
     mocks.create.mockResolvedValue([{ _id: "user-1" }]);
     await expect(createPasswordUser("student", "bcrypt-hash")).resolves.toBe("user-1");
+    expect(mocks.connectDatabase).toHaveBeenCalledOnce();
     expect(mocks.create).toHaveBeenCalledExactlyOnceWith([{ username: "student", passwordHash: "bcrypt-hash" }]);
   });
 

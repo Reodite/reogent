@@ -90,6 +90,15 @@ describe("USE_OAUTH route gating", () => {
     expect(response.headers.get("set-cookie")).toContain("reodite_session=fixture");
   });
 
+  it("maps Mongo duplicate username errors to a conflict response", async () => {
+    mocks.mode = "password";
+    mocks.createPasswordUser.mockRejectedValueOnce({ code: 11000 });
+    const response = await register(credentialRequest({ username: "student", password: "correct horse battery" }));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "Username already taken" });
+  });
+
   it("authenticates passwords without accepting OAuth-only users", async () => {
     mocks.mode = "password";
     mocks.getPasswordUser.mockResolvedValueOnce({ id: "oauth-user", passwordHash: null });

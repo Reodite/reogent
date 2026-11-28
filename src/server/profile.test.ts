@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getProfile, saveProfile } from "./profile";
 
-const mocks = vi.hoisted(() => ({ findById: vi.fn(), findOneAndUpdate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ connectDatabase: vi.fn(), findById: vi.fn(), findOneAndUpdate: vi.fn() }));
+vi.mock("./db", () => ({ connectDatabase: mocks.connectDatabase }));
 vi.mock("./db/models", () => ({ UserProfile: mocks }));
 
 beforeEach(() => {
   mocks.findById.mockReset();
   mocks.findOneAndUpdate.mockReset().mockResolvedValue(undefined);
+  mocks.connectDatabase.mockReset().mockResolvedValue(undefined);
 });
 
 describe("profile persistence", () => {
@@ -22,6 +24,7 @@ describe("profile persistence", () => {
       const profile = { preferred_name: "Sam", year: 3, student_type: "domestic", onboarding_completed: true };
       mocks.findById.mockReturnValue({ lean: () => ({ data: { ...profile, theme } }) });
       expect(await getProfile("u1")).toStrictEqual(profile);
+      expect(mocks.connectDatabase).toHaveBeenCalledOnce();
     },
   );
 

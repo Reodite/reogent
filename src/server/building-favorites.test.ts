@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ find: vi.fn(), updateOne: vi.fn(), deleteOne: vi.fn() }));
+const mocks = vi.hoisted(() => ({ connectDatabase: vi.fn(), find: vi.fn(), updateOne: vi.fn(), deleteOne: vi.fn() }));
+vi.mock("./db", () => ({ connectDatabase: mocks.connectDatabase }));
 vi.mock("./db/models", () => ({ BuildingFavorite: mocks }));
 
 const { listBuildingFavorites, setBuildingFavorite } = await import("./building-favorites");
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
+  mocks.connectDatabase.mockResolvedValue(undefined);
 });
 
 describe("building favorites store", () => {
@@ -15,6 +17,7 @@ describe("building favorites store", () => {
       sort: () => ({ lean: async () => [{ buildingCode: "IBLC" }, { buildingCode: "NEST" }] }),
     });
     expect(await listBuildingFavorites("user-1")).toEqual(["IBLC", "NEST"]);
+    expect(mocks.connectDatabase).toHaveBeenCalledOnce();
     expect(mocks.find).toHaveBeenCalledWith({ userId: "user-1" });
   });
 
