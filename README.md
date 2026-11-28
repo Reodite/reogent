@@ -97,7 +97,7 @@ The Compose development profile runs Node.js in a container and connects to Mong
 
 If your LLM runs outside Docker, set `LLM_BASE_URL` to an address reachable from the app container. Inside the container, `localhost` refers to the container itself.
 
-Create `.env` using the configuration reference. With `USE_EXTERNAL_MONGODB=false`, start MongoDB and Meilisearch before the app:
+Create `.env` using the configuration reference. With `USE_EXTERNAL_MONGODB=false`, local Compose starts MongoDB by default:
 
 ```bash
 docker compose up -d mongo meilisearch
@@ -124,7 +124,7 @@ Set these values in `.env` before deployment:
 docker compose -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.external.yml up -d meilisearch
 ```
 
-For local MongoDB, omit `docker-compose.external.yml` and append `mongo` to the service list. External mode removes the local Mongo dependency and does not start the local database container.
+For local MongoDB, omit `docker-compose.external.yml` and include `mongo` in the service list. For hosted MongoDB, start only the app and search service so Compose does not launch the unused local database:
 
 2. Create the read-only `MEILI_API_KEY`. Run this command from a shell where `MEILI_MASTER_KEY` is set:
 
@@ -151,7 +151,7 @@ Compose binds app, MongoDB, and Meilisearch to loopback, so run the proxy on the
 5. Build and start the app:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.external.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.external.yml up -d --build app meilisearch
 ```
 
 ## Backups and maintenance
@@ -166,6 +166,8 @@ Use the Compose operations profile for these tasks:
 Copy backups off the server. Protect them like the live database because they contain accounts and conversations.
 
 To restore a local archive, use `mongorestore --gzip --archive=<file> --drop` against the target replica-set URI. Use your MongoDB provider's backup tools for an external deployment.
+
+The default test suite mocks persistence. Run the opt-in replica-set integration tests with `npm run test:mongodb`; they exercise transactions and index behavior against the local Compose MongoDB.
 
 Before proposing a change, run:
 

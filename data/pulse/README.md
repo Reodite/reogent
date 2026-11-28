@@ -21,8 +21,7 @@ Validation runs before the database is touched:
 2. Run the script against the target database:
 
 ```bash
-DATABASE_URL=postgres://reodite:<POSTGRES_PASSWORD>@localhost:5432/reodite \
-  npm run pulse:publish -- data/pulse/round-2.json
+USE_EXTERNAL_MONGODB=false MONGODB_PORT=27017 npm run pulse:publish -- data/pulse/round-2.json
 ```
 
 Expected output:
@@ -35,7 +34,7 @@ Publishing is one transaction: it locks the active round (scores freeze, further
 
 ## Production notes
 
-- Run the script from a repo checkout on the prod host (Node 24, `npm ci` once), not inside the app container. The production image is a standalone build without the script's tooling. Docker compose maps Postgres to host port 5432, so `localhost:5432` with the `POSTGRES_PASSWORD` from `.env` reaches the prod database.
+- Run the script from a repo checkout on the host (Node 24, `npm ci` once), not inside the app container. The production image is a standalone build without the script's tooling. For local Compose MongoDB, start the Mongo service and use its configured `MONGODB_PORT`. For hosted MongoDB, set `USE_EXTERNAL_MONGODB=true` and provide `MONGODB_URI`.
 - Commit each seed file here before publishing. Locked tallies live in the database; git keeps the history of what was asked.
 - There is no undo. If a bad round ships, publish a corrected round; the mistaken one stays locked with whatever votes it collected.
 
@@ -55,23 +54,12 @@ Keep statements concrete and one-sided. "X is good" splits cleanly; "X is better
 
 ## Where the data lives
 
-Schema in `src/server/db/migrate.ts`; server logic in `src/server/pulse/store.ts`.
+Mongoose schemas and indexes live in `src/server/db/models.ts`; Pulse persistence lives in `src/server/pulse/store.ts`.
 
-| Table             | Contents                                                        |
-| ----------------- | --------------------------------------------------------------- |
-| `pulse_rounds`    | `status` (`active`/`locked`), `title`, publish and lock times   |
-| `pulse_questions` | Statement text, owning round, seed order                        |
-| `pulse_votes`     | One row per user per question: `agree` boolean plus a timestamp |
+| Collection        | Contents                                                          |
+| ----------------- | ----------------------------------------------------------------- |
+| `pulserounds`     | `status` (`active`/`locked`), `title`, publish and lock times     |
+| `pulsequestions`  | Statement text, owning round, seed order                          |
+| `pulsevotes`      | One document per user per question: `agree` boolean and timestamp |
 
-Results for a locked round:
-
-```sql
-SELECT q.text,
-       COUNT(v.*) FILTER (WHERE v.agree) AS agree,
-       COUNT(v.*) FILTER (WHERE NOT v.agree) AS disagree
-FROM pulse_questions q
-LEFT JOIN pulse_votes v ON v.question_id = q.id
-WHERE q.round_id = $1
-GROUP BY q.id, q.text, q.position
-ORDER BY q.position;
-```
+The server aggregates vote documents for a round and sorts questions by their stored `position`.
