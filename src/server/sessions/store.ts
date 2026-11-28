@@ -55,6 +55,24 @@ export async function appendExchange(
   citations?: Citation[] | null,
 ): Promise<void> {
   await connectDatabase();
+  try {
+    await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
+  } catch (error) {
+    if (!(typeof error === "object" && error !== null && "code" in error && error.code === 11000)) throw error;
+    const existing = await Session.findById(sessionId).select({ userId: 1 }).lean();
+    if (!existing || existing.userId !== userId) throw new Error("Session not found");
+    await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
+  }
+}
+
+async function appendExchangeTransaction(
+  userId: string,
+  sessionId: string,
+  userMessage: string,
+  assistantMessage: string,
+  activity?: ActivityBlock[],
+  citations?: Citation[] | null,
+): Promise<void> {
   const mongoSession = await Session.startSession();
   try {
     await mongoSession.withTransaction(async () => {
@@ -180,11 +198,12 @@ export async function findOrCreateOAuthUser(
   }
   const existing = await OAuthAccount.findOne({ provider, providerSubject }).lean();
   if (existing) {
+    const emailProvided = profile.email !== undefined;
     await OAuthAccount.updateOne(
       { _id: existing._id },
       {
         $set: {
-          ...(email ? { email, emailVerified: profile.emailVerified ?? false } : {}),
+          ...(emailProvided ? { email: email ?? null, emailVerified: profile.emailVerified ?? false } : {}),
           ...(displayName ? { displayName } : {}),
           ...(avatarUrl ? { avatarUrl } : {}),
           profileUpdatedAt: new Date(),
