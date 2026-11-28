@@ -8,6 +8,9 @@ import { castVote, getRoundHistory, publishRound } from "../pulse/store";
 import { appendExchange, findOrCreateOAuthUser, getSessionMessages, listSessions } from "../sessions/store";
 
 const uri = process.env.MONGODB_TEST_URI;
+if (!uri && process.env.REQUIRE_MONGODB_TESTS === "true") {
+  throw new Error("MONGODB_TEST_URI is required for MongoDB integration tests");
+}
 const collectionName = `reodite_integration_${process.pid}_${Date.now()}`;
 const recordSchema = new Schema({ value: { type: Number, required: true } }, { collection: collectionName });
 const Record = mongoose.model(`ReoditeIntegration_${process.pid}_${Date.now()}`, recordSchema);

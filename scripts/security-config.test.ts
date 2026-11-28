@@ -48,9 +48,19 @@ describe("deployment security defaults", () => {
     const compose = read("docker-compose.yml");
     expect(compose).toMatch(/"127\.0\.0\.1:\$\{MONGODB_PORT:-27017\}:27017"/);
     expect(compose).toMatch(/"127\.0\.0\.1:\$\{MEILISEARCH_PORT:-7700\}:7700"/);
-    expect(compose).toContain("MONGODB_URI:-mongodb://mongo:27017/reodite?replicaSet=rs0");
-    expect(compose).not.toMatch(/mongodb:\/\/[^\s]*:[^\s]*@/);
-    expect(compose).toMatch(/USE_EXTERNAL_MONGODB=\$\{USE_EXTERNAL_MONGODB:-false\}/);
+    expect(compose).toContain(
+      `MONGODB_URI=mongodb://\${MONGODB_APP_USERNAME:-reodite}:\${MONGODB_APP_PASSWORD:-}@mongo:27017/reodite?authSource=reodite&replicaSet=rs0`,
+    );
+    expect(compose).not.toContain("mongodb://reodite:secret@");
+    expect(compose).toContain(`MONGO_INITDB_ROOT_USERNAME: \${MONGODB_ROOT_USERNAME:-}`);
+    expect(compose).toContain("./docker/mongo-init.sh:/docker-entrypoint-initdb.d/10-create-app-user.sh:ro");
+    expect(read("docker/mongo-init.sh")).toContain('MONGODB_APP_USERNAME" =~ ^[A-Za-z0-9._-]+$');
+    expect(compose).toContain(
+      'command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--auth", "--keyFile", "/data/db/.keyfile"]',
+    );
+    expect(compose).toContain(
+      `MONGODB_URI: \${MONGODB_URI:-mongodb://\${MONGODB_APP_USERNAME:-}:\${MONGODB_APP_PASSWORD:-}@mongo:27017/reodite?authSource=reodite&replicaSet=rs0}`,
+    );
     expect(compose).toContain("${MEILI_MASTER_KEY:?");
   });
 
@@ -96,6 +106,9 @@ describe("deployment security defaults", () => {
       true,
     );
     expect(services.app.depends_on).not.toHaveProperty("mongo");
+    expect(services.app.environment.USE_EXTERNAL_MONGODB).toBe("true");
+    expect(services.app.environment.MONGODB_URI).toBe("mongodb+srv://example.invalid/reodite");
+    expect(services).not.toHaveProperty("backup");
   });
 
   it("runs the application container without root privileges", () => {
@@ -105,5 +118,16 @@ describe("deployment security defaults", () => {
 
   it("excludes environment variants from container build contexts", () => {
     expect(read(".dockerignore").split("\n")).toContain(".env*");
+  });
+
+  it("requires credentials before running the Mongo integration suite", () => {
+    const runner = read("scripts/test-mongodb.mjs");
+    expect(runner).toContain("MONGODB_TEST_USERNAME");
+    expect(runner).toContain("MONGODB_TEST_PASSWORD");
+    expect(runner).toContain("MONGODB_TEST_URI:");
+    expect(runner).toContain('REQUIRE_MONGODB_TESTS: "true"');
+    expect(read("src/server/db/mongo.integration.test.ts")).toContain(
+      'if (!uri && process.env.REQUIRE_MONGODB_TESTS === "true")',
+    );
   });
 });
