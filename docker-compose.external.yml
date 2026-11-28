@@ -1,0 +1,8 @@
+services:
+  app:
+    depends_on:
+      mongo: !reset null
+
+  dev:
+    depends_on:
+      mongo: !reset null

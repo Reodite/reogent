@@ -1,4 +1,4 @@
-import { getPool } from "@/src/server/db";
+import { connectDatabase } from "@/src/server/db";
 import { getSearch } from "@/src/server/search";
 
 const reachable = (check: () => Promise<unknown>) =>
@@ -9,10 +9,10 @@ const reachable = (check: () => Promise<unknown>) =>
       () => false,
     );
 
-/** GET /api/health: 200 when Postgres and Meilisearch respond, otherwise 503. Reports no error details. */
+/** GET /api/health: 200 when MongoDB and Meilisearch respond, otherwise 503. Reports no error details. */
 export async function GET(): Promise<Response> {
   const [database, search] = await Promise.all([
-    reachable(() => getPool().query("SELECT 1")),
+    reachable(async () => (await connectDatabase()).connection.db?.admin().ping()),
     reachable(() => getSearch().health()),
   ]);
   return Response.json(

@@ -1,19 +1,29 @@
-import pg from "pg";
+import mongoose from "mongoose";
 import { MAX_TIMER_MS, positiveIntegerEnv } from "./resource-limits";
 
-let pool: pg.Pool | undefined;
+let connection: Promise<typeof mongoose> | undefined;
 
-/** Returns a shared connection pool. Reads DATABASE_URL from env. */
-export function getPool(): pg.Pool {
-  if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) throw new Error("DATABASE_URL env var is not set");
-    // Bounds connection attempts so requests fail instead of hanging while Postgres is unreachable.
-    pool = new pg.Pool({
-      connectionString,
-      max: positiveIntegerEnv("DB_POOL_MAX", 10),
-      connectionTimeoutMillis: positiveIntegerEnv("DB_POOL_TIMEOUT_MS", 10_000, MAX_TIMER_MS),
+/** Connects once to the configured MongoDB deployment. */
+export function connectDatabase(): Promise<typeof mongoose> {
+  if (!connection) {
+    const useExternalMongo = process.env.USE_EXTERNAL_MONGODB === "true";
+    const uri = useExternalMongo
+      ? process.env.MONGODB_URI
+      : `mongodb://localhost:${process.env.MONGODB_PORT ?? "27017"}/reodite?replicaSet=rs0&directConnection=true`;
+    if (!uri) throw new Error("MONGODB_URI env var is required when USE_EXTERNAL_MONGODB=true");
+    connection = mongoose.connect(uri, {
+      maxPoolSize: positiveIntegerEnv("MONGODB_MAX_POOL_SIZE", 10),
+      serverSelectionTimeoutMS: positiveIntegerEnv("MONGODB_SERVER_SELECTION_TIMEOUT_MS", 10_000, MAX_TIMER_MS),
+    });
+    connection.catch(() => {
+      connection = undefined;
     });
   }
-  return pool;
+  return connection;
+}
+
+export async function closeDatabase(): Promise<void> {
+  if (!connection) return;
+  await mongoose.disconnect();
+  connection = undefined;
 }

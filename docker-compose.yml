@@ -7,14 +7,17 @@ services:
       - "127.0.0.1:${PORT:-3000}:3000"
     env_file: .env
     depends_on:
-      postgres:
+      mongo:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
     volumes:
       - ./ubc-unified-data/data:/data:ro
     environment:
-      - DATABASE_URL=postgres://reodite:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/reodite
+      - USE_EXTERNAL_MONGODB=${USE_EXTERNAL_MONGODB:-false}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/reodite?replicaSet=rs0}
+      - DATABASE_URL=
+      - POSTGRES_PASSWORD=
       - MEILI_URL=http://meilisearch:7700
       # The app reads with MEILI_API_KEY; keep the master key out of its environment.
       - MEILI_MASTER_KEY=
@@ -36,7 +39,7 @@ services:
       - "127.0.0.1:${PORT:-3000}:3000"
     env_file: .env
     depends_on:
-      postgres:
+      mongo:
         condition: service_healthy
       meilisearch:
         condition: service_healthy
@@ -45,7 +48,10 @@ services:
       - /app/node_modules
       - ./ubc-unified-data/data:/data:ro
     environment:
-      - DATABASE_URL=postgres://reodite:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/reodite
+      - USE_EXTERNAL_MONGODB=${USE_EXTERNAL_MONGODB:-false}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/reodite?replicaSet=rs0}
+      - DATABASE_URL=
+      - POSTGRES_PASSWORD=
       - MEILI_URL=http://meilisearch:7700
       - DATA_PATH=/data
       - HOSTNAME=0.0.0.0
@@ -70,32 +76,32 @@ services:
 
   backup:
     profiles: ["ops"]
-    image: postgres:17-alpine
+    image: mongo:8
     depends_on:
-      postgres:
+      mongo:
         condition: service_healthy
     volumes:
       - ./backups:/backups
-    environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-    command: sh -c 'pg_dump -h postgres -U reodite -Fc reodite > /backups/reodite-$$(date -u +%Y%m%dT%H%M%SZ).dump'
+    command: sh -c 'mongodump --uri="mongodb://mongo:27017/reodite?replicaSet=rs0" --archive="/backups/reodite-$$(date -u +%Y%m%dT%H%M%SZ).archive" --gzip'
 
-  postgres:
-    image: postgres:17-alpine
+  mongo:
+    image: mongo:8
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
-    environment:
-      POSTGRES_DB: reodite
-      POSTGRES_USER: reodite
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      - "127.0.0.1:${MONGODB_PORT:-27017}:27017"
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongodata:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U reodite"]
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --eval 'try { rs.status().ok ? quit(0) : quit(1) }
+          catch (error) { rs.initiate({_id:"rs0",members:[{_id:0,host:"mongo:27017"}]}); quit(1) }'
       interval: 5s
-      timeout: 3s
-      retries: 5
+      timeout: 5s
+      retries: 20
+      start_period: 10s
 
   meilisearch:
     image: getmeili/meilisearch:v1
@@ -114,5 +120,5 @@ services:
       retries: 5
 
 volumes:
-  pgdata:
+  mongodata:
   msdata:

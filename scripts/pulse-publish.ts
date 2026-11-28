@@ -2,7 +2,7 @@
 // Validates the whole seed before touching the database; exits non-zero on failure.
 // Usage: npm run pulse:publish -- data/pulse/round.example.json
 import { readFileSync } from "node:fs";
-import { getPool } from "../src/server/db";
+import { closeDatabase } from "../src/server/db";
 import { publishRound } from "../src/server/pulse/store";
 
 const MAX_QUESTION_LENGTH = 280;
@@ -46,11 +46,6 @@ main()
     console.error("Publish failed:", e instanceof Error ? e.message : e);
     process.exitCode = 1;
   })
-  .finally(() => {
-    // Close the pool so the process can exit; it never opened if the run failed early.
-    try {
-      void getPool().end();
-    } catch {
-      // Pool was never created (missing DATABASE_URL); nothing to close.
-    }
+  .finally(async () => {
+    await closeDatabase();
   });

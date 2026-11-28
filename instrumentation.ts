@@ -18,7 +18,7 @@ export async function register() {
         }
       }
       await migrate();
-      console.log("DB migration applied");
+      console.log("MongoDB connection and indexes ready");
     } catch (e) {
       console.error("Startup failed:", e);
       // Production exits so the supervisor restarts it instead of serving errors.

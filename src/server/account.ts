@@ -1,49 +1,40 @@
 import type { AccountDetails, StudentProfile } from "@/src/shared/profile";
-import { getPool } from "./db";
+import { OAuthAccount, PulseVote, User, UserProfile } from "./db/models";
 
 /** Returns account details for the authenticated user, or null if the user no longer exists. */
 export async function getAccount(userId: string): Promise<AccountDetails | null> {
-  const { rows } = await getPool().query<{
-    username: string;
-    display_name: string | null;
-    email: string | null;
-    created_at: Date | null;
-    profile: StudentProfile | null;
-    tokens_spent: string;
-    token_tracking_started_at: Date;
-    pulse_questions_answered: string;
-  }>(
-    `SELECT u.username, op.display_name, op.email, u.created_at, p.data AS profile, u.tokens_spent, u.token_tracking_started_at,
-            (SELECT COUNT(*) FROM pulse_votes WHERE user_id = u.id) AS pulse_questions_answered
-     FROM users u
-     LEFT JOIN user_profiles p ON p.user_id = u.id
-     LEFT JOIN LATERAL (
-       SELECT pr.display_name, CASE WHEN pr.email_verified THEN pr.email END AS email
-       FROM oauth_accounts oa
-       JOIN oauth_profiles pr ON pr.oauth_account_id = oa.id
-       WHERE oa.user_id = u.id AND oa.is_primary
-       ORDER BY oa.created_at
-       LIMIT 1
-     ) op ON true
-     WHERE u.id = $1`,
-    [userId],
-  );
-  const row = rows[0];
-  if (!row) return null;
+  const user = await User.findById(userId).lean();
+  if (!user) return null;
+  const [oauth, profile, pulseQuestionsAnswered] = await Promise.all([
+    OAuthAccount.findOne({ userId, isPrimary: true }).sort({ createdAt: 1 }).lean(),
+    UserProfile.findById(userId).lean(),
+    PulseVote.countDocuments({ userId }),
+  ]);
   return {
-    username: row.username,
-    displayName: row.display_name,
-    email: row.email,
-    createdAt: row.created_at?.toISOString() ?? null,
-    profile: row.profile,
-    tokensSpent: Number(row.tokens_spent),
-    tokenTrackingStartedAt: row.token_tracking_started_at.toISOString(),
-    pulseQuestionsAnswered: Number(row.pulse_questions_answered),
+    username: user.username,
+    displayName: oauth?.displayName ?? null,
+    email: oauth?.emailVerified ? (oauth.email ?? null) : null,
+    createdAt: user.createdAt?.toISOString() ?? null,
+    profile: (profile?.data as StudentProfile | undefined) ?? null,
+    tokensSpent: user.tokensSpent,
+    tokenTrackingStartedAt: user.tokenTrackingStartedAt.toISOString(),
+    pulseQuestionsAnswered,
   };
 }
 
 /** Chat messages each account may send per Vancouver calendar day. */
 export const DAILY_CHAT_LIMIT = 100;
+
+function vancouverDay(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Vancouver",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
 
 /**
  * Atomically counts one chat message against today's allowance. Returns false
@@ -51,21 +42,25 @@ export const DAILY_CHAT_LIMIT = 100;
  * counter resets at midnight America/Vancouver.
  */
 export async function consumeDailyChatMessage(userId: string): Promise<boolean> {
-  const { rowCount } = await getPool().query(
-    `WITH today AS (SELECT (now() AT TIME ZONE 'America/Vancouver')::date AS day)
-     UPDATE users
-     SET chat_messages = CASE WHEN chat_day = today.day THEN chat_messages + 1 ELSE 1 END,
-         chat_day = today.day
-     FROM today
-     WHERE id = $1 AND (chat_day IS DISTINCT FROM today.day OR chat_messages < $2)`,
-    [userId, DAILY_CHAT_LIMIT],
-  );
-  return (rowCount ?? 0) > 0;
+  const day = vancouverDay(new Date());
+  const updated = await User.findOneAndUpdate(
+    { _id: userId, $or: [{ chatDay: { $ne: day } }, { chatMessages: { $lt: DAILY_CHAT_LIMIT } }] },
+    [
+      {
+        $set: {
+          chatMessages: { $cond: [{ $eq: ["$chatDay", day] }, { $add: ["$chatMessages", 1] }, 1] },
+          chatDay: day,
+        },
+      },
+    ],
+    { new: true, runValidators: true },
+  ).lean();
+  return updated !== null;
 }
 
 /** Adds provider-reported usage atomically; deleting a conversation does not erase the total. */
 export async function recordTokenUsage(userId: string, totalTokens: number | undefined): Promise<void> {
   if (totalTokens === undefined || totalTokens === 0) return;
   if (!Number.isSafeInteger(totalTokens) || totalTokens < 0) throw new Error("Invalid token usage");
-  await getPool().query(`UPDATE users SET tokens_spent = tokens_spent + $2 WHERE id = $1`, [userId, totalTokens]);
+  await User.updateOne({ _id: userId }, { $inc: { tokensSpent: totalTokens } });
 }
