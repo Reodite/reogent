@@ -183,6 +183,23 @@ describe("castVote", () => {
     expect(mongoSession.withTransaction).toHaveBeenCalledOnce();
   });
 
+  it("retries a transient vote transaction conflict", async () => {
+    mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundFindById.mockReturnValue({ session: () => lean({ _id: 3, status: "active" }) });
+    mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 1 });
+    mocks.voteCreate.mockResolvedValue([{ questionId: 10, userId: "u1", agree: true }]);
+    mocks.voteFindOne.mockReturnValue(lean({ agree: true }));
+    mocks.voteAggregate.mockResolvedValue([{ _id: true, count: 1 }]);
+    mongoSession.withTransaction
+      .mockRejectedValueOnce({ code: 112 })
+      .mockImplementationOnce(async (callback) => callback());
+
+    const { castVote } = await import("./store");
+    await expect(castVote("u1", 10, true)).resolves.toEqual({ agree: true, agreeCount: 1, disagreeCount: 0 });
+    expect(mongoSession.withTransaction).toHaveBeenCalledTimes(2);
+    expect(mongoSession.endSession).toHaveBeenCalledTimes(2);
+  });
+
   it("returns the previously stored direction when a duplicate submission races", async () => {
     mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
     mocks.roundFindById.mockReturnValue({ session: () => lean({ _id: 3, status: "active" }) });
@@ -239,6 +256,24 @@ describe("castVote", () => {
 });
 
 describe("publishRound", () => {
+  it("retries a transient publish transaction conflict", async () => {
+    mocks.roundFindOneAndUpdate.mockReturnValue(lean({ _id: 2 }));
+    mocks.counterFindOneAndUpdate.mockReturnValueOnce(lean({ value: 3 }));
+    mocks.roundCreate.mockResolvedValue([{ _id: 3 }]);
+    mongoSession.withTransaction
+      .mockRejectedValueOnce({ code: 112 })
+      .mockImplementationOnce(async (callback) => callback());
+
+    const { publishRound } = await import("./store");
+    await expect(publishRound({ title: "Week 3", questions: [] })).resolves.toEqual({
+      lockedRoundId: 2,
+      roundId: 3,
+    });
+    expect(mongoSession.withTransaction).toHaveBeenCalledTimes(2);
+    expect(mocks.roundCreate).toHaveBeenCalledOnce();
+    expect(mongoSession.endSession).toHaveBeenCalledTimes(2);
+  });
+
   it("locks the active round and inserts a new round with questions in one transaction", async () => {
     mocks.roundFindOneAndUpdate.mockReturnValue(lean({ _id: 2 }));
     mocks.counterFindOneAndUpdate.mockReturnValueOnce(lean({ value: 3 })).mockReturnValueOnce(lean({ value: 2 }));

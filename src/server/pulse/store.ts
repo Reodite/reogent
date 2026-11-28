@@ -122,40 +122,49 @@ export async function getRoundHistory(
  */
 export async function castVote(userId: string, questionId: number, agree: boolean): Promise<PulseVoteTally | null> {
   await connectDatabase();
-  const session = await PulseVote.startSession();
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const session = await PulseVote.startSession();
+    let completed = false;
+    let retry = false;
     try {
-      await session.withTransaction(async () => {
-        const question = await PulseQuestion.findById(questionId).session(session).lean();
-        if (!question) return;
-        const round = await PulseRoundModel.findById(question.roundId).session(session).lean();
-        if (round?.status !== "active") return;
-        const active = await PulseRoundModel.updateOne(
-          { _id: question.roundId, status: "active" },
-          { $inc: { voteRevision: 1 } },
-          { session },
-        );
-        if (!active.matchedCount) return;
-        await PulseVote.create([{ questionId, userId, agree }], { session });
-      });
-    } catch (error) {
-      if (!isPulseVoteDuplicate(error, questionId, userId)) throw error;
+      try {
+        await session.withTransaction(async () => {
+          const question = await PulseQuestion.findById(questionId).session(session).lean();
+          if (!question) return;
+          const round = await PulseRoundModel.findById(question.roundId).session(session).lean();
+          if (round?.status !== "active") return;
+          const active = await PulseRoundModel.updateOne(
+            { _id: question.roundId, status: "active" },
+            { $inc: { voteRevision: 1 } },
+            { session },
+          );
+          if (!active.matchedCount) return;
+          await PulseVote.create([{ questionId, userId, agree }], { session });
+        });
+        completed = true;
+      } catch (error) {
+        if (isPulseVoteDuplicate(error, questionId, userId)) completed = true;
+        else if (isTransientTransactionError(error) && attempt < 2) retry = true;
+        else throw error;
+      }
+    } finally {
+      await session.endSession();
     }
-    const existing = await PulseVote.findOne({ questionId, userId }).lean();
-    const storedAgree = existing?.agree ?? null;
-    if (storedAgree === null) return null;
-    const tally = (await PulseVote.aggregate([
-      { $match: { questionId } },
-      { $group: { _id: "$agree", count: { $sum: 1 } } },
-    ])) as { _id: boolean; count: number }[];
-    return {
-      agree: storedAgree,
-      agreeCount: tally.find(({ _id }) => _id)?.count ?? 0,
-      disagreeCount: tally.find(({ _id }) => !_id)?.count ?? 0,
-    };
-  } finally {
-    await session.endSession();
+    if (completed) break;
+    if (retry) await waitForTransactionRetry(attempt);
   }
+  const existing = await PulseVote.findOne({ questionId, userId }).lean();
+  const storedAgree = existing?.agree ?? null;
+  if (storedAgree === null) return null;
+  const tally = (await PulseVote.aggregate([
+    { $match: { questionId } },
+    { $group: { _id: "$agree", count: { $sum: 1 } } },
+  ])) as { _id: boolean; count: number }[];
+  return {
+    agree: storedAgree,
+    agreeCount: tally.find(({ _id }) => _id)?.count ?? 0,
+    disagreeCount: tally.find(({ _id }) => !_id)?.count ?? 0,
+  };
 }
 
 function isPulseVoteDuplicate(error: unknown, questionId: number, userId: string): boolean {
@@ -164,53 +173,71 @@ function isPulseVoteDuplicate(error: unknown, questionId: number, userId: string
   return keyValue?.questionId === questionId && keyValue.userId === userId;
 }
 
+function isTransientTransactionError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const mongoError = error as { code?: number; hasErrorLabel?: (label: string) => boolean };
+  return mongoError.code === 112 || mongoError.hasErrorLabel?.("TransientTransactionError") === true;
+}
+
+function waitForTransactionRetry(attempt: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+}
+
 /** Locks the active round and publishes the next round with its questions atomically. */
 export async function publishRound(input: {
   title: string | null;
   questions: string[];
 }): Promise<{ lockedRoundId: number | null; roundId: number }> {
   await connectDatabase();
-  const session = await PulseRoundModel.startSession();
-  try {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const session = await PulseRoundModel.startSession();
     let result: { lockedRoundId: number | null; roundId: number } | undefined;
-    await session.withTransaction(async () => {
-      const active = await PulseRoundModel.findOneAndUpdate(
-        { status: "active" },
-        { $set: { status: "locked", lockedAt: new Date() } },
-        { returnDocument: "after", session },
-      ).lean();
-      const counter = await Counter.findOneAndUpdate(
-        { _id: "pulse-round" },
-        [{ $set: { value: { $add: [{ $ifNull: ["$value", 0] }, 1] } } }],
-        { upsert: true, returnDocument: "after", updatePipeline: true, session },
-      ).lean();
-      const roundId = counter?.value;
-      if (!roundId) throw new Error("Could not allocate a Pulse round ID");
-      await PulseRoundModel.create([{ _id: roundId, title: input.title, status: "active" }], { session });
-      if (input.questions.length) {
-        const questionCounter = await Counter.findOneAndUpdate(
-          { _id: "pulse-question" },
-          [
-            {
-              $set: {
-                value: { $add: [{ $ifNull: ["$value", 0] }, input.questions.length] },
-              },
-            },
-          ],
+    let retry = false;
+    try {
+      await session.withTransaction(async () => {
+        const active = await PulseRoundModel.findOneAndUpdate(
+          { status: "active" },
+          { $set: { status: "locked", lockedAt: new Date() } },
+          { returnDocument: "after", session },
+        ).lean();
+        const counter = await Counter.findOneAndUpdate(
+          { _id: "pulse-round" },
+          [{ $set: { value: { $add: [{ $ifNull: ["$value", 0] }, 1] } } }],
           { upsert: true, returnDocument: "after", updatePipeline: true, session },
         ).lean();
-        if (!questionCounter) throw new Error("Could not allocate Pulse question IDs");
-        const firstQuestionId = questionCounter.value - input.questions.length + 1;
-        await PulseQuestion.insertMany(
-          input.questions.map((text, position) => ({ _id: firstQuestionId + position, roundId, position, text })),
-          { session },
-        );
-      }
-      result = { lockedRoundId: active?._id ?? null, roundId };
-    });
-    if (!result) throw new Error("Could not publish pulse round");
-    return result;
-  } finally {
-    await session.endSession();
+        const roundId = counter?.value;
+        if (!roundId) throw new Error("Could not allocate a Pulse round ID");
+        await PulseRoundModel.create([{ _id: roundId, title: input.title, status: "active" }], { session });
+        if (input.questions.length) {
+          const questionCounter = await Counter.findOneAndUpdate(
+            { _id: "pulse-question" },
+            [
+              {
+                $set: {
+                  value: { $add: [{ $ifNull: ["$value", 0] }, input.questions.length] },
+                },
+              },
+            ],
+            { upsert: true, returnDocument: "after", updatePipeline: true, session },
+          ).lean();
+          if (!questionCounter) throw new Error("Could not allocate Pulse question IDs");
+          const firstQuestionId = questionCounter.value - input.questions.length + 1;
+          await PulseQuestion.insertMany(
+            input.questions.map((text, position) => ({ _id: firstQuestionId + position, roundId, position, text })),
+            { session },
+          );
+        }
+        result = { lockedRoundId: active?._id ?? null, roundId };
+      });
+      if (!result) throw new Error("Could not publish pulse round");
+      return result;
+    } catch (error) {
+      if (!isTransientTransactionError(error) || attempt === 2) throw error;
+      retry = true;
+    } finally {
+      await session.endSession();
+    }
+    if (retry) await waitForTransactionRetry(attempt);
   }
+  throw new Error("Could not publish pulse round");
 }

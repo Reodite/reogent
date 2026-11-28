@@ -29,6 +29,7 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
     process.env.USE_EXTERNAL_MONGODB = "true";
     process.env.MONGODB_URI = uri;
     await migrate();
+    await Promise.all([PulseVote.deleteMany({}), PulseQuestion.deleteMany({}), PulseRound.deleteMany({})]);
   });
 
   afterAll(async () => {
@@ -148,20 +149,29 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
     await expect(castVote(userIds[1], question._id, false)).resolves.toBeNull();
     await expect(getRoundHistory(userIds[1])).resolves.toEqual(before);
 
-    const nextQuestion = await PulseQuestion.findOne({ roundId: second.roundId }).lean();
-    if (!nextQuestion) throw new Error("Next Pulse question not found");
-    pulseQuestionIds.push(nextQuestion._id);
-    const [racingVote, racingPublish] = await Promise.all([
-      castVote(userIds[1], nextQuestion._id, true),
-      publishRound({ title: "Race winner", questions: ["Final statement"] }),
-    ]);
-    pulseRoundIds.push(racingPublish.roundId);
-    const finalQuestion = await PulseQuestion.findOne({ roundId: racingPublish.roundId }).lean();
-    if (finalQuestion) pulseQuestionIds.push(finalQuestion._id);
-    const historyAfterRace = await getRoundHistory(userIds[0]);
-    const racedRound = historyAfterRace.find(({ round }) => round.id === second.roundId);
-    expect(racedRound?.questions[0].agreeCount).toBe(racingVote ? 1 : 0);
-    await expect(castVote(userIds[0], nextQuestion._id, false)).resolves.toBeNull();
-    await expect(getRoundHistory(userIds[0])).resolves.toEqual(historyAfterRace);
+    let activeRoundId = second.roundId;
+    let activeQuestion = await PulseQuestion.findOne({ roundId: activeRoundId }).lean();
+    if (!activeQuestion) throw new Error("Next Pulse question not found");
+    pulseQuestionIds.push(activeQuestion._id);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const voterId = userIds[attempt % userIds.length];
+      const otherUserId = userIds[(attempt + 1) % userIds.length];
+      const [racingVote, racingPublish] = await Promise.all([
+        castVote(voterId, activeQuestion._id, true),
+        publishRound({ title: `Race ${attempt}`, questions: [`Statement ${attempt}`] }),
+      ]);
+      pulseRoundIds.push(racingPublish.roundId);
+      const lockedHistory = await getRoundHistory(otherUserId);
+      const racedRound = lockedHistory.find(({ round }) => round.id === activeRoundId);
+      expect(racedRound?.questions[0].agreeCount).toBe(racingVote ? 1 : 0);
+      await expect(castVote(otherUserId, activeQuestion._id, false)).resolves.toBeNull();
+      await expect(getRoundHistory(otherUserId)).resolves.toEqual(lockedHistory);
+
+      const nextQuestion = await PulseQuestion.findOne({ roundId: racingPublish.roundId }).lean();
+      if (!nextQuestion) throw new Error("Published Pulse question not found");
+      activeRoundId = racingPublish.roundId;
+      activeQuestion = nextQuestion;
+      pulseQuestionIds.push(nextQuestion._id);
+    }
   });
 });
