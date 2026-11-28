@@ -19,7 +19,7 @@ export async function getAccount(userId: string): Promise<AccountDetails | null>
     createdAt: user.createdAt?.toISOString() ?? null,
     profile: (profile?.data as StudentProfile | undefined) ?? null,
     tokensSpent: user.tokensSpent,
-    tokenTrackingStartedAt: user.tokenTrackingStartedAt.toISOString(),
+    tokenTrackingStartedAt: (user.tokenTrackingStartedAt ?? user.createdAt ?? new Date(0)).toISOString(),
     pulseQuestionsAnswered,
   };
 }

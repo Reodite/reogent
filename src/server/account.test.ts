@@ -84,6 +84,28 @@ describe("account details", () => {
     mocks.voteCountDocuments.mockResolvedValue(0);
     await expect(getAccount("u1")).resolves.toMatchObject({ displayName: "Student", email: null, profile: null });
   });
+
+  it("falls back to account creation time when token tracking time is missing", async () => {
+    mocks.userFindById.mockReturnValue({
+      lean: () => ({ username: "student", createdAt: new Date("2025-01-02T03:04:05Z"), tokensSpent: 0 }),
+    });
+    mocks.oauthFindOne.mockReturnValue({ sort: () => ({ lean: () => null }) });
+    mocks.profileFindById.mockReturnValue({ lean: () => null });
+    mocks.voteCountDocuments.mockResolvedValue(0);
+
+    await expect(getAccount("u1")).resolves.toMatchObject({
+      tokenTrackingStartedAt: "2025-01-02T03:04:05.000Z",
+    });
+  });
+
+  it("uses a stable fallback when both account timestamps are missing", async () => {
+    mocks.userFindById.mockReturnValue({ lean: () => ({ username: "student", tokensSpent: 0 }) });
+    mocks.oauthFindOne.mockReturnValue({ sort: () => ({ lean: () => null }) });
+    mocks.profileFindById.mockReturnValue({ lean: () => null });
+    mocks.voteCountDocuments.mockResolvedValue(0);
+
+    await expect(getAccount("u1")).resolves.toMatchObject({ tokenTrackingStartedAt: "1970-01-01T00:00:00.000Z" });
+  });
 });
 
 describe("token persistence", () => {
