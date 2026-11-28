@@ -69,7 +69,7 @@ Set these environment variables in `.env`. Keep secrets out of version control.
 | `USE_EXTERNAL_MONGODB`                            | Set to `true` with the external Compose override to use hosted MongoDB; base Compose always uses authenticated local Mongo.                               |
 | `MONGODB_URI`                                     | Hosted Mongo connection URI. Use a replica-set-capable deployment because the app uses transactions.                                                      |
 | `MONGODB_ROOT_USERNAME` / `MONGODB_ROOT_PASSWORD` | Bootstrap administrator credentials for local Compose Mongo. Generate a unique password and keep both values private.                                     |
-| `MONGODB_APP_USERNAME` / `MONGODB_APP_PASSWORD`   | Local application credentials. The app receives `readWrite` on the `reodite` database only. Generate a unique password and keep it private.               |
+| `MONGODB_APP_USERNAME` / `MONGODB_APP_PASSWORD`   | Local application credentials. The app receives `readWrite` on the `reodite` database only. Use a unique hex password and keep it private.                |
 | `MONGODB_TEST_USERNAME` / `MONGODB_TEST_PASSWORD` | Integration-test credentials. The test user receives `readWrite` only on `reodite_test`. Generate a unique password and keep it private.                  |
 | `MONGODB_PORT`                                    | Optional loopback host port for the local Compose MongoDB. Defaults to `27017`; host-run commands use the local replica-set primary with app credentials. |
 | `MEILI_URL`                                       | Meilisearch address. The example uses `http://localhost:7700`; change this port with `MEILISEARCH_PORT`. Compose sets the container address.              |
@@ -191,7 +191,7 @@ Copy backups off the server. Protect them like the live database because they co
 
 To restore a local archive, use `mongorestore --gzip --archive=<file> --drop` against the target replica-set URI with an authorized account. Use your MongoDB provider's backup tools for an external deployment; the external override removes the local backup service.
 
-The default test suite mocks persistence. Run the opt-in replica-set integration tests with `npm run test:mongodb`; they require the local Mongo app credentials in `.env` and exercise transactions and index behavior against authenticated local Compose MongoDB.
+The default test suite mocks persistence. Run the opt-in replica-set integration tests with `npm run test:mongodb`; they require the local Mongo test credentials in `.env` and exercise transactions and index behavior against authenticated local Compose MongoDB's dedicated `reodite_test` database.
 
 Before proposing a change, run:
 

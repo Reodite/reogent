@@ -13,6 +13,10 @@ if ! [[ "$MONGODB_APP_USERNAME" =~ ^[A-Za-z0-9._-]+$ ]]; then
   echo "MONGODB_APP_USERNAME must use URI-safe characters" >&2
   exit 1
 fi
+if ! [[ "$MONGODB_APP_PASSWORD" =~ ^[A-Fa-f0-9]+$ ]]; then
+  echo "MONGODB_APP_PASSWORD must be hexadecimal for Mongo URI interpolation" >&2
+  exit 1
+fi
 
 username="$(printf '%s' "$MONGODB_APP_USERNAME" | jq -Rs .)"
 password="$(printf '%s' "$MONGODB_APP_PASSWORD" | jq -Rs .)"
