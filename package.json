@@ -16,6 +16,7 @@
     "colors:check": "tsx scripts/generate-color-tokens.ts --check",
     "lint": "biome lint .",
     "test": "vitest run --passWithNoTests",
+    "test:mongodb": "docker compose up -d mongo && MONGODB_TEST_URI=\"mongodb://localhost:${MONGODB_PORT:-27017}/reodite_test?replicaSet=rs0&directConnection=true\" vitest run src/server/db/mongo.integration.test.ts",
     "ingest": "node --env-file-if-exists=.env --import tsx scripts/ingest.ts",
     "validate:documents": "node --env-file-if-exists=.env --import tsx scripts/validate-documents.ts",
     "pulse:publish": "tsx scripts/pulse-publish.ts",
