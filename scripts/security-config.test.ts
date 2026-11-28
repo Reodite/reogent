@@ -55,6 +55,7 @@ describe("deployment security defaults", () => {
     expect(compose).toContain(`MONGO_INITDB_ROOT_USERNAME: \${MONGODB_ROOT_USERNAME:-}`);
     expect(compose).toContain("./docker/mongo-init.sh:/docker-entrypoint-initdb.d/10-create-app-user.sh:ro");
     expect(read("docker/mongo-init.sh")).toContain('MONGODB_APP_USERNAME" =~ ^[A-Za-z0-9._-]+$');
+    expect(read("docker/mongo-init.sh")).toContain("--authenticationDatabase admin");
     expect(compose).toContain(
       'command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--auth", "--keyFile", "/data/db/.keyfile"]',
     );

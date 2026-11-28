@@ -1,6 +1,10 @@
 #!/bin/bash
 set -eu
 
+if [ -z "${MONGO_INITDB_ROOT_USERNAME:-}" ] || [ -z "${MONGO_INITDB_ROOT_PASSWORD:-}" ]; then
+  echo "MONGO_INITDB_ROOT_USERNAME and MONGO_INITDB_ROOT_PASSWORD are required" >&2
+  exit 1
+fi
 if [ -z "${MONGODB_APP_USERNAME:-}" ] || [ -z "${MONGODB_APP_PASSWORD:-}" ]; then
   echo "MONGODB_APP_USERNAME and MONGODB_APP_PASSWORD are required" >&2
   exit 1
@@ -13,10 +17,10 @@ fi
 username="$(printf '%s' "$MONGODB_APP_USERNAME" | jq -Rs .)"
 password="$(printf '%s' "$MONGODB_APP_PASSWORD" | jq -Rs .)"
 
-mongosh --quiet reodite --eval "db.createUser({user: $username, pwd: $password, roles: [{role: 'readWrite', db: 'reodite'}]})"
+mongosh --quiet reodite --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "db.createUser({user: $username, pwd: $password, roles: [{role: 'readWrite', db: 'reodite'}]})"
 
 if [ -n "${MONGODB_TEST_USERNAME:-}" ] && [ -n "${MONGODB_TEST_PASSWORD:-}" ]; then
   testUsername="$(printf '%s' "$MONGODB_TEST_USERNAME" | jq -Rs .)"
   testPassword="$(printf '%s' "$MONGODB_TEST_PASSWORD" | jq -Rs .)"
-  mongosh --quiet reodite --eval "db.createUser({user: $testUsername, pwd: $testPassword, roles: [{role: 'readWrite', db: 'reodite_test'}]})"
+  mongosh --quiet reodite --username "$MONGO_INITDB_ROOT_USERNAME" --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --eval "db.createUser({user: $testUsername, pwd: $testPassword, roles: [{role: 'readWrite', db: 'reodite_test'}]})"
 fi
