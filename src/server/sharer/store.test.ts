@@ -94,7 +94,9 @@ describe("createGroup", () => {
   });
 
   it("retries code collisions and stops after the configured attempts", async () => {
-    mocks.groupCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.groupCreate.mockImplementationOnce(([group]) => {
+      throw { code: 11000, keyValue: { _id: group._id } };
+    });
     mocks.groupCreate.mockResolvedValueOnce([{ _id: "xY12cD", name: "", createdBy: "u1", createdAt: new Date() }]);
     mocks.memberCreate.mockResolvedValue([{ groupCode: "xY12cD", userId: "u1" }]);
     mocks.groupFindById.mockReturnValue(lean({ _id: "xY12cD", name: "", createdBy: "u1", createdAt: new Date() }));
@@ -108,9 +110,20 @@ describe("createGroup", () => {
   });
 
   it("gives up after the maximum number of code collisions", async () => {
-    for (let attempt = 0; attempt < 8; attempt++) mocks.groupCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.groupCreate.mockImplementation(async ([group]) => {
+      throw { code: 11000, keyValue: { _id: group._id } };
+    });
     await expect(createGroup("u1", "")).resolves.toBeNull();
     expect(mocks.groupCreate).toHaveBeenCalledTimes(8);
+  });
+
+  it("propagates duplicate membership conflicts instead of retrying group codes", async () => {
+    mocks.groupCreate.mockResolvedValue([{ _id: "aB12cD", name: "Crew", createdBy: "u1", createdAt: new Date() }]);
+    const conflict = { code: 11000, keyValue: { groupCode: "aB12cD", userId: "u1" } };
+    mocks.memberCreate.mockRejectedValueOnce(conflict);
+
+    await expect(createGroup("u1", "Crew")).rejects.toMatchObject(conflict);
+    expect(mocks.groupCreate).toHaveBeenCalledOnce();
   });
 });
 

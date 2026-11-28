@@ -74,13 +74,19 @@ export async function createGroup(ownerId: string, name: string): Promise<GroupD
       });
       return (await getGroup(code)) ?? null;
     } catch (error) {
-      if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) continue;
+      if (isGroupCodeDuplicate(error, code)) continue;
       throw error;
     } finally {
       await session.endSession();
     }
   }
   return null;
+}
+
+function isGroupCodeDuplicate(error: unknown, code: string): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error) || error.code !== 11000) return false;
+  const duplicate = error as { keyValue?: Record<string, unknown> };
+  return duplicate.keyValue?._id === code;
 }
 
 /** Validates code shape before it hits the DB, keeping queries cheap. */
