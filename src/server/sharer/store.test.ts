@@ -89,7 +89,7 @@ describe("createGroup", () => {
     expect(mocks.groupCreate.mock.calls[0][0][0]._id).toMatch(CODE_PATTERN);
     expect(mocks.memberCreate).toHaveBeenCalledWith(
       [expect.objectContaining({ groupCode: mocks.groupCreate.mock.calls[0][0][0]._id, userId: "u1" })],
-      { session: mongoSession },
+      { ordered: true, session: mongoSession },
     );
   });
 

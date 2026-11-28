@@ -116,7 +116,7 @@ describe("session write ownership", () => {
     await appendExchange("u1", "sid", question, "answer", activity, citations);
     expect(mocks.sessionCreate).toHaveBeenCalledWith(
       [expect.objectContaining({ _id: "sid", userId: "u1", title: question.slice(0, 80), nextMessageOrder: 2 })],
-      { session: mongoSession },
+      { ordered: true, session: mongoSession },
     );
     expect(mocks.messageCreate).toHaveBeenCalledWith(
       [
@@ -130,7 +130,7 @@ describe("session write ownership", () => {
           citations,
         }),
       ],
-      { session: mongoSession },
+      { ordered: true, session: mongoSession },
     );
   });
 
