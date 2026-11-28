@@ -78,6 +78,7 @@ describe("chat resource limits", () => {
     const limited = await POST(request());
     expect(limited.status).toBe(503);
     expect(limited.headers.get("retry-after")).toBe("1");
+    expect(mocks.consumeDailyChatMessage).toHaveBeenCalledOnce();
 
     await reader?.cancel("client left");
     expect(firstSignal?.aborted).toBe(true);
@@ -87,6 +88,17 @@ describe("chat resource limits", () => {
     expect(next.status).toBe(200);
     await next.text();
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases capacity when quota persistence fails", async () => {
+    mocks.consumeDailyChatMessage.mockRejectedValueOnce(new Error("quota database unavailable"));
+    mocks.streamAgent.mockImplementation(async function* () {
+      yield { type: "done", message: "answer", tool_calls: [], citations: [] };
+    });
+    const { POST } = await import("./route");
+
+    await expect(POST(request())).resolves.toMatchObject({ status: 500 });
+    await expect(POST(request())).resolves.toMatchObject({ status: 200 });
   });
 
   it("holds capacity while persistence is pending after client cancellation", async () => {

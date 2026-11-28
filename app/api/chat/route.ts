@@ -39,20 +39,28 @@ export async function POST(request: Request): Promise<Response> {
     if (parsed.value.session_id && !(await canWriteSession(user.sub, parsed.value.session_id))) {
       return json({ error: "Session not found" }, 404);
     }
-    if (!(await consumeDailyChatMessage(user.sub))) {
+    const releaseCapacity = acquireChat();
+    if (!releaseCapacity) {
+      const response = json({ error: "The assistant is busy. Please try again." }, 503);
+      response.headers.set("Retry-After", "1");
+      return response;
+    }
+
+    let withinDailyLimit: boolean;
+    try {
+      withinDailyLimit = await consumeDailyChatMessage(user.sub);
+    } catch (error) {
+      releaseCapacity();
+      throw error;
+    }
+    if (!withinDailyLimit) {
+      releaseCapacity();
       return json(
         {
           error: `You've used all ${DAILY_CHAT_LIMIT} messages for today. You can send more after midnight Pacific time.`,
         },
         429,
       );
-    }
-
-    const releaseCapacity = acquireChat();
-    if (!releaseCapacity) {
-      const response = json({ error: "The assistant is busy. Please try again." }, 503);
-      response.headers.set("Retry-After", "1");
-      return response;
     }
 
     const sessionId = parsed.value.session_id ?? uuid();
