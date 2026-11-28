@@ -278,11 +278,8 @@ export async function findOrCreateOAuthUser(
     } catch (error) {
       if (isDuplicateKey(error) && duplicateKeyValue(error)?.username === username) continue;
       if (isOAuthIdentityDuplicate(error, provider, providerSubject)) {
-        const winner = await OAuthAccount.findOne({ provider, providerSubject }).lean();
-        if (winner) {
-          const user = await User.findById(winner.userId).select({ username: 1 }).lean();
-          if (user) return { id: user._id, username: user.username };
-        }
+        const winner = await findOAuthWinner(provider, providerSubject);
+        if (winner) return winner;
       }
       throw error;
     } finally {
@@ -305,4 +302,19 @@ function duplicateKeyValue(error: unknown): Record<string, unknown> | undefined 
 function isOAuthIdentityDuplicate(error: unknown, provider: string, providerSubject: string): boolean {
   const keyValue = duplicateKeyValue(error);
   return isDuplicateKey(error) && keyValue?.provider === provider && keyValue.providerSubject === providerSubject;
+}
+
+async function findOAuthWinner(
+  provider: string,
+  providerSubject: string,
+): Promise<{ id: string; username: string } | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const winner = await OAuthAccount.findOne({ provider, providerSubject }).lean();
+    if (winner) {
+      const user = await User.findById(winner.userId).select({ username: 1 }).lean();
+      if (user) return { id: user._id, username: user.username };
+    }
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+  }
+  return null;
 }

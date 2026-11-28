@@ -135,9 +135,9 @@ describe("provider-neutral account persistence", () => {
     let oauthLookups = 0;
     mocks.oauthFindOne.mockImplementation(() => {
       oauthLookups++;
-      return oauthLookups === 2
-        ? { session: () => lean(null) }
-        : lean(oauthLookups === 3 ? { _id: "oa-winner", userId: "winner" } : null);
+      if (oauthLookups === 2) return { session: () => lean(null) };
+      if (oauthLookups < 5) return lean(null);
+      return lean({ _id: "oa-winner", userId: "winner" });
     });
     mocks.userFindById.mockImplementation(() => ({ select: () => lean({ _id: "winner", username: "student-1234" }) }));
     mocks.oauthCreate.mockRejectedValueOnce({
@@ -148,6 +148,7 @@ describe("provider-neutral account persistence", () => {
       id: "winner",
       username: "student-1234",
     });
+    expect(oauthLookups).toBe(5);
   });
 
   it("retries username conflicts in a fresh transaction", async () => {
