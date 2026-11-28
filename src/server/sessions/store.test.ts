@@ -174,6 +174,21 @@ describe("session write ownership", () => {
     expect(mocks.messageCreate).toHaveBeenCalledOnce();
   });
 
+  it("waits briefly for the competing session to become visible after duplicate key", async () => {
+    mocks.sessionFindOneAndUpdate.mockResolvedValueOnce(null).mockResolvedValueOnce({ nextMessageOrder: 2 });
+    mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
+    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.sessionFindById
+      .mockReturnValueOnce({ select: () => lean(null) })
+      .mockReturnValueOnce({ select: () => lean({ userId: "u1" }) });
+    mocks.messageCreate.mockResolvedValue([]);
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).resolves.toBeUndefined();
+    expect(mocks.sessionFindById).toHaveBeenCalledTimes(2);
+    expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledTimes(2);
+    expect(mocks.messageCreate).toHaveBeenCalledOnce();
+  });
+
   it("does not retry a first-session collision owned by another user", async () => {
     mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
     mocks.sessionExists.mockReturnValue({ session: () => lean(null) });

@@ -59,10 +59,19 @@ export async function appendExchange(
     await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
   } catch (error) {
     if (!(typeof error === "object" && error !== null && "code" in error && error.code === 11000)) throw error;
-    const existing = await Session.findById(sessionId).select({ userId: 1 }).lean();
-    if (!existing || existing.userId !== userId) throw new Error("Session not found");
+    const existing = await findSessionOwnerAfterDuplicate(sessionId);
+    if (existing !== userId) throw new Error("Session not found");
     await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
   }
+}
+
+async function findSessionOwnerAfterDuplicate(sessionId: string): Promise<string | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const existing = await Session.findById(sessionId).select({ userId: 1 }).lean();
+    if (existing) return existing.userId;
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+  }
+  return null;
 }
 
 async function appendExchangeTransaction(
