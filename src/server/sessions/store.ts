@@ -80,7 +80,7 @@ async function appendExchangeTransaction(
       const owned = await Session.findOneAndUpdate(
         { _id: sessionId, userId },
         { $inc: { nextMessageOrder: 2 }, $set: { updatedAt: now } },
-        { new: true, session: mongoSession },
+        { returnDocument: "after", session: mongoSession },
       );
       if (owned) {
         await Message.create(

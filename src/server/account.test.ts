@@ -118,7 +118,7 @@ describe("daily chat allowance", () => {
       { $add: ["$chatMessages", 1] },
       1,
     ]);
-    expect(options).toMatchObject({ new: true, runValidators: true });
+    expect(options).toMatchObject({ returnDocument: "after", runValidators: true });
   });
 
   it("refuses when the limit or account check does not match", async () => {

@@ -56,7 +56,7 @@ export async function consumeDailyChatMessage(userId: string): Promise<boolean> 
         },
       },
     ],
-    { new: true, runValidators: true },
+    { returnDocument: "after", runValidators: true },
   ).lean();
   return updated !== null;
 }

@@ -206,7 +206,7 @@ describe("publishRound", () => {
     expect(mocks.roundFindOneAndUpdate).toHaveBeenCalledWith(
       { status: "active" },
       { $set: { status: "locked", lockedAt: expect.any(Date) } },
-      { new: true, session: mongoSession },
+      { returnDocument: "after", session: mongoSession },
     );
     expect(mocks.questionInsertMany).toHaveBeenCalledWith(
       [

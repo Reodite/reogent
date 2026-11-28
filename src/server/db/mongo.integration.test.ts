@@ -1,19 +1,41 @@
+import { randomUUID } from "node:crypto";
 import mongoose, { Schema } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { closeDatabase } from "../db";
+import { migrate } from "../db/migrate";
+import { Message, OAuthAccount, Session, User } from "../db/models";
+import { appendExchange, findOrCreateOAuthUser, getSessionMessages, listSessions } from "../sessions/store";
 
 const uri = process.env.MONGODB_TEST_URI;
 const collectionName = `reodite_integration_${process.pid}_${Date.now()}`;
 const recordSchema = new Schema({ value: { type: Number, required: true } }, { collection: collectionName });
 const Record = mongoose.model(`ReoditeIntegration_${process.pid}_${Date.now()}`, recordSchema);
+const importedUsers: string[] = [];
+const importedSessions: string[] = [];
+const oauthSubjects: string[] = [];
+const originalExternalToggle = process.env.USE_EXTERNAL_MONGODB;
+const originalMongoUri = process.env.MONGODB_URI;
 
 describe.skipIf(!uri)("MongoDB replica-set integration", () => {
   beforeAll(async () => {
-    await mongoose.connect(uri as string, { serverSelectionTimeoutMS: 5_000 });
+    process.env.USE_EXTERNAL_MONGODB = "true";
+    process.env.MONGODB_URI = uri;
+    await migrate();
   });
 
   afterAll(async () => {
     await Record.collection.drop().catch(() => {});
-    await mongoose.disconnect();
+    await Promise.all([
+      Session.deleteMany({ _id: { $in: importedSessions } }),
+      Message.deleteMany({ sessionId: { $in: importedSessions } }),
+      OAuthAccount.deleteMany({ providerSubject: { $in: oauthSubjects } }),
+      User.deleteMany({ _id: { $in: importedUsers } }),
+    ]);
+    await closeDatabase();
+    if (originalExternalToggle === undefined) delete process.env.USE_EXTERNAL_MONGODB;
+    else process.env.USE_EXTERNAL_MONGODB = originalExternalToggle;
+    if (originalMongoUri === undefined) delete process.env.MONGODB_URI;
+    else process.env.MONGODB_URI = originalMongoUri;
   });
 
   it("commits and aborts multi-document transactions", async () => {
@@ -40,5 +62,32 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
     await Record.collection.createIndex({ value: 1 }, { unique: true });
     await Record.create({ value: 4 });
     await expect(Record.create({ value: 4 })).rejects.toMatchObject({ code: 11000 });
+  });
+
+  it("connects direct session-store calls and atomically writes owned exchanges", async () => {
+    const userId = randomUUID();
+    const sessionId = randomUUID();
+    importedUsers.push(userId);
+    importedSessions.push(sessionId);
+    await User.create({ _id: userId, username: `integration-${userId}` });
+    await expect(listSessions(userId)).resolves.toEqual([]);
+    await appendExchange(userId, sessionId, "Question", "Answer");
+    await expect(getSessionMessages(userId, sessionId)).resolves.toEqual([
+      { role: "user", content: "Question", citations: null },
+      { role: "assistant", content: "Answer", citations: null },
+    ]);
+    await expect(getSessionMessages(randomUUID(), sessionId)).resolves.toBeNull();
+  });
+
+  it("handles concurrent first OAuth sign-ins as one identity", async () => {
+    const providerSubject = `integration-${randomUUID()}`;
+    oauthSubjects.push(providerSubject);
+    const [first, second] = await Promise.all([
+      findOrCreateOAuthUser("google", providerSubject, { displayName: "Integration User" }),
+      findOrCreateOAuthUser("google", providerSubject, { displayName: "Integration User" }),
+    ]);
+    importedUsers.push(first.id);
+    expect(second).toEqual(first);
+    await expect(OAuthAccount.countDocuments({ provider: "google", providerSubject })).resolves.toBe(1);
   });
 });

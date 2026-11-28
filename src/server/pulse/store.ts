@@ -139,12 +139,12 @@ export async function publishRound(input: {
       const active = await PulseRoundModel.findOneAndUpdate(
         { status: "active" },
         { $set: { status: "locked", lockedAt: new Date() } },
-        { new: true, session },
+        { returnDocument: "after", session },
       ).lean();
       const counter = await Counter.findOneAndUpdate(
         { _id: "pulse-round" },
         { $inc: { value: 1 } },
-        { upsert: true, new: true, session },
+        { upsert: true, returnDocument: "after", session },
       ).lean();
       const roundId = counter?.value ?? 1;
       await PulseRoundModel.create([{ _id: roundId, title: input.title, status: "active" }], { session });
@@ -152,7 +152,7 @@ export async function publishRound(input: {
         const questionCounter = await Counter.findOneAndUpdate(
           { _id: "pulse-question" },
           { $inc: { value: input.questions.length } },
-          { upsert: true, new: true, session },
+          { upsert: true, returnDocument: "after", session },
         ).lean();
         const firstQuestionId = (questionCounter?.value ?? input.questions.length) - input.questions.length + 1;
         await PulseQuestion.insertMany(
