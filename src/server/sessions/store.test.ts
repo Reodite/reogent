@@ -230,6 +230,30 @@ describe("session write ownership", () => {
     expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledOnce();
   });
 
+  it("retries a transaction labeled as transient before appending a new session", async () => {
+    mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
+    mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
+    mocks.sessionCreate.mockResolvedValue([{ _id: "sid" }]);
+    mocks.messageCreate.mockResolvedValue([]);
+    mongoSession.withTransaction
+      .mockRejectedValueOnce({ hasErrorLabel: (label: string) => label === "TransientTransactionError" })
+      .mockImplementationOnce(async (callback) => callback());
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).resolves.toBeUndefined();
+    expect(mongoSession.withTransaction).toHaveBeenCalledTimes(2);
+    expect(mocks.sessionCreate).toHaveBeenCalledOnce();
+    expect(mocks.messageCreate).toHaveBeenCalledOnce();
+    expect(mongoSession.endSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry non-transient transaction errors", async () => {
+    const conflict = { code: 121, message: "validation failed" };
+    mongoSession.withTransaction.mockRejectedValueOnce(conflict);
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).rejects.toMatchObject(conflict);
+    expect(mongoSession.withTransaction).toHaveBeenCalledOnce();
+  });
+
   it("does not retry a first-session collision owned by another user", async () => {
     mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
     mocks.sessionExists.mockReturnValue({ session: () => lean(null) });

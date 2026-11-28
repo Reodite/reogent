@@ -46,14 +46,27 @@ export async function appendExchange(
   citations?: Citation[] | null,
 ): Promise<void> {
   await connectDatabase();
-  try {
-    await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
-  } catch (error) {
-    if (!isSessionIdDuplicate(error, sessionId)) throw error;
-    const existing = await findSessionOwnerAfterDuplicate(sessionId);
-    if (existing !== userId) throw new Error("Session not found");
-    await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
+      return;
+    } catch (error) {
+      if (isSessionIdDuplicate(error, sessionId)) {
+        const existing = await findSessionOwnerAfterDuplicate(sessionId);
+        if (existing !== userId) throw new Error("Session not found");
+      } else if (!isRetryableSessionTransactionConflict(error)) {
+        throw error;
+      }
+      if (attempt === 2) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 10 * (attempt + 1)));
+    }
   }
+}
+
+function isRetryableSessionTransactionConflict(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const mongoError = error as { code?: number; hasErrorLabel?: (label: string) => boolean };
+  return mongoError.code === 112 || mongoError.hasErrorLabel?.("TransientTransactionError") === true;
 }
 
 function isSessionIdDuplicate(error: unknown, sessionId: string): boolean {

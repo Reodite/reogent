@@ -98,6 +98,23 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
     await expect(getSessionMessages(randomUUID(), sessionId)).resolves.toBeNull();
   });
 
+  it("serializes concurrent first exchanges for the same session ID", async () => {
+    const userId = randomUUID();
+    const sessionId = randomUUID();
+    importedUsers.push(userId);
+    importedSessions.push(sessionId);
+    await User.create({ _id: userId, username: `integration-race-${userId}` });
+
+    await Promise.all([
+      appendExchange(userId, sessionId, "Question one", "Answer one"),
+      appendExchange(userId, sessionId, "Question two", "Answer two"),
+    ]);
+
+    const messages = await Message.find({ sessionId, userId }).sort({ order: 1 }).lean();
+    expect(messages).toHaveLength(4);
+    expect(messages.map(({ order }) => order)).toEqual([0, 1, 2, 3]);
+  });
+
   it("handles concurrent first OAuth sign-ins as one identity", async () => {
     const providerSubject = `integration-${randomUUID()}`;
     oauthSubjects.push(providerSubject);
