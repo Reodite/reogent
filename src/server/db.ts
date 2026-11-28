@@ -9,7 +9,8 @@ export function connectDatabase(): Promise<typeof mongoose> {
     const useExternalMongo = process.env.USE_EXTERNAL_MONGODB === "true";
     const uri = useExternalMongo
       ? process.env.MONGODB_URI
-      : `mongodb://localhost:${process.env.MONGODB_PORT ?? "27017"}/reodite?replicaSet=rs0&directConnection=true`;
+      : process.env.MONGODB_URI ||
+        `mongodb://${encodeURIComponent(process.env.MONGODB_APP_USERNAME ?? "reodite")}:${encodeURIComponent(process.env.MONGODB_APP_PASSWORD ?? "")}@localhost:${process.env.MONGODB_PORT ?? "27017"}/reodite?authSource=reodite&replicaSet=rs0&directConnection=true`;
     if (!uri) throw new Error("MONGODB_URI env var is required when USE_EXTERNAL_MONGODB=true");
     connection = mongoose.connect(uri, {
       maxPoolSize: positiveIntegerEnv("MONGODB_MAX_POOL_SIZE", 10),
