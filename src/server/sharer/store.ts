@@ -67,8 +67,8 @@ export async function createGroup(ownerId: string, name: string): Promise<GroupD
     const session = await SharerGroup.startSession();
     try {
       await session.withTransaction(async () => {
-        await SharerGroup.create([{ _id: code, name, createdBy: ownerId }], { session });
-        await SharerGroupMember.create([{ groupCode: code, userId: ownerId }], { session });
+        await SharerGroup.create([{ _id: code, name, createdBy: ownerId }], { ordered: true, session });
+        await SharerGroupMember.create([{ groupCode: code, userId: ownerId }], { ordered: true, session });
       });
       return (await getGroup(code)) ?? null;
     } catch (error) {
@@ -153,7 +153,7 @@ export async function joinGroup(userId: string, code: string): Promise<GroupDeta
     await session.withTransaction(async () => {
       exists = (await SharerGroup.exists({ _id: code }).session(session).lean()) !== null;
       if (!exists) return;
-      await SharerGroupMember.create([{ groupCode: code, userId }], { session });
+      await SharerGroupMember.create([{ groupCode: code, userId }], { ordered: true, session });
     });
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {

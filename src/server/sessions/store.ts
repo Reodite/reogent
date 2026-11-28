@@ -75,7 +75,7 @@ export async function appendExchange(
               citations: citations?.length ? citations : null,
             },
           ],
-          { session: mongoSession },
+          { ordered: true, session: mongoSession },
         );
         return;
       }
@@ -84,7 +84,7 @@ export async function appendExchange(
       if (exists) throw new Error("Session not found");
       await Session.create(
         [{ _id: sessionId, userId, title: userMessage.slice(0, 80), updatedAt: now, nextMessageOrder: 2 }],
-        { session: mongoSession },
+        { ordered: true, session: mongoSession },
       );
       await Message.create(
         [
@@ -98,7 +98,7 @@ export async function appendExchange(
             citations: citations?.length ? citations : null,
           },
         ],
-        { session: mongoSession },
+        { ordered: true, session: mongoSession },
       );
     });
   } finally {

@@ -59,6 +59,10 @@ const oauthAccountSchema = new Schema(
   { versionKey: false },
 );
 oauthAccountSchema.index({ provider: 1, providerSubject: 1 }, { unique: true });
+oauthAccountSchema.index(
+  { userId: 1 },
+  { unique: true, partialFilterExpression: { isPrimary: true }, name: "oauth_one_primary_user" },
+);
 
 const profileSchema = new Schema(
   {
