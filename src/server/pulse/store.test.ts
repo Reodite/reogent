@@ -200,6 +200,17 @@ describe("castVote", () => {
     expect(mongoSession.endSession).toHaveBeenCalledTimes(2);
   });
 
+  it("surfaces transient vote conflicts after exhausting retries", async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      mongoSession.withTransaction.mockRejectedValueOnce({ code: 112 });
+    }
+
+    const { castVote } = await import("./store");
+    await expect(castVote("u1", 10, true)).rejects.toMatchObject({ code: 112 });
+    expect(mongoSession.withTransaction).toHaveBeenCalledTimes(3);
+    expect(mongoSession.endSession).toHaveBeenCalledTimes(3);
+  });
+
   it("returns the previously stored direction when a duplicate submission races", async () => {
     mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
     mocks.roundFindById.mockReturnValue({ session: () => lean({ _id: 3, status: "active" }) });
@@ -272,6 +283,17 @@ describe("publishRound", () => {
     expect(mongoSession.withTransaction).toHaveBeenCalledTimes(2);
     expect(mocks.roundCreate).toHaveBeenCalledOnce();
     expect(mongoSession.endSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("surfaces transient publish conflicts after exhausting retries", async () => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      mongoSession.withTransaction.mockRejectedValueOnce({ code: 112 });
+    }
+
+    const { publishRound } = await import("./store");
+    await expect(publishRound({ title: null, questions: [] })).rejects.toMatchObject({ code: 112 });
+    expect(mongoSession.withTransaction).toHaveBeenCalledTimes(3);
+    expect(mongoSession.endSession).toHaveBeenCalledTimes(3);
   });
 
   it("locks the active round and inserts a new round with questions in one transaction", async () => {

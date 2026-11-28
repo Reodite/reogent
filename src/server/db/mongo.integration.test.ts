@@ -1,11 +1,27 @@
 import { randomUUID } from "node:crypto";
 import mongoose, { Schema } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { listBuildingFavorites, setBuildingFavorite } from "../building-favorites";
 import { closeDatabase } from "../db";
 import { migrate } from "../db/migrate";
-import { Message, OAuthAccount, PulseQuestion, PulseRound, PulseVote, Session, User } from "../db/models";
+import {
+  BuildingFavorite,
+  DegreePlan,
+  Message,
+  OAuthAccount,
+  PulseQuestion,
+  PulseRound,
+  PulseVote,
+  Schedule,
+  Session,
+  User,
+  UserProfile,
+} from "../db/models";
 import { validateMongoTestUri } from "../db/test-uri";
+import { getPlan, savePlan } from "../plans";
+import { getProfile, saveProfile } from "../profile";
 import { castVote, getRoundHistory, publishRound } from "../pulse/store";
+import { getSchedule, saveSchedule } from "../schedules";
 import { appendExchange, findOrCreateOAuthUser, getSessionMessages, listSessions } from "../sessions/store";
 
 const uri = process.env.MONGODB_TEST_URI;
@@ -17,6 +33,7 @@ const collectionName = `reodite_integration_${process.pid}_${Date.now()}`;
 const recordSchema = new Schema({ value: { type: Number, required: true } }, { collection: collectionName });
 const Record = mongoose.model(`ReoditeIntegration_${process.pid}_${Date.now()}`, recordSchema);
 const importedUsers: string[] = [];
+const userDataIds: string[] = [];
 const importedSessions: string[] = [];
 const oauthSubjects: string[] = [];
 const pulseRoundIds: number[] = [];
@@ -49,6 +66,10 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
           Message.deleteMany({ sessionId: { $in: importedSessions } }),
           OAuthAccount.deleteMany({ provider: "google", providerSubject: { $in: oauthSubjects } }),
           User.deleteMany({ _id: { $in: importedUsers } }),
+          UserProfile.deleteMany({ _id: { $in: userDataIds } }),
+          Schedule.deleteMany({ _id: { $in: userDataIds } }),
+          DegreePlan.deleteMany({ _id: { $in: userDataIds } }),
+          BuildingFavorite.deleteMany({ userId: { $in: userDataIds } }),
           PulseVote.deleteMany({ questionId: { $in: questionIds } }),
           PulseQuestion.deleteMany({ _id: { $in: questionIds } }),
           PulseRound.deleteMany({ _id: { $in: roundIds } }),
@@ -87,6 +108,37 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
     await Record.collection.createIndex({ value: 1 }, { unique: true });
     await Record.create({ value: 4 });
     await expect(Record.create({ value: 4 })).rejects.toMatchObject({ code: 11000 });
+  });
+
+  it("persists per-user profile, schedule, plan, and favorite records", async () => {
+    const userIds = [randomUUID(), randomUUID()];
+    userDataIds.push(...userIds);
+    const profiles = [
+      { preferred_name: "Ada", program: "Computer Science" },
+      { preferred_name: "Grace", program: "Mathematics" },
+    ];
+    const schedules = [{ entries: ["CPSC 110"] }, { entries: ["MATH 100"] }];
+    const plans = [{ years: [{ id: "ada-year" }] }, { years: [{ id: "grace-year" }] }];
+
+    await Promise.all([
+      saveProfile(userIds[0], profiles[0]),
+      saveProfile(userIds[1], profiles[1]),
+      saveSchedule(userIds[0], schedules[0]),
+      saveSchedule(userIds[1], schedules[1]),
+      savePlan(userIds[0], plans[0]),
+      savePlan(userIds[1], plans[1]),
+    ]);
+    await expect(getProfile(userIds[0])).resolves.toEqual(profiles[0]);
+    await expect(getProfile(userIds[1])).resolves.toEqual(profiles[1]);
+    await expect(getSchedule(userIds[0])).resolves.toEqual(schedules[0]);
+    await expect(getSchedule(userIds[1])).resolves.toEqual(schedules[1]);
+    await expect(getPlan(userIds[0])).resolves.toEqual(plans[0]);
+    await expect(getPlan(userIds[1])).resolves.toEqual(plans[1]);
+
+    await expect(setBuildingFavorite(userIds[0], "IKB", true)).resolves.toEqual(["IKB"]);
+    await expect(setBuildingFavorite(userIds[0], "IKB", true)).resolves.toEqual(["IKB"]);
+    await expect(listBuildingFavorites(userIds[1])).resolves.toEqual([]);
+    await expect(setBuildingFavorite(userIds[0], "IKB", false)).resolves.toEqual([]);
   });
 
   it("connects direct session-store calls and atomically writes owned exchanges", async () => {
