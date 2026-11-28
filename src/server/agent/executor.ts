@@ -15,10 +15,13 @@ export async function executeTool(
 ): Promise<unknown> {
   const tool = modules.flatMap((m) => m.tools).find((t) => t.spec.name === name);
   if (!tool) return { status: "error", message: `Unknown tool: ${name}` };
+  let watchdog: ReturnType<typeof setTimeout> | undefined;
   try {
     const result = await Promise.race([
       tool.execute(input, search),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Tool timed out")), TOOL_TIMEOUT_MS)),
+      new Promise<never>((_, reject) => {
+        watchdog = setTimeout(() => reject(new Error("Tool timed out")), TOOL_TIMEOUT_MS);
+      }),
     ]);
     if (result == null || (Array.isArray(result) && result.length === 0)) {
       return { status: "error", message: `Tool ${name} returned no results` };
@@ -27,5 +30,7 @@ export async function executeTool(
   } catch (e) {
     const message = e instanceof Error && e.message ? e.message : "";
     return { status: "error", message: message || `Tool ${name} failed` };
+  } finally {
+    clearTimeout(watchdog);
   }
 }

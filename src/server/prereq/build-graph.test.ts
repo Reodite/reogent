@@ -82,7 +82,7 @@ describe("buildPrereqGraph", () => {
     expect(g.edges.some((e) => e.source === "CPSC 110" && e.target === "CPSC 109")).toBe(true);
   });
 
-  it("dedupes a cycle so each code appears once (REQ-7.1)", async () => {
+  it("dedupes cycles so each code appears once", async () => {
     const search = mockSearch([
       doc("CPSC 110", { prerequisite: "CPSC 109" }),
       doc("CPSC 109", { prerequisite: "CPSC 110" }),
@@ -95,7 +95,7 @@ describe("buildPrereqGraph", () => {
     expect(g.nodes.map((n) => n.id).sort()).toEqual(["CPSC 109", "CPSC 110"]);
   });
 
-  it("stops emitting ancestors past depthCap (REQ-7.2)", async () => {
+  it("stops emitting ancestors past the depth cap", async () => {
     const search = mockSearch([
       doc("CPSC 100", { prerequisite: "CPSC 110" }),
       doc("CPSC 110", { prerequisite: "CPSC 120" }),
@@ -108,7 +108,7 @@ describe("buildPrereqGraph", () => {
     expect(g.nodes.map((n) => n.id).sort()).toEqual(["CPSC 100", "CPSC 110", "CPSC 120"]);
   });
 
-  it("emits coreq nodes adjacent to root and walks their prereqs only (REQ-7.3, REQ-7.4)", async () => {
+  it("emits corequisite nodes beside the root and walks only their prerequisites", async () => {
     const search = mockSearch([
       doc("CPSC 320", { corequisite: "MATH 200", prerequisite: "CPSC 221" }),
       doc("MATH 200", { prerequisite: "MATH 100" }),
@@ -136,7 +136,7 @@ describe("buildPrereqGraph", () => {
     }
   });
 
-  it("records a selection key for each disjunction (REQ-8.1)", async () => {
+  it("records a selection key for each disjunction", async () => {
     const search = mockSearch([
       doc("CPSC 320", { prerequisite: "one of MATH 200, MATH 220" }),
       doc("MATH 200", {}),
@@ -151,7 +151,7 @@ describe("buildPrereqGraph", () => {
     expect(dropdown?.children?.sort()).toEqual(["MATH 200", "MATH 220"]);
   });
 
-  it("stamps the soft-immediate edge optional+softPath, hardens the transitive chain, and titles known courses (REQ-9.3, REQ-10.1)", async () => {
+  it("marks the immediate soft edge optional, keeps transitive edges required, and titles known courses", async () => {
     const search = mockSearch([
       doc("CPSC 100", { prerequisite: "MATH 100 is recommended" }),
       doc("MATH 100", { prerequisite: "MATH 101", title: "Calculus I" }),
@@ -166,7 +166,7 @@ describe("buildPrereqGraph", () => {
     expect(g.nodes.find((n) => n.id === "MATH 100")?.title).toBe("Calculus I");
   });
 
-  it("routes the upstream edge into the dropdown group node, not the standalone option codes (dropdown-absorption, REQ-8.5)", async () => {
+  it("routes the upstream edge into the dropdown group instead of individual option codes", async () => {
     const search = mockSearch([
       doc("CPSC 320", { prerequisite: "one of MATH 200, MATH 220" }),
       doc("MATH 200", {}),

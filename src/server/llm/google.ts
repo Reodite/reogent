@@ -3,7 +3,6 @@ import {
   GoogleGenAI,
   type Content,
   type FunctionDeclaration,
-  type GenerateContentResponse,
   type Part,
 } from "@google/genai";
 import type { ContentBlock, ConverseMessage, ToolSpec } from "../core/types";
@@ -113,11 +112,14 @@ export function createGoogleAdapter(): LlmAdapter {
     messages,
     system,
     toolSpecs,
+    signal,
   }: {
     messages: ConverseMessage[];
     system: string;
     toolSpecs: ToolSpec[];
+    signal?: AbortSignal;
   }) => {
+    signal?.throwIfAborted();
     const tools = toolSpecs.length ? [{ functionDeclarations: toGoogleTools(toolSpecs) }] : undefined;
 
     const response = await withKeyRotation((client) =>
@@ -126,6 +128,7 @@ export function createGoogleAdapter(): LlmAdapter {
         contents: toGoogleContents(messages),
         config: {
           systemInstruction: system,
+          abortSignal: signal,
           ...(tools ? { tools } : {}),
         },
       }),
@@ -151,6 +154,7 @@ export function createGoogleAdapter(): LlmAdapter {
     }
 
     const stopReason = hasToolUse ? "tool_use" : "end_turn";
+    signal?.throwIfAborted();
     return {
       stopReason,
       message: { role: "assistant" as const, content },
@@ -163,57 +167,102 @@ export function createGoogleAdapter(): LlmAdapter {
     system: string;
     toolSpecs: ToolSpec[];
     forceToolUse?: boolean;
+    signal?: AbortSignal;
   }): AsyncGenerator<ConverseStreamEvent> {
+    req.signal?.throwIfAborted();
     const tools = req.toolSpecs.length ? [{ functionDeclarations: toGoogleTools(req.toolSpecs) }] : undefined;
+    const owner = new AbortController();
+    const abortOwner = () => owner.abort(req.signal?.reason);
+    req.signal?.addEventListener("abort", abortOwner, { once: true });
+    if (req.signal?.aborted) abortOwner();
 
-    const stream = await withKeyRotation((client) =>
-      client.models.generateContentStream({
-        model: modelName,
-        contents: toGoogleContents(req.messages),
-        config: {
-          systemInstruction: req.system,
-          ...(tools ? { tools } : {}),
-          // Force at least one tool call so data questions can't be answered
-          // from memory. Mirrors OpenAI's tool_choice: "required".
-          ...(req.forceToolUse && tools
-            ? { toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } }
-            : {}),
-        },
-      }),
-    );
+    let stream: Awaited<ReturnType<GoogleGenAI["models"]["generateContentStream"]>>;
+    try {
+      stream = await withKeyRotation((client) =>
+        client.models.generateContentStream({
+          model: modelName,
+          contents: toGoogleContents(req.messages),
+          config: {
+            systemInstruction: req.system,
+            abortSignal: owner.signal,
+            ...(tools ? { tools } : {}),
+            // Force at least one tool call so data questions can't be answered
+            // from memory. Mirrors OpenAI's tool_choice: "required".
+            ...(req.forceToolUse && tools
+              ? { toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } }
+              : {}),
+          },
+        }),
+      );
+    } catch (error) {
+      req.signal?.removeEventListener("abort", abortOwner);
+      throw error;
+    }
 
     let hasToolUse = false;
     let totalTokens: number | undefined;
+    let finished = false;
 
-    // Idle watchdog: flash models occasionally connect then stop sending
-    // chunks. Rather than hang the agent loop forever, give up waiting after
-    // STREAM_IDLE_MS of silence and finish with whatever arrived.
+    // Idle watchdog: fail when the provider stops sending chunks before completion.
     const STREAM_IDLE_MS = 15_000;
     const iterator = stream[Symbol.asyncIterator]();
-    while (true) {
-      const next = (await Promise.race([
-        iterator.next(),
-        new Promise<{ done: true; value?: never }>((resolve) =>
-          setTimeout(() => resolve({ done: true }), STREAM_IDLE_MS),
-        ),
-      ])) as IteratorResult<GenerateContentResponse>;
-      if (next.done) break;
-      totalTokens = next.value.usageMetadata?.totalTokenCount ?? totalTokens;
-      for (const part of next.value.candidates?.[0]?.content?.parts ?? []) {
-        if (part.text) {
-          yield { type: "text", delta: part.text };
-        } else if (part.functionCall?.name) {
-          hasToolUse = true;
-          yield {
-            type: "tool_use",
-            toolUseId: uniqueId(part.functionCall.name),
-            name: part.functionCall.name,
-            input: (part.functionCall.args ?? {}) as Record<string, unknown>,
-            ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
-          };
+    type GoogleChunk = Awaited<ReturnType<typeof stream.next>>["value"];
+    let pendingNext: Promise<IteratorResult<GoogleChunk>> | undefined;
+    try {
+      while (true) {
+        owner.signal.throwIfAborted();
+        let watchdog: ReturnType<typeof setTimeout> | undefined;
+        let onAbort: (() => void) | undefined;
+        const aborted = new Promise<never>((_, reject) => {
+          onAbort = () => reject(owner.signal.reason ?? new DOMException("Aborted", "AbortError"));
+          owner.signal.addEventListener("abort", onAbort, { once: true });
+        });
+        const timeout = new Promise<"timeout">((resolve) => {
+          watchdog = setTimeout(() => resolve("timeout"), STREAM_IDLE_MS);
+        });
+        pendingNext = iterator.next();
+        const read = pendingNext;
+        const outcome = await Promise.race([read, timeout, aborted]).finally(() => {
+          clearTimeout(watchdog);
+          if (onAbort) owner.signal.removeEventListener("abort", onAbort);
+        });
+        if (outcome === "timeout") {
+          const error = new Error("Google model stream timed out");
+          owner.abort(error);
+          throw error;
+        }
+        pendingNext = undefined;
+        const next = outcome;
+        owner.signal.throwIfAborted();
+        if (next.done) {
+          if (!finished) throw new Error("Google model stream ended without a finish reason");
+          break;
+        }
+        totalTokens = next.value.usageMetadata?.totalTokenCount ?? totalTokens;
+        if (next.value.candidates?.[0]?.finishReason) finished = true;
+        for (const part of next.value.candidates?.[0]?.content?.parts ?? []) {
+          if (part.text) {
+            yield { type: "text", delta: part.text };
+          } else if (part.functionCall?.name) {
+            hasToolUse = true;
+            yield {
+              type: "tool_use",
+              toolUseId: uniqueId(part.functionCall.name),
+              name: part.functionCall.name,
+              input: (part.functionCall.args ?? {}) as Record<string, unknown>,
+              ...(part.thoughtSignature ? { thoughtSignature: part.thoughtSignature } : {}),
+            };
+          }
         }
       }
+    } finally {
+      req.signal?.removeEventListener("abort", abortOwner);
+      if (pendingNext || owner.signal.aborted) {
+        void pendingNext?.catch(() => {});
+        void Promise.resolve(iterator.return?.(undefined)).catch(() => {});
+      }
     }
+    if (!finished) throw new Error("Google model stream ended without a finish reason");
 
     if (totalTokens !== undefined) yield { type: "usage", totalTokens };
     yield { type: "stop", reason: hasToolUse ? "tool_use" : "end_turn" };

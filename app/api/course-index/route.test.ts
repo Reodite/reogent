@@ -80,4 +80,74 @@ describe("GET /api/course-index", () => {
     expect(await (await GET(request())).json()).toEqual({ courses: [] });
     expect(getDocuments).toHaveBeenCalledTimes(2);
   });
+
+  it("coalesces concurrent requests and reuses the serialized response", async () => {
+    let resolveDocuments!: (value: { results: { code: string; title: string }[]; total: number }) => void;
+    getDocuments.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDocuments = resolve;
+        }),
+    );
+    const { GET } = await import("./route");
+    const first = GET(request());
+    const second = GET(request());
+    await vi.waitFor(() => expect(getDocuments).toHaveBeenCalledTimes(1));
+    resolveDocuments({ results: [{ code: "CPSC_V 110", title: "Computation" }], total: 1 });
+
+    const [firstResponse, secondResponse] = await Promise.all([first, second]);
+    expect(await firstResponse.json()).toEqual(await secondResponse.json());
+    expect(getDocuments).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes the server cache at the one-hour expiry and coalesces concurrent refreshes", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    getDocuments
+      .mockResolvedValueOnce({ results: [{ code: "CPSC_V 110", title: "Old title" }], total: 1 })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => resolve({ results: [{ code: "CPSC_V 110", title: "New title" }], total: 1 }), 10);
+          }),
+      );
+    const { GET } = await import("./route");
+
+    const first = await GET(request());
+    expect((await first.json()).courses[0].title).toBe("Old title");
+    vi.setSystemTime(3_600_999);
+    const beforeExpiry = await GET(request());
+    expect((await beforeExpiry.json()).courses[0].title).toBe("Old title");
+    expect(getDocuments).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(3_601_000);
+
+    const refreshA = GET(request());
+    const refreshB = GET(request());
+    await vi.waitFor(() => expect(getDocuments).toHaveBeenCalledTimes(2));
+    await vi.advanceTimersByTimeAsync(10);
+    const [responseA, responseB] = await Promise.all([refreshA, refreshB]);
+
+    expect((await responseA.json()).courses[0].title).toBe("New title");
+    expect((await responseB.json()).courses[0].title).toBe("New title");
+    expect(getDocuments).toHaveBeenCalledTimes(2);
+  });
+
+  it("evicts a failed cache refresh and permits another refresh", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    getDocuments
+      .mockResolvedValueOnce({ results: [{ code: "CPSC_V 110", title: "Old title" }], total: 1 })
+      .mockRejectedValueOnce(new Error("Search unavailable"))
+      .mockResolvedValueOnce({ results: [{ code: "CPSC_V 110", title: "New title" }], total: 1 });
+    const { GET } = await import("./route");
+    await GET(request());
+    vi.setSystemTime(3_601_000);
+
+    const failed = await GET(request());
+    expect(failed.status).toBe(500);
+    expect(await failed.json()).toEqual({ error: "Internal server error" });
+    expect((await (await GET(request())).json()).courses[0].title).toBe("New title");
+    expect(getDocuments).toHaveBeenCalledTimes(3);
+  });
 });

@@ -80,13 +80,13 @@ function StatBox({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-/** Stat well that renders only when the value exists — dead "N/A" cells are omitted (REQ-2.2). */
+/** Renders a stat only when its value exists. */
 function DefinedStat({ label, value }: { label: string; value: string | null | undefined }) {
   if (value == null) return null;
   return <StatBox label={label}>{value}</StatBox>;
 }
 
-/** Course Record renderer. Null-or-empty fields are omitted rather than shown as placeholders (REQ-2.2). The Prereq Tree affordance opens the tree pane rooted at this course (REQ-4.1). */
+/** Renders a course record, omits empty fields, and opens the prerequisite tree for the course. */
 export function CourseDetailCard({
   record,
   session,

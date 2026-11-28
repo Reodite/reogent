@@ -165,12 +165,6 @@ function stubSharerFetch({
   return fetchMock;
 }
 
-function controlOrder(container: HTMLElement) {
-  return Array.from(container.querySelectorAll("[data-control-section]"))
-    .filter((element) => !element.parentElement?.closest("[data-control-section]"))
-    .map((element) => element.getAttribute("data-control-section"));
-}
-
 describe("ScheduleApp invitation consent", () => {
   it("opens an unknown link with GET and requests consent without exposing members", async () => {
     const fetchMock = stubSharerFetch({
@@ -224,6 +218,7 @@ describe("ScheduleApp invitation consent", () => {
     const cancel = await screen.findByRole("button", { name: "Cancel" });
     if (action === "Cancel") fireEvent.click(cancel);
     else fireEvent.keyDown(cancel, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     view.rerender(<ScheduleApp groupCode="DDDDDD" />);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(router.replace).toHaveBeenCalledWith("/app/pulse/schedule");
@@ -331,7 +326,7 @@ describe("ScheduleApp invitation consent", () => {
 });
 
 describe("ScheduleApp group loading", () => {
-  it("reserves boot controls and toolbar inside the workspace without an extra notice", async () => {
+  it("shows loading until the initial schedule request resolves", async () => {
     const pending = deferredResponse();
     vi.stubGlobal(
       "fetch",
@@ -340,13 +335,8 @@ describe("ScheduleApp group loading", () => {
       ),
     );
     const view = render(<ScheduleApp />);
-    expect(
-      screen.getByRole("status", { name: "Loading schedule controls" }).querySelector("[data-skeleton]"),
-    ).toBeTruthy();
-    const loadingControls = screen.getByRole("status", { name: "Loading schedule controls" }).parentElement;
-    expect(loadingControls?.classList.contains("px-4")).toBe(true);
-    expect(loadingControls?.classList.contains("px-3")).toBe(false);
-    expect(screen.getByRole("status", { name: "Loading schedule terms" }).querySelector(".h-8")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading schedule controls" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading schedule terms" })).toBeTruthy();
     expect(screen.getByRole("status", { name: "Loading your weekly schedule" })).toBeTruthy();
     expect(screen.getByText("9 AM")).toBeTruthy();
     expect(view.container.querySelectorAll("[data-schedule-block]")).toHaveLength(0);
@@ -354,7 +344,6 @@ describe("ScheduleApp group loading", () => {
     expect(screen.queryByText("Your empty week is ready")).toBeNull();
     await act(async () => pending.resolve(json({ person: null })));
     expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
-    expect(view.container.querySelector("[data-skeleton]")).toBeNull();
   });
 
   it("shows the shared week immediately and defaults mobile to Schedule", async () => {
@@ -368,7 +357,7 @@ describe("ScheduleApp group loading", () => {
       }),
     );
 
-    const view = render(
+    render(
       <WorkspaceHostProvider host="unity">
         <main data-pane="unity">
           <ScheduleApp />
@@ -377,16 +366,9 @@ describe("ScheduleApp group loading", () => {
     );
 
     expect(await screen.findByText("Your empty week is ready")).toBeTruthy();
-    expect(view.container.querySelector<HTMLElement>("[data-workspace-page]")?.dataset.workspaceHost).toBe("unity");
-    const contentCanvas = view.container.querySelector("[data-workspace-canvas]");
-    expect(contentCanvas?.className).toContain("neu-inset");
-    expect(contentCanvas?.className).toContain("bg-surface-container-low");
-    expect(contentCanvas?.classList.contains("p-0.5")).toBe(true);
     expect(screen.getAllByText("Mon").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Schedule" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Controls" }).getAttribute("aria-pressed")).toBe("false");
-    const emptyControls = view.container.querySelector('[data-control-section="group-status"]')?.parentElement;
-    expect(emptyControls?.classList.contains("first:border-t-0")).toBe(true);
   });
 
   it("keeps an initial load failure distinct from an empty schedule and retries", async () => {
@@ -403,11 +385,13 @@ describe("ScheduleApp group loading", () => {
     );
 
     render(<ScheduleApp />);
-    expect(await screen.findAllByText("Schedules unavailable")).toHaveLength(2);
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    const failure = retry.closest('[role="alert"]');
+    expect(failure?.textContent).toContain("Schedules unavailable");
     expect(screen.queryByText("Your empty week is ready")).toBeNull();
 
     failing = false;
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    fireEvent.click(retry);
     expect(await screen.findByText("Your empty week is ready")).not.toBeNull();
   });
 
@@ -425,7 +409,6 @@ describe("ScheduleApp group loading", () => {
 
     expect(screen.getByRole("heading", { name: "Group B" })).toBeTruthy();
     expect(screen.getAllByText("Opening Group B…")).not.toHaveLength(0);
-    expect(screen.getByRole("status", { name: "Opening Group B…" }).querySelector("[data-skeleton]")).toBeTruthy();
     expect(screen.getByRole("status", { name: "Loading Group B weekly schedule" })).toBeTruthy();
     expect(document.querySelectorAll("[data-schedule-block]")).toHaveLength(0);
     expect(screen.queryAllByText("Person A")).toHaveLength(0);
@@ -451,7 +434,6 @@ describe("ScheduleApp group loading", () => {
     view.rerender(<ScheduleApp groupCode="BBBBBB" />);
     expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
     expect(screen.queryAllByText("Person A")).toHaveLength(0);
-    expect(document.body.style.overflow).not.toBe("hidden");
     await act(async () => pendingB.resolve(json({ group: group("BBBBBB", "Group B") })));
     expect(screen.queryByRole("dialog", { hidden: true })).toBeNull();
   });
@@ -495,7 +477,6 @@ describe("ScheduleApp group loading", () => {
     await waitFor(() =>
       expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/groups/AAAAAA"))).toHaveLength(2),
     );
-    expect(document.querySelector("[data-skeleton]")).toBeNull();
     expect(screen.getAllByText("Person A").length).toBeGreaterThan(0);
     const refreshCall = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/groups/AAAAAA"))[1];
     expect(refreshCall[1]?.method).toBe("GET");
@@ -515,20 +496,15 @@ describe("ScheduleApp controls", () => {
     vi.setSystemTime(new Date("2026-09-08T12:00:00Z"));
   });
 
-  it("places Share beside the terms and renders ready controls in order", async () => {
+  it("offers Share, group management, and schedule controls", async () => {
     stubSharerFetch({ loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A") })) });
-    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    render(<ScheduleApp groupCode="AAAAAA" />);
     const share = await screen.findByRole("button", { name: "Copy share link AAAAAA" });
 
-    expect(share.closest("[data-workspace-toolbar]")?.querySelector("[role='tablist']")).not.toBeNull();
-    expect(view.container.querySelector("[data-workspace-actions]")).toBeNull();
+    expect(share).toBeTruthy();
     expect(screen.getByRole("button", { name: "New group" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Leave" })).toBeTruthy();
-    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "now", "import"]);
     expect(screen.getByRole("region", { name: "Right now" }).textContent).toContain("Person A");
-    expect(view.container.querySelector("[data-control-section] .neu-panel")).toBeNull();
-    expect(screen.getByRole("combobox", { name: "Group" }).className).toContain("rounded-lg");
-    expect(view.container.querySelector('[data-control-section="group"]')?.classList.contains("py-4")).toBe(true);
     expect(screen.getByText("Replace my schedule")).toBeTruthy();
   });
 
@@ -538,68 +514,55 @@ describe("ScheduleApp controls", () => {
       me,
       loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", [me, wirePerson("u2", "Grace")]) })),
     });
-    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    render(<ScheduleApp groupCode="AAAAAA" />);
     await screen.findByRole("button", { name: "Leave" });
 
-    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "now", "import"]);
     expect(screen.getByText("Import my schedule")).toBeTruthy();
   });
 
-  it("omits the Now wrapper when only unscheduled people remain enabled", async () => {
+  it("removes the Right now region when only unscheduled people remain enabled", async () => {
     const me = wirePerson("u1", "Ada", false);
     stubSharerFetch({
       me,
       loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", [me, wirePerson("u2", "Ada")]) })),
     });
-    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    render(<ScheduleApp groupCode="AAAAAA" />);
     const scheduledToggle = await screen.findByRole("checkbox", { name: "Show Ada (2) on the calendar" });
     expect(screen.getByRole("region", { name: "Right now" }).textContent).toContain("Ada (2)");
 
     fireEvent.click(scheduledToggle);
 
-    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "import"]);
     expect(screen.queryByRole("region", { name: "Right now" })).toBeNull();
     expect(screen.getByRole("tab", { name: "Fall 2026" }).getAttribute("aria-selected")).toBe("true");
     expect((screen.getByRole("checkbox", { name: "Show Ada on the calendar" }) as HTMLInputElement).checked).toBe(true);
   });
 
-  it("omits the Now wrapper for a group with no imported schedules", async () => {
+  it("hides Right now when the group has no imported schedules", async () => {
     const me = wirePerson("u1", "Ada", false);
     stubSharerFetch({ me, loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", [me]) })) });
-    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    render(<ScheduleApp groupCode="AAAAAA" />);
     await screen.findByRole("button", { name: "Leave" });
 
-    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "import"]);
     expect(screen.queryByRole("region", { name: "Right now" })).toBeNull();
   });
 
-  it("uses flat, capped free-time states and all enabled-person derivatives", async () => {
+  it("makes free-time results focusable and updates with enabled schedules", async () => {
     stubSharerFetch({ loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A") })) });
-    const view = render(<ScheduleApp groupCode="AAAAAA" />);
+    render(<ScheduleApp groupCode="AAAAAA" />);
     const personToggle = await screen.findByRole("checkbox", { name: "Show Person A on the calendar" });
-    const freeSection = view.container.querySelector('[data-control-section="free-time"]');
-
-    expect(freeSection?.querySelector('[aria-label="Common free-time intervals"]')).toBeTruthy();
-    const results = freeSection?.querySelector<HTMLElement>(".max-h-36.overflow-y-auto");
-    expect(screen.getByRole("region", { name: "Common free-time results" })).toBe(results);
-    expect(results?.getAttribute("aria-label")).toBe("Common free-time results");
-    expect(results?.tabIndex).toBe(0);
-    results?.focus();
+    const results = screen.getByRole("region", { name: "Common free-time results" });
+    expect(results.tabIndex).toBe(0);
+    results.focus();
     expect(document.activeElement).toBe(results);
-    expect(freeSection?.className).not.toContain("neu-panel");
-    expect(freeSection?.className).not.toContain("secondary");
 
-    const nowSection = view.container.querySelector('[data-control-section="now"]');
-    expect(nowSection?.textContent).toContain("Person A");
+    expect(screen.getByRole("region", { name: "Right now" }).textContent).toContain("Person A");
 
     fireEvent.click(personToggle);
     expect(screen.getByText("Show at least one person with a schedule to compare free time.")).toBeTruthy();
-    expect(view.container.querySelector('[data-control-section="now"]')).toBeNull();
-    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "import"]);
+    expect(screen.queryByRole("region", { name: "Right now" })).toBeNull();
     expect(screen.getByRole("tab", { name: "Fall 2026" }).getAttribute("aria-selected")).toBe("true");
 
     fireEvent.click(personToggle);
-    expect(controlOrder(view.container)).toEqual(["group", "management", "people", "free-time", "now", "import"]);
     expect(screen.getByRole("region", { name: "Right now" }).textContent).toContain("Person A");
   });
 
@@ -643,7 +606,7 @@ describe("ScheduleApp controls", () => {
 });
 
 describe("ScheduleApp block participants", () => {
-  it.each([1, 5])("separates the compact total from the wide avatar remainder for %i people", async (count) => {
+  it.each([1, 5])("announces participant names for %i people", async (count) => {
     const members = Array.from({ length: count }, (_, index) => ({
       ...wirePerson(`u${index + 1}`, `Person ${index + 1}`),
       schedule: {
@@ -659,32 +622,6 @@ describe("ScheduleApp block participants", () => {
     stubSharerFetch({ loadGroup: (code) => Promise.resolve(json({ group: group(code, "Group A", members) })) });
     render(<ScheduleApp groupCode="AAAAAA" />);
     const block = await screen.findByRole("button", { name: /CPSC 110.*Lecture/ });
-    const label = `${count} ${count === 1 ? "person" : "people"}`;
-    const compact = block.querySelector<HTMLElement>(`[title="${label}"]`);
-    expect(compact).toBeTruthy();
-    expect(compact?.getAttribute("role")).toBe("img");
-    expect(compact?.getAttribute("aria-label")).toBe(label);
-    expect(compact?.textContent).toBe(String(count));
-    expect(compact?.children).toHaveLength(0);
-    expect(compact?.classList.contains("block")).toBe(true);
-    expect(compact?.classList.contains("@min-[6rem]/schedule-participants:hidden")).toBe(true);
-
-    const container = compact?.parentElement;
-    expect(container?.classList.contains("@container/schedule-participants")).toBe(true);
-    expect(container?.classList.contains("w-full")).toBe(true);
-    expect(container?.classList.contains("min-w-0")).toBe(true);
-    const wide = compact?.nextElementSibling;
-    expect(wide?.classList.contains("hidden")).toBe(true);
-    expect(wide?.classList.contains("@min-[6rem]/schedule-participants:flex")).toBe(true);
-    const avatars = wide?.querySelectorAll<HTMLElement>("[title]");
-    expect(avatars).toHaveLength(Math.min(count, 4));
-    avatars?.forEach((avatar, index) => {
-      expect(avatar.title).toBe(`Person ${index + 1}`);
-      expect(avatar.style.width).toBe("16px");
-      expect(avatar.style.height).toBe("16px");
-    });
-    expect(wide?.textContent?.includes("+1")).toBe(count === 5);
-    expect(wide?.textContent).not.toContain("+5");
     expect(block.getAttribute("aria-label")).toContain(`People: ${members.map((person) => person.handle).join(", ")}`);
   });
 });

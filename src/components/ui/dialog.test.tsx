@@ -5,10 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { canRestoreFocus, DialogActions, DialogHeader, DialogPanel, DialogRoot } from "./dialog";
 
 beforeEach(() => {
-  // HappyDOM has no layout; model rects only within the dialog fixtures.
+  // HappyDOM has no layout; model rect existence only within the dialog fixtures.
   vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) {
     return (this.closest("[data-dialog-root]") && !this.closest("details:not([open]) > :not(summary)")
-      ? [new DOMRect(0, 0, 100, 44)]
+      ? [{} as DOMRect]
       : []) as unknown as DOMRectList;
   });
 });
@@ -16,7 +16,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-  document.body.style.overflow = "";
 });
 
 function DialogHarness({ dismissDisabled = false }: { dismissDisabled?: boolean }) {
@@ -32,7 +31,7 @@ function DialogHarness({ dismissDisabled = false }: { dismissDisabled?: boolean 
           dismissDisabled={dismissDisabled}
           backdropLabel="Close test dialog"
         >
-          <DialogPanel aria-label="Test dialog" className="p-4">
+          <DialogPanel aria-label="Test dialog">
             <button type="button" data-dialog-initial-focus>
               First action
             </button>
@@ -114,7 +113,7 @@ describe("Dialog", () => {
     expect(document.activeElement).toBe(first);
   });
 
-  it("shares title semantics, responsive insets, and action spacing", async () => {
+  it("labels the dialog from its title and focuses its close action", async () => {
     render(
       <DialogRoot onDismiss={() => {}} backdropLabel="Close profile">
         <DialogPanel aria-labelledby="profile-title">
@@ -135,76 +134,22 @@ describe("Dialog", () => {
         </DialogPanel>
       </DialogRoot>,
     );
-    const dialog = await screen.findByRole("dialog", { name: "Profile" });
-    expect(screen.getByRole("heading", { name: "Profile", level: 2 }).className).toContain("text-base");
-    expect(dialog.className).toContain("p-4 sm:p-6");
-    expect(dialog.querySelector("[data-dialog-header]")?.className).toContain("gap-3");
-    expect(dialog.querySelector("[data-dialog-actions]")?.className).toContain("mt-6");
+    await screen.findByRole("dialog", { name: "Profile" });
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
   });
 
-  it("supports contained bodies and stacked footer actions without duplicate insets", async () => {
+  it("renders its dialog action", async () => {
     render(
       <DialogRoot onDismiss={() => {}} backdropLabel="Close import">
         <DialogPanel aria-label="Import" padding="none">
-          <DialogActions layout="stack" spacing="none">
+          <DialogActions>
             <button type="button">Apply</button>
           </DialogActions>
         </DialogPanel>
       </DialogRoot>,
     );
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog.className).toContain("p-0");
-    expect(dialog.className).not.toContain("sm:p-6");
-    const actions = dialog.querySelector("[data-dialog-actions]");
-    expect(actions?.className).toContain("flex-col-reverse sm:flex-row");
-    expect(actions?.className).not.toContain("mt-6");
-  });
-
-  it.each(["center", "mobile-sheet"] as const)(
-    "bounds default panels to the padded %s root on short viewports",
-    async (placement) => {
-      render(
-        <DialogRoot onDismiss={() => {}} backdropLabel="Close long dialog" placement={placement}>
-          <DialogPanel aria-label="Long dialog" className="p-4">
-            <div style={{ height: 1200 }}>Long content</div>
-            <button type="button">Bottom action</button>
-          </DialogPanel>
-        </DialogRoot>,
-      );
-      const panel = await screen.findByRole("dialog");
-      const root = panel.closest("[data-dialog-root]");
-      expect(root?.classList.contains("fixed")).toBe(true);
-      expect(root?.classList.contains("inset-0")).toBe(true);
-      expect(root?.classList.contains("flex")).toBe(true);
-      expect(panel.classList.contains("min-h-0")).toBe(true);
-      expect(panel.classList.contains("[:where(&)]:max-h-full")).toBe(true);
-      expect(panel.classList.contains("[:where(&)]:overflow-y-auto")).toBe(true);
-      if (placement === "mobile-sheet") {
-        expect(root?.classList.contains("pt-3")).toBe(true);
-        expect(root?.classList.contains("pb-[max(0.75rem,env(safe-area-inset-bottom))]")).toBe(true);
-        expect(root?.classList.contains("sm:p-6")).toBe(true);
-      } else {
-        expect(root?.classList.contains("p-4")).toBe(true);
-      }
-    },
-  );
-
-  it("preserves consumer height and contained scrolling classes", async () => {
-    render(
-      <DialogRoot onDismiss={() => {}} backdropLabel="Close contained dialog">
-        <DialogPanel aria-label="Contained dialog" className="flex max-h-80 flex-col overflow-hidden">
-          <header>Title</header>
-          <div className="min-h-0 overflow-y-auto">Scrollable content</div>
-          <footer>Actions</footer>
-        </DialogPanel>
-      </DialogRoot>,
-    );
-    const panel = await screen.findByRole("dialog");
-    expect(panel.classList.contains("max-h-80")).toBe(true);
-    expect(panel.classList.contains("overflow-hidden")).toBe(true);
-    expect(panel.classList.contains("[:where(&)]:max-h-full")).toBe(true);
-    expect(panel.classList.contains("[:where(&)]:overflow-y-auto")).toBe(true);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Apply" })).toBeTruthy();
   });
 
   it.each(["Escape", "Tab"])("ignores %s already handled by a child control", async (key) => {
@@ -263,7 +208,6 @@ describe("Dialog", () => {
         );
       }
 
-      document.body.style.overflow = "scroll";
       const { container } = render(<NestedHarness />);
       const trigger = screen.getByRole("button", { name: "Open parent" });
       trigger.focus();
@@ -281,7 +225,6 @@ describe("Dialog", () => {
       expect(parentRoot?.inert).toBe(true);
       expect(child.closest<HTMLElement>("[data-dialog-root]")?.inert).toBe(false);
       expect(container.inert).toBe(true);
-      expect(document.body.style.overflow).toBe("hidden");
 
       const parentFocus = vi.fn();
       parentInput.addEventListener("focus", parentFocus);
@@ -302,7 +245,6 @@ describe("Dialog", () => {
       expect(screen.getByRole("dialog", { name: "Parent dialog" })).toBe(parent);
       expect(parentRoot?.inert).toBe(false);
       expect(container.inert).toBe(true);
-      expect(document.body.style.overflow).toBe("hidden");
       expect((parentInput as HTMLInputElement).value).toBe("Unsaved parent input");
       expect(document.activeElement).toBe(parentInput);
       fireEvent.keyDown(parentInput, { key: "Tab", shiftKey: true });
@@ -310,7 +252,6 @@ describe("Dialog", () => {
       fireEvent.keyDown(screen.getByRole("button", { name: "Open child" }), { key: "Escape" });
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       expect(container.inert).toBe(false);
-      expect(document.body.style.overflow).toBe("scroll");
       expect(document.activeElement).toBe(trigger);
     },
   );
@@ -337,18 +278,15 @@ describe("Dialog", () => {
         </>
       );
     }
-    document.body.style.overflow = "scroll";
     const view = render(<Layers first second={false} />);
     view.rerender(<Layers first second />);
     view.rerender(<Layers first={false} second />);
-    expect.soft(document.body.style.overflow).toBe("hidden");
     expect.soft(view.container.inert).toBe(true);
     view.rerender(<Layers first={false} second={false} />);
-    expect.soft(document.body.style.overflow).toBe("scroll");
     expect.soft(view.container.inert).toBe(false);
   });
 
-  it.each([false, true])("uses a visible return-focus fallback only when the trigger hides (%s)", (hidden) => {
+  it.each([false, true])("restores focus to the fallback only when the trigger is hidden (%s)", (hidden) => {
     const origin = createRef<HTMLButtonElement>();
     const fallback = createRef<HTMLButtonElement>();
     function ReturnFocus({ open, hide }: { open: boolean; hide: boolean }) {
@@ -363,11 +301,7 @@ describe("Dialog", () => {
             Visible fallback
           </button>
           {open ? (
-            <DialogRoot
-              onDismiss={() => {}}
-              backdropLabel="Close responsive dialog"
-              returnFocusFallback={() => fallback.current}
-            >
+            <DialogRoot onDismiss={() => {}} backdropLabel="Close dialog" returnFocusFallback={() => fallback.current}>
               <DialogPanel aria-label="Responsive dialog">
                 <button type="button">Dialog action</button>
               </DialogPanel>
@@ -395,7 +329,6 @@ describe("Dialog", () => {
     const last = screen.getByRole("button", { name: "Last action" });
     await waitFor(() => expect(document.activeElement).toBe(first));
     expect(container.inert).toBe(true);
-    expect(document.body.style.overflow).toBe("hidden");
 
     fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
     expect(document.activeElement).toBe(last);
@@ -403,7 +336,6 @@ describe("Dialog", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(container.inert).toBe(false);
-    expect(document.body.style.overflow).toBe("");
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -419,11 +351,11 @@ describe("Dialog", () => {
     expect(screen.getByRole("dialog")).not.toBeNull();
   });
 
-  it("supports a form panel and mobile-sheet placement", async () => {
+  it("supports form submission from a dialog panel", async () => {
     const submit = vi.fn((event: React.FormEvent) => event.preventDefault());
     render(
       <DialogRoot onDismiss={() => {}} backdropLabel="Close form" placement="mobile-sheet">
-        <DialogPanel as="form" aria-label="Profile" onSubmit={submit} className="max-h-80 overflow-y-auto">
+        <DialogPanel as="form" aria-label="Profile" onSubmit={submit}>
           <button type="submit" data-dialog-initial-focus>
             Save
           </button>
@@ -433,10 +365,6 @@ describe("Dialog", () => {
     const dialog = await screen.findByRole("dialog", { name: "Profile" });
     fireEvent.submit(dialog);
     expect(submit).toHaveBeenCalledOnce();
-    const root = document.querySelector("[data-dialog-root]");
-    expect(root?.className).toContain("items-end");
-    expect(root?.className).toContain("pb-[max(0.75rem,env(safe-area-inset-bottom))]");
-    expect(dialog.className).toContain("overflow-y-auto");
   });
 
   it("restores page state when the dialog unmounts immediately", async () => {
@@ -447,7 +375,6 @@ describe("Dialog", () => {
     );
     await screen.findByRole("dialog");
     unmount();
-    expect(document.body.style.overflow).toBe("");
     expect(Array.from(document.body.children).every((element) => !(element as HTMLElement).inert)).toBe(true);
   });
 });

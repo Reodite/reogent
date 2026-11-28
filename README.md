@@ -66,12 +66,16 @@ Set these environment variables in `.env`. Keep secrets out of version control.
 | `LLM_MODEL`                | Model name. Defaults to `llama3.1`, `claude-sonnet-4-20250514`, or `gemini-2.0-flash`, depending on provider.                                                                                                        |
 | `LLM_API_KEY`              | Provider API key. Google accepts comma-separated keys and rotates between them.                                                                                                                                      |
 | `LLM_BASE_URL`             | Optional endpoint for OpenAI-compatible services or an Anthropic-compatible proxy.                                                                                                                                   |
-| `DATABASE_URL`             | Postgres URL for host-run commands. Use `localhost:5432`; Compose sets the container address. Its password must match `POSTGRES_PASSWORD`.                                                                           |
+| `DATABASE_URL`             | Postgres URL for host-run commands. The example uses `localhost:5432`; change this port with `POSTGRES_PORT`. Compose sets the container address. Its password must match `POSTGRES_PASSWORD`.                       |
 | `POSTGRES_PASSWORD`        | Postgres password. Generate a unique value with `openssl rand -hex 32` and use it in `DATABASE_URL`. To change it for an existing database, update the password inside Postgres; editing `.env` alone is not enough. |
-| `MEILI_URL`                | Meilisearch address. Use `http://localhost:7700` for host-run commands; Compose sets the container address.                                                                                                          |
+| `POSTGRES_PORT`            | Optional loopback host port for Postgres in Compose. Defaults to `5432`; update the port in `DATABASE_URL` too when changing it for host-run commands.                                                               |
+| `MEILI_URL`                | Meilisearch address. The example uses `http://localhost:7700`; change this port with `MEILISEARCH_PORT`. Compose sets the container address.                                                                         |
+| `MEILISEARCH_PORT`         | Optional loopback host port for Meilisearch in Compose. Defaults to `7700`; update `MEILI_URL` too when changing it for host-run commands.                                                                           |
 | `MEILI_MASTER_KEY`         | Meilisearch admin key for ingestion. Generate a unique value with `openssl rand -hex 32`. Compose keeps it out of the app container.                                                                                 |
 | `MEILI_API_KEY`            | Read-only key used by the app in production. Local development falls back to `MEILI_MASTER_KEY`.                                                                                                                     |
 | `MEILI_ENV`                | Meilisearch environment for Compose. Defaults to `production`.                                                                                                                                                       |
+| `DB_POOL_MAX`              | Maximum Postgres connections per app process. Defaults to `10`.                                                                                                                                                      |
+| `DB_POOL_TIMEOUT_MS`       | Postgres connection timeout in milliseconds. Defaults to `10000`.                                                                                                                                                    |
 | `DATA_PATH`                | Campus data folder. Use `./ubc-unified-data/data` in this repository; the default is `./data`.                                                                                                                       |
 | `JWT_SECRET`               | Session-signing secret. Generate a unique value with `openssl rand -hex 32`; production requires at least 32 bytes.                                                                                                  |
 | `AUTH_ENABLED`             | Defaults to `true`. Set to `false` to bypass sign-in outside production; production always enforces auth.                                                                                                            |
@@ -116,7 +120,7 @@ Set these values in `.env` before deployment:
 1. Start Postgres and Meilisearch. Keep the app stopped:
 
 ```bash
-docker compose up -d postgres meilisearch
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d postgres meilisearch
 ```
 
 2. Create the read-only `MEILI_API_KEY`. Run this command from a shell where `MEILI_MASTER_KEY` is set:
@@ -144,7 +148,7 @@ Compose binds app, Postgres, and Meilisearch to loopback, so run the proxy on th
 5. Build and start the app:
 
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --build
 ```
 
 ## Backups and maintenance
@@ -153,8 +157,8 @@ Use the Compose operations profile for these tasks:
 
 | Task                   | Command                                        | Result                                     |
 | ---------------------- | ---------------------------------------------- | ------------------------------------------ |
-| Rebuild search indexes | `docker compose --profile ops run --rm ingest` | Reads campus data and updates Meilisearch. |
-| Back up Postgres       | `docker compose --profile ops run --rm backup` | Writes a dump under `./backups`.           |
+| Rebuild search indexes | `docker compose -f docker-compose.yml -f docker-compose.production.yml --profile ops run --rm ingest` | Reads campus data and updates Meilisearch. |
+| Back up Postgres       | `docker compose -f docker-compose.yml -f docker-compose.production.yml --profile ops run --rm backup` | Writes a dump under `./backups`.           |
 
 Copy backups off the server. Protect them like the live database because they contain accounts and conversations.
 

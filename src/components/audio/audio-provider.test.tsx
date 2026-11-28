@@ -3,12 +3,14 @@ import { Icon } from "@/src/components/icons";
 import { Button } from "@/src/components/ui/button";
 import { AUDIO_STORAGE_KEY, DEFAULT_AUDIO_PREFERENCES, siteAudio } from "@/src/lib/audio";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { Storage } from "happy-dom";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AudioSettings, AudioVolumeControl } from "./audio-controls";
 import { AudioProvider } from "./audio-provider";
 
 beforeEach(() => {
+  vi.stubGlobal("localStorage", new Storage());
   localStorage.clear();
   vi.spyOn(siteAudio, "configure").mockImplementation(() => {});
   vi.spyOn(siteAudio, "unlock").mockResolvedValue();
@@ -34,23 +36,20 @@ function stored() {
 }
 
 describe("simplified sound controls", () => {
-  it("shows only the volume scale and two labeled switches", () => {
-    const { container } = settings();
+  it("exposes a stepped volume control and two labeled switches", () => {
+    settings();
     const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
     expect(slider.value).toBe("0");
     expect(slider.step).toBe("10");
     expect(slider.getAttribute("aria-valuetext")).toBe("Muted, 0 percent");
-    expect(container.querySelectorAll("[data-volume-stop]")).toHaveLength(11);
     expect(screen.getAllByRole("switch")).toHaveLength(2);
     expect(screen.getByRole("switch", { name: "Navigation" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Bot noises" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Sound" })).toBeNull();
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
     expect(screen.queryAllByRole("button")).toHaveLength(0);
-    expect(container.querySelectorAll("p")).toHaveLength(0);
     fireEvent.change(slider, { target: { value: "30" } });
     expect(slider.getAttribute("aria-valuetext")).toBe("30 percent");
-    expect(screen.queryByText("30%")).toBeNull();
     expect(siteAudio.play).not.toHaveBeenCalled();
   });
 

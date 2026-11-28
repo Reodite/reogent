@@ -24,7 +24,7 @@ function square(cx: number, cy: number, half: number, properties: Record<string,
 }
 
 describe("featureCentroid", () => {
-  it("returns the center of any square (property)", () => {
+  it("returns the center of squares", () => {
     fc.assert(
       fc.property(
         fc.double({ min: -170, max: 170, noNaN: true }),
@@ -39,7 +39,7 @@ describe("featureCentroid", () => {
     );
   });
 
-  it("stays inside the bounding box for any simple polygon (property)", () => {
+  it("keeps centroids inside the bounding box for simple polygons", () => {
     fc.assert(
       fc.property(
         fc.array(fc.tuple(fc.double({ min: -1, max: 1, noNaN: true }), fc.double({ min: -1, max: 1, noNaN: true })), {
@@ -160,7 +160,7 @@ describe("featureCentroid edge cases", () => {
 });
 
 describe("haversineMeters", () => {
-  it("is symmetric and zero at identity (property)", () => {
+  it("is symmetric and returns zero for identical coordinates", () => {
     const lngLat = fc.tuple(
       fc.double({ min: -179, max: 179, noNaN: true }),
       fc.double({ min: -85, max: 85, noNaN: true }),

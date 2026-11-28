@@ -25,13 +25,17 @@ function toOpenAIMessages(messages: ConverseMessage[], system: string): ChatComp
         .filter((b) => b.text)
         .map((b) => b.text ?? "")
         .join("");
-      const toolCalls = m.content
-        .filter((b) => b.toolUse)
-        .map((b) => ({
-          id: b.toolUse!.toolUseId,
-          type: "function" as const,
-          function: { name: b.toolUse!.name, arguments: JSON.stringify(b.toolUse!.input) },
-        }));
+      const toolCalls = m.content.flatMap(({ toolUse }) =>
+        toolUse
+          ? [
+              {
+                id: toolUse.toolUseId,
+                type: "function" as const,
+                function: { name: toolUse.name, arguments: JSON.stringify(toolUse.input) },
+              },
+            ]
+          : [],
+      );
 
       out.push({
         role: "assistant",
@@ -72,17 +76,24 @@ export function createOpenAIAdapter(): LlmAdapter {
     messages,
     system,
     toolSpecs,
+    signal,
   }: {
     messages: ConverseMessage[];
     system: string;
     toolSpecs: ToolSpec[];
+    signal?: AbortSignal;
   }) => {
-    const res = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: toOpenAIMessages(messages, system),
-      tools: toolSpecs.length ? toOpenAITools(toolSpecs) : undefined,
-      parallel_tool_calls: toolSpecs.length > 0 ? true : undefined,
-    });
+    signal?.throwIfAborted();
+    const res = await getClient().chat.completions.create(
+      {
+        model: getModel(),
+        messages: toOpenAIMessages(messages, system),
+        tools: toolSpecs.length ? toOpenAITools(toolSpecs) : undefined,
+        parallel_tool_calls: toolSpecs.length > 0 ? true : undefined,
+      },
+      { signal },
+    );
+    signal?.throwIfAborted();
 
     const choice = res.choices[0];
     const content: ContentBlock[] = [];
@@ -115,19 +126,24 @@ export function createOpenAIAdapter(): LlmAdapter {
     system: string;
     toolSpecs: ToolSpec[];
     forceToolUse?: boolean;
+    signal?: AbortSignal;
   }): AsyncGenerator<ConverseStreamEvent> {
+    req.signal?.throwIfAborted();
     const tools = req.toolSpecs.length ? toOpenAITools(req.toolSpecs) : undefined;
-    const stream = await getClient().chat.completions.create({
-      model: getModel(),
-      messages: toOpenAIMessages(req.messages, req.system),
-      tools,
-      parallel_tool_calls: !!tools,
-      // Force the first turn to call a tool so the model can't answer from
-      // memory. Later turns revert to auto (called by loop.ts after a nudge).
-      ...(req.forceToolUse && tools ? { tool_choice: "required" as const } : {}),
-      stream: true,
-      stream_options: { include_usage: true },
-    });
+    const stream = await getClient().chat.completions.create(
+      {
+        model: getModel(),
+        messages: toOpenAIMessages(req.messages, req.system),
+        tools,
+        parallel_tool_calls: !!tools,
+        // Force the first turn to call a tool so the model can't answer from
+        // memory. Later turns revert to auto (called by loop.ts after a nudge).
+        ...(req.forceToolUse && tools ? { tool_choice: "required" as const } : {}),
+        stream: true,
+        stream_options: { include_usage: true },
+      },
+      { signal: req.signal },
+    );
 
     let totalTokens: number | undefined;
     const toolCalls = new Map<number, { id: string; name: string; args: string }>();
@@ -136,6 +152,7 @@ export function createOpenAIAdapter(): LlmAdapter {
     const splitter = createThinkTagSplitter();
 
     for await (const chunk of stream) {
+      req.signal?.throwIfAborted();
       totalTokens = chunk.usage?.total_tokens ?? totalTokens;
       const delta = chunk.choices[0]?.delta;
       if (!delta) continue;
@@ -183,6 +200,7 @@ export function createOpenAIAdapter(): LlmAdapter {
         yield { type: "stop", reason };
       }
     }
+    req.signal?.throwIfAborted();
     if (totalTokens !== undefined) yield { type: "usage", totalTokens };
   }
 

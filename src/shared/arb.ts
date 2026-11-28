@@ -17,7 +17,7 @@ const arbSubject = fc
  *
  * The glossary writes the number range as max 9999, but canonicalize's
  * CODE_RE matches exactly 3 digits and rejects 4-digit numbers at the anchored
- * boundary, so unrestricted draws break the Property 1 premise.
+ * boundary, so unrestricted draws could leave the intended input shape.
  */
 export const arbCourseCode = fc
   .tuple(
@@ -39,7 +39,7 @@ export const arbOkanaganCode = fc
   .tuple(arbSubject, fc.integer({ min: 100, max: 999 }), fc.integer({ min: 1, max: 3 }))
   .map(([subject, num, spaces]) => `${subject}_O${" ".repeat(spaces)}${num}`);
 
-/** Domain-2 generator: random bytes plus adversarial constants (design.md:409). */
+/** Generates random prerequisite strings and adversarial constants. */
 export const arbPrereqString = fc.oneof(
   fc.string({ minLength: 0, maxLength: 2000 }),
   fc.constantFrom(
@@ -57,28 +57,28 @@ export const arbPrereqString = fc.oneof(
   ),
 );
 
-/** UBC course number drawn as 100-5999 (design.md:502); parsePrereq's CODE_RE accepts 2-4 digits. */
+/** UBC course number drawn as 100-5999; parsePrereq's CODE_RE accepts 2-4 digits. */
 const arbNumber = fc.integer({ min: 100, max: 5999 }).map(String);
 
-/** A single canonical code leaf: `{ kind: 'code', code: 'SUBJ NUM' }` (design.md:503). */
+/** A single canonical code leaf: `{ kind: 'code', code: 'SUBJ NUM' }`. */
 const arbCode = fc.record({
   kind: fc.constant("code"),
   code: fc.tuple(arbSubject, arbNumber).map(([s, n]) => `${s} ${n}`),
 });
 
-/** A literal leaf: `{ kind: 'literal', text }` with non-empty text (design.md:504). */
+/** A literal leaf: `{ kind: 'literal', text }` with non-empty text. */
 const arbLiteral = fc.record({
   kind: fc.constant("literal"),
   text: fc.string({ minLength: 1, maxLength: 20 }),
 });
 
-/** Code-bearing expressions (a code or an AND of codes) for tail suffixes (design.md:505). */
+/** Code-bearing expressions (a code or an AND of codes) for tail suffixes. */
 const arbCodeExpr = fc.oneof(
   arbCode,
   fc.record({ kind: fc.constant("and"), children: fc.array(arbCode, { minLength: 2 }) }),
 );
 
-/** Recursive Expr tree over code/literal/and/or/soft (design.md:424). */
+/** Recursive Expr tree over code/literal/and/or/soft. */
 export const arbExpr = fc.letrec((t) => ({
   code: arbCode,
   literal: arbLiteral,
@@ -93,14 +93,14 @@ export const arbExpr = fc.letrec((t) => ({
 
 /**
  * Soft-tail suffix `X <recommended-phrase>` composed from a code expression
- * (design.md:414); pair with a prefix via `arbPrereqString` for Property 38.
+ * Pair it with a prefix via `arbPrereqString` to exercise tail handling.
  */
 export const arbRecommendedTail = fc
   .tuple(arbCodeExpr, fc.constantFrom("is recommended", "is strongly recommended", "are recommended"))
   .map(([e, tail]) => `${displayExpr(e)} ${tail}`);
 
 /**
- * Domain-4 dataset for BFS property tests (design.md:432). Each record pairs a
+ * Dataset for breadth-first prerequisite graph tests. Each record pairs a
  * canonical course code with free-form prereq/coreq strings. The
  * generic `arbPrereqString` constants rarely collide with random `arbCourseCode`
  * draws, so most lookups miss and the graph stays shallow; the hand-crafted

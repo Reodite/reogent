@@ -34,9 +34,7 @@ afterEach(() => {
 describe("real Disclosure presence lifecycle", () => {
   it.each([false, true])("reveals focused content and removes closing payload, reduced %s", async (reduce) => {
     preference.reduce = reduce;
-    vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
-      new DOMRect(0, 0, 120, 44),
-    ] as unknown as DOMRectList);
+    vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{} as DOMRect] as unknown as DOMRectList);
     const fixture = (open: boolean) => (
       <Disclosure open={open}>
         <input

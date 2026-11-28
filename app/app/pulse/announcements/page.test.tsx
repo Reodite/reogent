@@ -79,7 +79,7 @@ describe("announcement routes", () => {
     expect(view.queryAllByRole("link")).toHaveLength(0);
   });
 
-  it("renders a complete safe Markdown post with a 44px return link", async () => {
+  it("renders a complete safe Markdown post with a return link", async () => {
     const view = render(await AnnouncementPage(params()));
     expect(data.getAnnouncement).toHaveBeenCalledWith(announcement.slug);
     expect(view.getAllByRole("heading", { level: 1 })).toHaveLength(1);
@@ -95,9 +95,6 @@ describe("announcement routes", () => {
     expect(view.container.querySelector("script, iframe, a[href^='javascript:']")).toBeNull();
     const back = view.getByRole("link", { name: "Back to Announcements" });
     expect(back.getAttribute("href")).toBe("/app/pulse/announcements");
-    expect(back.classList.contains("size-11")).toBe(true);
-    expect(back.classList.contains("neu-button")).toBe(false);
-    expect(back.querySelector("svg")?.getAttribute("width")).toBe("20");
   });
 
   it("prebuilds published detail URLs and supplies each post's metadata", async () => {

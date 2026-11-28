@@ -258,6 +258,8 @@ select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e747a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.5rem center;
+  /* Keep select text clear of the custom arrow despite component padding utilities. */
+  /* biome-ignore lint/complexity/noImportantStyles: protect space for the custom select arrow */
   padding-right: 1.75rem !important;
 }
 
@@ -1814,6 +1816,8 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   header,
   nav,
   [role="dialog"] {
+    /* Hide interactive chrome in print output. */
+    /* biome-ignore lint/complexity/noImportantStyles: print must override screen display rules */
     display: none !important;
   }
 
@@ -1822,20 +1826,32 @@ html[data-sidebar-collapsed="true"] .chat-workspace {
   .neu-inset,
   .neu-button,
   .neu-primary-button {
+    /* Remove screen effects and restore contrast on paper. */
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override component surfaces */
     box-shadow: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override component surfaces */
     background: white !important;
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override component surfaces */
     border: 1px solid #ddd !important;
   }
 
   body {
+    /* Keep body text and background readable in print. */
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override theme colors */
     color: black !important;
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override theme colors */
     background: white !important;
   }
 
   .chat-message-well {
+    /* Print the full conversation without screen panel effects or clipping. */
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override chat panel utilities */
     box-shadow: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override chat panel utilities */
     background: white !important;
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override chat panel utilities */
     overflow: visible !important;
+    /* biome-ignore lint/complexity/noImportantStyles: print styles must override chat panel utilities */
     height: auto !important;
   }
 }

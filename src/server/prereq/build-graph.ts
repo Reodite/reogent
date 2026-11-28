@@ -11,7 +11,7 @@ export type PrereqNode = {
   variant?: "root" | "known" | "unknown" | "note" | "coreq";
   label: string;
   /** Catalog title for a known course; the disjunction detail strip reads this
-   *  (REQ-9.3) and falls back to the "(not in calendar)" sentinel when absent. */
+   *  and falls back to the "(not in calendar)" sentinel when absent. */
   title?: string;
   /** BFS depth from the root course (course-lookup hops). Client columns and the depth-cap oracle read this. */
   depth?: number;
@@ -135,7 +135,7 @@ export async function buildPrereqGraph(
           if (c.kind === "code") {
             const cid = ensureCourseNode(c.code, owner.depth + 1);
             childIds.push(cid);
-            // Dropdown-absorption (REQ-8.5): edges to the selected code route into the dropdown group node.
+            // Edges to selected codes route into the dropdown group node.
             edges.push(edge(orId, cid, owner.optional, owner.softPath));
             if (!visited.has(c.code)) {
               queue.push({ code: c.code, nodeId: cid, depth: owner.depth + 1, optional: false });
@@ -238,7 +238,7 @@ export async function buildPrereqGraph(
       });
     }
     if (hasCoreqs) {
-      // Coreq column: emit each coreq code adjacent to root (REQ-7.3), enqueue its prereq chain but not its coreqs (REQ-7.4). A code already visited via the prereq chain is reused (REQ-7.5).
+      // Emit corequisites beside the root and enqueue their prerequisite chains, but not their corequisites. Reuse codes already visited through the prerequisite chain.
       for (const { leaf } of walkCodeLeaves(parsePrereq(rootDoc.corequisite))) {
         const code = leaf.code;
         const existing = nodeByCode.get(code);
@@ -272,7 +272,7 @@ export async function buildPrereqGraph(
       node.variant = "known";
       node.title = doc.title;
     }
-    // Cap expansions so the deepest emitted node sits at depthCap (REQ-7.2).
+    // Stop expanding at depthCap so the deepest emitted node stays within the cap.
     if (depth < depthCap && doc.prerequisite) {
       expand(parsePrereq(doc.prerequisite), { code, nodeId, depth, path: "", optional });
     }

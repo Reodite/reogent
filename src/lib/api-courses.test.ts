@@ -34,4 +34,44 @@ describe("public course API client", () => {
       expect(new Headers(init.headers).has("X-Reodite-User")).toBe(false);
     }
   });
+
+  it("coalesces course-index requests and refreshes the per-client cache after one hour", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000);
+    let resolveFetch!: (response: Response) => void;
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createChatApi({ getUserId: async () => null });
+    const first = api.getCourseIndex();
+    const concurrent = api.getCourseIndex();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    resolveFetch(Response.json({ courses: [] }));
+    await expect(Promise.all([first, concurrent])).resolves.toEqual([{ courses: [] }, { courses: [] }]);
+
+    vi.setSystemTime(3_600_999);
+    await api.getCourseIndex();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(3_601_000);
+    fetchMock.mockResolvedValueOnce(Response.json({ courses: [{ code: "CPSC 110" }] }));
+    await expect(api.getCourseIndex()).resolves.toEqual({ courses: [{ code: "CPSC 110" }] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("evicts a failed course-index request so the caller can retry", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("unavailable", { status: 503 }))
+      .mockResolvedValueOnce(Response.json({ courses: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createChatApi({ getUserId: async () => null });
+
+    await expect(api.getCourseIndex()).rejects.toThrow("Request failed with status 503");
+    await expect(api.getCourseIndex()).resolves.toEqual({ courses: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

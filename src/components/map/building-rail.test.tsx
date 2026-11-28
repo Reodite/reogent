@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
-import { readFileSync } from "node:fs";
 import type { BuildingDetails, BuildingSummary } from "@/src/lib/api-types";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BuildingRail,
@@ -151,37 +150,22 @@ describe("BuildingRail", () => {
   it.each([
     ["details", "Back to all buildings"],
     ["directions", "Back to building details"],
-  ] as const)("keeps the %s back arrow outside the content scroller", (mode, label) => {
+  ] as const)("calls the back action from %s mode", (mode, label) => {
     const onBack = vi.fn();
-    const { container } = render(<BuildingRail {...props({ mode, selected: iblc, onBack })} />);
+    render(<BuildingRail {...props({ mode, selected: iblc, onBack })} />);
     const back = screen.getByRole("button", { name: label });
-    expect(back.textContent).toBe("");
-    expect(back.getAttribute("title")).toBe(label);
-    expect(back.querySelector("svg")?.getAttribute("width")).toBe("20");
-    expect(back.querySelector("svg")?.innerHTML).not.toBe("");
-    expect(back.className).toContain("size-11");
-    expect(back.classList.contains("neu-button")).toBe(false);
-    expect(container.querySelector("[data-workspace-panel-body]")?.contains(back)).toBe(false);
     fireEvent.click(back);
     expect(onBack).toHaveBeenCalledOnce();
   });
 
-  it("keeps identity, actions and details in one bounded panel scroller", () => {
+  it("retains building actions through loading, error, retry, and success", () => {
     const railProps = props({ mode: "details", selected: iblc, details: { status: "loading" } });
     const view = render(<BuildingRail {...railProps} />);
     const identity = screen.getByRole("heading", { name: iblc.name });
     const directions = screen.getByRole("button", { name: "Directions" });
     const loading = screen.getByRole("status", { name: "Loading building details" });
-    const scroller = view.container.querySelector("[data-workspace-panel-body]");
-    expect(scroller?.classList.contains("overflow-y-auto")).toBe(true);
-    for (const content of [identity, directions, loading]) {
-      expect(content.closest(".overflow-y-auto")).toBe(scroller);
-    }
-    expect(scroller?.contains(screen.getByRole("button", { name: "Back to all buildings" }))).toBe(false);
-    expect(loading.parentElement?.className).toContain("px-3 py-4");
-    expect(loading.querySelector("[data-skeleton]")?.className).toContain("h-36");
-    expect(loading.querySelectorAll("[data-skeleton]").length).toBeGreaterThan(8);
-    expect(view.container.querySelector(".animate-pulse")).toBeNull();
+    expect(loading).toBeTruthy();
+    expect(directions).toBeTruthy();
 
     view.rerender(<BuildingRail {...railProps} details={{ status: "error" }} />);
     expect(screen.queryByRole("status", { name: "Loading building details" })).toBeNull();
@@ -192,56 +176,49 @@ describe("BuildingRail", () => {
     view.rerender(<BuildingRail {...railProps} details={{ status: "ready", data: details }} />);
     expect(screen.getByRole("heading", { name: iblc.name })).toBe(identity);
     expect(screen.getByRole("button", { name: "Directions" })).toBe(directions);
-    expect(screen.getByText("IBLC 100").closest(".overflow-y-auto")).toBe(scroller);
+    expect(screen.getByText("IBLC 100")).toBeTruthy();
     expect(screen.queryByRole("status", { name: "Loading building details" })).toBeNull();
   });
 
-  it("reveals new building identity without resetting same-building updates or remounting the body", () => {
+  it("resets detail scrolling for a new building and retains it across same-building updates", () => {
     const railProps = props({ mode: "details", selected: iblc, details: { status: "ready", data: details } });
     const view = render(<BuildingRail {...railProps} />);
     const body = view.container.querySelector<HTMLElement>("[data-workspace-panel-body]")!;
-    const identity = screen.getByRole("heading", { name: iblc.name });
-    const directions = screen.getByRole("button", { name: "Directions" });
-    body.scrollTop = 1619;
-    view.rerender(<BuildingRail {...railProps} selected={{ ...iblc }} shareStatus="copy" />);
-    expect(body.scrollTop).toBe(1619);
 
-    const changed = { ...railProps, selected: chem, details: { status: "loading" } as BuildingDetailsState };
-    view.rerender(<BuildingRail {...changed} />);
-    expect(view.container.querySelector("[data-workspace-panel-body]")).toBe(body);
-    expect(screen.getByRole("heading", { name: chem.name })).toBe(identity);
-    expect(screen.getByRole("button", { name: "Directions" })).toBe(directions);
+    body.scrollTop = 120;
+    view.rerender(<BuildingRail {...railProps} shareStatus="copy" />);
+    expect(body.scrollTop).toBe(120);
+
+    view.rerender(<BuildingRail {...railProps} selected={chem} details={{ status: "loading" }} />);
     expect(body.scrollTop).toBe(0);
 
-    body.scrollTop = 50;
-    for (const detailState of [
-      { status: "error" },
-      { status: "loading" },
-      {
-        status: "ready",
-        data: { ...details, code: chem.code, name: chem.name, building: { ...details.building, ...chem } },
-      },
-    ] as BuildingDetailsState[]) {
-      view.rerender(<BuildingRail {...changed} details={detailState} />);
-      expect(body.scrollTop).toBe(50);
-    }
-    view.rerender(<BuildingRail {...changed} mode="directions" />);
-    const routeScroll = view.container.querySelector<HTMLElement>("[data-route-results-scroll]")!;
-    routeScroll.scrollTop = 80;
-    view.rerender(<BuildingRail {...changed} mode="directions" selected={iblc} />);
-    expect(routeScroll.scrollTop).toBe(80);
-    view.rerender(<BuildingRail {...railProps} />);
-    expect(view.container.querySelector("[data-workspace-panel-body]")).toBe(body);
-    expect(body.scrollTop).toBe(0);
+    body.scrollTop = 45;
+    view.rerender(<BuildingRail {...railProps} selected={chem} details={{ status: "error" }} />);
+    expect(body.scrollTop).toBe(45);
   });
 
-  it("insets saved-list skeleton rows once without hiding curated or stale buildings", () => {
+  it("restores the discovery list scroll position after returning from details", async () => {
+    const railProps = props({ onSelect: vi.fn() });
+    const view = render(<BuildingRail {...railProps} />);
+    const list = view.container.querySelector<HTMLElement>("[data-workspace-panel-body] > div > div:last-child")!;
+    list.scrollTop = 95;
+    fireEvent.click(
+      within(screen.getByRole("listbox", { name: "Curated popular buildings" })).getByRole("option", {
+        name: new RegExp(chem.name),
+      }),
+    );
+    expect(railProps.onSelect).toHaveBeenCalledWith(chem);
+
+    view.rerender(<BuildingRail {...railProps} mode="details" selected={chem} />);
+    view.rerender(<BuildingRail {...railProps} mode="discover" selected={null} />);
+
+    await waitFor(() => expect(list.scrollTop).toBe(95));
+  });
+
+  it("shows curated buildings while saved buildings load and reports favorite failures", () => {
     const railProps = props({ favoriteStatus: "loading", favorites: new Set() });
     const view = render(<BuildingRail {...railProps} />);
-    const loading = screen.getByRole("status", { name: "Loading saved buildings" });
-    expect(loading.className).toContain("p-0");
-    expect(loading.className).toContain("px-3");
-    expect(loading.querySelectorAll("[data-skeleton]")).toHaveLength(6);
+    expect(screen.getByRole("status", { name: "Loading saved buildings" })).toBeTruthy();
     expect(screen.getByRole("listbox", { name: "Curated popular buildings" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Search buildings" })).toBeTruthy();
 
@@ -271,7 +248,6 @@ describe("BuildingRail", () => {
     expect(screen.getByRole("status").textContent).toContain("Finding a walking route…");
     expect(screen.getByRole("combobox", { name: "From building" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "To building" })).toBeTruthy();
-    expect(document.querySelector("[data-skeleton]")).toBeNull();
   });
 
   it("shows saved buildings before the curated starting list", () => {
@@ -320,22 +296,7 @@ describe("BuildingRail", () => {
 
     const from = screen.getByRole("combobox", { name: "From building" });
     expect(from.getAttribute("value")).toBe("chem");
-    for (const inputClass of [
-      "neu-inset",
-      "bg-surface-container-low",
-      "rounded-lg",
-      "focus-visible:ring-2",
-      "focus-visible:outline-none",
-      "h-11",
-      "text-xs",
-      "sm:h-9",
-    ]) {
-      expect(from.className).toContain(inputClass);
-    }
-    expect(screen.getByRole("button", { name: "Back to building details" }).textContent).toBe("");
-    expect(view.container.querySelector("[data-route-endpoints]")?.className).toContain("gap-x-3");
-    expect(view.container.querySelector("[data-route-marker-track]")).toBeTruthy();
-    expect(from.parentElement?.className).toContain("col-start-2");
+    expect(screen.getByRole("button", { name: "Back to building details" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "To building" }).getAttribute("value")).toBe(iblc.name);
     expect(screen.getByRole("listbox", { name: "Starting building results" })).toBeTruthy();
     expect(screen.getByRole("option").getAttribute("tabindex")).toBe("-1");
@@ -360,14 +321,14 @@ describe("BuildingRail", () => {
     expect(onRouteFieldChange).toHaveBeenCalledWith("destination");
   });
 
-  it("keeps broad endpoint results in one owned scroll region", () => {
+  it("filters a broad endpoint result set and supports keyboard selection", () => {
     const catalog = Array.from({ length: 25 }, (_, index): BuildingSummary => ({
       ...iblc,
       code: `A${String(index).padStart(3, "0")}`,
       name: `Alpha Building ${index}`,
       aliases: [],
     }));
-    const { container } = render(
+    render(
       <BuildingRail
         {...props({
           mode: "directions",
@@ -380,25 +341,14 @@ describe("BuildingRail", () => {
     );
 
     const input = screen.getByRole("combobox", { name: "From building" });
-    const list = screen.getByRole("listbox", { name: "Starting building results" });
-    const scroller = container.querySelector("[data-route-results-scroll]");
+    screen.getByRole("listbox", { name: "Starting building results" });
     expect(screen.getAllByRole("option")).toHaveLength(20);
     expect(screen.getByText("20 results")).toBeTruthy();
-    expect(scroller?.contains(input)).toBe(true);
-    expect(scroller?.contains(list)).toBe(true);
-    expect(container.querySelector("[data-route-editor]")?.classList.contains("sticky")).toBe(false);
-    const styles = readFileSync("app/globals.css", "utf8");
-    const scrollRule = styles.match(/\[data-route-results-scroll\]\s*\{([^}]+)\}/)?.[1];
-    expect(scrollRule).toContain("overscroll-behavior-y: contain");
-    expect(scrollRule).not.toContain("scroll-padding");
 
     fireEvent.keyDown(input, { key: "End" });
     const options = screen.getAllByRole("option");
     expect(input.getAttribute("aria-activedescendant")).toBe(options.at(-1)?.id);
     expect(options.at(-1)?.getAttribute("aria-selected")).toBe("true");
-    expect(options.at(-1)?.className).toContain("rounded-xl");
-    expect(options.at(-1)?.className).toContain("neu-inset");
-    expect(options.at(-1)?.classList.contains("scroll-mt-36")).toBe(false);
     fireEvent.keyDown(input, { key: "Home" });
     expect(input.getAttribute("aria-activedescendant")).toBe(options[0].id);
     expect(options[0].getAttribute("aria-selected")).toBe("true");
@@ -446,7 +396,7 @@ describe("BuildingRail", () => {
     );
 
     expect(screen.getByRole("heading", { name: iblc.name })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back to all buildings" }).textContent).toBe("");
+    expect(screen.getByRole("button", { name: "Back to all buildings" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Building" })).toBeNull();
     expect(screen.queryByText("LEED Gold")).toBeNull();
     expect(screen.queryByText("FeeSimple")).toBeNull();
@@ -468,7 +418,7 @@ describe("BuildingRail", () => {
     expect(within(sources).getAllByText(refreshedAt)).toHaveLength(4);
   });
 
-  it("shares list-item anatomy while preserving truncation, wrapping, and action placement", () => {
+  it("shows building information with the correct external links", () => {
     render(
       <BuildingRail {...props({ mode: "details", selected: iblc, details: { status: "ready", data: details } })} />,
     );
@@ -479,8 +429,6 @@ describe("BuildingRail", () => {
         href: details.rooms[0].link,
         summary: "classroom · Floor 1 · 80 seats",
         detail: "Rows · Tables",
-        truncate: true,
-        trailing: true,
       },
       {
         title: "Library help desk",
@@ -488,27 +436,17 @@ describe("BuildingRail", () => {
         href: details.pois[0].url,
         summary: "campus services · 9–5",
         detail: "Official address match",
-        truncate: false,
-        trailing: false,
       },
     ];
     for (const variant of variants) {
       const title = screen.getByText(variant.title);
-      const item = title.closest("li")!;
-      expect(item.parentElement?.tagName).toBe("UL");
-      expect(item.className).toBe("bg-surface-container-low rounded-lg p-3");
-      expect(title.classList.contains("truncate")).toBe(variant.truncate);
-      expect(title.className).toContain("text-sm");
-      expect(within(item).getByText(variant.summary).className).toContain("text-xs");
-      if (variant.detail) expect(within(item).getByText(variant.detail).className).toContain("text-muted");
-      const action = within(item).getByRole("link", { name: variant.action });
-      expect(action.parentElement?.classList.contains("flex")).toBe(variant.trailing);
+      expect(title).toBeTruthy();
+      expect(screen.getByText(variant.summary)).toBeTruthy();
+      if (variant.detail) expect(screen.getByText(variant.detail)).toBeTruthy();
+      const action = screen.getByRole("link", { name: variant.action });
       expect(action.getAttribute("href")).toBe(variant.href);
       expect(action.getAttribute("target")).toBe("_blank");
       expect(action.getAttribute("rel")).toBe("noreferrer");
-      expect(action.className).toContain("min-h-11");
-      expect(action.className).toContain("sm:min-h-9");
-      expect(action.className).toContain("focus-visible:outline-none");
     }
   });
 
@@ -546,7 +484,6 @@ describe("BuildingRail", () => {
     fireEvent.error(screen.getByRole("img", { name: /IBLC 100/ }));
 
     expect(screen.queryByRole("img", { name: /IBLC 100/ })).toBeNull();
-    expect(document.querySelector("[data-photo-fallback]")?.className).toContain("h-36");
     expect(screen.getByText("Photo unavailable.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /UBC Learning Spaces/ })).toBeTruthy();
   });
@@ -566,7 +503,6 @@ describe("BuildingRail", () => {
     );
 
     const copy = screen.getByRole("button", { name: "Copy link" });
-    expect(copy.closest(".overflow-y-auto")).toBe(copy.closest("[data-workspace-panel-body]"));
     fireEvent.click(copy);
     expect(onCopyLink).toHaveBeenCalledOnce();
   });

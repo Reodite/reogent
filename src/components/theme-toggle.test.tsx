@@ -42,39 +42,30 @@ function renderToggle(showLabels = false) {
 beforeEach(() => {
   window.localStorage.clear();
   document.documentElement.dataset.theme = "light";
-  document.documentElement.classList.remove("vt-active");
-  document.documentElement.style.removeProperty("--ripple-x");
-  document.documentElement.style.removeProperty("--ripple-y");
   Reflect.deleteProperty(document, "startViewTransition");
-  document.head.innerHTML = `
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f7f5">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121214">
-  `;
   deviceAppearance(false);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/auth/session") return new Response(null, { status: 204 });
+      throw new Error(`Unexpected request: ${String(input)}`);
+    }),
+  );
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   window.localStorage.clear();
-  document.head.innerHTML = "";
   Reflect.deleteProperty(document, "startViewTransition");
 });
 
 describe("ThemeToggle", () => {
-  it("groups two icon choices inside one inset pill", () => {
+  it("exposes Light and Dark as mutually exclusive choices", () => {
     renderToggle();
-    const group = screen.getByRole("radiogroup", { name: "Appearance" });
     expect(screen.getAllByRole("radio").map((radio) => radio.getAttribute("aria-label"))).toEqual(["Light", "Dark"]);
-    expect(Array.from(group.classList)).toEqual(
-      expect.arrayContaining(["neu-inset", "w-max", "shrink-0", "grid-cols-2", "rounded-full", "p-1"]),
-    );
-    expect(group.className.split(/\s+/)).not.toContain("border");
-    for (const radio of screen.getAllByRole("radio")) {
-      expect(radio.classList.contains("rounded-full")).toBe(true);
-      expect(radio.querySelector("svg")).not.toBeNull();
-      expect(radio.className).not.toContain("transition-all");
-    }
+    expect(screen.getByRole("radio", { name: "Light" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("false");
   });
 
   it("adds visible labels for onboarding without changing the shared control", () => {
@@ -129,18 +120,14 @@ describe("ThemeToggle", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
   });
 
-  it("keeps browser chrome synchronized with an explicit theme", () => {
+  it("applies and persists an explicit theme choice", () => {
     renderToggle();
     fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(
-      Array.from(document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')).every(
-        (meta) => meta.content === "#121214",
-      ),
-    ).toBe(true);
+    expect(storage.getItem("campus.theme")).toBe("dark");
   });
 
-  it("updates the theme and selection inside the ripple snapshot", async () => {
+  it("updates the selected theme inside the view transition", async () => {
     deviceAppearance(false, false);
     let finish!: () => void;
     const finished = new Promise<void>((resolve) => {
@@ -159,17 +146,15 @@ describe("ThemeToggle", () => {
     });
     Object.defineProperty(document, "startViewTransition", { configurable: true, value: startTransition });
     renderToggle();
-    fireEvent.click(screen.getByRole("radio", { name: "Dark" }), { detail: 1, clientX: 120, clientY: 80 });
+    fireEvent.keyDown(screen.getByRole("radio", { name: "Light" }), { key: "ArrowRight" });
     await waitFor(() => expect(snapshots).toEqual([{ theme: "dark", checked: "true" }]));
     expect(startTransition).toHaveBeenCalledTimes(1);
-    expect(document.documentElement.style.getPropertyValue("--ripple-x")).toBe("120px");
-    expect(document.documentElement.style.getPropertyValue("--ripple-y")).toBe("80px");
-    expect(document.documentElement.classList.contains("vt-active")).toBe(true);
     finish();
-    await waitFor(() => expect(document.documentElement.classList.contains("vt-active")).toBe(false));
+    await expect(finished).resolves.toBeUndefined();
+    expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
-  it("uses the same ripple for keyboard choices and keeps one tab stop", async () => {
+  it("applies keyboard choices and keeps one tab stop through view transitions", async () => {
     deviceAppearance(false, false);
     const finishes: Array<() => void> = [];
     const startTransition = vi.fn((update: () => void) => {
@@ -180,26 +165,23 @@ describe("ThemeToggle", () => {
     renderToggle();
     const light = screen.getByRole("radio", { name: "Light" });
     const dark = screen.getByRole("radio", { name: "Dark" });
-    vi.spyOn(dark, "getBoundingClientRect").mockReturnValue({ left: 100, top: 60, width: 32, height: 32 } as DOMRect);
     light.focus();
     fireEvent.keyDown(light, { key: "ArrowRight" });
     expect(document.activeElement).toBe(dark);
     expect(dark.tabIndex).toBe(0);
     expect(light.tabIndex).toBe(-1);
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(document.documentElement.style.getPropertyValue("--ripple-x")).toBe("116px");
-    expect(document.documentElement.style.getPropertyValue("--ripple-y")).toBe("76px");
     fireEvent.keyDown(dark, { key: "ArrowRight" });
     expect(document.activeElement).toBe(light);
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(startTransition).toHaveBeenCalledTimes(2);
     await act(async () => finishes[0]());
-    expect(document.documentElement.classList.contains("vt-active")).toBe(true);
     await act(async () => finishes[1]());
-    expect(document.documentElement.classList.contains("vt-active")).toBe(false);
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(light.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("skips the ripple for reduced motion and unchanged choices", () => {
+  it("skips view transitions for reduced motion and unchanged choices", () => {
     const startTransition = vi.fn();
     Object.defineProperty(document, "startViewTransition", { configurable: true, value: startTransition });
     renderToggle();

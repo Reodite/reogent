@@ -168,27 +168,25 @@ const AVATAR_SIZE = 96;
  * Downscale an uploaded photo to a 96×96 center-cropped JPEG data URL.
  * Small enough to live in the person JSONB blob.
  */
-export function downscaleImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
+export async function downscaleImage(file: File): Promise<string> {
+  const url = URL.createObjectURL(file);
+  try {
     const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2;
-      const sy = (img.height - side) / 2;
-      const canvas = document.createElement("canvas");
-      canvas.width = AVATAR_SIZE;
-      canvas.height = AVATAR_SIZE;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("Canvas unavailable"));
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
-      resolve(canvas.toDataURL("image/jpeg", 0.72));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Could not read that image"));
-    };
     img.src = url;
-  });
+    await img.decode().catch(() => {
+      throw new Error("Could not read that image");
+    });
+    const side = Math.min(img.width, img.height);
+    const sx = (img.width - side) / 2;
+    const sy = (img.height - side) / 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = AVATAR_SIZE;
+    canvas.height = AVATAR_SIZE;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas unavailable");
+    ctx.drawImage(img, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+    return canvas.toDataURL("image/jpeg", 0.72);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

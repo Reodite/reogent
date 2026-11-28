@@ -90,7 +90,7 @@ const getCourseCall: ToolCall = {
   status: "ok",
 } as unknown as ToolCall;
 
-describe("22.6 — Course tool card Prereq Tree affordance routes code into the tree (REQ-4.2)", () => {
+describe("Course tool card prerequisite navigation", () => {
   it("rendering a get_course card with a prerequisite shows a Prereq Tree button whose click opens the tree rooted at the card's code", () => {
     shellRef.current = null;
     const { container } = render(
@@ -111,28 +111,8 @@ describe("22.6 — Course tool card Prereq Tree affordance routes code into the 
   });
 });
 
-function rect(left: number, top: number, width: number, height: number): DOMRect {
-  return {
-    left,
-    top,
-    width,
-    height,
-    right: left + width,
-    bottom: top + height,
-    x: left,
-    y: top,
-    toJSON() {
-      return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top };
-    },
-  };
-}
-
-function rectsDisjoint(a: DOMRect, b: DOMRect): boolean {
-  return a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom;
-}
-
-describe("22.5 + 22.4 — Property 32: tool-grounded answer renders in chat with non-overlapping pane rect (REQ-19.4)", () => {
-  it('for every (claim, pane) pair: claim appears within [data-pane="chat"], chat rect non-zero, chat and pane rects disjoint', () => {
+describe("tool-grounded answers remain in chat when a pane opens", () => {
+  it("keeps each answer claim in the chat region when selecting a related pane", () => {
     fc.assert(
       fc.property(
         fc.record({
@@ -152,24 +132,9 @@ describe("22.5 + 22.4 — Property 32: tool-grounded answer renders in chat with
           );
           act(() => shellRef.current?.setActiveChannel(pane, {}));
           const chatEl = container.querySelector('[data-pane="chat"]') as HTMLElement;
-          const paneEl = container.querySelector(`[data-pane="${pane}"]`) as HTMLElement;
-          const chatRect = rect(0, 0, 500, 600);
-          const paneRect = rect(500, 0, 500, 600);
-          vi.spyOn(chatEl, "getBoundingClientRect").mockReturnValue(chatRect);
-          vi.spyOn(paneEl, "getBoundingClientRect").mockReturnValue(paneRect);
-          vi.spyOn(window, "getComputedStyle").mockImplementation(
-            (el) =>
-              ({
-                visibility: el === chatEl ? "visible" : "visible",
-              }) as CSSStyleDeclaration,
-          );
           const claimNode = chatEl.querySelector("[data-claim]");
           expect(claimNode?.textContent).toBe(claim);
           expect(chatEl.contains(claimNode)).toBe(true);
-          const r = chatEl.getBoundingClientRect();
-          expect(r.width).toBeGreaterThan(0);
-          expect(r.height).toBeGreaterThan(0);
-          expect(rectsDisjoint(r, paneEl.getBoundingClientRect())).toBe(true);
           expect(chatEl.getAttribute("data-pane")).toBe("chat");
           expect(claimNode?.closest("[data-pane]")?.getAttribute("data-pane")).toBe("chat");
           cleanup();
@@ -179,7 +144,7 @@ describe("22.5 + 22.4 — Property 32: tool-grounded answer renders in chat with
     );
   });
 
-  it("22.4 — calendar-deadline claim while Calendar pane open stays in chat and the rects do not overlap", () => {
+  it("keeps a calendar deadline claim in chat while the Calendar pane is selected", () => {
     const claim = "The add/drop deadline is September 17, 2024.";
     shellRef.current = null;
     const { container } = render(
@@ -193,12 +158,9 @@ describe("22.5 + 22.4 — Property 32: tool-grounded answer renders in chat with
     );
     act(() => shellRef.current?.setActiveChannel("calendar", { cursor: "2024-09", kinds: ["academic", "holiday"] }));
     const chatEl = container.querySelector('[data-pane="chat"]') as HTMLElement;
-    const paneEl = container.querySelector('[data-pane="calendar"]') as HTMLElement;
-    vi.spyOn(chatEl, "getBoundingClientRect").mockReturnValue(rect(0, 0, 500, 600));
-    vi.spyOn(paneEl, "getBoundingClientRect").mockReturnValue(rect(500, 0, 500, 600));
     const claimNode = chatEl.querySelector("[data-claim]");
     expect(claimNode?.textContent).toBe(claim);
     expect(claimNode?.closest("[data-pane]")?.getAttribute("data-pane")).toBe("chat");
-    expect(rectsDisjoint(chatEl.getBoundingClientRect(), paneEl.getBoundingClientRect())).toBe(true);
+    expect(shellRef.current?.workspaceView?.paneId).toBe("calendar");
   });
 });

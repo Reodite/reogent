@@ -18,18 +18,19 @@ const edgeProps = {
   targetPosition: "left" as const,
 } as const;
 
-describe("OptionalEdge (REQ-10.1, REQ-10.2)", () => {
-  it("renders a dashed path with data-edge-variant=optional and a soft-toggle pill", () => {
+describe("Optional prerequisite edge behavior", () => {
+  it("exposes the optional branch and forwards its toggle key", () => {
+    const onToggle = vi.fn();
     const { container } = render(
-      <OptionalEdge {...edgeProps} data={{ softKey: "", disabled: false, onToggle: () => {} }} />,
+      <OptionalEdge {...edgeProps} data={{ softKey: "CPSC 320::.soft", disabled: false, onToggle }} />,
     );
     const path = container.querySelector("path[data-edge-variant='optional']");
     expect(path).toBeTruthy();
-    expect(path?.getAttribute("class")).toContain("react-flow__edge-path");
-    const pill = container.querySelector('button[data-toggle="soft-toggle"]');
+    const pill = container.querySelector('button[aria-label="Hide optional subtree"]');
     expect(pill).toBeTruthy();
-    expect(pill?.getAttribute("data-path")).toBe("");
     expect(pill?.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(pill!);
+    expect(onToggle).toHaveBeenCalledWith("CPSC 320::.soft");
   });
 
   it("presses the pill off when the soft branch is disabled", () => {

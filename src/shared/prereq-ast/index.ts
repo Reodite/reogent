@@ -64,7 +64,7 @@ const CODE_RE = /^(?!(?:and|or|one|all)\b)([A-Z]{2,4})(?:_V)?\s*(\d{2,4}[A-Z]?)\
 // actually model. Matches any `_X` suffix that isn't `_V`, so a future
 // campus code is handled without another edit.
 const OFF_CAMPUS = String.raw`[A-Z]{2,4}_(?!V\b)[A-Z]\s*\d{2,4}[A-Z]?`;
-const JOIN = String.raw`(?:[Oo][Rr]|[Aa][Nn][Dd])`;
+const JOIN = `(?:[Oo][Rr]|[Aa][Nn][Dd])`;
 // Order matters: consume the attaching joiner/comma first so removing the
 // code doesn't strand "… or" or ", ," behind it. Bare removal is the last
 // resort for a code that stands alone.
@@ -1287,16 +1287,12 @@ export function parsePrereq(raw: string | null | undefined): Expr | null {
   const { hard, soft } = splitRecommended(noNoise);
   const hardExpr = hard ? parseClause(hard) : null;
   const softExpr = soft ? parseClause(soft) : null;
-  if (!hardExpr && !softExpr) return null;
-  if (!hardExpr && softExpr) return { kind: "soft", child: softExpr };
-  if (hardExpr && !softExpr) return hardExpr;
-  // Both present — combine as conjunction (the soft wrapper just changes
-  // edge styling, it doesn't alter "you also need …" semantics relative
-  // to the hard clause). Run the combined tree through normalize once
-  // more so same-kind ANDs flatten if hardExpr was itself an `and`.
+  if (!softExpr) return hardExpr;
+  if (!hardExpr) return { kind: "soft", child: softExpr };
+  // Keep the recommendation attached to the hard clause and flatten nested ANDs.
   return normalize({
     kind: "and",
-    children: [hardExpr!, { kind: "soft", child: softExpr! }],
+    children: [hardExpr, { kind: "soft", child: softExpr }],
   });
 }
 

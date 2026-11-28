@@ -3,8 +3,7 @@ import { describe, expect, it } from "vitest";
 import { formatSeconds } from "./time";
 
 describe("time formatter", () => {
-  // Feature: reodite, Property 1: Time formatting is correct and zero-padded
-  it("Property 1: formats any in-range second count as HH:MM that round-trips to the minute", () => {
+  it("formats in-range seconds as zero-padded HH:MM, rounded down to the minute", () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 86399 }), (s) => {
         const out = formatSeconds(s);

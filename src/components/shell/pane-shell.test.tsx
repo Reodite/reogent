@@ -58,7 +58,7 @@ function Capture() {
   return null;
 }
 
-describe("Property 30 — chat panel stays visible across all activeChannel states (REQ-19.1, REQ-19.2)", () => {
+describe("Chat panel state across active channels", () => {
   const channels: (string | null)[] = [null, "map", "course-lookup", "prereq-tree", "calendar", "unknown"];
   for (const ch of channels) {
     it(`data-pane="chat" resolves when activeChannel=${ch ?? "null"}`, () => {
@@ -96,7 +96,7 @@ describe("setActiveChannel stability — pane stays open against consumer effect
   });
 });
 
-describe("workspaceView state contract (REQ-1.2, REQ-3.1)", () => {
+describe("Workspace view state", () => {
   const courseCall: ToolCall = {
     name: "show_widget",
     input: { type: "course" },

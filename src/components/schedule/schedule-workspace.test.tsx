@@ -34,12 +34,12 @@ describe("ScheduleWorkspace", () => {
 
     expect(container.querySelector("h1")).toBeNull();
     expect(container.querySelector("[data-testid='toolbar']")).not.toBeNull();
-    expect(outlet.childElementCount).toBe(0);
+    expect(outlet.querySelector("[data-workspace-titlebar-actions]")).toBeNull();
     expect(container.textContent).not.toContain("Build a conflict-aware week.");
     outlet.remove();
   });
 
-  it("adapts schedules to the shared 20rem rail panel and inset canvas", () => {
+  it("renders schedule controls and canvas in the shared workspace", () => {
     const { container } = render(workspace());
     const root = container.querySelector<HTMLElement>("[data-workspace-page]");
     const rail = container.querySelector<HTMLElement>("[data-workspace-region='rail']");
@@ -50,9 +50,6 @@ describe("ScheduleWorkspace", () => {
     expect(root?.querySelector("h1")?.textContent).toBe("Course schedule");
     expect(rail?.querySelector("[data-workspace-panel]")).not.toBeNull();
     expect(rail?.querySelector("[data-testid='controls']")).not.toBeNull();
-    expect(canvas?.className).toContain("neu-inset");
-    expect(canvas?.className).toContain("bg-surface-container-low");
-    expect(canvas?.classList.contains("p-0.5")).toBe(true);
     expect(canvas?.querySelector("[data-testid='canvas']")).not.toBeNull();
   });
 

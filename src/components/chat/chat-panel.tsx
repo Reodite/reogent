@@ -491,7 +491,7 @@ export function ChatPanel({ sessionId: initialSessionId }: { sessionId: string |
             activity: activity.length > 0 ? [...activity] : undefined,
           });
           // Drive the canvas to the last mapped tool call; leave the canvas
-          // as-is when the answer has no mapped widget (REQ-3.6: no auto-close).
+          // as-is when the answer has no mapped widget.
           // The inline pane opens with the chip key (`${streamId}:tc-${condensedIdx}`)
           // marking exactly that chip active. Phones and dismissed panes only
           // load the view; the message's artifact card opens it.

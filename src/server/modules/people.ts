@@ -1,3 +1,4 @@
+import { optionalText } from "@/src/lib/building-catalog";
 import type { DatasetModule, SearchClient } from "../core/types";
 import { resolveBuilding } from "./buildings";
 
@@ -23,25 +24,23 @@ export type PersonHit = PersonDoc & { building?: { code: string; name: string; l
 // biome-ignore lint/suspicious/noExplicitAny: raw dataset rows
 type Row = Record<string, any>;
 
-const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
-
 export function transformPerson(row: Row): { id: string; doc: PersonDoc } | null {
-  const name = text(row.title);
+  const name = optionalText(row.title);
   if (!row.id || !name || row.status === false) return null;
-  const unit = text(row.site) ?? "";
-  const alias = text(row.alias);
+  const unit = optionalText(row.site) ?? "";
+  const alias = optionalText(row.alias);
   return {
     id: String(row.id),
     doc: {
       id: String(row.id),
       name,
-      first_name: text(row.field_profile_first_name),
-      last_name: text(row.field_profile_last_name),
-      job_title: text(row.field_profile_job_title),
-      email: text(row.field_profile_email),
-      phone: text(row.field_profile_phone),
-      office: text(row.field_profile_office),
-      program: text(row.field_profile_program),
+      first_name: optionalText(row.field_profile_first_name),
+      last_name: optionalText(row.field_profile_last_name),
+      job_title: optionalText(row.field_profile_job_title),
+      email: optionalText(row.field_profile_email),
+      phone: optionalText(row.field_profile_phone),
+      office: optionalText(row.field_profile_office),
+      program: optionalText(row.field_profile_program),
       unit,
       url: unit && alias ? `https://${unit}${alias}` : null,
     },

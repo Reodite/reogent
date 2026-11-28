@@ -56,7 +56,7 @@ beforeEach(() => {
   streamAgent.mockReset();
 });
 
-describe("auth (7.2)", () => {
+describe("authentication", () => {
   it("missing token → 401", async () => {
     const res = await sessionsGet(req({ auth: false }));
     expect(res.status).toBe(401);
@@ -112,7 +112,7 @@ describe("POST /api/chat", () => {
     expect(events).toContainEqual({ type: "done", message: "hello", tool_calls: [] });
   });
 
-  it("stream emits error event on unhandled failure (2.9)", async () => {
+  it("emits an error event when the stream fails", async () => {
     streamAgent.mockReturnValue({
       [Symbol.asyncIterator]() {
         return { next: () => Promise.reject(new Error("bedrock down")) };
@@ -129,7 +129,7 @@ describe("POST /api/chat", () => {
   });
 });
 
-describe("sessions (6.4)", () => {
+describe("sessions", () => {
   it("returns session summaries", async () => {
     const res = await sessionsGet(req());
     expect(res.status).toBe(200);

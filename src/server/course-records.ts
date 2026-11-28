@@ -40,7 +40,8 @@ export function isSession(v: unknown): v is Session {
 function latestWinterSession(sessions: readonly string[] = [...SESSIONS]): string {
   const winters = sessions.filter((s) => s.endsWith("W"));
   if (winters.length === 0) return sessions[sessions.length - 1] ?? "2025W";
-  return [...winters].sort().at(-1)!;
+  const latestWinter = [...winters].sort().at(-1);
+  return latestWinter ?? "2025W";
 }
 
 export function defaultSession(): Session {
@@ -93,9 +94,14 @@ function sanitizeId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
-/** Returns the course_sessions primary key for a bare "SUBJ NUM" code and session. */
+/** Returns the course_sessions primary key for a canonical Vancouver code and session. */
 export function courseRecordId(code: string, session: Session): string {
-  return sanitizeId(`${code}__${session}`);
+  const canonicalCode = code
+    .trim()
+    .toUpperCase()
+    .replace(/_V(?=\s|$)/, "")
+    .replace(/\s+/g, " ");
+  return sanitizeId(`${canonicalCode}__${session}`);
 }
 
 // Raw shape of grades/distributions.json (minimal fields we aggregate)
@@ -117,7 +123,13 @@ type DistRow = {
 };
 
 // Calendar subjects for faculty/title lookup (optional enrichment)
-export type SubjectRow = { id: string; name: string; description?: string | null };
+export type SubjectRow = {
+  id: string;
+  name: string;
+  description?: string | null;
+  tax_subject_faculty?: string | null;
+};
+export type FacultyRow = { id: string; name: string };
 export type CourseCalRow = {
   field_course_number: unknown;
   field_course_title?: string;
@@ -126,10 +138,10 @@ export type CourseCalRow = {
   related?: { course_code?: string };
 };
 
-function facultyOfSubject(subjectV: string, subjectRows: SubjectRow[]): string | null {
+function facultyOfSubject(subjectV: string, subjectRows: SubjectRow[], faculties: FacultyRow[]): string | null {
   const hit = subjectRows.find((s) => s.name === subjectV);
-  void hit;
-  return null;
+  if (!hit?.tax_subject_faculty) return null;
+  return faculties.find((faculty) => faculty.id === hit.tax_subject_faculty)?.name ?? null;
 }
 
 /**
@@ -141,6 +153,7 @@ export function buildRecordsFromDistributions(opts: {
   distRows: DistRow[];
   calCourses?: CourseCalRow[];
   calSubjects?: SubjectRow[];
+  calFaculties?: FacultyRow[];
 }): CourseRecord[] {
   const byKey = new Map<string, DistRow[]>();
   for (const r of opts.distRows) {
@@ -224,7 +237,7 @@ export function buildRecordsFromDistributions(opts: {
       level: parseLevel(code),
       title: rows[0]?.title ?? cal?.field_course_title ?? code,
       description: (cal?.description_text as string) ?? null,
-      faculty: facultyOfSubject(subject, opts.calSubjects ?? []),
+      faculty: facultyOfSubject(subject, opts.calSubjects ?? [], opts.calFaculties ?? []),
       session,
       term: null,
       credits: null,

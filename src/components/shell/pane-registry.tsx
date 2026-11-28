@@ -1,14 +1,29 @@
 "use client";
 
-import { CalendarPane } from "@/src/components/calendar/calendar-pane";
-import { CourseLookupPane } from "@/src/components/course-lookup/course-lookup-pane";
-import { DegreePlannerPane } from "@/src/components/degree-planner/degree-planner-pane";
 import { Icon, type IconName } from "@/src/components/icons";
-import { MapArea } from "@/src/components/map/map-panel";
-import { PrereqTreePane } from "@/src/components/prereq-tree/prereq-tree-pane";
-import { SchedulePlannerPane } from "@/src/components/schedule-planner/schedule-planner-pane";
 import type { PaneId, PaneState } from "@/src/shared/panes";
-import { useCallback, type ComponentType } from "react";
+import { lazy, useCallback, type ComponentType } from "react";
+
+const MapArea = lazy(() => import("@/src/components/map/map-panel").then((module) => ({ default: module.MapArea })));
+const CourseLookupPane = lazy(() =>
+  import("@/src/components/course-lookup/course-lookup-pane").then((module) => ({ default: module.CourseLookupPane })),
+);
+const DegreePlannerPane = lazy(() =>
+  import("@/src/components/degree-planner/degree-planner-pane").then((module) => ({
+    default: module.DegreePlannerPane,
+  })),
+);
+const SchedulePlannerPane = lazy(() =>
+  import("@/src/components/schedule-planner/schedule-planner-pane").then((module) => ({
+    default: module.SchedulePlannerPane,
+  })),
+);
+const CalendarPane = lazy(() =>
+  import("@/src/components/calendar/calendar-pane").then((module) => ({ default: module.CalendarPane })),
+);
+const PrereqTreePane = lazy(() =>
+  import("@/src/components/prereq-tree/prereq-tree-pane").then((module) => ({ default: module.PrereqTreePane })),
+);
 
 export type PaneEntry<S extends PaneState = PaneState> = {
   id: PaneId;

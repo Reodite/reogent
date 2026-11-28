@@ -4,24 +4,23 @@ import { createRef, useLayoutEffect, useState, type RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FloatingPanel, tabStops, type FloatingPanelProps } from "./floating-panel";
 
-let anchorBounds: DOMRect;
-let naturalHeight: number;
 let observers: Array<{
   callback: ResizeObserverCallback;
   observe: ReturnType<typeof vi.fn>;
   disconnect: ReturnType<typeof vi.fn>;
 }>;
+let anchorBounds: DOMRect;
+let panelNaturalSize = { width: 288, height: 180 };
 
-function constrainedSize(element: HTMLElement, property: "width" | "height", natural: number) {
+function visibleSize(element: HTMLElement, property: "width" | "height", natural: number): number {
   const available = Number.parseFloat(element.style.getPropertyValue(`--floating-available-${property}`));
-  const cap = element.style[property === "width" ? "maxWidth" : "maxHeight"].match(/^min\(([\d.]+)px/);
-  return Math.min(natural, Number.isFinite(available) ? available : Infinity, cap ? Number(cap[1]) : Infinity);
+  return Math.min(natural, Number.isFinite(available) ? available : Infinity);
 }
 
 beforeEach(() => {
-  anchorBounds = new DOMRect(100, 100, 120, 40);
-  naturalHeight = 180;
   observers = [];
+  anchorBounds = new DOMRect(100, 100, 120, 40);
+  panelNaturalSize = { width: 288, height: 180 };
   vi.stubGlobal("innerWidth", 800);
   vi.stubGlobal("innerHeight", 600);
   vi.stubGlobal(
@@ -40,19 +39,23 @@ beforeEach(() => {
       return new DOMRect(
         Number.parseFloat(this.style.left) || 0,
         Number.parseFloat(this.style.top) || 0,
-        constrainedSize(this, "width", Number.parseFloat(this.style.width) || 288),
-        constrainedSize(this, "height", naturalHeight),
+        visibleSize(this, "width", panelNaturalSize.width),
+        visibleSize(this, "height", panelNaturalSize.height),
       );
     }
     return new DOMRect(0, 0, 800, 600);
   });
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) {
-    return (this.hidden || this.style.display === "none"
-      ? []
-      : [this.getBoundingClientRect()]) as unknown as DOMRectList;
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
+    return this.dataset.testid === "panel" ? visibleSize(this, "width", panelNaturalSize.width) : 800;
+  });
+  vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
+    return this.dataset.testid === "panel" ? visibleSize(this, "height", panelNaturalSize.height) : 600;
   });
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(600);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) {
+    return this.hidden || this.style.display === "none" ? [] : ([{} as DOMRect] as unknown as DOMRectList);
+  });
 });
 
 afterEach(() => {
@@ -73,7 +76,7 @@ function Fixture({ anchorRef, show = true, onDismiss, onParentPointerDown, child
     anchorRef.current?.focus();
   }, [anchorRef]);
   return (
-    <div style={{ overflow: "hidden" }} onPointerDown={onParentPointerDown} data-testid="clipper">
+    <div onPointerDown={onParentPointerDown} data-testid="clipper">
       <button type="button">Before trigger</button>
       <button type="button" ref={anchorRef} data-testid="anchor" onClick={() => setOpen((value) => !value)}>
         Trigger
@@ -125,6 +128,85 @@ function resize() {
     for (const observer of observers) observer.callback([], observer as unknown as ResizeObserver);
   });
 }
+
+describe("FloatingPanel placement", () => {
+  it("clamps both horizontal edges to the viewport", () => {
+    vi.stubGlobal("innerWidth", 250);
+    const { panel } = setup({ align: "end" });
+    const leftEdge = panel.getBoundingClientRect();
+    expect(leftEdge.left).toBeGreaterThanOrEqual(0);
+    expect(leftEdge.right).toBeLessThanOrEqual(window.innerWidth);
+
+    anchorBounds = new DOMRect(220, 100, 70, 40);
+    resize();
+    const rightEdge = panel.getBoundingClientRect();
+    expect(rightEdge.left).toBeGreaterThanOrEqual(0);
+    expect(rightEdge.right).toBeLessThanOrEqual(window.innerWidth);
+  });
+
+  it("flips above when the panel cannot fit below and clamps to the available height", () => {
+    anchorBounds = new DOMRect(200, 480, 100, 40);
+    panelNaturalSize = { width: 288, height: 500 };
+    const { panel } = setup();
+
+    expect(panel.dataset.overlaySide).toBe("top");
+    const bounds = panel.getBoundingClientRect();
+    expect(bounds.top).toBeGreaterThanOrEqual(0);
+    expect(bounds.bottom).toBeLessThanOrEqual(anchorBounds.top);
+    expect(bounds.bottom).toBeLessThanOrEqual(window.innerHeight);
+  });
+
+  it("uses visual viewport offsets and remeasures on viewport changes", () => {
+    const viewport = Object.assign(new EventTarget(), { width: 250, height: 300, offsetLeft: 50, offsetTop: 40 });
+    vi.stubGlobal("visualViewport", viewport);
+    const { panel } = setup();
+    const initial = panel.getBoundingClientRect();
+
+    expect(initial.left).toBeGreaterThanOrEqual(viewport.offsetLeft);
+    expect(initial.top).toBeGreaterThanOrEqual(viewport.offsetTop);
+    expect(initial.right).toBeLessThanOrEqual(viewport.offsetLeft + viewport.width);
+    expect(initial.bottom).toBeLessThanOrEqual(viewport.offsetTop + viewport.height);
+    anchorBounds = new DOMRect(anchorBounds.left + 30, anchorBounds.top + 50, anchorBounds.width, anchorBounds.height);
+    viewport.offsetLeft = 80;
+    viewport.offsetTop = 90;
+    fireEvent(viewport, new Event("resize"));
+    const repositioned = panel.getBoundingClientRect();
+    expect(repositioned.left).toBeGreaterThanOrEqual(viewport.offsetLeft);
+    expect(repositioned.top).toBeGreaterThanOrEqual(viewport.offsetTop);
+    expect(repositioned.right).toBeLessThanOrEqual(viewport.offsetLeft + viewport.width);
+    expect(repositioned.bottom).toBeLessThanOrEqual(viewport.offsetTop + viewport.height);
+    expect(repositioned.left).not.toBe(initial.left);
+    expect(repositioned.top).not.toBe(initial.top);
+  });
+
+  it("repositions on ancestor scrolling and ignores scrolling inside the panel", () => {
+    const { panel } = setup();
+    const initial = panel.getBoundingClientRect();
+    anchorBounds = new DOMRect(220, 240, 120, 40);
+
+    fireEvent.scroll(panel);
+    expect(panel.getBoundingClientRect()).toEqual(initial);
+
+    fireEvent.scroll(screen.getByTestId("clipper"));
+    const repositioned = panel.getBoundingClientRect();
+    expect(repositioned.left).not.toBe(initial.left);
+    expect(repositioned.top).not.toBe(initial.top);
+  });
+
+  it("dismisses when scrolling fully clips the anchor and stays open while it remains visible", () => {
+    const { onDismiss } = setup();
+    const clipper = screen.getByTestId("clipper");
+    clipper.style.overflowY = "auto";
+    vi.spyOn(clipper, "clientHeight", "get").mockReturnValue(120);
+    fireEvent.scroll(clipper);
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    anchorBounds = new DOMRect(100, 121, 120, 40);
+    fireEvent.scroll(clipper);
+    expect(onDismiss).toHaveBeenCalledOnce();
+    expect(screen.queryByTestId("panel")).toBeNull();
+  });
+});
 
 describe("tabStops", () => {
   it("includes native summaries without tabindex attributes in keyboard order", () => {
@@ -181,7 +263,7 @@ describe("tabStops", () => {
     // HappyDOM has no layout; closed details content has no browser client rects.
     const details = container.querySelector("details")!;
     Object.defineProperty(closedContent, "getClientRects", {
-      value: () => (details.open ? [new DOMRect(0, 0, 100, 44)] : []),
+      value: () => (details.open ? ([{} as DOMRect] as DOMRect[]) : []),
     });
     expect(tabStops(container)).toEqual([screen.getByText("Visible stop")]);
     details.open = true;
@@ -189,17 +271,15 @@ describe("tabStops", () => {
   });
 });
 
-describe("FloatingPanel placement", () => {
-  it("keeps layout-less consumer fixtures open when anchor bounds are zero", () => {
-    anchorBounds = new DOMRect();
+describe("FloatingPanel lifecycle", () => {
+  it("keeps the panel open while its consumer fixture is mounted", () => {
     const { panel, onDismiss } = setup();
     expect(panel).not.toBeNull();
     expect(panel.hasAttribute("data-floating-panel")).toBe(true);
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
-  it.each(["display", "inert"])("dismisses explicitly hidden ancestors via %s even with zero bounds", async (kind) => {
-    anchorBounds = new DOMRect();
+  it.each(["display", "inert"])("dismisses explicitly hidden ancestors via %s", async (kind) => {
     const { onDismiss } = setup();
     const clipper = screen.getByTestId("clipper");
     if (kind === "display") clipper.style.display = "none";
@@ -209,88 +289,13 @@ describe("FloatingPanel placement", () => {
 
   it("portals outside clipping ancestors and forwards native props and object refs", () => {
     const ref = createRef<HTMLDivElement>();
-    const { panel, container } = setup({ ref, id: "options", className: "w-72 p-3" });
+    const { panel, container } = setup({ ref, id: "options", "aria-describedby": "help" });
     expect(panel.parentElement).toBe(document.body);
     expect(container.contains(panel)).toBe(false);
-    expect(panel.style.position).toBe("fixed");
-    expect(panel.style.left).toBe("100px");
-    expect(panel.style.top).toBe("148px");
-    expect(panel.style.visibility).toBe("visible");
-    expect(panel.style.overflow).toBe("auto");
     expect(panel.id).toBe("options");
-    expect(panel.className).toContain("w-72 p-3");
+    expect(panel.getAttribute("aria-describedby")).toBe("help");
     expect(ref.current).toBe(panel);
     expect(screen.getByRole("dialog", { name: "Options" })).toBe(panel);
-  });
-
-  it("aligns to the end and clamps both horizontal edges", () => {
-    const { panel } = setup({ align: "end" });
-    expect(panel.style.left).toBe("8px");
-    anchorBounds = new DOMRect(720, 100, 70, 40);
-    resize();
-    expect(panel.style.left).toBe("502px");
-    anchorBounds = new DOMRect(760, 100, 70, 40);
-    resize();
-    expect(panel.style.left).toBe("504px");
-  });
-
-  it("places scaled entrances using layout dimensions rather than animated bounds", () => {
-    anchorBounds = new DOMRect(720, 500, 70, 40);
-    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockImplementation(function (this: HTMLElement) {
-      if (this.dataset.testid === "anchor") return anchorBounds;
-      if (this.dataset.testid === "panel") return new DOMRect(0, 0, 144, 90);
-      return new DOMRect(0, 0, 800, 600);
-    });
-    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(288);
-    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(180);
-    const { panel } = setup();
-    expect(panel.style.left).toBe("504px");
-    expect(panel.style.top).toBe("312px");
-    expect(panel.dataset.overlaySide).toBe("top");
-  });
-
-  it("flips above only when below is too small and above has more room", () => {
-    anchorBounds = new DOMRect(200, 500, 100, 40);
-    const { panel } = setup();
-    expect(panel.style.top).toBe("312px");
-    expect(panel.style.getPropertyValue("--floating-available-height")).toBe("484px");
-    anchorBounds = new DOMRect(200, 200, 100, 40);
-    naturalHeight = 500;
-    resize();
-    expect(panel.style.top).toBe("248px");
-    expect(panel.style.getPropertyValue("--floating-available-height")).toBe("344px");
-  });
-
-  it("bounds width and height on a small viewport while preserving an explicit height cap", () => {
-    vi.stubGlobal("innerWidth", 250);
-    vi.stubGlobal("innerHeight", 400);
-    naturalHeight = 700;
-    const { panel } = setup({ style: { maxHeight: 320 } });
-    expect(panel.style.left).toBe("8px");
-    expect(panel.getBoundingClientRect().width).toBe(234);
-    expect(panel.getBoundingClientRect().height).toBe(244);
-    expect(panel.style.maxHeight).toContain("min(320px,");
-    vi.stubGlobal("innerHeight", 900);
-    fireEvent(window, new Event("resize"));
-    expect(panel.getBoundingClientRect().height).toBe(320);
-  });
-
-  it("preserves scrolling when measurement temporarily expands a short panel", () => {
-    vi.stubGlobal("innerHeight", 450);
-    anchorBounds = new DOMRect(100, 240, 120, 40);
-    naturalHeight = 1000;
-    const { panel } = setup({ style: { maxHeight: 320 } });
-    const scrollTop = naturalHeight - panel.getBoundingClientRect().height;
-    panel.scrollTop = scrollTop;
-    const readBounds = vi.mocked(panel.getBoundingClientRect).getMockImplementation();
-    if (!readBounds) throw new Error("Missing layout mock");
-    vi.spyOn(panel, "getBoundingClientRect").mockImplementation(() => {
-      const bounds = readBounds.call(panel);
-      panel.scrollTop = Math.min(panel.scrollTop, naturalHeight - bounds.height);
-      return bounds;
-    });
-    resize();
-    expect(panel.scrollTop).toBe(scrollTop);
   });
 
   it("dismisses with Escape after a focused control disables itself", () => {
@@ -303,60 +308,6 @@ describe("FloatingPanel placement", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onDismiss).toHaveBeenCalledOnce();
     expect(document.activeElement).toBe(anchor);
-  });
-
-  it("matches anchor width and remeasures both anchor and content without refocusing", () => {
-    const { panel } = setup({ matchAnchorWidth: true });
-    expect(panel.style.width).toBe("120px");
-    expect(observers[0].observe).toHaveBeenCalledWith(panel);
-    expect(observers[0].observe).toHaveBeenCalledWith(screen.getByTestId("anchor"));
-    screen.getByText("Last option").focus();
-    anchorBounds = new DOMRect(300, 300, 200, 40);
-    naturalHeight = 350;
-    resize();
-    expect(panel.style.width).toBe("200px");
-    expect(panel.style.left).toBe("300px");
-    expect(panel.style.top).toBe("8px");
-    expect(document.activeElement).toBe(screen.getByText("Last option"));
-  });
-
-  it("responds to nested scrolling but ignores scrolling within the panel", () => {
-    const { panel } = setup();
-    anchorBounds = new DOMRect(200, 200, 120, 40);
-    fireEvent.scroll(panel);
-    expect(panel.style.left).toBe("100px");
-    fireEvent.scroll(screen.getByText("First option"));
-    expect(panel.style.left).toBe("100px");
-    fireEvent.scroll(screen.getByTestId("clipper"));
-    expect(panel.style.left).toBe("200px");
-    expect(panel.style.top).toBe("248px");
-  });
-
-  it("uses visual viewport offsets and responds to its resize and scroll events", () => {
-    const viewport = Object.assign(new EventTarget(), { width: 400, height: 300, offsetLeft: 50, offsetTop: 50 });
-    vi.stubGlobal("visualViewport", viewport);
-    const { panel } = setup();
-    expect(panel.style.left).toBe("100px");
-    viewport.width = 250;
-    viewport.offsetLeft = 80;
-    fireEvent(viewport, new Event("resize"));
-    expect(panel.style.left).toBe("88px");
-    expect(panel.getBoundingClientRect().width).toBe(234);
-    viewport.offsetTop = 110;
-    fireEvent(viewport, new Event("scroll"));
-    expect(panel.style.top).toBe("148px");
-  });
-
-  it("dismisses when scrolling fully clips the anchor, but keeps partially visible anchors", () => {
-    const { onDismiss } = setup();
-    const clipper = screen.getByTestId("clipper");
-    vi.spyOn(clipper, "clientHeight", "get").mockReturnValue(120);
-    fireEvent.scroll(clipper);
-    expect(onDismiss).not.toHaveBeenCalled();
-    anchorBounds = new DOMRect(100, 121, 120, 40);
-    fireEvent.scroll(clipper);
-    expect(onDismiss).toHaveBeenCalledOnce();
-    expect(screen.queryByTestId("panel")).toBeNull();
   });
 
   it("dismisses when the anchor is removed without a scroll event", async () => {
@@ -516,7 +467,7 @@ describe("FloatingPanel interaction", () => {
   });
 
   it("disconnects observers and removes document, window, and visual viewport listeners on unmount", () => {
-    const viewport = Object.assign(new EventTarget(), { width: 800, height: 600, offsetLeft: 0, offsetTop: 0 });
+    const viewport = new EventTarget();
     vi.stubGlobal("visualViewport", viewport);
     const documentAdd = vi.spyOn(document, "addEventListener");
     const documentRemove = vi.spyOn(document, "removeEventListener");

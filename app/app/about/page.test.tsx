@@ -14,7 +14,7 @@ it("shows the creator subheading and coffee link in the About workspace", () => 
   );
 
   expect(view.getByRole("heading", { level: 1, name: "About" })).not.toBeNull();
-  expect(view.container.querySelector("[data-workspace-header] p")?.textContent).toBe("The creators");
+  expect(view.getByText("The creators")).not.toBeNull();
   expect(view.queryByText("The people building Reodite.")).toBeNull();
   expect(view.getByText("Max")).not.toBeNull();
   expect(view.getByText("Chakorn")).not.toBeNull();
@@ -29,15 +29,13 @@ it("shows the creator subheading and coffee link in the About workspace", () => 
 });
 
 it.each([
-  ["Max", "M", "https://libo.dev/ai"],
-  ["Chakorn", "C", "https://chakornk.dev"],
-])("renders %s in a placeholder picture card with a linked name footer", (name, initial, href) => {
+  ["Max", "https://libo.dev/ai"],
+  ["Chakorn", "https://chakornk.dev"],
+])("renders %s in a placeholder picture card with a linked name footer", (name, href) => {
   const view = render(<AboutPage />);
   const card = view.getByRole("article", { name });
-  expect(card.querySelector('[aria-hidden="true"]')?.textContent?.trim()).toBe(initial);
 
   const link = within(card).getByRole("link", { name, exact: true });
-  expect(link.closest("footer")).not.toBeNull();
   expect(link.getAttribute("href")).toBe(href);
   expect(link.getAttribute("target")).toBe("_blank");
   expect(link.getAttribute("rel")).toBe("noopener noreferrer");

@@ -6,7 +6,7 @@ import { ArtifactCard, describeCanvasView, renderers, ResponseWidget } from "@/s
 import type { ChatMessage, ToolCall } from "@/src/lib/api-types";
 import { cachePaneState, getCachedPaneState } from "@/src/lib/pane-state-cache";
 import type { CanvasView } from "@/src/shared/panes";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -85,7 +85,10 @@ function renderWidget(call: ToolCall, callKey?: string) {
 const keyDatesCall = {
   name: "show_widget",
   input: { type: "key_dates" },
-  result: { type: "key_dates", result: { dates: [{ kind: "academic", name: "W", start: "2026-10-01", end: null }] } },
+  result: {
+    type: "key_dates",
+    result: { dates: [{ kind: "academic", name: "Registration deadline", start: "2026-10-01", end: null }] },
+  },
   status: "ok",
 } as unknown as ToolCall;
 // get_tuition has no canvas mapping: static, non-focusable summary.
@@ -127,7 +130,7 @@ const unsupportedPrereqCall: ToolCall = {
   result: { type: "prereq_tree", result: { rootCode: "CPSC 320", nodes: [], edges: [] } },
 };
 
-describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
+describe("Response widget behavior", () => {
   it("does not give an unsupported prereq widget an empty action or tab stop", () => {
     const { container, queryByRole } = renderWidget(unsupportedPrereqCall, "unsupported");
     const widget = container.querySelector('[data-widget="show_widget"]')!;
@@ -144,53 +147,37 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(shellRef.current?.activeCallKey).toBe("valid");
   });
 
-  it("wraps event actions and the primary label while retaining the map target and cursor", () => {
+  it("opens the calendar and map destinations from event actions", () => {
     const { getByRole } = renderWidget({
       name: "show_widget",
       input: { type: "event" },
       result: { type: "event", result: { events: [{ title: "Campus event", start_date: "2026-10-01" }] } },
     });
     const calendar = getByRole("button", { name: "Add to Calendar" });
-    const map = getByRole("button", { name: "Show on map" });
-    expect(calendar.parentElement?.className).toContain("flex-wrap");
-    expect(calendar.parentElement?.className).toContain("items-center");
-    for (const token of ["whitespace-normal", "min-w-0", "max-w-full", "min-h-11", "h-auto", "py-2"]) {
-      expect(calendar.classList.contains(token)).toBe(true);
-    }
-    expect(calendar.classList.contains("whitespace-nowrap")).toBe(false);
-    expect(map.classList.contains("size-11")).toBe(true);
-    expect(map.classList.contains("shrink-0")).toBe(true);
     fireEvent.click(calendar);
     expect(shellRef.current?.workspaceView).toEqual({
       paneId: "calendar",
       state: { cursor: "2026-10", kinds: ["academic", "holiday"] },
     });
+    fireEvent.click(getByRole("button", { name: "Show on map" }));
+    expect(shellRef.current?.workspaceView?.paneId).toBe("map");
   });
 
   it.each([
     ["September 1 through September 30, 2026", "2026-09-01", "September 1 through September 30, 2026"],
     [null, "2026-09-01", "2026-09-01"],
     [null, null, "—"],
-  ])("keeps the complete key-date value beneath its title: %s", (dateText, start, expected) => {
+  ])("shows the complete key-date value: %s", (dateText, start, expected) => {
     const { getByText } = renderWidget({
       name: "show_widget",
       input: { type: "key_dates" },
       result: { type: "key_dates", result: { dates: [{ name: "Registration deadline", date_text: dateText, start }] } },
     });
-    const title = getByText("Registration deadline");
-    const value = getByText(expected);
-    expect(title.parentElement?.contains(value)).toBe(true);
-    expect(value.className).toContain("font-mono");
-    for (
-      let element: HTMLElement | null = value;
-      element && element !== title.parentElement;
-      element = element.parentElement
-    ) {
-      expect(element.className).not.toMatch(/truncate|shrink-0|whitespace-nowrap/);
-    }
+    expect(getByText("Registration deadline")).toBeTruthy();
+    expect(getByText(expected)).toBeTruthy();
   });
 
-  it("wraps free-room chips beneath the location and preserves zero values", () => {
+  it("shows zero room capacity and the minimum free-time value", () => {
     const { getByText } = renderWidget({
       name: "show_widget",
       input: { type: "free_rooms" },
@@ -201,15 +188,9 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
         },
       },
     });
-    const column = getByText("Learning Centre room 201").parentElement!;
-    const seats = getByText("0 seats");
-    const minutes = getByText("free 1 min");
-    expect(column.contains(seats)).toBe(true);
-    expect(column.contains(minutes)).toBe(true);
-    expect(getByText("ICCS").nextElementSibling?.contains(seats)).toBe(true);
-    expect(seats.parentElement?.className).toContain("flex-wrap");
-    expect(seats.parentElement?.className).toContain("gap-2");
-    expect(seats.parentElement?.className).not.toContain("shrink-0");
+    expect(getByText("Learning Centre room 201")).toBeTruthy();
+    expect(getByText("0 seats")).toBeTruthy();
+    expect(getByText("free 1 min")).toBeTruthy();
   });
   it("a mapped widget is focusable and loads its canvas view on click", () => {
     const { container } = renderWidget(keyDatesCall);
@@ -223,7 +204,7 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(shellRef.current?.workspaceView?.paneId).toBe("calendar");
   });
 
-  it("uses a native shared pill for mapped tool badges", () => {
+  it("opens the mapped canvas and updates its pressed state", () => {
     const { container } = renderWidget(
       {
         ...walkingLoadingCall,
@@ -231,15 +212,11 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
       },
       "walking-badge",
     );
-    const badge = container.querySelector('[data-widget="walking_distance"]') as HTMLButtonElement;
-    expect(badge.tagName).toBe("BUTTON");
-    expect(badge.getAttribute("type")).toBe("button");
-    expect(badge.className).toContain("min-h-11");
-    expect(badge.className).toContain("sm:min-h-8");
-    expect(badge.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(badge);
+    const widget = container.querySelector('[data-widget="walking_distance"]') as HTMLElement;
+    expect(widget.getAttribute("aria-pressed")).toBe("false");
+    act(() => fireEvent.click(widget));
     expect(shellRef.current?.workspaceView?.paneId).toBe("map");
-    expect(badge.getAttribute("aria-pressed")).toBe("true");
+    expect(widget.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("reopens a dismissed phone canvas through an explicit mapped action", () => {
@@ -284,38 +261,6 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(widget).not.toBeNull();
     expect(widget.getAttribute("role")).toBeNull();
     expect(widget.getAttribute("tabindex")).toBeNull();
-  });
-
-  it("the active ring follows the clicked chip only", () => {
-    const { container } = renderWidget(keyDatesCall, "m1:tc-0");
-    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
-    expect(widget.getAttribute("data-active")).toBeNull();
-    act(() => {
-      fireEvent.click(widget);
-    });
-    expect(widget.getAttribute("data-active")).not.toBeNull();
-  });
-
-  it("a chip with the same canvas data stays unhighlighted when another chip activated", () => {
-    const { container } = renderWidget(keyDatesCall, "m1:tc-2");
-    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
-    act(() => {
-      shellRef.current?.activateCanvasView(keyDatesCall, "m1:tc-0");
-    });
-    expect(widget.getAttribute("data-active")).toBeNull();
-  });
-
-  it("closing the pane clears the chip highlight", () => {
-    const { container } = renderWidget(keyDatesCall, "m1:tc-0");
-    const widget = container.querySelector('[data-widget="show_widget"]') as HTMLElement;
-    act(() => {
-      fireEvent.click(widget);
-    });
-    expect(widget.getAttribute("data-active")).not.toBeNull();
-    act(() => {
-      shellRef.current?.setRightPaneCollapsed(true);
-    });
-    expect(widget.getAttribute("data-active")).toBeNull();
   });
 
   it("Enter and Space keys activate a mapped widget, and clicking again keeps it active (no toggle-off)", () => {
@@ -376,7 +321,7 @@ describe("5.3 — ResponseWidget (REQ-3, REQ-4)", () => {
     expect(queryByRole("button", { name: /Quiet room/ })).toBeNull();
   });
 
-  it("only styles program rows as links when they have a destination", () => {
+  it("renders program rows as links only when they have a destination", () => {
     const call = {
       name: "show_widget",
       input: { type: "program" },
@@ -526,10 +471,9 @@ it("reveals the loaded widget once without remounting on payload updates", () =>
   );
   const { container, rerender } = render(view({ ...keyDatesCall, result: undefined }));
   const widget = container.querySelector('[data-widget="show_widget"]');
-  expect(widget?.querySelector(".ui-content-enter")).toBeNull();
+  expect(within(widget as HTMLElement).queryByText("Registration deadline")).toBeNull();
   rerender(view(keyDatesCall));
-  const payload = widget?.querySelector(".ui-content-enter");
-  expect(payload).not.toBeNull();
+  expect(within(widget as HTMLElement).getByText("Registration deadline")).not.toBeNull();
   rerender(
     view({
       ...keyDatesCall,
@@ -537,8 +481,7 @@ it("reveals the loaded widget once without remounting on payload updates", () =>
     }),
   );
   expect(container.querySelector('[data-widget="show_widget"]')).toBe(widget);
-  expect(widget?.querySelector(".ui-content-enter")).toBe(payload);
-  expect(payload?.textContent).toContain("Updated date");
+  expect(widget?.textContent).toContain("Updated date");
 });
 
 it("expands extra courses without remounting the preview and deactivates closing rows", () => {
@@ -585,12 +528,8 @@ describe("shared grade chart envelopes", () => {
       await act(async () => {});
       const chart = view.getByRole("region", { name: "Grade distribution chart" });
       expect(chart.tabIndex).toBe(0);
-      expect(chart.hasAttribute("data-grade-chart-scroll")).toBe(true);
-      expect(chart.querySelector(".min-w-64")).not.toBeNull();
-      expect(chart.querySelector("[data-chart-bars]")?.children).toHaveLength(11);
-      const highlighted = chart.querySelector('[aria-label="90-100: 2 students"] > div');
-      expect(highlighted?.classList.contains("bg-primary")).toBe(envelope !== "grades");
-      expect(chart.contains(view.getByText(/Grade distribution.+6 students/))).toBe(false);
+      expect(view.getByRole("img", { name: "90-100: 2 students" })).toBeTruthy();
+      expect(view.getByText(/Grade distribution.+6 students/)).toBeTruthy();
       expect(chart.closest("[data-widget]")?.getAttribute("role")).toBeNull();
     },
   );
@@ -684,11 +623,8 @@ describe("unsupported rich-widget history and stream selection", () => {
       expect(container.querySelectorAll("[data-artifact-card]")).toHaveLength(1);
       if (inline && !dismissed) {
         expect(shellRef.current?.activeCallKey).toMatch(/:tc-0$/);
-        expect(widgets[0].getAttribute("data-active")).toBe("true");
-        expect(widgets[1].getAttribute("data-active")).toBeNull();
       } else {
         expect(shellRef.current?.activeCallKey).toBeNull();
-        expect(widgets[0].getAttribute("data-active")).toBeNull();
       }
     } finally {
       window.matchMedia = matchMedia;

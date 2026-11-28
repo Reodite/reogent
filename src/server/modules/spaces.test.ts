@@ -106,4 +106,24 @@ describe("find_study_spaces bookable mode", () => {
     await expect(tool.execute({ kind: "bookable", date: "tomorrow" }, search)).rejects.toThrow(/YYYY-MM-DD/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("rejects impossible calendar dates before fetching", async () => {
+    const fetchMock = stubGrid();
+    await expect(tool.execute({ kind: "bookable", date: "2026-02-30" }, search)).rejects.toThrow(/YYYY-MM-DD/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts valid leap dates", async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+      Response.json({
+        slots: [
+          { ...slot(1, "10:00", "10:15"), start: "2028-02-29 10:00:00", end: "2028-02-29 10:15:00" },
+          { ...slot(1, "10:15", "10:30"), start: "2028-02-29 10:15:00", end: "2028-02-29 10:30:00" },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await tool.execute({ kind: "bookable", date: "2028-02-29" }, search);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
 });

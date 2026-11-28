@@ -114,7 +114,7 @@ describe("entrance marker geometry", () => {
     expect(visibleEntranceMarkers(markers, 16, new Set())).toHaveLength(2);
   });
 
-  // Feature: campus-map-explorer, Property 4: Entrance markers preserve verified geometry bounds.
+  // Checks that generated entrance markers stay within valid geometry bounds.
   it("keeps generated rectangular-building markers finite, bounded, and vertical", () => {
     fc.assert(
       fc.property(

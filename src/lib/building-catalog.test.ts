@@ -116,7 +116,7 @@ describe("building catalog", () => {
     selector: (item) => item.code,
   });
 
-  // Feature: campus-map-explorer, Property 1: Building search is deterministic, unique, and bounded.
+  // Checks that building search is deterministic, unique, and bounded.
   it("keeps building search deterministic, unique, and bounded", () => {
     fc.assert(
       fc.property(catalogArbitrary, fc.integer({ min: 0, max: 30 }), fc.nat(), (catalog, limit, index) => {
@@ -131,7 +131,7 @@ describe("building catalog", () => {
     );
   });
 
-  // Feature: campus-map-explorer, Property 2: Selected-building URLs round-trip.
+  // Checks that selected-building URLs round-trip.
   it("round-trips selected building URLs", () => {
     fc.assert(
       fc.property(catalogArbitrary, fc.nat(), (catalog, index) => {

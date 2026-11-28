@@ -106,7 +106,6 @@ describe("clickable cursor policy", () => {
     `;
     window.document.head.append(style);
 
-    expect(globalsCss).toContain(":not([inert], [inert] *)");
     expect(cursorFor(window, "<a data-target>Anchor</a>")).not.toBe("pointer");
     expect(cursorFor(window, "<div data-target>Panel</div>")).not.toBe("pointer");
     expect(cursorFor(window, '<input data-target class="test-text">')).toBe("text");

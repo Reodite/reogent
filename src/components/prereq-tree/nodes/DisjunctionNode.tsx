@@ -39,7 +39,7 @@ export interface EitherOrData {
   onChange: (idx: number) => void;
 }
 
-/** `Or` node rendered "one of A, B, C" (REQ-9.1). Custom dropdown — not
+/** `Or` node rendered "one of A, B, C". Custom dropdown — not
  *  `<select>` — so the open menu lives inside the node's transformed
  *  container and inherits the canvas zoom (native popups escape the
  *  transform). */
@@ -96,7 +96,7 @@ export function DropdownDisjunctionNode({ id, data }: NodeProps<DisjunctionData>
     return () => observer.disconnect();
   }, [open, zoom]);
 
-  // Outside-pointerdown + Escape dismiss (REQ-20.6). Capture-phase
+  // Outside-pointerdown + Escape dismiss. Capture-phase
   // pointerdown so ReactFlow's pan handler can't preventDefault the
   // synthesized event first; plain keydown for Escape.
   useEffect(() => {
@@ -166,7 +166,7 @@ export function DropdownDisjunctionNode({ id, data }: NodeProps<DisjunctionData>
             style={menuStyle}
             // `nowheel` is ReactFlow's built-in opt-out: wheel events inside
             // this element reach the menu's `overflow:auto` instead of
-            // turning into canvas zoom (REQ-9.1).
+            // turning into canvas zoom.
             className="nowheel neu-raised bg-surface text-on-surface absolute top-full left-0 z-10 max-h-[200px] min-w-[160px] overflow-auto rounded-lg p-1"
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}

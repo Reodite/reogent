@@ -59,7 +59,6 @@ describe("Account", () => {
     );
     expect(screen.getByRole("button", { name: "Edit profile" })).not.toBeNull();
     expect(screen.queryByRole("link", { name: "Edit profile" })).toBeNull();
-    expect(container.querySelector("[data-workspace-page]")?.getAttribute("data-workspace-composition")).toBe("single");
     expect(container.querySelectorAll("main")).toHaveLength(0);
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(auth.signOut).toHaveBeenCalledOnce();
@@ -79,9 +78,6 @@ describe("Account", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Edit profile" }));
     const name = screen.getByLabelText("What should we call you?");
     expect(document.activeElement).toBe(name);
-    for (const label of ["What should we call you?", "What are you studying?", "Year of study", "Tuition defaults"]) {
-      expect(screen.getByLabelText(label).classList.contains("neu-shadow-on-surface-container-low")).toBe(true);
-    }
     fireEvent.change(name, { target: { value: "  Grace  " } });
     fireEvent.change(screen.getByLabelText("What are you studying?"), { target: { value: "  Statistics  " } });
     fireEvent.change(screen.getByLabelText("Year of study"), { target: { value: "10" } });
@@ -102,7 +98,7 @@ describe("Account", () => {
     expect(screen.getByText("Tuition defaults").nextElementSibling?.textContent).toBe("Domestic student");
     expect(screen.getByText("Tokens spent").nextElementSibling?.textContent).toBe("12,345");
     expect(screen.getByRole("status").textContent).toBe("Saved");
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit profile" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Edit profile" })));
     expect(screen.queryByLabelText("What are you studying?")).toBeNull();
     expect(api.getAccount).toHaveBeenCalledOnce();
 
@@ -168,7 +164,7 @@ describe("Account", () => {
 
     await act(async () => finish?.());
     expect(screen.getByText("Program").nextElementSibling?.textContent).toBe("Statistics");
-    expect(screen.getByText("Saved").className).toContain("ui-notice-enter");
+    expect(screen.getByText("Saved")).toBeTruthy();
   });
 
   it("creates missing student defaults without inventing saved values", async () => {

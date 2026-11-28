@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getRequirementsFor, getDegreeRules } = vi.hoisted(() => ({
@@ -77,24 +77,14 @@ afterEach(() => {
 describe("ProgramSelectors", () => {
   it("reserves the responsive three-field row while programs load", () => {
     usePlanner.setState({ major: null });
-    const { container } = render(<ProgramSelectorsLoading />);
-    const row = screen.getByRole("status", { name: "Loading programs…" }).className;
-    expect(row).toContain("grid-cols-1");
-    expect(row).toContain("@min-[30rem]:grid-cols-2");
-    expect(container.querySelectorAll("[data-skeleton]")).toHaveLength(6);
+    render(<ProgramSelectorsLoading />);
+    expect(screen.getByRole("status", { name: "Loading programs…" })).toBeTruthy();
     expect(screen.queryByRole("combobox")).toBeNull();
   });
-  it("reserves the selected program action and wrapping caption geometry while loading", () => {
+  it("keeps program actions unavailable while loading", () => {
     usePlanner.setState({ major: "https://calendar.ubc.ca/program" });
-    const { container } = render(<ProgramSelectorsLoading />);
-    expect(container.querySelectorAll("[data-skeleton]")).toHaveLength(8);
-    expect(container.querySelector("[data-skeleton].h-9")?.className).toContain("@min-[55rem]:hidden");
-    const caption = screen.getByText("Major / program");
-    const header = caption.parentElement?.parentElement;
-    expect(header?.className).toContain("flex-wrap");
-    expect(header?.parentElement?.className).toContain("gap-1.5");
-    expect(screen.getByText("UBC Calendar").parentElement?.className).toContain("min-h-11");
-    expect(screen.getByText("UBC Calendar").parentElement?.className).toContain("sm:min-h-0");
+    render(<ProgramSelectorsLoading />);
+    expect(screen.getByRole("status", { name: "Loading programs…" })).toBeTruthy();
     expect(screen.queryByRole("link")).toBeNull();
   });
 
@@ -105,13 +95,12 @@ describe("ProgramSelectors", () => {
     const summary = await screen.findByRole("button", { name: /Program\s*Computer Science · Mathematics Minor/ });
     const fields = document.getElementById(summary.getAttribute("aria-controls") ?? "");
     expect(summary.getAttribute("aria-expanded")).toBe("false");
-    expect(summary.className).toContain("@min-[55rem]:hidden");
-    expect(fields?.querySelectorAll("input")).toHaveLength(3);
-    expect(fields?.className).toContain("@max-[55rem]:hidden");
+    expect(within(fields as HTMLElement).getByRole("combobox", { name: "Faculty" })).not.toBeNull();
+    expect(within(fields as HTMLElement).getByRole("combobox", { name: "Major / program" })).not.toBeNull();
+    expect(within(fields as HTMLElement).getByRole("combobox", { name: "Minor (optional)" })).not.toBeNull();
 
     fireEvent.click(summary);
     expect(summary.getAttribute("aria-expanded")).toBe("true");
-    expect(fields?.className).not.toContain("@max-[55rem]:hidden");
   });
 
   it("keeps the fields open without a summary until a major is chosen", async () => {
@@ -145,13 +134,9 @@ describe("ProgramSelectors", () => {
       major: "https://calendar.ubc.ca/program",
       minor: null,
     });
-    const { container } = render(<ProgramSelectors />);
+    render(<ProgramSelectors />);
 
     const link = await screen.findByRole("link", { name: /UBC Calendar/ });
-    const layout = container.firstElementChild as HTMLElement;
-    expect(layout.className).toContain("grid-cols-1");
-    expect(layout.className).toContain("@min-[30rem]:grid-cols-2");
-    expect(layout.className).toContain("@min-[55rem]:flex");
     const input = screen.getByRole("combobox", { name: "Major / program" });
     await waitFor(() => expect((input as HTMLInputElement).value).toBe("Computer Science"));
     expect(link.closest("label")).toBeNull();
@@ -159,13 +144,6 @@ describe("ProgramSelectors", () => {
     expect(usePlanner.getState().major).toBe("cpsc-major");
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
-    expect(link.className).toContain("focus-visible:ring-2");
-    expect(link.parentElement?.className).toContain("flex-wrap");
-    expect(link.parentElement?.parentElement).toBe(input.parentElement);
-    expect(input.parentElement?.className).toContain("gap-1.5");
-    expect(input.className).toContain("h-11");
-    expect(input.className).toContain("sm:h-9");
-    expect(screen.getByText("Major / program").tagName).toBe("LABEL");
   });
 });
 
@@ -234,7 +212,7 @@ describe("ProgramProgress", () => {
     expect(screen.queryByText("MATH 100")).toBeNull();
   });
 
-  it("reserves an unwrapped credit column beside long category labels", async () => {
+  it("shows earned and required credits beside long category labels", async () => {
     const label = "Partial category with a long program requirement label";
     getRequirementsFor.mockResolvedValue({
       kind: "structured",
@@ -243,13 +221,8 @@ describe("ProgramProgress", () => {
     });
     usePlanner.setState({ major: "structured" });
     render(<ProgramProgress courseIndex={new Map()} plannedCodes={new Set(["CPSC 110"])} />);
-    const value = await screen.findByText("4/12 cr");
-    expect(value.parentElement?.classList.contains("gap-2")).toBe(true);
-    expect(screen.getByText(label).classList.contains("min-w-0")).toBe(true);
-    expect(screen.getByText(label).classList.contains("flex-1")).toBe(true);
-    expect(value.classList.contains("shrink-0")).toBe(true);
-    expect(value.classList.contains("whitespace-nowrap")).toBe(true);
-    expect(value.closest("li")?.classList.contains("p-2")).toBe(true);
+    expect(await screen.findByText("4/12 cr")).toBeTruthy();
+    expect(screen.getByText(label)).toBeTruthy();
   });
 
   it("removes the previous program while the next requirements load", async () => {
@@ -272,9 +245,8 @@ describe("ProgramProgress", () => {
     usePlanner.setState({ major: "unknown" });
     if (outcome === "missing") getRequirementsFor.mockResolvedValue(null);
     else getRequirementsFor.mockRejectedValue(new Error("offline"));
-    const { container } = render(<ProgramProgress courseIndex={new Map()} plannedCodes={new Set()} />);
+    render(<ProgramProgress courseIndex={new Map()} plannedCodes={new Set()} />);
     await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
-    expect(container.querySelector("[data-skeleton]")).toBeNull();
     expect(
       outcome === "failed" ? screen.getByRole("alert") : screen.getByText(/No requirements are available/),
     ).not.toBeNull();

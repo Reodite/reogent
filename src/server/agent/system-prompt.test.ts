@@ -24,16 +24,26 @@ const CITATIONS: Citation[] = [
 const CONTRACT_MARKER = "bracketed index like";
 const emptyMsgs = [{ role: "user" as const, content: [{ text: "hi" }] }];
 
-const anthRec = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
+const anthRec = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>>, options: [] as unknown[] }));
 const oaiRec = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
+const oaiOptions = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
 const googleRec = vi.hoisted(() => ({ calls: [] as Array<Record<string, unknown>> }));
 
 vi.mock("@anthropic-ai/sdk", () => ({
   default: class {
     messages = {
-      async create(req: Record<string, unknown>) {
+      async create(req: Record<string, unknown>, options?: unknown) {
         anthRec.calls.push(req);
+        anthRec.options.push(options);
         return { content: [{ type: "text", text: "ok" }], stop_reason: "end_turn" };
+      },
+      stream(req: Record<string, unknown>, options?: unknown) {
+        anthRec.calls.push(req);
+        anthRec.options.push(options);
+        const stream = (async function* () {
+          yield { type: "message_stop" };
+        })();
+        return Object.assign(stream, { abort: vi.fn(), finalMessage: async () => ({ usage: {} }) });
       },
     };
   },
@@ -43,8 +53,9 @@ vi.mock("openai", () => ({
   default: class {
     chat = {
       completions: {
-        async create(req: Record<string, unknown>) {
+        async create(req: Record<string, unknown>, options?: Record<string, unknown>) {
           oaiRec.calls.push(req);
+          oaiOptions.calls.push(options ?? {});
           return { choices: [{ message: { content: "ok" }, finish_reason: "stop" }] };
         },
       },
@@ -173,14 +184,14 @@ describe("source retrieval and attribution", () => {
   });
 });
 
-describe("15.12 SYSTEM_PROMPT contract paragraph verbatim", () => {
+describe("system prompt attribution guidance", () => {
   it("includes the [N] attribution sentence verbatim", () => {
     expect(SYSTEM_PROMPT).toContain("attribute every tool result you relied on with a bracketed index like [1], [2]");
     expect(SYSTEM_PROMPT).toContain("Sources this turn");
   });
 });
 
-describe("15.10 Per-provider system-prompt parity smoke", () => {
+describe("provider system prompt forwarding", () => {
   it("Anthropic forwards the system string (contract + live citation list) to its SDK verbatim", async () => {
     const adapter = createAnthropicAdapter();
     await adapter.converse({ messages: emptyMsgs, system, toolSpecs: [] });
@@ -216,5 +227,20 @@ describe("15.10 Per-provider system-prompt parity smoke", () => {
     expect(anthRec.calls[0].system).toBe(system);
     expect((oaiRec.calls[0].messages as Array<{ content: string }>)[0].content).toBe(system);
     expect(googleRec.calls[0].config.systemInstruction).toBe(system);
+  });
+});
+
+describe("provider cancellation", () => {
+  it("forwards one abort signal to all provider requests", async () => {
+    const signal = new AbortController().signal;
+    await Array.fromAsync(
+      createAnthropicAdapter().converseStream({ messages: emptyMsgs, system, toolSpecs: [], signal }),
+    );
+    await createOpenAIAdapter().converse({ messages: emptyMsgs, system, toolSpecs: [], signal });
+    await createGoogleAdapter().converse({ messages: emptyMsgs, system, toolSpecs: [], signal });
+
+    expect(anthRec.options.at(-1)).toEqual({ signal });
+    expect(oaiOptions.calls.at(-1)).toEqual({ signal });
+    expect(googleRec.calls.at(-1)?.config).toMatchObject({ abortSignal: signal });
   });
 });

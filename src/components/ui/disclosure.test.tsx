@@ -60,9 +60,7 @@ beforeEach(() => {
   vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation((id) => {
     frames.delete(id);
   });
-  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([
-    new DOMRect(0, 0, 120, 44),
-  ] as unknown as DOMRectList);
+  vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{} as DOMRect] as unknown as DOMRectList);
 });
 
 afterEach(() => {
@@ -121,11 +119,9 @@ function expand() {
 }
 
 describe("Disclosure focus reveal", () => {
-  it("keeps immediate focus and waits for its opening completion plus layout", () => {
+  it("keeps immediate focus and waits for its opening completion before scrolling", () => {
     const view = expand();
     expect(document.activeElement).toBe(view.select);
-    expect(view.select.parentElement?.hasAttribute("data-disclosure-content")).toBe(true);
-    expect(view.select.parentElement?.classList.contains("overflow-hidden")).toBe(true);
     fireEvent.scroll(view.select.parentElement!);
     flushFrame();
     expect(view.scroll).not.toHaveBeenCalled();
@@ -216,7 +212,7 @@ describe("Disclosure focus reveal", () => {
     expect(scroll).toHaveBeenCalledOnce();
   });
 
-  it("settles reduced-motion entry after layout without an animation callback", () => {
+  it("scrolls focused content after reduced-motion entry without an animation callback", () => {
     motionState.reduce = true;
     const view = expand();
     expect(document.activeElement).toBe(view.select);

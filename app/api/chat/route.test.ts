@@ -138,6 +138,25 @@ describe("chat session ownership", () => {
     expect(body).not.toContain("provider.invalid");
   });
 
+  it("aborts model work and skips persistence when the client cancels", async () => {
+    let signal: AbortSignal | undefined;
+    mocks.streamAgent.mockImplementation(async function* (_messages, deps) {
+      signal = deps.signal;
+      yield { type: "thinking", delta: "Starting" };
+      await new Promise<void>((resolve) => signal?.addEventListener("abort", () => resolve(), { once: true }));
+      signal?.throwIfAborted();
+    });
+    const response = await POST(request());
+    const reader = response.body?.getReader();
+    expect(reader).toBeDefined();
+    await reader?.read();
+    await reader?.cancel("client disconnected");
+
+    expect(signal?.aborted).toBe(true);
+    expect(mocks.appendExchange).not.toHaveBeenCalled();
+    expect(mocks.generateSessionTitle).not.toHaveBeenCalled();
+  });
+
   it("skips title generation when a concurrent owner wins the persistence gate", async () => {
     mocks.appendExchange.mockRejectedValue(new Error("Session not found"));
 
@@ -150,6 +169,7 @@ describe("chat session ownership", () => {
     expect(mocks.canWriteSession).toHaveBeenCalledExactlyOnceWith("u1", sessionId);
     expect(mocks.appendExchange).toHaveBeenCalledTimes(1);
     expect(events).toContainEqual({ type: "error", message: "Could not complete the response. Please try again." });
+    expect(events.some((event) => event.type === "done")).toBe(false);
     expect(mocks.generateSessionTitle).not.toHaveBeenCalled();
   });
 });

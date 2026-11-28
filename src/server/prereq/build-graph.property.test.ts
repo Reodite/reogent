@@ -48,8 +48,8 @@ const rootOf = (dataset: { code: string }[]) => {
 
 const OPS = 30;
 
-describe("buildPrereqGraph properties (Domain 4)", () => {
-  it("Property 11: each code appears at most once in nodes (REQ-7.1)", async () => {
+describe("buildPrereqGraph generated invariants", () => {
+  it("emits each code at most once", async () => {
     await fc.assert(
       fc.asyncProperty(arbCourseDataset, fc.integer({ min: 0, max: MAX_DEPTH }), async (dataset, cap) => {
         const root = rootOf(dataset);
@@ -62,7 +62,7 @@ describe("buildPrereqGraph properties (Domain 4)", () => {
     );
   });
 
-  it("Property 12: no node has BFS depth greater than depthCap (REQ-7.2)", async () => {
+  it("keeps every node within the depth cap", async () => {
     await fc.assert(
       fc.asyncProperty(arbCourseDataset, fc.integer({ min: 0, max: MAX_DEPTH }), async (dataset, cap) => {
         const root = rootOf(dataset);
@@ -74,7 +74,7 @@ describe("buildPrereqGraph properties (Domain 4)", () => {
     );
   });
 
-  it("Property 13: no coreq node has an outgoing edge to another coreq node (REQ-7.4)", async () => {
+  it("does not connect a corequisite node to another corequisite node", async () => {
     await fc.assert(
       fc.asyncProperty(arbCourseDataset, async (dataset) => {
         const root = rootOf(dataset);
@@ -91,7 +91,7 @@ describe("buildPrereqGraph properties (Domain 4)", () => {
     );
   });
 
-  it("Property 14: every coreq node has BFS depth exactly 1 when hasCoreqs (REQ-7.3)", async () => {
+  it("places corequisite nodes at depth one when corequisites exist", async () => {
     await fc.assert(
       fc.asyncProperty(arbCourseDataset, async (dataset) => {
         const root = rootOf(dataset);

@@ -84,7 +84,7 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: reodite
       POSTGRES_USER: reodite
@@ -101,7 +101,7 @@ services:
     image: getmeili/meilisearch:v1
     restart: unless-stopped
     ports:
-      - "127.0.0.1:7700:7700"
+      - "127.0.0.1:${MEILISEARCH_PORT:-7700}:7700"
     environment:
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY}
       MEILI_ENV: ${MEILI_ENV:-production}

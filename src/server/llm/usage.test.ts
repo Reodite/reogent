@@ -102,10 +102,184 @@ describe("provider token usage", () => {
     const adapter = createGoogleAdapter();
     expect((await adapter.converse(request)).totalTokens).toBe(170);
     sdk.googleStream.mockResolvedValueOnce(
-      chunks([{ usageMetadata: { totalTokenCount: 100 } }, response, { candidates: [] }]),
+      chunks([{ usageMetadata: { totalTokenCount: 100 } }, response, { candidates: [{ finishReason: "STOP" }] }]),
     );
     const events = await Array.fromAsync(adapter.converseStream(request));
     expect(events.filter((event) => event.type === "usage")).toEqual([{ type: "usage", totalTokens: 170 }]);
+  });
+
+  it("rejects Google stream EOF without a finish reason", async () => {
+    sdk.googleStream.mockResolvedValueOnce(chunks([{ candidates: [{ content: { parts: [{ text: "partial" }] } }] }]));
+    const adapter = createGoogleAdapter();
+
+    await expect(Array.fromAsync(adapter.converseStream(request))).rejects.toThrow(
+      "Google model stream ended without a finish reason",
+    );
+  });
+
+  it("exits promptly when a Google stream stalls and is aborted", async () => {
+    const controller = new AbortController();
+    let started!: () => void;
+    const nextStarted = new Promise<void>((resolve) => (started = resolve));
+    const returnIterator = vi.fn(async () => ({ done: true, value: undefined }));
+    sdk.googleStream.mockResolvedValueOnce({
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => {
+            started();
+            return new Promise<IteratorResult<unknown>>(() => {});
+          },
+          return: returnIterator,
+        };
+      },
+    });
+    const stream = createGoogleAdapter().converseStream({ ...request, signal: controller.signal });
+    const pending = stream.next();
+    await nextStarted;
+
+    controller.abort(new Error("cancelled"));
+
+    await expect(pending).rejects.toThrow("cancelled");
+    expect(returnIterator).toHaveBeenCalledOnce();
+  });
+
+  it("does not rotate Google keys after the caller aborts", async () => {
+    vi.stubEnv("LLM_API_KEY", "first-key,second-key");
+    const controller = new AbortController();
+    let started!: () => void;
+    const requestStarted = new Promise<void>((resolve) => (started = resolve));
+    sdk.googleStream.mockImplementationOnce(({ config }: { config: { abortSignal?: AbortSignal } }) => {
+      return new Promise<never>((_, reject) => {
+        config.abortSignal?.addEventListener(
+          "abort",
+          () => {
+            started();
+            reject(config.abortSignal?.reason ?? new Error("Request aborted by client"));
+          },
+          { once: true },
+        );
+      });
+    });
+    sdk.googleStream.mockImplementationOnce(() => {
+      throw new Error("Unexpected second Google request");
+    });
+
+    const pending = Array.fromAsync(createGoogleAdapter().converseStream({ ...request, signal: controller.signal }));
+    await vi.waitFor(() => expect(sdk.googleStream).toHaveBeenCalledOnce());
+    controller.abort(new Error("client disconnected"));
+    await requestStarted;
+    await expect(pending).rejects.toThrow("client disconnected");
+
+    expect(sdk.googleStream).toHaveBeenCalledOnce();
+  });
+
+  it("aborts the Google provider request when the idle timeout expires", async () => {
+    let started!: () => void;
+    const nextStarted = new Promise<void>((resolve) => (started = resolve));
+    const returnIterator = vi.fn(async () => ({ done: true, value: undefined }));
+    let providerSignal: AbortSignal | undefined;
+    sdk.googleStream.mockImplementationOnce(({ config }: { config: { abortSignal?: AbortSignal } }) => {
+      providerSignal = config.abortSignal;
+      return Promise.resolve({
+        [Symbol.asyncIterator]() {
+          return {
+            next: () => {
+              started();
+              return new Promise<IteratorResult<unknown>>(() => {});
+            },
+            return: returnIterator,
+          };
+        },
+      });
+    });
+    const stream = createGoogleAdapter().converseStream(request);
+    const pending = stream.next();
+    const rejection = expect(pending).rejects.toThrow("Google model stream timed out");
+    await nextStarted;
+
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    await rejection;
+    expect(providerSignal?.aborted).toBe(true);
+    expect(returnIterator).toHaveBeenCalledOnce();
+  });
+
+  it("aborts active provider streams and closes their iterators", async () => {
+    const controller = new AbortController();
+    let resolveNext!: (value: IteratorResult<unknown>) => void;
+    let startedOpenAI!: () => void;
+    const openaiStarted = new Promise<void>((resolve) => (startedOpenAI = resolve));
+    const openaiReturn = vi.fn(async () => ({ done: true, value: undefined }));
+    sdk.openai.mockResolvedValueOnce({
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => {
+            startedOpenAI();
+            return new Promise<IteratorResult<unknown>>((resolve) => (resolveNext = resolve));
+          },
+          return: openaiReturn,
+        };
+      },
+    });
+    const openai = createOpenAIAdapter().converseStream({ ...request, signal: controller.signal });
+    const openaiNext = openai.next();
+    await openaiStarted;
+    controller.abort(new Error("cancelled"));
+    resolveNext({ done: false, value: { choices: [{ delta: { content: "late" }, finish_reason: null }] } });
+    await expect(openaiNext).rejects.toThrow("cancelled");
+    expect(openaiReturn).toHaveBeenCalled();
+
+    const anthropicController = new AbortController();
+    const anthropicAbort = vi.fn();
+    let resolveAnthropic!: (value: IteratorResult<unknown>) => void;
+    let startedAnthropic!: () => void;
+    const anthropicStarted = new Promise<void>((resolve) => (startedAnthropic = resolve));
+    sdk.anthropicStream.mockReturnValueOnce(
+      Object.assign(
+        {
+          [Symbol.asyncIterator]() {
+            return {
+              next: () => {
+                startedAnthropic();
+                return new Promise<IteratorResult<unknown>>((resolve) => (resolveAnthropic = resolve));
+              },
+            };
+          },
+        },
+        { abort: anthropicAbort, finalMessage: async () => ({ usage: {} }) },
+      ),
+    );
+    const anthropic = createAnthropicAdapter().converseStream({ ...request, signal: anthropicController.signal });
+    const anthropicNext = anthropic.next();
+    await anthropicStarted;
+    anthropicController.abort(new Error("cancelled"));
+    resolveAnthropic({ done: true, value: undefined });
+    await expect(anthropicNext).rejects.toThrow("cancelled");
+    expect(anthropicAbort).toHaveBeenCalledOnce();
+
+    const googleController = new AbortController();
+    const googleReturn = vi.fn(async () => ({ done: true, value: undefined }));
+    let resolveGoogle!: (value: IteratorResult<unknown>) => void;
+    let startedGoogle!: () => void;
+    const googleStarted = new Promise<void>((resolve) => (startedGoogle = resolve));
+    sdk.googleStream.mockResolvedValueOnce({
+      [Symbol.asyncIterator]() {
+        return {
+          next: () => {
+            startedGoogle();
+            return new Promise<IteratorResult<unknown>>((resolve) => (resolveGoogle = resolve));
+          },
+          return: googleReturn,
+        };
+      },
+    });
+    const google = createGoogleAdapter().converseStream({ ...request, signal: googleController.signal });
+    const googleNext = google.next();
+    await googleStarted;
+    googleController.abort(new Error("cancelled"));
+    resolveGoogle({ done: true, value: undefined });
+    await expect(googleNext).rejects.toThrow("cancelled");
+    expect(googleReturn).toHaveBeenCalled();
   });
 
   it("does not invent usage when an OpenAI-compatible provider omits it", async () => {

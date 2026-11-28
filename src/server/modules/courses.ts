@@ -148,7 +148,7 @@ export function joinCourses(tables: {
   return [...docs.values()];
 }
 
-/** Section times go to the model as human-readable HH:MM (Requirement 3.7). */
+/** Presents section times to the model as human-readable HH:MM values. */
 export function presentCourse(doc: CourseDoc, maxSections = Number.POSITIVE_INFINITY) {
   const sections = doc.sections.slice(0, maxSections).map(({ start_seconds, end_seconds, ...rest }) => ({
     ...rest,
@@ -236,15 +236,17 @@ export const courses: DatasetModule = {
         sortableAttributes: ["code", "average", "reported"],
       },
       async *read(store) {
-        const [distRows, calCourses, calSubjects] = (await Promise.all([
+        const [distRows, calCourses, calSubjects, calFaculties] = (await Promise.all([
           store.getJson("grades/distributions.json"),
           store.getJson("academic-calendar/vancouver/courses.json"),
           store.getJson("academic-calendar/vancouver/subjects.json"),
-        ])) as [Record<string, unknown>[], Row[], Row[]];
+          store.getJson("academic-calendar/vancouver/faculties.json"),
+        ])) as [Record<string, unknown>[], Row[], Row[], Row[]];
         yield* buildRecordsFromDistributions({
           distRows: distRows as unknown as Parameters<typeof buildRecordsFromDistributions>[0]["distRows"],
           calCourses: calCourses as unknown as CourseCalRow[],
-          calSubjects: calSubjects as unknown as { id: string; name: string }[],
+          calSubjects: calSubjects as unknown as Parameters<typeof buildRecordsFromDistributions>[0]["calSubjects"],
+          calFaculties: calFaculties as unknown as Parameters<typeof buildRecordsFromDistributions>[0]["calFaculties"],
         });
       },
       transform(doc) {
@@ -308,6 +310,15 @@ export const courses: DatasetModule = {
           sort,
           limit,
         } = input as Record<string, unknown>;
+        if (
+          (min_grade_avg !== undefined && (typeof min_grade_avg !== "number" || !Number.isFinite(min_grade_avg))) ||
+          (max_grade_avg !== undefined && (typeof max_grade_avg !== "number" || !Number.isFinite(max_grade_avg)))
+        ) {
+          throw new Error("Grade bounds must be finite numbers");
+        }
+        if (min_grade_avg !== undefined && max_grade_avg !== undefined && min_grade_avg > max_grade_avg) {
+          throw new Error("Grade bounds must have minimum at or below maximum");
+        }
         const requestedSession = typeof rawSession === "string" ? rawSession.trim() : "";
         if (requestedSession && !isSession(requestedSession)) {
           throw new Error(
@@ -328,17 +339,17 @@ export const courses: DatasetModule = {
           sortBy === "average_desc" ||
           sortBy === "average_asc" ||
           sortBy === "code";
-        const needsGradeJoin =
-          sortBy === "grade_avg_desc" ||
-          sortBy === "grade_avg_asc" ||
-          min_grade_avg !== undefined ||
-          max_grade_avg !== undefined;
+        const isPooledSort = sortBy === "grade_avg_desc" || sortBy === "grade_avg_asc";
+        const needsGradeJoin = isPooledSort || min_grade_avg !== undefined || max_grade_avg !== undefined;
+        const facultyFilter = faculty ? `faculty = ${filterValue(String(faculty))}` : undefined;
 
-        // Faculty only exists in the session index, not the catalogue.
-        // Route to session index when faculty is specified.
-        const useSessionIndex = isSessionSort || (faculty && !needsGradeJoin);
+        // Faculty metadata and session averages live in the session index.
+        const hasGradeBounds = min_grade_avg !== undefined || max_grade_avg !== undefined;
+        const useSessionIndex = isSessionSort || ((faculty || hasGradeBounds) && !isPooledSort);
         if (useSessionIndex) {
-          if (faculty) filters.push(`faculty = ${filterValue(String(faculty))}`);
+          if (facultyFilter) filters.push(facultyFilter);
+          if (min_grade_avg !== undefined) filters.push(`average >= ${min_grade_avg}`);
+          if (max_grade_avg !== undefined) filters.push(`average <= ${max_grade_avg}`);
           const meiliSort =
             sortBy === "students_desc"
               ? ["reported:desc"]
@@ -346,7 +357,9 @@ export const courses: DatasetModule = {
                 ? ["reported:asc"]
                 : sortBy === "average_desc"
                   ? ["average:desc"]
-                  : (["average:asc"] as string[]);
+                  : sortBy === "average_asc"
+                    ? ["average:asc"]
+                    : ["code:asc"];
           const sessionFilter = `session = '${session}'`;
           const filterStr = filters.length > 0 ? `${sessionFilter} AND ${filters.join(" AND ")}` : sessionFilter;
           const res = await search.index("course_sessions").search(query ? String(query) : "", {
@@ -380,9 +393,7 @@ export const courses: DatasetModule = {
           return { courses, session };
         }
 
-        // Exploratory browse: session sorts allow no query/filter (table renders on load).
-        const allowEmpty = useSessionIndex;
-        if (!query && filters.length === 0 && !needsGradeJoin && !allowEmpty) {
+        if (!query && filters.length === 0 && !needsGradeJoin) {
           throw new Error("Provide a query or at least one filter (subject, level, credits, term, or has_no_prereqs)");
         }
 
@@ -394,7 +405,14 @@ export const courses: DatasetModule = {
           const POOL_PAGE = 200;
           const POOL_CAP = 2000;
           const candidates: CourseDoc[] = [];
+          let facultyTruncated = false;
+          const courseMaxTotalHits = (await search.index("courses").getSettings()).pagination?.maxTotalHits ?? 1000;
+          const sessionMaxTotalHits = facultyFilter
+            ? ((await search.index("course_sessions").getSettings()).pagination?.maxTotalHits ?? 1000)
+            : 1000;
+          const sessionPageSize = Math.min(100, sessionMaxTotalHits);
           let offset = 0;
+          let scanned = 0;
           let estimated = Number.POSITIVE_INFINITY;
           for (;;) {
             const catRes = await search.index("courses").search(query ? String(query) : "", {
@@ -405,23 +423,60 @@ export const courses: DatasetModule = {
               attributesToRetrieve: undefined,
             });
             estimated = catRes.estimatedTotalHits;
-            candidates.push(...(catRes.hits as unknown as CourseDoc[]));
+            let page = catRes.hits as unknown as CourseDoc[];
+            scanned += page.length;
+            if (facultyFilter && page.length > 0) {
+              const codes = [...new Set(page.map(({ code }) => normalizeCourseCode(code)))];
+              const matching = new Set<string>();
+              const CODE_BATCH = 100;
+              for (let i = 0; i < codes.length; i += CODE_BATCH) {
+                const codeBatch = codes.slice(i, i + CODE_BATCH);
+                const filter = `session = ${filterValue(session)} AND ${facultyFilter} AND code IN [${codeBatch.map(filterValue).join(", ")}]`;
+                let offset = 0;
+                if (sessionPageSize === 0) {
+                  facultyTruncated = true;
+                  continue;
+                }
+                while (offset < sessionMaxTotalHits) {
+                  const members = await search.index("course_sessions").search("", {
+                    filter,
+                    limit: sessionPageSize,
+                    offset,
+                    attributesToRetrieve: ["code"],
+                  });
+                  for (const hit of members.hits) matching.add(normalizeCourseCode(String(hit.code)));
+                  offset += members.hits.length;
+                  if (members.hits.length < sessionPageSize) break;
+                }
+                const { totalHits } = await search.index("course_sessions").search("", {
+                  filter,
+                  hitsPerPage: 0,
+                  page: 1,
+                  attributesToRetrieve: ["code"],
+                });
+                if (totalHits > sessionMaxTotalHits) facultyTruncated = true;
+              }
+              page = page.filter(({ code }) => matching.has(normalizeCourseCode(code)));
+            }
+            candidates.push(...page);
             offset += POOL_PAGE;
-            if (catRes.hits.length < POOL_PAGE) break;
-            if (candidates.length >= POOL_CAP) break;
+            if (catRes.hits.length < POOL_PAGE || scanned >= POOL_CAP) break;
           }
-          if (candidates.length === 0) {
+          const truncated = scanned < estimated || (scanned >= courseMaxTotalHits && estimated >= courseMaxTotalHits);
+          if (candidates.length === 0 && !truncated) {
             throw new Error(`No courses matched${query ? ` "${query}"` : " those filters"}`);
           }
-          const truncated = candidates.length < estimated;
+          if (facultyTruncated) {
+            throw new Error("Faculty course matches exceed the session index result cap; narrow the query or filters.");
+          }
           const withGrades = await Promise.all(
             candidates.map(async (c) => ({
               course: c,
               avg_grade: await courseAverage(search, c.subject, c.number),
             })),
           );
-          const min = min_grade_avg !== undefined ? Number(min_grade_avg) : Number.NEGATIVE_INFINITY;
-          const max = max_grade_avg !== undefined ? Number(max_grade_avg) : Number.POSITIVE_INFINITY;
+          const min = min_grade_avg ?? Number.NEGATIVE_INFINITY;
+          const max = max_grade_avg ?? Number.POSITIVE_INFINITY;
           const ranked = withGrades.filter(
             (r): r is { course: CourseDoc; avg_grade: number } =>
               r.avg_grade !== null && r.avg_grade >= min && r.avg_grade <= max,
@@ -440,7 +495,7 @@ export const courses: DatasetModule = {
             ...(asOf ? { catalog_as_of: asOf } : {}),
             ...(truncated
               ? {
-                  note: `Sorting was evaluated over the first ${POOL_CAP} matching courses; results may be incomplete.`,
+                  note: `Sorting was evaluated over the first ${scanned} catalogue matches; results may be incomplete.`,
                 }
               : {}),
           };

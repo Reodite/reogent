@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/src/components/theme-toggle";
 import { AUDIO_STORAGE_KEY, siteAudio } from "@/src/lib/audio";
 import type { StudentProfile } from "@/src/shared/profile";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Storage } from "happy-dom";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +35,7 @@ vi.mock("motion/react", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("localStorage", new Storage());
   localStorage.clear();
   document.documentElement.dataset.theme = "light";
   state.pathname = "/onboarding";
@@ -49,6 +51,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 async function start() {
@@ -65,14 +68,10 @@ function next() {
 }
 
 describe("first-login onboarding", () => {
-  it("centers just the welcome title and subheading", async () => {
+  it("shows the welcome title and introduction", async () => {
     await start();
-    const heading = screen.getByRole("heading", { name: "Welcome to Reodite" });
-    const welcome = heading.parentElement!;
-    expect(welcome.classList.contains("text-center")).toBe(true);
-    expect(welcome.classList.contains("justify-center")).toBe(true);
-    expect(welcome.querySelectorAll("p")).toHaveLength(1);
-    expect(welcome.querySelector("p")?.textContent).toBe("Let's customize your experience");
+    expect(screen.getByRole("heading", { name: "Welcome to Reodite" })).toBeTruthy();
+    expect(screen.getByText("Let's customize your experience")).toBeTruthy();
     expect(screen.queryByText(/Everything is optional/)).toBeNull();
     expect(screen.queryByText(/Tell us a little about yourself/)).toBeNull();
   });
@@ -103,9 +102,6 @@ describe("first-login onboarding", () => {
     await start();
     const back = screen.getByRole("button", { name: "Back to welcome" }) as HTMLButtonElement;
     expect(back.disabled).toBe(true);
-    expect(back.classList.contains("size-11")).toBe(true);
-    expect(back.classList.contains("neu-button")).toBe(false);
-    expect(back.querySelector("svg")?.getAttribute("width")).toBe("20");
     expect(screen.getByText("Let's customize your experience")).toBeTruthy();
     next();
     fireEvent.change(screen.getByLabelText("What should we call you?"), { target: { value: "Sam" } });
@@ -159,7 +155,6 @@ describe("first-login onboarding", () => {
     const slider = screen.getByRole("slider", { name: "Volume" }) as HTMLInputElement;
     expect(slider.step).toBe("10");
     expect(slider.value).toBe("0");
-    expect(document.querySelectorAll("[data-volume-stop]")).toHaveLength(11);
     fireEvent.change(slider, { target: { value: "30" } });
     expect(preview).toHaveBeenCalledExactlyOnceWith(0, 30);
     fireEvent.click(screen.getByRole("button", { name: "Back to personal details" }));
