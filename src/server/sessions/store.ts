@@ -219,18 +219,7 @@ export async function findOrCreateOAuthUser(
   await connectDatabase();
   const existing = await OAuthAccount.findOne({ provider, providerSubject }).lean();
   if (existing) {
-    const emailProvided = profile.email !== undefined;
-    await OAuthAccount.updateOne(
-      { _id: existing._id },
-      {
-        $set: {
-          ...(emailProvided ? { email: email ?? null, emailVerified: profile.emailVerified ?? false } : {}),
-          ...(displayName ? { displayName } : {}),
-          ...(avatarUrl ? { avatarUrl } : {}),
-          profileUpdatedAt: new Date(),
-        },
-      },
-    );
+    await updateOAuthClaims(existing._id, profile, email, displayName, avatarUrl);
     const user = await User.findById(existing.userId).select({ username: 1 }).lean();
     if (!user) throw new Error("OAuth account has no user");
     return { id: user._id, username: user.username };
@@ -250,6 +239,7 @@ export async function findOrCreateOAuthUser(
       await mongoSession.withTransaction(async () => {
         const duplicate = await OAuthAccount.findOne({ provider, providerSubject }).session(mongoSession).lean();
         if (duplicate) {
+          await updateOAuthClaims(duplicate._id, profile, email, displayName, avatarUrl, mongoSession);
           const user = await User.findById(duplicate.userId).session(mongoSession).lean();
           if (!user) throw new Error("OAuth account has no user");
           created = { id: user._id, username: user.username };
@@ -278,7 +268,7 @@ export async function findOrCreateOAuthUser(
     } catch (error) {
       if (isDuplicateKey(error) && duplicateKeyValue(error)?.username === username) continue;
       if (isOAuthIdentityDuplicate(error, provider, providerSubject)) {
-        const winner = await findOAuthWinner(provider, providerSubject);
+        const winner = await findOAuthWinner(provider, providerSubject, profile, email, displayName, avatarUrl);
         if (winner) return winner;
       }
       throw error;
@@ -287,6 +277,27 @@ export async function findOrCreateOAuthUser(
     }
   }
   throw new Error("Could not allocate a username for the OAuth account");
+}
+
+async function updateOAuthClaims(
+  accountId: string,
+  profile: OAuthProfileClaims,
+  email: string | undefined,
+  displayName: string | undefined,
+  avatarUrl: string | undefined,
+  session?: import("mongoose").ClientSession,
+): Promise<void> {
+  const emailProvided = profile.email !== undefined;
+  const update = {
+    $set: {
+      ...(emailProvided ? { email: email ?? null, emailVerified: profile.emailVerified ?? false } : {}),
+      ...(displayName ? { displayName } : {}),
+      ...(avatarUrl ? { avatarUrl } : {}),
+      profileUpdatedAt: new Date(),
+    },
+  };
+  if (session) await OAuthAccount.updateOne({ _id: accountId }, update, { session });
+  else await OAuthAccount.updateOne({ _id: accountId }, update);
 }
 
 function isDuplicateKey(error: unknown): boolean {
@@ -307,10 +318,15 @@ function isOAuthIdentityDuplicate(error: unknown, provider: string, providerSubj
 async function findOAuthWinner(
   provider: string,
   providerSubject: string,
+  profile: OAuthProfileClaims,
+  email: string | undefined,
+  displayName: string | undefined,
+  avatarUrl: string | undefined,
 ): Promise<{ id: string; username: string } | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const winner = await OAuthAccount.findOne({ provider, providerSubject }).lean();
     if (winner) {
+      await updateOAuthClaims(winner._id, profile, email, displayName, avatarUrl);
       const user = await User.findById(winner.userId).select({ username: 1 }).lean();
       if (user) return { id: user._id, username: user.username };
     }

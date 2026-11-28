@@ -151,6 +151,42 @@ describe("provider-neutral account persistence", () => {
     expect(oauthLookups).toBe(5);
   });
 
+  it("applies losing sign-in claims to the concurrent winning identity", async () => {
+    let oauthLookups = 0;
+    mocks.oauthFindOne.mockImplementation(() => {
+      oauthLookups++;
+      if (oauthLookups === 2) return { session: () => lean(null) };
+      if (oauthLookups < 5) return lean(null);
+      return lean({ _id: "oa-winner", userId: "winner" });
+    });
+    mocks.oauthUpdateOne.mockResolvedValue(undefined);
+    mocks.userFindById.mockImplementation(() => ({ select: () => lean({ _id: "winner", username: "student-1234" }) }));
+    mocks.oauthCreate.mockRejectedValueOnce({
+      code: 11000,
+      keyValue: { provider: "google", providerSubject: "subject-claims" },
+    });
+
+    await expect(
+      findOrCreateOAuthUser("google", "subject-claims", {
+        email: "student@example.com",
+        emailVerified: true,
+        displayName: "Student Name",
+        avatarUrl: "https://example.com/avatar.png",
+      }),
+    ).resolves.toEqual({ id: "winner", username: "student-1234" });
+    expect(mocks.oauthUpdateOne).toHaveBeenCalledWith(
+      { _id: "oa-winner" },
+      {
+        $set: expect.objectContaining({
+          email: "student@example.com",
+          emailVerified: true,
+          displayName: "Student Name",
+          avatarUrl: "https://example.com/avatar.png",
+        }),
+      },
+    );
+  });
+
   it("retries username conflicts in a fresh transaction", async () => {
     cryptoMocks.randomInt.mockReturnValueOnce(1234).mockReturnValueOnce(5678);
     const lookup = Object.assign(lean(null), { session: () => lean(null) });
