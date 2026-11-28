@@ -1,64 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { migrate } from "./migrate";
 
-const mocks = vi.hoisted(() => ({ poolQuery: vi.fn(), clientQuery: vi.fn(), release: vi.fn() }));
-
-vi.mock("../db", () => ({
-  getPool: () => ({
-    query: mocks.poolQuery,
-    connect: async () => ({ query: mocks.clientQuery, release: mocks.release }),
-  }),
+const mocks = vi.hoisted(() => ({
+  connectDatabase: vi.fn(),
+  createIndexes: Array.from({ length: 15 }, () => vi.fn()),
+}));
+vi.mock("../db", () => ({ connectDatabase: mocks.connectDatabase }));
+vi.mock("./models", () => ({
+  BuildingFavorite: { createIndexes: mocks.createIndexes[0] },
+  Counter: { createIndexes: mocks.createIndexes[1] },
+  DegreePlan: { createIndexes: mocks.createIndexes[2] },
+  Message: { createIndexes: mocks.createIndexes[3] },
+  OAuthAccount: { createIndexes: mocks.createIndexes[4] },
+  PulseQuestion: { createIndexes: mocks.createIndexes[5] },
+  PulseRound: { createIndexes: mocks.createIndexes[6] },
+  PulseVote: { createIndexes: mocks.createIndexes[7] },
+  Schedule: { createIndexes: mocks.createIndexes[8] },
+  Session: { createIndexes: mocks.createIndexes[9] },
+  SharerGroup: { createIndexes: mocks.createIndexes[10] },
+  SharerGroupMember: { createIndexes: mocks.createIndexes[11] },
+  SharerPerson: { createIndexes: mocks.createIndexes[12] },
+  User: { createIndexes: mocks.createIndexes[13] },
+  UserProfile: { createIndexes: mocks.createIndexes[14] },
 }));
 
-beforeEach(() => {
-  mocks.poolQuery.mockReset().mockResolvedValue({ rows: [] });
-  mocks.clientQuery.mockReset().mockResolvedValue({ rows: [] });
-  mocks.release.mockReset();
-});
-
-describe("OAuth identity migration", () => {
-  it("creates normalized identity tables and backfills Google identities transactionally", async () => {
-    await migrate();
-
-    const schema = mocks.poolQuery.mock.calls[0][0] as string;
-    expect(schema).toContain("CREATE TABLE IF NOT EXISTS oauth_accounts");
-    expect(schema).toContain("UNIQUE (provider, provider_subject)");
-    expect(schema).toContain("CREATE TABLE IF NOT EXISTS oauth_profiles");
-    const usersTable = schema.slice(
-      schema.indexOf("CREATE TABLE IF NOT EXISTS users"),
-      schema.indexOf("ALTER TABLE users"),
-    );
-    expect(usersTable).not.toContain("google_sub");
-    expect(usersTable).not.toContain("display_name");
-
-    const statements = mocks.clientQuery.mock.calls.map(([sql]) => sql as string);
-    expect(statements[0]).toBe("BEGIN");
-    expect(statements[1]).toContain("column_name = 'google_sub'");
-    expect(statements[1]).toContain("SELECT id, 'google', google_sub, true FROM users WHERE google_sub IS NOT NULL");
-    expect(statements[1]).toContain("SELECT oa.id, u.email, u.email IS NOT NULL, u.display_name");
-    expect(statements[1]).toContain("ON CONFLICT (provider, provider_subject) DO NOTHING");
-    expect(statements[1]).toContain("ON CONFLICT (oauth_account_id) DO NOTHING");
-    expect(statements[1]).toContain(
-      "ALTER TABLE users DROP COLUMN google_sub, DROP COLUMN email, DROP COLUMN display_name",
-    );
-    expect(statements[2]).toBe("COMMIT");
-    expect(mocks.poolQuery.mock.calls[1][0]).toContain("ALTER TABLE messages DROP COLUMN IF EXISTS tool_calls");
-    expect(mocks.release).toHaveBeenCalledOnce();
+describe("MongoDB startup migration", () => {
+  beforeEach(() => {
+    mocks.connectDatabase.mockReset().mockResolvedValue(undefined);
+    for (const createIndexes of mocks.createIndexes) createIndexes.mockReset().mockResolvedValue(undefined);
   });
 
-  it("rolls back the identity backfill if a statement fails", async () => {
-    mocks.clientQuery.mockImplementation(async (sql: string) => {
-      if (sql.includes("INSERT INTO oauth_profiles")) throw new Error("identity backfill failed");
-      return { rows: [] };
-    });
+  it("connects before creating all required indexes", async () => {
+    const { migrate } = await import("./migrate");
+    await migrate();
+    expect(mocks.connectDatabase).toHaveBeenCalledOnce();
+    for (const createIndexes of mocks.createIndexes) expect(createIndexes).toHaveBeenCalledOnce();
+  });
 
-    await expect(migrate()).rejects.toThrow("identity backfill failed");
-    expect(mocks.clientQuery.mock.calls.map(([sql]) => sql)).toEqual([
-      "BEGIN",
-      expect.stringContaining("INSERT INTO oauth_accounts"),
-      "ROLLBACK",
-    ]);
-    expect(mocks.release).toHaveBeenCalledOnce();
-    expect(mocks.poolQuery).toHaveBeenCalledTimes(1);
+  it("rejects startup when an index cannot be created", async () => {
+    mocks.createIndexes[2].mockRejectedValueOnce(new Error("index failed"));
+    const { migrate } = await import("./migrate");
+    await expect(migrate()).rejects.toThrow("index failed");
   });
 });

@@ -15,9 +15,12 @@ const composeAvailable = (() => {
 
 function renderCompose(
   env: NodeJS.ProcessEnv,
+  external = false,
 ): Record<string, { ports: { host_ip: string; published: string; target: number }[] }> {
+  const files = ["-f", "docker-compose.yml"];
+  if (external) files.push("-f", "docker-compose.external.yml");
   return JSON.parse(
-    execFileSync("docker", ["compose", "-f", "docker-compose.yml", "config", "--format", "json"], {
+    execFileSync("docker", ["compose", ...files, "config", "--format", "json"], {
       cwd: new URL("..", import.meta.url),
       env,
       encoding: "utf8",
@@ -41,27 +44,28 @@ describe("deployment security defaults", () => {
     expect(headers["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
   });
 
-  it("binds database and search ports to loopback and requires credentials", () => {
+  it("binds database and search ports to loopback and sets database mode", () => {
     const compose = read("docker-compose.yml");
-    expect(compose).toMatch(/"127\.0\.0\.1:\$\{POSTGRES_PORT:-5432\}:5432"/);
+    expect(compose).toMatch(/"127\.0\.0\.1:\$\{MONGODB_PORT:-27017\}:27017"/);
     expect(compose).toMatch(/"127\.0\.0\.1:\$\{MEILISEARCH_PORT:-7700\}:7700"/);
-    expect(compose).not.toMatch(/POSTGRES_PASSWORD:-|MEILI_MASTER_KEY:-/);
-    expect(compose).toContain("${POSTGRES_PASSWORD:?");
+    expect(compose).toContain("MONGODB_URI:-mongodb://mongo:27017/reodite?replicaSet=rs0");
+    expect(compose).not.toMatch(/mongodb:\/\/[^\s]*:[^\s]*@/);
+    expect(compose).toMatch(/USE_EXTERNAL_MONGODB=\$\{USE_EXTERNAL_MONGODB:-false\}/);
     expect(compose).toContain("${MEILI_MASTER_KEY:?");
   });
 
   it.skipIf(!composeAvailable)("resolves default and overridden host ports in Compose config", () => {
     const defaults = { ...process.env };
-    delete defaults.POSTGRES_PORT;
+    delete defaults.MONGODB_PORT;
     delete defaults.MEILISEARCH_PORT;
     const defaultServices = renderCompose(defaults);
     const bindings = (ports: { host_ip: string; published: string; target: number }[]) =>
       ports.map(({ host_ip, published, target }) => ({ host_ip, published, target }));
 
-    expect(bindings(defaultServices.postgres.ports)).toContainEqual({
+    expect(bindings(defaultServices.mongo.ports)).toContainEqual({
       host_ip: "127.0.0.1",
-      published: "5432",
-      target: 5432,
+      published: "27017",
+      target: 27017,
     });
     expect(bindings(defaultServices.meilisearch.ports)).toContainEqual({
       host_ip: "127.0.0.1",
@@ -71,19 +75,27 @@ describe("deployment security defaults", () => {
 
     const overriddenServices = renderCompose({
       ...defaults,
-      POSTGRES_PORT: "15432",
+      MONGODB_PORT: "27018",
       MEILISEARCH_PORT: "17700",
     });
-    expect(bindings(overriddenServices.postgres.ports)).toContainEqual({
+    expect(bindings(overriddenServices.mongo.ports)).toContainEqual({
       host_ip: "127.0.0.1",
-      published: "15432",
-      target: 5432,
+      published: "27018",
+      target: 27017,
     });
     expect(bindings(overriddenServices.meilisearch.ports)).toContainEqual({
       host_ip: "127.0.0.1",
       published: "17700",
       target: 7700,
     });
+  });
+
+  it.skipIf(!composeAvailable)("removes the local Mongo dependency for external deployments", () => {
+    const services = renderCompose(
+      { ...process.env, USE_EXTERNAL_MONGODB: "true", MONGODB_URI: "mongodb+srv://example.invalid/reodite" },
+      true,
+    );
+    expect(services.app.depends_on).not.toHaveProperty("mongo");
   });
 
   it("runs the application container without root privileges", () => {

@@ -1,36 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const query = vi.hoisted(() => vi.fn());
-vi.mock("./db", () => ({ getPool: () => ({ query }) }));
+const mocks = vi.hoisted(() => ({ find: vi.fn(), updateOne: vi.fn(), deleteOne: vi.fn() }));
+vi.mock("./db/models", () => ({ BuildingFavorite: mocks }));
 
 const { listBuildingFavorites, setBuildingFavorite } = await import("./building-favorites");
 
 beforeEach(() => {
-  query.mockReset();
+  for (const mock of Object.values(mocks)) mock.mockReset();
 });
 
 describe("building favorites store", () => {
   it("lists the caller's codes in recent-save order", async () => {
-    query.mockResolvedValue({ rows: [{ building_code: "IBLC" }, { building_code: "NEST" }] });
-
+    mocks.find.mockReturnValue({
+      sort: () => ({ lean: async () => [{ buildingCode: "IBLC" }, { buildingCode: "NEST" }] }),
+    });
     expect(await listBuildingFavorites("user-1")).toEqual(["IBLC", "NEST"]);
-    expect(query.mock.calls[0][0]).toContain("ORDER BY created_at DESC");
-    expect(query.mock.calls[0][1]).toEqual(["user-1"]);
+    expect(mocks.find).toHaveBeenCalledWith({ userId: "user-1" });
   });
 
-  it("saves idempotently before returning the current set", async () => {
-    query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{ building_code: "IBLC" }] });
-
+  it("upserts idempotently before returning the current set", async () => {
+    mocks.updateOne.mockResolvedValue(undefined);
+    mocks.find.mockReturnValue({ sort: () => ({ lean: async () => [{ buildingCode: "IBLC" }] }) });
     expect(await setBuildingFavorite("user-1", "IBLC", true)).toEqual(["IBLC"]);
-    expect(query.mock.calls[0][0]).toContain("ON CONFLICT (user_id, building_code) DO NOTHING");
-    expect(query.mock.calls[0][1]).toEqual(["user-1", "IBLC"]);
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { userId: "user-1", buildingCode: "IBLC" },
+      { $setOnInsert: { createdAt: expect.any(Date) } },
+      { upsert: true },
+    );
   });
 
   it("removes only the caller's building association", async () => {
-    query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [] });
-
+    mocks.deleteOne.mockResolvedValue({ deletedCount: 1 });
+    mocks.find.mockReturnValue({ sort: () => ({ lean: async () => [] }) });
     expect(await setBuildingFavorite("user-2", "CHEM", false)).toEqual([]);
-    expect(query.mock.calls[0][0]).toContain("WHERE user_id = $1 AND building_code = $2");
-    expect(query.mock.calls[0][1]).toEqual(["user-2", "CHEM"]);
+    expect(mocks.deleteOne).toHaveBeenCalledWith({ userId: "user-2", buildingCode: "CHEM" });
   });
 });

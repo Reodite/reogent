@@ -34,6 +34,8 @@ vi.mock("@/src/server/account", () => ({
   consumeDailyChatMessage: async () => true,
   recordTokenUsage: async () => {},
 }));
+const getProfile = vi.fn(async () => null);
+vi.mock("@/src/server/profile", () => ({ getProfile }));
 
 const { POST: chatPost } = await import("./chat/route");
 const { GET: sessionsGet } = await import("./sessions/route");
@@ -54,6 +56,7 @@ beforeEach(() => {
   verify.mockReset().mockResolvedValue({ payload: { sub: "u1", username: "testuser" } });
   converse.mockReset();
   streamAgent.mockReset();
+  getProfile.mockReset().mockResolvedValue(null);
 });
 
 describe("authentication", () => {

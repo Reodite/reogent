@@ -1,31 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPasswordUser, getPasswordUser } from "./store";
 
-const query = vi.hoisted(() => vi.fn());
-vi.mock("../db", () => ({ getPool: () => ({ query }) }));
+const mocks = vi.hoisted(() => ({ create: vi.fn(), findOne: vi.fn() }));
+vi.mock("../db/models", () => ({ User: mocks }));
 
-beforeEach(() => query.mockReset());
+beforeEach(() => {
+  mocks.create.mockReset();
+  mocks.findOne.mockReset();
+});
 
 describe("password account persistence", () => {
   it("stores a supplied hash without retaining the plaintext password", async () => {
-    query.mockResolvedValue({ rows: [{ id: "user-1" }] });
-
+    mocks.create.mockResolvedValue([{ _id: "user-1" }]);
     await expect(createPasswordUser("student", "bcrypt-hash")).resolves.toBe("user-1");
-    expect(query).toHaveBeenCalledExactlyOnceWith(
-      "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id",
-      ["student", "bcrypt-hash"],
-    );
+    expect(mocks.create).toHaveBeenCalledExactlyOnceWith([{ username: "student", passwordHash: "bcrypt-hash" }]);
   });
 
-  it("returns a null hash for an unknown username", async () => {
-    query.mockResolvedValue({ rows: [] });
-
+  it("returns null for an unknown username", async () => {
+    mocks.findOne.mockReturnValue({ select: () => ({ lean: async () => null }) });
     await expect(getPasswordUser("missing")).resolves.toBeNull();
   });
 
   it("returns an OAuth-only account with a null password hash", async () => {
-    query.mockResolvedValue({ rows: [{ id: "user-2", password_hash: null }] });
-
+    mocks.findOne.mockReturnValue({ select: () => ({ lean: async () => ({ _id: "user-2", passwordHash: null }) }) });
     await expect(getPasswordUser("oauth-user")).resolves.toEqual({ id: "user-2", passwordHash: null });
   });
 });

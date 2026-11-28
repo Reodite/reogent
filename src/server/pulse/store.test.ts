@@ -1,80 +1,141 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const queryMock = vi.hoisted(() => vi.fn());
-const clientQueryMock = vi.hoisted(() => vi.fn());
-const releaseMock = vi.hoisted(() => vi.fn());
-vi.mock("../db", () => ({
-  getPool: () => ({
-    query: queryMock,
-    connect: async () => ({ query: clientQueryMock, release: releaseMock }),
-  }),
+const mocks = vi.hoisted(() => ({
+  connectDatabase: vi.fn(),
+  roundFindOne: vi.fn(),
+  roundFind: vi.fn(),
+  roundUpdateOne: vi.fn(),
+  roundFindOneAndUpdate: vi.fn(),
+  roundCreate: vi.fn(),
+  roundStartSession: vi.fn(),
+  questionFind: vi.fn(),
+  questionFindById: vi.fn(),
+  questionInsertMany: vi.fn(),
+  voteAggregate: vi.fn(),
+  voteFind: vi.fn(),
+  voteFindOne: vi.fn(),
+  voteCreate: vi.fn(),
+  voteStartSession: vi.fn(),
+  counterFindOneAndUpdate: vi.fn(),
+}));
+const mongoSession = {
+  withTransaction: vi.fn(async (callback: () => Promise<void>) => callback()),
+  endSession: vi.fn(),
+};
+vi.mock("../db", () => ({ connectDatabase: mocks.connectDatabase }));
+vi.mock("../db/models", () => ({
+  PulseRound: {
+    findOne: mocks.roundFindOne,
+    find: mocks.roundFind,
+    updateOne: mocks.roundUpdateOne,
+    findOneAndUpdate: mocks.roundFindOneAndUpdate,
+    create: mocks.roundCreate,
+    startSession: mocks.roundStartSession,
+  },
+  PulseQuestion: { find: mocks.questionFind, findById: mocks.questionFindById, insertMany: mocks.questionInsertMany },
+  PulseVote: {
+    aggregate: mocks.voteAggregate,
+    find: mocks.voteFind,
+    findOne: mocks.voteFindOne,
+    create: mocks.voteCreate,
+    startSession: mocks.voteStartSession,
+  },
+  Counter: { findOneAndUpdate: mocks.counterFindOneAndUpdate },
 }));
 
-const { castVote, getActiveFeed, getRoundHistory, publishRound } = await import("./store");
+function lean(value: unknown) {
+  return { lean: async () => value };
+}
 
 beforeEach(() => {
-  queryMock.mockReset();
-  clientQueryMock.mockReset();
-  releaseMock.mockReset();
+  for (const mock of Object.values(mocks)) mock.mockReset();
+  mocks.connectDatabase.mockResolvedValue(undefined);
+  mocks.voteStartSession.mockResolvedValue(mongoSession);
+  mocks.roundStartSession.mockResolvedValue(mongoSession);
+  mongoSession.withTransaction.mockReset().mockImplementation(async (callback) => callback());
+  mongoSession.endSession.mockReset().mockResolvedValue(undefined);
 });
 
 describe("getActiveFeed", () => {
-  it("returns a null round and no questions when no round is active", async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] });
-    expect(await getActiveFeed("u1")).toEqual({ round: null, questions: [] });
-    expect(queryMock).toHaveBeenCalledTimes(1);
+  it("returns no questions when no round is active", async () => {
+    mocks.roundFindOne.mockReturnValue(lean(null));
+    await expect((await import("./store")).getActiveFeed("u1")).resolves.toEqual({ round: null, questions: [] });
   });
 
-  it("returns questions in seed order with the caller's vote and tallies", async () => {
-    queryMock.mockResolvedValueOnce({
-      rows: [{ id: 3, title: "Week 1", published_at: new Date("2026-08-25T00:00:00Z") }],
+  it("returns questions in seed order with caller votes and tallies", async () => {
+    mocks.roundFindOne.mockReturnValue(
+      lean({ _id: 3, title: "Week 1", publishedAt: new Date("2026-08-25T00:00:00Z") }),
+    );
+    mocks.questionFind.mockReturnValue({
+      sort: () =>
+        lean([
+          { _id: 10, text: "Q1" },
+          { _id: 11, text: "Q2" },
+        ]),
     });
-    queryMock.mockResolvedValueOnce({
-      rows: [
-        { id: 10, text: "Q1", my_agree: true, agree_count: 6, disagree_count: 4 },
-        { id: 11, text: "Q2", my_agree: null, agree_count: 1, disagree_count: 0 },
+    mocks.voteAggregate.mockResolvedValue([
+      { _id: { questionId: 10, agree: true }, count: 6 },
+      { _id: { questionId: 10, agree: false }, count: 4 },
+      { _id: { questionId: 11, agree: true }, count: 1 },
+    ]);
+    mocks.voteFind.mockReturnValue(lean([{ questionId: 10, agree: true, userId: "u1" }]));
+    const { getActiveFeed } = await import("./store");
+    await expect(getActiveFeed("u1")).resolves.toEqual({
+      round: { id: 3, title: "Week 1", publishedAt: "2026-08-25T00:00:00.000Z" },
+      questions: [
+        { id: 10, text: "Q1", myAgree: true, agreeCount: 6, disagreeCount: 4 },
+        { id: 11, text: "Q2", myAgree: null, agreeCount: 1, disagreeCount: 0 },
       ],
     });
-    const feed = await getActiveFeed("u1");
-    expect(feed.round).toEqual({ id: 3, title: "Week 1", publishedAt: "2026-08-25T00:00:00.000Z" });
-    expect(feed.questions).toEqual([
-      { id: 10, text: "Q1", myAgree: true, agreeCount: 6, disagreeCount: 4 },
-      { id: 11, text: "Q2", myAgree: null, agreeCount: 1, disagreeCount: 0 },
-    ]);
-    // The question query scopes to the active round and the caller.
-    expect(queryMock.mock.calls[1][1]).toEqual([3, "u1"]);
+    expect(mocks.questionFind).toHaveBeenCalledWith({ roundId: 3 });
+    expect(mocks.voteFind).toHaveBeenCalledWith({ questionId: { $in: [10, 11] }, userId: "u1" });
   });
 });
 
 describe("getRoundHistory", () => {
-  it("returns an empty list without querying questions when no round is locked", async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] });
-    expect(await getRoundHistory("u1")).toEqual([]);
-    expect(queryMock).toHaveBeenCalledTimes(1);
-    expect(queryMock.mock.calls[0][0]).toContain("status = 'locked'");
-    expect(queryMock.mock.calls[0][1]).toEqual([10]);
+  it("returns no history without querying questions when no round is locked", async () => {
+    mocks.roundFind.mockReturnValue({ sort: () => ({ limit: () => lean([]) }) });
+    const { getRoundHistory } = await import("./store");
+    await expect(getRoundHistory("u1", 5)).resolves.toEqual([]);
+    expect(mocks.roundFind).toHaveBeenCalledWith({ status: "locked" });
+    expect(mocks.questionFind).not.toHaveBeenCalled();
   });
 
-  it("groups questions under their round, newest round first, with the caller's vote", async () => {
-    queryMock.mockResolvedValueOnce({
-      rows: [
-        { id: 2, title: "Week 2", published_at: new Date("2026-08-20T00:00:00Z") },
-        { id: 1, title: null, published_at: new Date("2026-08-13T00:00:00Z") },
-      ],
+  it("groups ordered questions under newest locked rounds", async () => {
+    const rounds = [
+      { _id: 2, title: "Week 2", publishedAt: new Date("2026-08-20T00:00:00Z") },
+      { _id: 1, title: null, publishedAt: new Date("2026-08-13T00:00:00Z") },
+    ];
+    mocks.roundFind.mockReturnValue({ sort: () => ({ limit: () => lean(rounds) }) });
+    mocks.questionFind.mockImplementation(({ roundId }: { roundId: number }) => ({
+      sort: () =>
+        lean(
+          roundId === 2
+            ? [
+                { _id: 20, text: "New A" },
+                { _id: 21, text: "New B" },
+              ]
+            : [{ _id: 10, text: "Old" }],
+        ),
+    }));
+    mocks.voteAggregate.mockImplementation(async ([match]) => {
+      const ids = match.$match.questionId.$in as number[];
+      return ids[0] === 10
+        ? [
+            { _id: { questionId: 10, agree: true }, count: 3 },
+            { _id: { questionId: 10, agree: false }, count: 1 },
+          ]
+        : [];
     });
-    queryMock.mockResolvedValueOnce({
-      rows: [
-        { round_id: 1, id: 10, text: "Old", my_agree: null, agree_count: 3, disagree_count: 1 },
-        { round_id: 2, id: 20, text: "New A", my_agree: false, agree_count: 6, disagree_count: 4 },
-        { round_id: 2, id: 21, text: "New B", my_agree: null, agree_count: 0, disagree_count: 0 },
-      ],
-    });
-    const history = await getRoundHistory("u1", 5);
-    expect(history).toEqual([
+    mocks.voteFind.mockImplementation((filter: { questionId: { $in: number[] } }) =>
+      lean(filter.questionId.$in.includes(20) ? [{ questionId: 20, agree: false }] : []),
+    );
+    const { getRoundHistory } = await import("./store");
+    await expect(getRoundHistory("u1", 5)).resolves.toEqual([
       {
         round: { id: 2, title: "Week 2", publishedAt: "2026-08-20T00:00:00.000Z" },
         questions: [
-          { id: 20, text: "New A", myAgree: false, agreeCount: 6, disagreeCount: 4 },
+          { id: 20, text: "New A", myAgree: false, agreeCount: 0, disagreeCount: 0 },
           { id: 21, text: "New B", myAgree: null, agreeCount: 0, disagreeCount: 0 },
         ],
       },
@@ -83,77 +144,92 @@ describe("getRoundHistory", () => {
         questions: [{ id: 10, text: "Old", myAgree: null, agreeCount: 3, disagreeCount: 1 }],
       },
     ]);
-    expect(queryMock.mock.calls[0][1]).toEqual([5]);
-    // The question query scopes to the listed rounds and the caller.
-    expect(queryMock.mock.calls[1][1]).toEqual([[2, 1], "u1"]);
   });
 });
 
 describe("castVote", () => {
-  it("returns the stored vote and tallies after a guarded insert", async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] });
-    queryMock.mockResolvedValueOnce({ rows: [{ my_agree: true, agree_count: 7, disagree_count: 2 }] });
-    expect(await castVote("u1", 10, true)).toEqual({ agree: true, agreeCount: 7, disagreeCount: 2 });
-    expect(queryMock.mock.calls[0][0]).toContain("r.status = 'active'");
-    expect(queryMock.mock.calls[0][0]).toContain("ON CONFLICT (question_id, user_id) DO NOTHING");
-    expect(queryMock.mock.calls[0][1]).toEqual([10, "u1", true]);
+  it("returns the first stored direction and fresh tallies", async () => {
+    mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 1 });
+    mocks.voteCreate.mockResolvedValue([{ questionId: 10, userId: "u1", agree: true }]);
+    mocks.voteFindOne.mockReturnValue(lean({ agree: true }));
+    mocks.voteAggregate.mockResolvedValue([
+      { _id: true, count: 7 },
+      { _id: false, count: 2 },
+    ]);
+    const { castVote } = await import("./store");
+    await expect(castVote("u1", 10, true)).resolves.toEqual({ agree: true, agreeCount: 7, disagreeCount: 2 });
+    expect(mocks.roundUpdateOne).toHaveBeenCalledWith(
+      { _id: 3, status: "active" },
+      { $inc: { voteRevision: 1 } },
+      { session: mongoSession },
+    );
+    expect(mongoSession.withTransaction).toHaveBeenCalledOnce();
   });
 
-  it("returns the stored direction when the caller already voted the other way", async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] });
-    queryMock.mockResolvedValueOnce({ rows: [{ my_agree: false, agree_count: 7, disagree_count: 3 }] });
-    expect(await castVote("u1", 10, true)).toEqual({ agree: false, agreeCount: 7, disagreeCount: 3 });
+  it("returns the previously stored direction when a duplicate submission races", async () => {
+    mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 1 });
+    mocks.voteCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.voteFindOne.mockReturnValue(lean({ agree: false }));
+    mocks.voteAggregate.mockResolvedValue([
+      { _id: true, count: 7 },
+      { _id: false, count: 3 },
+    ]);
+    const { castVote } = await import("./store");
+    await expect(castVote("u1", 10, true)).resolves.toEqual({ agree: false, agreeCount: 7, disagreeCount: 3 });
   });
 
-  it("returns null when no vote is stored (locked round or unknown question)", async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] });
-    queryMock.mockResolvedValueOnce({ rows: [{ my_agree: null, agree_count: 5, disagree_count: 5 }] });
-    expect(await castVote("u1", 10, true)).toBeNull();
+  it("returns null for unknown questions and locked rounds", async () => {
+    mocks.questionFindById.mockReturnValue({ session: () => lean(null) });
+    mocks.voteFindOne.mockReturnValue(lean(null));
+    const { castVote } = await import("./store");
+    await expect(castVote("u1", 99, true)).resolves.toBeNull();
+    mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 0 });
+    mocks.voteFindOne.mockReturnValue(lean(null));
+    await expect(castVote("u1", 10, true)).resolves.toBeNull();
   });
 });
 
 describe("publishRound", () => {
-  it("locks the active round and inserts the new round and questions in one transaction", async () => {
-    clientQueryMock.mockImplementation(async (sql: string) => {
-      if (sql.startsWith("UPDATE pulse_rounds")) return { rows: [{ id: 2 }] };
-      if (sql.startsWith("INSERT INTO pulse_rounds")) return { rows: [{ id: 3 }] };
-      return { rows: [] };
+  it("locks the active round and inserts a new round with questions in one transaction", async () => {
+    mocks.roundFindOneAndUpdate.mockReturnValue(lean({ _id: 2 }));
+    mocks.counterFindOneAndUpdate.mockReturnValueOnce(lean({ value: 3 })).mockReturnValueOnce(lean({ value: 2 }));
+    mocks.roundCreate.mockResolvedValue([{ _id: 3 }]);
+    mocks.questionInsertMany.mockResolvedValue([]);
+    const { publishRound } = await import("./store");
+    await expect(publishRound({ title: "Week 3", questions: ["A", "B"] })).resolves.toEqual({
+      lockedRoundId: 2,
+      roundId: 3,
     });
-    const result = await publishRound({ title: "Week 3", questions: ["A", "B"] });
-    expect(result).toEqual({ lockedRoundId: 2, roundId: 3 });
-    const statements = clientQueryMock.mock.calls.map((c) => (c[0] as string).split(" ", 3).join(" "));
-    expect(statements).toEqual([
-      "BEGIN",
-      "UPDATE pulse_rounds SET",
-      "INSERT INTO pulse_rounds",
-      "INSERT INTO pulse_questions",
-      "INSERT INTO pulse_questions",
-      "COMMIT",
-    ]);
-    // Question inserts carry the new round id and 0-based seed positions.
-    expect(clientQueryMock.mock.calls[3][1]).toEqual([3, 0, "A"]);
-    expect(clientQueryMock.mock.calls[4][1]).toEqual([3, 1, "B"]);
-    expect(releaseMock).toHaveBeenCalledTimes(1);
+    expect(mocks.roundFindOneAndUpdate).toHaveBeenCalledWith(
+      { status: "active" },
+      { $set: { status: "locked", lockedAt: expect.any(Date) } },
+      { new: true, session: mongoSession },
+    );
+    expect(mocks.questionInsertMany).toHaveBeenCalledWith(
+      [
+        { _id: 1, roundId: 3, position: 0, text: "A" },
+        { _id: 2, roundId: 3, position: 1, text: "B" },
+      ],
+      { session: mongoSession },
+    );
+    expect(mongoSession.withTransaction).toHaveBeenCalledOnce();
   });
 
-  it("reports no locked round on first publish", async () => {
-    clientQueryMock.mockImplementation(async (sql: string) => {
-      if (sql.startsWith("UPDATE pulse_rounds")) return { rows: [] };
-      if (sql.startsWith("INSERT INTO pulse_rounds")) return { rows: [{ id: 1 }] };
-      return { rows: [] };
-    });
-    expect(await publishRound({ title: null, questions: ["A"] })).toEqual({ lockedRoundId: null, roundId: 1 });
+  it("reports no locked round on the first publish", async () => {
+    mocks.roundFindOneAndUpdate.mockReturnValue(lean(null));
+    mocks.counterFindOneAndUpdate.mockReturnValueOnce(lean({ value: 1 }));
+    mocks.roundCreate.mockResolvedValue([{ _id: 1 }]);
+    const { publishRound } = await import("./store");
+    await expect(publishRound({ title: null, questions: [] })).resolves.toEqual({ lockedRoundId: null, roundId: 1 });
   });
 
-  it("rolls back and releases the client when an insert fails", async () => {
-    clientQueryMock.mockImplementation(async (sql: string) => {
-      if (sql.startsWith("UPDATE pulse_rounds")) return { rows: [{ id: 2 }] };
-      if (sql.startsWith("INSERT INTO pulse_rounds")) throw new Error("boom");
-      return { rows: [] };
-    });
+  it("propagates transaction failures and ends the session", async () => {
+    mongoSession.withTransaction.mockRejectedValueOnce(new Error("boom"));
+    const { publishRound } = await import("./store");
     await expect(publishRound({ title: null, questions: ["A"] })).rejects.toThrow("boom");
-    const statements = clientQueryMock.mock.calls.map((c) => c[0] as string);
-    expect(statements[statements.length - 1]).toBe("ROLLBACK");
-    expect(releaseMock).toHaveBeenCalledTimes(1);
+    expect(mongoSession.endSession).toHaveBeenCalledOnce();
   });
 });
