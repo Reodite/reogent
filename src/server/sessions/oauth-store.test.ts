@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { findOrCreateOAuthUser } from "./store";
 
+const cryptoMocks = vi.hoisted(() => ({ randomInt: vi.fn() }));
+vi.mock("node:crypto", () => ({ randomInt: cryptoMocks.randomInt }));
+
 const mocks = vi.hoisted(() => ({
   connectDatabase: vi.fn(),
   oauthFindOne: vi.fn(),
@@ -27,6 +30,7 @@ function lean(value: unknown) {
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.connectDatabase.mockResolvedValue(undefined);
+  cryptoMocks.randomInt.mockReset().mockReturnValue(4721);
   mocks.userStartSession.mockResolvedValue(mongoSession);
   mocks.userCreate.mockResolvedValue([{ _id: "user-2", username: "ada-lovelace-4721" }]);
   mocks.oauthCreate.mockResolvedValue([{ _id: "oa2" }]);
@@ -136,11 +140,40 @@ describe("provider-neutral account persistence", () => {
         : lean(oauthLookups === 3 ? { _id: "oa-winner", userId: "winner" } : null);
     });
     mocks.userFindById.mockImplementation(() => ({ select: () => lean({ _id: "winner", username: "student-1234" }) }));
-    mocks.oauthCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.oauthCreate.mockRejectedValueOnce({
+      code: 11000,
+      keyValue: { provider: "google", providerSubject: "subject-3" },
+    });
     await expect(findOrCreateOAuthUser("google", "subject-3", {})).resolves.toEqual({
       id: "winner",
       username: "student-1234",
     });
+  });
+
+  it("retries username conflicts in a fresh transaction", async () => {
+    cryptoMocks.randomInt.mockReturnValueOnce(1234).mockReturnValueOnce(5678);
+    const lookup = Object.assign(lean(null), { session: () => lean(null) });
+    mocks.oauthFindOne.mockReturnValue(lookup);
+    mocks.userFindById.mockReturnValue({ session: () => lean(null) });
+    mocks.userCreate
+      .mockRejectedValueOnce({ code: 11000, keyValue: { username: "adalovelace-1234" } })
+      .mockResolvedValueOnce([{ _id: "user-2", username: "adalovelace-5678" }]);
+
+    await expect(findOrCreateOAuthUser("google", "subject-4", { displayName: "Ada Lovelace" })).resolves.toEqual({
+      id: "user-2",
+      username: "adalovelace-5678",
+    });
+    expect(mongoSession.withTransaction).toHaveBeenCalledTimes(2);
+    expect(mongoSession.endSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not recover unrelated duplicate constraints as username or OAuth races", async () => {
+    mocks.oauthFindOne.mockReturnValueOnce(lean(null)).mockReturnValueOnce({ session: () => lean(null) });
+    const conflict = { code: 11000, keyValue: { unrelated: "collision" } };
+    mocks.userCreate.mockRejectedValueOnce(conflict);
+
+    await expect(findOrCreateOAuthUser("google", "subject-5", {})).rejects.toMatchObject(conflict);
+    expect(mocks.oauthFindOne).toHaveBeenCalledTimes(2);
   });
 
   it.each([

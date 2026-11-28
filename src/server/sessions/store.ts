@@ -229,56 +229,67 @@ export async function findOrCreateOAuthUser(
       .replace(/[^a-zA-Z0-9_-]/g, "")
       .toLowerCase()
       .slice(0, 32) || "student";
-  const mongoSession = await User.startSession();
-  try {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const username = `${base}-${randomInt(1000, 10_000)}`;
+    const mongoSession = await User.startSession();
     let created: { id: string; username: string } | undefined;
-    await mongoSession.withTransaction(async () => {
-      const duplicate = await OAuthAccount.findOne({ provider, providerSubject }).session(mongoSession).lean();
-      if (duplicate) {
-        const user = await User.findById(duplicate.userId).session(mongoSession).lean();
-        if (!user) throw new Error("OAuth account has no user");
+    try {
+      await mongoSession.withTransaction(async () => {
+        const duplicate = await OAuthAccount.findOne({ provider, providerSubject }).session(mongoSession).lean();
+        if (duplicate) {
+          const user = await User.findById(duplicate.userId).session(mongoSession).lean();
+          if (!user) throw new Error("OAuth account has no user");
+          created = { id: user._id, username: user.username };
+          return;
+        }
+        const [user] = await User.create([{ username }], { session: mongoSession });
+        await OAuthAccount.create(
+          [
+            {
+              userId: user._id,
+              provider,
+              providerSubject,
+              isPrimary: true,
+              email: email ?? null,
+              emailVerified: profile.emailVerified ?? false,
+              displayName: displayName ?? null,
+              avatarUrl: avatarUrl ?? null,
+            },
+          ],
+          { session: mongoSession },
+        );
         created = { id: user._id, username: user.username };
-        return;
-      }
-      let user: InstanceType<typeof User> | undefined;
-      for (let attempt = 0; attempt < 5 && !user; attempt++) {
-        const username = `${base}-${randomInt(1000, 10_000)}`;
-        try {
-          [user] = await User.create([{ username }], { session: mongoSession });
-        } catch (error) {
-          if (!(typeof error === "object" && error !== null && "code" in error && error.code === 11000)) throw error;
+      });
+      if (!created) throw new Error("Could not create OAuth account");
+      return created;
+    } catch (error) {
+      if (isDuplicateKey(error) && duplicateKeyValue(error)?.username === username) continue;
+      if (isOAuthIdentityDuplicate(error, provider, providerSubject)) {
+        const winner = await OAuthAccount.findOne({ provider, providerSubject }).lean();
+        if (winner) {
+          const user = await User.findById(winner.userId).select({ username: 1 }).lean();
+          if (user) return { id: user._id, username: user.username };
         }
       }
-      if (!user) throw new Error("Could not allocate a username for the OAuth account");
-      await OAuthAccount.create(
-        [
-          {
-            userId: user._id,
-            provider,
-            providerSubject,
-            isPrimary: true,
-            email: email ?? null,
-            emailVerified: profile.emailVerified ?? false,
-            displayName: displayName ?? null,
-            avatarUrl: avatarUrl ?? null,
-          },
-        ],
-        { session: mongoSession },
-      );
-      created = { id: user._id, username: user.username };
-    });
-    if (!created) throw new Error("Could not create OAuth account");
-    return created;
-  } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
-      const winner = await OAuthAccount.findOne({ provider, providerSubject }).lean();
-      if (winner) {
-        const user = await User.findById(winner.userId).select({ username: 1 }).lean();
-        if (user) return { id: user._id, username: user.username };
-      }
+      throw error;
+    } finally {
+      await mongoSession.endSession();
     }
-    throw error;
-  } finally {
-    await mongoSession.endSession();
   }
+  throw new Error("Could not allocate a username for the OAuth account");
+}
+
+function isDuplicateKey(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
+}
+
+function duplicateKeyValue(error: unknown): Record<string, unknown> | undefined {
+  return typeof error === "object" && error !== null && "keyValue" in error
+    ? (error as { keyValue?: Record<string, unknown> }).keyValue
+    : undefined;
+}
+
+function isOAuthIdentityDuplicate(error: unknown, provider: string, providerSubject: string): boolean {
+  const keyValue = duplicateKeyValue(error);
+  return isDuplicateKey(error) && keyValue?.provider === provider && keyValue.providerSubject === providerSubject;
 }
