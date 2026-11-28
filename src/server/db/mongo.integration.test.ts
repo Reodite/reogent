@@ -88,6 +88,9 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
       { role: "user", content: "Question", citations: null },
       { role: "assistant", content: "Answer", citations: null },
     ]);
+    const messageDocs = await Message.find({ sessionId, userId }).lean();
+    expect(messageDocs).toHaveLength(2);
+    expect(messageDocs.every((message) => message.userId === userId)).toBe(true);
     await expect(getSessionMessages(randomUUID(), sessionId)).resolves.toBeNull();
   });
 

@@ -18,18 +18,9 @@ export async function listSessions(userId: string): Promise<SessionSummary[]> {
 /** Chronological message history, or null if the session doesn't belong to this user. */
 export async function getSessionMessages(userId: string, sessionId: string): Promise<ChatMessage[] | null> {
   await connectDatabase();
-  const mongoSession = await Session.startSession();
-  let messages: { role: "user" | "assistant"; content: string; activity?: unknown; citations?: unknown }[] | null;
-  try {
-    messages = await mongoSession.withTransaction(async () => {
-      const owned = await Session.exists({ _id: sessionId, userId }).session(mongoSession).lean();
-      if (!owned) return null;
-      return Message.find({ sessionId }).sort({ order: 1 }).session(mongoSession).lean();
-    });
-  } finally {
-    await mongoSession.endSession();
-  }
-  if (!messages) return null;
+  const owned = await Session.exists({ _id: sessionId, userId });
+  if (!owned) return null;
+  const messages = await Message.find({ sessionId, userId }).sort({ order: 1 }).lean();
   return messages.map((message) => {
     const result: ChatMessage = { role: message.role, content: message.content };
     if (message.activity) result.activity = message.activity as ActivityBlock[];
@@ -100,9 +91,10 @@ async function appendExchangeTransaction(
       if (owned) {
         await Message.create(
           [
-            { sessionId, order: owned.nextMessageOrder - 2, role: "user", content: userMessage },
+            { sessionId, userId, order: owned.nextMessageOrder - 2, role: "user", content: userMessage },
             {
               sessionId,
+              userId,
               order: owned.nextMessageOrder - 1,
               role: "assistant",
               content: assistantMessage,
@@ -123,9 +115,10 @@ async function appendExchangeTransaction(
       );
       await Message.create(
         [
-          { sessionId, order: 0, role: "user", content: userMessage },
+          { sessionId, userId, order: 0, role: "user", content: userMessage },
           {
             sessionId,
+            userId,
             order: 1,
             role: "assistant",
             content: assistantMessage,

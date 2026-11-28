@@ -120,9 +120,10 @@ describe("session write ownership", () => {
     );
     expect(mocks.messageCreate).toHaveBeenCalledWith(
       [
-        expect.objectContaining({ sessionId: "sid", order: 0, role: "user", content: question }),
+        expect.objectContaining({ sessionId: "sid", userId: "u1", order: 0, role: "user", content: question }),
         expect.objectContaining({
           sessionId: "sid",
+          userId: "u1",
           order: 1,
           role: "assistant",
           content: "answer",
@@ -231,18 +232,26 @@ describe("session write ownership", () => {
   });
 
   it("checks ownership before reading ordered messages", async () => {
-    mocks.sessionExists.mockImplementation(({ userId }: { userId: string }) => ({
-      session: () => lean(userId === "u1" ? { _id: "sid" } : null),
-    }));
+    mocks.sessionExists.mockResolvedValueOnce({ _id: "sid" }).mockResolvedValueOnce(null);
     mocks.messageFind.mockReturnValue({
-      sort: () => ({ session: () => lean([{ role: "assistant", content: "a", activity: null, citations: null }]) }),
+      sort: () => lean([{ role: "assistant", content: "a", activity: null, citations: null }]),
     });
     await expect(getSessionMessages("u1", "sid")).resolves.toEqual([
       { role: "assistant", content: "a", citations: null },
     ]);
     expect(mocks.sessionExists).toHaveBeenCalledWith({ _id: "sid", userId: "u1" });
-    expect(mocks.messageFind).toHaveBeenCalledWith({ sessionId: "sid" });
+    expect(mocks.messageFind).toHaveBeenCalledWith({ sessionId: "sid", userId: "u1" });
     await expect(getSessionMessages("attacker", "sid")).resolves.toBeNull();
+    expect(mocks.messageFind).toHaveBeenCalledOnce();
+  });
+
+  it("scopes message reads to the owner even if session ownership changes after the check", async () => {
+    mocks.sessionExists.mockResolvedValue({ _id: "sid" });
+    mocks.messageFind.mockImplementation((filter: { sessionId: string; userId: string }) => ({
+      sort: () => lean(filter.userId === "u1" ? [] : [{ role: "assistant", content: "private", activity: null }]),
+    }));
+    await expect(getSessionMessages("u1", "sid")).resolves.toEqual([]);
+    expect(mocks.messageFind).toHaveBeenCalledWith({ sessionId: "sid", userId: "u1" });
   });
 
   it("deletes owned session messages in the same transaction", async () => {
@@ -265,9 +274,9 @@ describe("history rehydration preserves stored citation data", () => {
   it("round trips null and citation arrays without normalization", async () => {
     await fc.assert(
       fc.asyncProperty(arbPersistedMessage, async (citations) => {
-        mocks.sessionExists.mockReturnValue({ session: () => lean({ _id: "sid" }) });
+        mocks.sessionExists.mockResolvedValue({ _id: "sid" });
         mocks.messageFind.mockReturnValue({
-          sort: () => ({ session: () => lean([{ role: "assistant", content: "answer", citations, activity: null }]) }),
+          sort: () => lean([{ role: "assistant", content: "answer", citations, activity: null }]),
         });
         const messages = await getSessionMessages("u1", "sid");
         expect(JSON.stringify(messages?.[0].citations)).toEqual(JSON.stringify(citations));

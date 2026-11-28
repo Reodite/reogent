@@ -31,6 +31,7 @@ const messageSchema = new Schema(
   {
     _id: { type: String, default: randomUUID },
     sessionId: { type: String, required: true },
+    userId: { type: String, required: true },
     order: { type: Number, required: true },
     role: { type: String, required: true, enum: ["user", "assistant"] },
     content: { type: String, required: true },
@@ -41,6 +42,7 @@ const messageSchema = new Schema(
   { versionKey: false },
 );
 messageSchema.index({ sessionId: 1, order: 1 }, { unique: true });
+messageSchema.index({ userId: 1, sessionId: 1, order: 1 });
 
 const oauthAccountSchema = new Schema(
   {
