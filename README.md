@@ -151,10 +151,8 @@ Compose binds app, MongoDB, and Meilisearch to loopback, so run the proxy on the
 5. Build and start the app:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.external.yml up -d --build
 ```
-
-For external MongoDB, include `-f docker-compose.external.yml` in the command.
 
 ## Backups and maintenance
 
