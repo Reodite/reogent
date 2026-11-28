@@ -191,7 +191,6 @@ export async function findOrCreateOAuthUser(
   providerSubject: string,
   profile: OAuthProfileClaims,
 ): Promise<{ id: string; username: string }> {
-  await connectDatabase();
   if (!/^[a-z][a-z0-9-]{0,31}$/.test(provider)) throw new Error("Invalid OAuth provider");
   if (!providerSubject.trim() || providerSubject.length > 512) throw new Error("Invalid OAuth subject");
   const email = profile.email?.trim() || undefined;
@@ -204,6 +203,7 @@ export async function findOrCreateOAuthUser(
     if (parsed.protocol !== "https:") throw new Error("Invalid OAuth avatar URL");
     avatarUrl = parsed.href;
   }
+  await connectDatabase();
   const existing = await OAuthAccount.findOne({ provider, providerSubject }).lean();
   if (existing) {
     const emailProvided = profile.email !== undefined;

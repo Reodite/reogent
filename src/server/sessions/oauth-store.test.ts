@@ -184,6 +184,7 @@ describe("provider-neutral account persistence", () => {
     ["non-HTTPS avatar", "google", "subject", { avatarUrl: "http://images.example/avatar.png" }],
   ])("rejects %s before database work", async (_label, provider, subject, profile) => {
     await expect(findOrCreateOAuthUser(provider, subject, profile)).rejects.toThrow();
+    expect(mocks.connectDatabase).not.toHaveBeenCalled();
     expect(mocks.oauthFindOne).not.toHaveBeenCalled();
     expect(mocks.userStartSession).not.toHaveBeenCalled();
   });
