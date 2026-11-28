@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDatabase } from "../db";
 import { migrate } from "../db/migrate";
-import { Counter, Message, OAuthAccount, PulseQuestion, PulseRound, PulseVote, Session, User } from "../db/models";
+import { Message, OAuthAccount, PulseQuestion, PulseRound, PulseVote, Session, User } from "../db/models";
 import { castVote, getRoundHistory, publishRound } from "../pulse/store";
 import { appendExchange, findOrCreateOAuthUser, getSessionMessages, listSessions } from "../sessions/store";
 
@@ -42,7 +42,6 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
           PulseQuestion.deleteMany({ _id: { $in: pulseQuestionIds } }),
           PulseRound.deleteMany({ _id: { $in: pulseRoundIds } }),
         ]);
-        await Counter.deleteMany({ _id: { $in: [`pulse-round`, `pulse-question`] } });
       }
     } finally {
       await closeDatabase().catch(() => {});
