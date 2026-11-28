@@ -4,10 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDatabase } from "../db";
 import { migrate } from "../db/migrate";
 import { Message, OAuthAccount, PulseQuestion, PulseRound, PulseVote, Session, User } from "../db/models";
+import { validateMongoTestUri } from "../db/test-uri";
 import { castVote, getRoundHistory, publishRound } from "../pulse/store";
 import { appendExchange, findOrCreateOAuthUser, getSessionMessages, listSessions } from "../sessions/store";
 
 const uri = process.env.MONGODB_TEST_URI;
+if (uri) validateMongoTestUri(uri);
 if (!uri && process.env.REQUIRE_MONGODB_TESTS === "true") {
   throw new Error("MONGODB_TEST_URI is required for MongoDB integration tests");
 }
