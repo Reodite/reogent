@@ -198,13 +198,7 @@ describe("runIngest", () => {
       expect(Buffer.byteLength(JSON.stringify(documents), "utf8")).toBeLessThanOrEqual(100);
     }
     expect(
-      Buffer.byteLength(
-        JSON.stringify([
-          ...batches[0],
-          ...f.first.addDocuments.mock.calls[1][0],
-        ]),
-        "utf8",
-      ),
+      Buffer.byteLength(JSON.stringify([...batches[0], ...f.first.addDocuments.mock.calls[1][0]]), "utf8"),
     ).toBeGreaterThan(100);
   });
 
