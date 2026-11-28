@@ -1,8 +1,16 @@
 services:
   app:
+    environment:
+      USE_EXTERNAL_MONGODB: "true"
+      MONGODB_URI: ${MONGODB_URI:?Set MONGODB_URI}
     depends_on:
       mongo: !reset null
 
   dev:
+    environment:
+      USE_EXTERNAL_MONGODB: "true"
+      MONGODB_URI: ${MONGODB_URI:?Set MONGODB_URI}
     depends_on:
       mongo: !reset null
+
+  backup: !reset null
