@@ -130,4 +130,11 @@ describe("deployment security defaults", () => {
       'if (!uri && process.env.REQUIRE_MONGODB_TESTS === "true")',
     );
   });
+
+  it("runs authenticated Mongo integration tests in CI", () => {
+    const workflow = read(".github/workflows/test.yml");
+    expect(workflow).toContain("npm test");
+    expect(workflow).toContain("npm run test:mongodb");
+    expect(workflow).toContain("MONGODB_TEST_PASSWORD=$(openssl rand -hex 32)");
+  });
 });

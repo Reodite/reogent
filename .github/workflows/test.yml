@@ -1,0 +1,31 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Configure local MongoDB credentials
+        shell: bash
+        run: |
+          umask 077
+          cat > .env <<EOF
+          MONGODB_ROOT_USERNAME=admin
+          MONGODB_ROOT_PASSWORD=$(openssl rand -hex 32)
+          MONGODB_APP_USERNAME=reodite
+          MONGODB_APP_PASSWORD=$(openssl rand -hex 32)
+          MONGODB_TEST_USERNAME=reodite-test
+          MONGODB_TEST_PASSWORD=$(openssl rand -hex 32)
+          MEILI_MASTER_KEY=$(openssl rand -hex 32)
+          EOF
+      - run: npm run test:mongodb
