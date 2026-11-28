@@ -134,6 +134,57 @@ describe("session write ownership", () => {
     );
   });
 
+  it("retries a duplicate first-session insert when the existing session belongs to the caller", async () => {
+    mocks.sessionFindOneAndUpdate.mockResolvedValueOnce(null).mockResolvedValueOnce({ nextMessageOrder: 2 });
+    mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
+    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.sessionFindById.mockReturnValue({ select: () => lean({ userId: "u1" }) });
+    mocks.messageCreate.mockResolvedValue([]);
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).resolves.toBeUndefined();
+    expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledTimes(2);
+    expect(mocks.messageCreate).toHaveBeenCalledOnce();
+  });
+
+  it("does not retry a duplicate first-session insert owned by another user", async () => {
+    mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
+    mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
+    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.sessionFindById.mockReturnValue({ select: () => lean({ userId: "other-user" }) });
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).rejects.toThrow("Session not found");
+    expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledOnce();
+    expect(mocks.messageCreate).not.toHaveBeenCalled();
+  });
+
+  it("retries a first-session duplicate-key race for the same owner", async () => {
+    let creates = 0;
+    mocks.sessionFindOneAndUpdate.mockResolvedValueOnce(null).mockResolvedValueOnce({ nextMessageOrder: 2 });
+    mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
+    mocks.sessionCreate.mockImplementation(async () => {
+      creates++;
+      if (creates === 1) throw { code: 11000 };
+      return [{ _id: "sid" }];
+    });
+    mocks.sessionFindById.mockReturnValue({ select: () => lean({ userId: "u1" }) });
+    mocks.messageCreate.mockResolvedValue([]);
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).resolves.toBeUndefined();
+    expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledTimes(2);
+    expect(mocks.messageCreate).toHaveBeenCalledOnce();
+  });
+
+  it("does not retry a first-session collision owned by another user", async () => {
+    mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
+    mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
+    mocks.sessionCreate.mockRejectedValue({ code: 11000 });
+    mocks.sessionFindById.mockReturnValue({ select: () => lean({ userId: "other-user" }) });
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).rejects.toThrow("Session not found");
+    expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledOnce();
+    expect(mocks.messageCreate).not.toHaveBeenCalled();
+  });
+
   it.each([
     { session: null, allowed: true },
     { session: { userId: "u1" }, allowed: true },

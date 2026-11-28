@@ -61,6 +61,48 @@ describe("provider-neutral account persistence", () => {
     expect(mongoSession.withTransaction).not.toHaveBeenCalled();
   });
 
+  it("preserves the stored email and verification when the provider omits email", async () => {
+    mocks.oauthFindOne.mockReturnValueOnce(lean({ _id: "oa1", userId: "user-1" }));
+    mocks.oauthUpdateOne.mockResolvedValue(undefined);
+    mocks.userFindById.mockReturnValue({ select: () => lean({ _id: "user-1", username: "ada-1234" }) });
+    await findOrCreateOAuthUser("google", "subject-1", {});
+    const claims = mocks.oauthUpdateOne.mock.calls[0][1].$set;
+    expect(claims).not.toHaveProperty("email");
+    expect(claims).not.toHaveProperty("emailVerified");
+  });
+
+  it("replaces the email claim and clears verification when the new email is unverified", async () => {
+    mocks.oauthFindOne.mockReturnValueOnce(lean({ _id: "oa1", userId: "user-1" }));
+    mocks.oauthUpdateOne.mockResolvedValue(undefined);
+    mocks.userFindById.mockReturnValue({ select: () => lean({ _id: "user-1", username: "ada-1234" }) });
+    await findOrCreateOAuthUser("google", "subject-1", { email: "new@example.com", emailVerified: false });
+    expect(mocks.oauthUpdateOne.mock.calls[0][1].$set).toMatchObject({
+      email: "new@example.com",
+      emailVerified: false,
+    });
+  });
+
+  it("preserves a verified email when the provider omits the email claim", async () => {
+    mocks.oauthFindOne.mockReturnValueOnce(lean({ _id: "oa1", userId: "user-1" }));
+    mocks.oauthUpdateOne.mockResolvedValue(undefined);
+    mocks.userFindById.mockReturnValue({ select: () => lean({ _id: "user-1", username: "ada-1234" }) });
+    await findOrCreateOAuthUser("google", "subject-1", {});
+    const update = mocks.oauthUpdateOne.mock.calls[0][1].$set;
+    expect(update).not.toHaveProperty("email");
+    expect(update).not.toHaveProperty("emailVerified");
+  });
+
+  it("marks a changed email unverified when the provider omits verification", async () => {
+    mocks.oauthFindOne.mockReturnValueOnce(lean({ _id: "oa1", userId: "user-1" }));
+    mocks.oauthUpdateOne.mockResolvedValue(undefined);
+    mocks.userFindById.mockReturnValue({ select: () => lean({ _id: "user-1", username: "ada-1234" }) });
+    await findOrCreateOAuthUser("google", "subject-1", { email: "new@example.com" });
+    expect(mocks.oauthUpdateOne.mock.calls[0][1].$set).toMatchObject({
+      email: "new@example.com",
+      emailVerified: false,
+    });
+  });
+
   it("creates a new user and one primary identity transactionally", async () => {
     mocks.oauthFindOne.mockReturnValueOnce(lean(null)).mockReturnValueOnce({ session: () => lean(null) });
     mocks.userFindById.mockReturnValue({ session: () => lean(null) });
