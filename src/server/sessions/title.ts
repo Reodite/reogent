@@ -45,6 +45,8 @@ export function generateSessionTitle(
         }),
       ]);
       owner.signal.throwIfAborted();
+      clearTimeout(deadline);
+      release();
       await recordTokenUsage(userId, result.totalTokens);
       const raw = (result.message.content ?? [])
         .map((b) => b.text)

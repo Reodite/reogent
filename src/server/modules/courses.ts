@@ -236,15 +236,17 @@ export const courses: DatasetModule = {
         sortableAttributes: ["code", "average", "reported"],
       },
       async *read(store) {
-        const [distRows, calCourses, calSubjects] = (await Promise.all([
+        const [distRows, calCourses, calSubjects, calFaculties] = (await Promise.all([
           store.getJson("grades/distributions.json"),
           store.getJson("academic-calendar/vancouver/courses.json"),
           store.getJson("academic-calendar/vancouver/subjects.json"),
-        ])) as [Record<string, unknown>[], Row[], Row[]];
+          store.getJson("academic-calendar/vancouver/faculties.json"),
+        ])) as [Record<string, unknown>[], Row[], Row[], Row[]];
         yield* buildRecordsFromDistributions({
           distRows: distRows as unknown as Parameters<typeof buildRecordsFromDistributions>[0]["distRows"],
           calCourses: calCourses as unknown as CourseCalRow[],
-          calSubjects: calSubjects as unknown as { id: string; name: string }[],
+          calSubjects: calSubjects as unknown as Parameters<typeof buildRecordsFromDistributions>[0]["calSubjects"],
+          calFaculties: calFaculties as unknown as Parameters<typeof buildRecordsFromDistributions>[0]["calFaculties"],
         });
       },
       transform(doc) {
@@ -339,7 +341,7 @@ export const courses: DatasetModule = {
           sortBy === "code";
         const isPooledSort = sortBy === "grade_avg_desc" || sortBy === "grade_avg_asc";
         const needsGradeJoin = isPooledSort || min_grade_avg !== undefined || max_grade_avg !== undefined;
-        const facultyFilter = faculty ? `faculty = ${JSON.stringify(String(faculty))}` : undefined;
+        const facultyFilter = faculty ? `faculty = ${filterValue(String(faculty))}` : undefined;
 
         // Faculty metadata and session averages live in the session index.
         const hasGradeBounds = min_grade_avg !== undefined || max_grade_avg !== undefined;

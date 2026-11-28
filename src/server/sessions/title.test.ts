@@ -63,4 +63,31 @@ describe("generated session titles", () => {
     await vi.runAllTimersAsync();
     expect(mocks.updateSessionTitle).not.toHaveBeenCalled();
   });
+
+  it.each(["usage recording", "title update"])("releases model capacity before a stalled %s", async (stage) => {
+    let releaseWrite!: () => void;
+    const pendingWrite = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    if (stage === "usage recording") {
+      mocks.converse.mockResolvedValueOnce({
+        message: { content: [{ text: "Course planning" }] },
+        totalTokens: 42,
+      });
+      mocks.recordTokenUsage.mockReturnValueOnce(pendingWrite);
+    } else {
+      mocks.updateSessionTitle.mockReturnValueOnce(pendingWrite);
+    }
+
+    generateSessionTitle("u1", "s1", "question", "answer");
+    await vi.waitFor(() =>
+      expect(stage === "usage recording" ? mocks.recordTokenUsage : mocks.updateSessionTitle).toHaveBeenCalledOnce(),
+    );
+
+    generateSessionTitle("u1", "s2", "question", "answer");
+    await vi.waitFor(() => expect(mocks.converse).toHaveBeenCalledTimes(2));
+
+    releaseWrite();
+    await vi.waitFor(() => expect(mocks.updateSessionTitle).toHaveBeenCalled());
+  });
 });

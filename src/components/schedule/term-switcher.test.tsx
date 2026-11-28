@@ -11,7 +11,7 @@ const terms = [
 ];
 
 describe("TermSwitcher", () => {
-  it("moves between terms with tablist arrow keys", () => {
+  it("moves focus and selection with wrapping arrow keys", () => {
     const onSelect = vi.fn();
     render(<TermSwitcher terms={terms} selected="2026-fall" onSelect={onSelect} />);
 
@@ -22,15 +22,17 @@ describe("TermSwitcher", () => {
 
     expect(onSelect).toHaveBeenCalledWith("2027-spring");
     expect(document.activeElement).toBe(spring);
+
+    fireEvent.keyDown(spring, { key: "ArrowRight" });
+    expect(onSelect).toHaveBeenLastCalledWith("2026-fall");
+    expect(document.activeElement).toBe(fall);
   });
 
-  it("wraps with ArrowLeft and supports Home and End", () => {
+  it("supports ArrowLeft, Home, and End and exposes one tab stop", () => {
     const onSelect = vi.fn();
     render(<TermSwitcher terms={terms} selected="2026-fall" onSelect={onSelect} />);
 
-    const fall = screen.getByRole("tab", { name: "Fall 2026" });
-    const spring = screen.getByRole("tab", { name: "Spring 2027" });
-
+    const [fall, spring] = screen.getAllByRole("tab");
     fireEvent.keyDown(fall, { key: "ArrowLeft" });
     expect(onSelect).toHaveBeenLastCalledWith("2027-spring");
     expect(document.activeElement).toBe(spring);
@@ -42,5 +44,10 @@ describe("TermSwitcher", () => {
     fireEvent.keyDown(fall, { key: "End" });
     expect(onSelect).toHaveBeenLastCalledWith("2027-spring");
     expect(document.activeElement).toBe(spring);
+  });
+
+  it("renders nothing when there are no terms", () => {
+    const { container } = render(<TermSwitcher terms={[]} selected={null} onSelect={vi.fn()} />);
+    expect(container.firstChild).toBeNull();
   });
 });
