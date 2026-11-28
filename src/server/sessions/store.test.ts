@@ -137,7 +137,7 @@ describe("session write ownership", () => {
   it("retries a duplicate first-session insert when the existing session belongs to the caller", async () => {
     mocks.sessionFindOneAndUpdate.mockResolvedValueOnce(null).mockResolvedValueOnce({ nextMessageOrder: 2 });
     mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
-    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000, keyPattern: { _id: 1 }, keyValue: { _id: "sid" } });
     mocks.sessionFindById.mockReturnValue({ select: () => lean({ userId: "u1" }) });
     mocks.messageCreate.mockResolvedValue([]);
 
@@ -149,7 +149,7 @@ describe("session write ownership", () => {
   it("does not retry a duplicate first-session insert owned by another user", async () => {
     mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
     mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
-    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000, keyPattern: { _id: 1 }, keyValue: { _id: "sid" } });
     mocks.sessionFindById.mockReturnValue({ select: () => lean({ userId: "other-user" }) });
 
     await expect(appendExchange("u1", "sid", "question", "answer")).rejects.toThrow("Session not found");
@@ -163,7 +163,7 @@ describe("session write ownership", () => {
     mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
     mocks.sessionCreate.mockImplementation(async () => {
       creates++;
-      if (creates === 1) throw { code: 11000 };
+      if (creates === 1) throw { code: 11000, keyPattern: { _id: 1 }, keyValue: { _id: "sid" } };
       return [{ _id: "sid" }];
     });
     mocks.sessionFindById.mockReturnValue({ select: () => lean({ userId: "u1" }) });
@@ -177,7 +177,7 @@ describe("session write ownership", () => {
   it("waits briefly for the competing session to become visible after duplicate key", async () => {
     mocks.sessionFindOneAndUpdate.mockResolvedValueOnce(null).mockResolvedValueOnce({ nextMessageOrder: 2 });
     mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
-    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.sessionCreate.mockRejectedValueOnce({ code: 11000, keyPattern: { _id: 1 }, keyValue: { _id: "sid" } });
     mocks.sessionFindById
       .mockReturnValueOnce({ select: () => lean(null) })
       .mockReturnValueOnce({ select: () => lean({ userId: "u1" }) });
@@ -189,10 +189,20 @@ describe("session write ownership", () => {
     expect(mocks.messageCreate).toHaveBeenCalledOnce();
   });
 
+  it("propagates duplicate message-order conflicts without retrying", async () => {
+    const conflict = { code: 11000, keyPattern: { sessionId: 1, order: 1 } };
+    mocks.sessionFindOneAndUpdate.mockResolvedValue({ nextMessageOrder: 2 });
+    mocks.messageCreate.mockRejectedValueOnce(conflict);
+
+    await expect(appendExchange("u1", "sid", "question", "answer")).rejects.toMatchObject(conflict);
+    expect(mocks.sessionFindById).not.toHaveBeenCalled();
+    expect(mocks.sessionFindOneAndUpdate).toHaveBeenCalledOnce();
+  });
+
   it("does not retry a first-session collision owned by another user", async () => {
     mocks.sessionFindOneAndUpdate.mockResolvedValue(null);
     mocks.sessionExists.mockReturnValue({ session: () => lean(null) });
-    mocks.sessionCreate.mockRejectedValue({ code: 11000 });
+    mocks.sessionCreate.mockRejectedValue({ code: 11000, keyPattern: { _id: 1 }, keyValue: { _id: "sid" } });
     mocks.sessionFindById.mockReturnValue({ select: () => lean({ userId: "other-user" }) });
 
     await expect(appendExchange("u1", "sid", "question", "answer")).rejects.toThrow("Session not found");

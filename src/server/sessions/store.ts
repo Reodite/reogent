@@ -58,11 +58,17 @@ export async function appendExchange(
   try {
     await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
   } catch (error) {
-    if (!(typeof error === "object" && error !== null && "code" in error && error.code === 11000)) throw error;
+    if (!isSessionIdDuplicate(error, sessionId)) throw error;
     const existing = await findSessionOwnerAfterDuplicate(sessionId);
     if (existing !== userId) throw new Error("Session not found");
     await appendExchangeTransaction(userId, sessionId, userMessage, assistantMessage, activity, citations);
   }
+}
+
+function isSessionIdDuplicate(error: unknown, sessionId: string): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error) || error.code !== 11000) return false;
+  const duplicate = error as { keyPattern?: Record<string, unknown>; keyValue?: Record<string, unknown> };
+  return duplicate.keyPattern?._id === 1 || duplicate.keyValue?._id === sessionId;
 }
 
 async function findSessionOwnerAfterDuplicate(sessionId: string): Promise<string | null> {
