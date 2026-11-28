@@ -181,6 +181,33 @@ describe("runIngest", () => {
     expect(f.first.addDocuments).not.toHaveBeenCalled();
   });
 
+  it("splits batches before they exceed the hard request ceiling", async () => {
+    vi.stubEnv("INGEST_BATCH_BYTES", "100");
+    vi.stubEnv("INGEST_MAX_REQUEST_BYTES", "100");
+    const f = fixture(2);
+    f.first.definition.transform = vi.fn((row: { id: string; title: string; kind: string }) => ({
+      id: row.id,
+      doc: { ...row, title: "x".repeat(35) },
+    }));
+
+    await expect(runIngest(f.modules, f.search, f.store)).resolves.toBeUndefined();
+
+    const batches = f.first.addDocuments.mock.calls.map(([documents]) => documents);
+    expect(batches).toHaveLength(2);
+    for (const documents of batches) {
+      expect(Buffer.byteLength(JSON.stringify(documents), "utf8")).toBeLessThanOrEqual(100);
+    }
+    expect(
+      Buffer.byteLength(
+        JSON.stringify([
+          ...batches[0],
+          ...f.first.addDocuments.mock.calls[1][0],
+        ]),
+        "utf8",
+      ),
+    ).toBeGreaterThan(100);
+  });
+
   it("awaits each task, batches sanitized documents, and finishes indexes sequentially", async () => {
     const f = fixture(501);
 
