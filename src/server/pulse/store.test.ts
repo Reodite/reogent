@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   connectDatabase: vi.fn(),
   roundFindOne: vi.fn(),
   roundFind: vi.fn(),
+  roundFindById: vi.fn(),
   roundUpdateOne: vi.fn(),
   roundFindOneAndUpdate: vi.fn(),
   roundCreate: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("../db/models", () => ({
   PulseRound: {
     findOne: mocks.roundFindOne,
     find: mocks.roundFind,
+    findById: mocks.roundFindById,
     updateOne: mocks.roundUpdateOne,
     findOneAndUpdate: mocks.roundFindOneAndUpdate,
     create: mocks.roundCreate,
@@ -45,6 +47,10 @@ vi.mock("../db/models", () => ({
 
 function lean(value: unknown) {
   return { lean: async () => value };
+}
+
+function sessionLean(value: unknown) {
+  return { session: () => lean(value) };
 }
 
 beforeEach(() => {
@@ -68,17 +74,20 @@ describe("getActiveFeed", () => {
     );
     mocks.questionFind.mockReturnValue({
       sort: () =>
-        lean([
+        sessionLean([
           { _id: 10, roundId: 3, text: "Q1" },
           { _id: 11, roundId: 3, text: "Q2" },
         ]),
     });
-    mocks.voteAggregate.mockResolvedValue([
-      { _id: { questionId: 10, agree: true }, count: 6 },
-      { _id: { questionId: 10, agree: false }, count: 4 },
-      { _id: { questionId: 11, agree: true }, count: 1 },
-    ]);
-    mocks.voteFind.mockReturnValue(lean([{ questionId: 10, agree: true, userId: "u1" }]));
+    mocks.voteAggregate.mockReturnValue({
+      session: () =>
+        Promise.resolve([
+          { _id: { questionId: 10, agree: true }, count: 6 },
+          { _id: { questionId: 10, agree: false }, count: 4 },
+          { _id: { questionId: 11, agree: true }, count: 1 },
+        ]),
+    });
+    mocks.voteFind.mockReturnValue(sessionLean([{ questionId: 10, agree: true, userId: "u1" }]));
     const { getActiveFeed } = await import("./store");
     await expect(getActiveFeed("u1")).resolves.toEqual({
       round: { id: 3, title: "Week 1", publishedAt: "2026-08-25T00:00:00.000Z" },
@@ -94,7 +103,7 @@ describe("getActiveFeed", () => {
 
 describe("getRoundHistory", () => {
   it("returns no history without querying questions when no round is locked", async () => {
-    mocks.roundFind.mockReturnValue({ sort: () => ({ limit: () => lean([]) }) });
+    mocks.roundFind.mockReturnValue({ sort: () => ({ limit: () => sessionLean([]) }) });
     const { getRoundHistory } = await import("./store");
     await expect(getRoundHistory("u1", 5)).resolves.toEqual([]);
     expect(mocks.roundFind).toHaveBeenCalledWith({ status: "locked" });
@@ -106,10 +115,10 @@ describe("getRoundHistory", () => {
       { _id: 2, title: "Week 2", publishedAt: new Date("2026-08-20T00:00:00Z") },
       { _id: 1, title: null, publishedAt: new Date("2026-08-13T00:00:00Z") },
     ];
-    mocks.roundFind.mockReturnValue({ sort: () => ({ limit: () => lean(rounds) }) });
+    mocks.roundFind.mockReturnValue({ sort: () => ({ limit: () => sessionLean(rounds) }) });
     mocks.questionFind.mockImplementation(({ roundId: { $in: roundIds } }: { roundId: { $in: number[] } }) => ({
       sort: () =>
-        lean([
+        sessionLean([
           ...(roundIds.includes(1) ? [{ _id: 10, roundId: 1, text: "Old" }] : []),
           ...(roundIds.includes(2)
             ? [
@@ -119,17 +128,19 @@ describe("getRoundHistory", () => {
             : []),
         ]),
     }));
-    mocks.voteAggregate.mockImplementation(async ([match]) => {
-      const ids = match.$match.questionId.$in as number[];
-      return ids[0] === 10
-        ? [
-            { _id: { questionId: 10, agree: true }, count: 3 },
-            { _id: { questionId: 10, agree: false }, count: 1 },
-          ]
-        : [];
-    });
+    mocks.voteAggregate.mockImplementation(([match]) => ({
+      session: async () => {
+        const ids = match.$match.questionId.$in as number[];
+        return ids[0] === 10
+          ? [
+              { _id: { questionId: 10, agree: true }, count: 3 },
+              { _id: { questionId: 10, agree: false }, count: 1 },
+            ]
+          : [];
+      },
+    }));
     mocks.voteFind.mockImplementation((filter: { questionId: { $in: number[] } }) =>
-      lean(filter.questionId.$in.includes(20) ? [{ questionId: 20, agree: false }] : []),
+      sessionLean(filter.questionId.$in.includes(20) ? [{ questionId: 20, agree: false }] : []),
     );
     const { getRoundHistory } = await import("./store");
     await expect(getRoundHistory("u1", 5)).resolves.toEqual([
@@ -145,12 +156,16 @@ describe("getRoundHistory", () => {
         questions: [{ id: 10, text: "Old", myAgree: null, agreeCount: 3, disagreeCount: 1 }],
       },
     ]);
+    expect(mongoSession.withTransaction).toHaveBeenCalledWith(expect.any(Function), {
+      readConcern: { level: "snapshot" },
+    });
   });
 });
 
 describe("castVote", () => {
   it("returns the first stored direction and fresh tallies", async () => {
     mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundFindById.mockReturnValue({ session: () => lean({ _id: 3, status: "active" }) });
     mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 1 });
     mocks.voteCreate.mockResolvedValue([{ questionId: 10, userId: "u1", agree: true }]);
     mocks.voteFindOne.mockReturnValue(lean({ agree: true }));
@@ -170,8 +185,9 @@ describe("castVote", () => {
 
   it("returns the previously stored direction when a duplicate submission races", async () => {
     mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundFindById.mockReturnValue({ session: () => lean({ _id: 3, status: "active" }) });
     mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 1 });
-    mocks.voteCreate.mockRejectedValueOnce({ code: 11000 });
+    mocks.voteCreate.mockRejectedValueOnce({ code: 11000, keyValue: { questionId: 10, userId: "u1" } });
     mocks.voteFindOne.mockReturnValue(lean({ agree: false }));
     mocks.voteAggregate.mockResolvedValue([
       { _id: true, count: 7 },
@@ -187,9 +203,38 @@ describe("castVote", () => {
     const { castVote } = await import("./store");
     await expect(castVote("u1", 99, true)).resolves.toBeNull();
     mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundFindById.mockReturnValue({ session: () => lean({ _id: 3, status: "locked" }) });
     mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 0 });
     mocks.voteFindOne.mockReturnValue(lean(null));
     await expect(castVote("u1", 10, true)).resolves.toBeNull();
+  });
+
+  it("rechecks round status when a vote transaction callback retries", async () => {
+    mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundFindById
+      .mockReturnValueOnce({ session: () => lean({ _id: 3, status: "active" }) })
+      .mockReturnValueOnce({ session: () => lean({ _id: 3, status: "locked" }) });
+    mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 0 });
+    mongoSession.withTransaction.mockImplementation(async (callback) => {
+      await callback();
+      await callback();
+    });
+    mocks.voteFindOne.mockReturnValue(lean(null));
+    const { castVote } = await import("./store");
+    await expect(castVote("u1", 10, true)).resolves.toBeNull();
+    expect(mocks.roundUpdateOne).toHaveBeenCalledOnce();
+    expect(mocks.voteCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not recover an unrelated duplicate key as an existing vote", async () => {
+    mocks.questionFindById.mockReturnValue({ session: () => lean({ _id: 10, roundId: 3 }) });
+    mocks.roundFindById.mockReturnValue({ session: () => lean({ _id: 3, status: "active" }) });
+    mocks.roundUpdateOne.mockResolvedValue({ matchedCount: 1 });
+    const conflict = { code: 11000, keyValue: { _id: "other" } };
+    mocks.voteCreate.mockRejectedValueOnce(conflict);
+    const { castVote } = await import("./store");
+    await expect(castVote("u1", 10, true)).rejects.toMatchObject(conflict);
+    expect(mocks.voteFindOne).not.toHaveBeenCalled();
   });
 });
 

@@ -1,3 +1,4 @@
+import type { ClientSession } from "mongoose";
 import { connectDatabase } from "../db";
 import { Counter, PulseQuestion, PulseRound as PulseRoundModel, PulseVote } from "../db/models";
 
@@ -25,18 +26,25 @@ export interface PulseVoteTally {
   disagreeCount: number;
 }
 
-async function questionsForRounds(roundIds: number[], userId: string): Promise<Map<number, PulseFeedQuestion[]>> {
+async function questionsForRounds(
+  roundIds: number[],
+  userId: string,
+  session?: ClientSession,
+): Promise<Map<number, PulseFeedQuestion[]>> {
   if (roundIds.length === 0) return new Map();
   const questions = await PulseQuestion.find({ roundId: { $in: roundIds } })
     .sort({ roundId: 1, position: 1 })
+    .session(session ?? null)
     .lean();
   const questionIds = questions.map(({ _id }) => _id);
   const [votes, callerVotes] = await Promise.all([
     PulseVote.aggregate([
       { $match: { questionId: { $in: questionIds } } },
       { $group: { _id: { questionId: "$questionId", agree: "$agree" }, count: { $sum: 1 } } },
-    ]),
-    PulseVote.find({ questionId: { $in: questionIds }, userId }).lean(),
+    ]).session(session ?? null),
+    PulseVote.find({ questionId: { $in: questionIds }, userId })
+      .session(session ?? null)
+      .lean(),
   ]);
   const myVotes = new Map(callerVotes.map((vote) => [vote.questionId, vote.agree]));
   const tallies = new Map<number, { agree: number; disagree: number }>();
@@ -83,12 +91,29 @@ export async function getRoundHistory(
   limit = 10,
 ): Promise<{ round: PulseRound; questions: PulseFeedQuestion[] }[]> {
   await connectDatabase();
-  const rounds = await PulseRoundModel.find({ status: "locked" }).sort({ publishedAt: -1 }).limit(limit).lean();
-  const questions = await questionsForRounds(
-    rounds.map(({ _id }) => _id),
-    userId,
-  );
-  return rounds.map((round) => ({ round: toRound(round), questions: questions.get(round._id) ?? [] }));
+  const session = await PulseRoundModel.startSession();
+  try {
+    let history: { round: PulseRound; questions: PulseFeedQuestion[] }[] = [];
+    await session.withTransaction(
+      async () => {
+        const rounds = await PulseRoundModel.find({ status: "locked" })
+          .sort({ publishedAt: -1 })
+          .limit(limit)
+          .session(session)
+          .lean();
+        const questions = await questionsForRounds(
+          rounds.map(({ _id }) => _id),
+          userId,
+          session,
+        );
+        history = rounds.map((round) => ({ round: toRound(round), questions: questions.get(round._id) ?? [] }));
+      },
+      { readConcern: { level: "snapshot" } },
+    );
+    return history;
+  } finally {
+    await session.endSession();
+  }
 }
 
 /**
@@ -103,6 +128,8 @@ export async function castVote(userId: string, questionId: number, agree: boolea
       await session.withTransaction(async () => {
         const question = await PulseQuestion.findById(questionId).session(session).lean();
         if (!question) return;
+        const round = await PulseRoundModel.findById(question.roundId).session(session).lean();
+        if (round?.status !== "active") return;
         const active = await PulseRoundModel.updateOne(
           { _id: question.roundId, status: "active" },
           { $inc: { voteRevision: 1 } },
@@ -112,7 +139,7 @@ export async function castVote(userId: string, questionId: number, agree: boolea
         await PulseVote.create([{ questionId, userId, agree }], { session });
       });
     } catch (error) {
-      if (!(typeof error === "object" && error !== null && "code" in error && error.code === 11000)) throw error;
+      if (!isPulseVoteDuplicate(error, questionId, userId)) throw error;
     }
     const existing = await PulseVote.findOne({ questionId, userId }).lean();
     const storedAgree = existing?.agree ?? null;
@@ -129,6 +156,12 @@ export async function castVote(userId: string, questionId: number, agree: boolea
   } finally {
     await session.endSession();
   }
+}
+
+function isPulseVoteDuplicate(error: unknown, questionId: number, userId: string): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error) || error.code !== 11000) return false;
+  const keyValue = (error as { keyValue?: Record<string, unknown> }).keyValue;
+  return keyValue?.questionId === questionId && keyValue.userId === userId;
 }
 
 /** Locks the active round and publishes the next round with its questions atomically. */

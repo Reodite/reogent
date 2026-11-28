@@ -128,6 +128,19 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
     await expect(getRoundHistory(userIds[1])).resolves.toEqual(before);
 
     const nextQuestion = await PulseQuestion.findOne({ roundId: second.roundId }).lean();
-    if (nextQuestion) pulseQuestionIds.push(nextQuestion._id);
+    if (!nextQuestion) throw new Error("Next Pulse question not found");
+    pulseQuestionIds.push(nextQuestion._id);
+    const [racingVote, racingPublish] = await Promise.all([
+      castVote(userIds[1], nextQuestion._id, true),
+      publishRound({ title: "Race winner", questions: ["Final statement"] }),
+    ]);
+    pulseRoundIds.push(racingPublish.roundId);
+    const finalQuestion = await PulseQuestion.findOne({ roundId: racingPublish.roundId }).lean();
+    if (finalQuestion) pulseQuestionIds.push(finalQuestion._id);
+    const historyAfterRace = await getRoundHistory(userIds[0]);
+    const racedRound = historyAfterRace.find(({ round }) => round.id === second.roundId);
+    expect(racedRound?.questions[0].agreeCount).toBe(racingVote ? 1 : 0);
+    await expect(castVote(userIds[0], nextQuestion._id, false)).resolves.toBeNull();
+    await expect(getRoundHistory(userIds[0])).resolves.toEqual(historyAfterRace);
   });
 });
