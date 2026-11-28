@@ -1,8 +1,10 @@
 import type { AccountDetails, StudentProfile } from "@/src/shared/profile";
+import { connectDatabase } from "./db";
 import { OAuthAccount, PulseVote, User, UserProfile } from "./db/models";
 
 /** Returns account details for the authenticated user, or null if the user no longer exists. */
 export async function getAccount(userId: string): Promise<AccountDetails | null> {
+  await connectDatabase();
   const user = await User.findById(userId).lean();
   if (!user) return null;
   const [oauth, profile, pulseQuestionsAnswered] = await Promise.all([
@@ -42,6 +44,7 @@ function vancouverDay(date: Date): string {
  * counter resets at midnight America/Vancouver.
  */
 export async function consumeDailyChatMessage(userId: string): Promise<boolean> {
+  await connectDatabase();
   const day = vancouverDay(new Date());
   const updated = await User.findOneAndUpdate(
     { _id: userId, $or: [{ chatDay: { $ne: day } }, { chatMessages: { $lt: DAILY_CHAT_LIMIT } }] },
@@ -62,5 +65,6 @@ export async function consumeDailyChatMessage(userId: string): Promise<boolean> 
 export async function recordTokenUsage(userId: string, totalTokens: number | undefined): Promise<void> {
   if (totalTokens === undefined || totalTokens === 0) return;
   if (!Number.isSafeInteger(totalTokens) || totalTokens < 0) throw new Error("Invalid token usage");
+  await connectDatabase();
   await User.updateOne({ _id: userId }, { $inc: { tokensSpent: totalTokens } });
 }

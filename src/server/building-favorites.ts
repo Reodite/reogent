@@ -1,12 +1,15 @@
+import { connectDatabase } from "./db";
 import { BuildingFavorite } from "./db/models";
 
 export async function listBuildingFavorites(userId: string): Promise<string[]> {
+  await connectDatabase();
   const favorites = await BuildingFavorite.find({ userId }).sort({ createdAt: -1, buildingCode: 1 }).lean();
   return favorites.map(({ buildingCode }) => String(buildingCode));
 }
 
 /** Applies the requested saved state idempotently and returns the account's ordered codes. */
 export async function setBuildingFavorite(userId: string, buildingCode: string, saved: boolean): Promise<string[]> {
+  await connectDatabase();
   if (saved) {
     try {
       await BuildingFavorite.updateOne(

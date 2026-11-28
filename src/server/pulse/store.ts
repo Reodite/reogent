@@ -62,6 +62,7 @@ function toRound(round: { _id: number; title?: string | null; publishedAt: Date 
 export async function getActiveFeed(
   userId: string,
 ): Promise<{ round: PulseRound | null; questions: PulseFeedQuestion[] }> {
+  await connectDatabase();
   const round = await PulseRoundModel.findOne({ status: "active" }).lean();
   if (!round) return { round: null, questions: [] };
   return { round: toRound(round), questions: await questionsForRound(round._id, userId) };
@@ -75,6 +76,7 @@ export async function getRoundHistory(
   userId: string,
   limit = 10,
 ): Promise<{ round: PulseRound; questions: PulseFeedQuestion[] }[]> {
+  await connectDatabase();
   const rounds = await PulseRoundModel.find({ status: "locked" }).sort({ publishedAt: -1 }).limit(limit).lean();
   return Promise.all(
     rounds.map(async (round) => ({

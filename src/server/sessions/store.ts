@@ -6,6 +6,7 @@ import { Message, OAuthAccount, Session, User } from "../db/models";
 
 /** Sessions for this user, most recently updated first. */
 export async function listSessions(userId: string): Promise<SessionSummary[]> {
+  await connectDatabase();
   const sessions = await Session.find({ userId }).sort({ updatedAt: -1 }).lean();
   return sessions.map((session) => ({
     session_id: session._id,
@@ -39,6 +40,7 @@ export async function getSessionMessages(userId: string, sessionId: string): Pro
 
 /** Allows a new or owned session. Persistence must recheck ownership atomically. */
 export async function canWriteSession(userId: string, sessionId: string): Promise<boolean> {
+  await connectDatabase();
   const session = await Session.findById(sessionId).select({ userId: 1 }).lean();
   return !session || session.userId === userId;
 }
@@ -108,11 +110,13 @@ export async function appendExchange(
 
 /** Updates the title only if the session belongs to this user. */
 export async function updateSessionTitle(userId: string, sessionId: string, title: string): Promise<void> {
+  await connectDatabase();
   await Session.updateOne({ _id: sessionId, userId }, { $set: { title } });
 }
 
 /** Renames a session. Returns false if session doesn't belong to user. */
 export async function renameSession(userId: string, sessionId: string, title: string): Promise<boolean> {
+  await connectDatabase();
   const result = await Session.updateOne({ _id: sessionId, userId }, { $set: { title } });
   return result.matchedCount > 0;
 }
@@ -136,12 +140,14 @@ export async function deleteSession(userId: string, sessionId: string): Promise<
 
 /** Creates an account with a locally hashed password. */
 export async function createPasswordUser(username: string, passwordHash: string): Promise<string> {
+  await connectDatabase();
   const [user] = await User.create([{ username, passwordHash }]);
   return user._id;
 }
 
 /** Returns a local account's password hash, or null when the username is unknown. */
 export async function getPasswordUser(username: string): Promise<{ id: string; passwordHash: string | null } | null> {
+  await connectDatabase();
   const user = await User.findOne({ username }).select({ username: 1, passwordHash: 1 }).lean();
   return user ? { id: user._id, passwordHash: user.passwordHash ?? null } : null;
 }
@@ -159,6 +165,7 @@ export async function findOrCreateOAuthUser(
   providerSubject: string,
   profile: OAuthProfileClaims,
 ): Promise<{ id: string; username: string }> {
+  await connectDatabase();
   if (!/^[a-z][a-z0-9-]{0,31}$/.test(provider)) throw new Error("Invalid OAuth provider");
   if (!providerSubject.trim() || providerSubject.length > 512) throw new Error("Invalid OAuth subject");
   const email = profile.email?.trim() || undefined;

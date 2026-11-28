@@ -38,12 +38,14 @@ function drawCode(): string {
 
 /** The caller's person record, or null before their first upload. */
 export async function getPerson(userId: string): Promise<SharerPerson | null> {
+  await connectDatabase();
   const saved = await SharerPersonModel.findById(userId).lean();
   return saved ? (saved.person as SharerPerson) : null;
 }
 
 /** Upserts the caller's person record. The server owns id/updatedAt. */
 export async function savePerson(userId: string, body: { handle: string; avatar: unknown; schedule: unknown }) {
+  await connectDatabase();
   const person: SharerPerson = {
     id: userId,
     handle: body.handle,
@@ -86,6 +88,7 @@ export const CODE_PATTERN = /^[0-9A-Za-z]{6}$/;
 
 /** Groups the caller belongs to, newest first. */
 export async function listGroups(userId: string): Promise<GroupSummary[]> {
+  await connectDatabase();
   const memberships = await SharerGroupMember.find({ userId }).sort({ joinedAt: -1 }).lean();
   const codes = memberships.map(({ groupCode }) => groupCode);
   const groups = await SharerGroup.find({ _id: { $in: codes } })
@@ -108,6 +111,7 @@ export async function listGroups(userId: string): Promise<GroupSummary[]> {
  * Returns group members, including people who joined but never uploaded a schedule.
  */
 export async function getGroup(code: string): Promise<GroupDetail | null> {
+  await connectDatabase();
   const group = await SharerGroup.findById(code).lean();
   if (!group) return null;
   const members = await SharerGroupMember.find({ groupCode: code }).sort({ joinedAt: 1 }).lean();
@@ -140,6 +144,7 @@ export async function getGroup(code: string): Promise<GroupDetail | null> {
 
 /** Returns group detail only when the caller is already a member. */
 export async function getGroupForMember(userId: string, code: string): Promise<GroupDetail | null> {
+  await connectDatabase();
   const member = await SharerGroupMember.exists({ groupCode: code, userId });
   return member ? getGroup(code) : null;
 }
@@ -169,6 +174,7 @@ export async function joinGroup(userId: string, code: string): Promise<GroupDeta
 
 /** Removes the caller from a group. False when they were not a member. */
 export async function leaveGroup(userId: string, code: string): Promise<boolean> {
+  await connectDatabase();
   const result = await SharerGroupMember.deleteOne({ groupCode: code, userId });
   return result.deletedCount === 1;
 }

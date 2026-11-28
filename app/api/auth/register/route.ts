@@ -34,7 +34,7 @@ export async function POST(request: Request): Promise<Response> {
     response.headers.append("set-cookie", await sessionCookie(userId, username));
     return response;
   } catch (error) {
-    if ((error as { code?: string }).code === "23505") return json({ error: "Username already taken" }, 409);
+    if ((error as { code?: number }).code === 11000) return json({ error: "Username already taken" }, 409);
     return serverError(error);
   }
 }
