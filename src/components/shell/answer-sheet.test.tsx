@@ -109,6 +109,27 @@ describe("AnswerSheet", () => {
     expect(splitter.getAttribute("aria-valuenow")).toBe(splitter.getAttribute("aria-valuemax"));
   });
 
+  it("resizes with pointer input and restores the prior position when cancelled", () => {
+    const { container } = render(
+      <AnswerSheet open={false} onClose={() => {}} view={{ paneId: "map", state: {} }}>
+        <span>Map</span>
+      </AnswerSheet>,
+    );
+    const splitter = screen.getByRole("separator", { name: "Resize chat and answer canvas" });
+    const initial = splitter.getAttribute("aria-valuenow");
+    const sheet = container.querySelector<HTMLElement>("[data-answer-sheet]")!;
+    Object.defineProperty(sheet.parentElement, "getBoundingClientRect", {
+      value: () => new DOMRect(0, 0, 1000, 600),
+    });
+
+    fireEvent.pointerDown(splitter, { pointerId: 3, button: 0, clientX: 500 });
+    fireEvent.pointerMove(splitter, { pointerId: 3, clientX: 650 });
+    expect(splitter.getAttribute("aria-valuenow")).not.toBe(initial);
+
+    fireEvent.pointerCancel(splitter, { pointerId: 3 });
+    expect(splitter.getAttribute("aria-valuenow")).toBe(initial);
+  });
+
   it("traps focus, closes on Escape, and restores the trigger", async () => {
     render(<SheetHarness />);
     const trigger = screen.getByRole("button", { name: "Open canvas" });
