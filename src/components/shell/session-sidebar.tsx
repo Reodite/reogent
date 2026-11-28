@@ -264,7 +264,7 @@ function SessionItem({
             active={active}
             accessories
             onClick={onOpen}
-            title={session.title}
+            title={session.title ?? undefined}
           />
           <div data-session-actions className="absolute inset-y-0 right-0.5 flex items-center">
             <Button

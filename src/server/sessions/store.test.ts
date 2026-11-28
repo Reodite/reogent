@@ -7,6 +7,7 @@ import {
   deleteSession,
   findOrCreateOAuthUser,
   getSessionMessages,
+  listSessions,
   renameSession,
   updateSessionTitle,
 } from "./store";
@@ -93,6 +94,24 @@ beforeEach(() => {
   mocks.sessionStartSession.mockResolvedValue(mongoSession);
   mongoSession.withTransaction.mockReset().mockImplementation(async (callback) => callback());
   mongoSession.endSession.mockReset().mockResolvedValue(undefined);
+});
+
+describe("session list", () => {
+  it("preserves null titles for the caller's untitled-session fallback", async () => {
+    const updatedAt = new Date("2026-10-01T12:00:00Z");
+    mocks.sessionFind.mockReturnValue({
+      sort: () =>
+        lean([
+          { _id: "sid-1", title: null, updatedAt },
+          { _id: "sid-2", title: "Course planning", updatedAt },
+        ]),
+    });
+
+    await expect(listSessions("u1")).resolves.toEqual([
+      { session_id: "sid-1", title: null, updatedAt: updatedAt.toISOString() },
+      { session_id: "sid-2", title: "Course planning", updatedAt: updatedAt.toISOString() },
+    ]);
+  });
 });
 
 describe("session write ownership", () => {

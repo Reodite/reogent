@@ -10,7 +10,7 @@ export async function listSessions(userId: string): Promise<SessionSummary[]> {
   const sessions = await Session.find({ userId }).sort({ updatedAt: -1 }).lean();
   return sessions.map((session) => ({
     session_id: session._id,
-    title: session.title ?? "",
+    title: session.title ?? null,
     updatedAt: session.updatedAt.toISOString(),
   }));
 }

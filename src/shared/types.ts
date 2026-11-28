@@ -36,7 +36,7 @@ export interface ChatResponse {
 export interface SessionSummary {
   session_id: string;
   /** First user message, ≤80 chars. */
-  title: string;
+  title: string | null;
   /** ISO 8601. */
   updatedAt: string;
 }
