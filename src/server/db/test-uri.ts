@@ -5,8 +5,7 @@ const localHosts = new Set(["localhost", "127.0.0.1", "::1"]);
 export function validateMongoTestUri(uri: string): void {
   const parsed = new URL(uri);
   const hostname = parsed.hostname.replace(/^\[|\]$/g, "");
-  const database = decodeURIComponent(parsed.pathname.slice(1));
-  if (parsed.protocol !== "mongodb:" || !localHosts.has(hostname) || database !== testDatabase) {
+  if (parsed.protocol !== "mongodb:" || !localHosts.has(hostname) || parsed.pathname !== `/${testDatabase}`) {
     throw new Error("MongoDB integration tests require localhost and the reodite_test database");
   }
 }

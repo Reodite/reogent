@@ -8,6 +8,8 @@ describe("MongoDB integration URI", () => {
 
   it.each([
     "mongodb://localhost:27017/reodite?replicaSet=rs0",
+    "mongodb://localhost:27017/reodite_test%2F..%2Freodite?replicaSet=rs0",
+    "mongodb://localhost:27017/reodite%5Ftest?replicaSet=rs0",
     "mongodb://cluster.example/reodite_test?replicaSet=rs0",
     "mongodb+srv://localhost/reodite_test",
   ])("rejects unsafe test URI %s", (uri) => {
