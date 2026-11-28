@@ -21,6 +21,7 @@ const importedSessions: string[] = [];
 const oauthSubjects: string[] = [];
 const pulseRoundIds: number[] = [];
 const pulseQuestionIds: number[] = [];
+const pulseRunTitle = `integration-${randomUUID()}:`;
 const originalExternalToggle = process.env.USE_EXTERNAL_MONGODB;
 const originalMongoUri = process.env.MONGODB_URI;
 
@@ -29,21 +30,28 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
     process.env.USE_EXTERNAL_MONGODB = "true";
     process.env.MONGODB_URI = uri;
     await migrate();
-    await Promise.all([PulseVote.deleteMany({}), PulseQuestion.deleteMany({}), PulseRound.deleteMany({})]);
   });
 
   afterAll(async () => {
     try {
       if (mongoose.connection.readyState === 1) {
         await Record.collection.drop().catch(() => {});
+        const rounds = await PulseRound.find({ title: { $regex: `^${pulseRunTitle}` } })
+          .select({ _id: 1 })
+          .lean();
+        const roundIds = [...new Set([...pulseRoundIds, ...rounds.map(({ _id }) => _id)])];
+        const questions = await PulseQuestion.find({ roundId: { $in: roundIds } })
+          .select({ _id: 1 })
+          .lean();
+        const questionIds = [...new Set([...pulseQuestionIds, ...questions.map(({ _id }) => _id)])];
         await Promise.all([
           Session.deleteMany({ _id: { $in: importedSessions } }),
           Message.deleteMany({ sessionId: { $in: importedSessions } }),
           OAuthAccount.deleteMany({ provider: "google", providerSubject: { $in: oauthSubjects } }),
           User.deleteMany({ _id: { $in: importedUsers } }),
-          PulseVote.deleteMany({ questionId: { $in: pulseQuestionIds } }),
-          PulseQuestion.deleteMany({ _id: { $in: pulseQuestionIds } }),
-          PulseRound.deleteMany({ _id: { $in: pulseRoundIds } }),
+          PulseVote.deleteMany({ questionId: { $in: questionIds } }),
+          PulseQuestion.deleteMany({ _id: { $in: questionIds } }),
+          PulseRound.deleteMany({ _id: { $in: roundIds } }),
         ]);
       }
     } finally {
@@ -135,14 +143,14 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
       userIds.map((id) => ({ _id: id, username: `pulse-integration-${id}` })),
       { ordered: true },
     );
-    const first = await publishRound({ title: "Integration round", questions: ["Statement"] });
+    const first = await publishRound({ title: `${pulseRunTitle}initial`, questions: ["Statement"] });
     pulseRoundIds.push(first.roundId);
     const question = await PulseQuestion.findOne({ roundId: first.roundId }).lean();
     if (!question) throw new Error("Published Pulse question not found");
     pulseQuestionIds.push(question._id);
     await expect(castVote(userIds[0], question._id, true)).resolves.toMatchObject({ agree: true, agreeCount: 1 });
 
-    const second = await publishRound({ title: "Next round", questions: ["Another statement"] });
+    const second = await publishRound({ title: `${pulseRunTitle}next`, questions: ["Another statement"] });
     pulseRoundIds.push(second.roundId);
     const before = await getRoundHistory(userIds[1]);
     expect(before[0]).toMatchObject({ round: { id: first.roundId }, questions: [{ id: question._id, agreeCount: 1 }] });
@@ -158,7 +166,7 @@ describe.skipIf(!uri)("MongoDB replica-set integration", () => {
       const otherUserId = userIds[(attempt + 1) % userIds.length];
       const [racingVote, racingPublish] = await Promise.all([
         castVote(voterId, activeQuestion._id, true),
-        publishRound({ title: `Race ${attempt}`, questions: [`Statement ${attempt}`] }),
+        publishRound({ title: `${pulseRunTitle}race-${attempt}`, questions: [`Statement ${attempt}`] }),
       ]);
       pulseRoundIds.push(racingPublish.roundId);
       const lockedHistory = await getRoundHistory(otherUserId);
